@@ -83,16 +83,14 @@ psql postgresql://ia_user:ia_password@localhost:5432/ia_db -c "\conninfo"
 
 ## 7. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git && cd YOUR_REPO_NAME
+git clone https://github.com/virajdas/ia-app.git && cd ia-app
 ```
-> Replace `YOUR_USERNAME` and `YOUR_REPO_NAME` with the actual GitHub repo URL.
 
 ---
 
 ## 8. Create Environment Files
 ```bash
-cp .env.example .env
-cp .env.example apps/api/.env
+cp .env.example .env && cp .env.example apps/api/.env
 ```
 
 ---
@@ -114,7 +112,7 @@ pnpm db:generate
 
 ## 11. Run Database Migrations
 ```bash
-pnpm --filter api exec prisma migrate dev --name init
+pnpm db:migrate
 ```
 
 ---

@@ -1,17 +1,63 @@
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 .next
+out
+
+# Expo / React Native
 .expo
+.expo-shared
+android
+ios
+
+# Environment variables
 *.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
-!.env.example
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Turbo cache
 .turbo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editors
+.idea
+*.swp
+*.swo
+
+# Claude
 .claude
+
+# Vercel
+.vercel
+
+# Test coverage
 coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# Database
 prisma/migrations/dev.db
 prisma/dev.db
 *.db
 *.db-journal
+
+# Certificates & keys
+*.pem
+*.p8
+*.p12
+*.jks
+*.mobileprovision
