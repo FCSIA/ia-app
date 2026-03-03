@@ -9,6 +9,7 @@ dist
 *.log
 .turbo
 .DS_Store
+.claude
 coverage
 prisma/migrations/dev.db
 prisma/dev.db
