@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install --frozen-lockfile=false)",
+      "Bash(brew list)",
+      "Bash(pnpm --version)",
+      "Bash(brew install postgresql@16)",
+      "Bash(brew services start postgresql@16)",
+      "Bash(/opt/homebrew/opt/postgresql@16/bin/psql postgres -c \"\\\\l\")",
+      "Bash(/opt/homebrew/opt/postgresql@16/bin/psql postgres -c \"CREATE USER ia_user WITH PASSWORD ''ia_password'';\")",
+      "Bash(/opt/homebrew/opt/postgresql@16/bin/psql postgres -c \"CREATE DATABASE ia_db OWNER ia_user;\")",
+      "Bash(/opt/homebrew/opt/postgresql@16/bin/psql postgres -c \"GRANT ALL PRIVILEGES ON DATABASE ia_db TO ia_user;\")"
+    ]
+  }
+}

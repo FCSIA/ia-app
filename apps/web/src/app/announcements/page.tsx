@@ -1,0 +1,246 @@
+'use client';
+
+import { useState } from 'react';
+import { AppShell } from '@/components/layout/AppShell';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { announcementsApi } from '@/lib/api';
+import { getUser, hasRole } from '@/lib/auth';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { Plus, Archive, MessageCircle, Clock } from 'lucide-react';
+
+function AnnouncementCard({ ann, onArchive, canArchive }: any) {
+  return (
+    <div className="card hover:-translate-y-0.5 transition-all duration-200">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {ann.isAdminGeneral && <span className="badge-red">Admin</span>}
+            {ann.status === 'EXPIRED' && <span className="badge-gray">Expired</span>}
+            {ann.status === 'ARCHIVED' && <span className="badge-gray">Archived</span>}
+            <span className="badge-blue">{ann.targetType.replace(/_/g, ' ')}</span>
+          </div>
+          <Link href={`/announcements/${ann.id}`}>
+            <h3 className="font-semibold text-white/90 hover:text-accent-400 transition-colors">
+              {ann.title}
+            </h3>
+          </Link>
+          <p className="text-sm text-white/40 mt-1">
+            {ann.author?.firstName} {ann.author?.lastName} ·{' '}
+            {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
+            {ann.expiresAt && (
+              <span className="ml-2 text-amber-400">
+                <Clock size={12} className="inline" /> expires{' '}
+                {formatDistanceToNow(new Date(ann.expiresAt), { addSuffix: true })}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {ann.allowComments && (
+            <span className="text-white/35 flex items-center gap-1 text-sm">
+              <MessageCircle size={14} /> {ann._count?.comments || 0}
+            </span>
+          )}
+          {canArchive && ann.status === 'ACTIVE' && (
+            <button
+              onClick={() => onArchive(ann.id)}
+              className="text-white/30 hover:text-white/70 transition-colors"
+              title="Archive"
+            >
+              <Archive size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AnnouncementsPage() {
+  const user = getUser();
+  const qc = useQueryClient();
+  const [showArchived, setShowArchived] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({
+    title: '',
+    body: '',
+    targetType: 'SCHOOL_WIDE',
+    targetValue: '',
+    allowComments: false,
+    isAdminGeneral: false,
+    expiresAt: '',
+  });
+
+  const canPost = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+  const canArchive = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['announcements', showArchived],
+    queryFn: () => announcementsApi.getAll(showArchived).then((r) => r.data),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (d: any) => announcementsApi.create(d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      setShowNew(false);
+      setForm({ title: '', body: '', targetType: 'SCHOOL_WIDE', targetValue: '', allowComments: false, isAdminGeneral: false, expiresAt: '' });
+      toast.success('Announcement created');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to create'),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => announcementsApi.archive(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      toast.success('Archived');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMutation.mutate({
+      ...form,
+      expiresAt: form.expiresAt || undefined,
+      targetValue: form.targetValue || undefined,
+    });
+  };
+
+  return (
+    <AppShell>
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Announcements</h1>
+            <p className="text-white/45 text-sm">School-wide and targeted communications</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`btn-secondary text-sm ${showArchived ? 'border-accent-500/50 text-accent-400' : ''}`}
+            >
+              {showArchived ? 'Active' : 'Archived'}
+            </button>
+            {canPost && (
+              <button onClick={() => setShowNew(true)} className="btn-primary flex items-center gap-2 text-sm">
+                <Plus size={16} /> New
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* New announcement form */}
+        {showNew && canPost && (
+          <div className="card mb-6">
+            <h2 className="font-semibold text-white mb-4">New Announcement</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input
+                className="input"
+                placeholder="Title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+              />
+              <textarea
+                className="input min-h-[100px] resize-y"
+                placeholder="Write your announcement..."
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
+                required
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-white/45 mb-1 block">Target</label>
+                  <select
+                    className="input"
+                    value={form.targetType}
+                    onChange={(e) => setForm({ ...form, targetType: e.target.value })}
+                  >
+                    <option value="SCHOOL_WIDE">School-wide</option>
+                    <option value="GRADE">Grade</option>
+                    <option value="PATHWAY">Pathway</option>
+                  </select>
+                </div>
+                {form.targetType !== 'SCHOOL_WIDE' && (
+                  <div>
+                    <label className="text-xs text-white/45 mb-1 block">
+                      {form.targetType === 'GRADE' ? 'Grade (e.g. 9)' : 'Pathway'}
+                    </label>
+                    <input
+                      className="input"
+                      placeholder={form.targetType === 'GRADE' ? '9' : 'STEM'}
+                      value={form.targetValue}
+                      onChange={(e) => setForm({ ...form, targetValue: e.target.value })}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-white/45 mb-1 block">Expires (optional)</label>
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={form.expiresAt}
+                  onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-accent-500"
+                    checked={form.allowComments}
+                    onChange={(e) => setForm({ ...form, allowComments: e.target.checked })}
+                  />
+                  Allow comments
+                </label>
+                {hasRole(user, 'ADMIN', 'SUPER_ADMIN') && (
+                  <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="accent-accent-500"
+                      checked={form.isAdminGeneral}
+                      onChange={(e) => setForm({ ...form, isAdminGeneral: e.target.checked })}
+                    />
+                    Admin override (notify all)
+                  </label>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="submit" className="btn-primary" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? 'Posting…' : 'Post Announcement'}
+                </button>
+                <button type="button" onClick={() => setShowNew(false)} className="btn-secondary">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Announcements list */}
+        {isLoading ? (
+          <div className="text-center py-12 text-white/35">Loading…</div>
+        ) : !data?.length ? (
+          <div className="text-center py-12 text-white/35">
+            {showArchived ? 'No archived announcements' : 'No announcements yet'}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {data.map((ann: any) => (
+              <AnnouncementCard
+                key={ann.id}
+                ann={ann}
+                canArchive={canArchive}
+                onArchive={(id: string) => archiveMutation.mutate(id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}

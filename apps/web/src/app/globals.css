@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Keyframes ─────────────────────────────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --accent: #f97316;
+    --accent-glow: rgba(249, 115, 22, 0.2);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur: 24px;
+  }
+
+  html {
+    background-color: #0c0a09;
+  }
+
+  body {
+    background-color: #0c0a09;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 100% 0%, rgba(249, 115, 22, 0.06) 0%, transparent 100%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(234, 88, 12, 0.04) 0%, transparent 100%);
+    color: #ffffff;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+  /* Selection */
+  ::selection { background: rgba(249, 115, 22, 0.25); color: white; }
+}
+
+/* ─── Components ─────────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* Page entry animation */
+  .page-enter {
+    animation: fadeSlideUp 0.3s ease-out both;
+  }
+
+  /* Glass card */
+  .card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 20px 60px rgba(0, 0, 0, 0.35);
+    border-radius: 16px;
+    padding: 1rem;
+    transition: transform 0.2s ease-out, border-color 0.2s ease-out, box-shadow 0.2s ease-out;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 28px 70px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Primary button — orange gradient */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color: white;
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    box-shadow:
+      0 4px 20px rgba(249, 115, 22, 0.25),
+      0 1px 0 rgba(255, 255, 255, 0.15) inset;
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 30px rgba(249, 115, 22, 0.35),
+      0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow:
+      0 4px 16px rgba(249, 115, 22, 0.2),
+      0 1px 0 rgba(255, 255, 255, 0.1) inset;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Secondary button — glass */
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: white;
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Danger button */
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    background: rgba(239, 68, 68, 0.7);
+    color: white;
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+    transition: all 0.2s ease-out;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.85);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Input — glass */
+  .input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: white;
+    font-size: 0.875rem;
+    transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+    outline: none;
+  }
+
+  .input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .input:focus {
+    border-color: rgba(249, 115, 22, 0.5);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+  }
+
+  /* Badges — glass-tinted */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-blue {
+    @apply badge;
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+  }
+
+  .badge-green {
+    @apply badge;
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+
+  .badge-yellow {
+    @apply badge;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+
+  .badge-red {
+    @apply badge;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  .badge-gray {
+    @apply badge;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

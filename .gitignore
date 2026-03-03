@@ -1,0 +1,16 @@
+node_modules
+dist
+.next
+.expo
+*.env
+.env.local
+.env.*.local
+!.env.example
+*.log
+.turbo
+.DS_Store
+coverage
+prisma/migrations/dev.db
+prisma/dev.db
+*.db
+*.db-journal
