@@ -36,6 +36,8 @@ export const announcementsApi = {
   archive: (id: string) => api.patch(`/announcements/${id}/archive`),
   addComment: (id: string, body: string) =>
     api.post(`/announcements/${id}/comments`, { body }),
+  deleteComment: (commentId: string) =>
+    api.delete(`/announcements/comments/${commentId}`),
 };
 
 export const clubsApi = {
@@ -72,4 +74,13 @@ export const notificationsApi = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markRead: (ids: string[]) => api.post('/notifications/mark-read', { ids }),
   markAllRead: () => api.post('/notifications/mark-all-read'),
+};
+
+export const moderationApi = {
+  submitReport: (data: {
+    contentType: string;
+    contentId: string;
+    reason: string;
+    reportedUserId?: string;
+  }) => api.post('/moderation/reports', data),
 };
