@@ -293,6 +293,7 @@ model CalendarEntry {
 enum FlexFridayType {
   ALL_STUDENT
   FRESHMAN_WORKSHOP
+  GRADE_SPECIFIC
   PATHWAY_SPECIFIC
   TEACHER_PD
 }
@@ -306,6 +307,7 @@ model FlexFriday {
   id        String         @id @default(cuid())
   date      DateTime       @db.Date
   type      FlexFridayType @default(ALL_STUDENT)
+  gradeLevel Int?          @map("grade_level")
   pathway   Pathway?
   isSchoolDay Boolean      @default(true) @map("is_school_day")
   notes     String?

@@ -5,8 +5,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
-import { format } from 'date-fns';
-import { Plus, Users, MapPin, CheckCircle } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { Plus, Users, MapPin, CheckCircle, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 export default function FlexFridayPage() {
   const user = getUser();
@@ -21,9 +24,31 @@ export default function FlexFridayPage() {
   const { toast } = useToast();
   const [selectedFriday, setSelectedFriday] = useState<any>(null);
   const [showNewFriday, setShowNewFriday] = useState(false);
-  const [fridayForm, setFridayForm] = useState({ date: '', type: 'ALL_STUDENT' as any, notes: '', isSchoolDay: true });
+  const [fridayForm, setFridayForm] = useState({
+    date: '',
+    type: 'ALL_STUDENT' as any,
+    gradeLevel: '9',
+    pathway: 'INFORMATION_TECHNOLOGY' as any,
+    notes: '',
+    isSchoolDay: true,
+  });
   const [showNewSession, setShowNewSession] = useState(false);
-  const [sessionForm, setSessionForm] = useState({ title: '', description: '', location: '', capacity: '', sessionType: 'STUDENT_CHOICE' as any });
+  const [sessionForm, setSessionForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    capacity: '',
+    sessionType: 'STUDENT_CHOICE' as any,
+    targetGrade: 'ANY',
+    targetPathway: 'ANY' as any,
+  });
+
+  const gradeOptions = [9, 10, 11, 12];
+  const pathwayOptions = [
+    { value: 'INFORMATION_TECHNOLOGY', label: 'IT' },
+    { value: 'HEALTH_SCIENCE', label: 'Health Science' },
+    { value: 'ENGINEERING', label: 'Engineering' },
+  ];
 
   const canManage = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canCreateSession = user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
@@ -45,6 +70,7 @@ export default function FlexFridayPage() {
   });
 
   const myRegSessionIds = new Set((myRegs as any[]).map((r: any) => r.sessionId));
+  const selectedCreateDate = fridayForm.date ? parseISO(fridayForm.date) : undefined;
 
   const createFridayMutation = useMutation({
     mutationFn: (d: any) => flexFridayApi.createFriday(d),
@@ -179,31 +205,126 @@ export default function FlexFridayPage() {
               <CardTitle className="text-lg">Schedule Flex Friday</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); createFridayMutation.mutate(fridayForm); }} className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  createFridayMutation.mutate({
+                    date: fridayForm.date,
+                    type: fridayForm.type,
+                    notes: fridayForm.notes,
+                    isSchoolDay: fridayForm.type !== 'TEACHER_PD',
+                    pathway: fridayForm.type === 'PATHWAY_SPECIFIC' ? fridayForm.pathway : undefined,
+                    gradeLevel:
+                      fridayForm.type === 'GRADE_SPECIFIC'
+                        ? Number(fridayForm.gradeLevel)
+                        : fridayForm.type === 'FRESHMAN_WORKSHOP'
+                          ? 9
+                          : undefined,
+                  });
+                }}
+                className="space-y-4"
+              >
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Date *</label>
-                  <Input type="date" value={fridayForm.date} onChange={(e) => setFridayForm({ ...fridayForm, date: e.target.value })} required />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !fridayForm.date && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 size-4" />
+                        {fridayForm.date ? format(selectedCreateDate!, 'PPP') : 'Pick a Friday'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[19rem] p-0" align="start">
+                      <Calendar
+                        className="w-full"
+                        mode="single"
+                        selected={selectedCreateDate}
+                        onSelect={(date) => setFridayForm({ ...fridayForm, date: date ? format(date, 'yyyy-MM-dd') : '' })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Type</label>
-                  <Select value={fridayForm.type} onValueChange={(v) => setFridayForm({ ...fridayForm, type: v })}>
+                  <Select
+                    value={fridayForm.type}
+                    onValueChange={(value) =>
+                      setFridayForm((current) => ({
+                        ...current,
+                        type: value,
+                        gradeLevel:
+                          value === 'FRESHMAN_WORKSHOP'
+                            ? '9'
+                            : current.gradeLevel,
+                      }))
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL_STUDENT">All Student</SelectItem>
                       <SelectItem value="FRESHMAN_WORKSHOP">Freshman Workshop</SelectItem>
+                      <SelectItem value="GRADE_SPECIFIC">Grade Specific</SelectItem>
                       <SelectItem value="PATHWAY_SPECIFIC">Pathway Specific</SelectItem>
                       <SelectItem value="TEACHER_PD">Teacher PD (No School)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {fridayForm.type === 'PATHWAY_SPECIFIC' && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block font-medium">Pathway</label>
+                    <Select
+                      value={fridayForm.pathway}
+                      onValueChange={(value) => setFridayForm({ ...fridayForm, pathway: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select pathway" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pathwayOptions.map((pathway) => (
+                          <SelectItem key={pathway.value} value={pathway.value}>
+                            {pathway.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {(fridayForm.type === 'GRADE_SPECIFIC' || fridayForm.type === 'FRESHMAN_WORKSHOP') && (
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block font-medium">Grade</label>
+                    <Select
+                      value={fridayForm.type === 'FRESHMAN_WORKSHOP' ? '9' : fridayForm.gradeLevel}
+                      onValueChange={(value) => setFridayForm({ ...fridayForm, gradeLevel: value })}
+                      disabled={fridayForm.type === 'FRESHMAN_WORKSHOP'}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select grade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gradeOptions.map((grade) => (
+                          <SelectItem key={grade} value={String(grade)}>
+                            Grade {grade}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Notes (optional)</label>
                   <Textarea placeholder="Notes (optional)" value={fridayForm.notes} onChange={(e) => setFridayForm({ ...fridayForm, notes: e.target.value })} rows={2} />
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-border mt-2">
-                  <Button type="submit" disabled={createFridayMutation.isPending}>Create</Button>
+                  <Button type="submit" disabled={createFridayMutation.isPending || !fridayForm.date}>Create</Button>
                   <Button type="button" variant="ghost" onClick={() => setShowNewFriday(false)}>Cancel</Button>
                 </div>
               </form>
@@ -226,6 +347,8 @@ export default function FlexFridayPage() {
                         }`}>
                       <p className="font-semibold text-sm">{format(new Date(f.date), 'EEE, MMM d, yyyy')}</p>
                       <p className="text-xs text-muted-foreground mt-1 font-medium">{f.type.replace(/_/g, ' ')}</p>
+                      {f.pathway && <p className="text-xs text-muted-foreground mt-1">Pathway: {f.pathway.replace(/_/g, ' ')}</p>}
+                      {f.gradeLevel && <p className="text-xs text-muted-foreground mt-1">Grade {f.gradeLevel}</p>}
                       {f._count?.sessions > 0 && <p className="text-xs text-muted-foreground/80 mt-1 flex items-center gap-1.5 before:content-[''] before:w-1 before:h-1 before:bg-accent-500 before:rounded-full">{f._count.sessions} sessions</p>}
                     </button>
                   ))}
@@ -259,7 +382,21 @@ export default function FlexFridayPage() {
                       <CardTitle className="text-base font-semibold">New Session</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <form onSubmit={(e) => { e.preventDefault(); createSessionMutation.mutate({ ...sessionForm, capacity: sessionForm.capacity ? parseInt(sessionForm.capacity) : undefined }); }} className="space-y-4">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          createSessionMutation.mutate({
+                            title: sessionForm.title,
+                            description: sessionForm.description,
+                            location: sessionForm.location,
+                            capacity: sessionForm.capacity ? parseInt(sessionForm.capacity) : undefined,
+                            sessionType: sessionForm.sessionType,
+                            targetPathway: sessionForm.targetPathway !== 'ANY' ? sessionForm.targetPathway : undefined,
+                            targetGrade: sessionForm.targetGrade !== 'ANY' ? Number(sessionForm.targetGrade) : undefined,
+                          });
+                        }}
+                        className="space-y-4"
+                      >
                         <div>
                           <label className="text-xs text-muted-foreground mb-1 block font-medium">Session Title *</label>
                           <Input placeholder="Session title" value={sessionForm.title} onChange={(e) => setSessionForm({ ...sessionForm, title: e.target.value })} required />
@@ -289,6 +426,46 @@ export default function FlexFridayPage() {
                               <SelectItem value="TEACHER_ASSIGNED">Teacher Assigned</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block font-medium">Target Pathway</label>
+                            <Select
+                              value={sessionForm.targetPathway}
+                              onValueChange={(value) => setSessionForm({ ...sessionForm, targetPathway: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Any pathway" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ANY">Any pathway</SelectItem>
+                                {pathwayOptions.map((pathway) => (
+                                  <SelectItem key={pathway.value} value={pathway.value}>
+                                    {pathway.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block font-medium">Target Grade</label>
+                            <Select
+                              value={sessionForm.targetGrade}
+                              onValueChange={(value) => setSessionForm({ ...sessionForm, targetGrade: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Any grade" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ANY">Any grade</SelectItem>
+                                {gradeOptions.map((grade) => (
+                                  <SelectItem key={grade} value={String(grade)}>
+                                    Grade {grade}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         <div className="flex gap-2 pt-2 border-t border-border mt-2">
                           <Button type="submit" size="sm" disabled={createSessionMutation.isPending}>Create</Button>
@@ -326,6 +503,8 @@ export default function FlexFridayPage() {
                                 <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
                                   {s.location && <span className="flex items-center gap-1.5 font-medium"><MapPin size={12} />{s.location}</span>}
                                   <span className="flex items-center gap-1.5 font-medium"><Users size={12} />{s._count?.registrations}{s.capacity ? `/${s.capacity}` : ''} registered</span>
+                                  {s.targetPathway && <span className="font-medium">Pathway: {s.targetPathway.replace(/_/g, ' ')}</span>}
+                                  {s.targetGrade && <span className="font-medium">Grade {s.targetGrade}</span>}
                                 </div>
                               </div>
                               {isStudent && s.sessionType === 'STUDENT_CHOICE' && (
