@@ -5,12 +5,17 @@ import { AppShell } from '@/components/layout/AppShell';
 import { getUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, notificationsApi } from '@/lib/api';
-import toast from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
   const user = getUser();
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
 
@@ -22,11 +27,11 @@ export default function ProfilePage() {
   const changePwMutation = useMutation({
     mutationFn: (d: any) => authApi.changePassword(d.currentPassword, d.newPassword),
     onSuccess: () => {
-      toast.success('Password changed');
+      toast({ title: 'Password changed' });
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
     },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to change password'),
+    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed to change password', variant: 'destructive' }),
   });
 
   const prefMutation = useMutation({
@@ -53,132 +58,139 @@ export default function ProfilePage() {
     <AppShell>
       <div className="max-w-xl mx-auto space-y-5">
         {/* Profile hero */}
-        <div className="card flex items-center gap-5">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 8px 24px rgba(249,115,22,0.3)' }}
-          >
-            {initials}
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">
-              {user?.firstName} {user?.lastName}
-            </h1>
-            <p className="text-white/45 text-sm font-mono mt-0.5">{user?.uniqueId}</p>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {user?.roles?.map((r: string) => (
-                <span key={r} className="badge-blue text-[10px]">{r.replace(/_/g, ' ')}</span>
-              ))}
+        <Card>
+          <CardContent className="flex items-center gap-5 p-6">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 8px 24px rgba(249,115,22,0.3)' }}
+            >
+              {initials}
             </div>
-          </div>
-        </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                {user?.firstName} {user?.lastName}
+              </h1>
+              <p className="text-muted-foreground text-sm font-mono mt-0.5">{user?.uniqueId}</p>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {user?.roles?.map((r: string) => (
+                  <Badge key={r} variant="secondary" className="text-[10px]">
+                    {r.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Account Info */}
-        <div className="card">
-          <div className="flex items-center gap-2 mb-4">
-            <User size={16} className="text-accent-400" />
-            <h2 className="font-semibold text-white/90">Account Info</h2>
-          </div>
-          <div className="space-y-0">
-            {[
-              { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
-              { label: 'Grade', value: user?.gradeLevel || '—' },
-              { label: 'Pathway', value: user?.pathway || '—' },
-            ].map(({ label, value, mono }, i, arr) => (
-              <div
-                key={label}
-                className="flex justify-between items-center py-3"
-                style={i < arr.length - 1 ? { borderBottom: '1px solid rgba(255,255,255,0.06)' } : undefined}
-              >
-                <span className="text-sm text-white/45">{label}</span>
-                <span className={`text-sm ${mono ? 'font-mono text-accent-400/80' : 'text-white/75'}`}>
-                  {value}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="pb-3 border-b">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-accent-500" />
+              <CardTitle className="text-base font-semibold">Account Info</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3">
+            <div className="space-y-0">
+              {[
+                { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
+                { label: 'Grade', value: user?.gradeLevel || '—' },
+                { label: 'Pathway', value: user?.pathway || '—' },
+              ].map(({ label, value, mono }, i, arr) => (
+                <div
+                  key={label}
+                  className="flex justify-between items-center py-3 border-b last:border-0"
+                >
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className={`text-sm ${mono ? 'font-mono text-accent-600 dark:text-accent-400 font-medium' : 'text-foreground'}`}>
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Change Password */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Lock size={16} className="text-accent-400" />
-              <h2 className="font-semibold text-white/90">Change Password</h2>
-            </div>
-            {!changing && (
-              <button onClick={() => setChanging(true)} className="btn-secondary text-sm py-1 px-3">
-                Change
-              </button>
-            )}
-          </div>
-          {changing && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (pwForm.newPassword !== pwForm.confirm) {
-                  toast.error('Passwords do not match');
-                  return;
-                }
-                changePwMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
-              }}
-              className="space-y-3"
-            >
-              <input
-                type="password"
-                className="input"
-                placeholder="Current password"
-                value={pwForm.currentPassword}
-                onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
-                required
-              />
-              <input
-                type="password"
-                className="input"
-                placeholder="New password (min 8 chars)"
-                value={pwForm.newPassword}
-                onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                required
-                minLength={8}
-              />
-              <input
-                type="password"
-                className="input"
-                placeholder="Confirm new password"
-                value={pwForm.confirm}
-                onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-                required
-              />
-              <div className="flex gap-2 pt-1">
-                <button type="submit" className="btn-primary text-sm" disabled={changePwMutation.isPending}>
-                  Update Password
-                </button>
-                <button type="button" onClick={() => setChanging(false)} className="btn-secondary text-sm">
-                  Cancel
-                </button>
+        <Card>
+          <CardHeader className="pb-3 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Lock size={16} className="text-accent-500" />
+                <CardTitle className="text-base font-semibold">Change Password</CardTitle>
               </div>
-            </form>
-          )}
-          {!changing && (
-            <p className="text-white/30 text-sm">••••••••</p>
-          )}
-        </div>
+              {!changing && (
+                <Button variant="outline" size="sm" onClick={() => setChanging(true)}>
+                  Change
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {changing && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (pwForm.newPassword !== pwForm.confirm) {
+                    toast({ title: 'Passwords do not match', variant: 'destructive' });
+                    return;
+                  }
+                  changePwMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
+                }}
+                className="space-y-4"
+              >
+                <Input
+                  type="password"
+                  placeholder="Current password"
+                  value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+                  required
+                />
+                <Input
+                  type="password"
+                  placeholder="New password (min 8 chars)"
+                  value={pwForm.newPassword}
+                  onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+                  required
+                  minLength={8}
+                />
+                <Input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                  required
+                />
+                <div className="flex gap-2 pt-1 border-t border-border pt-4 mt-4">
+                  <Button type="submit" disabled={changePwMutation.isPending}>
+                    Update Password
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setChanging(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+            {!changing && (
+              <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">••••••••</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Notification Preferences */}
-        <div className="card">
-          <div className="flex items-center gap-2 mb-5">
-            <Bell size={16} className="text-accent-400" />
-            <h2 className="font-semibold text-white/90">Notification Preferences</h2>
-          </div>
-          <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3 border-b">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-accent-500" />
+              <CardTitle className="text-base font-semibold">Notification Preferences</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-5">
             {categories.map(({ key, label }) => {
               const enabled = prefMap[`${key}:null`] !== false;
               return (
                 <div key={key} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-white/80">{label}</p>
-                  </div>
-                  {/* Custom orange toggle */}
+                  <p className="text-sm font-medium">{label}</p>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -191,10 +203,10 @@ export default function ProfilePage() {
                       style={{
                         background: enabled
                           ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                          : 'rgba(255,255,255,0.1)',
+                          : 'rgba(100,100,100,0.2)',
                         border: enabled
                           ? '1px solid rgba(249,115,22,0.5)'
-                          : '1px solid rgba(255,255,255,0.1)',
+                          : '1px solid rgba(100,100,100,0.1)',
                         boxShadow: enabled ? '0 4px 12px rgba(249,115,22,0.25)' : 'none',
                       }}
                     >
@@ -207,11 +219,13 @@ export default function ProfilePage() {
                 </div>
               );
             })}
-          </div>
-          <p className="text-xs text-white/25 pt-4 mt-2 border-t border-white/[0.06]">
-            Admin-general announcements always notify you regardless of preferences.
-          </p>
-        </div>
+            <div className="pt-4 border-t border-border mt-4">
+              <p className="text-xs text-muted-foreground">
+                Admin-general announcements always notify you regardless of preferences.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );

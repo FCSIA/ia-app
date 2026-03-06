@@ -4,13 +4,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { setAuth } from '@/lib/auth';
-import toast from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
   const [uniqueId, setUniqueId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,10 +23,10 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(uniqueId, password);
       setAuth(res.data.token, res.data.user);
-      toast.success('Logged in successfully');
+      toast({ title: 'Logged in successfully' });
       router.replace('/dashboard');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast({ title: err.response?.data?.message || 'Login failed', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -29,22 +34,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      {/* Glass login card */}
-      <div
-        className="w-full max-w-md rounded-2xl p-8"
-        style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          backdropFilter: 'blur(32px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow:
-            '0 1px 0 rgba(255,255,255,0.08) inset, 0 32px 80px rgba(0,0,0,0.5)',
-        }}
-      >
-        <div className="text-center mb-8">
-          {/* Logo mark */}
+      <Card className="w-full max-w-md bg-background/70 backdrop-blur-xl">
+        <CardHeader className="text-center space-y-2 pb-6">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-2"
             style={{
               background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
               boxShadow: '0 8px 30px rgba(249,115,22,0.35)',
@@ -52,56 +45,54 @@ export default function LoginPage() {
           >
             <span className="text-2xl font-bold text-white">IA</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">IA School App</h1>
-          <p className="text-white/50 mt-1 text-sm">Sign in to continue</p>
-        </div>
+          <CardTitle className="text-2xl font-bold">IA School App</CardTitle>
+          <CardDescription>Sign in to continue</CardDescription>
+        </CardHeader>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Student / Staff ID
-            </label>
-            <input
-              type="text"
-              className="input"
-              placeholder="e.g. STU001"
-              value={uniqueId}
-              onChange={(e) => setUniqueId(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="uniqueId">Student / Staff ID</Label>
+              <Input
+                id="uniqueId"
+                type="text"
+                placeholder="e.g. STU001"
+                value={uniqueId}
+                onChange={(e) => setUniqueId(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/70 mb-1.5">
-              Password
-            </label>
-            <input
-              type="password"
-              className="input"
-              placeholder="Your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <p className="text-xs text-white/35 mt-1.5">
-              First login: use your Student/Staff ID as password
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1 text-center">
+                First login: use your Student/Staff ID as password
+              </p>
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary w-full mt-2"
-          >
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
-        </form>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
+            </Button>
+          </form>
 
-        <p className="text-center text-xs text-white/30 mt-6">
-          Contact your admin if you cannot log in
-        </p>
-      </div>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Contact your admin if you cannot log in
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
