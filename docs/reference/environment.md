@@ -1,5 +1,8 @@
 ---
-tags: [reference, environment, configuration]
+tags:
+  - reference
+  - environment
+  - configuration
 ---
 
 # Environment Variables
