@@ -99,8 +99,19 @@ export default function ProfilePage() {
           <CardContent className="pt-0">
             {[
               { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
-              { label: 'Grade', value: user?.gradeLevel || '—' },
-              { label: 'Pathway', value: user?.pathway || '—' },
+              ...(user?.roles?.includes('STUDENT')
+                ? [
+                    { label: 'Grade', value: user?.gradeLevel || '—' },
+                    {
+                      label: 'Major Pathway',
+                      value: user?.major ? user.major.replace(/_/g, ' ') : '—',
+                    },
+                    {
+                      label: 'Minor Pathway',
+                      value: user?.minor ? user.minor.replace(/_/g, ' ') : '—',
+                    },
+                  ]
+                : []),
             ].map(({ label, value, mono }) => (
               <div
                 key={label}
@@ -206,7 +217,7 @@ export default function ProfilePage() {
                   <Switch
                     id={`pref-${key}`}
                     checked={enabled}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={(checked: boolean) =>
                       prefMutation.mutate({ category: key, enabled: checked })
                     }
                   />

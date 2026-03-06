@@ -1,6 +1,6 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsBoolean, IsDateString, IsInt } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { AnnouncementTarget } from '@prisma/client';
+import { AnnouncementTarget, Pathway } from '@prisma/client';
 
 export class CreateAnnouncementDto {
   @ApiProperty()
@@ -15,10 +15,15 @@ export class CreateAnnouncementDto {
   @IsEnum(AnnouncementTarget)
   targetType: AnnouncementTarget;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ type: Number, required: false })
   @IsOptional()
-  @IsString()
-  targetValue?: string;
+  @IsInt()
+  targetGrade?: number;
+
+  @ApiProperty({ enum: Pathway, required: false })
+  @IsOptional()
+  @IsEnum(Pathway)
+  targetPathway?: Pathway;
 
   @ApiProperty({ required: false })
   @IsOptional()

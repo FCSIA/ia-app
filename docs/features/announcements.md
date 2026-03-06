@@ -26,11 +26,11 @@ Every announcement targets a specific audience:
 | Target | Who sees it |
 |--------|-------------|
 | `SCHOOL_WIDE` | Every user |
-| `GRADE` | Users whose `gradeLevel` matches `targetGrade` |
-| `PATHWAY` | Users whose `pathway` matches `targetPathway` |
+| `GRADE` | Students whose `gradeLevel` matches `targetGrade` (integer: 9, 10, 11, or 12) |
+| `PATHWAY` | Students whose `major` matches `targetPathway` (`INFORMATION_TECHNOLOGY`, `HEALTH_SCIENCE`, or `ENGINEERING`) |
 | `CLUB` | Members of the specified club |
 
-The backend filters by the logged-in user's grade/pathway when returning announcements.
+The backend filters by the logged-in student's grade/pathway when returning announcements. Teachers and Admins see all announcements.
 
 ---
 

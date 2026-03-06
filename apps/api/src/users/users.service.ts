@@ -17,7 +17,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
-  ) {}
+  ) { }
 
   private safeUser(user: any) {
     const { passwordHash, ...safe } = user;
@@ -27,12 +27,12 @@ export class UsersService {
   async findAll(page = 1, limit = 50, search?: string) {
     const where = search
       ? {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' as any } },
-            { lastName: { contains: search, mode: 'insensitive' as any } },
-            { uniqueId: { contains: search, mode: 'insensitive' as any } },
-          ],
-        }
+        OR: [
+          { firstName: { contains: search, mode: 'insensitive' as any } },
+          { lastName: { contains: search, mode: 'insensitive' as any } },
+          { uniqueId: { contains: search, mode: 'insensitive' as any } },
+        ],
+      }
       : {};
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -64,7 +64,8 @@ export class UsersService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         gradeLevel: dto.gradeLevel,
-        pathway: dto.pathway,
+        major: dto.major,
+        minor: dto.minor,
         email: dto.email,
         passwordHash,
         roles: dto.roles || [Role.STUDENT],
@@ -193,8 +194,9 @@ export class UsersService {
             uniqueId,
             firstName,
             lastName,
-            gradeLevel: row.grade_level || row.gradeLevel,
-            pathway: row.pathway,
+            gradeLevel: row.grade_level || row.gradeLevel ? parseInt(row.grade_level || row.gradeLevel, 10) : undefined,
+            major: row.pathway?.toUpperCase() as any,
+            minor: row.minor?.toUpperCase() as any,
             email: row.email,
             passwordHash,
             roles: [Role.STUDENT],

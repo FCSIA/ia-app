@@ -1,6 +1,6 @@
-import { IsString, IsEmail, IsOptional, IsEnum, IsArray, MinLength } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsArray, MinLength, IsInt } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role, Pathway } from '@prisma/client';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'STU001' })
@@ -15,15 +15,20 @@ export class CreateUserDto {
   @IsString()
   lastName: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ type: Number, required: false })
   @IsOptional()
-  @IsString()
-  gradeLevel?: string;
+  @IsInt()
+  gradeLevel?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ enum: Pathway, required: false })
   @IsOptional()
-  @IsString()
-  pathway?: string;
+  @IsEnum(Pathway)
+  major?: Pathway;
+
+  @ApiProperty({ enum: Pathway, required: false })
+  @IsOptional()
+  @IsEnum(Pathway)
+  minor?: Pathway;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -54,15 +59,20 @@ export class UpdateUserDto {
   @IsString()
   lastName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ type: Number, required: false })
   @IsOptional()
-  @IsString()
-  gradeLevel?: string;
+  @IsInt()
+  gradeLevel?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ enum: Pathway, required: false })
   @IsOptional()
-  @IsString()
-  pathway?: string;
+  @IsEnum(Pathway)
+  major?: Pathway;
+
+  @ApiProperty({ enum: Pathway, required: false })
+  @IsOptional()
+  @IsEnum(Pathway)
+  minor?: Pathway;
 
   @ApiProperty({ required: false })
   @IsOptional()
