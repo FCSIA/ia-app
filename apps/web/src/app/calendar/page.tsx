@@ -59,49 +59,53 @@ export default function CalendarPage() {
         </div>
 
         <Card className="p-0 overflow-hidden border">
-          {/* Day headers */}
-          <div className="grid grid-cols-7 border-b">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-3 bg-muted/30">{d}</div>
-            ))}
-          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[500px]">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 border-b">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                  <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-3 bg-muted/30">{d}</div>
+                ))}
+              </div>
 
-          {/* Day cells */}
-          <div className="grid grid-cols-7">
-            {days.map((day, i) => {
-              const dayEvents = getEventsForDay(day);
-              const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-              const isSelected = selectedDay && isSameDay(day, selectedDay);
-              const todayDay = isToday(day);
-              const isLastRow = i >= days.length - 7;
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => setSelectedDay(selectedDay && isSameDay(day, selectedDay) ? null : day)}
-                  className={`p-2 min-h-[90px] text-left transition-all duration-150 relative group
+              {/* Day cells */}
+              <div className="grid grid-cols-7">
+                {days.map((day, i) => {
+                  const dayEvents = getEventsForDay(day);
+                  const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+                  const isSelected = selectedDay && isSameDay(day, selectedDay);
+                  const todayDay = isToday(day);
+                  const isLastRow = i >= days.length - 7;
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      onClick={() => setSelectedDay(selectedDay && isSameDay(day, selectedDay) ? null : day)}
+                      className={`p-2 min-h-[90px] text-left transition-all duration-150 relative group
                     ${!isCurrentMonth ? 'opacity-30 bg-muted/10' : 'hover:bg-muted/50'}
                     ${isSelected ? 'bg-primary/5 ring-1 ring-inset ring-primary' : ''}
                     ${!isLastRow ? 'border-b' : ''}
                     ${i % 7 !== 6 ? 'border-r' : ''}
                   `}
-                >
-                  <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all mb-1
+                    >
+                      <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all mb-1
                     ${todayDay
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'text-foreground group-hover:bg-muted'
-                    }`}
-                  >
-                    {format(day, 'd')}
-                  </span>
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map((e: any) => (
-                      <div key={e.id} className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5 truncate border border-primary/20 font-medium">{e.title}</div>
-                    ))}
-                    {dayEvents.length > 2 && <div className="text-[10px] text-muted-foreground font-medium pl-1">+{dayEvents.length - 2} more</div>}
-                  </div>
-                </button>
-              );
-            })}
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'text-foreground group-hover:bg-muted'
+                        }`}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      <div className="space-y-1">
+                        {dayEvents.slice(0, 2).map((e: any) => (
+                          <div key={e.id} className="text-[10px] bg-primary/10 text-primary rounded px-1.5 py-0.5 truncate border border-primary/20 font-medium">{e.title}</div>
+                        ))}
+                        {dayEvents.length > 2 && <div className="text-[10px] text-muted-foreground font-medium pl-1">+{dayEvents.length - 2} more</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </Card>
 
