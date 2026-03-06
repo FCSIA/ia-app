@@ -9,6 +9,16 @@ import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Plus, Archive, MessageCircle, Clock } from 'lucide-react';
+<<<<<<< Updated upstream
+=======
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AnnouncementTarget, Pathway } from '@/lib/types';
+>>>>>>> Stashed changes
 
 function AnnouncementCard({ ann, onArchive, canArchive }: any) {
   return (
@@ -136,6 +146,7 @@ export default function AnnouncementsPage() {
 
         {/* New announcement form */}
         {showNew && canPost && (
+<<<<<<< Updated upstream
           <div className="card mb-6">
             <h2 className="font-semibold text-white mb-4">New Announcement</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -154,6 +165,79 @@ export default function AnnouncementsPage() {
                 required
               />
               <div className="grid grid-cols-2 gap-3">
+=======
+          <Card className="mb-6">
+            <CardHeader className="pb-3 border-b mb-4">
+              <CardTitle className="text-lg">New Announcement</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  placeholder="Title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                />
+                <Textarea
+                  className="min-h-[120px] resize-y"
+                  placeholder="Write your announcement..."
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  required
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Target</label>
+                    <Select value={form.targetType} onValueChange={(v: AnnouncementTarget) => setForm({ ...form, targetType: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select target" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SCHOOL_WIDE">School-wide</SelectItem>
+                        <SelectItem value="GRADE">Grade</SelectItem>
+                        <SelectItem value="PATHWAY">Pathway</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.targetType !== 'SCHOOL_WIDE' && (
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
+                        {form.targetType === 'GRADE' ? 'Grade Level' : 'Pathway'}
+                      </label>
+                      {form.targetType === 'GRADE' ? (
+                        <Select
+                          value={String(form.targetGrade)}
+                          onValueChange={(value: string) => setForm({ ...form, targetGrade: Number(value) })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="9">9th Grade</SelectItem>
+                            <SelectItem value="10">10th Grade</SelectItem>
+                            <SelectItem value="11">11th Grade</SelectItem>
+                            <SelectItem value="12">12th Grade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select
+                          value={form.targetPathway}
+                          onValueChange={(value: string) => setForm({ ...form, targetPathway: value as Pathway })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select pathway" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="INFORMATION_TECHNOLOGY">Information Technology</SelectItem>
+                            <SelectItem value="HEALTH_SCIENCE">Health Science</SelectItem>
+                            <SelectItem value="ENGINEERING">Engineering</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+>>>>>>> Stashed changes
                 <div>
                   <label className="text-xs text-white/45 mb-1 block">Target</label>
                   <select
