@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type StudentImportResult = {
   created: number;
@@ -231,67 +232,62 @@ export default function AdminPage() {
               </div>
 
               <Card>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        {['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'].map((h) => (
-                          <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(usersData?.users || []).map((u: any) => (
-                        <tr
-                          key={u.id}
-                          className="border-b transition-colors hover:bg-muted/30 last:border-0"
-                        >
-                          <td className="py-3 px-4 font-mono text-xs text-muted-foreground">{u.uniqueId}</td>
-                          <td className="py-3 px-4 font-medium">{u.firstName} {u.lastName}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{u.gradeLevel || '—'}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-wrap gap-1">
-                              {u.roles?.map((r: string) => (
-                                <Badge key={r} variant="outline" className="text-[10px]">{r.replace(/_/g, ' ')}</Badge>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant={u.isActive ? "default" : "secondary"} className={u.isActive ? "bg-emerald-500/15 text-emerald-500 border-none" : "bg-red-500/15 text-red-500 border-none"}>
-                              {u.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                            {u.isActive ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deactivateMutation.mutate(u.id)}
-                                className="text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8"
-                              >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => activateMutation.mutate(u.id)}
-                                className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 h-8"
-                              >
-                                Activate
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      {['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'].map((h) => (
+                        <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
+                          {h}
+                        </TableHead>
                       ))}
-                    </tbody>
-                  </table>
-                  {(usersData?.users || []).length === 0 && (
-                    <div className="text-center py-10 text-muted-foreground">No users found.</div>
-                  )}
-                </div>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(usersData?.users || []).map((u: any) => (
+                      <TableRow key={u.id} className="hover:bg-muted/30">
+                        <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{u.uniqueId}</TableCell>
+                        <TableCell className="px-4 py-3 font-medium">{u.firstName} {u.lastName}</TableCell>
+                        <TableCell className="px-4 py-3 text-muted-foreground">{u.gradeLevel || '—'}</TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {u.roles?.map((r: string) => (
+                              <Badge key={r} variant="outline" className="text-[10px]">{r.replace(/_/g, ' ')}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <Badge variant={u.isActive ? "default" : "secondary"} className={u.isActive ? "bg-emerald-500/15 text-emerald-500 border-none" : "bg-red-500/15 text-red-500 border-none"}>
+                            {u.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          {u.isActive ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deactivateMutation.mutate(u.id)}
+                              className="text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8"
+                            >
+                              Deactivate
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => activateMutation.mutate(u.id)}
+                              className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 h-8"
+                            >
+                              Activate
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {(usersData?.users || []).length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">No users found.</div>
+                )}
               </Card>
 
               {usersData?.total > 20 && (
@@ -563,41 +559,36 @@ export default function AdminPage() {
               <CardHeader className="border-b pb-4">
                 <CardTitle className="text-base">Recent Audit Events</CardTitle>
               </CardHeader>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      {['Time', 'Actor', 'Action', 'Entity'].map((h) => (
-                        <th key={h} className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(auditEvents as any[]).map((e) => (
-                      <tr
-                        key={e.id}
-                        className="border-b transition-colors hover:bg-muted/30 last:border-0"
-                      >
-                        <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap font-mono">
-                          {format(new Date(e.createdAt), 'MMM d HH:mm:ss')}
-                        </td>
-                        <td className="py-3 px-4 text-xs">
-                          {e.actor ? `${e.actor.firstName} ${e.actor.lastName}` : '—'}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-xs text-accent-600 dark:text-accent-400">{e.action}</td>
-                        <td className="py-3 px-4 text-xs text-muted-foreground">
-                          {e.entityType}{e.entityId ? ` #${e.entityId.slice(0, 8)}` : ''}
-                        </td>
-                      </tr>
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    {['Time', 'Actor', 'Action', 'Entity'].map((h) => (
+                      <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
+                        {h}
+                      </TableHead>
                     ))}
-                  </tbody>
-                </table>
-                {(auditEvents as any[]).length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">No audit events</div>
-                )}
-              </div>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(auditEvents as any[]).map((e) => (
+                    <TableRow key={e.id} className="hover:bg-muted/30">
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
+                        {format(new Date(e.createdAt), 'MMM d HH:mm:ss')}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-xs">
+                        {e.actor ? `${e.actor.firstName} ${e.actor.lastName}` : '—'}
+                      </TableCell>
+                      <TableCell className="px-4 py-3 font-mono text-xs text-accent-600 dark:text-accent-400">{e.action}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">
+                        {e.entityType}{e.entityId ? ` #${e.entityId.slice(0, 8)}` : ''}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {(auditEvents as any[]).length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">No audit events</div>
+              )}
             </Card>
           </TabsContent>
         </Tabs>

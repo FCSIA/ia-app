@@ -45,6 +45,7 @@ export class FlexFridayController {
     body: {
       date: string;
       type: FlexFridayType;
+      gradeLevel?: number;
       pathway?: Pathway;
       isSchoolDay?: boolean;
       notes?: string;

@@ -43,6 +43,7 @@ export class FlexFridayService {
     data: {
       date: string;
       type: FlexFridayType;
+      gradeLevel?: number;
       pathway?: Pathway;
       isSchoolDay?: boolean;
       notes?: string;
@@ -53,6 +54,7 @@ export class FlexFridayService {
       data: {
         date: new Date(data.date),
         type: data.type,
+        gradeLevel: data.gradeLevel,
         pathway: data.pathway,
         isSchoolDay: data.isSchoolDay ?? true,
         notes: data.notes,
@@ -64,7 +66,7 @@ export class FlexFridayService {
       action: 'FLEX_FRIDAY_CREATED',
       entityType: 'FlexFriday',
       entityId: friday.id,
-      meta: { date: data.date, type: data.type },
+      meta: { date: data.date, type: data.type, gradeLevel: data.gradeLevel, pathway: data.pathway },
     });
 
     // Notify students
