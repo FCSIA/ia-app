@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <Icon
           size={18}
-          className={`flex-shrink-0 transition-colors duration-200 ${active ? 'text-accent-400' : 'text-white/40 group-hover:text-white/70'
+          className={`flex-shrink-0 transition-colors duration-200 ${active ? 'text-accent-400' : 'text-foreground/40 group-hover:text-foreground/70'
             }`}
         />
         {label}

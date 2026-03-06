@@ -88,8 +88,15 @@ export const clubsApi = {
   getOne: (id: string) => api.get(`/clubs/${id}`),
   create: (data: any) => api.post('/clubs', data),
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
-  sendInvite: (clubId: string, recipientId: string) =>
-    api.post(`/clubs/${clubId}/invite`, { recipientId }),
+  sendInvite: (clubId: string, uniqueId: string) =>
+    api.post(`/clubs/${clubId}/invite`, { uniqueId }),
+  bulkInviteCsv: (clubId: string, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post(`/clubs/${clubId}/invite/csv`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   respondToInvite: (inviteId: string, accept: boolean) =>
     api.post(`/clubs/invites/${inviteId}/respond`, { accept }),
   promoteMember: (clubId: string, memberId: string) =>

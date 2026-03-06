@@ -3,7 +3,10 @@
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
+import * as csv from 'csv-parser';
+import { Readable } from 'stream';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -19,6 +22,105 @@ export class ClubsService {
 
   private isAdmin(role: string) {
     return role === Role.ADMIN || role === Role.SUPER_ADMIN;
+  }
+
+  private normalizeHeader(key: string) {
+    return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  private normalizeCsvRow(row: Record<string, unknown>) {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+      normalized[this.normalizeHeader(key)] = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+    }
+    return normalized;
+  }
+
+  private pickCsvValue(row: Record<string, string>, ...keys: string[]) {
+    for (const key of keys) {
+      const value = row[this.normalizeHeader(key)];
+      if (value) return value;
+    }
+    return undefined;
+  }
+
+  private extractInviteIdentifier(row: Record<string, string>) {
+    const fromKnownHeaders = this.pickCsvValue(
+      row,
+      'unique id',
+      'unique_id',
+      'uniqueId',
+      'student id',
+      'student_id',
+      'studentId',
+      'user id',
+      'user_id',
+      'userId',
+      'recipient id',
+      'recipient_id',
+      'recipientId',
+      'id',
+    );
+    if (fromKnownHeaders) return fromKnownHeaders;
+
+    const values = Object.values(row).filter(Boolean);
+    if (values.length === 1) return values[0];
+    return undefined;
+  }
+
+  private async assertCanInvite(clubId: string, senderId: string, senderRole: string) {
+    const club = await this.prisma.club.findUnique({ where: { id: clubId } });
+    if (!club) throw new NotFoundException('Club not found');
+
+    const isSponsor = await this.prisma.clubSponsor.findFirst({
+      where: { clubId, userId: senderId },
+    });
+    const isLeader = await this.prisma.clubMember.findFirst({
+      where: { clubId, userId: senderId, role: ClubMemberRole.LEADER },
+    });
+    if (!isSponsor && !isLeader && !this.isAdmin(senderRole)) {
+      throw new ForbiddenException('Only leaders or sponsors can invite members');
+    }
+
+    return club;
+  }
+
+  private async findInviteRecipient(recipientIdentifier: string) {
+    const uniqueId = recipientIdentifier.trim().toUpperCase();
+    if (!uniqueId) throw new BadRequestException('Recipient unique ID is required');
+
+    const user = await this.prisma.user.findUnique({
+      where: { uniqueId },
+      select: { id: true, uniqueId: true, isActive: true },
+    });
+    if (!user || !user.isActive) {
+      throw new NotFoundException(`User ${uniqueId} not found`);
+    }
+
+    return user;
+  }
+
+  private async createOrRefreshInvite(clubId: string, recipientUserId: string, senderId: string, recipientUniqueId?: string) {
+    const existing = await this.prisma.clubMember.findFirst({
+      where: { clubId, userId: recipientUserId },
+    });
+    if (existing) throw new ConflictException('User is already a member');
+
+    const invite = await this.prisma.clubInvite.upsert({
+      where: { clubId_recipientId: { clubId, recipientId: recipientUserId } },
+      update: { status: InviteStatus.PENDING, senderId },
+      create: { clubId, senderId, recipientId: recipientUserId, status: InviteStatus.PENDING },
+    });
+
+    await this.audit.log({
+      actorId: senderId,
+      action: 'CLUB_INVITE_SENT',
+      entityType: 'ClubInvite',
+      entityId: invite.id,
+      meta: { clubId, recipientId: recipientUserId, recipientUniqueId },
+    });
+
+    return invite;
   }
 
   async getAll() {
@@ -118,53 +220,71 @@ export class ClubsService {
   // â”€â”€ Invites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async sendInvite(clubId: string, recipientIdentifier: string, senderId: string, senderRole: string) {
-    const club = await this.prisma.club.findUnique({ where: { id: clubId } });
-    if (!club) throw new NotFoundException('Club not found');
+    await this.assertCanInvite(clubId, senderId, senderRole);
+    const recipient = await this.findInviteRecipient(recipientIdentifier);
+    return this.createOrRefreshInvite(clubId, recipient.id, senderId, recipient.uniqueId);
+  }
 
-    const isSponsor = await this.prisma.clubSponsor.findFirst({
-      where: { clubId, userId: senderId },
+  async bulkInviteFromCsv(clubId: string, buffer: Buffer, senderId: string, senderRole: string) {
+    await this.assertCanInvite(clubId, senderId, senderRole);
+
+    const rows: Array<Record<string, unknown>> = [];
+    await new Promise<void>((resolve, reject) => {
+      Readable.from(buffer)
+        .pipe(csv())
+        .on('data', (row) => rows.push(row))
+        .on('end', resolve)
+        .on('error', reject);
     });
-    const isLeader = await this.prisma.clubMember.findFirst({
-      where: { clubId, userId: senderId, role: ClubMemberRole.LEADER },
-    });
-    if (!isSponsor && !isLeader && !this.isAdmin(senderRole)) {
-      throw new ForbiddenException('Only leaders or sponsors can invite members');
+
+    if (rows.length === 0) {
+      throw new BadRequestException('CSV file is empty');
     }
 
-    const recipient = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { id: recipientIdentifier },
-          { uniqueId: recipientIdentifier.toUpperCase() },
-        ],
-      },
-      select: { id: true, isActive: true },
-    });
-    if (!recipient || !recipient.isActive) {
-      throw new NotFoundException('Recipient not found');
+    const seenUniqueIds = new Set<string>();
+    const results = {
+      invited: 0,
+      skipped: 0,
+      errors: [] as string[],
+    };
+
+    for (const [index, rawRow] of rows.entries()) {
+      try {
+        const row = this.normalizeCsvRow(rawRow);
+        const identifier = this.extractInviteIdentifier(row);
+        if (!identifier) {
+          throw new BadRequestException('missing unique ID column or value');
+        }
+
+        const recipient = await this.findInviteRecipient(identifier);
+        if (seenUniqueIds.has(recipient.uniqueId)) {
+          results.skipped++;
+          results.errors.push(`Row ${index + 2}: duplicate unique ID ${recipient.uniqueId} in file`);
+          continue;
+        }
+        seenUniqueIds.add(recipient.uniqueId);
+
+        await this.createOrRefreshInvite(clubId, recipient.id, senderId, recipient.uniqueId);
+        results.invited++;
+      } catch (error: any) {
+        results.skipped++;
+        const message = error instanceof Error ? error.message : 'Failed to process row';
+        results.errors.push(`Row ${index + 2}: ${message}`);
+      }
     }
-
-    // Check if already member
-    const existing = await this.prisma.clubMember.findFirst({
-      where: { clubId, userId: recipient.id },
-    });
-    if (existing) throw new ConflictException('User is already a member');
-
-    const invite = await this.prisma.clubInvite.upsert({
-      where: { clubId_recipientId: { clubId, recipientId: recipient.id } },
-      update: { status: InviteStatus.PENDING, senderId },
-      create: { clubId, senderId, recipientId: recipient.id, status: InviteStatus.PENDING },
-    });
 
     await this.audit.log({
       actorId: senderId,
-      action: 'CLUB_INVITE_SENT',
-      entityType: 'ClubInvite',
-      entityId: invite.id,
-      meta: { clubId, recipientId: recipient.id, recipientIdentifier },
+      action: 'CLUB_INVITES_BULK_IMPORTED',
+      entityType: 'Club',
+      entityId: clubId,
+      meta: {
+        invited: results.invited,
+        skipped: results.skipped,
+      },
     });
 
-    return invite;
+    return results;
   }
 
   async respondToInvite(inviteId: string, accept: boolean, userId: string) {
@@ -284,4 +404,3 @@ export class ClubsService {
     return { success: true };
   }
 }
-
