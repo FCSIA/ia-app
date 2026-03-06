@@ -22,12 +22,16 @@ export class UsersService {
   ) { }
 
   private readonly studentRoleWhere = {
-    role: { in: [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN] },
+    OR: [
+      { roles: { has: Role.STUDENT } },
+      { roles: { has: Role.STUDENT_LEADER } },
+      { roles: { has: Role.STUDENT_ADMIN } },
+    ],
   };
 
   private safeUser(user: any) {
-    const { passwordHash, role, ...safe } = user;
-    return { ...safe, role, roles: role ? [role] : [] };
+    const { passwordHash, roles, ...safe } = user;
+    return { ...safe, roles, role: roles?.[0] ?? null };
   }
 
   private normalizeHeader(key: string) {
@@ -162,7 +166,7 @@ export class UsersService {
         minor: dto.minor,
         email: dto.email,
         passwordHash,
-        role: dto.roles ? dto.roles[0] : Role.STUDENT,
+        roles: dto.roles?.length ? dto.roles : [Role.STUDENT],
       },
     });
 
@@ -193,7 +197,7 @@ export class UsersService {
     await this.findOne(id);
     const user = await this.prisma.user.update({
       where: { id },
-      data: { role: dto.roles[0] },
+      data: { roles: dto.roles },
     });
     await this.audit.log({
       actorId,
@@ -209,8 +213,8 @@ export class UsersService {
     const target = await this.findOne(id);
 
     // Only SUPER_ADMIN can deactivate other admins or super admins
-    const targetRole = (target as any).role;
-    const isTargetPrivileged = targetRole === Role.ADMIN || targetRole === Role.SUPER_ADMIN;
+    const targetRoles = (target as any).roles ?? [];
+    const isTargetPrivileged = targetRoles.includes(Role.ADMIN) || targetRoles.includes(Role.SUPER_ADMIN);
     const actorIsSuperAdmin = actorRole === Role.SUPER_ADMIN;
     if (isTargetPrivileged && !actorIsSuperAdmin) {
       throw new ForbiddenException('Only Super Admins can deactivate admin accounts');
@@ -363,7 +367,7 @@ export class UsersService {
             minor,
             email,
             passwordHash,
-            role: Role.STUDENT,
+            roles: [Role.STUDENT],
           },
         });
         results.created++;

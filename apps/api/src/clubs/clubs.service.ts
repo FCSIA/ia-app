@@ -347,10 +347,10 @@ export class ClubsService {
 
     // Assign STUDENT_LEADER role to the user
     const member = await this.prisma.user.findUnique({ where: { id: memberId } });
-    if (member && member.role !== Role.STUDENT_LEADER) {
+    if (member && !member.roles.includes(Role.STUDENT_LEADER)) {
       await this.prisma.user.update({
         where: { id: memberId },
-        data: { role: Role.STUDENT_LEADER },
+        data: { roles: { push: Role.STUDENT_LEADER } },
       });
     }
 

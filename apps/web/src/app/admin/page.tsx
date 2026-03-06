@@ -133,28 +133,6 @@ export default function AdminPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['reports'] }); toast({ title: 'Report updated' }); },
   });
 
-<<<<<<< HEAD
-  const [showReportForm, setShowReportForm] = useState(false);
-  const [reportForm, setReportForm] = useState({ contentType: 'ANNOUNCEMENT', contentId: '', reason: '' });
-
-  const createReportMutation = useMutation({
-    mutationFn: (data: any) => moderationApi.submitReport(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reports'] });
-      setShowReportForm(false);
-      setReportForm({ contentType: 'ANNOUNCEMENT', contentId: '', reason: '' });
-      toast.success('Report submitted');
-    },
-    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to submit report'),
-  });
-
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const res = await usersApi.importCsv(file);
-      toast.success(`Imported: ${res.data.created} created, ${res.data.skipped} skipped`);
-=======
   const importStudentsMutation = useMutation({
     mutationFn: async () => {
       if (!studentCsvFile) throw new Error('Select a CSV file first');
@@ -165,7 +143,6 @@ export default function AdminPage() {
       setLastStudentImport(data);
       setStudentCsvFile(null);
       setStudentCsvInputKey((current) => current + 1);
->>>>>>> d01468c30b2b1b011127d26dce0dbf5dee929dcc
       qc.invalidateQueries({ queryKey: ['admin-users'] });
       toast({
         title: `Imported ${data.created} students`,
@@ -296,27 +273,18 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           {u.isActive ? (
-<<<<<<< HEAD
                             canDeactivate(u) && u.id !== user?.id ? (
-                              <button
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => deactivateMutation.mutate(u.id)}
-                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                className="text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8"
                               >
                                 Deactivate
-                              </button>
+                              </Button>
                             ) : (
-                              <span className="text-xs text-white/20">—</span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )
-=======
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deactivateMutation.mutate(u.id)}
-                              className="text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8"
-                            >
-                              Deactivate
-                            </Button>
->>>>>>> d01468c30b2b1b011127d26dce0dbf5dee929dcc
                           ) : (
                             <Button
                               variant="ghost"
@@ -349,137 +317,6 @@ export default function AdminPage() {
                   <span className="text-sm text-muted-foreground">
                     Page {page} of {Math.ceil(usersData.total / 20)}
                   </span>
-<<<<<<< HEAD
-                ))}
-                {(keywords as any[]).length === 0 && (
-                  <p className="text-white/30 text-sm">No keyword rules configured</p>
-                )}
-              </div>
-            </div>
-
-            {/* Reports */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-white/90">
-                  Reports{' '}
-                  {pendingReports > 0 && (
-                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-accent-500/20 text-accent-400 border border-accent-500/30">
-                      {pendingReports} pending
-                    </span>
-                  )}
-                </h2>
-                <button
-                  onClick={() => setShowReportForm(!showReportForm)}
-                  className="btn-primary flex items-center gap-1 text-sm py-1.5"
-                >
-                  <Plus size={14} /> {showReportForm ? 'Cancel' : 'New Report'}
-                </button>
-              </div>
-
-              {/* Create Report Form */}
-              {showReportForm && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    createReportMutation.mutate(reportForm);
-                  }}
-                  className="mb-5 p-4 rounded-xl space-y-3"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  <h3 className="text-sm font-medium text-white/80">Submit New Report</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-white/45 mb-1 block">Content Type</label>
-                      <select
-                        className="input"
-                        value={reportForm.contentType}
-                        onChange={(e) => setReportForm({ ...reportForm, contentType: e.target.value })}
-                      >
-                        <option value="ANNOUNCEMENT">Announcement</option>
-                        <option value="EVENT">Event</option>
-                        <option value="CLUB_POST">Club Post</option>
-                        <option value="COMMENT">Comment</option>
-                        <option value="USER">User</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-white/45 mb-1 block">Content ID</label>
-                      <input
-                        className="input"
-                        placeholder="ID of the reported content"
-                        value={reportForm.contentId}
-                        onChange={(e) => setReportForm({ ...reportForm, contentId: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-white/45 mb-1 block">Reason</label>
-                    <textarea
-                      className="input min-h-[80px] resize-y"
-                      placeholder="Describe the reason for this report…"
-                      value={reportForm.reason}
-                      onChange={(e) => setReportForm({ ...reportForm, reason: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn-primary text-sm"
-                    disabled={createReportMutation.isPending}
-                  >
-                    {createReportMutation.isPending ? 'Submitting…' : 'Submit Report'}
-                  </button>
-                </form>
-              )}
-
-              {(reports as any[]).length === 0 ? (
-                <p className="text-white/30 text-sm">No reports submitted</p>
-              ) : (
-                <div className="space-y-3">
-                  {(reports as any[]).map((r) => (
-                    <div
-                      key={r.id}
-                      className="rounded-xl p-4 transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={
-                              r.status === 'PENDING' ? 'badge-yellow' :
-                              r.status === 'RESOLVED' ? 'badge-green' : 'badge-gray'
-                            }>
-                              {r.status}
-                            </span>
-                            <span className="badge-gray">{r.contentType}</span>
-                          </div>
-                          <p className="text-sm text-white/70">{r.reason}</p>
-                          <p className="text-xs text-white/30 mt-1">
-                            Reported by {r.submitter?.firstName} {r.submitter?.lastName}
-                            {r.reportedUser && ` · Against: ${r.reportedUser.firstName} ${r.reportedUser.lastName}`}
-                          </p>
-                        </div>
-                        {r.status === 'PENDING' && (
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button
-                              onClick={() => reportMutation.mutate({ id: r.id, status: 'RESOLVED', reviewNote: 'Reviewed' })}
-                              className="btn-primary text-xs py-1 px-2.5"
-                            >
-                              Resolve
-                            </button>
-                            <button
-                              onClick={() => reportMutation.mutate({ id: r.id, status: 'DISMISSED', reviewNote: 'Dismissed' })}
-                              className="btn-secondary text-xs py-1 px-2.5"
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-=======
                   <Button
                     variant="outline"
                     disabled={page >= Math.ceil(usersData.total / 20)}
@@ -487,7 +324,6 @@ export default function AdminPage() {
                   >
                     Next
                   </Button>
->>>>>>> d01468c30b2b1b011127d26dce0dbf5dee929dcc
                 </div>
               )}
             </div>

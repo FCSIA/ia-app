@@ -17,7 +17,7 @@ async function main() {
       lastName: 'Admin',
       email: 'superadmin@ia.school',
       passwordHash: superAdminHash,
-      role: 'SUPER_ADMIN',
+      roles: [Role.SUPER_ADMIN],
     },
   });
   console.log('Super Admin created:', superAdmin.uniqueId);
@@ -33,7 +33,7 @@ async function main() {
       lastName: 'Admin',
       email: 'admin@ia.school',
       passwordHash: adminHash,
-      role: 'ADMIN',
+      roles: [Role.ADMIN],
     },
   });
 
@@ -48,7 +48,7 @@ async function main() {
       lastName: 'Smith',
       email: 'jsmith@ia.school',
       passwordHash: teacherHash,
-      role: 'TEACHER',
+      roles: [Role.TEACHER],
     },
   });
 
@@ -71,7 +71,7 @@ async function main() {
       create: {
         ...s,
         passwordHash: await bcrypt.hash(s.uniqueId, 12),
-        role: 'STUDENT',
+        roles: [Role.STUDENT],
       },
     });
     createdStudents.push(student);
@@ -80,11 +80,11 @@ async function main() {
   // Promote STU003 to Student Leader, STU004 to Student Admin
   await prisma.user.update({
     where: { uniqueId: 'STU003' },
-    data: { role: 'STUDENT_LEADER' },
+    data: { roles: [Role.STUDENT, Role.STUDENT_LEADER] },
   });
   await prisma.user.update({
     where: { uniqueId: 'STU004' },
-    data: { role: 'STUDENT_ADMIN' },
+    data: { roles: [Role.STUDENT, Role.STUDENT_ADMIN] },
   });
 
   // Create a Club (upsert by name)
