@@ -25,6 +25,10 @@
     "pnpm": ">=9.0.0"
   },
   "pnpm": {
+    "overrides": {
+      "react": "19.0.0",
+      "react-dom": "19.0.0"
+    },
     "onlyBuiltDependencies": [
       "@nestjs/core",
       "@prisma/client",
