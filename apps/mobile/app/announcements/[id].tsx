@@ -1,149 +1,304 @@
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform, Alert,
-} from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, Flag, Trash2 } from 'lucide-react-native';
+import {
+  AppButton,
+  AppInput,
+  Avatar,
+  Card,
+  ModalSheet,
+  Pill,
+  Screen,
+} from '@/components/ui';
 import { announcementsApi, moderationApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, Flag, Trash2 } from 'lucide-react-native';
-import { getUser } from '@/lib/auth';
+import { getUser, hasRole } from '@/lib/auth';
+import { initials, pathParam } from '@/lib/format';
+import type { AnnouncementDetail, AppUser } from '@/types/api';
+import { theme } from '@/theme';
 
 export default function AnnouncementDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const qc = useQueryClient();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id = pathParam(params.id);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [comment, setComment] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState('');
 
-  useState(() => { getUser().then(setUser); });
+  useEffect(() => {
+    getUser().then(setUser);
+  }, []);
 
-  const { data: ann, isLoading } = useQuery({
+  const { data: announcement } = useQuery<AnnouncementDetail>({
     queryKey: ['announcement', id],
-    queryFn: () => announcementsApi.getOne(id).then((r) => r.data),
+    queryFn: () => announcementsApi.getOne(id).then((response) => response.data),
     enabled: !!id,
   });
 
   const addCommentMutation = useMutation({
     mutationFn: (body: string) => announcementsApi.addComment(id, body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['announcement', id] }); setComment(''); },
-    onError: (e: any) => Alert.alert('Error', e.response?.data?.message || 'Failed'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcement', id] });
+      setComment('');
+    },
+    onError: (error) => {
+      Alert.alert('Could not add comment', getErrorMessage(error, 'Try again.'));
+    },
   });
 
   const deleteCommentMutation = useMutation({
-    mutationFn: (cid: string) => announcementsApi.deleteComment(cid),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['announcement', id] }),
+    mutationFn: (commentId: string) => announcementsApi.deleteComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['announcement', id] });
+    },
+    onError: (error) => {
+      Alert.alert('Could not delete comment', getErrorMessage(error, 'Try again.'));
+    },
   });
 
   const reportMutation = useMutation({
-    mutationFn: (reason: string) => moderationApi.submitReport({ contentType: 'ANNOUNCEMENT', contentId: id, reason }),
-    onSuccess: () => Alert.alert('Reported', 'Your report has been submitted.'),
+    mutationFn: () =>
+      moderationApi.submitReport({
+        contentType: 'ANNOUNCEMENT',
+        contentId: id,
+        reason: reportReason.trim(),
+      }),
+    onSuccess: () => {
+      setReportReason('');
+      setShowReport(false);
+      Alert.alert('Report submitted');
+    },
+    onError: (error) => {
+      Alert.alert('Could not submit report', getErrorMessage(error, 'Try again.'));
+    },
   });
 
-  const handleReport = () => {
-    Alert.prompt('Report Content', 'Describe the issue:', (reason) => {
-      if (reason) reportMutation.mutate(reason);
-    });
-  };
-
-  if (isLoading) return <View style={styles.center}><Text style={styles.loading}>Loading...</Text></View>;
-  if (!ann) return <View style={styles.center}><Text>Not found</Text></View>;
+  function submitComment() {
+    if (!comment.trim()) return;
+    addCommentMutation.mutate(comment.trim());
+  }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <View style={styles.chips}>
-          {ann.isAdminGeneral && <View style={[styles.chip, { backgroundColor: '#fee2e2' }]}><Text style={[styles.chipText, { color: '#dc2626' }]}>Admin</Text></View>}
-          <View style={[styles.chip, { backgroundColor: '#dbeafe' }]}>
-            <Text style={[styles.chipText, { color: '#1d4ed8' }]}>{ann.targetType.replace(/_/g, ' ')}</Text>
-          </View>
-        </View>
+    <Screen scroll keyboard>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.headerButton}>
+          <ChevronLeft size={20} color={theme.colors.textSoft} />
+        </Pressable>
+        <Pressable onPress={() => setShowReport(true)} style={styles.headerButton}>
+          <Flag size={18} color={theme.colors.textSoft} />
+        </Pressable>
+      </View>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>{ann.title}</Text>
-          <TouchableOpacity onPress={handleReport} style={styles.reportBtn}><Flag size={18} color="#9ca3af" /></TouchableOpacity>
-        </View>
+      {!announcement ? (
+        <Card>
+          <Text style={styles.emptyText}>Loading announcement...</Text>
+        </Card>
+      ) : (
+        <>
+          <Card style={styles.mainCard}>
+            <View style={styles.pills}>
+              {announcement.isAdminGeneral ? <Pill label="Admin" tone="red" /> : null}
+              <Pill label={announcement.targetType.replace(/_/g, ' ')} tone="blue" />
+              {announcement.status !== 'ACTIVE' ? (
+                <Pill label={announcement.status.replace(/_/g, ' ')} tone="neutral" />
+              ) : null}
+            </View>
+            <Text style={styles.title}>{announcement.title}</Text>
+            <Text style={styles.meta}>
+              {announcement.author?.firstName} {announcement.author?.lastName} ·{' '}
+              {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
+            </Text>
+            <Text style={styles.body}>{announcement.body}</Text>
+          </Card>
 
-        <Text style={styles.meta}>
-          {ann.author?.firstName} {ann.author?.lastName} · {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
-        </Text>
-
-        <Text style={styles.body}>{ann.body}</Text>
-
-        {ann.allowComments && (
-          <View style={styles.comments}>
-            <Text style={styles.commentsTitle}>Comments ({ann.comments?.length || 0})</Text>
-            {ann.comments?.map((c: any) => (
-              <View key={c.id} style={styles.commentItem}>
-                <View style={styles.commentAvatar}>
-                  <Text style={styles.commentAvatarText}>{c.author.firstName[0]}</Text>
-                </View>
-                <View style={styles.commentBubble}>
-                  <View style={styles.commentMeta}>
-                    <Text style={styles.commentAuthor}>{c.author.firstName} {c.author.lastName}</Text>
-                    <Text style={styles.commentTime}>{formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}</Text>
-                  </View>
-                  <Text style={styles.commentBody}>{c.body}</Text>
-                </View>
+          {announcement.allowComments ? (
+            <Card style={styles.commentsCard}>
+              <Text style={styles.commentsTitle}>
+                Comments ({announcement.comments?.length || 0})
+              </Text>
+              <View style={styles.commentList}>
+                {announcement.comments?.length ? (
+                  announcement.comments.map((entry) => (
+                    <View key={entry.id} style={styles.commentRow}>
+                      <Avatar label={initials(entry.author.firstName, entry.author.lastName)} />
+                      <View style={styles.commentBubble}>
+                        <View style={styles.commentHeader}>
+                          <Text style={styles.commentAuthor}>
+                            {entry.author.firstName} {entry.author.lastName}
+                          </Text>
+                          <View style={styles.commentHeaderRight}>
+                            <Text style={styles.commentTime}>
+                              {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                            </Text>
+                            {!!user &&
+                            (entry.authorId === user.id || hasRole(user, 'ADMIN', 'SUPER_ADMIN')) ? (
+                              <Pressable onPress={() => deleteCommentMutation.mutate(entry.id)}>
+                                <Trash2 size={14} color={theme.colors.red} />
+                              </Pressable>
+                            ) : null}
+                          </View>
+                        </View>
+                        <Text style={styles.commentBody}>{entry.body}</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyText}>No comments yet.</Text>
+                )}
               </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
 
-      {ann.allowComments && (
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Write a comment..."
-            value={comment}
-            onChangeText={setComment}
-            multiline
-          />
-          <TouchableOpacity
-            onPress={() => comment.trim() && addCommentMutation.mutate(comment.trim())}
-            disabled={!comment.trim()}
-            style={[styles.sendBtn, !comment.trim() && styles.sendBtnDisabled]}
-          >
-            <Send size={18} color={comment.trim() ? '#fff' : '#9ca3af'} />
-          </TouchableOpacity>
-        </View>
+              <View style={styles.composer}>
+                <AppInput
+                  value={comment}
+                  onChangeText={setComment}
+                  placeholder="Write a comment..."
+                  multiline
+                />
+                <AppButton
+                  label="Post Comment"
+                  onPress={submitComment}
+                  loading={addCommentMutation.isPending}
+                />
+              </View>
+            </Card>
+          ) : (
+            <Card>
+              <Text style={styles.emptyText}>Comments are disabled for this announcement.</Text>
+            </Card>
+          )}
+        </>
       )}
-    </KeyboardAvoidingView>
+
+      <ModalSheet visible={showReport} onClose={() => setShowReport(false)} title="Report Announcement">
+        <AppInput
+          label="Reason"
+          placeholder="Describe the issue with this announcement."
+          value={reportReason}
+          onChangeText={setReportReason}
+          multiline
+        />
+        <View style={styles.actionRow}>
+          <AppButton
+            label="Submit Report"
+            onPress={() => reportMutation.mutate()}
+            loading={reportMutation.isPending}
+            style={styles.flexButton}
+          />
+          <AppButton label="Cancel" tone="secondary" onPress={() => setShowReport(false)} style={styles.flexButton} />
+        </View>
+      </ModalSheet>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 16, paddingBottom: 32 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loading: { color: '#9ca3af' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  chip: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 },
-  chipText: { fontSize: 11, fontWeight: '700' },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
-  title: { flex: 1, fontSize: 20, fontWeight: '800', color: '#111827', lineHeight: 26 },
-  reportBtn: { padding: 4 },
-  meta: { fontSize: 12, color: '#9ca3af', marginBottom: 16 },
-  body: { fontSize: 15, color: '#374151', lineHeight: 23, marginBottom: 24 },
-  comments: { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16 },
-  commentsTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  commentItem: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  commentAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  commentAvatarText: { fontSize: 13, fontWeight: '700', color: '#2563eb' },
-  commentBubble: { flex: 1, backgroundColor: '#f9fafb', borderRadius: 12, padding: 10 },
-  commentMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  commentAuthor: { fontSize: 13, fontWeight: '700', color: '#111827' },
-  commentTime: { fontSize: 11, color: '#9ca3af' },
-  commentBody: { fontSize: 13, color: '#374151' },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  input: {
-    flex: 1, backgroundColor: '#f3f4f6', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, maxHeight: 100,
+  headerButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
-  sendBtnDisabled: { backgroundColor: '#e5e7eb' },
+  mainCard: {
+    gap: 10,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  title: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 30,
+    letterSpacing: -0.6,
+  },
+  meta: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  body: {
+    color: theme.colors.textSoft,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  commentsCard: {
+    gap: 14,
+  },
+  commentsTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  commentList: {
+    gap: 12,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  commentBubble: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    padding: 12,
+    gap: 6,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  commentHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  commentAuthor: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+  },
+  commentTime: {
+    color: theme.colors.textFaint,
+    fontSize: 11,
+  },
+  commentBody: {
+    color: theme.colors.textSoft,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  composer: {
+    gap: 12,
+  },
+  emptyText: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  flexButton: {
+    flex: 1,
+  },
 });

@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "f3662753e770a938",
+        "id": "07cefa0d084dac02",
         "type": "tabs",
         "children": [
           {
-            "id": "ae882ec4cc1ce53f",
+            "id": "1ed969965feb09c2",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "empty",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -176,12 +176,22 @@
       "bases:Create new base": false
     }
   },
-  "active": "ae882ec4cc1ce53f",
+  "active": "1ed969965feb09c2",
   "lastOpenFiles": [
-    "reference/getting-started.md",
+    "backend/dtos.md",
+    "database/schema.md",
+    "frontend/components.md",
+    "frontend/state-management.md",
+    "index.md",
     "reference/commands.md",
-    "reference/environment.md",
+    "reference/getting-started.md",
+    "backend/modules.md",
+    "backend/controllers.md",
+    "backend/backend-overview.md",
+    "backend/backend-auth.md",
+    "architecture/data-flow.md",
     "reference/roles-and-permissions.md",
+    "reference/environment.md",
     "reference",
     "features/audit-log.md",
     "features/moderation.md",
@@ -194,20 +204,10 @@
     "features",
     "mobile/mobile-overview.md",
     "mobile",
-    "backend/backend-auth.md",
-    "index.md",
     "frontend/styling.md",
-    "frontend/state-management.md",
     "frontend/frontend-auth.md",
     "frontend/api-layer.md",
-    "frontend/components.md",
-    "frontend/routing.md",
-    "frontend/frontend-overview.md",
     "frontend",
-    "database/seed.md",
-    "database/migrations.md",
-    "database/schema.md",
-    "architecture/overview.md",
     "database",
     "Untitled.canvas"
   ]

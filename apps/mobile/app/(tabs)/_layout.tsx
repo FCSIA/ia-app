@@ -1,36 +1,60 @@
+import type { ReactNode } from 'react';
 import { Tabs } from 'expo-router';
-import { Home, Megaphone, BookOpen, Calendar, Zap } from 'lucide-react-native';
+import {
+  BookOpen,
+  CalendarDays,
+  LayoutDashboard,
+  Megaphone,
+  Zap,
+} from 'lucide-react-native';
+import { theme } from '@/theme';
 
-const TAB_ICON_SIZE = 22;
-const ACTIVE = '#2563eb';
-const INACTIVE = '#9ca3af';
+function TabIcon({
+  focused,
+  color,
+  children,
+}: {
+  focused: boolean;
+  color: string;
+  children: ReactNode;
+}) {
+  return (
+    <>{children}</>
+  );
+}
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: ACTIVE,
-        tabBarInactiveTintColor: INACTIVE,
+        headerShown: false,
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarInactiveTintColor: theme.colors.textFaint,
         tabBarStyle: {
-          borderTopColor: '#e5e7eb',
-          backgroundColor: '#fff',
-          paddingBottom: 4,
-          height: 60,
+          height: 74,
+          paddingTop: 8,
+          paddingBottom: 12,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          backgroundColor: 'rgba(255,255,255,0.96)',
+          position: 'absolute',
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        headerStyle: { backgroundColor: '#fff' },
-        headerTintColor: '#111827',
-        headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Dashboard',
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <Home size={TAB_ICON_SIZE} color={color} />,
-          headerTitle: 'IA School',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <LayoutDashboard size={20} color={color} />
+            </TabIcon>
+          ),
         }}
       />
       <Tabs.Screen
@@ -38,15 +62,23 @@ export default function TabsLayout() {
         options={{
           title: 'Announcements',
           tabBarLabel: 'News',
-          tabBarIcon: ({ color }) => <Megaphone size={TAB_ICON_SIZE} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <Megaphone size={20} color={color} />
+            </TabIcon>
+          ),
         }}
       />
       <Tabs.Screen
         name="clubs"
         options={{
-          title: 'My Clubs',
+          title: 'Clubs',
           tabBarLabel: 'Clubs',
-          tabBarIcon: ({ color }) => <BookOpen size={TAB_ICON_SIZE} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <BookOpen size={20} color={color} />
+            </TabIcon>
+          ),
         }}
       />
       <Tabs.Screen
@@ -54,7 +86,11 @@ export default function TabsLayout() {
         options={{
           title: 'Calendar',
           tabBarLabel: 'Calendar',
-          tabBarIcon: ({ color }) => <Calendar size={TAB_ICON_SIZE} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <CalendarDays size={20} color={color} />
+            </TabIcon>
+          ),
         }}
       />
       <Tabs.Screen
@@ -62,7 +98,11 @@ export default function TabsLayout() {
         options={{
           title: 'Flex Friday',
           tabBarLabel: 'Flex',
-          tabBarIcon: ({ color }) => <Zap size={TAB_ICON_SIZE} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <Zap size={20} color={color} />
+            </TabIcon>
+          ),
         }}
       />
     </Tabs>

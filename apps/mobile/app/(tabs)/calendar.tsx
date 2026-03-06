@@ -1,157 +1,245 @@
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-} from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { calendarApi } from '@/lib/api';
 import {
-  format, startOfMonth, endOfMonth, eachDayOfInterval,
-  isSameDay, startOfWeek, endOfWeek, isToday,
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isToday,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { calendarApi } from '@/lib/api';
+import { Card, Pill, Screen, TopBar } from '@/components/ui';
+import type { CalendarEntry } from '@/types/api';
+import { theme } from '@/theme';
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarScreen() {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [month, setMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  const startDate = format(startOfMonth(month), 'yyyy-MM-dd');
+  const endDate = format(endOfMonth(month), 'yyyy-MM-dd');
 
-  const { data: entries = [] } = useQuery({
+  const { data: entries = [] } = useQuery<CalendarEntry[]>({
     queryKey: ['calendar', startDate, endDate],
-    queryFn: () => calendarApi.getEntries(startDate, endDate).then((r) => r.data),
+    queryFn: () => calendarApi.getEntries(startDate, endDate).then((response) => response.data),
   });
 
-  const calStart = startOfWeek(startOfMonth(currentMonth));
-  const calEnd = endOfWeek(endOfMonth(currentMonth));
-  const days = eachDayOfInterval({ start: calStart, end: calEnd });
+  const days = useMemo(() => {
+    const start = startOfWeek(startOfMonth(month));
+    const end = endOfWeek(endOfMonth(month));
+    return eachDayOfInterval({ start, end });
+  }, [month]);
 
-  const getEventsForDay = (day: Date) =>
-    (entries as any[]).filter((e) => isSameDay(new Date(e.startAt), day));
-
-  const selectedEvents = selectedDay ? getEventsForDay(selectedDay) : [];
-
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  const selectedEntries = selectedDay
+    ? entries.filter((entry) => isSameDay(new Date(entry.startAt), selectedDay))
+    : [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Month navigation */}
-      <View style={styles.monthNav}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}>
-          <ChevronLeft size={20} color="#374151" />
-        </TouchableOpacity>
-        <Text style={styles.monthLabel}>{format(currentMonth, 'MMMM yyyy')}</Text>
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
-          <ChevronRight size={20} color="#374151" />
-        </TouchableOpacity>
-      </View>
+    <Screen scroll>
+      <TopBar title="Calendar" subtitle="School events and scheduled entries." />
 
-      {/* Day headers */}
-      <View style={styles.dayHeaders}>
-        {DAYS.map((d) => (
-          <Text key={d} style={styles.dayHeader}>{d}</Text>
-        ))}
-      </View>
-
-      {/* Calendar grid */}
-      <View style={styles.grid}>
-        {days.map((day) => {
-          const dayEvents = getEventsForDay(day);
-          const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-          const isSelected = selectedDay && isSameDay(day, selectedDay);
-          const today = isToday(day);
-
-          return (
-            <TouchableOpacity
-              key={day.toISOString()}
-              style={[styles.dayCell, !isCurrentMonth && styles.dayCellOtherMonth]}
-              onPress={() => setSelectedDay(selectedDay && isSameDay(day, selectedDay) ? null : day)}
-            >
-              <View style={[
-                styles.dayNum,
-                today && styles.dayNumToday,
-                isSelected && !today && styles.dayNumSelected,
-              ]}>
-                <Text style={[
-                  styles.dayNumText,
-                  today && styles.dayNumTextToday,
-                  isSelected && !today && styles.dayNumTextSelected,
-                ]}>
-                  {format(day, 'd')}
-                </Text>
-              </View>
-              {dayEvents.length > 0 && (
-                <View style={styles.dot} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Selected day events */}
-      {selectedDay && (
-        <View style={styles.eventList}>
-          <Text style={styles.eventListTitle}>{format(selectedDay, 'EEEE, MMMM d')}</Text>
-          {selectedEvents.length === 0 ? (
-            <Text style={styles.noEvents}>No events on this day</Text>
-          ) : (
-            selectedEvents.map((e: any) => (
-              <View key={e.id} style={styles.eventCard}>
-                <Text style={styles.eventTitle}>{e.title}</Text>
-                {e.description && <Text style={styles.eventDesc} numberOfLines={2}>{e.description}</Text>}
-                <View style={styles.eventMeta}>
-                  <Text style={styles.eventTime}>
-                    {format(new Date(e.startAt), 'h:mm a')}
-                    {e.endAt && ` – ${format(new Date(e.endAt), 'h:mm a')}`}
-                  </Text>
-                  {e.location && (
-                    <View style={styles.locationRow}>
-                      <MapPin size={11} color="#9ca3af" />
-                      <Text style={styles.locationText}>{e.location}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))
-          )}
+      <Card style={styles.calendarCard}>
+        <View style={styles.monthRow}>
+          <Pressable onPress={() => setMonth((current) => subMonths(current, 1))} style={styles.monthButton}>
+            <ChevronLeft size={18} color={theme.colors.textSoft} />
+          </Pressable>
+          <Text style={styles.monthLabel}>{format(month, 'MMMM yyyy')}</Text>
+          <Pressable onPress={() => setMonth((current) => addMonths(current, 1))} style={styles.monthButton}>
+            <ChevronRight size={18} color={theme.colors.textSoft} />
+          </Pressable>
         </View>
-      )}
-    </ScrollView>
+
+        <View style={styles.dayHeaderRow}>
+          {DAY_LABELS.map((label) => (
+            <Text key={label} style={styles.dayHeaderLabel}>
+              {label}
+            </Text>
+          ))}
+        </View>
+
+        <View style={styles.grid}>
+          {days.map((day) => {
+            const dayEntries = entries.filter((entry) => isSameDay(new Date(entry.startAt), day));
+            const active = selectedDay ? isSameDay(day, selectedDay) : false;
+            const currentMonth = day.getMonth() === month.getMonth();
+
+            return (
+              <Pressable
+                key={day.toISOString()}
+                onPress={() => setSelectedDay(active ? null : day)}
+                style={[
+                  styles.dayCell,
+                  !currentMonth && styles.dayCellMuted,
+                  active && styles.dayCellActive,
+                ]}
+              >
+                <View style={[styles.dayCircle, isToday(day) && styles.todayCircle]}>
+                  <Text style={[styles.dayText, isToday(day) && styles.todayText]}>{format(day, 'd')}</Text>
+                </View>
+                {dayEntries.length > 0 ? (
+                  <View style={styles.dotRow}>
+                    <View style={styles.dot} />
+                    {dayEntries.length > 1 ? <View style={styles.dot} /> : null}
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </Card>
+
+      {selectedDay ? (
+        <Card style={styles.eventsCard}>
+          <Text style={styles.eventsTitle}>{format(selectedDay, 'EEEE, MMMM d')}</Text>
+          <View style={styles.stack}>
+            {selectedEntries.length === 0 ? (
+              <Text style={styles.emptyText}>No events on this day.</Text>
+            ) : (
+              selectedEntries.map((entry) => (
+                <Card key={entry.id} style={styles.entryCard}>
+                  <View style={styles.entryHeader}>
+                    <Text style={styles.entryTitle}>{entry.title}</Text>
+                    <Pill label={(entry.tags?.[0] || 'event').replace(/_/g, ' ')} tone="accent" />
+                  </View>
+                  <Text style={styles.entryMeta}>{format(new Date(entry.startAt), 'h:mm a')}</Text>
+                  {entry.location ? <Text style={styles.entryMeta}>{entry.location}</Text> : null}
+                  {entry.description ? <Text style={styles.entryDescription}>{entry.description}</Text> : null}
+                </Card>
+              ))
+            )}
+          </View>
+        </Card>
+      ) : null}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 16, paddingBottom: 32 },
-  monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  navBtn: { padding: 8, backgroundColor: '#f3f4f6', borderRadius: 10 },
-  monthLabel: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  dayHeaders: { flexDirection: 'row', marginBottom: 4 },
-  dayHeader: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#9ca3af', paddingVertical: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
-  dayCellOtherMonth: { opacity: 0.35 },
-  dayNum: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  dayNumToday: { backgroundColor: '#2563eb' },
-  dayNumSelected: { backgroundColor: '#dbeafe' },
-  dayNumText: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  dayNumTextToday: { color: '#fff' },
-  dayNumTextSelected: { color: '#1d4ed8' },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#2563eb', marginTop: 2 },
-  eventList: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16 },
-  eventListTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  noEvents: { fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 16 },
-  eventCard: {
-    backgroundColor: '#eff6ff', borderRadius: 12, padding: 12,
-    marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#2563eb',
+  calendarCard: {
+    gap: 16,
   },
-  eventTitle: { fontSize: 14, fontWeight: '700', color: '#1e3a8a' },
-  eventDesc: { fontSize: 12, color: '#3b82f6', marginTop: 2 },
-  eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
-  eventTime: { fontSize: 12, color: '#6b7280' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  locationText: { fontSize: 12, color: '#9ca3af' },
+  monthRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  monthButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthLabel: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  dayHeaderRow: {
+    flexDirection: 'row',
+  },
+  dayHeaderLabel: {
+    flex: 1,
+    textAlign: 'center',
+    color: theme.colors.textFaint,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  dayCell: {
+    width: '14.285%',
+    alignItems: 'center',
+    paddingVertical: 7,
+    borderRadius: 16,
+  },
+  dayCellMuted: {
+    opacity: 0.32,
+  },
+  dayCellActive: {
+    backgroundColor: theme.colors.accentSoft,
+  },
+  dayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayCircle: {
+    backgroundColor: theme.colors.accent,
+  },
+  dayText: {
+    color: theme.colors.textSoft,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  todayText: {
+    color: '#ffffff',
+  },
+  dotRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: theme.colors.accent,
+  },
+  eventsCard: {
+    gap: 12,
+  },
+  eventsTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  stack: {
+    gap: 10,
+  },
+  entryCard: {
+    backgroundColor: theme.colors.surfaceMuted,
+    gap: 8,
+  },
+  entryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  entryTitle: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+  },
+  entryMeta: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+  },
+  entryDescription: {
+    color: theme.colors.textSoft,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  emptyText: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+  },
 });

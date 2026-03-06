@@ -23,7 +23,7 @@ export class AnnouncementsService {
     private audit: AuditService,
     private moderation: ModerationService,
     private notifications: NotificationsService,
-  ) {}
+  ) { }
 
   private async canPost(userId: string, userRole: string, clubId?: string): Promise<boolean> {
     // Admins, super admins and teachers can always post
@@ -149,7 +149,8 @@ export class AnnouncementsService {
         title: dto.title,
         body: dto.body,
         targetType: dto.targetType,
-        targetValue: dto.targetValue,
+        targetGrade: dto.targetGrade,
+        targetPathway: dto.targetPathway,
         clubId: dto.clubId,
         allowComments: dto.allowComments ?? false,
         isAdminGeneral: dto.isAdminGeneral ?? false,

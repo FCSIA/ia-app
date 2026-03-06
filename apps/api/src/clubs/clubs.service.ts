@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -115,9 +115,9 @@ export class ClubsService {
     return { success: true };
   }
 
-  // ── Invites ───────────────────────────────────────────────────────────────
+  // â”€â”€ Invites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async sendInvite(clubId: string, recipientId: string, senderId: string, senderRole: string) {
+  async sendInvite(clubId: string, recipientIdentifier: string, senderId: string, senderRole: string) {
     const club = await this.prisma.club.findUnique({ where: { id: clubId } });
     if (!club) throw new NotFoundException('Club not found');
 
@@ -131,16 +131,29 @@ export class ClubsService {
       throw new ForbiddenException('Only leaders or sponsors can invite members');
     }
 
+    const recipient = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: recipientIdentifier },
+          { uniqueId: recipientIdentifier.toUpperCase() },
+        ],
+      },
+      select: { id: true, isActive: true },
+    });
+    if (!recipient || !recipient.isActive) {
+      throw new NotFoundException('Recipient not found');
+    }
+
     // Check if already member
     const existing = await this.prisma.clubMember.findFirst({
-      where: { clubId, userId: recipientId },
+      where: { clubId, userId: recipient.id },
     });
     if (existing) throw new ConflictException('User is already a member');
 
     const invite = await this.prisma.clubInvite.upsert({
-      where: { clubId_recipientId: { clubId, recipientId } },
+      where: { clubId_recipientId: { clubId, recipientId: recipient.id } },
       update: { status: InviteStatus.PENDING, senderId },
-      create: { clubId, senderId, recipientId, status: InviteStatus.PENDING },
+      create: { clubId, senderId, recipientId: recipient.id, status: InviteStatus.PENDING },
     });
 
     await this.audit.log({
@@ -148,7 +161,7 @@ export class ClubsService {
       action: 'CLUB_INVITE_SENT',
       entityType: 'ClubInvite',
       entityId: invite.id,
-      meta: { clubId, recipientId },
+      meta: { clubId, recipientId: recipient.id, recipientIdentifier },
     });
 
     return invite;
@@ -199,7 +212,7 @@ export class ClubsService {
     });
   }
 
-  // ── Member management ─────────────────────────────────────────────────────
+  // â”€â”€ Member management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async promoteMember(clubId: string, memberId: string, actorId: string) {
     const sponsor = await this.prisma.clubSponsor.findFirst({
@@ -271,3 +284,4 @@ export class ClubsService {
     return { success: true };
   }
 }
+

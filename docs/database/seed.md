@@ -30,15 +30,15 @@ This runs the seed file using `ts-node`. It's idempotent — you can run it mult
 
 ### Users
 
-| uniqueId | Roles | Password |
-|----------|-------|----------|
-| `SUPER001` | SUPER_ADMIN, ADMIN | `SUPER001` |
-| `ADMIN001` | ADMIN | `ADMIN001` |
-| `TCH001` | TEACHER, SPONSOR | `TCH001` |
-| `STU001` | STUDENT | `STU001` |
-| `STU002` | STUDENT | `STU002` |
-| `STU003` | STUDENT | `STU003` |
-| `STU004` | STUDENT | `STU004` |
+| uniqueId | Name | Roles | Grade | Major Pathway | Password |
+|----------|------|-------|-------|---------------|----------|
+| `SUPER001` | — | SUPER_ADMIN, ADMIN | — | — | `SUPER001` |
+| `ADMIN001` | — | ADMIN | — | — | `ADMIN001` |
+| `TCH001` | — | TEACHER, SPONSOR | — | — | `TCH001` |
+| `STU001` | Alex Johnson | STUDENT | 9 | INFORMATION_TECHNOLOGY | `STU001` |
+| `STU002` | Sam Lee | STUDENT | 10 | HEALTH_SCIENCE | `STU002` |
+| `STU003` | Jordan Park | STUDENT_LEADER | 11 | ENGINEERING | `STU003` |
+| `STU004` | Taylor Kim | STUDENT_ADMIN | 12 | INFORMATION_TECHNOLOGY | `STU004` |
 
 **Password = uniqueId** for all accounts.
 
@@ -78,14 +78,18 @@ Default preferences (all enabled) are created for every user using `createMany({
 ```typescript
 await prisma.user.upsert({
   where: { uniqueId: 'STU001' },  // find by this
-  update: { passwordHash: hash }, // if found: update these fields
+  update: {
+    gradeLevel: 9,
+    major: Pathway.INFORMATION_TECHNOLOGY,
+  },
   create: {                       // if not found: create with all fields
     uniqueId: 'STU001',
     firstName: 'Alex',
-    lastName: 'Student',
-    passwordHash: hash,
+    lastName: 'Johnson',
+    passwordHash: await bcrypt.hash('STU001', 12),
     roles: [Role.STUDENT],
-    gradeLevel: '10',
+    gradeLevel: 9,
+    major: Pathway.INFORMATION_TECHNOLOGY,
   },
 });
 ```

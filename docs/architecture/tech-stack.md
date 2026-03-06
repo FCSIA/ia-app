@@ -10,17 +10,17 @@ tags: [architecture, tech-stack]
 
 ## Backend
 
-| Technology | Role | Why |
-|-----------|------|-----|
-| **Node.js** | JavaScript runtime on the server | Lets JS run outside the browser |
-| **TypeScript** | Typed superset of JavaScript | Catches bugs at write-time, not runtime |
-| **NestJS 10** | Backend framework | Structure, dependency injection, decorators |
-| **Prisma 6** | Database ORM | Type-safe database queries in TypeScript |
-| **PostgreSQL 16** | Relational database | Robust, open source, excellent with Prisma |
-| **Passport.js** | Authentication middleware | JWT strategy integration |
-| **bcrypt** | Password hashing | Secure one-way password storage |
-| **class-validator** | DTO validation | Decorator-based request validation |
-| **Swagger** | API documentation | Auto-generated docs at `/docs` |
+| Technology          | Role                             | Why                                         |
+| ------------------- | -------------------------------- | ------------------------------------------- |
+| **Node.js**         | JavaScript runtime on the server | Lets JS run outside the browser             |
+| **TypeScript**      | Typed superset of JavaScript     | Catches bugs at write-time, not runtime     |
+| **NestJS 10**       | Backend framework                | Structure, dependency injection, decorators |
+| **Prisma 6**        | Database ORM                     | Type-safe database queries in TypeScript    |
+| **PostgreSQL 16**   | Relational database              | Robust, open source, excellent with Prisma  |
+| **Passport.js**     | Authentication middleware        | JWT strategy integration                    |
+| **bcrypt**          | Password hashing                 | Secure one-way password storage             |
+| **class-validator** | DTO validation                   | Decorator-based request validation          |
+| **Swagger**         | API documentation                | Auto-generated docs at `/docs`              |
 
 ---
 
@@ -44,9 +44,9 @@ tags: [architecture, tech-stack]
 
 | Technology | Role | Why |
 |-----------|------|-----|
-| **Expo SDK 52** | React Native toolkit | Simplifies native builds |
+| **Expo SDK 54** | React Native toolkit | Simplifies native builds |
 | **React Native** | Native UI framework | Write JS, get native iOS/Android views |
-| **Expo Router v4** | File-based routing | Same pattern as Next.js |
+| **Expo Router v6** | File-based routing | Same pattern as Next.js |
 | **expo-secure-store** | Encrypted storage | Secure token storage on device |
 
 ---

@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { FlexFridayType, FlexSessionType, NotificationCategory, Role } from '@prisma/client';
+import { FlexFridayType, FlexSessionType, NotificationCategory, Role, Pathway } from '@prisma/client';
 
 @Injectable()
 export class FlexFridayService {
@@ -15,7 +15,7 @@ export class FlexFridayService {
     private prisma: PrismaService,
     private audit: AuditService,
     private notifications: NotificationsService,
-  ) {}
+  ) { }
 
   async getAllFridays() {
     return this.prisma.flexFriday.findMany({
@@ -43,7 +43,8 @@ export class FlexFridayService {
     data: {
       date: string;
       type: FlexFridayType;
-      pathway?: string;
+      gradeLevel?: number;
+      pathway?: Pathway;
       isSchoolDay?: boolean;
       notes?: string;
     },
@@ -53,6 +54,7 @@ export class FlexFridayService {
       data: {
         date: new Date(data.date),
         type: data.type,
+        gradeLevel: data.gradeLevel,
         pathway: data.pathway,
         isSchoolDay: data.isSchoolDay ?? true,
         notes: data.notes,
@@ -64,7 +66,7 @@ export class FlexFridayService {
       action: 'FLEX_FRIDAY_CREATED',
       entityType: 'FlexFriday',
       entityId: friday.id,
-      meta: { date: data.date, type: data.type },
+      meta: { date: data.date, type: data.type, gradeLevel: data.gradeLevel, pathway: data.pathway },
     });
 
     // Notify students
@@ -90,8 +92,8 @@ export class FlexFridayService {
       location?: string;
       capacity?: number;
       sessionType: FlexSessionType;
-      targetPathway?: string;
-      targetGrade?: string;
+      targetPathway?: Pathway;
+      targetGrade?: number;
     },
     actorId: string,
   ) {
@@ -100,9 +102,9 @@ export class FlexFridayService {
 
     const session = await this.prisma.flexSession.create({
       data: {
-        flexFridayId: fridayId,
-        teacherId: actorId,
         ...data,
+        flexFriday: { connect: { id: fridayId } },
+        teacherId: actorId,
       },
     });
 

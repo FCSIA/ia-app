@@ -40,6 +40,8 @@ pnpm dev
 cd apps/mobile
 npx expo start
 ```
+The mobile app now targets Expo SDK 54, so the current Expo Go app on iPhone is supported again.
+Use `apps/mobile/.env` or set `EXPO_PUBLIC_API_URL` to your machine's LAN IP when testing on a physical device.
 Scan QR with Expo Go app on device, or press `a` for Android emulator.
 
 ## Potential Next Priorities

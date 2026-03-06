@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, Pathway } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -54,17 +54,20 @@ async function main() {
 
   // Create sample students (password = uniqueId)
   const studentData = [
-    { uniqueId: 'STU001', firstName: 'Alex', lastName: 'Johnson', gradeLevel: '9', pathway: 'STEM' },
-    { uniqueId: 'STU002', firstName: 'Sam', lastName: 'Lee', gradeLevel: '10', pathway: 'Arts' },
-    { uniqueId: 'STU003', firstName: 'Jordan', lastName: 'Park', gradeLevel: '11', pathway: 'Business' },
-    { uniqueId: 'STU004', firstName: 'Taylor', lastName: 'Kim', gradeLevel: '12', pathway: 'STEM' },
+    { uniqueId: 'STU001', firstName: 'Alex', lastName: 'Johnson', gradeLevel: 9, major: Pathway.INFORMATION_TECHNOLOGY },
+    { uniqueId: 'STU002', firstName: 'Sam', lastName: 'Lee', gradeLevel: 10, major: Pathway.HEALTH_SCIENCE },
+    { uniqueId: 'STU003', firstName: 'Jordan', lastName: 'Park', gradeLevel: 11, major: Pathway.ENGINEERING },
+    { uniqueId: 'STU004', firstName: 'Taylor', lastName: 'Kim', gradeLevel: 12, major: Pathway.INFORMATION_TECHNOLOGY },
   ];
 
   const createdStudents = [];
   for (const s of studentData) {
     const student = await prisma.user.upsert({
       where: { uniqueId: s.uniqueId },
-      update: {},
+      update: {
+        gradeLevel: s.gradeLevel,
+        major: s.major,
+      },
       create: {
         ...s,
         passwordHash: await bcrypt.hash(s.uniqueId, 12),

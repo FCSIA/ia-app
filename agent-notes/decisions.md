@@ -21,7 +21,7 @@
 - **Auth storage**: localStorage (ia_token + ia_user)
 
 ## Mobile
-- **Framework**: Expo SDK 52, Expo Router v4 (file-based routing)
+- **Framework**: Expo SDK 54, Expo Router v6 (file-based routing)
 - **Auth storage**: expo-secure-store (more secure than AsyncStorage)
 - **Data fetching**: TanStack Query v5 + Axios
 
