@@ -67,7 +67,8 @@ export default function AnnouncementsPage() {
     title: '',
     body: '',
     targetType: 'SCHOOL_WIDE',
-    targetValue: '',
+    targetGrade: 9,
+    targetPathway: 'INFORMATION_TECHNOLOGY',
     allowComments: false,
     isAdminGeneral: false,
     expiresAt: '',
@@ -86,7 +87,7 @@ export default function AnnouncementsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setShowNew(false);
-      setForm({ title: '', body: '', targetType: 'SCHOOL_WIDE', targetValue: '', allowComments: false, isAdminGeneral: false, expiresAt: '' });
+      setForm({ title: '', body: '', targetType: 'SCHOOL_WIDE', targetGrade: 9, targetPathway: 'INFORMATION_TECHNOLOGY', allowComments: false, isAdminGeneral: false, expiresAt: '' });
       toast.success('Announcement created');
     },
     onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to create'),
@@ -105,7 +106,8 @@ export default function AnnouncementsPage() {
     createMutation.mutate({
       ...form,
       expiresAt: form.expiresAt || undefined,
-      targetValue: form.targetValue || undefined,
+      targetGrade: form.targetType === 'GRADE' ? Number(form.targetGrade) : undefined,
+      targetPathway: form.targetType === 'PATHWAY' ? form.targetPathway : undefined,
     });
   };
 
@@ -167,14 +169,30 @@ export default function AnnouncementsPage() {
                 {form.targetType !== 'SCHOOL_WIDE' && (
                   <div>
                     <label className="text-xs text-white/45 mb-1 block">
-                      {form.targetType === 'GRADE' ? 'Grade (e.g. 9)' : 'Pathway'}
+                      {form.targetType === 'GRADE' ? 'Grade Level' : 'Pathway'}
                     </label>
-                    <input
-                      className="input"
-                      placeholder={form.targetType === 'GRADE' ? '9' : 'STEM'}
-                      value={form.targetValue}
-                      onChange={(e) => setForm({ ...form, targetValue: e.target.value })}
-                    />
+                    {form.targetType === 'GRADE' ? (
+                      <select
+                        className="input"
+                        value={form.targetGrade}
+                        onChange={(e) => setForm({ ...form, targetGrade: parseInt(e.target.value, 10) })}
+                      >
+                        <option value={9}>9th Grade</option>
+                        <option value={10}>10th Grade</option>
+                        <option value={11}>11th Grade</option>
+                        <option value={12}>12th Grade</option>
+                      </select>
+                    ) : (
+                      <select
+                        className="input"
+                        value={form.targetPathway}
+                        onChange={(e) => setForm({ ...form, targetPathway: e.target.value })}
+                      >
+                        <option value="INFORMATION_TECHNOLOGY">Information Technology</option>
+                        <option value="HEALTH_SCIENCE">Health Science</option>
+                        <option value="ENGINEERING">Engineering</option>
+                      </select>
+                    )}
                   </div>
                 )}
               </div>

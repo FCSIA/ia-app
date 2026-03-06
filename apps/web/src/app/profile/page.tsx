@@ -82,8 +82,11 @@ export default function ProfilePage() {
           <div className="space-y-0">
             {[
               { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
-              { label: 'Grade', value: user?.gradeLevel || '—' },
-              { label: 'Pathway', value: user?.pathway || '—' },
+              ...(user?.roles?.includes('STUDENT') ? [
+                { label: 'Grade', value: user?.gradeLevel || '—' },
+                { label: 'Major Pathway', value: user?.major ? user.major.replace(/_/g, ' ') : '—' },
+                { label: 'Minor Pathway', value: user?.minor ? user.minor.replace(/_/g, ' ') : '—' },
+              ] : [])
             ].map(({ label, value, mono }, i, arr) => (
               <div
                 key={label}

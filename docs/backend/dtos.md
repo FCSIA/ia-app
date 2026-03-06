@@ -109,6 +109,60 @@ export class LoginDto {
 }
 ```
 
+### Create / Update User
+```typescript
+import { Pathway } from '@prisma/client';
+
+export class CreateUserDto {
+  @IsString() uniqueId: string;
+  @IsString() firstName: string;
+  @IsString() lastName: string;
+
+  @IsInt() @IsOptional()
+  gradeLevel?: number;       // 9, 10, 11, or 12 — students only
+
+  @IsEnum(Pathway) @IsOptional()
+  major?: Pathway;           // student's primary pathway
+
+  @IsEnum(Pathway) @IsOptional()
+  minor?: Pathway;           // student's optional secondary pathway
+
+  @IsEmail() @IsOptional()
+  email?: string;
+
+  @IsEnum(Role, { each: true }) @IsOptional()
+  roles?: Role[];
+}
+```
+
+### Create Announcement
+```typescript
+import { AnnouncementTarget, Pathway } from '@prisma/client';
+
+export class CreateAnnouncementDto {
+  @IsString() @IsNotEmpty()
+  title: string;
+
+  @IsString() @IsNotEmpty()
+  body: string;
+
+  @IsEnum(AnnouncementTarget)
+  targetType: AnnouncementTarget;
+
+  @IsInt() @IsOptional()
+  targetGrade?: number;      // 9, 10, 11, or 12 (used when targetType = GRADE)
+
+  @IsEnum(Pathway) @IsOptional()
+  targetPathway?: Pathway;   // INFORMATION_TECHNOLOGY etc. (targetType = PATHWAY)
+
+  @IsBoolean() @IsOptional()
+  allowComments?: boolean;
+
+  @IsString() @IsOptional()
+  clubId?: string;
+}
+```
+
 ### Create Club
 ```typescript
 export class CreateClubDto {

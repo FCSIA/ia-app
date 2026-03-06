@@ -53,6 +53,18 @@ enum EventStatus {
 }
 ```
 
+### Pathway
+```prisma
+enum Pathway {
+  INFORMATION_TECHNOLOGY
+  HEALTH_SCIENCE
+  ENGINEERING
+}
+```
+Represents a student's academic track at FCS Innovation Academy. Every student has a **major** pathway and an optional **minor** from the remaining two.
+
+
+
 ### NotificationCategory
 ```prisma
 enum NotificationCategory {
@@ -72,15 +84,16 @@ The central model. Everyone in the system is a User.
 
 ```prisma
 model User {
-  id           String   @id @default(uuid())
+  id           String   @id @default(cuid())
   uniqueId     String   @unique      // e.g. "STU001", "TCH001"
   firstName    String
   lastName     String
   email        String?
-  passwordHash String               // bcrypt hash, never plain text
+  passwordHash String?              // bcrypt hash, never plain text
   roles        Role[]               // array — user can have multiple roles
-  gradeLevel   String?              // "9", "10", "11", "12"
-  pathway      String?              // academic pathway
+  gradeLevel   Int?                 // 9, 10, 11, or 12 — students only
+  major        Pathway?             // primary academic pathway — students only
+  minor        Pathway?             // optional secondary pathway — students only
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -88,8 +101,10 @@ model User {
 ```
 
 Key points:
-- `uniqueId` is the login username (not the `id` UUID)
+- `uniqueId` is the login username (not the `id` CUID)
 - `roles` is an array — a Teacher who is also a Club Sponsor has `[TEACHER, SPONSOR]`
+- `gradeLevel`, `major`, and `minor` are **student-only** — teachers and admins leave these `null`
+- `minor` is always one of the other two pathways that is not the student's `major`
 - `isActive: false` = soft-deleted account (data preserved, user can't log in)
 
 ---
@@ -114,13 +129,13 @@ model AuthSession {
 ### Announcement
 ```prisma
 model Announcement {
-  id             String               @id @default(uuid())
+  id             String               @id @default(cuid())
   title          String
   body           String
   authorId       String
   targetType     AnnouncementTarget
-  targetGrade    String?              // if targetType = GRADE
-  targetPathway  String?              // if targetType = PATHWAY
+  targetGrade    Int?                 // if targetType = GRADE (9,10,11,12)
+  targetPathway  Pathway?             // if targetType = PATHWAY
   clubId         String?              // if targetType = CLUB
   isAdminGeneral Boolean @default(false) // pinned admin message
   allowComments  Boolean @default(true)
@@ -284,10 +299,10 @@ Represents a specific Friday with scheduled sessions.
 
 ```prisma
 model FlexFriday {
-  id          String          @id @default(uuid())
+  id          String          @id @default(cuid())
   date        DateTime        @unique  // the actual Friday date
   type        FlexFridayType          // ALL_STUDENT | FRESHMAN_WORKSHOP | etc.
-  pathway     String?
+  pathway     Pathway?                // set for PATHWAY_SPECIFIC type
   isSchoolDay Boolean         @default(true)
   notes       String?
 
@@ -300,20 +315,19 @@ A specific session offered on a Flex Friday (e.g., "Coding Workshop with Mr. Smi
 
 ```prisma
 model FlexSession {
-  id            String          @id @default(uuid())
+  id            String          @id @default(cuid())
   flexFridayId  String
-  teacherId     String
+  teacherId     String?
   title         String
   description   String?
   location      String?
   capacity      Int?
-  type          FlexSessionType // STUDENT_CHOICE | TEACHER_ASSIGNED
-  targetPathway String?
-  targetGrade   String?
+  sessionType   FlexSessionType // STUDENT_CHOICE | TEACHER_ASSIGNED
+  targetPathway Pathway?        // restrict to a specific pathway
+  targetGrade   Int?            // restrict to a specific grade (9,10,11,12)
   createdAt     DateTime        @default(now())
 
   flexFriday    FlexFriday        @relation(...)
-  teacher       User              @relation(...)
   registrations FlexRegistration[]
   assignments   FlexAssignment[]
 }

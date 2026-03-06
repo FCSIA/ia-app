@@ -112,11 +112,10 @@ export default function AdminPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all duration-200 -mb-px ${
-                tab === key
-                  ? 'border-accent-500 text-accent-400'
-                  : 'border-transparent text-white/45 hover:text-white/70'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all duration-200 -mb-px ${tab === key
+                ? 'border-accent-500 text-accent-400'
+                : 'border-transparent text-white/45 hover:text-white/70'
+                }`}
             >
               <Icon size={15} />
               {label}
@@ -301,7 +300,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <span className={
                               r.status === 'PENDING' ? 'badge-yellow' :
-                              r.status === 'RESOLVED' ? 'badge-green' : 'badge-gray'
+                                r.status === 'RESOLVED' ? 'badge-green' : 'badge-gray'
                             }>
                               {r.status}
                             </span>
