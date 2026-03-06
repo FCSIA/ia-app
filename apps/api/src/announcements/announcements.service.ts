@@ -25,14 +25,26 @@ export class AnnouncementsService {
     private notifications: NotificationsService,
   ) {}
 
-  private canPost(user: any, clubId?: string) {
+  private async canPost(userId: string, userRole: string, clubId?: string): Promise<boolean> {
+    // Admins, super admins and teachers can always post
     if (
-      user.roles.includes(Role.ADMIN) ||
-      user.roles.includes(Role.SUPER_ADMIN) ||
-      user.roles.includes(Role.TEACHER)
+      userRole === Role.ADMIN ||
+      userRole === Role.SUPER_ADMIN ||
+      userRole === Role.TEACHER
     )
       return true;
-    if (clubId && user.roles.includes(Role.STUDENT_LEADER)) return true;
+
+    // STUDENT_LEADER system role can post for their club
+    if (clubId && userRole === Role.STUDENT_LEADER) return true;
+
+    // Check if user is a club LEADER (club-level role) in this specific club
+    if (clubId) {
+      const membership = await this.prisma.clubMember.findFirst({
+        where: { clubId, userId, role: 'LEADER' as any },
+      });
+      if (membership) return true;
+    }
+
     return false;
   }
 
@@ -46,13 +58,13 @@ export class AnnouncementsService {
     });
   }
 
-  async getAll(userId: string, userRoles: Role[], archived = false, clubId?: string) {
+  async getAll(userId: string, userRole: string, archived = false, clubId?: string) {
     await this.archiveExpired();
 
     const isAdmin =
-      userRoles.includes(Role.ADMIN) ||
-      userRoles.includes(Role.SUPER_ADMIN) ||
-      userRoles.includes(Role.SUPPORT_STAFF);
+      userRole === Role.ADMIN ||
+      userRole === Role.SUPER_ADMIN ||
+      userRole === Role.SUPPORT_STAFF;
 
     // Club announcements require membership
     if (clubId) {
@@ -96,7 +108,7 @@ export class AnnouncementsService {
     });
   }
 
-  async getOne(id: string, userId: string, userRoles: Role[]) {
+  async getOne(id: string, userId: string, userRole: string) {
     await this.archiveExpired();
     const ann = await this.prisma.announcement.findUnique({
       where: { id },
@@ -117,7 +129,7 @@ export class AnnouncementsService {
         where: { clubId: ann.clubId, userId },
       });
       const isAdmin =
-        userRoles.includes(Role.ADMIN) || userRoles.includes(Role.SUPER_ADMIN);
+        userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
       if (!isMember && !isSponsor && !isAdmin) {
         throw new ForbiddenException('Not a club member');
       }
@@ -125,8 +137,9 @@ export class AnnouncementsService {
     return ann;
   }
 
-  async create(dto: CreateAnnouncementDto, authorId: string, userRoles: Role[]) {
-    if (!this.canPost({ roles: userRoles }, dto.clubId)) {
+  async create(dto: CreateAnnouncementDto, authorId: string, userRole: string) {
+    const canPost = await this.canPost(authorId, userRole, dto.clubId);
+    if (!canPost) {
       throw new ForbiddenException('Insufficient permissions to post announcements');
     }
 
@@ -149,7 +162,7 @@ export class AnnouncementsService {
     await this.moderation.scanContent(fullText, ContentType.ANNOUNCEMENT, ann.id, 'announcementId');
 
     // Notify users
-    await this.deliverNotifications(ann, userRoles);
+    await this.deliverNotifications(ann, userRole);
 
     await this.audit.log({
       actorId: authorId,
@@ -162,7 +175,7 @@ export class AnnouncementsService {
     return ann;
   }
 
-  private async deliverNotifications(ann: any, authorRoles: Role[]) {
+  private async deliverNotifications(ann: any, authorRole: string) {
     const isAdminGeneral = ann.isAdminGeneral;
     const isClub = !!ann.clubId;
 
@@ -195,14 +208,14 @@ export class AnnouncementsService {
     });
   }
 
-  async archive(id: string, actorId: string, userRoles: Role[]) {
+  async archive(id: string, actorId: string, userRole: string) {
     const ann = await this.prisma.announcement.findUnique({ where: { id } });
     if (!ann) throw new NotFoundException('Announcement not found');
 
     if (
       ann.authorId !== actorId &&
-      !userRoles.includes(Role.ADMIN) &&
-      !userRoles.includes(Role.SUPER_ADMIN)
+      userRole !== Role.ADMIN &&
+      userRole !== Role.SUPER_ADMIN
     ) {
       throw new ForbiddenException('Cannot archive this announcement');
     }
@@ -245,14 +258,14 @@ export class AnnouncementsService {
     return comment;
   }
 
-  async deleteComment(commentId: string, actorId: string, userRoles: Role[]) {
+  async deleteComment(commentId: string, actorId: string, userRole: string) {
     const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
     if (!comment) throw new NotFoundException('Comment not found');
 
     if (
       comment.authorId !== actorId &&
-      !userRoles.includes(Role.ADMIN) &&
-      !userRoles.includes(Role.SUPER_ADMIN)
+      userRole !== Role.ADMIN &&
+      userRole !== Role.SUPER_ADMIN
     ) {
       throw new ForbiddenException('Cannot delete this comment');
     }

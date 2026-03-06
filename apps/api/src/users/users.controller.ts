@@ -64,7 +64,7 @@ export class UsersController {
   @Patch(':id/deactivate')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   deactivate(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.usersService.deactivate(id, user.id);
+    return this.usersService.deactivate(id, user.id, user.role);
   }
 
   @Patch(':id/activate')

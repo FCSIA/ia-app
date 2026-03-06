@@ -17,8 +17,8 @@ export class ClubsService {
     private notifications: NotificationsService,
   ) {}
 
-  private isAdmin(roles: Role[]) {
-    return roles.includes(Role.ADMIN) || roles.includes(Role.SUPER_ADMIN);
+  private isAdmin(role: string) {
+    return role === Role.ADMIN || role === Role.SUPER_ADMIN;
   }
 
   async getAll() {
@@ -49,7 +49,7 @@ export class ClubsService {
     };
   }
 
-  async getOne(id: string, userId: string, userRoles: Role[]) {
+  async getOne(id: string, userId: string, userRole: string) {
     const club = await this.prisma.club.findUnique({
       where: { id },
       include: {
@@ -65,7 +65,7 @@ export class ClubsService {
 
     const isMember = club.members.some((m) => m.userId === userId);
     const isSponsor = club.sponsors.some((s) => s.userId === userId);
-    if (!isMember && !isSponsor && !this.isAdmin(userRoles)) {
+    if (!isMember && !isSponsor && !this.isAdmin(userRole)) {
       throw new ForbiddenException('Not a club member');
     }
     return club;
@@ -117,7 +117,7 @@ export class ClubsService {
 
   // ── Invites ───────────────────────────────────────────────────────────────
 
-  async sendInvite(clubId: string, recipientId: string, senderId: string, senderRoles: Role[]) {
+  async sendInvite(clubId: string, recipientId: string, senderId: string, senderRole: string) {
     const club = await this.prisma.club.findUnique({ where: { id: clubId } });
     if (!club) throw new NotFoundException('Club not found');
 
@@ -127,7 +127,7 @@ export class ClubsService {
     const isLeader = await this.prisma.clubMember.findFirst({
       where: { clubId, userId: senderId, role: ClubMemberRole.LEADER },
     });
-    if (!isSponsor && !isLeader && !this.isAdmin(senderRoles)) {
+    if (!isSponsor && !isLeader && !this.isAdmin(senderRole)) {
       throw new ForbiddenException('Only leaders or sponsors can invite members');
     }
 
@@ -214,10 +214,10 @@ export class ClubsService {
 
     // Assign STUDENT_LEADER role to the user
     const member = await this.prisma.user.findUnique({ where: { id: memberId } });
-    if (member && !member.roles.includes(Role.STUDENT_LEADER)) {
+    if (member && member.role !== Role.STUDENT_LEADER) {
       await this.prisma.user.update({
         where: { id: memberId },
-        data: { roles: { push: Role.STUDENT_LEADER } },
+        data: { role: Role.STUDENT_LEADER },
       });
     }
 
@@ -232,11 +232,11 @@ export class ClubsService {
     return { success: true };
   }
 
-  async removeMember(clubId: string, memberId: string, actorId: string, actorRoles: Role[]) {
+  async removeMember(clubId: string, memberId: string, actorId: string, actorRole: string) {
     const isSponsor = await this.prisma.clubSponsor.findFirst({
       where: { clubId, userId: actorId },
     });
-    if (!isSponsor && !this.isAdmin(actorRoles)) {
+    if (!isSponsor && !this.isAdmin(actorRole)) {
       throw new ForbiddenException('Only sponsors or admins can remove members');
     }
 

@@ -15,7 +15,7 @@ export class CalendarService {
     }
 
     if (tags && tags.length > 0) {
-      where.tags = { hasSome: tags };
+      where.tags = { contains: tags[0] }; // SQLite workaround: basic string search
     }
 
     return this.prisma.calendarEntry.findMany({
@@ -52,7 +52,7 @@ export class CalendarService {
         location: data.location,
         startAt: new Date(data.startAt),
         endAt: data.endAt ? new Date(data.endAt) : undefined,
-        tags: data.tags || [],
+        tags: JSON.stringify(data.tags || []),
       },
     });
   }

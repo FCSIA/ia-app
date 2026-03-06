@@ -25,8 +25,8 @@ export class EventsService {
     private notifications: NotificationsService,
   ) {}
 
-  async getAll(userId: string, userRoles: Role[], clubId?: string) {
-    const isAdmin = userRoles.includes(Role.ADMIN) || userRoles.includes(Role.SUPER_ADMIN);
+  async getAll(userId: string, userRole: string, clubId?: string) {
+    const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
 
     if (clubId) {
       const isMember = await this.prisma.clubMember.findFirst({
@@ -60,7 +60,7 @@ export class EventsService {
     });
   }
 
-  async getOne(id: string, userId: string, userRoles: Role[]) {
+  async getOne(id: string, userId: string, userRole: string) {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
@@ -73,7 +73,7 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    const isAdmin = userRoles.includes(Role.ADMIN) || userRoles.includes(Role.SUPER_ADMIN);
+    const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
     if (event.status !== EventStatus.PUBLISHED && !isAdmin && event.authorId !== userId) {
       throw new ForbiddenException('Event not yet published');
     }
@@ -91,13 +91,13 @@ export class EventsService {
       clubId?: string;
     },
     authorId: string,
-    userRoles: Role[],
+    userRole: string,
   ) {
     const isAdmin =
-      userRoles.includes(Role.ADMIN) ||
-      userRoles.includes(Role.SUPER_ADMIN) ||
-      userRoles.includes(Role.SUPPORT_STAFF);
-    const isLeader = userRoles.includes(Role.STUDENT_LEADER);
+      userRole === Role.ADMIN ||
+      userRole === Role.SUPER_ADMIN ||
+      userRole === Role.SUPPORT_STAFF;
+    const isLeader = userRole === Role.STUDENT_LEADER;
 
     if (!isAdmin && !isLeader) {
       throw new ForbiddenException('Insufficient permissions to create events');
@@ -131,7 +131,7 @@ export class EventsService {
     // If published immediately, create calendar entry + notify
     if (status === EventStatus.PUBLISHED) {
       await this.createCalendarEntry(event);
-      await this.notifyEvent(event, userRoles);
+      await this.notifyEvent(event, userRole);
     }
 
     // If club event, create pending approvals for all sponsors
@@ -174,13 +174,13 @@ export class EventsService {
           location: event.location,
           startAt: event.startAt,
           endAt: event.endAt,
-          tags: event.clubId ? ['club'] : ['general'],
+          tags: event.clubId ? '["club"]' : '["general"]',
         },
       });
     }
   }
 
-  private async notifyEvent(event: any, _userRoles: Role[]) {
+  private async notifyEvent(event: any, _userRole: string) {
     const users = await this.prisma.user.findMany({
       where: { isActive: true },
       select: { id: true },
@@ -239,7 +239,7 @@ export class EventsService {
         data: { status: EventStatus.PUBLISHED, publishedAt: new Date() },
       });
       await this.createCalendarEntry(event);
-      await this.notifyEvent(event, []);
+      await this.notifyEvent(event, '');
 
       await this.audit.log({
         actorId: sponsorId,
@@ -273,11 +273,11 @@ export class EventsService {
     });
   }
 
-  async cancel(id: string, actorId: string, userRoles: Role[]) {
+  async cancel(id: string, actorId: string, userRole: string) {
     const event = await this.prisma.event.findUnique({ where: { id } });
     if (!event) throw new NotFoundException('Event not found');
 
-    const isAdmin = userRoles.includes(Role.ADMIN) || userRoles.includes(Role.SUPER_ADMIN);
+    const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
     if (event.authorId !== actorId && !isAdmin) {
       throw new ForbiddenException('Cannot cancel this event');
     }

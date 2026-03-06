@@ -117,7 +117,7 @@ export class FlexFridayService {
     return session;
   }
 
-  async getSessions(fridayId: string, userId: string, userRoles: Role[]) {
+  async getSessions(fridayId: string, userId: string, userRole: string) {
     return this.prisma.flexSession.findMany({
       where: { flexFridayId: fridayId },
       include: {
@@ -248,12 +248,12 @@ export class FlexFridayService {
     });
   }
 
-  async getSessionRoster(sessionId: string, actorId: string, actorRoles: Role[]) {
+  async getSessionRoster(sessionId: string, actorId: string, actorRole: string) {
     const session = await this.prisma.flexSession.findUnique({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Session not found');
 
     const isTeacher = session.teacherId === actorId;
-    const isAdmin = actorRoles.includes(Role.ADMIN) || actorRoles.includes(Role.SUPER_ADMIN);
+    const isAdmin = actorRole === Role.ADMIN || actorRole === Role.SUPER_ADMIN;
     if (!isTeacher && !isAdmin) throw new ForbiddenException('Cannot view this roster');
 
     const [registrations, assignments] = await Promise.all([

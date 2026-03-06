@@ -25,22 +25,22 @@ export class AnnouncementsController {
     @Query('archived') archived?: string,
     @Query('clubId') clubId?: string,
   ) {
-    return this.announcementsService.getAll(user.id, user.roles, archived === 'true', clubId);
+    return this.announcementsService.getAll(user.id, user.role, archived === 'true', clubId);
   }
 
   @Get(':id')
   getOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.announcementsService.getOne(id, user.id, user.roles);
+    return this.announcementsService.getOne(id, user.id, user.role);
   }
 
   @Post()
   create(@Body() dto: CreateAnnouncementDto, @CurrentUser() user: any) {
-    return this.announcementsService.create(dto, user.id, user.roles);
+    return this.announcementsService.create(dto, user.id, user.role);
   }
 
   @Patch(':id/archive')
   archive(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.announcementsService.archive(id, user.id, user.roles);
+    return this.announcementsService.archive(id, user.id, user.role);
   }
 
   @Post(':id/comments')
@@ -54,6 +54,6 @@ export class AnnouncementsController {
 
   @Delete('comments/:commentId')
   deleteComment(@Param('commentId') commentId: string, @CurrentUser() user: any) {
-    return this.announcementsService.deleteComment(commentId, user.id, user.roles);
+    return this.announcementsService.deleteComment(commentId, user.id, user.role);
   }
 }

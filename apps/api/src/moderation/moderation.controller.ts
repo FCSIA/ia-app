@@ -44,6 +44,7 @@ export class ModerationController {
   }
 
   @Post('reports')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   submitReport(
     @Body() body: { contentType: ContentType; contentId: string; reason: string; reportedUserId?: string },
     @CurrentUser() user: any,

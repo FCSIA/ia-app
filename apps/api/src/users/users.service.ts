@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as csv from 'csv-parser';
@@ -20,8 +21,8 @@ export class UsersService {
   ) {}
 
   private safeUser(user: any) {
-    const { passwordHash, ...safe } = user;
-    return safe;
+    const { passwordHash, role, ...safe } = user;
+    return { ...safe, role, roles: role ? [role] : [] };
   }
 
   async findAll(page = 1, limit = 50, search?: string) {
@@ -67,7 +68,7 @@ export class UsersService {
         pathway: dto.pathway,
         email: dto.email,
         passwordHash,
-        roles: dto.roles || [Role.STUDENT],
+        role: dto.roles ? dto.roles[0] : Role.STUDENT,
       },
     });
 
@@ -98,7 +99,7 @@ export class UsersService {
     await this.findOne(id);
     const user = await this.prisma.user.update({
       where: { id },
-      data: { roles: dto.roles },
+      data: { role: dto.roles[0] },
     });
     await this.audit.log({
       actorId,
@@ -110,8 +111,17 @@ export class UsersService {
     return this.safeUser(user);
   }
 
-  async deactivate(id: string, actorId?: string) {
-    await this.findOne(id);
+  async deactivate(id: string, actorId?: string, actorRole?: string) {
+    const target = await this.findOne(id);
+
+    // Only SUPER_ADMIN can deactivate other admins or super admins
+    const targetRole = (target as any).role;
+    const isTargetPrivileged = targetRole === Role.ADMIN || targetRole === Role.SUPER_ADMIN;
+    const actorIsSuperAdmin = actorRole === Role.SUPER_ADMIN;
+    if (isTargetPrivileged && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Only Super Admins can deactivate admin accounts');
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
       data: { isActive: false },
@@ -197,7 +207,7 @@ export class UsersService {
             pathway: row.pathway,
             email: row.email,
             passwordHash,
-            roles: [Role.STUDENT],
+            role: Role.STUDENT,
           },
         });
         results.created++;

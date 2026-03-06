@@ -35,7 +35,7 @@ export class ClubsController {
 
   @Get(':id')
   getOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.clubsService.getOne(id, user.id, user.roles);
+    return this.clubsService.getOne(id, user.id, user.role);
   }
 
   @Post()
@@ -69,7 +69,7 @@ export class ClubsController {
     @Body() body: { recipientId: string },
     @CurrentUser() user: any,
   ) {
-    return this.clubsService.sendInvite(clubId, body.recipientId, user.id, user.roles);
+    return this.clubsService.sendInvite(clubId, body.recipientId, user.id, user.role);
   }
 
   @Post('invites/:inviteId/respond')
@@ -96,7 +96,7 @@ export class ClubsController {
     @Param('memberId') memberId: string,
     @CurrentUser() user: any,
   ) {
-    return this.clubsService.removeMember(clubId, memberId, user.id, user.roles);
+    return this.clubsService.removeMember(clubId, memberId, user.id, user.role);
   }
 
   @Post(':id/sponsors')

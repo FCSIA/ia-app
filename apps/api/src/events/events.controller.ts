@@ -24,7 +24,7 @@ export class EventsController {
     @CurrentUser() user: any,
     @Query('clubId') clubId?: string,
   ) {
-    return this.eventsService.getAll(user.id, user.roles, clubId);
+    return this.eventsService.getAll(user.id, user.role, clubId);
   }
 
   @Get('pending-approvals')
@@ -34,7 +34,7 @@ export class EventsController {
 
   @Get(':id')
   getOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.eventsService.getOne(id, user.id, user.roles);
+    return this.eventsService.getOne(id, user.id, user.role);
   }
 
   @Post()
@@ -51,7 +51,7 @@ export class EventsController {
     },
     @CurrentUser() user: any,
   ) {
-    return this.eventsService.create(body, user.id, user.roles);
+    return this.eventsService.create(body, user.id, user.role);
   }
 
   @Post(':id/approve')
@@ -76,6 +76,6 @@ export class EventsController {
 
   @Patch(':id/cancel')
   cancel(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.eventsService.cancel(id, user.id, user.roles);
+    return this.eventsService.cancel(id, user.id, user.role);
   }
 }

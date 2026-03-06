@@ -56,7 +56,7 @@ export class FlexFridayController {
 
   @Get(':fridayId/sessions')
   getSessions(@Param('fridayId') fridayId: string, @CurrentUser() user: any) {
-    return this.flexFridayService.getSessions(fridayId, user.id, user.roles);
+    return this.flexFridayService.getSessions(fridayId, user.id, user.role);
   }
 
   @Post(':fridayId/sessions')
@@ -100,6 +100,6 @@ export class FlexFridayController {
 
   @Get('sessions/:sessionId/roster')
   getRoster(@Param('sessionId') sessionId: string, @CurrentUser() user: any) {
-    return this.flexFridayService.getSessionRoster(sessionId, user.id, user.roles);
+    return this.flexFridayService.getSessionRoster(sessionId, user.id, user.role);
   }
 }

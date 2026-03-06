@@ -21,6 +21,17 @@ export default function AdminPage() {
   const [keyword, setKeyword] = useState('');
   const qc = useQueryClient();
 
+  // Permission: can current user deactivate this target user?
+  const canDeactivate = (targetUser: any) => {
+    if (!user) return false;
+    const targetRole = targetUser.role || (targetUser.roles?.[0] ?? '');
+    const isTargetPrivileged = targetRole === 'ADMIN' || targetRole === 'SUPER_ADMIN';
+    // Only Super Admin can deactivate privileged users
+    if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
+    // Admins can deactivate everyone else
+    return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  };
+
   useEffect(() => {
     if (user && !hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF')) {
       router.replace('/dashboard');
@@ -74,6 +85,20 @@ export default function AdminPage() {
   const reportMutation = useMutation({
     mutationFn: ({ id, status, reviewNote }: any) => moderationApi.updateReport(id, { status, reviewNote }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['reports'] }); toast.success('Report updated'); },
+  });
+
+  const [showReportForm, setShowReportForm] = useState(false);
+  const [reportForm, setReportForm] = useState({ contentType: 'ANNOUNCEMENT', contentId: '', reason: '' });
+
+  const createReportMutation = useMutation({
+    mutationFn: (data: any) => moderationApi.submitReport(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      setShowReportForm(false);
+      setReportForm({ contentType: 'ANNOUNCEMENT', contentId: '', reason: '' });
+      toast.success('Report submitted');
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message || 'Failed to submit report'),
   });
 
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,12 +210,16 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 px-4">
                           {u.isActive ? (
-                            <button
-                              onClick={() => deactivateMutation.mutate(u.id)}
-                              className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                            >
-                              Deactivate
-                            </button>
+                            canDeactivate(u) && u.id !== user?.id ? (
+                              <button
+                                onClick={() => deactivateMutation.mutate(u.id)}
+                                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                              >
+                                Deactivate
+                              </button>
+                            ) : (
+                              <span className="text-xs text-white/20">—</span>
+                            )
                           ) : (
                             <button
                               onClick={() => activateMutation.mutate(u.id)}
@@ -278,14 +307,80 @@ export default function AdminPage() {
 
             {/* Reports */}
             <div className="card">
-              <h2 className="font-semibold text-white/90 mb-4">
-                Reports{' '}
-                {pendingReports > 0 && (
-                  <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-accent-500/20 text-accent-400 border border-accent-500/30">
-                    {pendingReports} pending
-                  </span>
-                )}
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-white/90">
+                  Reports{' '}
+                  {pendingReports > 0 && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-accent-500/20 text-accent-400 border border-accent-500/30">
+                      {pendingReports} pending
+                    </span>
+                  )}
+                </h2>
+                <button
+                  onClick={() => setShowReportForm(!showReportForm)}
+                  className="btn-primary flex items-center gap-1 text-sm py-1.5"
+                >
+                  <Plus size={14} /> {showReportForm ? 'Cancel' : 'New Report'}
+                </button>
+              </div>
+
+              {/* Create Report Form */}
+              {showReportForm && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    createReportMutation.mutate(reportForm);
+                  }}
+                  className="mb-5 p-4 rounded-xl space-y-3"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <h3 className="text-sm font-medium text-white/80">Submit New Report</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-white/45 mb-1 block">Content Type</label>
+                      <select
+                        className="input"
+                        value={reportForm.contentType}
+                        onChange={(e) => setReportForm({ ...reportForm, contentType: e.target.value })}
+                      >
+                        <option value="ANNOUNCEMENT">Announcement</option>
+                        <option value="EVENT">Event</option>
+                        <option value="CLUB_POST">Club Post</option>
+                        <option value="COMMENT">Comment</option>
+                        <option value="USER">User</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/45 mb-1 block">Content ID</label>
+                      <input
+                        className="input"
+                        placeholder="ID of the reported content"
+                        value={reportForm.contentId}
+                        onChange={(e) => setReportForm({ ...reportForm, contentId: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/45 mb-1 block">Reason</label>
+                    <textarea
+                      className="input min-h-[80px] resize-y"
+                      placeholder="Describe the reason for this report…"
+                      value={reportForm.reason}
+                      onChange={(e) => setReportForm({ ...reportForm, reason: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn-primary text-sm"
+                    disabled={createReportMutation.isPending}
+                  >
+                    {createReportMutation.isPending ? 'Submitting…' : 'Submit Report'}
+                  </button>
+                </form>
+              )}
+
               {(reports as any[]).length === 0 ? (
                 <p className="text-white/30 text-sm">No reports submitted</p>
               ) : (
@@ -309,7 +404,8 @@ export default function AdminPage() {
                           </div>
                           <p className="text-sm text-white/70">{r.reason}</p>
                           <p className="text-xs text-white/30 mt-1">
-                            By {r.submitter?.firstName} {r.submitter?.lastName}
+                            Reported by {r.submitter?.firstName} {r.submitter?.lastName}
+                            {r.reportedUser && ` · Against: ${r.reportedUser.firstName} ${r.reportedUser.lastName}`}
                           </p>
                         </div>
                         {r.status === 'PENDING' && (

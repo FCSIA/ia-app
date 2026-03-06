@@ -20,7 +20,7 @@ export class AuditService {
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId,
-        meta: input.meta,
+        meta: input.meta ? JSON.stringify(input.meta) : undefined,
       },
     });
   }

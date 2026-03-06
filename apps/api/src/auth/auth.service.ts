@@ -51,8 +51,8 @@ export class AuthService {
       entityId: user.id,
     });
 
-    const { passwordHash, ...safeUser } = user;
-    return { token, user: safeUser };
+    const { passwordHash, role, ...safeUser } = user;
+    return { token, user: { ...safeUser, role, roles: role ? [role] : [] } };
   }
 
   async logout(userId: string, token: string) {
@@ -91,7 +91,7 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    const { passwordHash, ...safeUser } = user;
-    return safeUser;
+    const { passwordHash, role, ...safeUser } = user;
+    return { ...safeUser, role, roles: role ? [role] : [] };
   }
 }

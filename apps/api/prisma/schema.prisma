@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ model User {
   pathway     String?
   email       String?  @unique
   passwordHash String? @map("password_hash")
-  roles       Role[]   @default([STUDENT])
+  role        String   @default("STUDENT")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -269,7 +269,7 @@ model CalendarEntry {
   location    String?
   startAt     DateTime @map("start_at")
   endAt       DateTime? @map("end_at")
-  tags        String[] @default([])
+  tags        String @default("[]")
   createdAt   DateTime @default(now()) @map("created_at")
 
   event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -293,7 +293,7 @@ enum FlexSessionType {
 
 model FlexFriday {
   id        String         @id @default(cuid())
-  date      DateTime       @db.Date
+  date      DateTime
   type      FlexFridayType @default(ALL_STUDENT)
   pathway   String?
   isSchoolDay Boolean      @default(true) @map("is_school_day")
@@ -458,7 +458,7 @@ model AuditEvent {
   action     String
   entityType String   @map("entity_type")
   entityId   String?  @map("entity_id")
-  meta       Json?
+  meta       String?
   createdAt  DateTime @default(now()) @map("created_at")
 
   actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
