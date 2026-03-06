@@ -44,9 +44,9 @@ tags: [architecture, tech-stack]
 
 | Technology | Role | Why |
 |-----------|------|-----|
-| **Expo SDK 52** | React Native toolkit | Simplifies native builds |
+| **Expo SDK 54** | React Native toolkit | Simplifies native builds |
 | **React Native** | Native UI framework | Write JS, get native iOS/Android views |
-| **Expo Router v4** | File-based routing | Same pattern as Next.js |
+| **Expo Router v6** | File-based routing | Same pattern as Next.js |
 | **expo-secure-store** | Encrypted storage | Secure token storage on device |
 
 ---

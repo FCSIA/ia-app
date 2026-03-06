@@ -39,13 +39,13 @@ The logic (state, API calls, auth) is nearly identical to the web app. Only the 
 - Provides pre-built packages for device features (camera, notifications, secure storage)
 - Runs a development server with live reload (`expo start`)
 
-This app uses **Expo SDK 52**.
+This app uses **Expo SDK 54**.
 
 ---
 
 ## Expo Router
 
-**Expo Router v4** is file-based routing for mobile — the same concept as Next.js App Router:
+**Expo Router v6** is file-based routing for mobile — the same concept as Next.js App Router:
 
 ```
 apps/mobile/app/
@@ -115,6 +115,9 @@ pnpm dev:mobile
 # a → open Android Emulator (requires Android Studio)
 # Scan QR code → open on physical device with Expo Go app
 ```
+
+When testing on a physical device, `EXPO_PUBLIC_API_URL` must point to your Mac's LAN IP, not `localhost`.
+The repo uses `apps/mobile/.env` for that in local development.
 
 ---
 
