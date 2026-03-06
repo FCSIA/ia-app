@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "reference/commands.md",
+                "file": "index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "commands"
+              "title": "index"
             }
           }
         ]
@@ -182,8 +182,8 @@
   },
   "active": "f7eb3ccdeff88c7c",
   "lastOpenFiles": [
-    "reference/getting-started.md",
     "reference/commands.md",
+    "reference/getting-started.md",
     "backend/modules.md",
     "backend/controllers.md",
     "backend/dtos.md",

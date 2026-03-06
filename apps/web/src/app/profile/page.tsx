@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const user = getUser();
@@ -31,7 +33,8 @@ export default function ProfilePage() {
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
     },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed to change password', variant: 'destructive' }),
+    onError: (e: any) =>
+      toast({ title: e.response?.data?.message || 'Failed to change password', variant: 'destructive' }),
   });
 
   const prefMutation = useMutation({
@@ -49,7 +52,6 @@ export default function ProfilePage() {
     { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
   ];
 
-  // Avatar initials
   const initials = user
     ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
     : '??';
@@ -57,12 +59,16 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <div className="max-w-xl mx-auto space-y-5">
+
         {/* Profile hero */}
         <Card>
           <CardContent className="flex items-center gap-5 p-6">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', boxShadow: '0 8px 24px rgba(249,115,22,0.3)' }}
+              style={{
+                background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                boxShadow: '0 8px 24px rgba(249,115,22,0.3)',
+              }}
             >
               {initials}
             </div>
@@ -84,39 +90,47 @@ export default function ProfilePage() {
 
         {/* Account Info */}
         <Card>
-          <CardHeader className="pb-3 border-b">
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
             <div className="flex items-center gap-2">
               <User size={16} className="text-accent-500" />
               <CardTitle className="text-base font-semibold">Account Info</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="pt-3">
-            <div className="space-y-0">
-              {[
-                { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
-                ...(user?.roles?.includes('STUDENT') ? [
-                  { label: 'Grade', value: user?.gradeLevel || '—' },
-                  { label: 'Major Pathway', value: user?.major ? user.major.replace(/_/g, ' ') : '—' },
-                  { label: 'Minor Pathway', value: user?.minor ? user.minor.replace(/_/g, ' ') : '—' },
-                ] : []),
-              ].map(({ label, value, mono }, i, arr) => (
-                <div
-                  key={label}
-                  className="flex justify-between items-center py-3 border-b last:border-0"
+          <CardContent className="pt-0">
+            {[
+              { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
+              ...(user?.roles?.includes('STUDENT')
+                ? [
+                    { label: 'Grade', value: user?.gradeLevel || '—' },
+                    {
+                      label: 'Major Pathway',
+                      value: user?.major ? user.major.replace(/_/g, ' ') : '—',
+                    },
+                    {
+                      label: 'Minor Pathway',
+                      value: user?.minor ? user.minor.replace(/_/g, ' ') : '—',
+                    },
+                  ]
+                : []),
+            ].map(({ label, value, mono }) => (
+              <div
+                key={label}
+                className="flex justify-between items-center py-3 border-b border-foreground/[0.06] last:border-0"
+              >
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <span
+                  className={`text-sm ${mono ? 'font-mono text-accent-500 dark:text-accent-400 font-medium' : 'text-foreground'}`}
                 >
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                  <span className={`text-sm ${mono ? 'font-mono text-accent-600 dark:text-accent-400 font-medium' : 'text-foreground'}`}>
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
+                  {value}
+                </span>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
         {/* Change Password */}
         <Card>
-          <CardHeader className="pb-3 border-b">
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Lock size={16} className="text-accent-500" />
@@ -130,7 +144,7 @@ export default function ProfilePage() {
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            {changing && (
+            {changing ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -138,7 +152,10 @@ export default function ProfilePage() {
                     toast({ title: 'Passwords do not match', variant: 'destructive' });
                     return;
                   }
-                  changePwMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
+                  changePwMutation.mutate({
+                    currentPassword: pwForm.currentPassword,
+                    newPassword: pwForm.newPassword,
+                  });
                 }}
                 className="space-y-4"
               >
@@ -164,7 +181,7 @@ export default function ProfilePage() {
                   onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
                   required
                 />
-                <div className="flex gap-2 pt-1 border-t border-border pt-4 mt-4">
+                <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
                   <Button type="submit" disabled={changePwMutation.isPending}>
                     Update Password
                   </Button>
@@ -173,62 +190,46 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </form>
-            )}
-            {!changing && (
-              <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">••••••••</p>
+            ) : (
+              <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
+                ••••••••
+              </p>
             )}
           </CardContent>
         </Card>
 
         {/* Notification Preferences */}
         <Card>
-          <CardHeader className="pb-3 border-b">
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-accent-500" />
               <CardTitle className="text-base font-semibold">Notification Preferences</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="pt-4 space-y-5">
+          <CardContent className="pt-4 space-y-4">
             {categories.map(({ key, label }) => {
               const enabled = prefMap[`${key}:null`] !== false;
               return (
-                <div key={key} className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{label}</p>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={enabled}
-                      onChange={(e) => prefMutation.mutate({ category: key, enabled: e.target.checked })}
-                    />
-                    <div
-                      className="w-11 h-6 rounded-full transition-all duration-200 relative"
-                      style={{
-                        background: enabled
-                          ? 'linear-gradient(135deg, #f97316, #ea580c)'
-                          : 'rgba(100,100,100,0.2)',
-                        border: enabled
-                          ? '1px solid rgba(249,115,22,0.5)'
-                          : '1px solid rgba(100,100,100,0.1)',
-                        boxShadow: enabled ? '0 4px 12px rgba(249,115,22,0.25)' : 'none',
-                      }}
-                    >
-                      <span
-                        className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200 shadow-sm"
-                        style={{ left: enabled ? 'calc(100% - 1.375rem)' : '0.125rem' }}
-                      />
-                    </div>
-                  </label>
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <Label htmlFor={`pref-${key}`} className="text-sm font-medium cursor-pointer">
+                    {label}
+                  </Label>
+                  <Switch
+                    id={`pref-${key}`}
+                    checked={enabled}
+                    onCheckedChange={(checked: boolean) =>
+                      prefMutation.mutate({ category: key, enabled: checked })
+                    }
+                  />
                 </div>
               );
             })}
-            <div className="pt-4 border-t border-border mt-4">
-              <p className="text-xs text-muted-foreground">
-                Admin-general announcements always notify you regardless of preferences.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground pt-3 mt-1 border-t border-foreground/[0.06]">
+              Admin-general announcements always notify you regardless of preferences.
+            </p>
           </CardContent>
         </Card>
+
       </div>
     </AppShell>
   );

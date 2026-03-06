@@ -73,7 +73,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <DashboardCard
             title="Announcements"
             count={announcementsData?.length}
@@ -127,7 +127,7 @@ export default function DashboardPage() {
                 <Link
                   key={ann.id}
                   href={`/announcements/${ann.id}`}
-                  className="block p-3 rounded-xl border bg-card hover:bg-accent hover:text-accent-foreground hover:-translate-y-0.5 transition-all duration-200"
+                  className="block p-3 rounded-xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:-translate-y-0.5 transition-all duration-200"
                 >
                   <p className="text-sm font-medium truncate">{ann.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -157,7 +157,7 @@ export default function DashboardPage() {
                 <Link
                   key={ev.id}
                   href={`/events/${ev.id}`}
-                  className="block p-3 rounded-xl border bg-card hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200"
+                  className="block p-3 rounded-xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:-translate-y-0.5 transition-all duration-200"
                 >
                   <p className="text-sm font-medium truncate">{ev.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">

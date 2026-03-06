@@ -170,7 +170,7 @@ export default function AnnouncementsPage() {
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
                   required
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Target</label>
                     <Select value={form.targetType} onValueChange={(v) => setForm({ ...form, targetType: v })}>
