@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "backend/modules.md",
+                "file": "reference/commands.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "modules"
+              "title": "commands"
             }
           }
         ]
@@ -182,6 +182,9 @@
   },
   "active": "f7eb3ccdeff88c7c",
   "lastOpenFiles": [
+    "reference/getting-started.md",
+    "reference/commands.md",
+    "backend/modules.md",
     "backend/controllers.md",
     "backend/dtos.md",
     "backend/backend-overview.md",
@@ -189,8 +192,6 @@
     "architecture/data-flow.md",
     "reference/roles-and-permissions.md",
     "reference/environment.md",
-    "reference/getting-started.md",
-    "reference/commands.md",
     "index.md",
     "reference",
     "features/audit-log.md",
@@ -202,11 +203,14 @@
     "features/clubs.md",
     "features/announcements.md",
     "features",
+    "mobile/mobile-overview.md",
     "mobile",
     "frontend/styling.md",
     "frontend/state-management.md",
     "frontend/frontend-auth.md",
     "frontend/api-layer.md",
+    "frontend/components.md",
+    "frontend/routing.md",
     "frontend",
     "database",
     "Untitled.canvas"

@@ -24,13 +24,13 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 ## Development
 
-| Command | What it does |
-|---------|-------------|
-| `pnpm dev` | Start API (3001) + Web (3000) via Turbo |
-| `pnpm dev:all` | Start API + Web + Mobile |
-| `pnpm dev:mobile` | Start only the Expo mobile dev server |
-| `pnpm build` | Build all apps for production |
-| `pnpm lint` | Run ESLint across all apps |
+| Command           | What it does                            |
+| ----------------- | --------------------------------------- |
+| `pnpm dev`        | Start API (3001) + Web (3000) via Turbo |
+| `pnpm dev:all`    | Start API + Web + Mobile                |
+| `pnpm dev:mobile` | Start only the Expo mobile dev server   |
+| `pnpm build`      | Build all apps for production           |
+| `pnpm lint`       | Run ESLint across all apps              |
 
 ---
 
