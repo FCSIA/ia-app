@@ -7,10 +7,11 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as csv from 'csv-parser';
 import { Readable } from 'stream';
+import { randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
-import { Role } from '@prisma/client';
+import { Pathway, Role } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -19,9 +20,105 @@ export class UsersService {
     private audit: AuditService,
   ) { }
 
+  private readonly studentRoleWhere = {
+    OR: [
+      { roles: { has: Role.STUDENT } },
+      { roles: { has: Role.STUDENT_LEADER } },
+      { roles: { has: Role.STUDENT_ADMIN } },
+    ],
+  };
+
   private safeUser(user: any) {
     const { passwordHash, ...safe } = user;
     return safe;
+  }
+
+  private normalizeHeader(key: string) {
+    return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+
+  private normalizeCsvRow(row: Record<string, unknown>) {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(row)) {
+      normalized[this.normalizeHeader(key)] = typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+    }
+    return normalized;
+  }
+
+  private pickCsvValue(row: Record<string, string>, ...keys: string[]) {
+    for (const key of keys) {
+      const value = row[this.normalizeHeader(key)];
+      if (value) return value;
+    }
+    return undefined;
+  }
+
+  private parseGradeLevel(value?: string) {
+    if (!value) return undefined;
+
+    const gradeLevel = Number.parseInt(value, 10);
+    if (!Number.isInteger(gradeLevel)) {
+      throw new BadRequestException(`Invalid grade level "${value}"`);
+    }
+    if (gradeLevel < 9 || gradeLevel > 12) {
+      throw new BadRequestException(`Grade level must be between 9 and 12. Received "${value}"`);
+    }
+
+    return gradeLevel;
+  }
+
+  private parsePathway(value: string | undefined, fieldName: string) {
+    if (!value) return undefined;
+
+    const normalized = this.normalizeHeader(value);
+    const pathwayMap: Record<string, Pathway> = {
+      it: Pathway.INFORMATION_TECHNOLOGY,
+      informationtechnology: Pathway.INFORMATION_TECHNOLOGY,
+      healthscience: Pathway.HEALTH_SCIENCE,
+      engineering: Pathway.ENGINEERING,
+      stem: Pathway.ENGINEERING,
+      business: Pathway.INFORMATION_TECHNOLOGY,
+      arts: Pathway.HEALTH_SCIENCE,
+    };
+
+    const pathway = pathwayMap[normalized];
+    if (!pathway) {
+      throw new BadRequestException(`Invalid ${fieldName} "${value}"`);
+    }
+
+    return pathway;
+  }
+
+  private formatPathway(pathway?: Pathway | null) {
+    if (!pathway) return '';
+
+    if (pathway === Pathway.INFORMATION_TECHNOLOGY) return 'IT';
+    if (pathway === Pathway.HEALTH_SCIENCE) return 'Health Science';
+    return 'Engineering';
+  }
+
+  private buildStudentEmail(uniqueId: string) {
+    return `${uniqueId.toLowerCase()}@fcstu.org`;
+  }
+
+  private generateTemporaryPassword(length = 10) {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    return Array.from({ length }, () => alphabet[randomInt(0, alphabet.length)]).join('');
+  }
+
+  private escapeCsvValue(value: unknown) {
+    const stringValue = String(value ?? '');
+    if (/[",\n]/.test(stringValue)) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  }
+
+  private buildCsv(headers: string[], rows: Array<Array<unknown>>) {
+    return [
+      headers.map((header) => this.escapeCsvValue(header)).join(','),
+      ...rows.map((row) => row.map((cell) => this.escapeCsvValue(cell)).join(',')),
+    ].join('\n');
   }
 
   async findAll(page = 1, limit = 50, search?: string) {
@@ -154,9 +251,44 @@ export class UsersService {
     return { success: true };
   }
 
-  async importFromCsv(buffer: Buffer, actorId?: string) {
+  async exportStudentsCsv() {
+    const students = await this.prisma.user.findMany({
+      where: this.studentRoleWhere,
+      orderBy: [
+        { lastName: 'asc' },
+        { firstName: 'asc' },
+      ],
+      select: {
+        firstName: true,
+        lastName: true,
+        uniqueId: true,
+        email: true,
+        gradeLevel: true,
+        major: true,
+        minor: true,
+      },
+    });
+
+    return this.buildCsv(
+      ['first_name', 'last_name', 'student_id', 'email', 'grade_level', 'major_pathway', 'minor_pathway'],
+      students.map((student) => [
+        student.firstName,
+        student.lastName,
+        student.uniqueId,
+        student.email || this.buildStudentEmail(student.uniqueId),
+        student.gradeLevel ?? '',
+        this.formatPathway(student.major),
+        this.formatPathway(student.minor),
+      ]),
+    );
+  }
+
+  async importFromCsv(
+    buffer: Buffer,
+    actorId?: string,
+    options: { generatePasswords?: boolean } = {},
+  ) {
     const rows: any[] = [];
-    const errors: string[] = [];
 
     await new Promise<void>((resolve, reject) => {
       Readable.from(buffer)
@@ -166,18 +298,43 @@ export class UsersService {
         .on('error', reject);
     });
 
-    const results = { created: 0, skipped: 0, errors: [] as string[] };
+    const results = {
+      created: 0,
+      skipped: 0,
+      errors: [] as string[],
+      generatedCredentials: [] as Array<{
+        firstName: string;
+        lastName: string;
+        uniqueId: string;
+        email: string;
+        temporaryPassword: string;
+      }>,
+    };
 
-    for (const row of rows) {
+    for (const [index, rawRow] of rows.entries()) {
       try {
-        const uniqueId = row.unique_id || row.uniqueId || row.id;
-        const firstName = row.first_name || row.firstName;
-        const lastName = row.last_name || row.lastName;
+        const row = this.normalizeCsvRow(rawRow);
+        const uniqueId = this.pickCsvValue(row, 'student id', 'student_id', 'studentId', 'unique id', 'unique_id', 'id')?.toUpperCase();
+        const firstName = this.pickCsvValue(row, 'first name', 'first_name', 'firstName');
+        const lastName = this.pickCsvValue(row, 'last name', 'last_name', 'lastName');
 
         if (!uniqueId || !firstName || !lastName) {
-          results.errors.push(`Row missing required fields: ${JSON.stringify(row)}`);
+          results.errors.push(`Row ${index + 2}: missing first name, last name, or student id`);
           results.skipped++;
           continue;
+        }
+
+        const gradeLevel = this.parseGradeLevel(this.pickCsvValue(row, 'grade level', 'grade_level', 'gradeLevel'));
+        const major = this.parsePathway(
+          this.pickCsvValue(row, 'major pathway', 'major_pathway', 'majorPathway', 'pathway'),
+          'major pathway',
+        );
+        const minor = this.parsePathway(
+          this.pickCsvValue(row, 'minor pathway', 'minor_pathway', 'minorPathway', 'minor'),
+          'minor pathway',
+        );
+        if (major && minor && major === minor) {
+          throw new BadRequestException('Minor pathway must be different from major pathway');
         }
 
         const existing = await this.prisma.user.findUnique({ where: { uniqueId } });
@@ -186,25 +343,36 @@ export class UsersService {
           continue;
         }
 
-        // Default password is their uniqueId — they must change on first login
-        const passwordHash = await bcrypt.hash(uniqueId, 12);
+        const email = this.buildStudentEmail(uniqueId);
+        const temporaryPassword = options.generatePasswords ? this.generateTemporaryPassword() : uniqueId;
+        const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
         await this.prisma.user.create({
           data: {
             uniqueId,
             firstName,
             lastName,
-            gradeLevel: row.grade_level || row.gradeLevel ? parseInt(row.grade_level || row.gradeLevel, 10) : undefined,
-            major: row.pathway?.toUpperCase() as any,
-            minor: row.minor?.toUpperCase() as any,
-            email: row.email,
+            gradeLevel,
+            major,
+            minor,
+            email,
             passwordHash,
             roles: [Role.STUDENT],
           },
         });
         results.created++;
+        if (options.generatePasswords) {
+          results.generatedCredentials.push({
+            firstName,
+            lastName,
+            uniqueId,
+            email,
+            temporaryPassword,
+          });
+        }
       } catch (e) {
-        results.errors.push(`Error for row: ${e.message}`);
+        const message = e instanceof Error ? e.message : 'Unknown error';
+        results.errors.push(`Row ${index + 2}: ${message}`);
         results.skipped++;
       }
     }
@@ -213,7 +381,11 @@ export class UsersService {
       actorId,
       action: 'USER_CSV_IMPORT',
       entityType: 'User',
-      meta: { created: results.created, skipped: results.skipped },
+      meta: {
+        created: results.created,
+        skipped: results.skipped,
+        generatedPasswords: options.generatePasswords ?? false,
+      },
     });
 
     return results;

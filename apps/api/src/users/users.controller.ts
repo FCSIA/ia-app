@@ -6,6 +6,8 @@ import {
   Body,
   Param,
   Query,
+  Header,
+  BadRequestException,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
@@ -35,6 +37,14 @@ export class UsersController {
       limit ? parseInt(limit) : 50,
       search,
     );
+  }
+
+  @Get('export/csv')
+  @Roles(Role.SUPER_ADMIN)
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="students.csv"')
+  exportStudentsCsv() {
+    return this.usersService.exportStudentsCsv();
   }
 
   @Get(':id')
@@ -87,7 +97,15 @@ export class UsersController {
   @Roles(Role.SUPER_ADMIN)
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
-  importCsv(@UploadedFile() file: Express.Multer.File, @CurrentUser() user: any) {
-    return this.usersService.importFromCsv(file.buffer, user.id);
+  importCsv(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('generatePasswords') generatePasswords: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) throw new BadRequestException('CSV file is required');
+
+    return this.usersService.importFromCsv(file.buffer, user.id, {
+      generatePasswords: generatePasswords === 'true',
+    });
   }
 }
