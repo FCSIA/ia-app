@@ -3,20 +3,16 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi, moderationApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, Flag, Trash2 } from 'lucide-react-native';
-import { getUser } from '@/lib/auth';
+import { Send, Flag } from 'lucide-react-native';
 
 export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const qc = useQueryClient();
   const [comment, setComment] = useState('');
-  const [user, setUser] = useState<any>(null);
-
-  useState(() => { getUser().then(setUser); });
 
   const { data: ann, isLoading } = useQuery({
     queryKey: ['announcement', id],
