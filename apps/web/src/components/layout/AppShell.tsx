@@ -16,10 +16,13 @@ import {
   Shield,
   BookOpen,
 } from 'lucide-react';
+import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -39,6 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setUser(getUser());
@@ -53,10 +57,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     try {
       await authApi.logout();
-    } catch {}
+    } catch { }
     clearAuth();
     router.replace('/login');
-    toast.success('Logged out');
+    toast({ title: 'Logged out' });
   };
 
   const isActive = (href: string) =>
@@ -70,23 +74,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Link
         href={href}
         onClick={() => setSidebarOpen(false)}
-        className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-          active
-            ? 'bg-white/[0.08] text-white'
-            : 'text-white/50 hover:bg-white/[0.05] hover:text-white/90'
-        }`}
+        className={`relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${active
+          ? 'bg-foreground/[0.08] text-foreground'
+          : 'text-foreground/50 hover:bg-foreground/[0.05] hover:text-foreground/90'
+          }`}
       >
         {/* Active accent bar */}
         <span
-          className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full transition-all duration-200 ${
-            active ? 'bg-accent-500 opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full transition-all duration-200 ${active ? 'bg-accent-500 opacity-100' : 'opacity-0'
+            }`}
         />
         <Icon
           size={18}
-          className={`flex-shrink-0 transition-colors duration-200 ${
-            active ? 'text-accent-400' : 'text-white/40 group-hover:text-white/70'
-          }`}
+          className={`flex-shrink-0 transition-colors duration-200 ${active ? 'text-accent-400' : 'text-white/40 group-hover:text-white/70'
+            }`}
         />
         {label}
       </Link>
@@ -105,20 +106,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 z-40 flex flex-col transform transition-transform duration-300 ease-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 lg:static lg:flex`}
-        style={{
-          background: 'rgba(12, 10, 9, 0.7)',
-          backdropFilter: 'blur(32px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(180%)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-        }}
+        className={`fixed top-0 left-0 h-full w-64 z-40 flex flex-col transform transition-transform duration-300 ease-out border-r border-foreground/5 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } lg:translate-x-0 lg:static lg:flex bg-background/70 backdrop-blur-3xl saturate-[180%]`}
       >
         {/* Logo */}
         <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}
+          className="flex items-center justify-between px-5 py-4 border-b border-foreground/5"
         >
           <div className="flex items-center gap-2.5">
             {/* Logo mark */}
@@ -132,15 +125,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-white font-bold text-xs tracking-tight">IA</span>
             </div>
             <div>
-              <span className="font-bold text-white text-sm tracking-tight">IA School</span>
+              <span className="font-bold text-foreground text-sm tracking-tight">IA School</span>
             </div>
           </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white/40 hover:text-white/80 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-foreground/40 hover:text-foreground/80 transition-colors"
+            >
+              <X size={18} />
+            </Button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -168,15 +166,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* User section */}
         <div
-          className="px-3 py-4 space-y-0.5"
-          style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}
+          className="px-3 py-4 space-y-0.5 border-t border-foreground/5"
         >
           <Link
             href="/notifications"
-            className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:bg-white/[0.05] hover:text-white/90 transition-all duration-200"
+            className="flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium text-foreground/50 hover:bg-foreground/[0.05] hover:text-foreground/90 transition-all duration-200"
           >
             <div className="flex items-center gap-3">
-              <Bell size={18} className="text-white/40" />
+              <Bell size={18} className="text-foreground/40" />
               Notifications
             </div>
             {unreadData?.count > 0 && (
@@ -188,34 +185,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <Link
             href="/profile"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:bg-white/[0.05] hover:text-white/90 transition-all duration-200"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-foreground/50 hover:bg-foreground/[0.05] hover:text-foreground/90 transition-all duration-200"
           >
-            <Settings size={18} className="text-white/40" />
+            <Settings size={18} className="text-foreground/40" />
             Profile & Settings
           </Link>
 
-          <button
+          <Button
+            variant="ghost"
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
+            className="flex justify-start items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 hover:text-red-500 transition-all duration-200"
           >
             <LogOut size={18} />
             Sign Out
-          </button>
+          </Button>
 
           {user && (
             <div
-              className="px-4 py-3 mt-1 rounded-xl"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+              className="px-4 py-3 mt-1 rounded-xl bg-foreground/[0.03] border border-foreground/5"
             >
-              <p className="text-xs font-semibold text-white/80">
+              <p className="text-xs font-semibold text-foreground/80">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="text-[11px] text-white/35 mt-0.5">{user.uniqueId}</p>
+              <p className="text-[11px] text-foreground/35 mt-0.5">{user.uniqueId}</p>
               <div className="flex flex-wrap gap-1 mt-2">
                 {user.roles?.slice(0, 2).map((r: string) => (
-                  <span key={r} className="badge-blue text-[10px]">
+                  <Badge key={r} variant="secondary" className="text-[10px]">
                     {r.replace(/_/g, ' ')}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             </div>
@@ -227,20 +224,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
         <header
-          className="lg:hidden px-4 py-3 flex items-center justify-between"
-          style={{
-            background: 'rgba(12, 10, 9, 0.8)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
-          }}
+          className="lg:hidden px-4 py-3 flex items-center justify-between bg-background/80 backdrop-blur-xl border-b border-foreground/5"
         >
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setSidebarOpen(true)}
-            className="text-white/60 hover:text-white transition-colors"
+            className="text-foreground/60 hover:text-foreground transition-colors"
           >
             <Menu size={22} />
-          </button>
+          </Button>
           <div className="flex items-center gap-2">
             <div
               className="w-6 h-6 rounded-md flex items-center justify-center"
@@ -248,16 +241,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <span className="text-white font-bold text-[10px]">IA</span>
             </div>
-            <span className="font-bold text-white text-sm">IA School</span>
+            <span className="font-bold text-foreground text-sm">IA School</span>
           </div>
-          <Link href="/notifications" className="relative text-white/60 hover:text-white transition-colors">
-            <Bell size={22} />
-            {unreadData?.count > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 animate-pulse text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
-                {unreadData.count > 9 ? '9+' : unreadData.count}
-              </span>
-            )}
-          </Link>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/notifications" className="relative text-foreground/60 hover:text-foreground transition-colors">
+              <Bell size={22} />
+              {unreadData?.count > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 animate-pulse text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
+                  {unreadData.count > 9 ? '9+' : unreadData.count}
+                </span>
+              )}
+            </Link>
+          </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-6 overflow-auto page-enter">

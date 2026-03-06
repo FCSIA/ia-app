@@ -7,23 +7,26 @@ import { getUser } from '@/lib/auth';
 import { formatDistanceToNow, format } from 'date-fns';
 import Link from 'next/link';
 import { Megaphone, Calendar, Zap, Bell, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 function DashboardCard({ title, count, icon: Icon, href, color, glowColor }: any) {
   return (
-    <Link
-      href={href}
-      className="card flex items-center justify-between hover:scale-[1.02] transition-transform"
-    >
-      <div>
-        <p className="text-sm text-white/50">{title}</p>
-        <p className="text-2xl font-bold text-white mt-1">{count ?? '—'}</p>
-      </div>
-      <div
-        className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}
-        style={{ boxShadow: `0 4px 16px ${glowColor}` }}
-      >
-        <Icon size={22} className="text-white" />
-      </div>
+    <Link href={href} className="block group">
+      <Card className="hover:scale-[1.02] transition-transform shadow-sm group-hover:shadow-md">
+        <CardContent className="flex items-center justify-between p-6">
+          <div>
+            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+            <p className="text-2xl font-bold mt-1">{count ?? '—'}</p>
+          </div>
+          <div
+            className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}
+            style={{ boxShadow: `0 4px 16px ${glowColor}` }}
+          >
+            <Icon size={22} className="text-white" />
+          </div>
+        </CardContent>
+      </Card>
     </Link>
   );
 }
@@ -63,10 +66,10 @@ export default function DashboardPage() {
     <AppShell>
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-foreground">
             Welcome back, {user?.firstName}
           </h1>
-          <p className="text-white/45 text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+          <p className="text-foreground/45 text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
 
         {/* Stats row */}
@@ -107,60 +110,64 @@ export default function DashboardPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Recent Announcements */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white">Recent Announcements</h2>
-              <Link href="/announcements" className="text-accent-400 text-sm flex items-center gap-1 hover:text-accent-300 transition-colors">
-                View all <ArrowRight size={14} />
-              </Link>
-            </div>
-            <div className="space-y-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg">Recent Announcements</CardTitle>
+              <Button variant="ghost" size="sm" asChild className="text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300">
+                <Link href="/announcements" className="flex items-center gap-1">
+                  View all <ArrowRight size={14} />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
               {announcements.length === 0 && (
-                <p className="text-white/35 text-sm text-center py-4">No announcements</p>
+                <p className="text-muted-foreground text-sm text-center py-4">No announcements</p>
               )}
               {announcements.map((ann: any) => (
                 <Link
                   key={ann.id}
                   href={`/announcements/${ann.id}`}
-                  className="block p-3 rounded-xl border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all duration-200"
+                  className="block p-3 rounded-xl border bg-card hover:bg-accent hover:text-accent-foreground hover:-translate-y-0.5 transition-all duration-200"
                 >
-                  <p className="text-sm font-medium text-white/90 truncate">{ann.title}</p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  <p className="text-sm font-medium truncate">{ann.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
                     {ann.author && ` · ${ann.author.firstName} ${ann.author.lastName}`}
                   </p>
                 </Link>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Upcoming Events */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white">Upcoming Events</h2>
-              <Link href="/events" className="text-accent-400 text-sm flex items-center gap-1 hover:text-accent-300 transition-colors">
-                View all <ArrowRight size={14} />
-              </Link>
-            </div>
-            <div className="space-y-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg">Upcoming Events</CardTitle>
+              <Button variant="ghost" size="sm" asChild className="text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300">
+                <Link href="/events" className="flex items-center gap-1">
+                  View all <ArrowRight size={14} />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
               {upcomingEvents.length === 0 && (
-                <p className="text-white/35 text-sm text-center py-4">No upcoming events</p>
+                <p className="text-muted-foreground text-sm text-center py-4">No upcoming events</p>
               )}
               {upcomingEvents.map((ev: any) => (
                 <Link
                   key={ev.id}
                   href={`/events/${ev.id}`}
-                  className="block p-3 rounded-xl border border-white/[0.06] hover:border-emerald-500/20 hover:bg-emerald-500/[0.04] hover:-translate-y-0.5 transition-all duration-200"
+                  className="block p-3 rounded-xl border bg-card hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200"
                 >
-                  <p className="text-sm font-medium text-white/90 truncate">{ev.title}</p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  <p className="text-sm font-medium truncate">{ev.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {format(new Date(ev.startAt), 'EEE, MMM d · h:mm a')}
                     {ev.location && ` · ${ev.location}`}
                   </p>
                 </Link>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppShell>
