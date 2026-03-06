@@ -7,7 +7,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { FlexFridayType, FlexSessionType, Role } from '@prisma/client';
+import { FlexFridayType, FlexSessionType, Role, Pathway } from '@prisma/client';
 import { FlexFridayService } from './flex-friday.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -16,7 +16,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @ApiBearerAuth()
 @Controller('flex-friday')
 export class FlexFridayController {
-  constructor(private flexFridayService: FlexFridayService) {}
+  constructor(private flexFridayService: FlexFridayService) { }
 
   @Get()
   getAllFridays() {
@@ -45,7 +45,7 @@ export class FlexFridayController {
     body: {
       date: string;
       type: FlexFridayType;
-      pathway?: string;
+      pathway?: Pathway;
       isSchoolDay?: boolean;
       notes?: string;
     },
@@ -70,8 +70,8 @@ export class FlexFridayController {
       location?: string;
       capacity?: number;
       sessionType: FlexSessionType;
-      targetPathway?: string;
-      targetGrade?: string;
+      targetPathway?: Pathway;
+      targetGrade?: number;
     },
     @CurrentUser() user: any,
   ) {

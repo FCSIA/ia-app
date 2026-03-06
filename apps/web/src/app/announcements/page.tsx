@@ -80,7 +80,8 @@ export default function AnnouncementsPage() {
     title: '',
     body: '',
     targetType: 'SCHOOL_WIDE',
-    targetValue: '',
+    targetGrade: 9,
+    targetPathway: 'INFORMATION_TECHNOLOGY',
     allowComments: false,
     isAdminGeneral: false,
     expiresAt: '',
@@ -99,7 +100,7 @@ export default function AnnouncementsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['announcements'] });
       setShowNew(false);
-      setForm({ title: '', body: '', targetType: 'SCHOOL_WIDE', targetValue: '', allowComments: false, isAdminGeneral: false, expiresAt: '' });
+      setForm({ title: '', body: '', targetType: 'SCHOOL_WIDE', targetGrade: 9, targetPathway: 'INFORMATION_TECHNOLOGY', allowComments: false, isAdminGeneral: false, expiresAt: '' });
       toast({ title: 'Announcement created' });
     },
     onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed to create', variant: 'destructive' }),
@@ -118,7 +119,8 @@ export default function AnnouncementsPage() {
     createMutation.mutate({
       ...form,
       expiresAt: form.expiresAt || undefined,
-      targetValue: form.targetValue || undefined,
+      targetGrade: form.targetType === 'GRADE' ? Number(form.targetGrade) : undefined,
+      targetPathway: form.targetType === 'PATHWAY' ? form.targetPathway : undefined,
     });
   };
 
@@ -185,14 +187,38 @@ export default function AnnouncementsPage() {
                   {form.targetType !== 'SCHOOL_WIDE' && (
                     <div>
                       <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                        {form.targetType === 'GRADE' ? 'Grade (e.g. 9)' : 'Pathway'}
+                        {form.targetType === 'GRADE' ? 'Grade Level' : 'Pathway'}
                       </label>
-                      <Input
-                        placeholder={form.targetType === 'GRADE' ? '9' : 'STEM'}
-                        value={form.targetValue}
-                        onChange={(e) => setForm({ ...form, targetValue: e.target.value })}
-                        required
-                      />
+                      {form.targetType === 'GRADE' ? (
+                        <Select
+                          value={String(form.targetGrade)}
+                          onValueChange={(value) => setForm({ ...form, targetGrade: Number(value) })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="9">9th Grade</SelectItem>
+                            <SelectItem value="10">10th Grade</SelectItem>
+                            <SelectItem value="11">11th Grade</SelectItem>
+                            <SelectItem value="12">12th Grade</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select
+                          value={form.targetPathway}
+                          onValueChange={(value) => setForm({ ...form, targetPathway: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select pathway" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="INFORMATION_TECHNOLOGY">Information Technology</SelectItem>
+                            <SelectItem value="HEALTH_SCIENCE">Health Science</SelectItem>
+                            <SelectItem value="ENGINEERING">Engineering</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
                 </div>

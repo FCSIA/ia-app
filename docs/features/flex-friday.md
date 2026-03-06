@@ -48,6 +48,10 @@ FlexFriday (a specific Friday date)
 | `STUDENT_CHOICE` | Students register themselves (up to `capacity`) |
 | `TEACHER_ASSIGNED` | Teacher assigns specific students via `FlexAssignment` |
 
+Sessions can optionally restrict by:
+- `targetPathway` — a `Pathway` enum value (`INFORMATION_TECHNOLOGY`, `HEALTH_SCIENCE`, `ENGINEERING`)
+- `targetGrade` — an integer representing the grade year (9, 10, 11, or 12)
+
 ---
 
 ## Workflows

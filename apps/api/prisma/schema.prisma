@@ -20,6 +20,14 @@ enum Role {
   SUPER_ADMIN
 }
 
+
+
+enum Pathway {
+  INFORMATION_TECHNOLOGY
+  HEALTH_SCIENCE
+  ENGINEERING
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -27,8 +35,9 @@ model User {
   uniqueId    String   @unique @map("unique_id")
   firstName   String   @map("first_name")
   lastName    String   @map("last_name")
-  gradeLevel  String?  @map("grade_level")
-  pathway     String?
+  gradeLevel  Int?     @map("grade_level")
+  major       Pathway? @map("major_pathway")
+  minor       Pathway? @map("minor_pathway")
   email       String?  @unique
   passwordHash String? @map("password_hash")
   roles       Role[]   @default([STUDENT])
@@ -90,6 +99,8 @@ model Announcement {
   title       String
   body        String
   targetType  AnnouncementTarget @map("target_type")
+  targetGrade Int?               @map("target_grade")
+  targetPathway Pathway?         @map("target_pathway")
   targetValue String?            @map("target_value")
   clubId      String?            @map("club_id")
   allowComments Boolean          @default(false) @map("allow_comments")
@@ -295,7 +306,7 @@ model FlexFriday {
   id        String         @id @default(cuid())
   date      DateTime       @db.Date
   type      FlexFridayType @default(ALL_STUDENT)
-  pathway   String?
+  pathway   Pathway?
   isSchoolDay Boolean      @default(true) @map("is_school_day")
   notes     String?
   createdAt DateTime       @default(now()) @map("created_at")
@@ -315,8 +326,8 @@ model FlexSession {
   location      String?
   capacity      Int?
   sessionType   FlexSessionType @default(STUDENT_CHOICE) @map("session_type")
-  targetPathway String?         @map("target_pathway")
-  targetGrade   String?         @map("target_grade")
+  targetPathway Pathway?        @map("target_pathway")
+  targetGrade   Int?            @map("target_grade")
   createdAt     DateTime        @default(now()) @map("created_at")
 
   flexFriday    FlexFriday         @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)

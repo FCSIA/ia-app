@@ -11,10 +11,14 @@
             "id": "ae882ec4cc1ce53f",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "database/schema.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "schema"
             }
           }
         ]
@@ -178,6 +182,16 @@
   },
   "active": "ae882ec4cc1ce53f",
   "lastOpenFiles": [
+    "database/database-overview.md",
+    "index.md",
+    "mobile/mobile-overview.md",
+    "database/schema.md",
+    "backend/modules.md",
+    "architecture/tech-stack.md",
+    "backend/backend-auth.md",
+    "architecture/overview.md",
+    "backend/backend-overview.md",
+    "architecture/data-flow.md",
     "reference/getting-started.md",
     "reference/commands.md",
     "reference/environment.md",
@@ -192,22 +206,12 @@
     "features/clubs.md",
     "features/announcements.md",
     "features",
-    "mobile/mobile-overview.md",
     "mobile",
-    "backend/backend-auth.md",
-    "index.md",
     "frontend/styling.md",
     "frontend/state-management.md",
     "frontend/frontend-auth.md",
     "frontend/api-layer.md",
-    "frontend/components.md",
-    "frontend/routing.md",
-    "frontend/frontend-overview.md",
     "frontend",
-    "database/seed.md",
-    "database/migrations.md",
-    "database/schema.md",
-    "architecture/overview.md",
     "database",
     "Untitled.canvas"
   ]
