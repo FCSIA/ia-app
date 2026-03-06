@@ -59,13 +59,105 @@ export default function FlexFridayPage() {
 
   const registerMutation = useMutation({
     mutationFn: (sessionId: string) => flexFridayApi.register(sessionId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['flex-sessions', selectedFriday?.id, 'my-flex-registrations'] }); toast({ title: 'Registered!' }); },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Could not register', variant: 'destructive' }),
+    onMutate: async (sessionId: string) => {
+      const fridayId = selectedFriday?.id;
+      await Promise.all([
+        fridayId ? qc.cancelQueries({ queryKey: ['flex-sessions', fridayId] }) : Promise.resolve(),
+        qc.cancelQueries({ queryKey: ['my-flex-registrations'] }),
+      ]);
+
+      const previousSessions = fridayId ? qc.getQueryData(['flex-sessions', fridayId]) : undefined;
+      const previousRegs = qc.getQueryData(['my-flex-registrations']);
+
+      if (fridayId) {
+        qc.setQueryData(['flex-sessions', fridayId], (current: any[] | undefined) =>
+          current?.map((session) =>
+            session.id === sessionId
+              ? {
+                ...session,
+                _count: {
+                  ...session._count,
+                  registrations: (session._count?.registrations || 0) + 1,
+                },
+              }
+              : session,
+          ),
+        );
+      }
+
+      qc.setQueryData(['my-flex-registrations'], (current: any[] | undefined) => {
+        if ((current || []).some((registration) => registration.sessionId === sessionId)) {
+          return current;
+        }
+        return [...(current || []), { id: `optimistic-${sessionId}`, sessionId }];
+      });
+
+      return { fridayId, previousSessions, previousRegs };
+    },
+    onSuccess: () => { toast({ title: 'Registered!' }); },
+    onError: (e: any, _sessionId, context) => {
+      if (context?.fridayId) {
+        qc.setQueryData(['flex-sessions', context.fridayId], context.previousSessions);
+      }
+      qc.setQueryData(['my-flex-registrations'], context?.previousRegs);
+      toast({ title: e.response?.data?.message || 'Could not register', variant: 'destructive' });
+    },
+    onSettled: (_data, _error, _sessionId, context) => {
+      if (context?.fridayId) {
+        qc.invalidateQueries({ queryKey: ['flex-sessions', context.fridayId] });
+      }
+      qc.invalidateQueries({ queryKey: ['my-flex-registrations'] });
+    },
   });
 
   const unregisterMutation = useMutation({
     mutationFn: (sessionId: string) => flexFridayApi.unregister(sessionId),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['flex-sessions', selectedFriday?.id, 'my-flex-registrations'] }); toast({ title: 'Unregistered' }); },
+    onMutate: async (sessionId: string) => {
+      const fridayId = selectedFriday?.id;
+      await Promise.all([
+        fridayId ? qc.cancelQueries({ queryKey: ['flex-sessions', fridayId] }) : Promise.resolve(),
+        qc.cancelQueries({ queryKey: ['my-flex-registrations'] }),
+      ]);
+
+      const previousSessions = fridayId ? qc.getQueryData(['flex-sessions', fridayId]) : undefined;
+      const previousRegs = qc.getQueryData(['my-flex-registrations']);
+
+      if (fridayId) {
+        qc.setQueryData(['flex-sessions', fridayId], (current: any[] | undefined) =>
+          current?.map((session) =>
+            session.id === sessionId
+              ? {
+                ...session,
+                _count: {
+                  ...session._count,
+                  registrations: Math.max((session._count?.registrations || 1) - 1, 0),
+                },
+              }
+              : session,
+          ),
+        );
+      }
+
+      qc.setQueryData(['my-flex-registrations'], (current: any[] | undefined) =>
+        (current || []).filter((registration) => registration.sessionId !== sessionId),
+      );
+
+      return { fridayId, previousSessions, previousRegs };
+    },
+    onSuccess: () => { toast({ title: 'Unregistered' }); },
+    onError: (e: any, _sessionId, context) => {
+      if (context?.fridayId) {
+        qc.setQueryData(['flex-sessions', context.fridayId], context.previousSessions);
+      }
+      qc.setQueryData(['my-flex-registrations'], context?.previousRegs);
+      toast({ title: e.response?.data?.message || 'Could not unregister', variant: 'destructive' });
+    },
+    onSettled: (_data, _error, _sessionId, context) => {
+      if (context?.fridayId) {
+        qc.invalidateQueries({ queryKey: ['flex-sessions', context.fridayId] });
+      }
+      qc.invalidateQueries({ queryKey: ['my-flex-registrations'] });
+    },
   });
 
   const isStudent = user && hasRole(user, 'STUDENT', 'STUDENT_LEADER');
@@ -218,6 +310,8 @@ export default function FlexFridayPage() {
                     {(sessions as any[]).map((s) => {
                       const isRegistered = myRegSessionIds.has(s.id);
                       const isFull = s.capacity && s._count?.registrations >= s.capacity;
+                      const isRegistering = registerMutation.isPending && registerMutation.variables === s.id;
+                      const isUnregistering = unregisterMutation.isPending && unregisterMutation.variables === s.id;
                       return (
                         <Card key={s.id} className={`hover:-translate-y-0.5 transition-all duration-200 ${isRegistered ? 'border-accent-500/30 ring-1 ring-accent-500/10' : ''}`}>
                           <CardContent className="p-4">
@@ -236,12 +330,12 @@ export default function FlexFridayPage() {
                               </div>
                               {isStudent && s.sessionType === 'STUDENT_CHOICE' && (
                                 isRegistered ? (
-                                  <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(s.id)} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive flex items-center gap-1.5 flex-shrink-0">
-                                    Unregister
+                                  <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(s.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive flex items-center gap-1.5 flex-shrink-0">
+                                    {isUnregistering ? 'Updating…' : 'Unregister'}
                                   </Button>
                                 ) : (
-                                  <Button size="sm" onClick={() => registerMutation.mutate(s.id)} disabled={!!isFull} className="h-8 flex-shrink-0">
-                                    {isFull ? 'Full' : 'Register'}
+                                  <Button size="sm" onClick={() => registerMutation.mutate(s.id)} disabled={!!isFull || isRegistering} className="h-8 flex-shrink-0">
+                                    {isFull ? 'Full' : isRegistering ? 'Registering…' : 'Register'}
                                   </Button>
                                 )
                               )}

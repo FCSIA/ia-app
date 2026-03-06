@@ -8,21 +8,62 @@ import { getUser, hasRole } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, FileText, Upload, Plus, Trash2 } from 'lucide-react';
+import { Users, Shield, FileText, Upload, Plus, Trash2, CalendarDays, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+type StudentImportResult = {
+  created: number;
+  skipped: number;
+  errors: string[];
+  generatedCredentials: Array<{
+    firstName: string;
+    lastName: string;
+    uniqueId: string;
+    email: string;
+    temporaryPassword: string;
+  }>;
+};
+
+function escapeCsvCell(value: unknown) {
+  const stringValue = String(value ?? '');
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+}
+
+function downloadCsv(filename: string, rows: Array<Array<unknown>>, headers: string[]) {
+  const content = [
+    headers.map((header) => escapeCsvCell(header)).join(','),
+    ...rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(',')),
+  ].join('\n');
+
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminPage() {
   const user = getUser();
   const router = useRouter();
   const { toast } = useToast();
+  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('users');
+  const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
+  const [studentCsvInputKey, setStudentCsvInputKey] = useState(0);
+  const [generatePasswords, setGeneratePasswords] = useState(true);
+  const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -80,17 +121,62 @@ export default function AdminPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['reports'] }); toast({ title: 'Report updated' }); },
   });
 
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const res = await usersApi.importCsv(file);
-      toast({ title: `Imported: ${res.data.created} created, ${res.data.skipped} skipped` });
+  const importStudentsMutation = useMutation({
+    mutationFn: async () => {
+      if (!studentCsvFile) throw new Error('Select a CSV file first');
+      const response = await usersApi.importCsv(studentCsvFile, { generatePasswords });
+      return response.data as StudentImportResult;
+    },
+    onSuccess: (data) => {
+      setLastStudentImport(data);
+      setStudentCsvFile(null);
+      setStudentCsvInputKey((current) => current + 1);
       qc.invalidateQueries({ queryKey: ['admin-users'] });
-    } catch (err: any) {
-      toast({ title: err.response?.data?.message || 'Import failed', variant: 'destructive' });
-    }
-    e.target.value = '';
+      toast({
+        title: `Imported ${data.created} students`,
+        description: `${data.skipped} skipped${data.generatedCredentials.length ? ' · temp passwords ready to export' : ''}`,
+      });
+    },
+    onError: (err: any) => {
+      toast({ title: err.response?.data?.message || err.message || 'Import failed', variant: 'destructive' });
+    },
+  });
+
+  const exportStudentsMutation = useMutation({
+    mutationFn: () => usersApi.exportStudentsCsv(),
+    onSuccess: (response) => {
+      const blob = response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'students.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Student CSV exported' });
+    },
+    onError: (err: any) => {
+      toast({ title: err.response?.data?.message || 'Could not export students', variant: 'destructive' });
+    },
+  });
+
+  const exportGeneratedPasswords = () => {
+    if (!lastStudentImport?.generatedCredentials.length) return;
+
+    downloadCsv(
+      'student-temp-passwords.csv',
+      lastStudentImport.generatedCredentials.map((student) => [
+        student.firstName,
+        student.lastName,
+        student.uniqueId,
+        student.email,
+        student.temporaryPassword,
+      ]),
+      ['first_name', 'last_name', 'student_id', 'email', 'temporary_password'],
+    );
+
+    toast({ title: 'Temporary passwords exported' });
   };
 
   const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
@@ -109,6 +195,11 @@ export default function AdminPage() {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users size={16} /> Users
             </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="schedule" className="flex items-center gap-2">
+                <CalendarDays size={16} /> Schedule
+              </TabsTrigger>
+            )}
             <TabsTrigger value="moderation" className="flex items-center gap-2">
               <Shield size={16} /> Moderation
               {pendingReports > 0 && (
@@ -132,13 +223,10 @@ export default function AdminPage() {
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 />
-                {hasRole(user, 'SUPER_ADMIN') && (
-                  <Button variant="secondary" asChild className="cursor-pointer">
-                    <label className="flex items-center gap-2 hover:bg-secondary/80">
-                      <Upload size={16} /> Import CSV
-                      <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
-                    </label>
-                  </Button>
+                {isSuperAdmin && (
+                  <p className="text-xs text-muted-foreground">
+                    Student roster import/export lives in the Schedule tab.
+                  </p>
                 )}
               </div>
 
@@ -229,6 +317,132 @@ export default function AdminPage() {
               )}
             </div>
           </TabsContent>
+
+          {/* ── Schedule Tab ── */}
+          {isSuperAdmin && (
+            <TabsContent value="schedule">
+              <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+                <Card>
+                  <CardHeader className="border-b pb-4">
+                    <CardTitle className="text-base">Saturn-Style Student Roster Import</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-5">
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Import students from a roster CSV. Email is derived automatically as <span className="font-mono text-foreground">student_id@fcstu.org</span>.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {['First Name', 'Last Name', 'Student ID', 'Grade Level', 'Major Pathway', 'Minor Pathway (optional)'].map((field) => (
+                          <Badge key={field} variant="outline" className="text-[11px]">
+                            {field}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Accepted pathway labels: <span className="text-foreground">IT</span>, <span className="text-foreground">Health Science</span>, <span className="text-foreground">Engineering</span>.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Input
+                        key={studentCsvInputKey}
+                        type="file"
+                        accept=".csv"
+                        onChange={(event) => setStudentCsvFile(event.target.files?.[0] || null)}
+                      />
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          type="button"
+                          variant={generatePasswords ? 'default' : 'outline'}
+                          onClick={() => setGeneratePasswords((current) => !current)}
+                        >
+                          {generatePasswords ? 'Temp Passwords On' : 'Temp Passwords Off'}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => importStudentsMutation.mutate()}
+                          disabled={!studentCsvFile || importStudentsMutation.isPending}
+                          className="flex items-center gap-2"
+                        >
+                          <Upload size={16} />
+                          {importStudentsMutation.isPending ? 'Importing…' : 'Import Students'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => exportStudentsMutation.mutate()}
+                          disabled={exportStudentsMutation.isPending}
+                          className="flex items-center gap-2"
+                        >
+                          <Download size={16} />
+                          {exportStudentsMutation.isPending ? 'Exporting…' : 'Export CSV'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {generatePasswords
+                          ? 'New students will receive a random temporary password that you can export after import.'
+                          : 'If disabled, new students default to their student ID as the initial password.'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader className="border-b pb-4">
+                      <CardTitle className="text-base">Import Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-3 text-sm text-muted-foreground">
+                      <p>Grade level must be a number from 9 to 12.</p>
+                      <p>Minor pathway must be different from the major pathway.</p>
+                      <p>Existing student IDs are skipped to avoid overwriting live accounts.</p>
+                    </CardContent>
+                  </Card>
+
+                  {lastStudentImport && (
+                    <Card>
+                      <CardHeader className="border-b pb-4">
+                        <CardTitle className="text-base">Latest Import</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="rounded-xl border p-3">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Created</p>
+                            <p className="mt-2 text-2xl font-semibold text-foreground">{lastStudentImport.created}</p>
+                          </div>
+                          <div className="rounded-xl border p-3">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Skipped</p>
+                            <p className="mt-2 text-2xl font-semibold text-foreground">{lastStudentImport.skipped}</p>
+                          </div>
+                          <div className="rounded-xl border p-3">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Temp Passwords</p>
+                            <p className="mt-2 text-2xl font-semibold text-foreground">{lastStudentImport.generatedCredentials.length}</p>
+                          </div>
+                        </div>
+
+                        {lastStudentImport.generatedCredentials.length > 0 && (
+                          <Button type="button" onClick={exportGeneratedPasswords} className="flex items-center gap-2">
+                            <Download size={16} /> Export Temp Passwords CSV
+                          </Button>
+                        )}
+
+                        {lastStudentImport.errors.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-foreground">Skipped rows</p>
+                            <div className="max-h-48 overflow-y-auto rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                              {lastStudentImport.errors.map((error, index) => (
+                                <p key={`${error}-${index}`} className="leading-5">{error}</p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          )}
 
           {/* ── Moderation Tab ── */}
           <TabsContent value="moderation">

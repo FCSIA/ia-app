@@ -54,13 +54,18 @@ export const usersApi = {
   activate: (id: string) => api.patch(`/users/${id}/activate`),
   resetPassword: (id: string, newPassword: string) =>
     api.post(`/users/${id}/reset-password`, { newPassword }),
-  importCsv: (file: File) => {
+  importCsv: (file: File, options?: { generatePasswords?: boolean }) => {
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('generatePasswords', String(options?.generatePasswords ?? false));
     return api.post('/users/import/csv', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  exportStudentsCsv: () =>
+    api.get('/users/export/csv', {
+      responseType: 'blob',
+    }),
 };
 
 // Announcements
