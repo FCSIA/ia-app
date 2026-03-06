@@ -1,99 +1,236 @@
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
-} from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Bell, ChevronLeft } from 'lucide-react-native';
 import { notificationsApi } from '@/lib/api';
+import { Card, EmptyState, Pill, Screen } from '@/components/ui';
 import { formatDistanceToNow } from 'date-fns';
-import { Bell } from 'lucide-react-native';
+import type { NotificationRecord } from '@/types/api';
+import { theme } from '@/theme';
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
-  SCHOOL_ANNOUNCEMENT: { bg: '#dbeafe', text: '#1d4ed8' },
-  CLUB_ANNOUNCEMENT: { bg: '#dcfce7', text: '#15803d' },
-  EVENT: { bg: '#fef9c3', text: '#854d0e' },
-  FLEX_FRIDAY: { bg: '#f3f4f6', text: '#374151' },
+const categoryTones: Record<string, 'blue' | 'green' | 'amber' | 'neutral'> = {
+  SCHOOL_ANNOUNCEMENT: 'blue',
+  CLUB_ANNOUNCEMENT: 'green',
+  EVENT: 'amber',
+  FLEX_FRIDAY: 'neutral',
 };
 
 export default function NotificationsScreen() {
-  const qc = useQueryClient();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const { data: notifications = [], isLoading, refetch } = useQuery({
+  const { data: notifications = [] } = useQuery<NotificationRecord[]>({
     queryKey: ['notifications'],
-    queryFn: () => notificationsApi.getAll().then((r) => r.data),
+    queryFn: () => notificationsApi.getAll().then((response) => response.data),
   });
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markRead([id]),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    },
   });
 
   const markAllMutation = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    },
+    onError: () => {
+      Alert.alert('Could not update notifications');
+    },
   });
 
-  const unreadCount = (notifications as any[]).filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+  function openNotification(notification: NotificationRecord) {
+    if (!notification.isRead) {
+      markReadMutation.mutate(notification.id);
+    }
+
+    if (notification.announcementId) {
+      router.push(`/announcements/${notification.announcementId}`);
+      return;
+    }
+
+    if (notification.eventId) {
+      router.push('/events');
+    }
+  }
 
   return (
-    <View style={styles.container}>
-      {unreadCount > 0 && (
-        <TouchableOpacity style={styles.markAllBtn} onPress={() => markAllMutation.mutate()}>
-          <Text style={styles.markAllText}>Mark all {unreadCount} as read</Text>
-        </TouchableOpacity>
-      )}
+    <Screen scroll>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <ChevronLeft size={20} color={theme.colors.textSoft} />
+        </Pressable>
+        <View style={styles.headerCopy}>
+          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.subtitle}>Recent alerts and activity updates.</Text>
+        </View>
+      </View>
 
-      <FlatList
-        data={notifications as any[]}
-        keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#2563eb" />}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Bell size={48} color="#d1d5db" />
-            <Text style={styles.emptyText}>No notifications yet</Text>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const colors = CATEGORY_COLORS[item.category] || { bg: '#f3f4f6', text: '#374151' };
-          return (
-            <TouchableOpacity
-              style={[styles.card, !item.isRead && styles.cardUnread]}
-              onPress={() => !item.isRead && markReadMutation.mutate(item.id)}
+      {unreadCount > 0 ? (
+        <Card style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>{unreadCount} unread notification{unreadCount > 1 ? 's' : ''}</Text>
+          <Text style={styles.summaryText}>
+            Mark everything as read once you have handled the latest announcements and events.
+          </Text>
+          <Pressable onPress={() => markAllMutation.mutate()} style={styles.markAllButton}>
+            <Text style={styles.markAllText}>{markAllMutation.isPending ? 'Updating...' : 'Mark all as read'}</Text>
+          </Pressable>
+        </Card>
+      ) : null}
+
+      <View style={styles.list}>
+        {notifications.length === 0 ? (
+          <EmptyState
+            title="Nothing new right now"
+            description="Notifications for announcements, events, and Flex Friday will show up here."
+          />
+        ) : (
+          notifications.map((notification) => (
+            <Pressable
+              key={notification.id}
+              onPress={() => openNotification(notification)}
+              style={({ pressed }) => [
+                styles.notificationCard,
+                !notification.isRead && styles.notificationCardUnread,
+                pressed && styles.notificationCardPressed,
+              ]}
             >
-              <View style={[styles.unreadDot, { opacity: item.isRead ? 0 : 1 }]} />
-              <View style={{ flex: 1 }}>
-                <View style={[styles.chip, { backgroundColor: colors.bg, alignSelf: 'flex-start', marginBottom: 4 }]}>
-                  <Text style={[styles.chipText, { color: colors.text }]}>{item.category.replace(/_/g, ' ')}</Text>
+              <View style={styles.notificationHeader}>
+                <View style={styles.headerLeft}>
+                  <View
+                    style={[
+                      styles.unreadDot,
+                      { opacity: notification.isRead ? 0.25 : 1 },
+                    ]}
+                  />
+                  <Pill
+                    label={notification.category.replace(/_/g, ' ')}
+                    tone={categoryTones[notification.category] || 'neutral'}
+                  />
                 </View>
-                <Text style={styles.notifTitle}>{item.title}</Text>
-                {item.body ? <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text> : null}
-                <Text style={styles.notifTime}>{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</Text>
+                <Text style={styles.notificationTime}>
+                  {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                </Text>
               </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
-    </View>
+              <Text style={styles.notificationTitle}>{notification.title}</Text>
+              {notification.body ? (
+                <Text style={styles.notificationBody}>{notification.body}</Text>
+              ) : null}
+            </Pressable>
+          ))
+        )}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
-  markAllBtn: { backgroundColor: '#eff6ff', padding: 12, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#dbeafe' },
-  markAllText: { color: '#2563eb', fontWeight: '600', fontSize: 13 },
-  list: { padding: 16, paddingBottom: 32 },
-  empty: { alignItems: 'center', paddingVertical: 64 },
-  emptyText: { fontSize: 16, color: '#9ca3af', marginTop: 12 },
-  card: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
-    marginBottom: 8, borderWidth: 1, borderColor: '#f3f4f6',
+  header: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'center',
   },
-  cardUnread: { borderColor: '#dbeafe', backgroundColor: '#f0f7ff' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginTop: 6, flexShrink: 0 },
-  chip: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
-  chipText: { fontSize: 10, fontWeight: '700' },
-  notifTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 2 },
-  notifBody: { fontSize: 13, color: '#6b7280', lineHeight: 18 },
-  notifTime: { fontSize: 11, color: '#9ca3af', marginTop: 4 },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCopy: {
+    flex: 1,
+  },
+  title: {
+    color: theme.colors.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.7,
+  },
+  subtitle: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  summaryCard: {
+    gap: 8,
+  },
+  summaryTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  summaryText: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  markAllButton: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  markAllText: {
+    color: theme.colors.accentDark,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  list: {
+    gap: 10,
+  },
+  notificationCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+    gap: 8,
+    ...theme.shadow.card,
+  },
+  notificationCardUnread: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: 'rgba(249, 115, 22, 0.16)',
+  },
+  notificationCardPressed: {
+    opacity: 0.88,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  unreadDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: theme.colors.accent,
+    marginLeft: 2,
+  },
+  notificationTime: {
+    color: theme.colors.textFaint,
+    fontSize: 11,
+  },
+  notificationTitle: {
+    color: theme.colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  notificationBody: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
 });

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
-} from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ShieldCheck, Sparkles } from 'lucide-react-native';
 import { authApi } from '@/lib/api';
 import { setAuth } from '@/lib/auth';
+import { getErrorMessage } from '@/lib/errors';
+import { AppButton, AppInput, Card, Screen } from '@/components/ui';
+import { theme } from '@/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,101 +14,154 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  async function handleLogin() {
     if (!uniqueId.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter your ID and password');
+      Alert.alert('Missing fields', 'Enter your ID and password.');
       return;
     }
+
     setLoading(true);
     try {
-      const res = await authApi.login(uniqueId.trim(), password);
-      await setAuth(res.data.token, res.data.user);
+      const response = await authApi.login(uniqueId.trim().toUpperCase(), password);
+      await setAuth(response.data.token, response.data.user);
       router.replace('/(tabs)');
-    } catch (err: any) {
-      Alert.alert('Login Failed', err.response?.data?.message || 'Invalid credentials');
+    } catch (error) {
+      Alert.alert('Login failed', getErrorMessage(error, 'Incorrect ID or password.'));
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.inner}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>IA</Text>
+    <Screen scroll keyboard contentContainerStyle={styles.content}>
+      <View style={styles.hero}>
+        <View style={styles.mark}>
+          <Text style={styles.markText}>IA</Text>
         </View>
-        <Text style={styles.title}>IA School App</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>Student / Staff ID</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. STU001"
-            value={uniqueId}
-            onChangeText={setUniqueId}
-            autoCapitalize="characters"
-            autoCorrect={false}
-          />
-
-          <Text style={[styles.label, { marginTop: 12 }]}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-          <Text style={styles.hint}>First login: use your ID as password</Text>
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.buttonText}>Sign In</Text>
-            }
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.footer}>Contact your admin if you cannot log in</Text>
+        <Text style={styles.title}>IA School</Text>
+        <Text style={styles.subtitle}>
+          School announcements, clubs, events, and Flex Friday in one place.
+        </Text>
       </View>
-    </KeyboardAvoidingView>
+
+      <Card style={styles.panel}>
+        <View style={styles.panelHeader}>
+          <View style={styles.sparkBadge}>
+            <Sparkles size={16} color={theme.colors.accentDark} />
+          </View>
+          <Text style={styles.panelTitle}>Welcome back</Text>
+          <Text style={styles.panelCopy}>
+            Sign in with your school ID to open your dashboard.
+          </Text>
+        </View>
+
+        <AppInput
+          label="Student / Staff ID"
+          placeholder="e.g. STU001"
+          value={uniqueId}
+          onChangeText={setUniqueId}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
+        <AppInput
+          label="Password"
+          placeholder="Your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <View style={styles.helper}>
+          <ShieldCheck size={14} color={theme.colors.textMuted} />
+          <Text style={styles.helperText}>First-time sign in usually uses your ID as the password.</Text>
+        </View>
+
+        <AppButton label="Sign In" onPress={handleLogin} loading={loading} />
+      </Card>
+
+      <Text style={styles.footer}>
+        If you cannot access your account, contact an administrator or sponsor.
+      </Text>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1e3a8a' },
-  inner: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  logoBox: {
-    width: 64, height: 64, borderRadius: 16,
-    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: 24,
   },
-  logoText: { fontSize: 28, fontWeight: '800', color: '#2563eb' },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#93c5fd', marginBottom: 32 },
-  form: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 24,
-    width: '100%', shadowColor: '#000', shadowOpacity: 0.2,
-    shadowRadius: 20, elevation: 8,
+  hero: {
+    gap: 10,
   },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
-  input: {
-    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: '#111827',
+  mark: {
+    width: 74,
+    height: 74,
+    borderRadius: 24,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadow.glow,
   },
-  hint: { fontSize: 11, color: '#9ca3af', marginTop: 4, marginBottom: 8 },
-  button: {
-    backgroundColor: '#2563eb', borderRadius: 10,
-    paddingVertical: 14, alignItems: 'center', marginTop: 16,
+  markText: {
+    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  footer: { color: '#93c5fd', fontSize: 12, marginTop: 24, textAlign: 'center' },
+  title: {
+    color: theme.colors.text,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -1.2,
+  },
+  subtitle: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 320,
+  },
+  panel: {
+    gap: 16,
+  },
+  panelHeader: {
+    gap: 6,
+  },
+  sparkBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panelTitle: {
+    color: theme.colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+  },
+  panelCopy: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  helper: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  helperText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
+  footer: {
+    color: theme.colors.textFaint,
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });
