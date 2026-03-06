@@ -22,11 +22,7 @@ export class UsersService {
   ) { }
 
   private readonly studentRoleWhere = {
-    OR: [
-      { roles: { has: Role.STUDENT } },
-      { roles: { has: Role.STUDENT_LEADER } },
-      { roles: { has: Role.STUDENT_ADMIN } },
-    ],
+    role: { in: [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN] },
   };
 
   private safeUser(user: any) {
