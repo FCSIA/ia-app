@@ -5,8 +5,12 @@ import {
   Patch,
   Body,
   Param,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { ClubsService } from './clubs.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -66,10 +70,27 @@ export class ClubsController {
   @Post(':id/invite')
   sendInvite(
     @Param('id') clubId: string,
-    @Body() body: { recipientId: string },
+    @Body() body: { recipientId?: string; uniqueId?: string },
     @CurrentUser() user: any,
   ) {
-    return this.clubsService.sendInvite(clubId, body.recipientId, user.id, user.role);
+    return this.clubsService.sendInvite(
+      clubId,
+      body.uniqueId || body.recipientId || '',
+      user.id,
+      user.role,
+    );
+  }
+
+  @Post(':id/invite/csv')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  bulkInviteFromCsv(
+    @Param('id') clubId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) throw new BadRequestException('CSV file is required');
+    return this.clubsService.bulkInviteFromCsv(clubId, file.buffer, user.id, user.role);
   }
 
   @Post('invites/:inviteId/respond')

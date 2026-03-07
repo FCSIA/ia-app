@@ -8,7 +8,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Plus, UserPlus, Crown, UserMinus, Megaphone } from 'lucide-react';
+import { ArrowLeft, Plus, UserPlus, Crown, UserMinus, Megaphone, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,9 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   const [tab, setTab] = useState<'members' | 'announcements'>('announcements');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteId, setInviteId] = useState('');
+  const [inviteCsvFile, setInviteCsvFile] = useState<File | null>(null);
+  const [inviteCsvInputKey, setInviteCsvInputKey] = useState(0);
+  const [bulkInviteResult, setBulkInviteResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
   const [showPost, setShowPost] = useState(false);
   const [postForm, setPostForm] = useState({ title: '', body: '', allowComments: false });
 
@@ -40,9 +43,26 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (recipientId: string) => clubsApi.sendInvite(id, recipientId),
+    mutationFn: (uniqueId: string) => clubsApi.sendInvite(id, uniqueId),
     onSuccess: () => { setShowInvite(false); setInviteId(''); toast({ title: 'Invite sent' }); },
     onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed to invite', variant: 'destructive' }),
+  });
+
+  const bulkInviteMutation = useMutation({
+    mutationFn: () => {
+      if (!inviteCsvFile) throw new Error('CSV file is required');
+      return clubsApi.bulkInviteCsv(id, inviteCsvFile);
+    },
+    onSuccess: (response) => {
+      setBulkInviteResult(response.data);
+      setInviteCsvFile(null);
+      setInviteCsvInputKey((current) => current + 1);
+      toast({
+        title: 'Bulk invites processed',
+        description: `${response.data.invited} invited, ${response.data.skipped} skipped`,
+      });
+    },
+    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed to import invites', variant: 'destructive' }),
   });
 
   const promoteMutation = useMutation({
@@ -122,22 +142,77 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
         {showInvite && (
           <Card className="mb-6 ml-12">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base text-foreground">Invite by User ID</CardTitle>
+              <CardTitle className="text-base text-foreground">Invite Members</CardTitle>
+              <CardDescription>
+                Invite a single member by `uniqueId` or upload a CSV with a `unique_id`, `student_id`, or `user_id` column.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="single-invite-id" className="text-sm font-medium">Single invite</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="single-invite-id"
+                    className="flex-1"
+                    placeholder="Student/Staff unique ID (e.g. STU001)"
+                    value={inviteId}
+                    onChange={(e) => setInviteId(e.target.value)}
+                  />
+                  <Button
+                    onClick={() => inviteId.trim() && inviteMutation.mutate(inviteId.trim())}
+                    disabled={inviteMutation.isPending}
+                  >
+                    Send Invite
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bulk-invite-file" className="text-sm font-medium">Bulk invite CSV</Label>
                 <Input
-                  className="flex-1"
-                  placeholder="Student/Staff unique ID (e.g. STU001)"
-                  value={inviteId}
-                  onChange={(e) => setInviteId(e.target.value)}
+                  key={inviteCsvInputKey}
+                  id="bulk-invite-file"
+                  type="file"
+                  accept=".csv"
+                  onChange={(event) => setInviteCsvFile(event.target.files?.[0] || null)}
                 />
-                <Button
-                  onClick={() => inviteId.trim() && inviteMutation.mutate(inviteId.trim())}
-                  disabled={inviteMutation.isPending}
-                >
-                  Send Invite
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => bulkInviteMutation.mutate()}
+                    disabled={!inviteCsvFile || bulkInviteMutation.isPending}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload size={16} />
+                    {bulkInviteMutation.isPending ? 'Uploading…' : 'Upload CSV'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  One ID per row also works if the file only contains a single populated column.
+                </p>
+              </div>
+
+              {bulkInviteResult && (
+                <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  <p className="font-medium text-foreground">
+                    Imported {bulkInviteResult.invited} invite{bulkInviteResult.invited === 1 ? '' : 's'}
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    Skipped {bulkInviteResult.skipped} row{bulkInviteResult.skipped === 1 ? '' : 's'}.
+                  </p>
+                  {bulkInviteResult.errors.length > 0 && (
+                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                      {bulkInviteResult.errors.slice(0, 8).map((error) => (
+                        <p key={error}>{error}</p>
+                      ))}
+                      {bulkInviteResult.errors.length > 8 && (
+                        <p>And {bulkInviteResult.errors.length - 8} more row issues.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex justify-end">
                 <Button variant="ghost" onClick={() => setShowInvite(false)}>Cancel</Button>
               </div>
             </CardContent>
