@@ -1,4 +1,0 @@
-ALTER TYPE "FlexFridayType" ADD VALUE IF NOT EXISTS 'GRADE_SPECIFIC';
-
-ALTER TABLE "flex_fridays"
-ADD COLUMN "grade_level" INTEGER;

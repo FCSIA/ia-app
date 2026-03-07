@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Flag, Trash2, Send } from 'lucide-react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const user = getUser();
-  const router = useRouter();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [comment, setComment] = useState('');

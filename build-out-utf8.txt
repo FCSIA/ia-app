@@ -1,0 +1,105 @@
+﻿
+> ia-app@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app
+> turbo run build
+
+node.exe : ΓÇó turbo 
+2.8.14
+At C:\Users\daivi\AppData
+\Roaming\npm\pnpm.ps1:24 
+char:5
++     & "node$exe"  "$bas
+edir/node_modules/pnpm/bi
+n/pnpm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (ΓÇó turbo 2.8.14:St   
+ ring) [], RemoteExce    
+ption
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+ΓÇó Packages in scope: api, mobile, web
+ΓÇó Running build in 3 packages
+ΓÇó Remote caching disabled
+web:build: cache miss, executing 44d6c1ab48698537
+api:build: cache miss, executing dd3c2e956db4afc6
+web:build: 
+web:build: > web@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app\apps\web
+web:build: > next build
+web:build: 
+api:build: 
+api:build: > api@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app\apps\api
+api:build: > nest build
+api:build: 
+web:build:  ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+web:build:  We detected multiple lockfiles and selected the directory of C:\Users\daivi\AI\ia-app-main\pnpm-lock.yaml as the root directory.
+web:build:  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+web:build:    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+web:build:  Detected additional lockfiles: 
+web:build:    * C:\Users\daivi\AI\ia-app-main\ia-app\pnpm-lock.yaml
+web:build: 
+web:build:    Γû▓ Next.js 15.5.12
+web:build: 
+web:build:    Creating an optimized production build ...
+web:build:  Γ£ô Compiled successfully in 9.0s
+web:build:    Linting and checking validity of types ...
+web:build: 
+web:build: ./src/app/announcements/[id]/page.tsx
+web:build: 13:52  Warning: 'CardDescription' is defined but never used.  @typescript-eslint/no-unused-vars
+web:build: 13:69  Warning: 'CardFooter' is defined but never used.  @typescript-eslint/no-unused-vars
+web:build: 23:9  Warning: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+web:build: 
+web:build: ./src/app/clubs/page.tsx
+web:build: 11:52  Warning: 'CardDescription' is defined but never used.  @typescript-eslint/no-unused-vars
+web:build: 
+web:build: ./src/hooks/use-toast.ts
+web:build: 21:7  Warning: 'actionTypes' is assigned a value but only used as a type.  @typescript-eslint/no-unused-vars
+web:build: 
+web:build: info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+web:build: Failed to compile.
+web:build: 
+web:build: ./src/app/admin/page.tsx:207:12
+web:build: Type error: 'TabsList' cannot be used as a JSX component.
+web:build:   Its type 'ForwardRefExoticComponent<Omit<TabsListProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>>' is not a valid JSX element type.
+web:build:     Type 'ForwardRefExoticComponent<Omit<TabsListProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>>' is not assignable to type '(props: any, deprecatedLegacyContext?: any) => ReactNode'.
+web:build:       Type 'import("C:/Users/daivi/AI/ia-app-main/ia-app/node_modules/@types/react/index").ReactNode' is not assignable to type 'React.ReactNode'.
+web:build:         Type 'ReactElement<unknown, string | JSXElementConstructor<any>>' is not assignable to type 'ReactNode'.
+web:build:           Property 'children' is missing in type 'ReactElement<unknown, string | JSXElementConstructor<any>>' but required in type 'ReactPortal'.
+web:build: 
+web:build: [0m [90m 205 |[39m         {[90m/* @ts-expect-error - React 19 type mismatch in Tabs component */[39m}
+web:build:  [90m 206 |[39m         [33m<[39m[33mTabs[39m value[33m=[39m{activeTab} onValueChange[33m=[39m{setActiveTab} className[33m=[39m[32m"w-full"[39m[33m>[39m
+web:build: [31m[1m>[22m[39m[90m 207 |[39m           [33m<[39m[33mTabsList[39m className[33m=[39m[32m"mb-6 bg-secondary/50 p-1"[39m[33m>[39m
+web:build:  [90m     |[39m            [31m[1m^[22m[39m
+web:build:  [90m 208 |[39m             [33m<[39m[33mTabsTrigger[39m value[33m=[39m[32m"users"[39m className[33m=[39m[32m"flex items-center gap-2"[39m[33m>[39m
+web:build:  [90m 209 |[39m               [33m<[39m[33mUsers[39m size[33m=[39m{[35m16[39m} [33m/[39m[33m>[39m [33mUsers[39m
+web:build:  [90m 210 |[39m             [33m<[39m[33m/[39m[33mTabsTrigger[39m[33m>[39m[0m
+web:build: Next.js build worker exited with code: 1 and signal: null
+web:build: ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.
+web:build: ERROR: 
+command finished with 
+error: command (C:\Users\
+daivi\AI\ia-app-main\ia-a
+pp\apps\web) C:\Users\dai
+vi\AppData\Local\pnpm\.to
+ols\pnpm\10.29.3\bin\pnpm
+.CMD run build exited (1)
+web#build: command (C:\Us
+ers\daivi\AI\ia-app-main\
+ia-app\apps\web) C:\Users
+\daivi\AppData\Local\pnpm
+\.tools\pnpm\10.29.3\bin\
+pnpm.CMD run build 
+exited (1)
+
+ Tasks:    1 successful, 2 total
+Cached:    0 cached, 2 total
+  Time:    33.104s 
+Failed:    web#build
+
+ ERROR  run failed: 
+command  exited (1)
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.

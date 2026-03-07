@@ -1,0 +1,92 @@
+﻿
+> ia-app@0.0.1 lint C:\Users\daivi\AI\ia-app-main\ia-app
+> turbo run lint
+
+node.exe : ΓÇó turbo 2.8.14
+At C:\Users\daivi\AppData\Roam
+ing\npm\pnpm.ps1:24 char:5
++     & "node$exe"  "$basedir/
+node_modules/pnpm/bin/pnpm.cjs
+" $args
++     ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo            
+  : NotSpecified:     (ΓÇó 
+turbo 2.8.14:St    ring) [], 
+RemoteExce    ption
+    + FullyQualifiedErro    
+rId : NativeCommandE    rror
+ 
+ΓÇó Packages in scope: api, mobile, web
+ΓÇó Running lint in 3 packages
+ΓÇó Remote caching disabled
+mobile:lint: cache miss, executing 05255202f3243e79
+api:lint: cache miss, executing 1faf8aebb9c985df
+web:lint: cache miss, executing 1b84515b539f1700
+mobile:lint: 
+mobile:lint: > mobile@1.0.0 lint C:\Users\daivi\AI\ia-app-main\ia-app\apps\mobile
+mobile:lint: > eslint . --ext .ts,.tsx
+mobile:lint: 
+api:lint: 
+api:lint: > api@0.0.1 lint C:\Users\daivi\AI\ia-app-main\ia-app\apps\api
+api:lint: > eslint "{src,test}/**/*.ts" --fix
+api:lint: 
+web:lint: 
+web:lint: > web@0.0.1 lint C:\Users\daivi\AI\ia-app-main\ia-app\apps\web
+web:lint: > next lint
+web:lint: 
+web:lint: `next lint` is deprecated and will be removed in Next.js 16.
+web:lint: For new projects, use create-next-app to choose your preferred linter.
+web:lint: For existing projects, migrate to the ESLint CLI:
+web:lint: npx @next/codemod@canary next-lint-to-eslint-cli .
+web:lint: 
+mobile:lint: 
+mobile:lint: Oops! Something went wrong! :(
+mobile:lint: 
+mobile:lint: ESLint: 8.57.1
+mobile:lint: 
+mobile:lint: ESLint couldn't find a configuration file. To set up a configuration file for this project, please run:
+mobile:lint: 
+mobile:lint:     npm init @eslint/config
+mobile:lint: 
+mobile:lint: ESLint looked for configuration files in C:\Users\daivi\AI\ia-app-main\ia-app\apps\mobile\app\(tabs) and its ancestors. If it found none, it then looked in your home directory.
+mobile:lint: 
+mobile:lint: If you think you already have a configuration file or if you need more help, please stop by the ESLint Discord server: https://eslint.org/chat
+mobile:lint: 
+mobile:lint: ΓÇëELIFECYCLEΓÇë Command failed with exit code 2.
+api:lint: 
+api:lint: Oops! Something went wrong! :(
+api:lint: 
+api:lint: ESLint: 8.57.1
+api:lint: 
+api:lint: ESLint couldn't find a configuration file. To set up a configuration file for this project, please run:
+api:lint: 
+api:lint:     npm init @eslint/config
+api:lint: 
+api:lint: ESLint looked for configuration files in C:\Users\daivi\AI\ia-app-main\ia-app\apps\api\src\announcements and its ancestors. If it found none, it then looked in your home directory.
+api:lint: 
+api:lint: If you think you already have a configuration file or if you need more help, please stop by the ESLint Discord server: https://eslint.org/chat
+api:lint: 
+mobile:lint: ERROR: command 
+finished with error: command (
+C:\Users\daivi\AI\ia-app-main\
+ia-app\apps\mobile) C:\Users\d
+aivi\AppData\Local\pnpm\.tools
+\pnpm\10.29.3\bin\pnpm.CMD 
+run lint exited (2)
+mobile#lint: command (C:\Users
+\daivi\AI\ia-app-main\ia-app\a
+pps\mobile) C:\Users\daivi\App
+Data\Local\pnpm\.tools\pnpm\10
+.29.3\bin\pnpm.CMD run lint 
+exited (2)
+
+ Tasks:    0 successful, 3 total
+Cached:    0 cached, 3 total
+  Time:    1.575s 
+Failed:    mobile#lint
+
+ ERROR  run failed: command  
+exited (2)
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 2.

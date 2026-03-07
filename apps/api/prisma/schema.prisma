@@ -292,7 +292,6 @@ model CalendarEntry {
 
 enum FlexFridayType {
   ALL_STUDENT
-  FRESHMAN_WORKSHOP
   GRADE_SPECIFIC
   PATHWAY_SPECIFIC
   TEACHER_PD

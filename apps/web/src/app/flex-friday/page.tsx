@@ -225,9 +225,7 @@ export default function FlexFridayPage() {
                     gradeLevel:
                       fridayForm.type === 'GRADE_SPECIFIC'
                         ? Number(fridayForm.gradeLevel)
-                        : fridayForm.type === 'FRESHMAN_WORKSHOP'
-                          ? 9
-                          : undefined,
+                        : undefined,
                   });
                 }}
                 className="space-y-4"
@@ -267,10 +265,6 @@ export default function FlexFridayPage() {
                       setFridayForm((current) => ({
                         ...current,
                         type: value,
-                        gradeLevel:
-                          value === 'FRESHMAN_WORKSHOP'
-                            ? '9'
-                            : current.gradeLevel,
                       }))
                     }
                   >
@@ -279,7 +273,6 @@ export default function FlexFridayPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL_STUDENT">All Student</SelectItem>
-                      <SelectItem value="FRESHMAN_WORKSHOP">Freshman Workshop</SelectItem>
                       <SelectItem value="GRADE_SPECIFIC">Grade Specific</SelectItem>
                       <SelectItem value="PATHWAY_SPECIFIC">Pathway Specific</SelectItem>
                       <SelectItem value="TEACHER_PD">Teacher PD (No School)</SelectItem>
@@ -306,13 +299,12 @@ export default function FlexFridayPage() {
                     </Select>
                   </div>
                 )}
-                {(fridayForm.type === 'GRADE_SPECIFIC' || fridayForm.type === 'FRESHMAN_WORKSHOP') && (
+                {fridayForm.type === 'GRADE_SPECIFIC' && (
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block font-medium">Grade</label>
                     <Select
-                      value={fridayForm.type === 'FRESHMAN_WORKSHOP' ? '9' : fridayForm.gradeLevel}
+                      value={fridayForm.gradeLevel}
                       onValueChange={(value) => setFridayForm({ ...fridayForm, gradeLevel: value })}
-                      disabled={fridayForm.type === 'FRESHMAN_WORKSHOP'}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select grade" />

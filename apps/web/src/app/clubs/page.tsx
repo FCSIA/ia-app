@@ -8,7 +8,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Plus, Check, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

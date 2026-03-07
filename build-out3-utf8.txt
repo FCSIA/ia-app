@@ -1,0 +1,84 @@
+﻿
+> ia-app@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app
+> turbo run build
+
+node.exe : ΓÇó turbo 2.8.14
+At C:\Users\daivi\AppData\R
+oaming\npm\pnpm.ps1:24 
+char:5
++     & "node$exe"  "$based
+ir/node_modules/pnpm/bin/pn
+pm.cjs" $args
++     ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (ΓÇó  
+   turbo 2.8.14:String)    
+ [], RemoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+ΓÇó Packages in scope: api, mobile, web
+ΓÇó Running build in 3 packages
+ΓÇó Remote caching disabled
+web:build: cache miss, executing 6c358cccba38b3d6
+api:build: cache hit, replaying logs 561734c8f135c909
+api:build: 
+api:build: > api@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app\apps\api
+api:build: > nest build
+api:build: 
+web:build: 
+web:build: > web@0.0.1 build C:\Users\daivi\AI\ia-app-main\ia-app\apps\web
+web:build: > next build
+web:build: 
+web:build:  ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+web:build:  We detected multiple lockfiles and selected the directory of C:\Users\daivi\AI\ia-app-main\pnpm-lock.yaml as the root directory.
+web:build:  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+web:build:    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+web:build:  Detected additional lockfiles: 
+web:build:    * C:\Users\daivi\AI\ia-app-main\ia-app\pnpm-lock.yaml
+web:build: 
+web:build:    Γû▓ Next.js 15.5.12
+web:build: 
+web:build:    Creating an optimized production build ...
+web:build: (node:24336) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/daivi/AI/ia-app-main/ia-app/apps/web/tailwind.config.ts?id=1772922353998 is not specified and it doesn't parse as CommonJS.
+web:build: Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+web:build: To eliminate this warning, add "type": "module" to C:\Users\daivi\AI\ia-app-main\ia-app\apps\web\package.json.
+web:build: (Use `node --trace-warnings ...` to show where the warning was created)
+web:build:  Γ£ô Compiled successfully in 11.6s
+web:build:    Skipping validation of types
+web:build:    Skipping linting
+web:build:    Collecting page data ...
+web:build:    Generating static pages (0/15) ...
+web:build: TypeError: Cannot read properties of null (reading 'useContext')
+web:build:     at p (C:\Users\daivi\AI\ia-app-main\ia-app\apps\web\.next\server\pages\_error.js:1:1582)
+web:build: Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+web:build: TypeError: Cannot read properties of null (reading 'useContext')
+web:build:     at p (C:\Users\daivi\AI\ia-app-main\ia-app\apps\web\.next\server\pages\_error.js:1:1582)
+web:build: Export encountered an error on /_error: /500, exiting the build.
+web:build:  Γ¿» Next.js build worker exited with code: 1 and signal: null
+web:build: ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.
+web:build: ERROR: command 
+finished with error: 
+command (C:\Users\daivi\AI\
+ia-app-main\ia-app\apps\web
+) C:\Users\daivi\AppData\Lo
+cal\pnpm\.tools\pnpm\10.29.
+3\bin\pnpm.CMD run build 
+exited (1)
+web#build: command (C:\User
+s\daivi\AI\ia-app-main\ia-a
+pp\apps\web) C:\Users\daivi
+\AppData\Local\pnpm\.tools\
+pnpm\10.29.3\bin\pnpm.CMD 
+run build exited (1)
+
+ Tasks:    1 successful, 2 total
+Cached:    1 cached, 2 total
+  Time:    26.608s 
+Failed:    web#build
+
+ ERROR  run failed: 
+command  exited (1)
+ΓÇëELIFECYCLEΓÇë Command failed with exit code 1.
