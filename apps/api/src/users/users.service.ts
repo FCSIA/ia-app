@@ -22,11 +22,7 @@ export class UsersService {
   ) { }
 
   private readonly studentRoleWhere = {
-    OR: [
-      { roles: { has: Role.STUDENT } },
-      { roles: { has: Role.STUDENT_LEADER } },
-      { roles: { has: Role.STUDENT_ADMIN } },
-    ],
+    role: { in: [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN] },
   };
 
   private safeUser(user: any) {
@@ -166,7 +162,7 @@ export class UsersService {
         minor: dto.minor,
         email: dto.email,
         passwordHash,
-        roles: dto.roles?.length ? dto.roles : [Role.STUDENT],
+        role: dto.roles?.length ? dto.roles[0] : Role.STUDENT,
       },
     });
 
@@ -197,7 +193,7 @@ export class UsersService {
     await this.findOne(id);
     const user = await this.prisma.user.update({
       where: { id },
-      data: { roles: dto.roles },
+      data: { role: dto.roles[0] },
     });
     await this.audit.log({
       actorId,
@@ -367,7 +363,7 @@ export class UsersService {
             minor,
             email,
             passwordHash,
-            roles: [Role.STUDENT],
+            role: Role.STUDENT,
           },
         });
         results.created++;

@@ -52,7 +52,7 @@ export class CalendarService {
         location: data.location,
         startAt: new Date(data.startAt),
         endAt: data.endAt ? new Date(data.endAt) : undefined,
-        tags: data.tags || [],
+        tags: JSON.stringify(data.tags || []),
       },
     });
   }
