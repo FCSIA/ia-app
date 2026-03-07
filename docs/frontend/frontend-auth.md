@@ -85,7 +85,7 @@ const loginMutation = useMutation({
   mutationFn: ({ uniqueId, password }: any) =>
     authApi.login(uniqueId, password).then(r => r.data),
   onSuccess: (data) => {
-    setAuth(data.access_token, data.user); // store token + user
+    setAuth(data.token, data.user); // store token + user
     router.push('/dashboard');              // redirect
   },
   onError: () => toast.error('Invalid credentials'),

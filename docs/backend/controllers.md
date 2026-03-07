@@ -46,16 +46,68 @@ export class ClubsController {
     @Body() dto: InviteDto,
     @CurrentUser() user: User,
   ) {
-    return this.clubsService.sendInvite(clubId, dto.recipientId, user);
+    return this.clubsService.sendInvite(clubId, dto.uniqueId, user.id, user.role);
   }
 
-  @Delete(':id/members/:memberId')
+  @Post(':id/invite/csv')
+  @UseInterceptors(FileInterceptor('file'))
+  bulkInviteFromCsv(
+    @Param('id') clubId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: User,
+  ) {
+    return this.clubsService.bulkInviteFromCsv(clubId, file.buffer, user.id, user.role);
+  }
+
+  @Get(':id/channels')
+  getChannels(@Param('id') clubId: string, @CurrentUser() user: User) {
+    return this.clubsService.getChannels(clubId, user.id, user.role);
+  }
+
+  @Post(':id/channels')
+  createChannel(
+    @Param('id') clubId: string,
+    @Body() dto: CreateClubChannelDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.clubsService.createChannel(clubId, dto, user.id, user.role);
+  }
+
+  @Post(':id/tags')
+  createTag(
+    @Param('id') clubId: string,
+    @Body() dto: CreateClubTagDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.clubsService.createTag(clubId, dto, user.id, user.role);
+  }
+
+  @Get(':id/channels/:channelId/messages')
+  getChannelMessages(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.clubsService.getChannelMessages(clubId, channelId, user.id, user.role);
+  }
+
+  @Post(':id/channels/:channelId/messages')
+  postChannelMessage(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Body() dto: CreateClubChannelMessageDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.clubsService.postChannelMessage(clubId, channelId, dto.body, user.id, user.role);
+  }
+
+  @Post(':id/members/:memberId/remove')
   removeMember(
     @Param('id') clubId: string,
     @Param('memberId') memberId: string,
     @CurrentUser() user: User,
   ) {
-    return this.clubsService.removeMember(clubId, memberId, user);
+    return this.clubsService.removeMember(clubId, memberId, user.id, user.role);
   }
 }
 ```
@@ -109,7 +161,7 @@ export const CurrentUser = createParamDecorator(
 @Get(':id')                         // matches /clubs/any-string-here
 getOne(@Param('id') id: string) {}  // id = "any-string-here"
 
-@Delete(':id/members/:memberId')    // two parameters
+@Post(':id/members/:memberId/remove')    // two parameters
 removeMember(
   @Param('id') clubId: string,
   @Param('memberId') memberId: string,
@@ -163,9 +215,9 @@ throw new UnauthorizedException('Login required');  // 401
 | Controller | Base Path | Key Routes |
 |-----------|-----------|------------|
 | `AuthController` | `/auth` | `POST /login`, `POST /logout`, `GET /me`, `POST /change-password` |
-| `UsersController` | `/users` | `GET /`, `PATCH /:id`, `POST /import-csv` |
+| `UsersController` | `/users` | `GET /`, `PATCH /:id`, `POST /import/csv`, `GET /export/csv` |
 | `AnnouncementsController` | `/announcements` | `GET /`, `POST /`, `POST /:id/comments`, `DELETE /:id/comments/:cid` |
-| `ClubsController` | `/clubs` | `GET /`, `GET /mine`, `POST /`, `POST /:id/invite`, `PATCH /:id/members/:mid/promote` |
+| `ClubsController` | `/clubs` | `GET /`, `GET /my`, `POST /`, `POST /:id/invite`, `POST /:id/invite/csv`, `GET /:id/channels`, `POST /:id/channels`, `POST /:id/tags`, `POST /:id/channels/:channelId/messages` |
 | `EventsController` | `/events` | `GET /`, `POST /`, `POST /:id/approve`, `POST /:id/reject` |
 | `CalendarController` | `/calendar` | `GET /entries` |
 | `FlexFridayController` | `/flex-friday` | `GET /`, `GET /:id/sessions`, `POST /:id/sessions`, `POST /:fid/sessions/:sid/register` |

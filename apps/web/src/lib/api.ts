@@ -86,8 +86,17 @@ export const clubsApi = {
   getMyClubs: () => api.get('/clubs/my'),
   getMyInvites: () => api.get('/clubs/my/invites'),
   getOne: (id: string) => api.get(`/clubs/${id}`),
+  getChannels: (clubId: string) => api.get(`/clubs/${clubId}/channels`),
+  getChannelMessages: (clubId: string, channelId: string) =>
+    api.get(`/clubs/${clubId}/channels/${channelId}/messages`),
   create: (data: any) => api.post('/clubs', data),
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
+  createChannel: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/channels`, data),
+  createTag: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/tags`, data),
+  postChannelMessage: (clubId: string, channelId: string, body: string) =>
+    api.post(`/clubs/${clubId}/channels/${channelId}/messages`, { body }),
   sendInvite: (clubId: string, uniqueId: string) =>
     api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   bulkInviteCsv: (clubId: string, file: File) => {

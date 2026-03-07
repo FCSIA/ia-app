@@ -17,7 +17,7 @@ async function main() {
       lastName: 'Admin',
       email: 'superadmin@ia.school',
       passwordHash: superAdminHash,
-      role: Role.SUPER_ADMIN,
+      roles: [Role.SUPER_ADMIN, Role.ADMIN],
     },
   });
   console.log('Super Admin created:', superAdmin.uniqueId);
@@ -33,7 +33,7 @@ async function main() {
       lastName: 'Admin',
       email: 'admin@ia.school',
       passwordHash: adminHash,
-      role: Role.ADMIN,
+      roles: [Role.ADMIN],
     },
   });
 
@@ -48,7 +48,7 @@ async function main() {
       lastName: 'Smith',
       email: 'jsmith@ia.school',
       passwordHash: teacherHash,
-      role: Role.TEACHER,
+      roles: [Role.TEACHER, Role.SPONSOR],
     },
   });
 
@@ -71,7 +71,7 @@ async function main() {
       create: {
         ...s,
         passwordHash: await bcrypt.hash(s.uniqueId, 12),
-        role: Role.STUDENT,
+        roles: [Role.STUDENT],
       },
     });
     createdStudents.push(student);
@@ -80,11 +80,11 @@ async function main() {
   // Promote STU003 to Student Leader, STU004 to Student Admin
   await prisma.user.update({
     where: { uniqueId: 'STU003' },
-    data: { role: Role.STUDENT_LEADER },
+    data: { roles: [Role.STUDENT, Role.STUDENT_LEADER] },
   });
   await prisma.user.update({
     where: { uniqueId: 'STU004' },
-    data: { role: Role.STUDENT_ADMIN },
+    data: { roles: [Role.STUDENT, Role.STUDENT_ADMIN] },
   });
 
   // Create a Club (upsert by name)
@@ -114,6 +114,7 @@ async function main() {
   ]);
   await prisma.notificationPreference.createMany({
     data: prefRecords,
+    skipDuplicates: true,
   });
   console.log(`Bootstrapped preferences for ${allUsers.length} users`);
 
@@ -124,6 +125,7 @@ async function main() {
       { keyword: 'weapon', addedById: superAdmin.id },
       { keyword: 'drugs', addedById: superAdmin.id },
     ],
+    skipDuplicates: true,
   });
 
   // Sample announcement (only if none exist)

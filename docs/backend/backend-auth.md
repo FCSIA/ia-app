@@ -26,13 +26,13 @@ A JWT is a self-contained signed token. Think of it like a wristband at a concer
 
 A JWT has three base64-encoded parts separated by dots:
 ```
-eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLWlkIiwicm9sZXMiOlsiU1RVREVOVCI...
+eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLWlkIiwidW5pcXVlSWQiOiJTVFUwMDEi...
 ─────────────────────.──────────────────────────────────────────────────────
       HEADER                            PAYLOAD
 ```
 
 - **Header** — algorithm used (`HS256`)
-- **Payload** — the data (user id, roles, expiry)
+- **Payload** — the data (user id, uniqueId, expiry)
 - **Signature** — proves the token wasn't tampered with (signed with `JWT_SECRET`)
 
 Anyone can decode the payload (it's just base64). But they **cannot forge** a token without knowing `JWT_SECRET`.
@@ -52,11 +52,11 @@ async login(uniqueId: string, password: string) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-  // 3. Sign a JWT with the user's id and roles
-  const payload = { sub: user.id, roles: user.roles };
+  // 3. Sign a JWT with the user's id and uniqueId
+  const payload = { sub: user.id, uniqueId: user.uniqueId };
   const token = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-  return { access_token: token, user };
+  return { token, user: { ...safeUser, roles: user.roles, role: user.roles[0] ?? null } };
 }
 ```
 
@@ -91,19 +91,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; roles: Role[] }) {
+  async validate(payload: { sub: string; uniqueId: string }) {
     // Called after token signature is verified
     // payload.sub = the user's id (stored when token was signed)
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
     if (!user || !user.isActive) throw new UnauthorizedException();
-    return user; // attached to request.user
+    return { ...user, role: user.roles[0] ?? null }; // attached to request.user
   }
 }
 ```
 
-`validate()` is called automatically after the token signature passes. It fetches the full user from the database (so you always have fresh data) and attaches it to `request.user`.
+`validate()` is called automatically after the token signature passes. It fetches the full user from the database (so you always have fresh data), keeps the canonical `roles` array, and adds a convenience `role` alias for code paths that still read a primary role.
 
 ---
 
@@ -159,7 +159,8 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) return true; // no roles required — allow
 
     const user = context.switchToHttp().getRequest().user;
-    return requiredRoles.some((role) => user.roles?.includes(role));
+    const roles = Array.isArray(user.roles) ? user.roles : user.role ? [user.role] : [];
+    return requiredRoles.some((role) => roles.includes(role));
   }
 }
 ```
@@ -189,7 +190,7 @@ JwtAuthGuard.canActivate()
        ↓
 RolesGuard.canActivate()
   → Does route have @Roles()? No → pass through
-  → Yes → check request.user.roles includes required role
+  → Yes → check request.user.roles (or fallback request.user.role alias) includes required role
        ↓
 Controller method runs with @CurrentUser() user
 ```

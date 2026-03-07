@@ -25,7 +25,7 @@ enum Role {
   SUPER_ADMIN
 }
 ```
-Users can hold **multiple roles** at once (stored as an array). See [[roles-and-permissions]].
+Users can hold multiple roles at once. They are stored as a `roles` array in the database.
 
 ### AnnouncementTarget
 ```prisma
@@ -70,6 +70,7 @@ Represents a student's academic track at FCS Innovation Academy. Every student h
 enum NotificationCategory {
   SCHOOL_ANNOUNCEMENT
   CLUB_ANNOUNCEMENT
+  CLUB_CHANNEL_MENTION
   EVENT
   FLEX_FRIDAY
 }
@@ -102,7 +103,7 @@ model User {
 
 Key points:
 - `uniqueId` is the login username (not the `id` CUID)
-- `roles` is an array — a Teacher who is also a Club Sponsor has `[TEACHER, SPONSOR]`
+- `roles` is an array — a Teacher who is also a Club Sponsor can have `[TEACHER, SPONSOR]`
 - `gradeLevel`, `major`, and `minor` are **student-only** — teachers and admins leave these `null`
 - `minor` is always one of the other two pathways that is not the student's `major`
 - `isActive: false` = soft-deleted account (data preserved, user can't log in)
@@ -179,6 +180,8 @@ model Club {
   members   ClubMember[]
   sponsors  ClubSponsor[]
   invites   ClubInvite[]
+  channels  ClubChannel[]
+  tags      ClubTag[]
 }
 ```
 
@@ -220,11 +223,99 @@ model ClubInvite {
   id          String       @id @default(uuid())
   clubId      String
   senderId    String       // who sent the invite
-  recipientId String       // who received it
+  recipientId String       // recipient user's internal id
   status      InviteStatus @default(PENDING)  // PENDING | ACCEPTED | DECLINED
   createdAt   DateTime     @default(now())
 
   @@unique([clubId, recipientId])  // can't invite same person twice
+}
+```
+
+The invite endpoints accept a recipient `uniqueId` (single invite or CSV upload) and resolve it to this stored internal `recipientId`.
+
+### ClubChannel
+```prisma
+model ClubChannel {
+  id          String   @id @default(cuid())
+  clubId      String
+  name        String
+  description String?
+  isPrivate   Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships ClubChannelMembership[]
+  messages    ClubChannelMessage[]
+
+  @@unique([clubId, name])
+}
+```
+
+### ClubChannelMembership
+```prisma
+model ClubChannelMembership {
+  id        String   @id @default(cuid())
+  channelId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([channelId, userId])
+}
+```
+
+### ClubTag
+```prisma
+model ClubTag {
+  id          String   @id @default(cuid())
+  clubId      String
+  name        String
+  slug        String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  members ClubTagMember[]
+
+  @@unique([clubId, slug])
+}
+```
+
+### ClubTagMember
+```prisma
+model ClubTagMember {
+  id        String   @id @default(cuid())
+  tagId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([tagId, userId])
+}
+```
+
+### ClubChannelMessage
+```prisma
+model ClubChannelMessage {
+  id        String   @id @default(cuid())
+  channelId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mentions ClubChannelMessageMention[]
+}
+```
+
+### ClubChannelMessageMention
+```prisma
+model ClubChannelMessageMention {
+  id        String          @id @default(cuid())
+  messageId String
+  userId    String?
+  tagId     String?
+  kind      ClubMentionKind
+  token     String
+  createdAt DateTime        @default(now())
 }
 ```
 

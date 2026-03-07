@@ -1,16 +1,38 @@
 ---
-tags: [frontend, styling, tailwind, css, glassmorphism]
+tags: [frontend, styling, tailwind, shadcn, theme]
 ---
 
-# Styling — Tailwind & Glassmorphic Design
+# Styling — Tailwind v4, shadcn, and Theme Tokens
 
 ← [[index|Home]] / [[frontend-overview]]
 
 ---
 
-## Tailwind CSS
+## Tailwind CSS v4
 
-Tailwind is a "utility-first" CSS framework. Instead of writing CSS files with class names that you invent, you use pre-built single-purpose classes directly in your HTML/JSX:
+This app is on **Tailwind CSS v4**. Instead of a generated config-first setup, the main theme now lives directly in `apps/web/src/app/globals.css`.
+
+Key pieces:
+
+```css
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+@config "../../tailwind.config.ts";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  /* ... */
+}
+```
+
+That means:
+- Tailwind utilities still drive the UI
+- the design tokens are CSS variables first
+- light/dark theme values are defined in one place
+- shadcn components automatically pick up the same tokens
+
+Tailwind is still utility-first:
 
 ```tsx
 // Without Tailwind — separate CSS file needed
@@ -62,171 +84,60 @@ className="p-4 md:p-8"
 
 ---
 
-## The Glassmorphic Design System
+## shadcn/ui Setup
 
-The visual style is defined in `src/app/globals.css`. The "glass" effect is achieved with:
+The web app uses **shadcn/ui** with:
 
-1. **Semi-transparent background**: `rgba(255,255,255,0.04)` — 4% white
-2. **Backdrop blur**: `backdrop-filter: blur(24px) saturate(180%)` — blurs what's behind the element
-3. **Subtle border**: `rgba(255,255,255,0.08)` — 8% white border
-4. **Inner highlight**: `box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset` — top edge highlight
+- `style: "new-york"` in `apps/web/components.json`
+- Radix primitives under `apps/web/src/components/ui`
+- CSS variables enabled
+- Lucide as the icon set
 
-### The Dark Background
+The current shadcn docs also support Tailwind v4, which matches this repo's setup.
 
-```css
-body {
-  background-color: #0c0a09; /* warm near-black */
-  background-image:
-    /* subtle orange glow at top-right corner */
-    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(249,115,22,0.06) 0%, transparent 100%),
-    /* subtle orange glow at bottom-left corner */
-    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(234,88,12,0.04) 0%, transparent 100%);
-}
-```
+### Practical implication
 
-### Background Blobs
+For new UI work:
 
-Three fixed blurred orbs in `layout.tsx` create depth behind all content:
-
-```tsx
-// Orange orb — top right
-{ background: '#f97316', filter: 'blur(120px)', opacity: 0.04, width: 500, height: 500 }
-
-// Amber orb — bottom left
-{ background: '#d97706', filter: 'blur(100px)', opacity: 0.03, width: 420, height: 420 }
-
-// Deep orange orb — middle right
-{ background: '#c2410c', filter: 'blur(90px)', opacity: 0.025, width: 300, height: 300 }
-```
-
-`opacity: 0.03–0.04` means 3–4% opacity — almost invisible but adds warmth.
+- prefer composing shadcn primitives over writing custom one-off components
+- keep theme values in `globals.css`
+- customize via tokens and utility classes instead of long bespoke CSS blocks
+- use the orange/warm palette already established in the theme variables
 
 ---
 
-## Custom CSS Classes
+## Theme Direction
 
-Defined in `globals.css` and used throughout the app:
+The current visual language is warm and orange-forward:
 
-### .card
-```css
-.card {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.08);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.06) inset,  /* top highlight */
-    0 20px 60px rgba(0,0,0,0.35);           /* drop shadow */
-  border-radius: 16px;
-  padding: 1.5rem;
-  transition: transform 0.2s ease-out, border-color 0.2s, box-shadow 0.2s;
-}
+- light mode uses bright neutral surfaces with orange and amber gradients
+- dark mode uses warm near-black surfaces instead of blue-gray defaults
+- cards rely on subtle borders, soft blur, and layered shadows rather than a flat white panel system
+- feature pages can push the design further, but should stay anchored to the shared tokens
 
-.card:hover {
-  transform: translateY(-2px);               /* lift */
-  border-color: rgba(255,255,255,0.14);      /* brighter border */
-}
-```
-
-### .btn-primary (Orange)
-```css
-.btn-primary {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  color: white;
-  border-radius: 10px;
-  padding: 0.5rem 1rem;
-  box-shadow: 0 4px 20px rgba(249,115,22,0.25), 0 1px 0 rgba(255,255,255,0.15) inset;
-  transition: all 0.2s ease-out;
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 30px rgba(249,115,22,0.35);
-}
-```
-
-### .btn-secondary (Glass)
-```css
-.btn-secondary {
-  background: rgba(255,255,255,0.06);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.75);
-  border-radius: 10px;
-}
-```
-
-### .input (Dark Glass)
-```css
-.input {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: white;
-  border-radius: 10px;
-  padding: 0.625rem 0.875rem;
-  width: 100%;
-}
-
-.input:focus {
-  border-color: rgba(249,115,22,0.5);              /* orange border */
-  box-shadow: 0 0 0 3px rgba(249,115,22,0.12);     /* orange glow */
-  outline: none;
-}
-```
-
-### .badge-* (Colored Tags)
-```css
-.badge-blue  { background: rgba(59,130,246,0.15);  color: #93c5fd;  border: 1px solid rgba(59,130,246,0.25); }
-.badge-green { background: rgba(16,185,129,0.15);  color: #6ee7b7;  border: 1px solid rgba(16,185,129,0.25); }
-.badge-yellow{ background: rgba(245,158,11,0.15);  color: #fcd34d;  border: 1px solid rgba(245,158,11,0.25); }
-.badge-red   { background: rgba(239,68,68,0.15);   color: #fca5a5;  border: 1px solid rgba(239,68,68,0.25); }
-.badge-gray  { background: rgba(107,114,128,0.15); color: #d1d5db;  border: 1px solid rgba(107,114,128,0.25); }
-```
-
-All badges share the same formula: colored background at 15% opacity, light-colored text, colored border at 25% opacity.
-
-### .page-enter (Entry Animation)
+Examples from `globals.css`:
 
 ```css
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+:root {
+  --accent-glow: rgba(249, 115, 22, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.08);
 }
 
-.page-enter {
-  animation: fadeSlideUp 0.3s ease-out both;
+.dark {
+  --accent-glow: rgba(249, 115, 22, 0.2);
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
 }
 ```
-
-Applied to the `<main>` element in AppShell — every page slides up gently when navigating.
 
 ---
 
-## Tailwind Config
+## Toasts and Current shadcn Guidance
 
-`tailwind.config.ts` extends Tailwind with custom tokens:
+Current shadcn docs prefer **Sonner** for new toast work.
 
-```typescript
-theme: {
-  extend: {
-    colors: {
-      accent: {
-        400: '#fb923c',  // lighter orange
-        500: '#f97316',  // primary orange
-        600: '#ea580c',  // darker orange
-      },
-    },
-    boxShadow: {
-      glass: '0 1px 0 rgba(255,255,255,0.06) inset, 0 20px 60px rgba(0,0,0,0.35)',
-      'accent-glow': '0 8px 30px rgba(249,115,22,0.25)',
-    },
-  },
-}
-```
-
-These are then available as Tailwind classes:
-```tsx
-className="text-accent-400 shadow-accent-glow"
-```
+This repo still uses the existing `react-hot-toast` + `useToast` flow in the app shell and pages. That is the current runtime truth, but if the toast system gets refactored later, Sonner is the direction that matches the latest shadcn guidance.
 
 ---
 

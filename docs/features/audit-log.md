@@ -43,13 +43,15 @@ model AuditEvent {
 |--------|-----------|------|
 | `USER_DEACTIVATED` | `User` | Admin deactivates a user account |
 | `USER_ACTIVATED` | `User` | Admin reactivates a user |
-| `ROLES_UPDATED` | `User` | Admin changes a user's roles |
+| `USER_ROLES_UPDATED` | `User` | Admin changes a user's roles |
+| `USER_CSV_IMPORT` | `User` | Super admin imports student roster CSV |
+| `CLUB_INVITES_BULK_IMPORTED` | `Club` | Leader/sponsor imports club invite CSV |
 | `REPORT_RESOLVED` | `Report` | Moderation report resolved |
 | `REPORT_DISMISSED` | `Report` | Moderation report dismissed |
 | `KEYWORD_ADDED` | `KeywordRule` | New keyword rule added |
 | `KEYWORD_REMOVED` | `KeywordRule` | Keyword rule deleted |
 | `EVENT_PUBLISHED` | `Event` | Event published to calendar |
-| `MEMBER_REMOVED` | `ClubMember` | Member removed from club |
+| `CLUB_MEMBER_REMOVED` | `Club` | Member removed from club |
 
 ---
 

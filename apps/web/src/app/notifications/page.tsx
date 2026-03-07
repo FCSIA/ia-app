@@ -1,6 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const { toast } = useToast();
 
@@ -37,7 +39,28 @@ export default function NotificationsPage() {
     CLUB_ANNOUNCEMENT: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
     EVENT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     FLEX_FRIDAY: 'bg-foreground/10 text-foreground border-foreground/20',
+    CLUB_CHANNEL_MENTION: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',
   };
+
+  function openNotification(notification: any) {
+    if (!notification.isRead) {
+      markReadMutation.mutate(notification.id);
+    }
+
+    if (notification.channelId && notification.clubId) {
+      router.push(`/clubs/${notification.clubId}/channels/${notification.channelId}`);
+      return;
+    }
+
+    if (notification.announcementId) {
+      router.push(`/announcements/${notification.announcementId}`);
+      return;
+    }
+
+    if (notification.eventId) {
+      router.push('/events');
+    }
+  }
 
   return (
     <AppShell>
@@ -74,7 +97,7 @@ export default function NotificationsPage() {
             {(notifications as any[]).map((n) => (
               <Card
                 key={n.id}
-                onClick={() => !n.isRead && markReadMutation.mutate(n.id)}
+                onClick={() => openNotification(n)}
                 className={`cursor-pointer transition-all duration-200 ${n.isRead
                   ? 'opacity-60 bg-transparent shadow-none border-border/50'
                   : 'bg-accent/30 hover:bg-accent/50 hover:-translate-y-0.5 border-accent-500/20'

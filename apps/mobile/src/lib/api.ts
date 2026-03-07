@@ -46,8 +46,17 @@ export const clubsApi = {
   getMyClubs: () => api.get('/clubs/my'),
   getMyInvites: () => api.get('/clubs/my/invites'),
   getOne: (id: string) => api.get(`/clubs/${id}`),
-  sendInvite: (clubId: string, recipientId: string) =>
-    api.post(`/clubs/${clubId}/invite`, { recipientId }),
+  getChannels: (clubId: string) => api.get(`/clubs/${clubId}/channels`),
+  getChannelMessages: (clubId: string, channelId: string) =>
+    api.get(`/clubs/${clubId}/channels/${channelId}/messages`),
+  createChannel: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/channels`, data),
+  createTag: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/tags`, data),
+  postChannelMessage: (clubId: string, channelId: string, body: string) =>
+    api.post(`/clubs/${clubId}/channels/${channelId}/messages`, { body }),
+  sendInvite: (clubId: string, uniqueId: string) =>
+    api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   respondToInvite: (inviteId: string, accept: boolean) =>
     api.post(`/clubs/invites/${inviteId}/respond`, { accept }),
   promoteMember: (clubId: string, memberId: string) =>

@@ -17,6 +17,11 @@ export class AuthService {
     private audit: AuditService,
   ) {}
 
+  private safeUser(user: { passwordHash: string | null; roles: string[]; [key: string]: unknown }) {
+    const { passwordHash, roles, ...safeUser } = user;
+    return { ...safeUser, roles, role: roles[0] ?? null };
+  }
+
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { uniqueId: dto.uniqueId },
@@ -51,8 +56,7 @@ export class AuthService {
       entityId: user.id,
     });
 
-    const { passwordHash, role, ...safeUser } = user;
-    return { token, user: { ...safeUser, role, roles: role ? [role] : [] } };
+    return { token, user: this.safeUser(user) };
   }
 
   async logout(userId: string, token: string) {
@@ -91,7 +95,6 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
-    const { passwordHash, role, ...safeUser } = user;
-    return { ...safeUser, role, roles: role ? [role] : [] };
+    return this.safeUser(user);
   }
 }

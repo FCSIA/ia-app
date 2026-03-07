@@ -10,7 +10,7 @@ tags: [reference, roles, permissions, auth]
 
 ## The 8 Roles
 
-Users can hold **multiple roles simultaneously**. Stored as an array on the `User` model.
+Users can hold multiple roles simultaneously. They are stored as a `roles` array on the `User` model.
 
 | Role | Typical user | Description |
 |------|-------------|-------------|
@@ -94,7 +94,7 @@ Users can hold **multiple roles simultaneously**. Stored as an array on the `Use
 deleteUser(@Param('id') id: string) { ... }
 ```
 
-The `RolesGuard` checks `user.roles.some(r => requiredRoles.includes(r))`. See [[backend-auth]].
+The `RolesGuard` checks `user.roles` and also tolerates a `user.role` alias in request context. See [[backend-auth]].
 
 ### Frontend (UI conditional rendering)
 
