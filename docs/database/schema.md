@@ -125,6 +125,87 @@ model AuthSession {
 
 ---
 
+## Student Schedule Models
+
+### ScheduleWeekday
+```prisma
+enum ScheduleWeekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+```
+
+This enum is used by both the bell-schedule blocks and per-student schedule entries.
+
+### StudentSchedule
+```prisma
+model StudentSchedule {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User
+  entries StudentScheduleEntry[]
+}
+```
+
+Each student can have at most one personal schedule. `isPublic` controls whether friends can see it.
+
+### StudentScheduleEntry
+```prisma
+model StudentScheduleEntry {
+  id           String          @id @default(cuid())
+  scheduleId    String
+  weekday       ScheduleWeekday
+  periodNumber  Int
+  className     String
+
+  @@unique([scheduleId, weekday, periodNumber])
+}
+```
+
+This stores a student-entered class for a weekday + period pair. The unique constraint prevents duplicate classes for the same slot.
+
+### StudentScheduleFriend
+```prisma
+model StudentScheduleFriend {
+  id        String   @id @default(cuid())
+  ownerId   String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  @@unique([ownerId, friendId])
+}
+```
+
+This is a one-way “pinned friend” relationship for schedule comparison. It is not a mutual request/accept flow.
+
+### SchoolDayBlock
+```prisma
+model SchoolDayBlock {
+  id           String          @id @default(cuid())
+  weekday      ScheduleWeekday
+  label        String
+  periodNumber Int?
+  startTime    String
+  endTime      String
+  createdById  String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+```
+
+Admins define the school day using these blocks:
+- if `periodNumber` is `1` through `8`, students see their matching class during that time
+- if `periodNumber` is `null`, the block behaves like a custom label such as lunch, advisory, or assembly
+
+---
+
 ## Announcement Models
 
 ### Announcement

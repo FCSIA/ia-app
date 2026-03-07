@@ -68,6 +68,10 @@ model User {
   createdChannels     ClubChannel[] @relation("ClubChannelCreator")
   createdTags         ClubTag[] @relation("ClubTagCreator")
   mentionedInChannelMentions ClubChannelMessageMention[] @relation("ClubChannelMentionUser")
+  studentSchedule     StudentSchedule?
+  scheduleFriends     StudentScheduleFriend[] @relation("StudentScheduleFriendOwner")
+  friendedBySchedules StudentScheduleFriend[] @relation("StudentScheduleFriendTarget")
+  createdSchoolDayBlocks SchoolDayBlock[] @relation("SchoolDayBlockCreator")
 
   @@map("users")
 }
@@ -82,6 +86,74 @@ model AuthSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("auth_sessions")
+}
+
+// ─── Student Schedules ───────────────────────────────────────────────────────
+
+enum ScheduleWeekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+model StudentSchedule {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  isPublic  Boolean  @default(false) @map("is_public")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries StudentScheduleEntry[]
+
+  @@map("student_schedules")
+}
+
+model StudentScheduleEntry {
+  id           String          @id @default(cuid())
+  scheduleId    String         @map("schedule_id")
+  weekday       ScheduleWeekday
+  periodNumber  Int            @map("period_number")
+  className     String         @map("class_name")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  schedule StudentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, weekday, periodNumber])
+  @@map("student_schedule_entries")
+}
+
+model StudentScheduleFriend {
+  id        String   @id @default(cuid())
+  ownerId   String   @map("owner_id")
+  friendId  String   @map("friend_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner  User @relation("StudentScheduleFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  friend User @relation("StudentScheduleFriendTarget", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, friendId])
+  @@map("student_schedule_friends")
+}
+
+model SchoolDayBlock {
+  id           String          @id @default(cuid())
+  weekday      ScheduleWeekday
+  label        String
+  periodNumber Int?            @map("period_number")
+  startTime    String          @map("start_time")
+  endTime      String          @map("end_time")
+  createdById  String          @map("created_by_id")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  createdBy User @relation("SchoolDayBlockCreator", fields: [createdById], references: [id])
+
+  @@index([weekday, startTime])
+  @@map("school_day_blocks")
 }
 
 // ─── Announcements ────────────────────────────────────────────────────────────

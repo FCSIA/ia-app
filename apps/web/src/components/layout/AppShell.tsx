@@ -15,6 +15,7 @@ import {
   X,
   Shield,
   BookOpen,
+  Clock3,
 } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/clubs', label: 'Clubs', icon: BookOpen },
+  { href: '/schedule', label: 'Schedule', icon: Clock3 },
   { href: '/events', label: 'Events', icon: Calendar },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/flex-friday', label: 'Flex Friday', icon: Zap },
@@ -67,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
 
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+  const showSchedule = user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN');
 
   const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: any }) => {
     const active = isActive(href);
@@ -143,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => (
+          {navItems.filter((item) => item.href !== '/schedule' || showSchedule).map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
 

@@ -131,6 +131,18 @@ export const calendarApi = {
     api.get('/calendar', { params: { startDate, endDate, tags } }),
 };
 
+// Schedule
+export const scheduleApi = {
+  getDashboard: () => api.get('/schedule'),
+  saveMine: (data: any) => api.put('/schedule/me', data),
+  searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
+  addFriend: (friendId: string) => api.post('/schedule/friends', { friendId }),
+  removeFriend: (friendId: string) => api.delete(`/schedule/friends/${friendId}`),
+  createBlock: (data: any) => api.post('/schedule/blocks', data),
+  updateBlock: (blockId: string, data: any) => api.patch(`/schedule/blocks/${blockId}`, data),
+  deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
+};
+
 // Flex Friday
 export const flexFridayApi = {
   getAll: () => api.get('/flex-friday'),

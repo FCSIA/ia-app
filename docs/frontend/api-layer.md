@@ -185,6 +185,47 @@ Channel-mention notifications include `clubId`, `channelId`, and `messageId` in 
 
 For club channels and tags, the web UI now prefers `memberIds` selected from the club directory. `memberUniqueIds` still exists in the API for compatibility with older clients.
 
+### scheduleApi
+```typescript
+export const scheduleApi = {
+  getDashboard: () => api.get('/schedule'),
+  saveMine: (data: {
+    isPublic: boolean;
+    entries: Array<{
+      weekday: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+      periodNumber: number;
+      className: string;
+    }>;
+  }) => api.put('/schedule/me', data),
+  searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
+  addFriend: (friendId: string) => api.post('/schedule/friends', { friendId }),
+  removeFriend: (friendId: string) => api.delete(`/schedule/friends/${friendId}`),
+  createBlock: (data: {
+    weekday: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+    kind: 'PERIOD' | 'CUSTOM';
+    periodNumber?: number;
+    label?: string;
+    startTime: string;
+    endTime: string;
+  }) => api.post('/schedule/blocks', data),
+  updateBlock: (blockId: string, data: {
+    weekday: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+    kind: 'PERIOD' | 'CUSTOM';
+    periodNumber?: number;
+    label?: string;
+    startTime: string;
+    endTime: string;
+  }) => api.patch(`/schedule/blocks/${blockId}`, data),
+  deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
+};
+```
+
+This powers the student-facing `/schedule` workspace:
+- students can save a private or public class grid
+- students can search classmates by first name, last name, or `uniqueId`
+- students can pin friends and see only public schedules
+- admins can define the weekly day blocks that drive the live “what class is happening now?” view
+
 ---
 
 ## HTTP Methods in REST

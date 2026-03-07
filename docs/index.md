@@ -47,6 +47,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[clubs]] — Club management, membership, and invites
 - [[events]] — Event creation, approval workflow, and publishing
 - [[calendar]] — Calendar entries and event display
+- [[schedule]] — Student schedules, friend comparison, and admin day blocks
 - [[flex-friday]] — Session scheduling, registration, and assignments
 - [[notifications]] — In-app notification delivery and preferences
 - [[moderation]] — Keyword filtering and content reports

@@ -220,6 +220,7 @@ throw new UnauthorizedException('Login required');  // 401
 | `ClubsController` | `/clubs` | `GET /`, `GET /my`, `POST /`, `POST /:id/invite`, `POST /:id/invite/csv`, `GET /:id/channels`, `POST /:id/channels`, `POST /:id/tags`, `POST /:id/channels/:channelId/messages` |
 | `EventsController` | `/events` | `GET /`, `POST /`, `POST /:id/approve`, `POST /:id/reject` |
 | `CalendarController` | `/calendar` | `GET /entries` |
+| `ScheduleController` | `/schedule` | `GET /`, `PUT /me`, `GET /search`, `POST /friends`, `DELETE /friends/:friendId`, `POST /blocks`, `PATCH /blocks/:blockId`, `DELETE /blocks/:blockId` |
 | `FlexFridayController` | `/flex-friday` | `GET /`, `GET /:id/sessions`, `POST /:id/sessions`, `POST /:fid/sessions/:sid/register` |
 | `NotificationsController` | `/notifications` | `GET /`, `GET /unread-count`, `POST /mark-read`, `POST /mark-all-read` |
 | `ModerationController` | `/moderation` | `GET /keywords`, `POST /keywords`, `GET /reports`, `PATCH /reports/:id` |
