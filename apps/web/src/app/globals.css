@@ -122,7 +122,7 @@
 }
 
 /* ─── Components ─────────────────────────────────────────────────────────────── */
-<<<<<<< HEAD
+
 @layer components {
 
   /* Page entry animation */
@@ -344,6 +344,3 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
-=======
-/* Custom components replaced by shadcn/ui */
->>>>>>> d01468c30b2b1b011127d26dce0dbf5dee929dcc
