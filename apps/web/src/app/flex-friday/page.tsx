@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
 import { format, parseISO } from 'date-fns';
-import { Plus, Users, MapPin, CheckCircle, CalendarIcon } from 'lucide-react';
+import { Plus, Users, MapPin, CheckCircle, CalendarIcon, Ticket } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function FlexFridayPage() {
   const user = getUser();
@@ -197,6 +198,13 @@ export default function FlexFridayPage() {
             <p className="text-muted-foreground text-sm">Sessions and registration</p>
           </div>
           {canManage && <Button onClick={() => setShowNewFriday(true)} className="flex items-center gap-2"><Plus size={16} /> Schedule Friday</Button>}
+          {isStudent && (
+            <Link href="/flex-friday/pass">
+              <Button variant="outline" className="flex items-center gap-2 border-orange-500/30 text-orange-500 hover:bg-orange-500/10">
+                <Ticket size={15} /> My Pass
+              </Button>
+            </Link>
+          )}
         </div>
 
         {showNewFriday && canManage && (
@@ -509,9 +517,16 @@ export default function FlexFridayPage() {
                               </div>
                               {isStudent && s.sessionType === 'STUDENT_CHOICE' && (
                                 isRegistered ? (
-                                  <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(s.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive flex items-center gap-1.5 flex-shrink-0">
-                                    {isUnregistering ? 'Updating…' : 'Unregister'}
-                                  </Button>
+                                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                                    <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(s.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive flex items-center gap-1.5">
+                                      {isUnregistering ? 'Updating…' : 'Unregister'}
+                                    </Button>
+                                    <Link href="/flex-friday/pass">
+                                      <Button size="sm" variant="outline" className="h-8 w-full flex items-center gap-1 border-orange-500/30 text-orange-500 hover:bg-orange-500/10">
+                                        <Ticket size={12} /> View Pass
+                                      </Button>
+                                    </Link>
+                                  </div>
                                 ) : (
                                   <Button size="sm" onClick={() => registerMutation.mutate(s.id)} disabled={!!isFull || isRegistering} className="h-8 flex-shrink-0">
                                     {isFull ? 'Full' : isRegistering ? 'Registering…' : 'Register'}
