@@ -255,28 +255,7 @@ export default function DashboardPage() {
               </div>
             </Panel>
 
-            <Panel title="Context" description="A little signal without turning this into a data wall.">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Users2 className="size-4" />
-                    <span className="text-sm font-semibold text-foreground">Teams first</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Clubs, schedule, and notifications now drive most of the daily product loop.
-                  </p>
-                </div>
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Sparkles className="size-4" />
-                    <span className="text-sm font-semibold text-foreground">Modernized shell</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    The web app is shifting toward a denser, more intentional workspace layout.
-                  </p>
-                </div>
-              </div>
-            </Panel>
+
           </div>
         </div>
       </PageFrame>

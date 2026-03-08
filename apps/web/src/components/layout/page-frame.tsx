@@ -82,7 +82,7 @@ export function HeroBand({
           {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
           {children}
         </div>
-        {aside ? <div className="w-full xl:w-auto">{aside}</div> : null}
+        {aside ? <div className="w-full xl:w-auto flex flex-col gap-3">{aside}</div> : null}
       </div>
     </section>
   );
