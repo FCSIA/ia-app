@@ -6,7 +6,7 @@
     "prebuild": "pnpm --filter @ia/contracts build",
     "build": "nest build",
     "predev": "pnpm --filter @ia/contracts build",
-    "dev": "nest start --watch",
+    "dev": "node --watch --require ts-node/register --require tsconfig-paths/register src/main.ts",
     "start": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
