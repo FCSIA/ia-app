@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { getUser, hasRole } from '@/lib/auth';
 import { clubsApi, usersApi } from '@/lib/api';
@@ -271,82 +272,38 @@ export default function ClubsPage() {
               </Button>
             </>
           }
-          aside={
-            <>
-              <HeroStat
-                label="My clubs"
-                value={myData?.memberOf?.length ?? 0}
-                description="Student and leader memberships."
-                icon={Users2}
-              />
-              <HeroStat
-                label="Sponsoring"
-                value={myData?.sponsoring?.length ?? 0}
-                description="Faculty-visible workspaces."
-                icon={Shield}
-              />
-              <HeroStat
-                label="Pending invites"
-                value={invites.length}
-                description="Accept or decline from one place."
-                icon={UserRoundPlus}
-              />
-              <HeroStat
-                label="Active clubs"
-                value={allClubs.length}
-                description="Visible catalog across the school."
-                icon={Compass}
-              />
-            </>
-          }
-        >
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Sponsor rule</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Every club starts with at least one teacher sponsor.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Sponsors automatically see every channel, including private ones.
-              </p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Channel-first</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Clubs are organized around real conversation lanes.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Announcements handle official voice; channels handle work.
-              </p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Member tags</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Mention groups come from current club members.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                No raw ID typing. Use search, selection, and reusable tag slices.
-              </p>
-            </div>
-          </div>
-        </HeroBand>
+        />
+
+        <div className="grid gap-4 lg:grid-cols-4">
+          <HeroStat
+            label="My clubs"
+            value={myData?.memberOf?.length ?? 0}
+            description="Student and leader memberships."
+            icon={Users2}
+          />
+          <HeroStat
+            label="Sponsoring"
+            value={myData?.sponsoring?.length ?? 0}
+            icon={Shield}
+          />
+          <HeroStat
+            label="Pending"
+            value={invites.length}
+            icon={UserRoundPlus}
+          />
+          <HeroStat
+            label="Active clubs"
+            value={allClubs.length}
+            description="Visible catalog across the school."
+            icon={Compass}
+          />
+        </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_380px]">
           <div className="space-y-6">
             <Panel
               title="Your spaces"
               description="Pick up where you left off across memberships, sponsor work, and schoolwide discovery."
-              action={
-                <div className="relative w-full max-w-sm">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search clubs"
-                    className="rounded-2xl border-border/70 pl-11"
-                  />
-                </div>
-              }
             >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -411,10 +368,31 @@ export default function ClubsPage() {
               <Panel
                 title="All active clubs"
                 description="Admin visibility across every club workspace."
+                action={
+                  <div className="relative w-full sm:w-[300px]">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search clubs"
+                      className="rounded-lg pl-9"
+                    />
+                  </div>
+                }
               >
                 {isLoading ? (
-                  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                    Loading clubs…
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-[180px] rounded-[1.6rem] border border-border/70 bg-card p-5">
+                        <Skeleton className="mb-3 h-6 w-1/2" />
+                        <Skeleton className="mb-2 h-4 w-full" />
+                        <Skeleton className="h-4 w-4/5" />
+                        <div className="mt-6 flex gap-2">
+                          <Skeleton className="h-6 w-20 rounded-full" />
+                          <Skeleton className="h-6 w-24 rounded-full" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : filteredClubs.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2">
@@ -474,19 +452,7 @@ export default function ClubsPage() {
               </div>
             </Panel>
 
-            <Panel title="Why this layout" description="The product logic the clubs area is trying to honor.">
-              <div className="space-y-3 text-sm leading-6 text-muted-foreground">
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
-                  Search and selection now sit closer to the surfaces they control, instead of hiding behind flat cards and generic copy.
-                </div>
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
-                  Sponsor oversight is explicit. That rule should be visible in the UI, not just quietly enforced by the backend.
-                </div>
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
-                  The next screen after this should feel like entering a team workspace, not drilling into another detail form.
-                </div>
-              </div>
-            </Panel>
+
 
             {canCreate ? (
               <Panel title="Admin posture" description="Creation is available only to admins and always sponsor-backed.">
@@ -572,6 +538,6 @@ export default function ClubsPage() {
           </SheetContent>
         </Sheet>
       </PageFrame>
-    </AppShell>
+    </AppShell >
   );
 }

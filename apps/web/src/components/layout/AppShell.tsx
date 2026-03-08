@@ -92,18 +92,11 @@ function NavLink({
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
-        size="lg"
         tooltip={label}
         isActive={active}
-        className={cn(
-          'h-11 rounded-2xl px-3 text-[0.95rem] font-medium',
-          active
-            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-primary/20 hover:bg-sidebar-primary'
-            : 'text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-        )}
       >
         <Link href={href}>
-          <Icon className={cn(active ? 'text-sidebar-primary-foreground' : 'text-sidebar-foreground/55')} />
+          <Icon />
           <span>{label}</span>
         </Link>
       </SidebarMenuButton>
@@ -132,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const handleLogout = async () => {
     try {
       await authApi.logout();
-    } catch {}
+    } catch { }
     clearAuth();
     router.replace('/login');
     toast({ title: 'Logged out' });
@@ -165,153 +158,98 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen>
-      <Sidebar variant="inset" collapsible="icon" className="border-none bg-transparent">
-        <SidebarHeader className="p-3">
-          <div className="surface-rail overflow-hidden">
-            <div className="border-b border-sidebar-border/70 px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-2xl bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-primary/25">
-                  <Sparkles className="size-5" />
-                </div>
-                <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/55">
-                    IA School
-                  </p>
-                  <p className="truncate text-base font-semibold text-sidebar-foreground">
-                    Student Operating System
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-[1.4rem] border border-sidebar-border/70 bg-sidebar-primary/10 p-3 group-data-[collapsible=icon]:hidden">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sidebar-primary/80">
-                  Daily focus
-                </p>
-                <p className="mt-2 text-sm leading-6 text-sidebar-foreground/78">
-                  Clubs, schedules, and school signals should feel like one product, not five stitched panels.
-                </p>
-              </div>
-            </div>
-          </div>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild>
+                <Link href="/dashboard">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <div className="flex flex-col gap-0.5 leading-none">
+                    <span className="font-semibold text-sidebar-foreground">IA School</span>
+                    <span className="text-xs text-sidebar-foreground/70">Student OS</span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent className="px-3 pb-3">
-          <div className="surface-rail flex h-full flex-col overflow-hidden">
-            {navGroups.map((group, index) => (
-              <div key={group.label}>
-                {index > 0 ? <SidebarSeparator className="mx-4 my-1 bg-sidebar-border/70" /> : null}
-                <SidebarGroup className="px-3 py-3">
-                  <SidebarGroupLabel className="px-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/45">
-                    {group.label}
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="gap-1">
-                      {group.items.map((item) => (
-                        <NavLink
-                          key={item.href}
-                          {...item}
-                          active={isActive(item.href)}
-                          badge={
-                            item.href === '/notifications' && unreadData?.count
-                              ? unreadData.count > 9
-                                ? '9+'
-                                : unreadData.count
-                              : undefined
-                          }
-                        />
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </div>
-            ))}
-          </div>
+        <SidebarContent>
+          {navGroups.map((group, index) => (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      {...item}
+                      active={isActive(item.href)}
+                      badge={
+                        item.href === '/notifications' && unreadData?.count
+                          ? unreadData.count > 9
+                            ? '9+'
+                            : unreadData.count
+                          : undefined
+                      }
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
 
-        <SidebarFooter className="p-3 pt-0">
-          <div className="surface-rail space-y-3 p-3">
-            <div className="flex items-center justify-between rounded-2xl border border-sidebar-border/70 bg-sidebar-accent/70 px-3 py-2.5 group-data-[collapsible=icon]:hidden">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/45">
-                  Theme
-                </p>
-                <p className="truncate text-sm text-sidebar-foreground/75">Orange-tinted glass</p>
-              </div>
-              <ThemeToggle />
-            </div>
-
-            {user ? (
-              <div className="rounded-[1.4rem] border border-sidebar-border/70 bg-sidebar-accent/60 p-3">
-                <div className="group-data-[collapsible=icon]:hidden">
-                  <p className="truncate text-sm font-semibold text-sidebar-foreground">
-                    {user.firstName} {user.lastName}
-                  </p>
-                  <p className="mt-1 truncate text-[11px] text-sidebar-foreground/45">{user.uniqueId}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {user.roles?.slice(0, 2).map((role: string) => (
-                      <Badge key={role} variant="secondary" className="rounded-full border border-sidebar-border/70 bg-sidebar text-[10px]">
-                        {role.replace(/_/g, ' ')}
-                      </Badge>
-                    ))}
+        <SidebarFooter>
+          {user ? (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <div className="flex items-center gap-2 px-2 py-2">
+                  <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary/10 text-sidebar-primary">
+                    <span className="text-xs font-medium">
+                      {user.firstName.charAt(0)}
+                      {user.lastName.charAt(0)}
+                    </span>
+                  </div>
+                  <div className="hidden min-w-0 flex-1 group-data-[collapsible=icon]:block">
+                    <p className="truncate text-sm font-medium">{user.firstName} {user.lastName}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user.uniqueId}</p>
                   </div>
                 </div>
-                <div className="hidden items-center justify-center group-data-[collapsible=icon]:flex">
-                  <span className="flex size-9 items-center justify-center rounded-2xl bg-sidebar-primary/15 text-xs font-semibold text-sidebar-primary">
-                    {user.firstName.charAt(0)}
-                    {user.lastName.charAt(0)}
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
+              </SidebarMenuItem>
+            </SidebarMenu>
+          ) : null}
+          <div className="px-2 py-2">
+            <ThemeToggle />
+          </div>
+          <div className="px-2 pb-2">
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="h-10 justify-start rounded-2xl text-red-500 hover:bg-red-500/10 hover:text-red-600 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+              className="w-full justify-start text-red-500 hover:bg-red-500/10 hover:text-red-600"
             >
-              <LogOut className="size-4" />
-              <span className="group-data-[collapsible=icon]:hidden">Sign Out</span>
+              <LogOut className="mr-2 size-4" />
+              <span>Sign Out</span>
             </Button>
           </div>
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="min-w-0 bg-transparent">
-        <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6 lg:px-8">
-          <div className="surface-panel flex items-center justify-between gap-4 px-4 py-3 backdrop-blur-xl sm:px-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <SidebarTrigger className="rounded-2xl border border-border/70 bg-background/80 hover:bg-muted/60" />
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/75">
-                  {currentMeta.label}
-                </p>
-                <p className="truncate text-sm text-foreground/68">{currentMeta.detail}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 md:flex">
-                <Badge
-                  variant="secondary"
-                  className="rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-[11px] font-medium"
-                >
-                  <CalendarRange className="mr-1 size-3.5" />
-                  School day mode
-                </Badge>
-                {user?.uniqueId ? (
-                  <Badge
-                    variant="secondary"
-                    className="rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-[11px] font-medium"
-                  >
-                    {user.uniqueId}
-                  </Badge>
-                ) : null}
-              </div>
-              <ThemeToggle />
-            </div>
+      <SidebarInset>
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 pr-6 backdrop-blur">
+          <SidebarTrigger />
+          <div className="flex min-w-0 items-center gap-2 border-l pl-3 text-sm">
+            <p className="font-semibold text-foreground">
+              {currentMeta.label}
+            </p>
+            <p className="truncate text-muted-foreground hidden sm:block">• {currentMeta.detail}</p>
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden page-enter">{children}</main>
+        <main className="flex-1 overflow-x-hidden p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

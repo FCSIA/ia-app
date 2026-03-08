@@ -91,6 +91,7 @@ async function main() {
   const existingClub = await prisma.club.findFirst({ where: { name: 'Robotics Club' } });
   const club = existingClub ?? await prisma.club.create({
     data: {
+      id: 'robotics',
       name: 'Robotics Club',
       description: 'Building robots and competing in regional events.',
       sponsors: { create: [{ userId: teacher.id }] },
@@ -98,6 +99,12 @@ async function main() {
         create: [
           { userId: createdStudents[0].id, role: 'LEADER' },
           { userId: createdStudents[1].id, role: 'MEMBER' },
+        ],
+      },
+      channels: {
+        create: [
+          { id: 'general', name: 'general', description: 'General robotics discussion.', createdById: createdStudents[0].id },
+          { id: 'officers', name: 'officers', description: 'Leadership coordination.', isPrivate: true, createdById: createdStudents[0].id },
         ],
       },
     },

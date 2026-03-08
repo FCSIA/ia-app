@@ -336,7 +336,25 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     return (
       <AppShell>
         <PageFrame>
-          <div className="py-20 text-center text-muted-foreground">Loading club workspace…</div>
+          <div className="h-[320px] w-full animate-pulse rounded-[2rem] bg-muted/30" />
+          <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
+            <aside className="space-y-6">
+              <div className="h-[240px] w-full animate-pulse rounded-[1.75rem] bg-muted/20" />
+              <div className="h-[360px] w-full animate-pulse rounded-[1.75rem] bg-muted/20" />
+            </aside>
+            <main className="space-y-6">
+              <div className="flex h-12 w-full animate-pulse gap-2 rounded-[1.4rem] bg-background">
+                <div className="h-full w-24 rounded-2xl bg-muted/30" />
+                <div className="h-full w-24 rounded-2xl bg-muted/30" />
+                <div className="h-full w-24 rounded-2xl bg-muted/30" />
+              </div>
+              <div className="h-[400px] w-full animate-pulse rounded-[1.75rem] bg-muted/20" />
+            </main>
+            <aside className="space-y-6">
+              <div className="h-[200px] w-full animate-pulse rounded-[1.75rem] bg-muted/20" />
+              <div className="h-[200px] w-full animate-pulse rounded-[1.75rem] bg-muted/20" />
+            </aside>
+          </div>
         </PageFrame>
       </AppShell>
     );
@@ -424,15 +442,32 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               ) : null}
             </>
           }
-          aside={
-            <>
-              <HeroStat label="Members" value={club.members.length} description="Students and leaders in the workspace." icon={Users2} />
-              <HeroStat label="Channels" value={channels.length} description="Public and private conversation lanes." icon={Hash} />
-              <HeroStat label="Tags" value={tags.length} description="Reusable audience slices for pings." icon={AtSign} />
-              <HeroStat label="Message volume" value={totalMessages} description="Total messages across all channels." icon={MessageSquareText} />
-            </>
-          }
         >
+          <div className="grid gap-4 lg:grid-cols-4">
+            <HeroStat
+              label="Members"
+              value={club.members.length}
+              description="Students and leaders in the workspace."
+              icon={Users2}
+            />
+            <HeroStat
+              label="Channels"
+              value={channels.length}
+              icon={Hash}
+            />
+            <HeroStat
+              label="Tags"
+              value={tags.length}
+              icon={AtSign}
+            />
+            <HeroStat
+              label="Message volume"
+              value={totalMessages}
+              description="Total messages across all channels."
+              icon={MessageSquareText}
+            />
+          </div>
+
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="surface-rail px-4 py-3">
               <p className="section-kicker">Faculty visibility</p>
@@ -1037,6 +1072,6 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
           </SheetContent>
         </Sheet>
       </PageFrame>
-    </AppShell>
+    </AppShell >
   );
 }

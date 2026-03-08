@@ -193,7 +193,7 @@ function ReactionBar({
           className={cn(
             'h-8 rounded-full px-3 text-xs',
             reaction.reactedByCurrentUser &&
-              'border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200',
+            'border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200',
           )}
           disabled={isPending}
           onClick={() => onToggleReaction(message.id, reaction.emoji)}
@@ -410,9 +410,9 @@ function MessageComposer({
         !query
           ? true
           : [entry.token, entry.label, entry.detail]
-              .join(' ')
-              .toLowerCase()
-              .includes(query),
+            .join(' ')
+            .toLowerCase()
+            .includes(query),
       )
       .slice(0, 8);
   }, [mentionMatch, suggestionEntries]);
@@ -436,7 +436,7 @@ function MessageComposer({
   };
 
   return (
-    <div className="rounded-[2rem] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--card))/0.92)] p-5 shadow-sm">
+    <div className="rounded-[1.5rem] border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -637,7 +637,7 @@ function ChannelInfoPane({
 }) {
   return (
     <div className="flex h-full flex-col gap-4 p-4">
-      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
+      <Card className="rounded-xl border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Channel rules</CardTitle>
           <CardDescription>
@@ -654,7 +654,7 @@ function ChannelInfoPane({
         </CardContent>
       </Card>
 
-      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
+      <Card className="rounded-xl border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Visible people</CardTitle>
           <CardDescription>{audience.length} people can see this channel right now.</CardDescription>
@@ -674,7 +674,7 @@ function ChannelInfoPane({
         </CardContent>
       </Card>
 
-      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
+      <Card className="rounded-xl border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Custom tags</CardTitle>
           <CardDescription>Reusable mention groups for the club roster.</CardDescription>
@@ -1076,7 +1076,7 @@ export default function ClubChannelPage({
         ) : null}
       </div>
 
-      <ScrollArea className="min-h-[28rem] flex-1 bg-[linear-gradient(180deg,hsl(var(--background))/0.72,transparent)]">
+      <ScrollArea className="min-h-[28rem] flex-1 bg-background">
         <div className="space-y-5 p-5">
           {visibleMessages.length > 0 ? (
             visibleMessages.map((message) => (
@@ -1172,11 +1172,11 @@ export default function ClubChannelPage({
       onSubmitReply={() =>
         selectedThread
           ? sendMessageMutation.mutate({
-              body: replyBody,
-              parentMessageId: selectedThread.id,
-              files: replyFiles,
-              mode: 'thread',
-            })
+            body: replyBody,
+            parentMessageId: selectedThread.id,
+            files: replyFiles,
+            mode: 'thread',
+          })
           : undefined
       }
       isSendingReply={sendMessageMutation.isPending}
@@ -1194,7 +1194,7 @@ export default function ClubChannelPage({
             <>
               <Link
                 href={`/clubs/${id}`}
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/65 px-4 py-2 text-sm text-foreground/75 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5"
+                className="inline-flex w-fit items-center gap-2 rounded-md border bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
               >
                 <ArrowLeft className="size-4" />
                 Back to workspace
@@ -1246,28 +1246,28 @@ export default function ClubChannelPage({
             </>
           }
         >
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Conversation design</p>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="p-4 shadow-sm border bg-card">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Conversation design</p>
               <p className="mt-2 text-base font-semibold text-foreground">Main lane first, threads second.</p>
               <p className="mt-1 text-sm text-muted-foreground">That keeps high-signal channel history readable even as side conversations branch off.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Audience control</p>
+            </Card>
+            <Card className="p-4 shadow-sm border bg-card">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Audience control</p>
               <p className="mt-2 text-base font-semibold text-foreground">Private channels stay scoped without hiding from sponsors.</p>
               <p className="mt-1 text-sm text-muted-foreground">Faculty oversight remains guaranteed by policy rather than manual membership edits.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Message tools</p>
+            </Card>
+            <Card className="p-4 shadow-sm border bg-card">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Message tools</p>
               <p className="mt-2 text-base font-semibold text-foreground">Drop files, react fast, and mention intelligently.</p>
               <p className="mt-1 text-sm text-muted-foreground">The composer is optimized for quick coordination, not generic comment boxes.</p>
-            </div>
+            </Card>
           </div>
         </HeroBand>
 
         <div className="hidden xl:block">
           <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-background/80 shadow-xl shadow-primary/5">
-            <ResizablePanelGroup direction="horizontal" className="min-h-[76vh]">
+            <ResizablePanelGroup orientation="horizontal" className="min-h-[76vh]">
               <ResizablePanel defaultSize={19} minSize={16}>
                 {rail}
               </ResizablePanel>
@@ -1284,9 +1284,9 @@ export default function ClubChannelPage({
         </div>
 
         <div className="space-y-6 xl:hidden">
-          <Card className="rounded-[2rem] border-border/70">{rail}</Card>
-          <Card className="rounded-[2rem] border-border/70">{chatPane}</Card>
-          <Card className="rounded-[2rem] border-border/70">{threadPane}</Card>
+          <Card className="rounded-[1.5rem] bg-card">{rail}</Card>
+          <Card className="rounded-[1.5rem] bg-card">{chatPane}</Card>
+          <Card className="rounded-[1.5rem] bg-card">{threadPane}</Card>
         </div>
       </PageFrame>
     </AppShell>
