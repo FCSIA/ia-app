@@ -6,7 +6,7 @@ tags: [architecture, data-flow]
 
 ← [[index|Home]] / [[overview]]
 
-This page traces a single action — **a student posting a comment on an announcement** — through every layer of the application.
+This page traces a single action — **a student posting a comment on an announcement** — through every layer of the application, then summarizes the parallel flow for club channel mentions.
 
 ---
 
@@ -251,13 +251,31 @@ AuthService: finds user by uniqueId
      ↓
 bcrypt.compare(password, user.passwordHash)
      ↓
-If valid: sign JWT with user.id + roles
+If valid: sign JWT with user.id + uniqueId
      ↓
-Return { access_token, user }
+Return { token, user }
      ↓
 Frontend: localStorage.setItem('ia_token', token)
      ↓
 All future requests attach token automatically
+```
+
+---
+
+## Club Channel Mention Flow
+
+```
+User posts "Please review this @leaders @STU001"
+         ↓
+Frontend calls POST /clubs/:id/channels/:channelId/messages
+         ↓
+ClubsService stores ClubChannelMessage + mention records
+         ↓
+NotificationsService creates CLUB_CHANNEL_MENTION deliveries
+         ↓
+Web and mobile notifications refetch
+         ↓
+Tap notification → open the matching club channel
 ```
 
 See [[backend-auth]] and [[frontend-auth]].

@@ -186,7 +186,7 @@ export class AddCommentDto {
 ```typescript
 export class InviteDto {
   @IsString() @IsNotEmpty()
-  recipientId: string;  // the uniqueId of the user to invite
+  uniqueId: string;  // the visible login/user ID, e.g. STU001
 }
 ```
 

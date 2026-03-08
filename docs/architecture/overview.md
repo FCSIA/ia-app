@@ -77,7 +77,7 @@ POST http://localhost:3001/auth/login
 
 The backend processes it and sends a **response**:
 ```json
-{ "access_token": "eyJhbG...", "user": { "id": "...", "firstName": "..." } }
+{ "token": "eyJhbG...", "user": { "id": "...", "firstName": "...", "roles": ["STUDENT"], "role": "STUDENT" } }
 ```
 
 The frontend stores the token and attaches it to every future request. See [[data-flow]] for a full trace.

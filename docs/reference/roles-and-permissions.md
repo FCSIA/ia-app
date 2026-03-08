@@ -10,7 +10,7 @@ tags: [reference, roles, permissions, auth]
 
 ## The 8 Roles
 
-Users can hold **multiple roles simultaneously**. Stored as an array on the `User` model.
+Users can hold multiple roles simultaneously. They are stored as a `roles` array on the `User` model.
 
 | Role | Typical user | Description |
 |------|-------------|-------------|
@@ -69,6 +69,17 @@ Users can hold **multiple roles simultaneously**. Stored as an array on the `Use
 | Assign students | ❌ | Own sessions | ✅ | ✅ |
 | Create Flex Friday dates | ❌ | ❌ | ✅ | ✅ |
 
+### Schedule
+
+| Permission | STUDENT | STUDENT_LEADER | STUDENT_ADMIN | ADMIN | SUPER_ADMIN |
+|-----------|---------|----------------|---------------|-------|-------------|
+| Open `/schedule` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Save personal schedule | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Set personal schedule public/private | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Search and pin friends | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View a friend's public schedule | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Manage school day blocks | ❌ | ❌ | ❌ | ✅ | ✅ |
+
 ### Admin Panel
 
 | Permission | SUPPORT_STAFF | ADMIN | SUPER_ADMIN |
@@ -94,7 +105,7 @@ Users can hold **multiple roles simultaneously**. Stored as an array on the `Use
 deleteUser(@Param('id') id: string) { ... }
 ```
 
-The `RolesGuard` checks `user.roles.some(r => requiredRoles.includes(r))`. See [[backend-auth]].
+The `RolesGuard` checks `user.roles` and also tolerates a `user.role` alias in request context. See [[backend-auth]].
 
 ### Frontend (UI conditional rendering)
 

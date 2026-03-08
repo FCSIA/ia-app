@@ -174,7 +174,7 @@ export class EventsService {
           location: event.location,
           startAt: event.startAt,
           endAt: event.endAt,
-           tags: JSON.stringify(event.clubId ? ['club'] : ['general']),
+          tags: event.clubId ? ['club'] : ['general'],
         },
       });
     }

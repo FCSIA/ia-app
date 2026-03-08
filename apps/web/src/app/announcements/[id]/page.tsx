@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi, moderationApi } from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import { formatDistanceToNow } from 'date-fns';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Flag, Trash2, Send } from 'lucide-react';
 import Link from 'next/link';

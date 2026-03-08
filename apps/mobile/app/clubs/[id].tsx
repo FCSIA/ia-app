@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Crown, Megaphone, UserMinus, UserPlus } from 'lucide-react-native';
+import { ChevronLeft, Crown, Hash, Lock, Megaphone, UserMinus, UserPlus } from 'lucide-react-native';
 import {
   AppButton,
   AppInput,
@@ -20,7 +20,7 @@ import { initials, pathParam } from '@/lib/format';
 import type { AnnouncementSummary, AppUser, ClubDetail } from '@/types/api';
 import { theme } from '@/theme';
 
-type TabKey = 'announcements' | 'members';
+type TabKey = 'announcements' | 'members' | 'channels';
 
 export default function ClubDetailScreen() {
   const router = useRouter();
@@ -170,6 +170,9 @@ export default function ClubDetailScreen() {
               <Pressable onPress={() => setTab('members')} style={[styles.toggle, tab === 'members' && styles.toggleActive]}>
                 <Text style={[styles.toggleText, tab === 'members' && styles.toggleTextActive]}>Members</Text>
               </Pressable>
+              <Pressable onPress={() => setTab('channels')} style={[styles.toggle, tab === 'channels' && styles.toggleActive]}>
+                <Text style={[styles.toggleText, tab === 'channels' && styles.toggleTextActive]}>Channels</Text>
+              </Pressable>
             </View>
           </Card>
 
@@ -198,7 +201,7 @@ export default function ClubDetailScreen() {
                 ))
               )}
             </View>
-          ) : (
+          ) : tab === 'members' ? (
             <View style={styles.stack}>
               {club.sponsors.map((sponsor) => (
                 <Card key={sponsor.userId} style={styles.memberCard}>
@@ -240,6 +243,48 @@ export default function ClubDetailScreen() {
                   ) : null}
                 </Card>
               ))}
+            </View>
+          ) : (
+            <View style={styles.stack}>
+              {club.channels?.length ? (
+                club.channels.map((channel) => (
+                  <Pressable
+                    key={channel.id}
+                    onPress={() => router.push(`/clubs/${id}/channels/${channel.id}`)}
+                    style={({ pressed }) => [styles.announcementCard, pressed && styles.announcementCardPressed]}
+                  >
+                    <View style={styles.memberTitleRow}>
+                      {channel.isPrivate ? (
+                        <Lock size={14} color={theme.colors.textSoft} />
+                      ) : (
+                        <Hash size={14} color={theme.colors.textSoft} />
+                      )}
+                      <Text style={styles.cardTitle}>{channel.name}</Text>
+                      <Pill label={channel.isPrivate ? 'Private' : 'Open'} tone={channel.isPrivate ? 'amber' : 'neutral'} />
+                    </View>
+                    {channel.description ? <Text style={styles.cardMeta}>{channel.description}</Text> : null}
+                    <Text style={styles.cardMeta}>{channel._count?.messages || 0} messages</Text>
+                  </Pressable>
+                ))
+              ) : (
+                <Card>
+                  <Text style={styles.emptyText}>No channels yet.</Text>
+                </Card>
+              )}
+
+              <Card>
+                <Text style={styles.cardTitle}>Mention tags</Text>
+                <Text style={styles.cardMeta}>Built-ins: @all, @leaders, @sponsors</Text>
+                {club.tags?.length ? (
+                  <View style={styles.pills}>
+                    {club.tags.map((tag) => (
+                      <Pill key={tag.id} label={`@${tag.slug}`} tone="blue" />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.cardMeta}>No custom tags yet.</Text>
+                )}
+              </Card>
             </View>
           )}
         </>

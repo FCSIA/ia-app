@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { notificationsApi } from '@/lib/api';
 import { Card, EmptyState, Pill, Screen } from '@/components/ui';
 import { formatDistanceToNow } from 'date-fns';
@@ -13,6 +13,7 @@ const categoryTones: Record<string, 'blue' | 'green' | 'amber' | 'neutral'> = {
   CLUB_ANNOUNCEMENT: 'green',
   EVENT: 'amber',
   FLEX_FRIDAY: 'neutral',
+  CLUB_CHANNEL_MENTION: 'amber',
 };
 
 export default function NotificationsScreen() {
@@ -48,6 +49,11 @@ export default function NotificationsScreen() {
   function openNotification(notification: NotificationRecord) {
     if (!notification.isRead) {
       markReadMutation.mutate(notification.id);
+    }
+
+    if (notification.channelId && notification.clubId) {
+      router.push(`/clubs/${notification.clubId}/channels/${notification.channelId}`);
+      return;
     }
 
     if (notification.announcementId) {

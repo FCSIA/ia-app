@@ -1,10 +1,18 @@
 import { Module } from '@nestjs/common';
-import { ClubsService } from './clubs.service';
+import { ClubAccessPolicy } from './club-access.policy';
+import { ClubChannelsService } from './club-channels.service';
+import { ClubInvitationsService } from './club-invitations.service';
+import { ClubManagementService } from './club-management.service';
 import { ClubsController } from './clubs.controller';
 
 @Module({
   controllers: [ClubsController],
-  providers: [ClubsService],
-  exports: [ClubsService],
+  providers: [
+    ClubAccessPolicy,
+    ClubManagementService,
+    ClubInvitationsService,
+    ClubChannelsService,
+  ],
+  exports: [ClubManagementService, ClubInvitationsService, ClubChannelsService],
 })
 export class ClubsModule {}

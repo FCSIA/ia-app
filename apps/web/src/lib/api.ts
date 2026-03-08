@@ -86,8 +86,17 @@ export const clubsApi = {
   getMyClubs: () => api.get('/clubs/my'),
   getMyInvites: () => api.get('/clubs/my/invites'),
   getOne: (id: string) => api.get(`/clubs/${id}`),
+  getChannels: (clubId: string) => api.get(`/clubs/${clubId}/channels`),
+  getChannelMessages: (clubId: string, channelId: string) =>
+    api.get(`/clubs/${clubId}/channels/${channelId}/messages`),
   create: (data: any) => api.post('/clubs', data),
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
+  createChannel: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/channels`, data),
+  createTag: (clubId: string, data: any) =>
+    api.post(`/clubs/${clubId}/tags`, data),
+  postChannelMessage: (clubId: string, channelId: string, body: string) =>
+    api.post(`/clubs/${clubId}/channels/${channelId}/messages`, { body }),
   sendInvite: (clubId: string, uniqueId: string) =>
     api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   bulkInviteCsv: (clubId: string, file: File) => {
@@ -120,6 +129,18 @@ export const eventsApi = {
 export const calendarApi = {
   getEntries: (startDate?: string, endDate?: string, tags?: string) =>
     api.get('/calendar', { params: { startDate, endDate, tags } }),
+};
+
+// Schedule
+export const scheduleApi = {
+  getDashboard: () => api.get('/schedule'),
+  saveMine: (data: any) => api.put('/schedule/me', data),
+  searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
+  addFriend: (friendId: string) => api.post('/schedule/friends', { friendId }),
+  removeFriend: (friendId: string) => api.delete(`/schedule/friends/${friendId}`),
+  createBlock: (data: any) => api.post('/schedule/blocks', data),
+  updateBlock: (blockId: string, data: any) => api.patch(`/schedule/blocks/${blockId}`, data),
+  deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
 };
 
 // Flex Friday

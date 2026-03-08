@@ -33,9 +33,10 @@ tags: [architecture, tech-stack]
 | **TypeScript** | Types | Same as backend — safety |
 | **TanStack Query** | Data fetching/caching | Handles loading states, caching, refetching |
 | **Axios** | HTTP client | Makes API calls with interceptors |
-| **Tailwind CSS** | Styling | Utility-first CSS classes |
+| **Tailwind CSS v4** | Styling | Utility-first CSS classes with CSS-variable driven theming |
+| **shadcn/ui (new-york)** | Component primitives | High-quality Radix-based building blocks customized in our orange theme |
 | **date-fns** | Date formatting | Lightweight date utilities |
-| **react-hot-toast** | Notifications | Simple toast messages |
+| **react-hot-toast + `useToast`** | Notifications | Current toast system used by the web app |
 | **lucide-react** | Icons | Clean, consistent icon set |
 
 ---
@@ -82,6 +83,14 @@ Benefits in this codebase:
 - The same `Role` enum is used everywhere — impossible to misspell
 - Prisma generates TypeScript types from the schema — database models are always accurate
 - API responses have known shapes — no guessing what fields exist
+
+---
+
+## Current UI Notes
+
+- `apps/web/components.json` is configured for shadcn's `new-york` style
+- Tailwind is running in v4 mode from `src/app/globals.css` using `@import "tailwindcss"` and inline theme variables
+- current shadcn docs prefer **Sonner** for new toast work, but this project still uses the existing `react-hot-toast` + `useToast` flow until a full migration happens
 
 ---
 

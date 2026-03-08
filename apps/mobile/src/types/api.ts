@@ -67,7 +67,17 @@ export interface ClubMembership {
 
 export interface ClubSponsor {
   userId: string;
-  user: Pick<AppUser, 'id' | 'firstName' | 'lastName'>;
+  user: Pick<AppUser, 'id' | 'firstName' | 'lastName' | 'uniqueId'>;
+}
+
+export interface ClubDirectoryEntry {
+  id: string;
+  uniqueId?: string | null;
+  firstName: string;
+  lastName: string;
+  kind: 'SPONSOR' | 'MEMBER';
+  clubRole: 'MEMBER' | 'LEADER' | null;
+  joinedAt: string;
 }
 
 export interface ClubSummary {
@@ -78,9 +88,31 @@ export interface ClubSummary {
   _count?: CountSummary;
 }
 
+export interface ClubChannelTag {
+  id: string;
+  name: string;
+  slug: string;
+  members: Array<{
+    user: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
+  }>;
+}
+
+export interface ClubChannelSummary {
+  id: string;
+  clubId: string;
+  name: string;
+  description?: string | null;
+  isPrivate: boolean;
+  memberships?: Array<{ userId: string }>;
+  _count?: { messages?: number };
+}
+
 export interface ClubDetail extends ClubSummary {
   members: ClubMembership[];
   sponsors: ClubSponsor[];
+  channels?: ClubChannelSummary[];
+  tags?: ClubChannelTag[];
+  directory: ClubDirectoryEntry[];
 }
 
 export interface ClubInvite {
@@ -161,4 +193,23 @@ export interface NotificationRecord {
   createdAt: string;
   announcementId?: string | null;
   eventId?: string | null;
+  clubId?: string | null;
+  channelId?: string | null;
+  messageId?: string | null;
+}
+
+export interface ClubChannelMessageMention {
+  id: string;
+  kind: 'USER' | 'BUILT_IN_TAG' | 'CUSTOM_TAG';
+  token: string;
+  user?: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'> | null;
+  tag?: Pick<ClubChannelTag, 'id' | 'name' | 'slug'> | null;
+}
+
+export interface ClubChannelMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
+  mentions: ClubChannelMessageMention[];
 }

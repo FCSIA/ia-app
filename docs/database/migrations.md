@@ -72,13 +72,34 @@ The SQL inside creates all 23 tables, enums, indexes, and foreign key constraint
 
 ## Making Schema Changes (Workflow)
 
+### Fast local iteration
+
+When you are experimenting alone on a disposable local database, the fast loop can be:
+
+1. Edit `apps/api/prisma/schema.prisma`
+2. Run `pnpm --filter api exec prisma db push`
+3. If needed, reset and reseed your local data
+
+This is acceptable for short-lived local exploration because it skips migration authoring.
+
+### Anything that is going to be shared or merged
+
+Before code lands on `main`, use real migrations:
+
 1. Edit `apps/api/prisma/schema.prisma`
 2. Run `pnpm db:migrate` — Prisma generates the diff and migration file
-3. The new migration is applied to your local database
+3. Verify the migration on your local database
 4. `pnpm db:generate` runs automatically (or run it manually)
 5. Commit both `schema.prisma` and the new migration file to git
 
 Other developers pull your changes and run `pnpm db:migrate` — they get the same database state.
+
+### Team rule of thumb
+
+- `db push` is fine for disposable local work
+- migrations are required for anything merged, reviewed, or shared
+- do not rely on "everyone reset your DB" as the normal team workflow
+- shared development databases should use `prisma migrate deploy`, not ad hoc resets
 
 ---
 

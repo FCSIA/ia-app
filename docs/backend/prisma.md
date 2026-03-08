@@ -192,7 +192,7 @@ When multiple database operations must succeed or fail together:
 await prisma.$transaction(async (tx) => {
   const member = await tx.clubMember.delete({ where: { ... } });
   await tx.auditEvent.create({
-    data: { action: 'MEMBER_REMOVED', entityId: member.userId },
+    data: { action: 'CLUB_MEMBER_REMOVED', entityId: member.userId },
   });
   // If either fails, both are rolled back
 });

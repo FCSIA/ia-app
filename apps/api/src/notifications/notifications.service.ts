@@ -54,6 +54,7 @@ export class NotificationsService {
       NotificationCategory.SCHOOL_ANNOUNCEMENT,
       NotificationCategory.EVENT,
       NotificationCategory.FLEX_FRIDAY,
+      NotificationCategory.CLUB_CHANNEL_MENTION,
     ];
     for (const category of categories) {
       await this.prisma.notificationPreference.upsert({
@@ -73,6 +74,8 @@ export class NotificationsService {
     eventId?: string;
     forceAll?: boolean;
     clubId?: string;
+    channelId?: string;
+    messageId?: string;
   }) {
     const deliveries: any[] = [];
 
@@ -97,6 +100,9 @@ export class NotificationsService {
         body: opts.body,
         announcementId: opts.announcementId,
         eventId: opts.eventId,
+        clubId: opts.clubId,
+        channelId: opts.channelId,
+        messageId: opts.messageId,
       });
     }
 

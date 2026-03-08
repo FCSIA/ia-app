@@ -10,12 +10,12 @@ import {
 import { theme } from '@/theme';
 
 function TabIcon({
-  focused,
-  color,
+  _focused,
+  _color,
   children,
 }: {
-  focused: boolean;
-  color: string;
+  _focused: boolean;
+  _color: string;
   children: ReactNode;
 }) {
   return (
