@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import {
   BookOpen,
   CalendarDays,
+  Clock3,
   LayoutDashboard,
   Megaphone,
   Zap,
@@ -77,6 +78,18 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabIcon color={color} focused={focused}>
               <BookOpen size={20} color={color} />
+            </TabIcon>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="schedule"
+        options={{
+          title: 'Schedule',
+          tabBarLabel: 'Schedule',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon color={color} focused={focused}>
+              <Clock3 size={20} color={color} />
             </TabIcon>
           ),
         }}

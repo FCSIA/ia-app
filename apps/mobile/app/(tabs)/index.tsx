@@ -7,6 +7,7 @@ import {
   Bell,
   CalendarDays,
   ChevronRight,
+  Clock3,
   LogOut,
   Megaphone,
   Sparkles,
@@ -125,6 +126,13 @@ export default function DashboardScreen() {
       <Card>
         <SectionTitle title="Quick Actions" />
         <View style={styles.quickActions}>
+          <AppButton
+            label="Schedule"
+            tone="secondary"
+            onPress={() => router.push('/(tabs)/schedule')}
+            icon={<Clock3 size={16} color={theme.colors.textSoft} />}
+            style={styles.quickButton}
+          />
           <AppButton
             label="Events"
             tone="secondary"
