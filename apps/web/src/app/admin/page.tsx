@@ -202,7 +202,6 @@ export default function AdminPage() {
           <p className="text-muted-foreground text-sm mt-1">Manage users, moderation, and activity logs</p>
         </div>
 
-        {/* @ts-expect-error - React 19 type mismatch in Tabs component */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 bg-secondary/50 p-1">
             <TabsTrigger value="users" className="flex items-center gap-2">

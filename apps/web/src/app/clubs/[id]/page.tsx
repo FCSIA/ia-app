@@ -6,11 +6,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  ArrowRight,
   AtSign,
   Crown,
   Hash,
   Lock,
   Megaphone,
+  MessageSquareText,
   Search,
   Shield,
   Upload,
@@ -19,6 +21,7 @@ import {
   Users2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { PeoplePicker } from '@/components/clubs/people-picker';
 import {
@@ -31,15 +34,9 @@ import {
 } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -70,7 +67,7 @@ function DirectoryCard({
   const isCurrentUser = person.id === currentUserId;
 
   return (
-    <Card className="rounded-3xl border-border/70 bg-background/90">
+    <Card className="rounded-[1.5rem] border-border/70 bg-background/90">
       <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
         <ClubAvatar person={person} />
         <div className="min-w-0 flex-1">
@@ -117,6 +114,42 @@ function DirectoryCard({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function ChannelTile({
+  clubId,
+  channel,
+}: {
+  clubId: string;
+  channel: NonNullable<ClubDetail['channels']>[number];
+}) {
+  return (
+    <Link href={`/clubs/${clubId}/channels/${channel.id}`} className="block">
+      <div className="rounded-[1.5rem] border border-border/70 bg-background/88 p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.05]">
+        <div className="flex items-center gap-2">
+          {channel.isPrivate ? (
+            <Lock className="size-4 text-muted-foreground" />
+          ) : (
+            <Hash className="size-4 text-muted-foreground" />
+          )}
+          <p className="font-medium text-foreground">{channel.name}</p>
+        </div>
+        {channel.description ? (
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {channel.description}
+          </p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="outline" className="rounded-full">
+            {channel.isPrivate ? 'Private' : 'Open'}
+          </Badge>
+          <Badge variant="outline" className="rounded-full">
+            {channel._count?.messages ?? 0} messages
+          </Badge>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -290,12 +323,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     if (!search) return directory;
 
     return directory.filter((person) =>
-      [
-        fullName(person),
-        person.uniqueId,
-        person.kind,
-        person.clubRole,
-      ]
+      [fullName(person), person.uniqueId, person.kind, person.clubRole]
         .filter(Boolean)
         .some((value) => value?.toLowerCase().includes(search)),
     );
@@ -307,7 +335,9 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   if (isLoading) {
     return (
       <AppShell>
-        <div className="py-20 text-center text-muted-foreground">Loading club workspace…</div>
+        <PageFrame>
+          <div className="py-20 text-center text-muted-foreground">Loading club workspace…</div>
+        </PageFrame>
       </AppShell>
     );
   }
@@ -315,7 +345,9 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   if (!club) {
     return (
       <AppShell>
-        <div className="py-20 text-center text-muted-foreground">Club not found or access denied.</div>
+        <PageFrame>
+          <div className="py-20 text-center text-muted-foreground">Club not found or access denied.</div>
+        </PageFrame>
       </AppShell>
     );
   }
@@ -331,163 +363,162 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   const channels = club.channels ?? [];
   const tags = club.tags ?? [];
   const recentAnnouncements = announcements.slice(0, 4);
+  const totalMessages = channels.reduce((sum, channel) => sum + (channel._count?.messages ?? 0), 0);
+  const primaryChannel = channels[0];
 
   return (
     <AppShell>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <div className="flex flex-col gap-4 rounded-[32px] border border-orange-500/15 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.20),transparent_38%),linear-gradient(135deg,rgba(255,247,237,0.94),rgba(255,255,255,0.92))] p-6 shadow-[0_30px_80px_-44px_rgba(234,88,12,0.55)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.24),transparent_34%),linear-gradient(135deg,rgba(28,25,23,0.98),rgba(17,17,17,0.96))] sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-4">
+      <PageFrame>
+        <HeroBand
+          badge={
+            <>
               <Link
                 href="/clubs"
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/65 px-4 py-2 text-sm text-foreground/75 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5"
+                className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/70 px-4 py-2 text-sm text-foreground/75 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5"
               >
                 <ArrowLeft className="size-4" />
                 Back to clubs
               </Link>
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="rounded-full bg-orange-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-orange-700 dark:text-orange-200">
-                    Club Workspace
-                  </Badge>
-                  {isSponsor ? (
-                    <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">
-                      Sponsor
-                    </Badge>
-                  ) : null}
-                  {isLeader ? (
-                    <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
-                      <Crown className="mr-1 size-3" />
-                      Leader
-                    </Badge>
-                  ) : null}
-                </div>
-                <div>
-                  <h1 className="font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-                    {club.name}
-                  </h1>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-foreground/75 sm:text-base">
-                    {club.description || 'No description yet. Add one so the club identity and mission are clear.'}
-                  </p>
-                </div>
-              </div>
+              <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
+                Club workspace
+              </Badge>
+              {isSponsor ? (
+                <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">
+                  Sponsor
+                </Badge>
+              ) : null}
+              {isLeader ? (
+                <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
+                  <Crown className="mr-1 size-3" />
+                  Leader
+                </Badge>
+              ) : null}
+            </>
+          }
+          title={club.name}
+          description={
+            club.description ||
+            'No description yet. Add one so the club identity, purpose, and operating cadence are obvious.'
+          }
+          actions={
+            <>
+              {primaryChannel ? (
+                <Button asChild className="h-11 rounded-2xl px-5">
+                  <Link href={`/clubs/${id}/channels/${primaryChannel.id}`}>
+                    Open conversation lane
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              ) : null}
+              {canInvite ? (
+                <Button variant="outline" className="h-11 rounded-2xl px-5" onClick={() => setInviteOpen(true)}>
+                  <UserPlus className="size-4" />
+                  Invite members
+                </Button>
+              ) : null}
+              {canPost ? (
+                <Button variant="outline" className="h-11 rounded-2xl px-5" onClick={() => setPostOpen(true)}>
+                  <Megaphone className="size-4" />
+                  Post announcement
+                </Button>
+              ) : null}
+            </>
+          }
+          aside={
+            <>
+              <HeroStat label="Members" value={club.members.length} description="Students and leaders in the workspace." icon={Users2} />
+              <HeroStat label="Channels" value={channels.length} description="Public and private conversation lanes." icon={Hash} />
+              <HeroStat label="Tags" value={tags.length} description="Reusable audience slices for pings." icon={AtSign} />
+              <HeroStat label="Message volume" value={totalMessages} description="Total messages across all channels." icon={MessageSquareText} />
+            </>
+          }
+        >
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Faculty visibility</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Sponsors automatically see every channel.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Oversight should not depend on someone remembering to manually add staff.
+              </p>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[360px] lg:max-w-[420px] lg:flex-1">
-              <Card className="rounded-3xl border-white/50 bg-white/75 dark:border-white/10 dark:bg-white/5">
-                <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Members</p>
-                  <p className="mt-4 text-3xl font-semibold">{club.members.length}</p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-3xl border-white/50 bg-white/75 dark:border-white/10 dark:bg-white/5">
-                <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Channels</p>
-                  <p className="mt-4 text-3xl font-semibold">{channels.length}</p>
-                </CardContent>
-              </Card>
-              <Card className="rounded-3xl border-white/50 bg-white/75 dark:border-white/10 dark:bg-white/5">
-                <CardContent className="p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</p>
-                  <p className="mt-4 text-3xl font-semibold">{tags.length}</p>
-                </CardContent>
-              </Card>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Channel flow</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Official updates in announcements, real work in channels.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The split keeps high-signal updates readable while the team keeps moving.
+              </p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Ping strategy</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Tags are built from the live roster.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use search and selection, not raw student IDs pasted into fields.
+              </p>
             </div>
           </div>
-        </div>
+        </HeroBand>
 
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)_320px]">
+        <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
           <aside className="space-y-6">
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl">Quick actions</CardTitle>
-                  <Users2 className="size-4 text-orange-600" />
-                </div>
-                <CardDescription>Keep membership, posts, and channels moving without leaving this workspace.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <Panel title="Operate workspace" description="The happy path actions should be visible, not buried.">
+              <div className="grid gap-3">
                 {canInvite ? (
-                  <Button className="w-full rounded-2xl justify-start" onClick={() => setInviteOpen(true)}>
-                    <UserPlus className="mr-2 size-4" />
+                  <Button className="h-11 justify-start rounded-2xl" onClick={() => setInviteOpen(true)}>
+                    <UserPlus className="size-4" />
                     Invite members
                   </Button>
                 ) : null}
                 {canPost ? (
-                  <Button variant="outline" className="w-full rounded-2xl justify-start" onClick={() => setPostOpen(true)}>
-                    <Megaphone className="mr-2 size-4" />
+                  <Button variant="outline" className="h-11 justify-start rounded-2xl" onClick={() => setPostOpen(true)}>
+                    <Megaphone className="size-4" />
                     Post announcement
                   </Button>
                 ) : null}
                 {canManageChannels ? (
                   <>
-                    <Button variant="outline" className="w-full rounded-2xl justify-start" onClick={() => setChannelOpen(true)}>
-                      <Hash className="mr-2 size-4" />
+                    <Button variant="outline" className="h-11 justify-start rounded-2xl" onClick={() => setChannelOpen(true)}>
+                      <Hash className="size-4" />
                       Create channel
                     </Button>
-                    <Button variant="outline" className="w-full rounded-2xl justify-start" onClick={() => setTagOpen(true)}>
-                      <AtSign className="mr-2 size-4" />
+                    <Button variant="outline" className="h-11 justify-start rounded-2xl" onClick={() => setTagOpen(true)}>
+                      <AtSign className="size-4" />
                       Create tag
                     </Button>
                   </>
                 ) : null}
-              </CardContent>
-            </Card>
+              </div>
+            </Panel>
 
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader className="space-y-3">
-                <CardTitle className="text-xl">Channel rail</CardTitle>
-                <CardDescription>
-                  Sponsors automatically see every channel, including private ones.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {channels.length > 0 ? (
-                  channels.map((channel) => (
-                    <Link key={channel.id} href={`/clubs/${id}/channels/${channel.id}`} className="block">
-                      <div className="rounded-3xl border border-border/70 bg-background/80 p-4 transition hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10">
-                        <div className="flex items-center gap-2">
-                          {channel.isPrivate ? (
-                            <Lock className="size-4 text-muted-foreground" />
-                          ) : (
-                            <Hash className="size-4 text-muted-foreground" />
-                          )}
-                          <p className="font-medium text-foreground">{channel.name}</p>
-                        </div>
-                        {channel.description ? (
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                            {channel.description}
-                          </p>
-                        ) : null}
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Badge variant="outline" className="rounded-full">
-                            {channel.isPrivate ? 'Private' : 'Open'}
-                          </Badge>
-                          <Badge variant="outline" className="rounded-full">
-                            {channel._count?.messages ?? 0} messages
-                          </Badge>
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <Empty className="rounded-3xl border-border/70 bg-muted/20">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <Hash />
-                      </EmptyMedia>
-                      <EmptyTitle>No channels yet</EmptyTitle>
-                      <EmptyDescription>Start with a general workspace or add a private planning channel.</EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                )}
-              </CardContent>
-            </Card>
+            <Panel title="Channel rail" description="Conversation lanes with a quick read on access and activity.">
+              {channels.length > 0 ? (
+                <div className="space-y-3">
+                  {channels.map((channel) => (
+                    <ChannelTile key={channel.id} clubId={id} channel={channel} />
+                  ))}
+                </div>
+              ) : (
+                <Empty className="rounded-[1.5rem] border-border/70 bg-muted/20">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Hash />
+                    </EmptyMedia>
+                    <EmptyTitle>No channels yet</EmptyTitle>
+                    <EmptyDescription>Start with a general workspace or add a private planning lane.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              )}
+            </Panel>
           </aside>
 
           <main className="space-y-6">
             <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)} className="space-y-6">
-              <TabsList className="h-auto w-full justify-start gap-2 rounded-3xl border border-border/70 bg-background/80 p-2">
+              <TabsList className="h-auto w-full justify-start gap-2 rounded-[1.4rem] border border-border/70 bg-background/85 p-2">
                 <TabsTrigger value="overview" className="rounded-2xl px-4 py-2.5">
                   Overview
                 </TabsTrigger>
@@ -500,90 +531,72 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">Workspace rhythm</CardTitle>
-                    <CardDescription>
-                      Announcements carry the official voice. Channels handle ongoing coordination. Tags let leaders ping the right members without memorizing IDs.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-3xl border border-orange-500/15 bg-orange-500/[0.06] p-5">
+                <Panel title="Workspace rhythm" description="A club should broadcast clearly and coordinate fluidly.">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-[1.5rem] border border-primary/15 bg-primary/[0.06] p-5">
                       <p className="text-sm font-semibold text-foreground">Faculty coverage</p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         Teacher sponsors remain visible in every channel, public or private, so moderation and supervision do not depend on a manual add.
                       </p>
                     </div>
-                    <div className="rounded-3xl border border-border/70 bg-muted/20 p-5">
+                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-5">
                       <p className="text-sm font-semibold text-foreground">Member-based tagging</p>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         Custom tags are built from the current club roster. The UI uses member search and selection instead of comma-separated student IDs.
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </Panel>
 
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">Recent announcements</CardTitle>
-                    <CardDescription>Club-wide updates, meeting recaps, and sponsor notes.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {recentAnnouncements.length > 0 ? (
-                      recentAnnouncements.map((announcement) => (
+                <Panel title="Recent announcements" description="Formal updates, meeting recaps, and sponsor-visible notes.">
+                  {recentAnnouncements.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentAnnouncements.map((announcement) => (
                         <Link key={announcement.id} href={`/announcements/${announcement.id}`} className="block">
-                          <Card className="rounded-3xl border-border/70 bg-background/90 transition hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10">
-                            <CardContent className="space-y-3 p-5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" className="rounded-full">
-                                  {announcement.allowComments ? 'Comments on' : 'Comments off'}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="text-lg font-semibold text-foreground">{announcement.title}</p>
-                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                  {announcement.body}
-                                </p>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {announcement.author
-                                  ? `${announcement.author.firstName} ${announcement.author.lastName}`
-                                  : 'Unknown author'}
-                                {announcement._count?.comments
-                                  ? ` · ${announcement._count.comments} comments`
-                                  : ''}
+                          <div className="rounded-[1.5rem] border border-border/70 bg-background/90 p-5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.04]">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="rounded-full">
+                                {announcement.allowComments ? 'Comments on' : 'Comments off'}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+                            <div className="mt-4">
+                              <p className="text-lg font-semibold text-foreground">{announcement.title}</p>
+                              <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                                {announcement.body}
                               </p>
-                            </CardContent>
-                          </Card>
+                            </div>
+                            <p className="mt-4 text-xs text-muted-foreground">
+                              {announcement.author
+                                ? `${announcement.author.firstName} ${announcement.author.lastName}`
+                                : 'Unknown author'}
+                              {announcement._count?.comments ? ` · ${announcement._count.comments} comments` : ''}
+                            </p>
+                          </div>
                         </Link>
-                      ))
-                    ) : (
-                      <Empty className="rounded-3xl border-border/70 bg-muted/20">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <Megaphone />
-                          </EmptyMedia>
-                          <EmptyTitle>No announcements yet</EmptyTitle>
-                          <EmptyDescription>Use announcements for official club updates and sponsor-visible notices.</EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    )}
-                  </CardContent>
-                </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty className="rounded-[1.5rem] border-border/70 bg-muted/20">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Megaphone />
+                        </EmptyMedia>
+                        <EmptyTitle>No announcements yet</EmptyTitle>
+                        <EmptyDescription>Use announcements for official club updates and sponsor-visible notices.</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  )}
+                </Panel>
               </TabsContent>
 
               <TabsContent value="people" className="space-y-6">
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <CardTitle className="text-2xl">Directory</CardTitle>
-                      <CardDescription>
-                        Sponsors stay pinned at the top. Members and leaders are searchable by name or unique ID.
-                      </CardDescription>
-                    </div>
+                <Panel
+                  title="Directory"
+                  description="Sponsors stay pinned at the top. Members and leaders are searchable by name or unique ID."
+                  action={
                     <div className="relative w-full max-w-sm">
                       <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -593,167 +606,150 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                         className="rounded-2xl pl-11"
                       />
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Sponsors</h2>
-                        <Badge variant="secondary" className="rounded-full">
-                          {club.sponsors.length}
-                        </Badge>
+                  }
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="section-kicker">Sponsors</h2>
+                      <Badge variant="secondary" className="rounded-full">
+                        {club.sponsors.length}
+                      </Badge>
+                    </div>
+                    {sponsorDirectory.length > 0 ? (
+                      sponsorDirectory.map((person) => (
+                        <DirectoryCard
+                          key={person.id}
+                          person={person}
+                          canManageMembers={false}
+                          currentUserId={user?.id}
+                          isSponsor={isSponsor}
+                          onPromote={() => undefined}
+                          onRemove={() => undefined}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+                        No sponsors match this search.
                       </div>
-                      {sponsorDirectory.length > 0 ? (
-                        sponsorDirectory.map((person) => (
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="section-kicker">Members</h2>
+                      <Badge variant="secondary" className="rounded-full">
+                        {club.members.length}
+                      </Badge>
+                    </div>
+                    {memberDirectory.length > 0 ? (
+                      <div className="space-y-3">
+                        {memberDirectory.map((person) => (
                           <DirectoryCard
                             key={person.id}
                             person={person}
-                            canManageMembers={false}
+                            canManageMembers={canManageMembers}
                             currentUserId={user?.id}
                             isSponsor={isSponsor}
-                            onPromote={() => undefined}
-                            onRemove={() => undefined}
+                            onPromote={(memberId) => promoteMutation.mutate(memberId)}
+                            onRemove={(memberId) => removeMutation.mutate(memberId)}
                           />
-                        ))
-                      ) : (
-                        <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          No sponsors match this search.
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Members</h2>
-                        <Badge variant="secondary" className="rounded-full">
-                          {club.members.length}
-                        </Badge>
-                      </div>
-                      {memberDirectory.length > 0 ? (
-                        <div className="space-y-3">
-                          {memberDirectory.map((person) => (
-                            <DirectoryCard
-                              key={person.id}
-                              person={person}
-                              canManageMembers={canManageMembers}
-                              currentUserId={user?.id}
-                              isSponsor={isSponsor}
-                              onPromote={(memberId) => promoteMutation.mutate(memberId)}
-                              onRemove={(memberId) => removeMutation.mutate(memberId)}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          No members match this search.
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="tags" className="space-y-6">
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">Mention system</CardTitle>
-                    <CardDescription>
-                      Built-ins cover global audiences. Custom tags let you slice the current club roster into reusable ping groups.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-3">
-                    <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
-                      <p className="text-sm font-semibold text-foreground">@all</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Everyone in the visible channel audience.</p>
-                    </div>
-                    <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
-                      <p className="text-sm font-semibold text-foreground">@leaders</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Club leaders who can coordinate or unblock work.</p>
-                    </div>
-                    <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
-                      <p className="text-sm font-semibold text-foreground">@sponsors</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Faculty sponsors with oversight across every channel.</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <CardTitle className="text-2xl">Custom tags</CardTitle>
-                      <CardDescription>Tag groups are built from current club members using the selector UI.</CardDescription>
-                    </div>
-                    {canManageChannels ? (
-                      <Button className="rounded-2xl" onClick={() => setTagOpen(true)}>
-                        <AtSign className="mr-2 size-4" />
-                        Create tag
-                      </Button>
-                    ) : null}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {tags.length > 0 ? (
-                      <div className="grid gap-4 lg:grid-cols-2">
-                        {tags.map((tag: ClubTag) => (
-                          <Card key={tag.id} className="rounded-3xl border-border/70 bg-background/90">
-                            <CardContent className="space-y-4 p-5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge className="rounded-full bg-orange-500/12 text-orange-700 dark:text-orange-200">
-                                  @{tag.slug}
-                                </Badge>
-                                <span className="font-medium text-foreground">{tag.name}</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {tag.members.length > 0 ? (
-                                  tag.members.map((member) => (
-                                    <Badge key={`${tag.id}-${member.user.id}`} variant="secondary" className="rounded-full border border-border/60 bg-muted/40">
-                                      {fullName(member.user)}
-                                      {member.user.uniqueId ? (
-                                        <span className="ml-1 font-mono text-[10px] text-muted-foreground">
-                                          {member.user.uniqueId}
-                                        </span>
-                                      ) : null}
-                                    </Badge>
-                                  ))
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">No members selected.</span>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
                         ))}
                       </div>
                     ) : (
-                      <Empty className="rounded-3xl border-border/70 bg-muted/20">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <AtSign />
-                          </EmptyMedia>
-                          <EmptyTitle>No custom tags yet</EmptyTitle>
-                          <EmptyDescription>
-                            Create reusable ping groups like `@officers`, `@build-team`, or `@media`.
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
+                      <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+                        No members match this search.
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </Panel>
+              </TabsContent>
+
+              <TabsContent value="tags" className="space-y-6">
+                <Panel title="Mention system" description="Built-ins cover global audiences. Custom tags let you slice the live roster into reusable ping groups.">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
+                      <p className="text-sm font-semibold text-foreground">@all</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Everyone in the visible channel audience.</p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
+                      <p className="text-sm font-semibold text-foreground">@leaders</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Club leaders who can coordinate or unblock work.</p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
+                      <p className="text-sm font-semibold text-foreground">@sponsors</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Faculty sponsors with oversight across every channel.</p>
+                    </div>
+                  </div>
+                </Panel>
+
+                <Panel
+                  title="Custom tags"
+                  description="Tag groups are built from current club members using the selector UI."
+                  action={
+                    canManageChannels ? (
+                      <Button className="rounded-2xl" onClick={() => setTagOpen(true)}>
+                        <AtSign className="size-4" />
+                        Create tag
+                      </Button>
+                    ) : null
+                  }
+                >
+                  {tags.length > 0 ? (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {tags.map((tag: ClubTag) => (
+                        <Card key={tag.id} className="rounded-[1.5rem] border-border/70 bg-background/90">
+                          <CardContent className="space-y-4 p-5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge className="rounded-full bg-primary/12 text-primary">@{tag.slug}</Badge>
+                              <span className="font-medium text-foreground">{tag.name}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {tag.members.length > 0 ? (
+                                tag.members.map((member) => (
+                                  <Badge
+                                    key={`${tag.id}-${member.user.id}`}
+                                    variant="secondary"
+                                    className="rounded-full border border-border/60 bg-muted/40"
+                                  >
+                                    {fullName(member.user)}
+                                    {member.user.uniqueId ? (
+                                      <span className="ml-1 font-mono text-[10px] text-muted-foreground">
+                                        {member.user.uniqueId}
+                                      </span>
+                                    ) : null}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-sm text-muted-foreground">No members selected.</span>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Empty className="rounded-[1.5rem] border-border/70 bg-muted/20">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <AtSign />
+                        </EmptyMedia>
+                        <EmptyTitle>No custom tags yet</EmptyTitle>
+                        <EmptyDescription>
+                          Create reusable ping groups like `@officers`, `@build-team`, or `@media`.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  )}
+                </Panel>
               </TabsContent>
             </Tabs>
           </main>
 
           <aside className="space-y-6">
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Shield className="size-4 text-orange-600" />
-                  <CardTitle className="text-xl">Faculty visibility</CardTitle>
-                </div>
-                <CardDescription>
-                  Every club must keep at least one teacher sponsor, and sponsors see every channel by design.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <Panel title="Faculty visibility" description="Every club must keep at least one teacher sponsor, and sponsors see every channel by design.">
+              <div className="space-y-3">
                 {club.sponsors.map((sponsor) => (
-                  <div key={sponsor.userId} className="flex items-center gap-3 rounded-3xl border border-border/70 bg-background/80 p-3">
+                  <div key={sponsor.userId} className="flex items-center gap-3 rounded-[1.5rem] border border-border/70 bg-background/82 p-3">
                     <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-[11px]" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">{fullName(sponsor.user)}</p>
@@ -763,29 +759,21 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </Panel>
 
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader>
-                <CardTitle className="text-xl">Mention quick guide</CardTitle>
-                <CardDescription>Use direct `@uniqueId` mentions or built-in tags inside channels.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-                <p>`@all` notifies the whole visible audience.</p>
-                <p>`@leaders` notifies club leaders.</p>
-                <p>`@sponsors` reaches faculty sponsors across any channel.</p>
-                <p>Custom tags notify the members currently assigned to that tag.</p>
-              </CardContent>
-            </Card>
+            <Panel title="Mention guide" description="Use direct `@uniqueId` mentions or built-in tags inside channels.">
+              <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@all` notifies the whole visible audience.</div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@leaders` notifies club leaders.</div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@sponsors` reaches faculty sponsors across any channel.</div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">Custom tags notify the members currently assigned to that tag.</div>
+              </div>
+            </Panel>
 
             {bulkInviteResult ? (
-              <Card className="rounded-[28px] border-amber-500/20 bg-amber-500/[0.05]">
-                <CardHeader>
-                  <CardTitle className="text-xl">Last CSV import</CardTitle>
-                  <CardDescription>Recent bulk invite status.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
+              <Panel title="Last CSV import" description="Recent bulk invite status." className="border-amber-500/20 bg-amber-500/[0.04]">
+                <div className="space-y-2 text-sm">
                   <p className="font-medium text-foreground">
                     Invited {bulkInviteResult.invited}, skipped {bulkInviteResult.skipped}.
                   </p>
@@ -794,8 +782,8 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                       {error}
                     </p>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </Panel>
             ) : null}
           </aside>
         </div>
@@ -1048,7 +1036,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             </SheetFooter>
           </SheetContent>
         </Sheet>
-      </div>
+      </PageFrame>
     </AppShell>
   );
 }

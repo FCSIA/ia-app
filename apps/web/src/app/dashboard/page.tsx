@@ -1,32 +1,43 @@
 'use client';
 
-import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from '@tanstack/react-query';
-import { announcementsApi, eventsApi, notificationsApi, flexFridayApi } from '@/lib/api';
-import { getUser } from '@/lib/auth';
-import { formatDistanceToNow, format } from 'date-fns';
 import Link from 'next/link';
-import { Megaphone, Calendar, Zap, Bell, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format, formatDistanceToNow } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowRight,
+  Bell,
+  Calendar,
+  Megaphone,
+  Sparkles,
+  Users2,
+  Zap,
+} from 'lucide-react';
+import { AppShell } from '@/components/layout/AppShell';
+import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { announcementsApi, eventsApi, flexFridayApi, notificationsApi } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 
-function DashboardCard({ title, count, icon: Icon, href, color, glowColor }: any) {
+function QuickLink({
+  href,
+  title,
+  detail,
+}: {
+  href: string;
+  title: string;
+  detail: string;
+}) {
   return (
-    <Link href={href} className="block group">
-      <Card className="hover:scale-[1.02] transition-transform shadow-sm group-hover:shadow-md">
-        <CardContent className="flex items-center justify-between p-6">
-          <div>
-            <p className="text-sm text-muted-foreground font-medium">{title}</p>
-            <p className="text-2xl font-bold mt-1">{count ?? '—'}</p>
-          </div>
-          <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}
-            style={{ boxShadow: `0 4px 16px ${glowColor}` }}
-          >
-            <Icon size={22} className="text-white" />
-          </div>
-        </CardContent>
-      </Card>
+    <Link
+      href={href}
+      className="group flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.05]"
+    >
+      <div>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+      </div>
+      <ArrowRight className="size-4 text-muted-foreground transition group-hover:text-primary" />
     </Link>
   );
 }
@@ -34,142 +45,241 @@ function DashboardCard({ title, count, icon: Icon, href, color, glowColor }: any
 export default function DashboardPage() {
   const user = getUser();
 
-  const { data: announcementsData } = useQuery({
+  const { data: announcementsData = [] } = useQuery({
     queryKey: ['announcements'],
-    queryFn: () => announcementsApi.getAll().then((r) => r.data),
+    queryFn: () => announcementsApi.getAll().then((response) => response.data),
   });
 
-  const { data: eventsData } = useQuery({
+  const { data: eventsData = [] } = useQuery({
     queryKey: ['events'],
-    queryFn: () => eventsApi.getAll().then((r) => r.data),
+    queryFn: () => eventsApi.getAll().then((response) => response.data),
   });
 
   const { data: notifData } = useQuery({
     queryKey: ['unread-count'],
-    queryFn: () => notificationsApi.getUnreadCount().then((r) => r.data),
+    queryFn: () => notificationsApi.getUnreadCount().then((response) => response.data),
   });
 
-  const { data: flexData } = useQuery({
+  const { data: flexData = [] } = useQuery({
     queryKey: ['flex-fridays'],
-    queryFn: () => flexFridayApi.getAll().then((r) => r.data),
+    queryFn: () => flexFridayApi.getAll().then((response) => response.data),
   });
 
-  const announcements = announcementsData?.slice(0, 5) || [];
-  const upcomingEvents = (eventsData || [])
-    .filter((e: any) => new Date(e.startAt) >= new Date())
-    .slice(0, 3);
-  const nextFriday = (flexData || []).find(
-    (f: any) => new Date(f.date) >= new Date(),
-  );
+  const announcements = announcementsData.slice(0, 5);
+  const upcomingEvents = eventsData
+    .filter((event: any) => new Date(event.startAt) >= new Date())
+    .slice(0, 4);
+  const nextFriday = flexData.find((entry: any) => new Date(entry.date) >= new Date());
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">
-            Welcome back, {user?.firstName}
-          </h1>
-          <p className="text-foreground/45 text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <DashboardCard
-            title="Announcements"
-            count={announcementsData?.length}
-            icon={Megaphone}
-            href="/announcements"
-            color="bg-blue-500/80"
-            glowColor="rgba(59,130,246,0.3)"
-          />
-          <DashboardCard
-            title="Upcoming Events"
-            count={upcomingEvents.length}
-            icon={Calendar}
-            href="/events"
-            color="bg-emerald-500/80"
-            glowColor="rgba(16,185,129,0.3)"
-          />
-          <DashboardCard
-            title="Unread Notifications"
-            count={notifData?.count}
-            icon={Bell}
-            href="/notifications"
-            color="bg-amber-500/80"
-            glowColor="rgba(245,158,11,0.3)"
-          />
-          <DashboardCard
-            title="Next Flex Friday"
-            count={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
-            icon={Zap}
-            href="/flex-friday"
-            color="bg-purple-500/80"
-            glowColor="rgba(168,85,247,0.3)"
-          />
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Recent Announcements */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Recent Announcements</CardTitle>
-              <Button variant="ghost" size="sm" asChild className="text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300">
-                <Link href="/announcements" className="flex items-center gap-1">
-                  View all <ArrowRight size={14} />
+      <PageFrame>
+        <HeroBand
+          badge={
+            <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
+              Daily briefing
+            </Badge>
+          }
+          title={
+            <>
+              Keep the school day legible
+              <span className="block text-foreground/75">before the noise starts.</span>
+            </>
+          }
+          description={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. This is the fast read on what changed, what is coming up, and where attention probably belongs next.`}
+          actions={
+            <>
+              <Button asChild className="h-11 rounded-2xl px-5">
+                <Link href="/announcements">
+                  Review announcements
+                  <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {announcements.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">No announcements</p>
-              )}
-              {announcements.map((ann: any) => (
-                <Link
-                  key={ann.id}
-                  href={`/announcements/${ann.id}`}
-                  className="block p-3 rounded-xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  <p className="text-sm font-medium truncate">{ann.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
-                    {ann.author && ` · ${ann.author.firstName} ${ann.author.lastName}`}
-                  </p>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
+              <Button asChild variant="outline" className="h-11 rounded-2xl px-5">
+                <Link href="/clubs">Open club workspaces</Link>
+              </Button>
+            </>
+          }
+          aside={
+            <>
+              <HeroStat
+                label="Announcements"
+                value={announcementsData.length}
+                description="Recent broadcast updates across the school."
+                icon={Megaphone}
+              />
+              <HeroStat
+                label="Unread"
+                value={notifData?.count ?? 0}
+                description="Notifications that still need a glance."
+                icon={Bell}
+              />
+              <HeroStat
+                label="Upcoming"
+                value={upcomingEvents.length}
+                description="Events still ahead on the calendar."
+                icon={Calendar}
+              />
+              <HeroStat
+                label="Next Flex Friday"
+                value={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
+                description="The next configured Flex Friday date."
+                icon={Zap}
+              />
+            </>
+          }
+        >
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Today</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                {format(new Date(), 'EEEE, MMMM d, yyyy')}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">The dashboard resets the scene before you dive into modules.</p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Noise level</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                {notifData?.count ? `${notifData.count} unread notifications` : 'Inbox is quiet'}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">If mentions or alerts stack up, clear them before context switches pile on.</p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Momentum</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                {upcomingEvents[0]?.title ?? 'No immediate events'}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Upcoming events and club workspaces are the two fastest routes back into action.</p>
+            </div>
+          </div>
+        </HeroBand>
 
-          {/* Upcoming Events */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Upcoming Events</CardTitle>
-              <Button variant="ghost" size="sm" asChild className="text-accent-500 hover:text-accent-600 dark:text-accent-400 dark:hover:text-accent-300">
-                <Link href="/events" className="flex items-center gap-1">
-                  View all <ArrowRight size={14} />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <Panel
+            title="Recent announcements"
+            description="The official voice of the school. Treat this as the source of truth before scanning chats."
+            action={
+              <Button asChild variant="ghost" className="rounded-2xl">
+                <Link href="/announcements">
+                  View all
+                  <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {upcomingEvents.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">No upcoming events</p>
+            }
+          >
+            {announcements.length > 0 ? (
+              <div className="space-y-3">
+                {announcements.map((announcement: any) => (
+                  <Link
+                    key={announcement.id}
+                    href={`/announcements/${announcement.id}`}
+                    className="block rounded-[1.4rem] border border-border/70 bg-background/85 px-5 py-4 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.04]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-semibold text-foreground">
+                          {announcement.title}
+                        </p>
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                          {announcement.body}
+                        </p>
+                      </div>
+                      <Megaphone className="mt-1 size-4 shrink-0 text-primary/70" />
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>{formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}</span>
+                      {announcement.author ? (
+                        <span>
+                          {announcement.author.firstName} {announcement.author.lastName}
+                        </span>
+                      ) : null}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[1.4rem] border border-dashed border-border/70 bg-muted/20 px-5 py-12 text-center text-sm text-muted-foreground">
+                No announcements yet.
+              </div>
+            )}
+          </Panel>
+
+          <div className="space-y-6">
+            <Panel
+              title="Upcoming events"
+              description="What is most likely to pull people out of flow next."
+              action={
+                <Button asChild variant="ghost" className="rounded-2xl">
+                  <Link href="/events">
+                    View all
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              }
+            >
+              {upcomingEvents.length > 0 ? (
+                <div className="space-y-3">
+                  {upcomingEvents.map((event: any) => (
+                    <Link
+                      key={event.id}
+                      href={`/events/${event.id}`}
+                      className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.05]"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{event.title}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {format(new Date(event.startAt), 'EEE, MMM d · h:mm a')}
+                          </p>
+                        </div>
+                        <Calendar className="mt-0.5 size-4 shrink-0 text-primary/70" />
+                      </div>
+                      {event.location ? (
+                        <p className="mt-3 text-sm text-muted-foreground">{event.location}</p>
+                      ) : null}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[1.4rem] border border-dashed border-border/70 bg-muted/20 px-5 py-10 text-sm text-muted-foreground">
+                  No upcoming events.
+                </div>
               )}
-              {upcomingEvents.map((ev: any) => (
-                <Link
-                  key={ev.id}
-                  href={`/events/${ev.id}`}
-                  className="block p-3 rounded-xl bg-foreground/[0.03] border border-foreground/[0.05] hover:bg-foreground/[0.06] hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  <p className="text-sm font-medium truncate">{ev.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(new Date(ev.startAt), 'EEE, MMM d · h:mm a')}
-                    {ev.location && ` · ${ev.location}`}
+            </Panel>
+
+            <Panel title="Fast paths" description="The three places that usually matter first.">
+              <div className="space-y-3">
+                <QuickLink href="/clubs" title="Club workspaces" detail="Jump into channels, sponsor spaces, and invites." />
+                <QuickLink href="/schedule" title="Schedule" detail="Check live blocks, classes, and friend schedules." />
+                <QuickLink href="/notifications" title="Notifications" detail="Clear mentions and direct follow-up." />
+              </div>
+            </Panel>
+
+            <Panel title="Context" description="A little signal without turning this into a data wall.">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Users2 className="size-4" />
+                    <span className="text-sm font-semibold text-foreground">Teams first</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Clubs, schedule, and notifications now drive most of the daily product loop.
                   </p>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
+                </div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Sparkles className="size-4" />
+                    <span className="text-sm font-semibold text-foreground">Modernized shell</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    The web app is shifting toward a denser, more intentional workspace layout.
+                  </p>
+                </div>
+              </div>
+            </Panel>
+          </div>
         </div>
-      </div>
+      </PageFrame>
     </AppShell>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { type ReactNode, useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,11 +11,13 @@ import {
   Plus,
   Search,
   Shield,
+  Sparkles,
   UserRoundPlus,
   Users2,
   X,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
+import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import {
   ClubInvite,
@@ -25,15 +27,8 @@ import {
   isSponsorEligible,
 } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,6 +47,88 @@ type UserDirectoryResponse = {
   page: number;
   limit: number;
 };
+
+function ClubTile({
+  club,
+  href,
+  tone = 'default',
+  badge,
+}: {
+  club: ClubSummary;
+  href: string;
+  tone?: 'default' | 'sponsor' | 'catalog';
+  badge?: ReactNode;
+}) {
+  const toneClass =
+    tone === 'sponsor'
+      ? 'from-sky-500/[0.14] via-background to-background border-sky-500/20 hover:border-sky-500/35 hover:shadow-sky-500/10'
+      : tone === 'catalog'
+        ? 'from-primary/[0.08] via-background to-background border-primary/15 hover:border-primary/30 hover:shadow-primary/10'
+        : 'from-background via-background to-primary/[0.05] border-border/70 hover:border-primary/30 hover:shadow-primary/10';
+
+  return (
+    <Link href={href} className="block">
+      <article
+        className={`h-full rounded-[1.6rem] border bg-gradient-to-br p-5 transition hover:-translate-y-0.5 hover:shadow-xl ${toneClass}`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">{club.name}</h3>
+              {badge}
+            </div>
+            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+              {club.description || 'No description yet.'}
+            </p>
+          </div>
+          <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {club.role ? (
+            <Badge variant="secondary" className="rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-300">
+              {formatClubRole(club.role)}
+            </Badge>
+          ) : null}
+          <Badge variant="outline" className="rounded-full">
+            {club._count?.members ?? 0} members
+          </Badge>
+          <Badge variant="outline" className="rounded-full">
+            {club._count?.channels ?? 0} channels
+          </Badge>
+        </div>
+      </article>
+    </Link>
+  );
+}
+
+function InviteCard({
+  invite,
+  onRespond,
+}: {
+  invite: ClubInvite;
+  onRespond: (accept: boolean) => void;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-amber-500/20 bg-background/88 p-5">
+      <div className="space-y-1">
+        <p className="text-base font-semibold text-foreground">{invite.club.name}</p>
+        <p className="text-sm text-muted-foreground">
+          Invited by {invite.sender.firstName} {invite.sender.lastName}
+        </p>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button className="flex-1 rounded-2xl" onClick={() => onRespond(true)}>
+          <Check className="size-4" />
+          Accept
+        </Button>
+        <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => onRespond(false)}>
+          <X className="size-4" />
+          Decline
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function ClubsPage() {
   const user = getUser();
@@ -164,102 +241,102 @@ export default function ClubsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-        <section className="overflow-hidden rounded-[32px] border border-orange-500/15 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.20),transparent_38%),radial-gradient(circle_at_80%_20%,rgba(251,191,36,0.16),transparent_28%),linear-gradient(135deg,rgba(255,247,237,0.96),rgba(255,255,255,0.92))] p-6 shadow-[0_32px_90px_-42px_rgba(234,88,12,0.5)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.24),transparent_36%),radial-gradient(circle_at_80%_20%,rgba(245,158,11,0.18),transparent_26%),linear-gradient(135deg,rgba(28,25,23,0.98),rgba(17,17,17,0.96))] sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_360px]">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <Badge className="rounded-full bg-orange-500/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-700 dark:text-orange-200">
-                  Club Network
-                </Badge>
-                <div className="space-y-3">
-                  <h1 className="max-w-3xl font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-                    Clubs should feel like real team spaces, not forms glued onto cards.
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-6 text-foreground/70 sm:text-base">
-                    Channels, sponsors, member tags, announcements, and invites now live together in one workspace. This landing page is tuned for fast triage: open a club, accept invites, or spin up a new faculty-sponsored space.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Card className="rounded-3xl border-white/50 bg-white/70 shadow-lg shadow-orange-500/5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">My Clubs</p>
-                      <Users2 className="size-4 text-orange-600" />
-                    </div>
-                    <p className="mt-5 text-3xl font-semibold text-foreground">{myData?.memberOf?.length ?? 0}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Student and leader memberships</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl border-white/50 bg-white/70 shadow-lg shadow-orange-500/5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Sponsoring</p>
-                      <Shield className="size-4 text-orange-600" />
-                    </div>
-                    <p className="mt-5 text-3xl font-semibold text-foreground">{myData?.sponsoring?.length ?? 0}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Spaces you supervise across every channel</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl border-white/50 bg-white/70 shadow-lg shadow-orange-500/5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Pending Invites</p>
-                      <UserRoundPlus className="size-4 text-orange-600" />
-                    </div>
-                    <p className="mt-5 text-3xl font-semibold text-foreground">{invites.length}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">Accept or decline without leaving this page</p>
-                  </CardContent>
-                </Card>
-              </div>
+      <PageFrame>
+        <HeroBand
+          badge={
+            <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
+              Club network
+            </Badge>
+          }
+          title={
+            <>
+              Clubs should feel like
+              <span className="block text-foreground/76">real team workspaces.</span>
+            </>
+          }
+          description="The clubs area should prioritize flow: jump into channels, review invites, inspect sponsor coverage, and spin up a new faculty-backed workspace without feeling like you are filling out admin forms."
+          actions={
+            <>
+              {canCreate ? (
+                <Button className="h-11 rounded-2xl px-5" onClick={() => setCreateOpen(true)}>
+                  <Plus className="size-4" />
+                  Create club workspace
+                </Button>
+              ) : null}
+              <Button asChild variant="outline" className="h-11 rounded-2xl px-5">
+                <Link href={invites.length ? '#club-invites' : '/clubs'}>
+                  Review invites
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </>
+          }
+          aside={
+            <>
+              <HeroStat
+                label="My clubs"
+                value={myData?.memberOf?.length ?? 0}
+                description="Student and leader memberships."
+                icon={Users2}
+              />
+              <HeroStat
+                label="Sponsoring"
+                value={myData?.sponsoring?.length ?? 0}
+                description="Faculty-visible workspaces."
+                icon={Shield}
+              />
+              <HeroStat
+                label="Pending invites"
+                value={invites.length}
+                description="Accept or decline from one place."
+                icon={UserRoundPlus}
+              />
+              <HeroStat
+                label="Active clubs"
+                value={allClubs.length}
+                description="Visible catalog across the school."
+                icon={Compass}
+              />
+            </>
+          }
+        >
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Sponsor rule</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Every club starts with at least one teacher sponsor.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Sponsors automatically see every channel, including private ones.
+              </p>
             </div>
-
-            <Card className="rounded-[28px] border-white/50 bg-white/80 shadow-xl shadow-orange-500/10 backdrop-blur dark:border-white/10 dark:bg-zinc-950/70">
-              <CardHeader className="space-y-4 p-6">
-                <div className="flex items-center justify-between">
-                  <Badge variant="secondary" className="rounded-full bg-orange-500/12 px-3 py-1 text-[11px] text-orange-700 dark:text-orange-200">
-                    Operational
-                  </Badge>
-                  <Compass className="size-5 text-orange-600" />
-                </div>
-                <div className="space-y-2">
-                  <CardTitle className="text-2xl">Navigate the workspace</CardTitle>
-                  <CardDescription className="text-sm leading-6">
-                    Clubs are invite-only and every new club must start with at least one teacher sponsor. Sponsors automatically see all private channels.
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 px-6 pb-6">
-                <div className="rounded-2xl border border-orange-500/15 bg-orange-500/8 p-4 text-sm text-foreground/80">
-                  Private channels respect explicit membership for students, but faculty sponsors stay visible everywhere so oversight never depends on manual channel adds.
-                </div>
-                {canCreate ? (
-                  <Button className="w-full rounded-2xl" size="lg" onClick={() => setCreateOpen(true)}>
-                    <Plus className="mr-2 size-4" />
-                    Create Club Workspace
-                  </Button>
-                ) : (
-                  <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
-                    Admins can create new clubs. Members and leaders can still manage channels and tags inside clubs they belong to.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Channel-first</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Clubs are organized around real conversation lanes.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Announcements handle official voice; channels handle work.
+              </p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Member tags</p>
+              <p className="mt-2 text-base font-semibold text-foreground">
+                Mention groups come from current club members.
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                No raw ID typing. Use search, selection, and reusable tag slices.
+              </p>
+            </div>
           </div>
-        </section>
+        </HeroBand>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_380px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_380px]">
           <div className="space-y-6">
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Your spaces</CardTitle>
-                  <CardDescription>Pick up where you left off across member and sponsor workspaces.</CardDescription>
-                </div>
+            <Panel
+              title="Your spaces"
+              description="Pick up where you left off across memberships, sponsor work, and schoolwide discovery."
+              action={
                 <div className="relative w-full max-w-sm">
                   <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -269,211 +346,122 @@ export default function ClubsPage() {
                     className="rounded-2xl border-border/70 pl-11"
                   />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                      Memberships
-                    </h2>
-                    <Badge variant="secondary" className="rounded-full">
-                      {myData?.memberOf?.length ?? 0}
-                    </Badge>
-                  </div>
-                  {myData?.memberOf?.length ? (
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {myData.memberOf.map((club) => (
-                        <Link key={club.id} href={`/clubs/${club.id}`} className="block">
-                          <Card className="h-full rounded-3xl border-border/70 bg-gradient-to-br from-background to-orange-500/[0.04] transition hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10">
-                            <CardContent className="p-5">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-2">
-                                  <h3 className="text-lg font-semibold text-foreground">{club.name}</h3>
-                                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                    {club.description || 'No description yet.'}
-                                  </p>
-                                </div>
-                                <ArrowRight className="mt-1 size-4 text-muted-foreground" />
-                              </div>
-                              <div className="mt-4 flex flex-wrap items-center gap-2">
-                                {club.role ? (
-                                  <Badge variant="secondary" className="rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-300">
-                                    {formatClubRole(club.role)}
-                                  </Badge>
-                                ) : null}
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.members ?? 0} members
-                                </Badge>
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.channels ?? 0} channels
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <Empty className="rounded-3xl border-border/70 bg-muted/20">
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <MessagesSquare />
-                        </EmptyMedia>
-                        <EmptyTitle>No club memberships yet</EmptyTitle>
-                        <EmptyDescription>
-                          Club access is invite-only. Accepted invites will show up here automatically.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  )}
+              }
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="section-kicker">Memberships</h2>
+                  <Badge variant="secondary" className="rounded-full">
+                    {myData?.memberOf?.length ?? 0}
+                  </Badge>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                      Sponsor spaces
-                    </h2>
-                    <Badge variant="secondary" className="rounded-full">
-                      {myData?.sponsoring?.length ?? 0}
-                    </Badge>
+                {myData?.memberOf?.length ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {myData.memberOf.map((club) => (
+                      <ClubTile key={club.id} club={club} href={`/clubs/${club.id}`} />
+                    ))}
                   </div>
-                  {myData?.sponsoring?.length ? (
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {myData.sponsoring.map((club) => (
-                        <Link key={club.id} href={`/clubs/${club.id}`} className="block">
-                          <Card className="h-full rounded-3xl border-sky-500/15 bg-gradient-to-br from-sky-500/[0.08] via-background to-background transition hover:-translate-y-0.5 hover:border-sky-500/35 hover:shadow-lg hover:shadow-sky-500/10">
-                            <CardContent className="p-5">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="text-lg font-semibold text-foreground">{club.name}</h3>
-                                    <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">
-                                      Sponsor
-                                    </Badge>
-                                  </div>
-                                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                    {club.description || 'No description yet.'}
-                                  </p>
-                                </div>
-                                <ArrowRight className="mt-1 size-4 text-muted-foreground" />
-                              </div>
-                              <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.members ?? 0} members
-                                </Badge>
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.channels ?? 0} channels
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                      You are not currently assigned as a sponsor for any clubs.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                ) : (
+                  <Empty className="rounded-[1.5rem] border-border/70 bg-muted/20">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <MessagesSquare />
+                      </EmptyMedia>
+                      <EmptyTitle>No club memberships yet</EmptyTitle>
+                      <EmptyDescription>
+                        Club access is invite-only. Accepted invites will show up here automatically.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                )}
+              </div>
 
-            {canCreate && (
-              <Card className="rounded-[28px] border-border/70">
-                <CardHeader>
-                  <CardTitle className="text-2xl">All active clubs</CardTitle>
-                  <CardDescription>Admin visibility across every club workspace.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                      Loading clubs…
-                    </div>
-                  ) : filteredClubs.length > 0 ? (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {filteredClubs.map((club) => (
-                        <Link key={club.id} href={`/clubs/${club.id}`} className="block">
-                          <Card className="rounded-3xl border-border/70 transition hover:-translate-y-0.5 hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/10">
-                            <CardContent className="flex h-full flex-col gap-4 p-5">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="font-semibold text-foreground">{club.name}</h3>
-                                    {myClubIds.has(club.id) ? (
-                                      <Badge variant="secondary" className="rounded-full bg-orange-500/12 text-orange-700 dark:text-orange-200">
-                                        Joined
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                  <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                    {club.description || 'No description yet.'}
-                                  </p>
-                                </div>
-                                <ArrowRight className="size-4 text-muted-foreground" />
-                              </div>
-                              <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.members ?? 0} members
-                                </Badge>
-                                <Badge variant="outline" className="rounded-full">
-                                  {club._count?.channels ?? 0} channels
-                                </Badge>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-                      No clubs match this search yet.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="section-kicker">Sponsor spaces</h2>
+                  <Badge variant="secondary" className="rounded-full">
+                    {myData?.sponsoring?.length ?? 0}
+                  </Badge>
+                </div>
+                {myData?.sponsoring?.length ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {myData.sponsoring.map((club) => (
+                      <ClubTile
+                        key={club.id}
+                        club={club}
+                        href={`/clubs/${club.id}`}
+                        tone="sponsor"
+                        badge={
+                          <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">
+                            Sponsor
+                          </Badge>
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-5 text-sm text-muted-foreground">
+                    You are not currently assigned as a sponsor for any clubs.
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            {canCreate ? (
+              <Panel
+                title="All active clubs"
+                description="Admin visibility across every club workspace."
+              >
+                {isLoading ? (
+                  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                    Loading clubs…
+                  </div>
+                ) : filteredClubs.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {filteredClubs.map((club) => (
+                      <ClubTile
+                        key={club.id}
+                        club={club}
+                        href={`/clubs/${club.id}`}
+                        tone="catalog"
+                        badge={
+                          myClubIds.has(club.id) ? (
+                            <Badge variant="secondary" className="rounded-full bg-primary/12 text-primary">
+                              Joined
+                            </Badge>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                    No clubs match this search yet.
+                  </div>
+                )}
+              </Panel>
+            ) : null}
           </div>
 
           <div className="space-y-6">
-            <Card className="rounded-[28px] border-amber-500/20 bg-amber-500/[0.05]">
-              <CardHeader>
-                <CardTitle className="text-xl">Pending invites</CardTitle>
-                <CardDescription>Membership requests waiting on you.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <Panel
+              title="Pending invites"
+              description="Membership requests waiting on you."
+              className="border-amber-500/20 bg-amber-500/[0.04]"
+            >
+              <div id="club-invites" className="space-y-3">
                 {invites.length > 0 ? (
                   invites.map((invite) => (
-                    <Card key={invite.id} className="rounded-3xl border-amber-500/20 bg-background/90">
-                      <CardContent className="space-y-4 p-5">
-                        <div className="space-y-1">
-                          <p className="text-base font-semibold text-foreground">{invite.club.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Invited by {invite.sender.firstName} {invite.sender.lastName}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            className="flex-1 rounded-2xl"
-                            onClick={() => respondMutation.mutate({ inviteId: invite.id, accept: true })}
-                          >
-                            <Check className="mr-2 size-4" />
-                            Accept
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="flex-1 rounded-2xl"
-                            onClick={() => respondMutation.mutate({ inviteId: invite.id, accept: false })}
-                          >
-                            <X className="mr-2 size-4" />
-                            Decline
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <InviteCard
+                      key={invite.id}
+                      invite={invite}
+                      onRespond={(accept) =>
+                        respondMutation.mutate({ inviteId: invite.id, accept })
+                      }
+                    />
                   ))
                 ) : (
-                  <Empty className="rounded-3xl border-amber-500/20 bg-background/80">
+                  <Empty className="rounded-[1.5rem] border-amber-500/20 bg-background/80">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <UserRoundPlus />
@@ -483,27 +471,47 @@ export default function ClubsPage() {
                     </EmptyHeader>
                   </Empty>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </Panel>
 
-            <Card className="rounded-[28px] border-border/70">
-              <CardHeader>
-                <CardTitle className="text-xl">Design notes</CardTitle>
-                <CardDescription>The clubs area is now channel-first and sponsor-aware.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-                <p>Tags are selected from current club members, not typed as raw IDs.</p>
-                <p>Private channels can still be intentionally scoped, while sponsors retain full visibility for oversight.</p>
-                <p>The deeper chat workspace lives inside each club and channel view, with mention-aware composer flows.</p>
-              </CardContent>
-            </Card>
+            <Panel title="Why this layout" description="The product logic the clubs area is trying to honor.">
+              <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
+                  Search and selection now sit closer to the surfaces they control, instead of hiding behind flat cards and generic copy.
+                </div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
+                  Sponsor oversight is explicit. That rule should be visible in the UI, not just quietly enforced by the backend.
+                </div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">
+                  The next screen after this should feel like entering a team workspace, not drilling into another detail form.
+                </div>
+              </div>
+            </Panel>
+
+            {canCreate ? (
+              <Panel title="Admin posture" description="Creation is available only to admins and always sponsor-backed.">
+                <div className="rounded-[1.5rem] border border-primary/15 bg-primary/[0.06] p-5">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Sparkles className="size-4" />
+                    <span className="text-sm font-semibold text-foreground">Workspace creation</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Use the creation sheet when a new club needs a full workspace, not just a name in the directory.
+                  </p>
+                  <Button className="mt-4 rounded-2xl" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-4" />
+                    Create club
+                  </Button>
+                </div>
+              </Panel>
+            ) : null}
           </div>
-        </section>
+        </div>
 
         <Sheet open={createOpen} onOpenChange={setCreateOpen}>
           <SheetContent side="right" className="w-full overflow-y-auto border-l border-border/70 sm:max-w-2xl">
             <SheetHeader className="space-y-3">
-              <Badge className="w-fit rounded-full bg-orange-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-orange-700 dark:text-orange-200">
+              <Badge className="w-fit rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-primary">
                 New Club
               </Badge>
               <SheetTitle className="text-2xl">Create a faculty-sponsored workspace</SheetTitle>
@@ -548,7 +556,7 @@ export default function ClubsPage() {
                 />
               </div>
 
-              <div className="rounded-3xl border border-orange-500/15 bg-orange-500/[0.06] p-4 text-sm leading-6 text-foreground/80">
+              <div className="rounded-[1.5rem] border border-primary/15 bg-primary/[0.06] p-4 text-sm leading-6 text-foreground/80">
                 Clubs without a sponsor are blocked. That rule is enforced in the API as well, not just this form.
               </div>
             </div>
@@ -563,7 +571,7 @@ export default function ClubsPage() {
             </SheetFooter>
           </SheetContent>
         </Sheet>
-      </div>
+      </PageFrame>
     </AppShell>
   );
 }

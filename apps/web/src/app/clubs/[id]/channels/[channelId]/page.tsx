@@ -26,6 +26,7 @@ import type {
   ClubDetail,
 } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
+import { HeroBand, HeroStat, PageFrame } from '@/components/layout/page-frame';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { MentionBody } from '@/components/clubs/mention-body';
 import { fullName } from '@/components/clubs/types';
@@ -435,10 +436,10 @@ function MessageComposer({
   };
 
   return (
-    <div className="rounded-[28px] border border-border/70 bg-background/85 p-4 shadow-sm">
+    <div className="rounded-[2rem] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--card))/0.92)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-medium text-foreground">{title}</p>
+          <p className="text-sm font-semibold text-foreground">{title}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -489,11 +490,11 @@ function MessageComposer({
           onSelect={(event) => setSelectionStart(event.currentTarget.selectionStart ?? 0)}
           placeholder="Write a message, drop in files, and mention the right people..."
           rows={5}
-          className="min-h-32 rounded-3xl border-border/70 bg-muted/10 p-4 shadow-none focus-visible:ring-0"
+          className="min-h-32 rounded-[1.5rem] border-border/70 bg-muted/10 p-4 shadow-none focus-visible:ring-0"
         />
 
         {mentionMatch ? (
-          <div className="absolute inset-x-4 bottom-4 z-20 rounded-3xl border border-border/70 bg-popover/95 shadow-xl backdrop-blur">
+          <div className="absolute inset-x-4 bottom-4 z-20 rounded-[1.5rem] border border-border/70 bg-popover/95 shadow-xl backdrop-blur">
             <Command className="rounded-3xl">
               <CommandList className="max-h-56">
                 <CommandEmpty>No mention matches.</CommandEmpty>
@@ -539,7 +540,7 @@ function MessageComposer({
       />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <Button
             variant="outline"
             size="sm"
@@ -579,6 +580,9 @@ function ChannelRail({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
           Channels
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Keep the main lane clean. Push side discussion into threads.
+        </p>
       </div>
       <ScrollArea className="h-full">
         <div className="space-y-2 p-3">
@@ -586,7 +590,7 @@ function ChannelRail({
             <Link key={channel.id} href={`/clubs/${clubId}/channels/${channel.id}`} className="block">
               <div
                 className={cn(
-                  'rounded-2xl border px-4 py-3 transition',
+                  'rounded-[1.4rem] border px-4 py-3 transition',
                   channel.id === channelId
                     ? 'border-orange-500/35 bg-orange-500/10 shadow-lg shadow-orange-500/10'
                     : 'border-border/70 bg-background/80 hover:border-orange-500/20 hover:bg-orange-500/[0.04]',
@@ -633,7 +637,7 @@ function ChannelInfoPane({
 }) {
   return (
     <div className="flex h-full flex-col gap-4 p-4">
-      <Card className="rounded-3xl border-border/70 bg-background/85">
+      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Channel rules</CardTitle>
           <CardDescription>
@@ -650,7 +654,7 @@ function ChannelInfoPane({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-border/70 bg-background/85">
+      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Visible people</CardTitle>
           <CardDescription>{audience.length} people can see this channel right now.</CardDescription>
@@ -670,7 +674,7 @@ function ChannelInfoPane({
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl border-border/70 bg-background/85">
+      <Card className="rounded-[1.6rem] border-border/70 bg-background/85">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Custom tags</CardTitle>
           <CardDescription>Reusable mention groups for the club roster.</CardDescription>
@@ -1072,7 +1076,7 @@ export default function ClubChannelPage({
         ) : null}
       </div>
 
-      <ScrollArea className="min-h-[28rem] flex-1">
+      <ScrollArea className="min-h-[28rem] flex-1 bg-[linear-gradient(180deg,hsl(var(--background))/0.72,transparent)]">
         <div className="space-y-5 p-5">
           {visibleMessages.length > 0 ? (
             visibleMessages.map((message) => (
@@ -1184,10 +1188,10 @@ export default function ClubChannelPage({
 
   return (
     <AppShell>
-      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6">
-        <div className="flex flex-col gap-4 rounded-[32px] border border-orange-500/15 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.20),transparent_34%),linear-gradient(135deg,rgba(255,247,237,0.96),rgba(255,255,255,0.94))] p-6 shadow-[0_30px_80px_-44px_rgba(234,88,12,0.55)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.24),transparent_32%),linear-gradient(135deg,rgba(28,25,23,0.98),rgba(17,17,17,0.96))] sm:p-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-3">
+      <PageFrame className="max-w-[1720px]">
+        <HeroBand
+          badge={
+            <>
               <Link
                 href={`/clubs/${id}`}
                 className="inline-flex w-fit items-center gap-2 rounded-full border border-white/40 bg-white/65 px-4 py-2 text-sm text-foreground/75 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5"
@@ -1195,51 +1199,74 @@ export default function ClubChannelPage({
                 <ArrowLeft className="size-4" />
                 Back to workspace
               </Link>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className="rounded-full bg-orange-500/12 text-orange-700 dark:text-orange-200">
-                  {channel.isPrivate ? 'Private channel' : 'Open channel'}
-                </Badge>
-                <Badge variant="outline" className="rounded-full">
-                  {messages.length} threads
-                </Badge>
-                <Badge variant="outline" className="rounded-full">
-                  <Users2 className="mr-1 size-3" />
-                  {audience.length} visible
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3">
-                {channel.isPrivate ? (
-                  <Lock className="size-5 text-muted-foreground" />
-                ) : (
-                  <Hash className="size-5 text-muted-foreground" />
-                )}
-                <div>
-                  <h1 className="font-serif text-4xl font-semibold tracking-tight text-foreground">
-                    {channel.name}
-                  </h1>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-foreground/75">
-                    {channel.description || 'Conversation space for this club channel.'}
-                  </p>
-                </div>
-              </div>
+              <Badge className="rounded-full bg-primary/12 text-primary">
+                {channel.isPrivate ? 'Private channel' : 'Open channel'}
+              </Badge>
+            </>
+          }
+          title={channel.name}
+          description={channel.description || 'Conversation space for this club channel.'}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="rounded-full">
+                {messages.length} threads
+              </Badge>
+              <Badge variant="outline" className="rounded-full">
+                <Users2 className="mr-1 size-3" />
+                {audience.length} visible
+              </Badge>
             </div>
-
-            <Card className="rounded-[28px] border-white/50 bg-white/75 dark:border-white/10 dark:bg-white/5 lg:max-w-sm">
-              <CardContent className="space-y-3 p-5">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="size-4 text-orange-600" />
-                  <p className="font-medium text-foreground">Modern channel flow</p>
-                </div>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  Search the history, drop files inline, use reaction chips for lightweight feedback, and push side conversations into threads without losing the main lane.
-                </p>
-              </CardContent>
-            </Card>
+          }
+          aside={
+            <>
+              <HeroStat
+                label="Search"
+                value={deferredSearch.trim() ? searchResults.length : 'Ready'}
+                description="Search messages, files, and authors across the lane."
+                icon={Search}
+              />
+              <HeroStat
+                label="Threads"
+                value={messages.length}
+                description="Keep the main lane readable with side discussions in threads."
+                icon={Reply}
+              />
+              <HeroStat
+                label="Audience"
+                value={audience.length}
+                description="People who can currently see this channel."
+                icon={Users2}
+              />
+              <HeroStat
+                label="Capabilities"
+                value="Live"
+                description="Mentions, reactions, uploads, and thread replies are all active here."
+                icon={Sparkles}
+              />
+            </>
+          }
+        >
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Conversation design</p>
+              <p className="mt-2 text-base font-semibold text-foreground">Main lane first, threads second.</p>
+              <p className="mt-1 text-sm text-muted-foreground">That keeps high-signal channel history readable even as side conversations branch off.</p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Audience control</p>
+              <p className="mt-2 text-base font-semibold text-foreground">Private channels stay scoped without hiding from sponsors.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Faculty oversight remains guaranteed by policy rather than manual membership edits.</p>
+            </div>
+            <div className="surface-rail px-4 py-3">
+              <p className="section-kicker">Message tools</p>
+              <p className="mt-2 text-base font-semibold text-foreground">Drop files, react fast, and mention intelligently.</p>
+              <p className="mt-1 text-sm text-muted-foreground">The composer is optimized for quick coordination, not generic comment boxes.</p>
+            </div>
           </div>
-        </div>
+        </HeroBand>
 
         <div className="hidden xl:block">
-          <div className="overflow-hidden rounded-[32px] border border-border/70 bg-background/80 shadow-xl shadow-orange-500/5">
+          <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-background/80 shadow-xl shadow-primary/5">
             <ResizablePanelGroup direction="horizontal" className="min-h-[76vh]">
               <ResizablePanel defaultSize={19} minSize={16}>
                 {rail}
@@ -1257,11 +1284,11 @@ export default function ClubChannelPage({
         </div>
 
         <div className="space-y-6 xl:hidden">
-          <Card className="rounded-[28px] border-border/70">{rail}</Card>
-          <Card className="rounded-[28px] border-border/70">{chatPane}</Card>
-          <Card className="rounded-[28px] border-border/70">{threadPane}</Card>
+          <Card className="rounded-[2rem] border-border/70">{rail}</Card>
+          <Card className="rounded-[2rem] border-border/70">{chatPane}</Card>
+          <Card className="rounded-[2rem] border-border/70">{threadPane}</Card>
         </div>
-      </div>
+      </PageFrame>
     </AppShell>
   );
 }
