@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiTags, ApiConsumes } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
@@ -55,31 +56,31 @@ export class UsersController {
 
   @Post()
   @Roles(Role.SUPER_ADMIN)
-  create(@Body() dto: CreateUserDto, @CurrentUser() user: any) {
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.create(dto, user.id);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.update(id, dto, user.id);
   }
 
   @Patch(':id/roles')
   @Roles(Role.SUPER_ADMIN)
-  assignRoles(@Param('id') id: string, @Body() dto: AssignRolesDto, @CurrentUser() user: any) {
+  assignRoles(@Param('id') id: string, @Body() dto: AssignRolesDto, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.assignRoles(id, dto, user.id);
   }
 
   @Patch(':id/deactivate')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  deactivate(@Param('id') id: string, @CurrentUser() user: any) {
+  deactivate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.deactivate(id, user.id, user.role);
   }
 
   @Patch(':id/activate')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  activate(@Param('id') id: string, @CurrentUser() user: any) {
+  activate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.activate(id, user.id);
   }
 
@@ -88,7 +89,7 @@ export class UsersController {
   resetPassword(
     @Param('id') id: string,
     @Body() body: { newPassword: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.usersService.resetPassword(id, body.newPassword, user.id);
   }
@@ -100,7 +101,7 @@ export class UsersController {
   importCsv(
     @UploadedFile() file: Express.Multer.File,
     @Body('generatePasswords') generatePasswords: string | undefined,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     if (!file) throw new BadRequestException('CSV file is required');
 

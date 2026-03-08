@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { ContentType, ReportStatus, Role } from '@prisma/client';
 import { ModerationService } from './moderation.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,13 +21,13 @@ export class ModerationController {
 
   @Post('keywords')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  addKeyword(@Body() body: { keyword: string }, @CurrentUser() user: any) {
+  addKeyword(@Body() body: { keyword: string }, @CurrentUser() user: AuthenticatedUser) {
     return this.moderationService.addKeyword(body.keyword, user.id);
   }
 
   @Patch('keywords/:id/remove')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  removeKeyword(@Param('id') id: string, @CurrentUser() user: any) {
+  removeKeyword(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.moderationService.removeKeyword(id, user.id);
   }
 
@@ -47,7 +48,7 @@ export class ModerationController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   submitReport(
     @Body() body: { contentType: ContentType; contentId: string; reason: string; reportedUserId?: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.moderationService.submitReport(
       user.id,
@@ -63,7 +64,7 @@ export class ModerationController {
   updateReport(
     @Param('id') id: string,
     @Body() body: { status: ReportStatus; reviewNote: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.moderationService.updateReportStatus(id, body.status, body.reviewNote, user.id);
   }

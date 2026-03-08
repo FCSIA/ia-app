@@ -8,6 +8,7 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { AuthService } from './auth.service';
 import { LoginDto, ChangePasswordDto } from './dto/login.dto';
 import { JwtAuthGuard, IS_PUBLIC_KEY } from './guards/jwt-auth.guard';
@@ -27,20 +28,20 @@ export class AuthController {
 
   @ApiBearerAuth()
   @Post('logout')
-  logout(@CurrentUser() user: any, @Request() req: any) {
+  logout(@CurrentUser() user: AuthenticatedUser, @Request() req: { headers: { authorization?: string } }) {
     const token = req.headers.authorization?.split(' ')[1];
     return this.authService.logout(user.id, token);
   }
 
   @ApiBearerAuth()
   @Post('change-password')
-  changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
+  changePassword(@CurrentUser() user: AuthenticatedUser, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(user.id, dto);
   }
 
   @ApiBearerAuth()
   @Get('me')
-  getMe(@CurrentUser() user: any) {
+  getMe(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.getMe(user.id);
   }
 }

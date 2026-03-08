@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -16,7 +16,9 @@ import {
   Shield,
   BookOpen,
   Clock3,
+  type LucideIcon,
 } from 'lucide-react';
+import type { AppUser } from '@ia/contracts/auth';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
@@ -39,11 +41,11 @@ const adminNavItems = [
   { href: '/admin', label: 'Admin Panel', icon: Shield },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const showSchedule = user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN');
 
-  const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: any }) => {
+  const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: LucideIcon }) => {
     const active = isActive(href);
     return (
       <Link

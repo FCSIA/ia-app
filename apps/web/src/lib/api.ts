@@ -1,6 +1,25 @@
 import axios from 'axios';
+import type { AppUser, AuthLoginResponse } from '@ia/contracts/auth';
+import type {
+  ChatAttachmentUploadResponse,
+  ClubBulkInviteResult,
+  CreateClubChannelMessagePayload,
+  CreateClubChannelPayload,
+  CreateClubTagPayload,
+  ToggleClubChannelReactionPayload,
+} from '@ia/contracts/clubs';
+import type {
+  SchoolDayBlockPayload,
+  UpsertStudentSchedulePayload,
+} from '@ia/contracts/schedule';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+export function toApiUrl(path: string) {
+  if (!path) return path;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -34,9 +53,9 @@ api.interceptors.response.use(
 // Auth
 export const authApi = {
   login: (uniqueId: string, password: string) =>
-    api.post('/auth/login', { uniqueId, password }),
+    api.post<AuthLoginResponse>('/auth/login', { uniqueId, password }),
   logout: () => api.post('/auth/logout'),
-  me: () => api.get('/auth/me'),
+  me: () => api.get<AppUser>('/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword }),
 };
@@ -91,18 +110,31 @@ export const clubsApi = {
     api.get(`/clubs/${clubId}/channels/${channelId}/messages`),
   create: (data: any) => api.post('/clubs', data),
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
-  createChannel: (clubId: string, data: any) =>
+  createChannel: (clubId: string, data: CreateClubChannelPayload) =>
     api.post(`/clubs/${clubId}/channels`, data),
-  createTag: (clubId: string, data: any) =>
+  createTag: (clubId: string, data: CreateClubTagPayload) =>
     api.post(`/clubs/${clubId}/tags`, data),
-  postChannelMessage: (clubId: string, channelId: string, body: string) =>
-    api.post(`/clubs/${clubId}/channels/${channelId}/messages`, { body }),
+  postChannelMessage: (
+    clubId: string,
+    channelId: string,
+    data: CreateClubChannelMessagePayload,
+  ) => api.post(`/clubs/${clubId}/channels/${channelId}/messages`, data),
+  toggleChannelReaction: (
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    data: ToggleClubChannelReactionPayload,
+  ) =>
+    api.post(
+      `/clubs/${clubId}/channels/${channelId}/messages/${messageId}/reactions`,
+      data,
+    ),
   sendInvite: (clubId: string, uniqueId: string) =>
     api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   bulkInviteCsv: (clubId: string, file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return api.post(`/clubs/${clubId}/invite/csv`, fd, {
+    return api.post<ClubBulkInviteResult>(`/clubs/${clubId}/invite/csv`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
@@ -134,13 +166,24 @@ export const calendarApi = {
 // Schedule
 export const scheduleApi = {
   getDashboard: () => api.get('/schedule'),
-  saveMine: (data: any) => api.put('/schedule/me', data),
+  saveMine: (data: UpsertStudentSchedulePayload) => api.put('/schedule/me', data),
   searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
   addFriend: (friendId: string) => api.post('/schedule/friends', { friendId }),
   removeFriend: (friendId: string) => api.delete(`/schedule/friends/${friendId}`),
-  createBlock: (data: any) => api.post('/schedule/blocks', data),
-  updateBlock: (blockId: string, data: any) => api.patch(`/schedule/blocks/${blockId}`, data),
+  createBlock: (data: SchoolDayBlockPayload) => api.post('/schedule/blocks', data),
+  updateBlock: (blockId: string, data: SchoolDayBlockPayload) =>
+    api.patch(`/schedule/blocks/${blockId}`, data),
   deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
+};
+
+export const uploadsApi = {
+  uploadChatAttachment: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post<ChatAttachmentUploadResponse>('/uploads/chat-attachment', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Flex Friday

@@ -7,6 +7,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { FlexFridayType, FlexSessionType, Role, Pathway } from '@prisma/client';
 import { FlexFridayService } from './flex-friday.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -24,12 +25,12 @@ export class FlexFridayController {
   }
 
   @Get('my/registrations')
-  getMyRegistrations(@CurrentUser() user: any) {
+  getMyRegistrations(@CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.getMyRegistrations(user.id);
   }
 
   @Get('my/assignments')
-  getMyAssignments(@CurrentUser() user: any) {
+  getMyAssignments(@CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.getMyAssignments(user.id);
   }
 
@@ -50,13 +51,13 @@ export class FlexFridayController {
       isSchoolDay?: boolean;
       notes?: string;
     },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.flexFridayService.createFriday(body, user.id);
   }
 
   @Get(':fridayId/sessions')
-  getSessions(@Param('fridayId') fridayId: string, @CurrentUser() user: any) {
+  getSessions(@Param('fridayId') fridayId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.getSessions(fridayId, user.id, user.role);
   }
 
@@ -74,18 +75,18 @@ export class FlexFridayController {
       targetPathway?: Pathway;
       targetGrade?: number;
     },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.flexFridayService.createSession(fridayId, body, user.id);
   }
 
   @Post('sessions/:sessionId/register')
-  register(@Param('sessionId') sessionId: string, @CurrentUser() user: any) {
+  register(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.register(sessionId, user.id);
   }
 
   @Delete('sessions/:sessionId/register')
-  unregister(@Param('sessionId') sessionId: string, @CurrentUser() user: any) {
+  unregister(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.unregister(sessionId, user.id);
   }
 
@@ -94,13 +95,13 @@ export class FlexFridayController {
   assign(
     @Param('sessionId') sessionId: string,
     @Body() body: { studentId: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.flexFridayService.assign(sessionId, body.studentId, user.id);
   }
 
   @Get('sessions/:sessionId/roster')
-  getRoster(@Param('sessionId') sessionId: string, @CurrentUser() user: any) {
+  getRoster(@Param('sessionId') sessionId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.getSessionRoster(sessionId, user.id, user.role);
   }
 }

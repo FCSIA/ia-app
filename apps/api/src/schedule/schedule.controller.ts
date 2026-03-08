@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -28,40 +29,40 @@ export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 
   @Get()
-  getDashboard(@CurrentUser() user: any) {
+  getDashboard(@CurrentUser() user: AuthenticatedUser) {
     return this.scheduleService.getDashboard(user);
   }
 
   @Put('me')
-  upsertMySchedule(@CurrentUser() user: any, @Body() dto: UpsertStudentScheduleDto) {
+  upsertMySchedule(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpsertStudentScheduleDto) {
     return this.scheduleService.upsertMySchedule(user, dto);
   }
 
   @Get('search')
-  searchPeople(@CurrentUser() user: any, @Query('q') query?: string) {
+  searchPeople(@CurrentUser() user: AuthenticatedUser, @Query('q') query?: string) {
     return this.scheduleService.searchPeople(user, query ?? '');
   }
 
   @Post('friends')
-  addFriend(@CurrentUser() user: any, @Body() dto: AddScheduleFriendDto) {
+  addFriend(@CurrentUser() user: AuthenticatedUser, @Body() dto: AddScheduleFriendDto) {
     return this.scheduleService.addFriend(user, dto.friendId);
   }
 
   @Delete('friends/:friendId')
-  removeFriend(@CurrentUser() user: any, @Param('friendId') friendId: string) {
+  removeFriend(@CurrentUser() user: AuthenticatedUser, @Param('friendId') friendId: string) {
     return this.scheduleService.removeFriend(user, friendId);
   }
 
   @Post('blocks')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  createBlock(@CurrentUser() user: any, @Body() dto: CreateSchoolDayBlockDto) {
+  createBlock(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateSchoolDayBlockDto) {
     return this.scheduleService.createBlock(user.id, dto);
   }
 
   @Patch('blocks/:blockId')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   updateBlock(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('blockId') blockId: string,
     @Body() dto: UpdateSchoolDayBlockDto,
   ) {
@@ -70,7 +71,7 @@ export class ScheduleController {
 
   @Delete('blocks/:blockId')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  deleteBlock(@CurrentUser() user: any, @Param('blockId') blockId: string) {
+  deleteBlock(@CurrentUser() user: AuthenticatedUser, @Param('blockId') blockId: string) {
     return this.scheduleService.deleteBlock(blockId, user.id);
   }
 }

@@ -3,11 +3,17 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
+  MaxLength,
   MinLength,
+  Min,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateClubDto {
   @ApiProperty({ example: 'Robotics Club' })
@@ -87,11 +93,57 @@ export class CreateClubTagDto extends ClubPeopleSelectionDto {
   name: string;
 }
 
-export class CreateClubChannelMessageDto {
+export class ClubChannelMessageAttachmentDto {
   @ApiProperty()
   @IsString()
   @MinLength(1)
-  body: string;
+  fileName: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  fileUrl: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  mimeType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(10_000_000)
+  size?: number;
+}
+
+export class CreateClubChannelMessageDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  body?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  parentMessageId?: string;
+
+  @ApiPropertyOptional({ type: [ClubChannelMessageAttachmentDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ClubChannelMessageAttachmentDto)
+  attachments?: ClubChannelMessageAttachmentDto[];
+}
+
+export class ToggleClubChannelReactionDto {
+  @ApiProperty({ example: '🔥' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(16)
+  emoji: string;
 }
 
 export class InviteClubMemberDto {

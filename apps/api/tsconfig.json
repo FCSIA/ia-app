@@ -9,6 +9,7 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -18,8 +19,11 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@app/*": ["src/*"]
+      "@app/*": ["src/*"],
+      "@ia/contracts": ["../../packages/contracts/dist/index.d.ts"],
+      "@ia/contracts/*": ["../../packages/contracts/dist/*"]
     }
   },
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]
 }

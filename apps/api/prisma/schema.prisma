@@ -68,6 +68,7 @@ model User {
   createdChannels     ClubChannel[] @relation("ClubChannelCreator")
   createdTags         ClubTag[] @relation("ClubTagCreator")
   mentionedInChannelMentions ClubChannelMessageMention[] @relation("ClubChannelMentionUser")
+  reactedToChannelMessages ClubChannelMessageReaction[]
   studentSchedule     StudentSchedule?
   scheduleFriends     StudentScheduleFriend[] @relation("StudentScheduleFriendOwner")
   friendedBySchedules StudentScheduleFriend[] @relation("StudentScheduleFriendTarget")
@@ -352,19 +353,56 @@ model ClubTagMember {
 }
 
 model ClubChannelMessage {
-  id        String   @id @default(cuid())
-  channelId String   @map("channel_id")
-  authorId  String   @map("author_id")
-  body      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  channelId       String   @map("channel_id")
+  authorId        String   @map("author_id")
+  parentMessageId String?  @map("parent_message_id")
+  body            String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  channel       ClubChannel                @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  author        User                       @relation("ClubChannelMessageAuthor", fields: [authorId], references: [id])
+  channel       ClubChannel                   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author        User                          @relation("ClubChannelMessageAuthor", fields: [authorId], references: [id])
+  parentMessage ClubChannelMessage?           @relation("ClubChannelMessageReplies", fields: [parentMessageId], references: [id], onDelete: Cascade)
+  replies       ClubChannelMessage[]          @relation("ClubChannelMessageReplies")
   mentions      ClubChannelMessageMention[]
+  attachments   ClubChannelMessageAttachment[]
+  reactions     ClubChannelMessageReaction[]
   notifications NotificationDelivery[]
 
+  @@index([channelId, parentMessageId, createdAt])
+
   @@map("club_channel_messages")
+}
+
+model ClubChannelMessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  mimeType  String?  @map("mime_type")
+  size      Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, createdAt])
+  @@map("club_channel_message_attachments")
+}
+
+model ClubChannelMessageReaction {
+  id        String   @id @default(cuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId, emoji])
+  @@map("club_channel_message_reactions")
 }
 
 enum ClubMentionKind {

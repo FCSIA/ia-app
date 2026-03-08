@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { CalendarService } from './calendar.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -33,7 +34,7 @@ export class CalendarController {
       endAt?: string;
       tags?: string[];
     },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.calendarService.createManual(body, user.id);
   }

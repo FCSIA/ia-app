@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { EventsService } from './events.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -21,19 +22,19 @@ export class EventsController {
 
   @Get()
   getAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('clubId') clubId?: string,
   ) {
     return this.eventsService.getAll(user.id, user.role, clubId);
   }
 
   @Get('pending-approvals')
-  getPendingApprovals(@CurrentUser() user: any) {
+  getPendingApprovals(@CurrentUser() user: AuthenticatedUser) {
     return this.eventsService.getPendingApprovals(user.id);
   }
 
   @Get(':id')
-  getOne(@Param('id') id: string, @CurrentUser() user: any) {
+  getOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.eventsService.getOne(id, user.id, user.role);
   }
 
@@ -49,7 +50,7 @@ export class EventsController {
       endAt?: string;
       clubId?: string;
     },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.create(body, user.id, user.role);
   }
@@ -59,7 +60,7 @@ export class EventsController {
   approve(
     @Param('id') id: string,
     @Body() body: { note?: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.approveOrReject(id, user.id, 'approve', body.note);
   }
@@ -69,13 +70,13 @@ export class EventsController {
   reject(
     @Param('id') id: string,
     @Body() body: { note?: string },
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.approveOrReject(id, user.id, 'reject', body.note);
   }
 
   @Patch(':id/cancel')
-  cancel(@Param('id') id: string, @CurrentUser() user: any) {
+  cancel(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.eventsService.cancel(id, user.id, user.role);
   }
 }
