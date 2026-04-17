@@ -1,0 +1,1 @@
+ALTER TYPE "NotificationCategory" ADD VALUE 'FRIEND_REQUEST';

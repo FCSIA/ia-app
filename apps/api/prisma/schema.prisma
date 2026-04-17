@@ -682,4 +682,5 @@ enum NotificationCategory {
   EVENT
   FLEX_FRIDAY
   CLUB_CHANNEL_MENTION
+  FRIEND_REQUEST
 }

@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role, ScheduleWeekday } from '@prisma/client';
+import { NotificationCategory, Prisma, Role, ScheduleWeekday } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateSchoolDayBlockDto,
@@ -21,6 +22,7 @@ export class ScheduleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private readonly userSelect = {
@@ -500,7 +502,7 @@ export class ScheduleService {
     });
   }
 
-  async sendFriendRequest(user: { id: string; roles: Role[] }, targetId: string) {
+  async sendFriendRequest(user: { id: string; roles: Role[]; firstName: string; lastName: string }, targetId: string) {
     this.ensureStudentAccess(user);
 
     if (targetId === user.id) {
@@ -553,6 +555,13 @@ export class ScheduleService {
       action: 'SCHEDULE_FRIEND_REQUESTED',
       entityType: 'User',
       entityId: target.id,
+    });
+
+    await this.notifications.deliver({
+      userIds: [targetId],
+      category: NotificationCategory.FRIEND_REQUEST,
+      title: 'New friend request',
+      body: `${user.firstName} ${user.lastName} wants to be your friend.`,
     });
 
     return { success: true, status: created.status, id: created.id };
