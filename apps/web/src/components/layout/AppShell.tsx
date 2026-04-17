@@ -5,16 +5,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
-  BookOpen,
   Calendar,
   CalendarRange,
-  Clock3,
   Home,
   LogOut,
   Megaphone,
+  Puzzle,
+  School,
   Settings,
   Shield,
   Sparkles,
+  Ticket,
   type LucideIcon,
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
@@ -45,9 +46,9 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/clubs', label: 'Clubs', icon: BookOpen },
-  { href: '/schedule', label: 'School Day', icon: Clock3 },
-  { href: '/events', label: 'Events', icon: Sparkles },
+  { href: '/clubs', label: 'Clubs', icon: Puzzle },
+  { href: '/schedule', label: 'School Day', icon: School },
+  { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
   { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
 ];
