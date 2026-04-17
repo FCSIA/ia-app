@@ -1,7 +1,7 @@
 import type {
   ScheduleWeekday,
   SchoolDayBlock,
-  StudentScheduleEntry,
+  studentScheduleClass,
   StudentScheduleRecord,
 } from '@/types/api';
 
@@ -11,6 +11,8 @@ export const WEEKDAYS: Array<{ value: ScheduleWeekday; shortLabel: string; label
   { value: 'WEDNESDAY', shortLabel: 'Wed', label: 'Wednesday' },
   { value: 'THURSDAY', shortLabel: 'Thu', label: 'Thursday' },
   { value: 'FRIDAY', shortLabel: 'Fri', label: 'Friday' },
+  { value: 'SATURDAY', shortLabel: 'Sat', label: 'Saturday' },
+  { value: 'SUNDAY', shortLabel: 'Sun', label: 'Sunday' },
 ];
 
 export function parseTimeToMinutes(value: string) {
@@ -29,11 +31,13 @@ export function formatDuration(minutes: number) {
 
 export function getWeekdayForDate(date: Date): ScheduleWeekday | null {
   const day = date.getDay();
+  if (day === 0) return 'SUNDAY';
   if (day === 1) return 'MONDAY';
   if (day === 2) return 'TUESDAY';
   if (day === 3) return 'WEDNESDAY';
   if (day === 4) return 'THURSDAY';
   if (day === 5) return 'FRIDAY';
+  if (day === 6) return 'SATURDAY';
   return null;
 }
 
@@ -107,7 +111,7 @@ export function getCurrentScheduleStatus(
 }
 
 export function copyDayEntries(
-  entries: StudentScheduleEntry[],
+  entries: studentScheduleClass[],
   sourceDay: ScheduleWeekday,
   targetDays: ScheduleWeekday[],
 ) {

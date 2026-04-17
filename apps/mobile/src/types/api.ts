@@ -23,7 +23,7 @@ import type {
   ScheduleWeekday,
   SchoolDayBlock,
   SchoolDayBlockPayload,
-  StudentScheduleEntry,
+  studentScheduleClass,
   StudentScheduleRecord,
   UpsertStudentSchedulePayload,
 } from '@ia/contracts/schedule';
@@ -53,7 +53,7 @@ export type {
   ScheduleWeekday,
   SchoolDayBlock,
   SchoolDayBlockPayload,
-  StudentScheduleEntry,
+  studentScheduleClass,
   StudentScheduleRecord,
   UpsertStudentSchedulePayload,
 };

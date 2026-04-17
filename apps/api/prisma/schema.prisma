@@ -21,7 +21,6 @@ enum Role {
 }
 
 
-
 enum Pathway {
   INFORMATION_TECHNOLOGY
   HEALTH_SCIENCE
@@ -31,19 +30,24 @@ enum Pathway {
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
-  id          String   @id @default(cuid())
-  uniqueId    String   @unique @map("unique_id")
-  firstName   String   @map("first_name")
-  lastName    String   @map("last_name")
-  gradeLevel  Int?     @map("grade_level")
-  major       Pathway? @map("major_pathway")
-  minor       Pathway? @map("minor_pathway")
-  email       String?  @unique
-  passwordHash String? @map("password_hash")
-  roles       Role[]   @default([STUDENT])
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String    @id @default(cuid())
+  uniqueId          String    @unique @map("unique_id")
+  firstName         String    @map("first_name")
+  lastName          String    @map("last_name")
+  middleName        String?   @map("middle_name")
+  gradeLevel        Int?      @map("grade_level")
+  major             Pathway?  @map("major_pathway")
+  minor             Pathway?  @map("minor_pathway")
+  email             String?   @unique
+  phone             String?
+  cohort            Int?
+  flexFridayCredits Int       @default(0) @map("ff_credits")
+  passwordHash      String?   @map("password_hash")
+  roles             Role[]    @default([STUDENT])
+  isActive          Boolean   @default(true) @map("is_active")
+  deactivatedAt     DateTime? @map("deactivated_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   // Relations
   sessions            AuthSession[]
@@ -53,7 +57,10 @@ model User {
   sentInvites         ClubInvite[]   @relation("InviteSender")
   receivedInvites     ClubInvite[]   @relation("InviteRecipient")
   authoredEvents      Event[]        @relation("EventAuthor")
+  ownedEvents         Event[]        @relation("EventOwner")
   eventApprovals      EventApproval[]
+  eventAttendances    EventAttendee[] @relation("EventAttendeeUser")
+  ownedEventWorkshops EventWorkshop[] @relation("EventWorkshopOwner")
   flexRegistrations   FlexRegistration[]
   flexAssignments     FlexAssignment[]
   reports             Report[]       @relation("ReportSubmitter")
@@ -91,12 +98,15 @@ model AuthSession {
 
 // ─── Student Schedules ───────────────────────────────────────────────────────
 
+// Retained name for compatibility, but this now supports all seven days.
 enum ScheduleWeekday {
   MONDAY
   TUESDAY
   WEDNESDAY
   THURSDAY
   FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 model StudentSchedule {
@@ -107,12 +117,12 @@ model StudentSchedule {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   user    User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries StudentScheduleEntry[]
+  entries StudentScheduleClass[]
 
   @@map("student_schedules")
 }
 
-model StudentScheduleEntry {
+model StudentScheduleClass {
   id           String          @id @default(cuid())
   scheduleId    String         @map("schedule_id")
   weekday       ScheduleWeekday
@@ -442,29 +452,64 @@ enum EventStatus {
   CANCELLED
 }
 
-model Event {
-  id          String      @id @default(cuid())
-  authorId    String      @map("author_id")
-  clubId      String?     @map("club_id")
-  type        EventType   @default(GENERAL)
-  status      EventStatus @default(DRAFT)
-  title       String
+enum EventAttendanceStatus {
+  PRESENT
+  ABSENT
+  TARDY
+}
+
+model EventCategory {
+  id          String   @id @default(cuid())
+  title       String   @unique
   description String?
-  location    String?
-  flyerUrl    String?     @map("flyer_url")
-  startAt     DateTime    @map("start_at")
-  endAt       DateTime?   @map("end_at")
-  publishedAt DateTime?   @map("published_at")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  author        User            @relation("EventAuthor", fields: [authorId], references: [id])
-  club          Club?           @relation(fields: [clubId], references: [id])
-  approvals     EventApproval[]
-  calendarEntry CalendarEntry?
-  notifications NotificationDelivery[]
-  keywordMatches KeywordMatch[]
+  events Event[]
 
+  @@map("event_categories")
+}
+
+model Event {
+  id                       String      @id @default(cuid())
+  authorId                 String      @map("author_id")
+  ownerId                  String?     @map("owner_id")
+  clubId                   String?     @map("club_id")
+  categoryId               String?     @map("category_id")
+  type                     EventType   @default(GENERAL)
+  status                   EventStatus @default(DRAFT)
+  title                    String
+  description              String?
+  location                 String?
+  flyerUrl                 String?     @map("flyer_url")
+  startAt                  DateTime    @map("start_at")
+  endAt                    DateTime?   @map("end_at")
+  registrationOpensAt      DateTime?   @map("registration_opens_at")
+  registrationClosesAt     DateTime?   @map("registration_closes_at")
+  allowedMajorPathways     Pathway[]   @default([]) @map("allowed_major_pathways")
+  allowedMinorPathways     Pathway[]   @default([]) @map("allowed_minor_pathways")
+  requiredMajorWorkshopCount Int       @default(0) @map("required_major_workshop_count")
+  isInactive               Boolean     @default(false) @map("is_inactive")
+  deactivatedAt            DateTime?   @map("deactivated_at")
+  publishedAt              DateTime?   @map("published_at")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
+
+  author           User                 @relation("EventAuthor", fields: [authorId], references: [id])
+  owner            User?                @relation("EventOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  club             Club?                @relation(fields: [clubId], references: [id])
+  category         EventCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  approvals        EventApproval[]
+  sessions         EventSession[]
+  sessionWorkshops EventSessionWorkshop[]
+  attendees        EventAttendee[]
+  calendarEntry    CalendarEntry?
+  notifications    NotificationDelivery[]
+  keywordMatches   KeywordMatch[]
+
+  @@index([ownerId])
+  @@index([categoryId])
+  @@index([registrationOpensAt, registrationClosesAt])
   @@map("events")
 }
 
@@ -488,6 +533,116 @@ model EventApproval {
 
   @@unique([eventId, sponsorId])
   @@map("event_approvals")
+}
+
+model EventSession {
+  id                 String   @id @default(cuid())
+  eventId            String   @map("event_id")
+  name               String
+  description        String?
+  startAt            DateTime @map("start_at")
+  endAt              DateTime @map("end_at")
+  defaultCapacity    Int?     @map("default_capacity")
+  requiresAttendance Boolean  @default(false) @map("requires_attendance")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  event         Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  workshopLinks EventSessionWorkshop[]
+  attendees     EventAttendee[]
+
+  @@index([eventId, startAt])
+  @@map("event_sessions")
+}
+
+model EventWorkshop {
+  id                             String    @id @default(cuid())
+  name                           String
+  description                    String?
+  location                       String?
+  maxAttendees                   Int?      @map("max_attendees")
+  ownerId                        String?   @map("owner_id")
+  allowedMajorPathways           Pathway[] @default([]) @map("allowed_major_pathways")
+  allowedMinorPathways           Pathway[] @default([]) @map("allowed_minor_pathways")
+  allowedGradeLevels             Int[]     @default([]) @map("allowed_grade_levels")
+  attendMultiple                 Boolean   @default(false) @map("attend_multiple")
+  isOffCampus                    Boolean   @default(false) @map("is_off_campus")
+  pathwayCreditAmount            Int       @default(0) @map("pathway_credit_amount")
+  creditEligiblePathways         Pathway[] @default([]) @map("credit_eligible_pathways")
+  informationTechnologyCreditHours Int?   @map("information_technology_credit_hours")
+  healthScienceCreditHours       Int?      @map("health_science_credit_hours")
+  engineeringCreditHours         Int?      @map("engineering_credit_hours")
+  workshopType                   String?   @map("workshop_type")
+  moreInfoUrl                    String?   @map("more_info_url")
+  createdAt                      DateTime  @default(now()) @map("created_at")
+  updatedAt                      DateTime  @updatedAt @map("updated_at")
+
+  owner          User?                 @relation("EventWorkshopOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  sessionLinks   EventSessionWorkshop[]
+  attendees      EventAttendee[]
+  parentBindings EventWorkshopBinding[] @relation("EventWorkshopBindingParent")
+  childBindings  EventWorkshopBinding[] @relation("EventWorkshopBindingChild")
+
+  @@index([ownerId])
+  @@map("event_workshops")
+}
+
+model EventSessionWorkshop {
+  id                   String   @id @default(cuid())
+  eventId              String   @map("event_id")
+  eventSessionId       String   @map("event_session_id")
+  eventWorkshopId      String   @map("event_workshop_id")
+  alternateLocation    String?  @map("alternate_location")
+  sequence             Int?
+  excludePathwayCredit Boolean  @default(false) @map("exclude_pathway_credit")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  event   Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  session EventSession @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+  workshop EventWorkshop @relation(fields: [eventWorkshopId], references: [id], onDelete: Cascade)
+
+  @@unique([eventSessionId, eventWorkshopId])
+  @@index([eventId, eventWorkshopId])
+  @@map("event_session_workshops")
+}
+
+model EventWorkshopBinding {
+  id              String   @id @default(cuid())
+  parentWorkshopId String  @map("parent_workshop_id")
+  childWorkshopId String   @map("child_workshop_id")
+  bindingType     String   @map("binding_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  parentWorkshop EventWorkshop @relation("EventWorkshopBindingParent", fields: [parentWorkshopId], references: [id], onDelete: Cascade)
+  childWorkshop  EventWorkshop @relation("EventWorkshopBindingChild", fields: [childWorkshopId], references: [id], onDelete: Cascade)
+
+  @@unique([parentWorkshopId, childWorkshopId, bindingType])
+  @@map("event_workshop_bindings")
+}
+
+model EventAttendee {
+  id               String                @id @default(cuid())
+  eventId          String                @map("event_id")
+  eventSessionId   String                @map("event_session_id")
+  eventWorkshopId  String                @map("event_workshop_id")
+  attendeeId       String                @map("attendee_id")
+  attendanceStatus EventAttendanceStatus? @map("attendance_status")
+  participationType String               @default("ATTENDEE") @map("participation_type")
+  isRequired       Boolean               @default(false) @map("is_required")
+  note             String?
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  session   EventSession  @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
+  workshop  EventWorkshop @relation(fields: [eventWorkshopId], references: [id], onDelete: Cascade)
+  attendee  User          @relation("EventAttendeeUser", fields: [attendeeId], references: [id], onDelete: Cascade)
+
+  @@unique([eventSessionId, attendeeId])
+  @@index([eventId, attendeeId])
+  @@index([eventWorkshopId, attendanceStatus])
+  @@map("event_attendees")
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────

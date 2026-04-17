@@ -312,12 +312,12 @@ export class ScheduleService {
         create: { userId: user.id, isPublic: dto.isPublic },
       });
 
-      await tx.studentScheduleEntry.deleteMany({
+      await tx.studentScheduleClass.deleteMany({
         where: { scheduleId: record.id },
       });
 
       if (normalizedEntries.length > 0) {
-        await tx.studentScheduleEntry.createMany({
+        await tx.studentScheduleClass.createMany({
           data: normalizedEntries.map((entry) => ({
             scheduleId: record.id,
             weekday: entry.weekday,
@@ -352,6 +352,7 @@ export class ScheduleService {
 
     const search = query.trim();
     if (search.length < 2) return [];
+    const searchTokens = search.split(/[\s,]+/).filter(Boolean);
 
     const [friends, people] = await Promise.all([
       this.prisma.studentScheduleFriend.findMany({
@@ -363,11 +364,13 @@ export class ScheduleService {
           id: { not: user.id },
           isActive: true,
           roles: { hasSome: STUDENT_ROLES },
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { uniqueId: { contains: search, mode: 'insensitive' } },
-          ],
+          AND: searchTokens.map((token) => ({
+            OR: [
+              { firstName: { contains: token, mode: 'insensitive' } },
+              { lastName: { contains: token, mode: 'insensitive' } },
+              { uniqueId: { contains: token, mode: 'insensitive' } },
+            ],
+          })),
         },
         select: {
           id: true,
