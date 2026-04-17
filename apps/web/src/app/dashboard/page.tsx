@@ -33,7 +33,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.05]"
+      className="group flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-3 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
     >
       <div>
         <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -106,7 +106,7 @@ export default function DashboardPage() {
                   <Link
                     key={announcement.id}
                     href={`/announcements/${announcement.id}`}
-                    className="block rounded-[1.4rem] border border-border/70 bg-background/85 px-5 py-4 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.04]"
+                    className="block rounded-[1.4rem] border border-border/70 bg-background/85 px-5 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                     <Link
                       key={event.id}
                       href={`/events/${event.id}`}
-                      className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.05]"
+                      className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">

@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
-  Calendar,
   CalendarRange,
+  ChevronDown,
   ClipboardList,
   Home,
   LogOut,
   Megaphone,
+  Menu,
   Puzzle,
   Settings,
   Shield,
@@ -25,12 +26,8 @@ import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +36,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -113,6 +110,8 @@ function NavIcon({
   );
 }
 
+const sortedPageMeta = Object.entries(pageMeta).sort(([a], [b]) => b.length - a.length);
+
 export function AppShell({
   children,
   headerSlot,
@@ -125,6 +124,7 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const safePathname = pathname ?? '/dashboard';
@@ -133,10 +133,16 @@ export function AppShell({
     setUser(getUser());
   }, []);
 
+  // Close mobile sheet on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [safePathname]);
+
   const { data: unreadData } = useQuery({
     queryKey: ['unread-count'],
     queryFn: () => notificationsApi.getUnreadCount().then((response) => response.data),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const handleLogout = async () => {
@@ -156,13 +162,18 @@ export function AppShell({
   const showSchedule =
     user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN');
 
-  const primary = primaryNav.filter((i) => i.href !== '/schedule' || showSchedule);
+  const primary = useMemo(
+    () => primaryNav.filter((i) => i.href !== '/schedule' || showSchedule),
+    [showSchedule],
+  );
 
-  const currentMeta =
-    Object.entries(pageMeta)
-      .sort(([a], [b]) => b.length - a.length)
-      .find(([href]) => safePathname === href || (href !== '/dashboard' && safePathname.startsWith(href)))?.[1]
-    ?? pageMeta['/dashboard'];
+  const currentMeta = useMemo(
+    () =>
+      sortedPageMeta.find(
+        ([href]) => safePathname === href || (href !== '/dashboard' && safePathname.startsWith(href)),
+      )?.[1] ?? pageMeta['/dashboard'],
+    [safePathname],
+  );
 
   const unreadBadge = unreadData?.count
     ? unreadData.count > 9
@@ -217,9 +228,66 @@ export function AppShell({
           </div>
         </aside>
 
+        {/* Mobile nav (Sheet) */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent side="left" className="w-72 border-r bg-sidebar p-0 text-sidebar-foreground">
+            <div className="flex h-full flex-col">
+              <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+                <Link
+                  href="/dashboard"
+                  aria-label="Home"
+                  className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/logo.png" alt="IA" className="size-full object-cover" />
+                </Link>
+                <span className="text-sm font-semibold text-sidebar-foreground">IA</span>
+              </div>
+              <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+                {primary.map((item) => (
+                  <MobileNavLink
+                    key={item.href}
+                    item={item}
+                    active={isActive(item.href)}
+                    badge={item.href === '/notifications' ? unreadBadge : undefined}
+                  />
+                ))}
+                <div className="my-3 h-px bg-sidebar-border" />
+                {accountNav.map((item) => (
+                  <MobileNavLink
+                    key={item.href}
+                    item={item}
+                    active={isActive(item.href)}
+                    badge={item.href === '/notifications' ? unreadBadge : undefined}
+                  />
+                ))}
+                {showAdmin
+                  ? adminNav.map((item) => (
+                      <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
+                    ))
+                  : null}
+              </nav>
+              <div className="flex items-center justify-between border-t border-sidebar-border p-3">
+                <span className="text-xs text-sidebar-foreground/60">Theme</span>
+                <ThemeToggle />
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {/* Main */}
         <div className="flex min-w-0 flex-1 flex-col bg-card">
-          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
+          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 lg:px-8">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label="Open navigation"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="size-5" />
+            </Button>
             <div className="flex min-w-0 flex-1 items-center gap-4">
               {headerSlot ?? (
                 <div className="flex min-w-0 flex-1 flex-col leading-none">
@@ -284,9 +352,40 @@ export function AppShell({
             ) : null}
           </header>
 
-          <main className={mainClassName ?? 'flex-1 px-6 pb-8 lg:px-8'}>{children}</main>
+          <main className={mainClassName ?? 'flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8'}>{children}</main>
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+function MobileNavLink({
+  item,
+  active,
+  badge,
+}: {
+  item: NavItem;
+  active: boolean;
+  badge?: ReactNode;
+}) {
+  const { icon: Icon, label, href } = item;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+        active
+          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+      )}
+    >
+      <Icon className="size-5 shrink-0" strokeWidth={active ? 2.25 : 1.75} />
+      <span className="flex-1">{label}</span>
+      {badge ? (
+        <span className="flex min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+          {badge}
+        </span>
+      ) : null}
+    </Link>
   );
 }

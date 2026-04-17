@@ -124,7 +124,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
                 <Link
                   key={announcement.id}
                   href={`/announcements/${announcement.id}`}
-                  className="block rounded-lg border bg-card p-4 transition-colors hover:border-primary/40"
+                  className="block rounded-lg border bg-card p-4 transition-colors hover:border-border hover:bg-muted/50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-medium text-foreground">{announcement.title}</p>

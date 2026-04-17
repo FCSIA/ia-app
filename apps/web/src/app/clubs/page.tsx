@@ -200,7 +200,7 @@ export default function ClubsLandingPage() {
 function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
   return (
     <Link href={`/clubs/${club.id}`} className="group block">
-      <Card className="relative h-full transition-colors hover:border-primary/40 hover:bg-muted/30">
+      <Card className="relative h-full transition-colors hover:border-border hover:bg-muted/50">
         <CardContent className="flex h-full flex-col items-center gap-2 p-5 text-center">
           {joined ? (
             <Badge variant="secondary" className="absolute right-2 top-2 text-[10px]">
@@ -233,7 +233,7 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
 function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode }) {
   return (
     <Link href={`/clubs/${club.id}`} className="block">
-      <Card className={cn('h-full transition-colors hover:border-primary/40')}>
+      <Card className={cn('h-full transition-colors hover:border-border hover:bg-muted/50')}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
