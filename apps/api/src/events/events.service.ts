@@ -11,6 +11,7 @@ import { ClubAccessPolicy } from '../clubs/club-access.policy';
 import {
   ApprovalStatus,
   ContentType,
+  Event,
   EventStatus,
   NotificationCategory,
   Role,
@@ -136,7 +137,7 @@ export class EventsService {
     // If published immediately, create calendar entry + notify
     if (status === EventStatus.PUBLISHED) {
       await this.createCalendarEntry(event);
-      await this.notifyEvent(event, userRole);
+      await this.notifyEvent(event);
     }
 
     // If club event, create pending approvals for all sponsors
@@ -166,7 +167,7 @@ export class EventsService {
     return event;
   }
 
-  private async createCalendarEntry(event: any) {
+  private async createCalendarEntry(event: Event) {
     const existing = await this.prisma.calendarEntry.findUnique({
       where: { eventId: event.id },
     });
@@ -185,7 +186,7 @@ export class EventsService {
     }
   }
 
-  private async notifyEvent(event: any, _userRole: string) {
+  private async notifyEvent(event: Event) {
     const users = await this.prisma.user.findMany({
       where: { isActive: true },
       select: { id: true },
@@ -244,7 +245,7 @@ export class EventsService {
         data: { status: EventStatus.PUBLISHED, publishedAt: new Date() },
       });
       await this.createCalendarEntry(event);
-      await this.notifyEvent(event, '');
+      await this.notifyEvent(event);
 
       await this.audit.log({
         actorId: sponsorId,

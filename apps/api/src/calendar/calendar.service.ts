@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -6,7 +7,7 @@ export class CalendarService {
   constructor(private prisma: PrismaService) {}
 
   async getEntries(startDate?: string, endDate?: string, tags?: string[]) {
-    const where: any = {};
+    const where: Prisma.CalendarEntryWhereInput = {};
 
     if (startDate || endDate) {
       where.startAt = {};
@@ -43,7 +44,8 @@ export class CalendarService {
       endAt?: string;
       tags?: string[];
     },
-    actorId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _actorId: string,
   ) {
     return this.prisma.calendarEntry.create({
       data: {

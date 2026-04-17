@@ -10,8 +10,8 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { ClubAccessPolicy } from '../clubs/club-access.policy';
 import { CreateAnnouncementDto, CreateCommentDto } from './dto/announcement.dto';
 import {
+  Announcement,
   AnnouncementStatus,
-  AnnouncementTarget,
   ContentType,
   NotificationCategory,
   Role,
@@ -147,7 +147,7 @@ export class AnnouncementsService {
     await this.moderation.scanContent(fullText, ContentType.ANNOUNCEMENT, ann.id, 'announcementId');
 
     // Notify users
-    await this.deliverNotifications(ann, userRole);
+    await this.deliverNotifications(ann);
 
     await this.audit.log({
       actorId: authorId,
@@ -160,7 +160,7 @@ export class AnnouncementsService {
     return ann;
   }
 
-  private async deliverNotifications(ann: any, authorRole: string) {
+  private async deliverNotifications(ann: Announcement) {
     const isAdminGeneral = ann.isAdminGeneral;
     const isClub = !!ann.clubId;
 

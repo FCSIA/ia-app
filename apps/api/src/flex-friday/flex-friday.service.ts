@@ -119,7 +119,8 @@ export class FlexFridayService {
     return session;
   }
 
-  async getSessions(fridayId: string, userId: string, userRole: string) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getSessions(fridayId: string, userId: string, _userRole: string) {
     return this.prisma.flexSession.findMany({
       where: { flexFridayId: fridayId },
       include: {
@@ -152,7 +153,8 @@ export class FlexFridayService {
     }
 
     // Check for conflict on same Friday
-    const friday = await this.prisma.flexFriday.findUnique({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _friday = await this.prisma.flexFriday.findUnique({
       where: { id: session.flexFridayId },
     });
     const conflictReg = await this.prisma.flexRegistration.findFirst({

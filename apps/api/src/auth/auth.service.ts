@@ -18,8 +18,9 @@ export class AuthService {
   ) {}
 
   private safeUser(user: { passwordHash: string | null; roles: string[]; [key: string]: unknown }) {
-    const { passwordHash, roles, ...safeUser } = user;
-    return { ...safeUser, roles, role: roles[0] ?? null };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, roles, ...safe } = user;
+    return { ...safe, roles, role: roles[0] ?? null };
   }
 
   async login(dto: LoginDto) {

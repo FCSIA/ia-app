@@ -10,9 +10,10 @@ import * as csv from 'csv-parser';
 import { Readable } from 'stream';
 import { randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
-import { Pathway, Role } from '@prisma/client';
+import { Pathway, Role, User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -25,8 +26,9 @@ export class UsersService {
     roles: { hasSome: [Role.STUDENT] },
   };
 
-  private safeUser(user: any) {
-    const { passwordHash, roles, ...safe } = user;
+  private safeUser(user: User) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, roles, ...safe } = user;
     return { ...safe, roles, role: roles?.[0] ?? null };
   }
 
@@ -119,12 +121,12 @@ export class UsersService {
   }
 
   async findAll(page = 1, limit = 50, search?: string) {
-    const where = search
+    const where: Prisma.UserWhereInput = search
       ? {
         OR: [
-          { firstName: { contains: search, mode: 'insensitive' as any } },
-          { lastName: { contains: search, mode: 'insensitive' as any } },
-          { uniqueId: { contains: search, mode: 'insensitive' as any } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { uniqueId: { contains: search, mode: 'insensitive' } },
         ],
       }
       : {};
@@ -209,7 +211,7 @@ export class UsersService {
     const target = await this.findOne(id);
 
     // Only SUPER_ADMIN can deactivate other admins or super admins
-    const targetRoles = (target as any).roles ?? [];
+    const targetRoles = target.roles ?? [];
     const isTargetPrivileged = targetRoles.includes(Role.ADMIN) || targetRoles.includes(Role.SUPER_ADMIN);
     const actorIsSuperAdmin = actorRole === Role.SUPER_ADMIN;
     if (isTargetPrivileged && !actorIsSuperAdmin) {
@@ -294,7 +296,7 @@ export class UsersService {
     actorId?: string,
     options: { generatePasswords?: boolean } = {},
   ) {
-    const rows: any[] = [];
+    const rows: Record<string, unknown>[] = [];
 
     await new Promise<void>((resolve, reject) => {
       Readable.from(buffer)

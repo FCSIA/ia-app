@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationCategory } from '@prisma/client';
+import { NotificationCategory, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -77,7 +77,7 @@ export class NotificationsService {
     channelId?: string;
     messageId?: string;
   }) {
-    const deliveries: any[] = [];
+    const deliveries: Prisma.NotificationDeliveryCreateManyInput[] = [];
 
     for (const userId of opts.userIds) {
       // Check preference unless forceAll (admin-general override)
