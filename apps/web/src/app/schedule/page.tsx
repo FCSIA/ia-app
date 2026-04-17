@@ -110,7 +110,7 @@ export default function SchedulePage() {
       scheduleApi.saveMine({
         isPublic,
         entries: scheduleEntries
-          .map((entry) => ({ ...entry, className: entry.className.trim() }))
+          .map(({ weekday, periodNumber, className }) => ({ weekday, periodNumber, className: className.trim() }))
           .filter((entry) => entry.className.length > 0),
       }),
     onSuccess: () => {
