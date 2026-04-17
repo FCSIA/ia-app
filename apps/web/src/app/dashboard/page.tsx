@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const upcomingEvents = eventsData
     .filter((event: any) => new Date(event.startAt) >= now)
     .slice(0, 4);
-  const unreadAnnouncements = announcementsData.slice(0, 5);
+  const unreadAnnouncements = announcementsData.slice(0, 3);
 
   const calendarStart = startOfWeek(startOfMonth(currentMonth));
   const calendarEnd = endOfWeek(endOfMonth(currentMonth));
@@ -374,6 +374,11 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
+                  {announcementsData.length > unreadAnnouncements.length ? (
+                    <p className="px-1 text-xs text-muted-foreground">
+                      Showing {unreadAnnouncements.length} of {announcementsData.length} unread announcements.
+                    </p>
+                  ) : null}
                 </div>
               </Panel>
             ) : null}

@@ -35,6 +35,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 
 const TAG_COLORS: Record<string, string> = {
@@ -54,6 +55,8 @@ const TAG_LABELS: Record<string, string> = {
   PATHWAY: 'Pathway',
   CLUB: 'Club',
 };
+
+const BADGE_TEXT_CLASS = 'text-[11px]';
 
 type ClubFilterOption = {
   id: string;
@@ -146,42 +149,55 @@ function AnnouncementCard({
   onClubClick: (clubId: string) => void;
 }) {
   return (
-    <Card className="transition-all duration-200 hover:-translate-y-0.5">
+    <Card
+      className={`relative transition-all duration-200 hover:-translate-y-0.5 ${
+        ann.isRead
+          ? ''
+          : 'border-sky-500/25 bg-slate-100/95 dark:border-sky-400/20 dark:bg-slate-800/95'
+      }`}
+    >
+      {!ann.isRead ? (
+        <span className="absolute right-4 top-4 size-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.14)]" />
+      ) : null}
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               {ann.isAdminGeneral ? (
-                <Badge variant="destructive" className="text-[10px]">
+                <Badge variant="destructive" className={BADGE_TEXT_CLASS}>
                   Admin
                 </Badge>
               ) : null}
-              <Badge
-                variant={ann.isRead ? 'outline' : 'secondary'}
-                className={ann.isRead ? 'text-[10px]' : 'bg-primary/10 text-primary text-[10px]'}
-              >
-                {ann.isRead ? 'Read' : 'Unread'}
-              </Badge>
               {ann.status === 'EXPIRED' ? (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className={BADGE_TEXT_CLASS}>
                   Expired
                 </Badge>
               ) : null}
               {ann.status === 'ARCHIVED' ? (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className={BADGE_TEXT_CLASS}>
                   Archived
                 </Badge>
               ) : null}
-              <button type="button" onClick={() => onTagClick(ann.targetType)}>
+              <button
+                type="button"
+                className="cursor-pointer"
+                onClick={() => onTagClick(ann.targetType)}
+              >
                 <Badge
-                  className={`text-[10px] cursor-pointer transition-colors ${TAG_COLORS[ann.targetType] || 'bg-muted text-muted-foreground'}`}
+                  className={`${BADGE_TEXT_CLASS} transition-colors ${TAG_COLORS[ann.targetType] || 'bg-muted text-muted-foreground'}`}
                 >
                   {TAG_LABELS[ann.targetType] || ann.targetType.replace(/_/g, ' ')}
                 </Badge>
               </button>
               {ann.club?.name ? (
-                <button type="button" onClick={() => onClubClick(ann.club.id)}>
-                  <Badge variant="outline">{ann.club.name}</Badge>
+                <button
+                  type="button"
+                  className="cursor-pointer"
+                  onClick={() => onClubClick(ann.club.id)}
+                >
+                  <Badge variant="outline" className={BADGE_TEXT_CLASS}>
+                    {ann.club.name}
+                  </Badge>
                 </button>
               ) : null}
             </div>
@@ -243,6 +259,7 @@ export default function AnnouncementsPage() {
   const deferredSearch = useDeferredValue(search);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [form, setForm] = useState({
     title: '',
     body: '',
@@ -293,6 +310,8 @@ export default function AnnouncementsPage() {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
     return data.filter((announcement: any) => {
       if (activeTag && announcement.targetType !== activeTag) return false;
+      if (readFilter === 'unread' && announcement.isRead) return false;
+      if (readFilter === 'read' && !announcement.isRead) return false;
 
       if (
         selectedClubIds.length > 0 &&
@@ -319,7 +338,7 @@ export default function AnnouncementsPage() {
 
       return true;
     });
-  }, [activeTag, data, deferredSearch, selectedClubIds]);
+  }, [activeTag, data, deferredSearch, readFilter, selectedClubIds]);
 
   const handleTagClick = (tag: string) => {
     setActiveTag((current) => (current === tag ? null : tag));
@@ -368,7 +387,7 @@ export default function AnnouncementsPage() {
   };
 
   const hasActiveFilters =
-    !!activeTag || !!deferredSearch.trim() || selectedClubIds.length > 0;
+    !!activeTag || !!deferredSearch.trim() || selectedClubIds.length > 0 || readFilter !== 'all';
 
   return (
     <AppShell>
@@ -418,6 +437,29 @@ export default function AnnouncementsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <ToggleGroup
+              type="single"
+              value={readFilter}
+              onValueChange={(value) => {
+                if (value === 'all' || value === 'unread' || value === 'read') {
+                  setReadFilter(value);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              className="rounded-xl border border-border/70 bg-background/80 p-1"
+            >
+              <ToggleGroupItem value="all" className="rounded-lg px-3">
+                All
+              </ToggleGroupItem>
+              <ToggleGroupItem value="unread" className="rounded-lg px-3">
+                Unread
+              </ToggleGroupItem>
+              <ToggleGroupItem value="read" className="rounded-lg px-3">
+                Read
+              </ToggleGroupItem>
+            </ToggleGroup>
+
             {availableTags.length > 1 ? (
               <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 py-2">
                 <Filter size={14} className="text-muted-foreground" />
@@ -425,7 +467,7 @@ export default function AnnouncementsPage() {
                   {availableTags.map((tag) => (
                     <button key={tag} type="button" onClick={() => handleTagClick(tag)}>
                       <Badge
-                        className={`cursor-pointer text-xs transition-all ${
+                        className={`${BADGE_TEXT_CLASS} cursor-pointer transition-all ${
                           activeTag === tag
                             ? `${TAG_COLORS[tag] || 'bg-muted text-muted-foreground'} ring-2 ring-offset-1 ring-offset-background ring-current`
                             : activeTag
@@ -459,6 +501,7 @@ export default function AnnouncementsPage() {
                   setActiveTag(null);
                   setSearch('');
                   setSelectedClubIds([]);
+                  setReadFilter('all');
                 }}
               >
                 <X className="mr-1 size-4" />
@@ -472,7 +515,7 @@ export default function AnnouncementsPage() {
               {availableClubs
                 .filter((club) => selectedClubIds.includes(club.id))
                 .map((club) => (
-                  <Badge key={club.id} variant="secondary" className="gap-1">
+                  <Badge key={club.id} variant="secondary" className={`gap-1 ${BADGE_TEXT_CLASS}`}>
                     {club.name}
                     <button
                       type="button"
@@ -656,19 +699,22 @@ export default function AnnouncementsPage() {
                 {filtered.length} of {data.length} announcement{data.length === 1 ? '' : 's'}
               </p>
             ) : null}
-            {(filtered as any[]).map((announcement) => (
-              <AnnouncementCard
-                key={announcement.id}
-                ann={announcement}
-                canArchive={canArchive}
-                onArchive={(id: string) => archiveMutation.mutate(id)}
-                onTagClick={handleTagClick}
-                onClubClick={(clubId: string) => {
-                  setActiveTag('CLUB');
-                  setSelectedClubIds([clubId]);
-                }}
-              />
-            ))}
+            <div className="space-y-4">
+              {(filtered as any[]).map((announcement) => (
+                <div key={announcement.id} className="mx-auto w-full max-w-3xl">
+                  <AnnouncementCard
+                    ann={announcement}
+                    canArchive={canArchive}
+                    onArchive={(id: string) => archiveMutation.mutate(id)}
+                    onTagClick={handleTagClick}
+                    onClubClick={(clubId: string) => {
+                      setActiveTag('CLUB');
+                      setSelectedClubIds([clubId]);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
