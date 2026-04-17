@@ -5,3 +5,8 @@
 3. [ ] **Channel and Announcement Split**: Ensure the Prisma schema cleanly separates Text Channels (audit-heavy) from Announcement Channels (All-admin, Pathway).
 4. [ ] **Teacher Dashboard Prep**: Establish the backend structure for the check-in and pass system for future releases. 
 5. [ ] **UI Alignment**: Adjust the web/mobile app routes and TanStack Query usages to conform to discrete APIs for Clubs vs Flex Fridays.
+
+
+
+1. Allow string values for club roles, clubs may have different types of leaders so they should be able create new ones.
+2.
