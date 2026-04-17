@@ -125,31 +125,50 @@ export default function SchedulePage() {
     },
   });
 
-  const addFriendMutation = useMutation({
-    mutationFn: (friendId: string) => scheduleApi.addFriend(friendId),
+  const invalidateFriendQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
+  };
+
+  const sendFriendRequestMutation = useMutation({
+    mutationFn: (friendId: string) => scheduleApi.sendFriendRequest(friendId),
+    onSuccess: (response: any) => {
+      invalidateFriendQueries();
+      toast({
+        title: response?.data?.status === 'ACCEPTED' ? 'Friend added' : 'Request sent',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Could not send friend request',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const acceptFriendRequestMutation = useMutation({
+    mutationFn: (requesterId: string) => scheduleApi.acceptFriendRequest(requesterId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
+      invalidateFriendQueries();
       toast({ title: 'Friend added' });
     },
     onError: (error: any) => {
       toast({
-        title: error.response?.data?.message || 'Could not add friend',
+        title: error.response?.data?.message || 'Could not accept request',
         variant: 'destructive',
       });
     },
   });
 
   const removeFriendMutation = useMutation({
-    mutationFn: (friendId: string) => scheduleApi.removeFriend(friendId),
+    mutationFn: (otherUserId: string) => scheduleApi.removeFriend(otherUserId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
-      toast({ title: 'Friend removed' });
+      invalidateFriendQueries();
+      toast({ title: 'Removed' });
     },
     onError: (error: any) => {
       toast({
-        title: error.response?.data?.message || 'Could not remove friend',
+        title: error.response?.data?.message || 'Could not remove',
         variant: 'destructive',
       });
     },
@@ -409,9 +428,13 @@ export default function SchedulePage() {
                             {searchResults.length} result{searchResults.length === 1 ? '' : 's'}
                           </p>
                           {searchResults.map((person) => {
-                            const isAddingThis =
-                              addFriendMutation.isPending &&
-                              addFriendMutation.variables === person.id;
+                            const isSending =
+                              sendFriendRequestMutation.isPending &&
+                              sendFriendRequestMutation.variables === person.id;
+                            const isAccepting =
+                              acceptFriendRequestMutation.isPending &&
+                              acceptFriendRequestMutation.variables === person.id;
+                            const status = person.friendshipStatus;
                             return (
                               <Card key={person.id} className="rounded-3xl border-border/70 bg-background/90">
                                 <CardContent className="flex items-center justify-between gap-4 p-4">
@@ -438,19 +461,44 @@ export default function SchedulePage() {
                                           : 'No schedule yet'}
                                     </Badge>
                                   </div>
-                                  <Button
-                                    className="rounded-2xl"
-                                    size="sm"
-                                    disabled={person.isFriend || isAddingThis}
-                                    onClick={() => addFriendMutation.mutate(person.id)}
-                                  >
-                                    {isAddingThis ? (
-                                      <Loader2 className="mr-2 size-4 animate-spin" />
-                                    ) : (
+                                  {status === 'FRIENDS' ? (
+                                    <Button className="rounded-2xl" size="sm" disabled>
                                       <UserPlus className="mr-2 size-4" />
-                                    )}
-                                    {person.isFriend ? 'Added' : isAddingThis ? 'Adding…' : 'Add'}
-                                  </Button>
+                                      Friends
+                                    </Button>
+                                  ) : status === 'REQUEST_SENT' ? (
+                                    <Button className="rounded-2xl" size="sm" variant="secondary" disabled>
+                                      Requested
+                                    </Button>
+                                  ) : status === 'REQUEST_RECEIVED' ? (
+                                    <Button
+                                      className="rounded-2xl"
+                                      size="sm"
+                                      disabled={isAccepting}
+                                      onClick={() => acceptFriendRequestMutation.mutate(person.id)}
+                                    >
+                                      {isAccepting ? (
+                                        <Loader2 className="mr-2 size-4 animate-spin" />
+                                      ) : (
+                                        <UserPlus className="mr-2 size-4" />
+                                      )}
+                                      {isAccepting ? 'Accepting…' : 'Accept'}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      className="rounded-2xl"
+                                      size="sm"
+                                      disabled={isSending}
+                                      onClick={() => sendFriendRequestMutation.mutate(person.id)}
+                                    >
+                                      {isSending ? (
+                                        <Loader2 className="mr-2 size-4 animate-spin" />
+                                      ) : (
+                                        <UserPlus className="mr-2 size-4" />
+                                      )}
+                                      {isSending ? 'Sending…' : 'Add friend'}
+                                    </Button>
+                                  )}
                                 </CardContent>
                               </Card>
                             );
@@ -474,6 +522,109 @@ export default function SchedulePage() {
                       </CardDescription>
                     </CardHeader>
                   </Card>
+
+                  {data?.incomingRequests?.length ? (
+                    <Card className="rounded-[28px] border-border/70">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Friend requests</CardTitle>
+                        <CardDescription>
+                          {data.incomingRequests.length} pending
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {data.incomingRequests.map((req) => {
+                          const isAccepting =
+                            acceptFriendRequestMutation.isPending &&
+                            acceptFriendRequestMutation.variables === req.user.id;
+                          const isDeclining =
+                            removeFriendMutation.isPending &&
+                            removeFriendMutation.variables === req.user.id;
+                          return (
+                            <div
+                              key={req.id}
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/90 p-3"
+                            >
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {req.user.firstName} {req.user.lastName}
+                                </p>
+                                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                                  {req.user.uniqueId}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={isDeclining || isAccepting}
+                                  onClick={() => removeFriendMutation.mutate(req.user.id)}
+                                >
+                                  {isDeclining ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                  ) : (
+                                    <X className="size-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="rounded-2xl"
+                                  disabled={isAccepting || isDeclining}
+                                  onClick={() => acceptFriendRequestMutation.mutate(req.user.id)}
+                                >
+                                  {isAccepting ? (
+                                    <Loader2 className="mr-2 size-4 animate-spin" />
+                                  ) : null}
+                                  {isAccepting ? 'Accepting…' : 'Accept'}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  ) : null}
+
+                  {data?.outgoingRequests?.length ? (
+                    <Card className="rounded-[28px] border-border/70">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Sent requests</CardTitle>
+                        <CardDescription>Waiting for them to accept</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {data.outgoingRequests.map((req) => {
+                          const isCancelling =
+                            removeFriendMutation.isPending &&
+                            removeFriendMutation.variables === req.user.id;
+                          return (
+                            <div
+                              key={req.id}
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/90 p-3"
+                            >
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {req.user.firstName} {req.user.lastName}
+                                </p>
+                                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                                  {req.user.uniqueId}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={isCancelling}
+                                onClick={() => removeFriendMutation.mutate(req.user.id)}
+                              >
+                                {isCancelling ? (
+                                  <Loader2 className="mr-2 size-4 animate-spin" />
+                                ) : null}
+                                {isCancelling ? 'Cancelling…' : 'Cancel'}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  ) : null}
 
                   {data?.friends.length ? (
                     <div className="grid gap-4">

@@ -50,8 +50,16 @@ export class ScheduleController {
   }
 
   @Post('friends')
-  addFriend(@CurrentUser() user: AuthenticatedUser, @Body() dto: AddScheduleFriendDto) {
-    return this.scheduleService.addFriend(user, dto.friendId);
+  sendFriendRequest(@CurrentUser() user: AuthenticatedUser, @Body() dto: AddScheduleFriendDto) {
+    return this.scheduleService.sendFriendRequest(user, dto.friendId);
+  }
+
+  @Post('friends/:requesterId/accept')
+  acceptFriendRequest(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('requesterId') requesterId: string,
+  ) {
+    return this.scheduleService.acceptFriendRequest(user, requesterId);
   }
 
   @Delete('friends/:friendId')

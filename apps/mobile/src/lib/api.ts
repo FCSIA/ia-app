@@ -133,8 +133,10 @@ export const scheduleApi = {
   getDashboard: () => api.get('/schedule'),
   saveMine: (data: UpsertStudentSchedulePayload) => api.put('/schedule/me', data),
   searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
-  addFriend: (friendId: string) => api.post('/schedule/friends', { friendId }),
-  removeFriend: (friendId: string) => api.delete(`/schedule/friends/${friendId}`),
+  sendFriendRequest: (friendId: string) => api.post('/schedule/friends', { friendId }),
+  acceptFriendRequest: (requesterId: string) =>
+    api.post(`/schedule/friends/${requesterId}/accept`),
+  removeFriend: (otherUserId: string) => api.delete(`/schedule/friends/${otherUserId}`),
   createBlock: (data: SchoolDayBlockPayload) => api.post('/schedule/blocks', data),
   updateBlock: (blockId: string, data: SchoolDayBlockPayload) =>
     api.patch(`/schedule/blocks/${blockId}`, data),

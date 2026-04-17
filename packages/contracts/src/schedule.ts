@@ -33,6 +33,12 @@ export interface StudentScheduleRecord {
   entries: StudentScheduleEntry[];
 }
 
+export type FriendshipStatus =
+  | 'NONE'
+  | 'REQUEST_SENT'
+  | 'REQUEST_RECEIVED'
+  | 'FRIENDS';
+
 export interface ScheduleFriend {
   id: string;
   user: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
@@ -40,10 +46,18 @@ export interface ScheduleFriend {
   schedule: StudentScheduleRecord | null;
 }
 
+export interface ScheduleFriendRequest {
+  id: string;
+  user: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
+  createdAt: string;
+}
+
 export interface ScheduleDashboardResponse {
   mySchedule: StudentScheduleRecord | null;
   blocks: SchoolDayBlock[];
   friends: ScheduleFriend[];
+  incomingRequests: ScheduleFriendRequest[];
+  outgoingRequests: ScheduleFriendRequest[];
 }
 
 export interface ScheduleSearchResult {
@@ -51,7 +65,7 @@ export interface ScheduleSearchResult {
   uniqueId: string;
   firstName: string;
   lastName: string;
-  isFriend: boolean;
+  friendshipStatus: FriendshipStatus;
   visibility: ScheduleVisibility;
 }
 

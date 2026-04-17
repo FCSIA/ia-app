@@ -36,6 +36,7 @@ import type {
   AppUser,
   ScheduleDashboardResponse,
   ScheduleFriend,
+  ScheduleFriendRequest,
   ScheduleSearchResult,
   ScheduleWeekday,
   SchoolDayBlock,
@@ -284,22 +285,35 @@ export default function ScheduleScreen() {
     },
   });
 
-  const addFriendMutation = useMutation({
-    mutationFn: (friendId: string) => scheduleApi.addFriend(friendId),
+  const sendFriendRequestMutation = useMutation({
+    mutationFn: (friendId: string) => scheduleApi.sendFriendRequest(friendId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
-      Alert.alert('Friend added');
+      Alert.alert('Friend request sent');
     },
     onError: (error) => {
-      Alert.alert('Could not add friend', getErrorMessage(error, 'Try again.'));
+      Alert.alert('Could not send request', getErrorMessage(error, 'Try again.'));
+    },
+  });
+
+  const acceptFriendRequestMutation = useMutation({
+    mutationFn: (requesterId: string) => scheduleApi.acceptFriendRequest(requesterId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
+      Alert.alert('Friend request accepted');
+    },
+    onError: (error) => {
+      Alert.alert('Could not accept request', getErrorMessage(error, 'Try again.'));
     },
   });
 
   const removeFriendMutation = useMutation({
-    mutationFn: (friendId: string) => scheduleApi.removeFriend(friendId),
+    mutationFn: (otherUserId: string) => scheduleApi.removeFriend(otherUserId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
     },
     onError: (error) => {
       Alert.alert('Could not remove friend', getErrorMessage(error, 'Try again.'));
@@ -636,12 +650,29 @@ export default function ScheduleScreen() {
                                     : 'neutral'
                               }
                             />
-                            {result.isFriend ? (
-                              <Pill label="Already added" tone="neutral" />
-                            ) : (
-                              <Pressable onPress={() => addFriendMutation.mutate(result.id)}>
+                            {result.friendshipStatus === 'FRIENDS' ? (
+                              <Pill label="Friends" tone="neutral" />
+                            ) : result.friendshipStatus === 'REQUEST_SENT' ? (
+                              <Pill label="Requested" tone="neutral" />
+                            ) : result.friendshipStatus === 'REQUEST_RECEIVED' ? (
+                              <Pressable
+                                onPress={() => acceptFriendRequestMutation.mutate(result.id)}
+                              >
                                 <Pill
-                                  label={addFriendMutation.isPending ? 'Adding...' : 'Add friend'}
+                                  label={
+                                    acceptFriendRequestMutation.isPending ? 'Accepting...' : 'Accept'
+                                  }
+                                  tone="green"
+                                />
+                              </Pressable>
+                            ) : (
+                              <Pressable
+                                onPress={() => sendFriendRequestMutation.mutate(result.id)}
+                              >
+                                <Pill
+                                  label={
+                                    sendFriendRequestMutation.isPending ? 'Sending...' : 'Add friend'
+                                  }
                                   tone="accent"
                                 />
                               </Pressable>
@@ -654,6 +685,56 @@ export default function ScheduleScreen() {
                 </View>
               ) : null}
             </Card>
+
+            {data?.incomingRequests?.length ? (
+              <Card style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Incoming requests</Text>
+                <View style={styles.stack}>
+                  {data.incomingRequests.map((req: ScheduleFriendRequest) => (
+                    <View key={req.id} style={styles.friendHeader}>
+                      <View style={styles.friendCopy}>
+                        <Text style={styles.cardTitle}>{fullName(req.user)}</Text>
+                        <Text style={styles.cardMeta}>{req.user.uniqueId}</Text>
+                      </View>
+                      <View style={styles.friendActions}>
+                        <Pressable
+                          onPress={() => acceptFriendRequestMutation.mutate(req.user.id)}
+                        >
+                          <Pill
+                            label={
+                              acceptFriendRequestMutation.isPending ? 'Accepting...' : 'Accept'
+                            }
+                            tone="green"
+                          />
+                        </Pressable>
+                        <Pressable onPress={() => removeFriendMutation.mutate(req.user.id)}>
+                          <Pill label="Decline" tone="red" />
+                        </Pressable>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            ) : null}
+
+            {data?.outgoingRequests?.length ? (
+              <Card style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>Sent requests</Text>
+                <View style={styles.stack}>
+                  {data.outgoingRequests.map((req: ScheduleFriendRequest) => (
+                    <View key={req.id} style={styles.friendHeader}>
+                      <View style={styles.friendCopy}>
+                        <Text style={styles.cardTitle}>{fullName(req.user)}</Text>
+                        <Text style={styles.cardMeta}>{req.user.uniqueId}</Text>
+                      </View>
+                      <Pressable onPress={() => removeFriendMutation.mutate(req.user.id)}>
+                        <Pill label="Cancel" tone="neutral" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            ) : null}
 
             <View style={styles.stack}>
               {data?.friends?.length ? (
