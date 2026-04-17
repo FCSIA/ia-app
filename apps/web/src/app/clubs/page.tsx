@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
+import { HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import {
   ClubInvite,
@@ -243,44 +243,28 @@ export default function ClubsPage() {
   return (
     <AppShell>
       <PageFrame>
-        <HeroBand
-          badge={
-            <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
-              Club network
-            </Badge>
-          }
-          title={
-            <>
-              Clubs should feel like
-              <span className="block text-foreground/76">real team workspaces.</span>
-            </>
-          }
-          description="The clubs area should prioritize flow: jump into channels, review invites, inspect sponsor coverage, and spin up a new faculty-backed workspace without feeling like you are filling out admin forms."
-          actions={
-            <>
-              {canCreate ? (
-                <Button className="h-11 rounded-2xl px-5" onClick={() => setCreateOpen(true)}>
-                  <Plus className="size-4" />
-                  Create club workspace
-                </Button>
-              ) : null}
-              <Button asChild variant="outline" className="h-11 rounded-2xl px-5">
-                <Link href={invites.length ? '#club-invites' : '/clubs'}>
-                  Review invites
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">Clubs</h2>
+          <div className="flex items-center gap-2">
+            {canCreate ? (
+              <Button className="rounded-2xl" onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4" />
+                New club
+              </Button>
+            ) : null}
+            {invites.length > 0 ? (
+              <Button asChild variant="outline" className="rounded-2xl">
+                <Link href="#club-invites">
+                  Invites
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            </>
-          }
-        />
+            ) : null}
+          </div>
+        </div>
 
         <div className="grid gap-4 lg:grid-cols-4">
-          <HeroStat
-            label="My clubs"
-            value={myData?.memberOf?.length ?? 0}
-            description="Student and leader memberships."
-            icon={Users2}
-          />
+          <HeroStat label="My clubs" value={myData?.memberOf?.length ?? 0} icon={Users2} />
           <HeroStat
             label="Sponsoring"
             value={myData?.sponsoring?.length ?? 0}
@@ -291,20 +275,12 @@ export default function ClubsPage() {
             value={invites.length}
             icon={UserRoundPlus}
           />
-          <HeroStat
-            label="Active clubs"
-            value={allClubs.length}
-            description="Visible catalog across the school."
-            icon={Compass}
-          />
+          <HeroStat label="Active clubs" value={allClubs.length} icon={Compass} />
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_380px]">
           <div className="space-y-6">
-            <Panel
-              title="Your spaces"
-              description="Pick up where you left off across memberships, sponsor work, and schoolwide discovery."
-            >
+            <Panel title="Your spaces">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="section-kicker">Memberships</h2>
@@ -367,7 +343,6 @@ export default function ClubsPage() {
             {canCreate ? (
               <Panel
                 title="All active clubs"
-                description="Admin visibility across every club workspace."
                 action={
                   <div className="relative w-full sm:w-[300px]">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -424,7 +399,6 @@ export default function ClubsPage() {
           <div className="space-y-6">
             <Panel
               title="Pending invites"
-              description="Membership requests waiting on you."
               className="border-amber-500/20 bg-amber-500/[0.04]"
             >
               <div id="club-invites" className="space-y-3">
@@ -455,7 +429,7 @@ export default function ClubsPage() {
 
 
             {canCreate ? (
-              <Panel title="Admin posture" description="Creation is available only to admins and always sponsor-backed.">
+              <Panel title="Admin posture">
                 <div className="rounded-[1.5rem] border border-primary/15 bg-primary/[0.06] p-5">
                   <div className="flex items-center gap-2 text-primary">
                     <Sparkles className="size-4" />

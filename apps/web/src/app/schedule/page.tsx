@@ -15,7 +15,7 @@ import {
   Users2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroBand, HeroStat, PageFrame } from '@/components/layout/page-frame';
+import { HeroStat, PageFrame } from '@/components/layout/page-frame';
 import { FriendScheduleCard } from '@/components/schedule/friend-schedule-card';
 import { ScheduleDayEditor } from '@/components/schedule/schedule-day-editor';
 import { SchoolDayBlockFormCard } from '@/components/schedule/school-day-block-form-card';
@@ -243,84 +243,40 @@ export default function SchedulePage() {
   return (
     <AppShell>
       <PageFrame>
-        <HeroBand
-          badge={
-            <Badge className="w-fit rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
-              Schedule
-            </Badge>
-          }
-          title="Know what block is live and what class comes next."
-          description="Students can build their own schedule like Saturn, choose whether it is public, add friends, and instantly see what class matches the current period. Admins control the global day blocks that drive the live schedule logic."
-          aside={
-            <>
-              <HeroStat
-                label="Right now"
-                value={
-                  currentStatus.currentBlock
-                    ? currentStatus.currentBlock.periodNumber
-                      ? currentStatus.currentEntry?.className ||
-                        `${currentStatus.currentBlock.label} (not filled in)`
-                      : currentStatus.currentBlock.label
-                    : 'No active school block'
-                }
-                description={
-                  currentStatus.currentBlock
-                    ? `${activeWeekdayLabel} · ${currentStatus.currentBlock.startTime} - ${currentStatus.currentBlock.endTime}`
-                    : 'Outside the configured school day'
-                }
-                icon={Clock3}
-              />
-              <HeroStat
-                label="Next up"
-                value={
-                  currentStatus.nextBlock
-                    ? currentStatus.nextBlock.periodNumber
-                      ? findScheduleEntry(
-                          draftSchedule,
-                          currentStatus.nextBlock.weekday,
-                          currentStatus.nextBlock.periodNumber,
-                        )?.className || currentStatus.nextBlock.label
-                      : currentStatus.nextBlock.label
-                    : 'Nothing else scheduled today'
-                }
-                description={
-                  currentStatus.nextBlock
-                    ? `${currentStatus.nextBlock.startTime} - ${currentStatus.nextBlock.endTime}`
-                    : 'No more configured blocks'
-                }
-                icon={Sparkles}
-              />
-              <HeroStat
-                label="Visibility"
-                value={isPublic ? 'Public schedule' : 'Private schedule'}
-                description={
-                  isPublic
-                    ? 'Friends can view your schedule cards.'
-                    : 'Only you can see your class grid.'
-                }
-                icon={isPublic ? Eye : EyeOff}
-              />
-            </>
-          }
-        >
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Student control</p>
-              <p className="mt-2 text-base font-semibold text-foreground">Build your own week and keep it live.</p>
-              <p className="mt-1 text-sm text-muted-foreground">The schedule page should feel more like a personal workspace than a static form.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Friend visibility</p>
-              <p className="mt-2 text-base font-semibold text-foreground">Public schedules can be browsed by first or last name.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Private schedules still power your own live class detection.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Admin timing</p>
-              <p className="mt-2 text-base font-semibold text-foreground">School blocks drive the live “what class is now” logic.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Custom blocks can still appear without exposing a class when they are non-period slots.</p>
-            </div>
-          </div>
-        </HeroBand>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <HeroStat
+            label="Right now"
+            value={
+              currentStatus.currentBlock
+                ? currentStatus.currentBlock.periodNumber
+                  ? currentStatus.currentEntry?.className ||
+                    `${currentStatus.currentBlock.label} (not filled in)`
+                  : currentStatus.currentBlock.label
+                : 'No active block'
+            }
+            icon={Clock3}
+          />
+          <HeroStat
+            label="Next up"
+            value={
+              currentStatus.nextBlock
+                ? currentStatus.nextBlock.periodNumber
+                  ? findScheduleEntry(
+                      draftSchedule,
+                      currentStatus.nextBlock.weekday,
+                      currentStatus.nextBlock.periodNumber,
+                    )?.className || currentStatus.nextBlock.label
+                  : currentStatus.nextBlock.label
+                : 'Nothing else today'
+            }
+            icon={Sparkles}
+          />
+          <HeroStat
+            label="Visibility"
+            value={isPublic ? 'Public' : 'Private'}
+            icon={isPublic ? Eye : EyeOff}
+          />
+        </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my' | 'friends' | 'admin')} className="space-y-6">
           <TabsList className="h-auto w-full justify-start gap-2 rounded-3xl border border-border/70 bg-background/80 p-2">

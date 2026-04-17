@@ -14,7 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
+import { HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { announcementsApi, eventsApi, flexFridayApi, notificationsApi } from '@/lib/api';

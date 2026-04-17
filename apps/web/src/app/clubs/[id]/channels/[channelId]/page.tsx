@@ -26,7 +26,7 @@ import type {
   ClubDetail,
 } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroBand, HeroStat, PageFrame } from '@/components/layout/page-frame';
+import { HeroStat, PageFrame } from '@/components/layout/page-frame';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { MentionBody } from '@/components/clubs/mention-body';
 import { fullName } from '@/components/clubs/types';
@@ -1189,81 +1189,37 @@ export default function ClubChannelPage({
   return (
     <AppShell>
       <PageFrame className="max-w-[1720px]">
-        <HeroBand
-          badge={
-            <>
-              <Link
-                href={`/clubs/${id}`}
-                className="inline-flex w-fit items-center gap-2 rounded-md border bg-background px-4 py-2 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted"
-              >
-                <ArrowLeft className="size-4" />
-                Back to workspace
-              </Link>
-              <Badge className="rounded-full bg-primary/12 text-primary">
-                {channel.isPrivate ? 'Private channel' : 'Open channel'}
-              </Badge>
-            </>
-          }
-          title={channel.name}
-          description={channel.description || 'Conversation space for this club channel.'}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="rounded-full">
-                {messages.length} threads
-              </Badge>
-              <Badge variant="outline" className="rounded-full">
-                <Users2 className="mr-1 size-3" />
-                {audience.length} visible
-              </Badge>
-            </div>
-          }
-          aside={
-            <>
-              <HeroStat
-                label="Search"
-                value={deferredSearch.trim() ? searchResults.length : 'Ready'}
-                description="Search messages, files, and authors across the lane."
-                icon={Search}
-              />
-              <HeroStat
-                label="Threads"
-                value={messages.length}
-                description="Keep the main lane readable with side discussions in threads."
-                icon={Reply}
-              />
-              <HeroStat
-                label="Audience"
-                value={audience.length}
-                description="People who can currently see this channel."
-                icon={Users2}
-              />
-              <HeroStat
-                label="Capabilities"
-                value="Live"
-                description="Mentions, reactions, uploads, and thread replies are all active here."
-                icon={Sparkles}
-              />
-            </>
-          }
-        >
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="p-4 shadow-sm border bg-card">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Conversation design</p>
-              <p className="mt-2 text-base font-semibold text-foreground">Main lane first, threads second.</p>
-              <p className="mt-1 text-sm text-muted-foreground">That keeps high-signal channel history readable even as side conversations branch off.</p>
-            </Card>
-            <Card className="p-4 shadow-sm border bg-card">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Audience control</p>
-              <p className="mt-2 text-base font-semibold text-foreground">Private channels stay scoped without hiding from sponsors.</p>
-              <p className="mt-1 text-sm text-muted-foreground">Faculty oversight remains guaranteed by policy rather than manual membership edits.</p>
-            </Card>
-            <Card className="p-4 shadow-sm border bg-card">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Message tools</p>
-              <p className="mt-2 text-base font-semibold text-foreground">Drop files, react fast, and mention intelligently.</p>
-              <p className="mt-1 text-sm text-muted-foreground">The composer is optimized for quick coordination, not generic comment boxes.</p>
-            </Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/clubs/${id}`}
+              className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              {channel.clubName ?? 'Club'}
+            </Link>
+            <h2 className="text-2xl font-bold tracking-tight">{channel.name}</h2>
+            <Badge className="rounded-full bg-primary/12 text-primary">
+              {channel.isPrivate ? 'Private' : 'Open'}
+            </Badge>
           </div>
-        </HeroBand>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{messages.length} threads</span>
+            <span>·</span>
+            <Users2 className="size-3.5" />
+            <span>{audience.length}</span>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <HeroStat label="Threads" value={messages.length} icon={Reply} />
+          <HeroStat label="Audience" value={audience.length} icon={Users2} />
+          <HeroStat
+            label="Search"
+            value={deferredSearch.trim() ? searchResults.length : '—'}
+            icon={Search}
+          />
+        </div>
 
         <div className="hidden xl:block">
           <div className="overflow-hidden rounded-[2rem] border border-border/70 bg-background/80 shadow-xl shadow-primary/5">

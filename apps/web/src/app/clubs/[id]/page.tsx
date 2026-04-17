@@ -21,7 +21,7 @@ import {
   Users2,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
+import { HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { PeoplePicker } from '@/components/clubs/people-picker';
 import {
@@ -387,121 +387,59 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
   return (
     <AppShell>
       <PageFrame>
-        <HeroBand
-          badge={
-            <>
-              <Link
-                href="/clubs"
-                className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/70 px-4 py-2 text-sm text-foreground/75 shadow-sm transition hover:bg-white dark:border-white/10 dark:bg-white/5"
-              >
-                <ArrowLeft className="size-4" />
-                Back to clubs
-              </Link>
-              <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
-                Club workspace
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/clubs"
+              className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Clubs
+            </Link>
+            <h2 className="text-2xl font-bold tracking-tight">{club.name}</h2>
+            {isSponsor ? (
+              <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">Sponsor</Badge>
+            ) : null}
+            {isLeader ? (
+              <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
+                <Crown className="mr-1 size-3" />Leader
               </Badge>
-              {isSponsor ? (
-                <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">
-                  Sponsor
-                </Badge>
-              ) : null}
-              {isLeader ? (
-                <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
-                  <Crown className="mr-1 size-3" />
-                  Leader
-                </Badge>
-              ) : null}
-            </>
-          }
-          title={club.name}
-          description={
-            club.description ||
-            'No description yet. Add one so the club identity, purpose, and operating cadence are obvious.'
-          }
-          actions={
-            <>
-              {primaryChannel ? (
-                <Button asChild className="h-11 rounded-2xl px-5">
-                  <Link href={`/clubs/${id}/channels/${primaryChannel.id}`}>
-                    Open conversation lane
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              ) : null}
-              {canInvite ? (
-                <Button variant="outline" className="h-11 rounded-2xl px-5" onClick={() => setInviteOpen(true)}>
-                  <UserPlus className="size-4" />
-                  Invite members
-                </Button>
-              ) : null}
-              {canPost ? (
-                <Button variant="outline" className="h-11 rounded-2xl px-5" onClick={() => setPostOpen(true)}>
-                  <Megaphone className="size-4" />
-                  Post announcement
-                </Button>
-              ) : null}
-            </>
-          }
-        >
-          <div className="grid gap-4 lg:grid-cols-4">
-            <HeroStat
-              label="Members"
-              value={club.members.length}
-              description="Students and leaders in the workspace."
-              icon={Users2}
-            />
-            <HeroStat
-              label="Channels"
-              value={channels.length}
-              icon={Hash}
-            />
-            <HeroStat
-              label="Tags"
-              value={tags.length}
-              icon={AtSign}
-            />
-            <HeroStat
-              label="Message volume"
-              value={totalMessages}
-              description="Total messages across all channels."
-              icon={MessageSquareText}
-            />
+            ) : null}
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {primaryChannel ? (
+              <Button asChild className="rounded-2xl">
+                <Link href={`/clubs/${id}/channels/${primaryChannel.id}`}>
+                  Open channel
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : null}
+            {canInvite ? (
+              <Button variant="outline" className="rounded-2xl" onClick={() => setInviteOpen(true)}>
+                <UserPlus className="size-4" />
+                Invite
+              </Button>
+            ) : null}
+            {canPost ? (
+              <Button variant="outline" className="rounded-2xl" onClick={() => setPostOpen(true)}>
+                <Megaphone className="size-4" />
+                Announce
+              </Button>
+            ) : null}
+          </div>
+        </div>
 
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Faculty visibility</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Sponsors automatically see every channel.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Oversight should not depend on someone remembering to manually add staff.
-              </p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Channel flow</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Official updates in announcements, real work in channels.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                The split keeps high-signal updates readable while the team keeps moving.
-              </p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Ping strategy</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                Tags are built from the live roster.
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use search and selection, not raw student IDs pasted into fields.
-              </p>
-            </div>
-          </div>
-        </HeroBand>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <HeroStat label="Members" value={club.members.length} icon={Users2} />
+          <HeroStat label="Channels" value={channels.length} icon={Hash} />
+          <HeroStat label="Tags" value={tags.length} icon={AtSign} />
+          <HeroStat label="Messages" value={totalMessages} icon={MessageSquareText} />
+        </div>
 
         <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
           <aside className="space-y-6">
-            <Panel title="Operate workspace" description="The happy path actions should be visible, not buried.">
+            <Panel title="Actions">
               <div className="grid gap-3">
                 {canInvite ? (
                   <Button className="h-11 justify-start rounded-2xl" onClick={() => setInviteOpen(true)}>
@@ -530,7 +468,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </Panel>
 
-            <Panel title="Channel rail" description="Conversation lanes with a quick read on access and activity.">
+            <Panel title="Channels">
               {channels.length > 0 ? (
                 <div className="space-y-3">
                   {channels.map((channel) => (
@@ -566,24 +504,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <Panel title="Workspace rhythm" description="A club should broadcast clearly and coordinate fluidly.">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-[1.5rem] border border-primary/15 bg-primary/[0.06] p-5">
-                      <p className="text-sm font-semibold text-foreground">Faculty coverage</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Teacher sponsors remain visible in every channel, public or private, so moderation and supervision do not depend on a manual add.
-                      </p>
-                    </div>
-                    <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-5">
-                      <p className="text-sm font-semibold text-foreground">Member-based tagging</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Custom tags are built from the current club roster. The UI uses member search and selection instead of comma-separated student IDs.
-                      </p>
-                    </div>
-                  </div>
-                </Panel>
-
-                <Panel title="Recent announcements" description="Formal updates, meeting recaps, and sponsor-visible notes.">
+                <Panel title="Recent announcements">
                   {recentAnnouncements.length > 0 ? (
                     <div className="space-y-3">
                       {recentAnnouncements.map((announcement) => (
@@ -630,7 +551,6 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               <TabsContent value="people" className="space-y-6">
                 <Panel
                   title="Directory"
-                  description="Sponsors stay pinned at the top. Members and leaders are searchable by name or unique ID."
                   action={
                     <div className="relative w-full max-w-sm">
                       <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -700,7 +620,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </TabsContent>
 
               <TabsContent value="tags" className="space-y-6">
-                <Panel title="Mention system" description="Built-ins cover global audiences. Custom tags let you slice the live roster into reusable ping groups.">
+                <Panel title="Mention system">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
                       <p className="text-sm font-semibold text-foreground">@all</p>
@@ -719,7 +639,6 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
 
                 <Panel
                   title="Custom tags"
-                  description="Tag groups are built from current club members using the selector UI."
                   action={
                     canManageChannels ? (
                       <Button className="rounded-2xl" onClick={() => setTagOpen(true)}>
@@ -781,7 +700,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
           </main>
 
           <aside className="space-y-6">
-            <Panel title="Faculty visibility" description="Every club must keep at least one teacher sponsor, and sponsors see every channel by design.">
+            <Panel title="Faculty sponsors">
               <div className="space-y-3">
                 {club.sponsors.map((sponsor) => (
                   <div key={sponsor.userId} className="flex items-center gap-3 rounded-[1.5rem] border border-border/70 bg-background/82 p-3">
@@ -797,7 +716,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </Panel>
 
-            <Panel title="Mention guide" description="Use direct `@uniqueId` mentions or built-in tags inside channels.">
+            <Panel title="Mention guide">
               <div className="space-y-3 text-sm leading-6 text-muted-foreground">
                 <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@all` notifies the whole visible audience.</div>
                 <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@leaders` notifies club leaders.</div>
@@ -807,7 +726,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             </Panel>
 
             {bulkInviteResult ? (
-              <Panel title="Last CSV import" description="Recent bulk invite status." className="border-amber-500/20 bg-amber-500/[0.04]">
+              <Panel title="Last CSV import" className="border-amber-500/20 bg-amber-500/[0.04]">
                 <div className="space-y-2 text-sm">
                   <p className="font-medium text-foreground">
                     Invited {bulkInviteResult.invited}, skipped {bulkInviteResult.skipped}.
