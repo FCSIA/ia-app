@@ -5,6 +5,7 @@ node_modules
 dist
 .next
 out
+.direnv
 
 # Expo / React Native
 .expo
