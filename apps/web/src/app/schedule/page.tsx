@@ -24,7 +24,7 @@ import {
   ScheduleSearchResult,
   ScheduleWeekday,
   SchoolDayBlockPayload,
-  StudentScheduleEntry,
+  studentScheduleClass,
 } from '@/components/schedule/types';
 import {
   WEEKDAYS,
@@ -51,7 +51,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import { scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
-function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
+function buildScheduleRecord(entries: studentScheduleClass[], isPublic: boolean) {
   return {
     id: 'draft',
     isPublic,
@@ -74,7 +74,8 @@ export default function SchedulePage() {
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleEntry[]>([]);
+  const normalizedDeferredSearch = deferredSearch.trim();
+  const [scheduleEntries, setScheduleEntries] = useState<studentScheduleClass[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -90,9 +91,10 @@ export default function SchedulePage() {
   }, [data?.mySchedule]);
 
   const { data: searchResults = [] } = useQuery<ScheduleSearchResult[]>({
-    queryKey: ['schedule-search', deferredSearch],
-    queryFn: () => scheduleApi.searchPeople(deferredSearch).then((response) => response.data),
-    enabled: canEditOwnSchedule && deferredSearch.trim().length >= 2,
+    queryKey: ['schedule-search', normalizedDeferredSearch],
+    queryFn: () =>
+      scheduleApi.searchPeople(normalizedDeferredSearch).then((response) => response.data),
+    enabled: canEditOwnSchedule && normalizedDeferredSearch.length >= 2,
   });
 
   const saveScheduleMutation = useMutation({
@@ -376,7 +378,7 @@ export default function SchedulePage() {
                     </div>
 
                     <div className="space-y-3">
-                      {deferredSearch.trim().length < 2 ? (
+                      {normalizedDeferredSearch.length < 2 ? (
                         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
                           Type at least two characters to search the student directory.
                         </div>

@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'TEACHER', 'SPONSOR', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
 
@@ -5,7 +8,7 @@ CREATE TYPE "Role" AS ENUM ('STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'TEACH
 CREATE TYPE "Pathway" AS ENUM ('INFORMATION_TECHNOLOGY', 'HEALTH_SCIENCE', 'ENGINEERING');
 
 -- CreateEnum
-CREATE TYPE "ScheduleWeekday" AS ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY');
+CREATE TYPE "ScheduleWeekday" AS ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY');
 
 -- CreateEnum
 CREATE TYPE "AnnouncementTarget" AS ENUM ('SCHOOL_WIDE', 'GRADE', 'PATHWAY', 'CLUB');
@@ -27,6 +30,9 @@ CREATE TYPE "EventType" AS ENUM ('GENERAL', 'CLUB');
 
 -- CreateEnum
 CREATE TYPE "EventStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "EventAttendanceStatus" AS ENUM ('PRESENT', 'ABSENT', 'TARDY');
 
 -- CreateEnum
 CREATE TYPE "ApprovalStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
@@ -52,13 +58,20 @@ CREATE TABLE "users" (
     "unique_id" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
     "last_name" TEXT NOT NULL,
+    "middle_name" TEXT,
     "grade_level" INTEGER,
     "major_pathway" "Pathway",
     "minor_pathway" "Pathway",
     "email" TEXT,
+    "phone" TEXT,
+    "phone_carrier" TEXT,
+    "home_language" TEXT,
+    "cohort" INTEGER,
+    "ff_credits" INTEGER NOT NULL DEFAULT 0,
     "password_hash" TEXT,
     "roles" "Role"[] DEFAULT ARRAY['STUDENT']::"Role"[],
     "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "deactivated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -301,10 +314,23 @@ CREATE TABLE "club_channel_message_mentions" (
 );
 
 -- CreateTable
+CREATE TABLE "event_categories" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "event_categories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "events" (
     "id" TEXT NOT NULL,
     "author_id" TEXT NOT NULL,
+    "owner_id" TEXT,
     "club_id" TEXT,
+    "category_id" TEXT,
     "type" "EventType" NOT NULL DEFAULT 'GENERAL',
     "status" "EventStatus" NOT NULL DEFAULT 'DRAFT',
     "title" TEXT NOT NULL,
@@ -313,6 +339,13 @@ CREATE TABLE "events" (
     "flyer_url" TEXT,
     "start_at" TIMESTAMP(3) NOT NULL,
     "end_at" TIMESTAMP(3),
+    "registration_opens_at" TIMESTAMP(3),
+    "registration_closes_at" TIMESTAMP(3),
+    "allowed_major_pathways" "Pathway"[] DEFAULT ARRAY[]::"Pathway"[],
+    "allowed_minor_pathways" "Pathway"[] DEFAULT ARRAY[]::"Pathway"[],
+    "required_major_workshop_count" INTEGER NOT NULL DEFAULT 0,
+    "is_inactive" BOOLEAN NOT NULL DEFAULT false,
+    "deactivated_at" TIMESTAMP(3),
     "published_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -331,6 +364,91 @@ CREATE TABLE "event_approvals" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "event_approvals_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "event_sessions" (
+    "id" TEXT NOT NULL,
+    "event_id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "start_at" TIMESTAMP(3) NOT NULL,
+    "end_at" TIMESTAMP(3) NOT NULL,
+    "default_capacity" INTEGER,
+    "requires_attendance" BOOLEAN NOT NULL DEFAULT false,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "event_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "event_workshops" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "location" TEXT,
+    "max_attendees" INTEGER,
+    "owner_id" TEXT,
+    "allowed_major_pathways" "Pathway"[] DEFAULT ARRAY[]::"Pathway"[],
+    "allowed_minor_pathways" "Pathway"[] DEFAULT ARRAY[]::"Pathway"[],
+    "allowed_grade_levels" INTEGER[] DEFAULT ARRAY[]::INTEGER[],
+    "attend_multiple" BOOLEAN NOT NULL DEFAULT false,
+    "is_off_campus" BOOLEAN NOT NULL DEFAULT false,
+    "pathway_credit_amount" INTEGER NOT NULL DEFAULT 0,
+    "credit_eligible_pathways" "Pathway"[] DEFAULT ARRAY[]::"Pathway"[],
+    "information_technology_credit_hours" INTEGER,
+    "health_science_credit_hours" INTEGER,
+    "engineering_credit_hours" INTEGER,
+    "workshop_type" TEXT,
+    "more_info_url" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "event_workshops_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "event_session_workshops" (
+    "id" TEXT NOT NULL,
+    "event_id" TEXT NOT NULL,
+    "event_session_id" TEXT NOT NULL,
+    "event_workshop_id" TEXT NOT NULL,
+    "alternate_location" TEXT,
+    "sequence" INTEGER,
+    "exclude_pathway_credit" BOOLEAN NOT NULL DEFAULT false,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "event_session_workshops_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "event_workshop_bindings" (
+    "id" TEXT NOT NULL,
+    "parent_workshop_id" TEXT NOT NULL,
+    "child_workshop_id" TEXT NOT NULL,
+    "binding_type" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "event_workshop_bindings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "event_attendees" (
+    "id" TEXT NOT NULL,
+    "event_id" TEXT NOT NULL,
+    "event_session_id" TEXT NOT NULL,
+    "event_workshop_id" TEXT NOT NULL,
+    "attendee_id" TEXT NOT NULL,
+    "attendance_status" "EventAttendanceStatus",
+    "participation_type" TEXT NOT NULL DEFAULT 'ATTENDEE',
+    "is_required" BOOLEAN NOT NULL DEFAULT false,
+    "note" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "event_attendees_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -539,7 +657,43 @@ CREATE INDEX "club_channel_message_reactions_message_id_emoji_idx" ON "club_chan
 CREATE UNIQUE INDEX "club_channel_message_reactions_message_id_user_id_emoji_key" ON "club_channel_message_reactions"("message_id", "user_id", "emoji");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "event_categories_title_key" ON "event_categories"("title");
+
+-- CreateIndex
+CREATE INDEX "events_owner_id_idx" ON "events"("owner_id");
+
+-- CreateIndex
+CREATE INDEX "events_category_id_idx" ON "events"("category_id");
+
+-- CreateIndex
+CREATE INDEX "events_registration_opens_at_registration_closes_at_idx" ON "events"("registration_opens_at", "registration_closes_at");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "event_approvals_event_id_sponsor_id_key" ON "event_approvals"("event_id", "sponsor_id");
+
+-- CreateIndex
+CREATE INDEX "event_sessions_event_id_start_at_idx" ON "event_sessions"("event_id", "start_at");
+
+-- CreateIndex
+CREATE INDEX "event_workshops_owner_id_idx" ON "event_workshops"("owner_id");
+
+-- CreateIndex
+CREATE INDEX "event_session_workshops_event_id_event_workshop_id_idx" ON "event_session_workshops"("event_id", "event_workshop_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "event_session_workshops_event_session_id_event_workshop_id_key" ON "event_session_workshops"("event_session_id", "event_workshop_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "event_workshop_bindings_parent_workshop_id_child_workshop_i_key" ON "event_workshop_bindings"("parent_workshop_id", "child_workshop_id", "binding_type");
+
+-- CreateIndex
+CREATE INDEX "event_attendees_event_id_attendee_id_idx" ON "event_attendees"("event_id", "attendee_id");
+
+-- CreateIndex
+CREATE INDEX "event_attendees_event_workshop_id_attendance_status_idx" ON "event_attendees"("event_workshop_id", "attendance_status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "event_attendees_event_session_id_attendee_id_key" ON "event_attendees"("event_session_id", "attendee_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "calendar_entries_event_id_key" ON "calendar_entries"("event_id");
@@ -665,13 +819,52 @@ ALTER TABLE "club_channel_message_mentions" ADD CONSTRAINT "club_channel_message
 ALTER TABLE "events" ADD CONSTRAINT "events_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "events" ADD CONSTRAINT "events_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "events" ADD CONSTRAINT "events_club_id_fkey" FOREIGN KEY ("club_id") REFERENCES "clubs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "events" ADD CONSTRAINT "events_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "event_categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "event_approvals" ADD CONSTRAINT "event_approvals_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "event_approvals" ADD CONSTRAINT "event_approvals_sponsor_id_fkey" FOREIGN KEY ("sponsor_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_sessions" ADD CONSTRAINT "event_sessions_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_workshops" ADD CONSTRAINT "event_workshops_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_session_workshops" ADD CONSTRAINT "event_session_workshops_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_session_workshops" ADD CONSTRAINT "event_session_workshops_event_session_id_fkey" FOREIGN KEY ("event_session_id") REFERENCES "event_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_session_workshops" ADD CONSTRAINT "event_session_workshops_event_workshop_id_fkey" FOREIGN KEY ("event_workshop_id") REFERENCES "event_workshops"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_workshop_bindings" ADD CONSTRAINT "event_workshop_bindings_parent_workshop_id_fkey" FOREIGN KEY ("parent_workshop_id") REFERENCES "event_workshops"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_workshop_bindings" ADD CONSTRAINT "event_workshop_bindings_child_workshop_id_fkey" FOREIGN KEY ("child_workshop_id") REFERENCES "event_workshops"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_event_session_id_fkey" FOREIGN KEY ("event_session_id") REFERENCES "event_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_event_workshop_id_fkey" FOREIGN KEY ("event_workshop_id") REFERENCES "event_workshops"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "event_attendees" ADD CONSTRAINT "event_attendees_attendee_id_fkey" FOREIGN KEY ("attendee_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "calendar_entries" ADD CONSTRAINT "calendar_entries_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "events"("id") ON DELETE CASCADE ON UPDATE CASCADE;

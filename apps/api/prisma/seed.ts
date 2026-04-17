@@ -165,13 +165,13 @@ async function main() {
     },
   });
 
-  await prisma.studentScheduleEntry.deleteMany({
+  await prisma.studentScheduleClass.deleteMany({
     where: { scheduleId: { in: [alexSchedule.id, jordanSchedule.id] } },
   });
 
   const scheduleWeekdays = weekdays;
 
-  await prisma.studentScheduleEntry.createMany({
+  await prisma.studentScheduleClass.createMany({
     data: scheduleWeekdays.flatMap((weekday) => [
       { scheduleId: alexSchedule.id, weekday, periodNumber: 1, className: 'English I' },
       { scheduleId: alexSchedule.id, weekday, periodNumber: 2, className: 'Algebra I' },

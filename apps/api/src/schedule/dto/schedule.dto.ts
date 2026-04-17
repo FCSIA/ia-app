@@ -24,7 +24,7 @@ export enum SchoolDayBlockKind {
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-export class StudentScheduleEntryDto {
+export class studentScheduleClassDto {
   @ApiProperty({ enum: ScheduleWeekday })
   @IsEnum(ScheduleWeekday)
   weekday: ScheduleWeekday;
@@ -46,12 +46,12 @@ export class UpsertStudentScheduleDto {
   @IsBoolean()
   isPublic: boolean;
 
-  @ApiProperty({ type: [StudentScheduleEntryDto] })
+  @ApiProperty({ type: [studentScheduleClassDto] })
   @IsArray()
   @ArrayMaxSize(40)
   @ValidateNested({ each: true })
-  @Type(() => StudentScheduleEntryDto)
-  entries: StudentScheduleEntryDto[];
+  @Type(() => studentScheduleClassDto)
+  entries: studentScheduleClassDto[];
 }
 
 export class AddScheduleFriendDto {

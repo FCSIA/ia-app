@@ -40,7 +40,7 @@ import type {
   ScheduleWeekday,
   SchoolDayBlock,
   SchoolDayBlockPayload,
-  StudentScheduleEntry,
+  studentScheduleClass,
   StudentScheduleRecord,
 } from '@/types/api';
 
@@ -62,7 +62,7 @@ function fullName(person: { firstName: string; lastName: string }) {
   return `${person.firstName} ${person.lastName}`.trim();
 }
 
-function buildDraftSchedule(entries: StudentScheduleEntry[], isPublic: boolean): StudentScheduleRecord {
+function buildDraftSchedule(entries: studentScheduleClass[], isPublic: boolean): StudentScheduleRecord {
   return {
     id: 'draft',
     isPublic,
@@ -227,7 +227,8 @@ export default function ScheduleScreen() {
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
-  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleEntry[]>([]);
+  const normalizedSearch = search.trim();
+  const [scheduleEntries, setScheduleEntries] = useState<studentScheduleClass[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -262,9 +263,9 @@ export default function ScheduleScreen() {
   }, [data?.mySchedule]);
 
   const { data: searchResults = [] } = useQuery<ScheduleSearchResult[]>({
-    queryKey: ['schedule-search', search],
-    queryFn: () => scheduleApi.searchPeople(search).then((response) => response.data),
-    enabled: canEditOwnSchedule && search.trim().length >= 2,
+    queryKey: ['schedule-search', normalizedSearch],
+    queryFn: () => scheduleApi.searchPeople(normalizedSearch).then((response) => response.data),
+    enabled: canEditOwnSchedule && normalizedSearch.length >= 2,
   });
 
   const saveScheduleMutation = useMutation({
@@ -605,7 +606,7 @@ export default function ScheduleScreen() {
                 onChangeText={setSearch}
               />
 
-              {search.trim().length >= 2 ? (
+              {normalizedSearch.length >= 2 ? (
                 <View style={styles.stack}>
                   {searchResults.length === 0 ? (
                     <Text style={styles.cardMeta}>No students matched that search.</Text>

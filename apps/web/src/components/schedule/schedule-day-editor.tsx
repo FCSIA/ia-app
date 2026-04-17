@@ -5,12 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
-import { SchoolDayBlock, ScheduleWeekday, StudentScheduleEntry } from './types';
+import { SchoolDayBlock, ScheduleWeekday, studentScheduleClass } from './types';
 
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
-  entries: StudentScheduleEntry[];
+  entries: studentScheduleClass[];
   onChange: (weekday: ScheduleWeekday, periodNumber: number, className: string) => void;
 };
 
