@@ -172,7 +172,6 @@ export default function FlexFridayPassPage() {
               <Ticket size={22} className="text-orange-500" />
               My Passes
             </h1>
-            <p className="text-muted-foreground text-sm">Your Flex Friday session passes</p>
           </div>
         </div>
 

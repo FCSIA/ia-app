@@ -69,7 +69,6 @@ export default function NotificationsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-            <p className="text-muted-foreground text-sm">Your recent alerts</p>
           </div>
           {(notifications as any[]).some((n: any) => !n.isRead) && (
             <Button
