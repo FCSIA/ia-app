@@ -44,7 +44,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
-import { getUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -338,7 +338,7 @@ function MessageComposer({
   const canSend = !isPending && (value.trim().length > 0 || files.length > 0);
 
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-xl border bg-background shadow-sm">
       {files.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 border-b px-3 py-2">
           {files.map((file) => (
@@ -447,7 +447,7 @@ export default function ClubChannelPage({
   params: Promise<{ id: string; channelId: string }>;
 }) {
   const { id, channelId } = use(params);
-  const user = getUser();
+  const user = useCurrentUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -708,10 +708,10 @@ export default function ClubChannelPage({
       title={title}
       actions={actions}
       rightPane={rightPane}
-      contentClassName="flex flex-col"
+      contentClassName="relative flex flex-col bg-card"
     >
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl space-y-1 p-3">
+        <div className="mx-auto max-w-4xl space-y-1 p-3 pb-48">
           {visibleMessages.length > 0 ? (
             visibleMessages.map((message) => (
               <div key={message.id}>
@@ -728,7 +728,7 @@ export default function ClubChannelPage({
               </div>
             ))
           ) : (
-            <Empty className="mt-8 border bg-muted/20">
+            <Empty className="mt-8 border border-dashed">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <MessageSquareText />
@@ -747,8 +747,13 @@ export default function ClubChannelPage({
         </div>
       </div>
 
-      <div className="border-t bg-background p-3">
-        <div className="mx-auto max-w-4xl">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-card via-card/90 to-transparent"
+      />
+
+      <div className="absolute inset-x-0 bottom-0 p-3">
+        <div className="pointer-events-auto mx-auto max-w-4xl">
           <MessageComposer
             value={rootBody}
             onValueChange={setRootBody}
@@ -774,7 +779,7 @@ export default function ClubChannelPage({
             placeholder={`Message #${channel.name}`}
             submitLabel="Send"
           />
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
             {audience.length} {audience.length === 1 ? 'person' : 'people'} can see this channel · Cmd/Ctrl + Enter to send
           </p>
         </div>

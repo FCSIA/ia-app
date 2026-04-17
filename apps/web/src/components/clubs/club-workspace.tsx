@@ -27,7 +27,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CreateChannelDialog } from '@/components/clubs/dialogs/create-channel-dialog';
 import { clubsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import type { ClubDetail, ClubSummary } from '@ia/contracts/clubs';
 
@@ -54,7 +54,7 @@ export function ClubWorkspace({
   contentClassName,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? '';
-  const user = getUser();
+  const user = useCurrentUser();
 
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', clubId],
@@ -108,9 +108,22 @@ export function ClubWorkspace({
     },
   ];
 
+  const headerSlot = (
+    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        {title ?? (
+          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+            {club?.name ?? 'Club'}
+          </h1>
+        )}
+      </div>
+      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+
   return (
-    <AppShell>
-      <div className="-mx-6 -mb-8 flex min-h-[calc(100vh-4rem)] lg:-mx-8">
+    <AppShell headerSlot={headerSlot} mainClassName="flex h-[calc(100vh-4rem)] min-h-0">
+      <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 flex-col border-r bg-background md:flex">
           <div className="border-b p-3">
             <DropdownMenu>
@@ -234,24 +247,15 @@ export function ClubWorkspace({
           </ScrollArea>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          {(title || actions) && (
-            <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background px-6">
-              <div className="min-w-0 flex-1">{title}</div>
-              {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-            </div>
-          )}
-
-          <div className="flex min-h-0 flex-1">
-            <div className={cn('min-w-0 flex-1 overflow-y-auto', contentClassName)}>
-              {children}
-            </div>
-            {rightPane ? (
-              <aside className="hidden w-80 shrink-0 overflow-y-auto border-l bg-background xl:block">
-                {rightPane}
-              </aside>
-            ) : null}
+        <div className="flex min-w-0 flex-1">
+          <div className={cn('min-w-0 flex-1 overflow-y-auto', contentClassName)}>
+            {children}
           </div>
+          {rightPane ? (
+            <aside className="hidden w-80 shrink-0 overflow-y-auto border-l xl:block">
+              {rightPane}
+            </aside>
+          ) : null}
         </div>
       </div>
     </AppShell>

@@ -84,34 +84,44 @@ function NavIcon({
 }) {
   const { icon: Icon, label, href } = item;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Link
-          href={href}
-          aria-label={label}
-          className={cn(
-            'group relative flex size-11 items-center justify-center rounded-full transition-colors',
-            active
-              ? 'bg-white text-zinc-900 shadow-sm'
-              : 'text-zinc-400 hover:bg-white/8 hover:text-white',
-          )}
-        >
+    <Link
+      href={href}
+      aria-label={label}
+      className="group relative flex size-11 shrink-0 items-center justify-center"
+    >
+      <span
+        className={cn(
+          'pointer-events-none absolute left-0 top-0 z-10 flex h-11 items-center rounded-full transition-[background-color,box-shadow] duration-150',
+          active
+            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+            : 'text-sidebar-foreground/60 group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground',
+        )}
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center">
           <Icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
-          {badge ? (
-            <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-              {badge}
-            </span>
-          ) : null}
-        </Link>
-      </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={10}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
+        </span>
+        <span className="hidden whitespace-nowrap pr-5 text-sm font-medium group-hover:inline">
+          {label}
+        </span>
+      </span>
+      {badge ? (
+        <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground group-hover:hidden">
+          {badge}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  headerSlot,
+  mainClassName,
+}: {
+  children: ReactNode;
+  headerSlot?: ReactNode;
+  mainClassName?: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
@@ -171,12 +181,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             href="/dashboard"
             aria-label="Home"
-            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl"
           >
-            <span className="font-astronaut text-xs font-bold tracking-widest">IA</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/logo.png" alt="IA" className="size-full object-cover" />
           </Link>
 
-          <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-0">
+          <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 px-0">
             {primary.map((item) => (
               <NavIcon
                 key={item.href}
@@ -210,12 +221,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col bg-card">
           <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
             <div className="flex min-w-0 flex-1 items-center gap-4">
-
-              <div className="flex min-w-0 flex-1 flex-col leading-none">
-                <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-                  {currentMeta.label}
-                </h1>
-              </div>
+              {headerSlot ?? (
+                <div className="flex min-w-0 flex-1 flex-col leading-none">
+                  <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+                    {currentMeta.label}
+                  </h1>
+                </div>
+              )}
             </div>
             {user ? (
               <DropdownMenu>
@@ -272,7 +284,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : null}
           </header>
 
-          <main className="flex-1 px-6 pb-8 lg:px-8">{children}</main>
+          <main className={mainClassName ?? 'flex-1 px-6 pb-8 lg:px-8'}>{children}</main>
         </div>
       </div>
     </TooltipProvider>

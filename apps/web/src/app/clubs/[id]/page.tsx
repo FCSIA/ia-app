@@ -14,11 +14,11 @@ import { fullName, type AnnouncementSummary } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { announcementsApi, clubsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 
 export default function ClubOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = getUser();
+  const user = useCurrentUser();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
 
@@ -36,8 +36,9 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
   const myMembership = club?.members?.find((member) => member.userId === user?.id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canPost = isSponsor || !!myMembership?.role || isAdmin;
-  const canInvite = canPost;
+  const canInvite = canPost || isStaff;
 
   const title = (
     <div className="min-w-0">

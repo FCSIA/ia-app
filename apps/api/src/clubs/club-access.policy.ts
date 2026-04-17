@@ -186,10 +186,31 @@ export class ClubAccessPolicy {
     );
   }
 
+  isStaff(role: string) {
+    return (
+      role === Role.TEACHER ||
+      role === Role.SPONSOR ||
+      role === Role.SUPPORT_STAFF ||
+      role === Role.ADMIN ||
+      role === Role.SUPER_ADMIN
+    );
+  }
+
   async requireInvitePermissions(clubId: string, senderId: string, senderRole: string) {
+    if (this.isStaff(senderRole)) {
+      const club = await this.prisma.club.findUnique({
+        where: { id: clubId },
+        select: { id: true, name: true, description: true, isActive: true },
+      });
+      if (!club) throw new NotFoundException('Club not found');
+      return club;
+    }
+
     const context = await this.getClubContext(clubId, senderId, senderRole);
-    if (!context.isSponsor && !context.hasClubRole && !context.isAdmin) {
-      throw new ForbiddenException('Only club role holders, sponsors, or admins can invite members');
+    if (!context.hasClubRole) {
+      throw new ForbiddenException(
+        'Only club leaders, sponsors, teachers, or admins can invite members',
+      );
     }
     return context.club;
   }

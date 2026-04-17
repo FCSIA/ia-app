@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ type MyClubsResponse = {
 };
 
 export default function ClubsLandingPage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -78,24 +78,26 @@ export default function ClubsLandingPage() {
     );
   }, [allClubs, deferredSearch]);
 
-  return (
-    <AppShell>
-      <div className="mx-auto w-full max-w-5xl space-y-8 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Clubs</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your workspaces, invites, and the full club directory.
-            </p>
-          </div>
-          {canCreate ? (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-1.5 size-4" />
-              New club
-            </Button>
-          ) : null}
-        </div>
+  const headerSlot = (
+    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Clubs</h1>
+        <p className="truncate text-xs text-muted-foreground">
+          Your workspaces, invites, and the directory.
+        </p>
+      </div>
+      {canCreate ? (
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-1.5 size-4" />
+          New club
+        </Button>
+      ) : null}
+    </div>
+  );
 
+  return (
+    <AppShell headerSlot={headerSlot}>
+      <div className="mx-auto w-full max-w-5xl space-y-8 py-6">
         {invites.length > 0 ? (
           <section className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Pending invites</h3>
@@ -155,37 +157,33 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
+        <section className="space-y-4">
+          <div className="space-y-1 border-b pb-3">
             <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
-            <div className="relative w-full max-w-xs">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search"
-                className="h-9 pl-8"
+                placeholder="Find a club"
+                className="h-11 border-0 bg-transparent pl-9 text-base shadow-none focus-visible:ring-0"
               />
             </div>
           </div>
 
           {isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[112px] animate-pulse rounded-lg border bg-muted/30" />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="aspect-[4/3] animate-pulse rounded-lg border bg-muted/30" />
               ))}
             </div>
           ) : filteredClubs.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredClubs.map((club) => (
-                <ClubCard
+                <ClubTile
                   key={club.id}
                   club={club}
-                  badge={
-                    myClubIds.has(club.id) ? (
-                      <Badge variant="secondary">Joined</Badge>
-                    ) : null
-                  }
+                  joined={myClubIds.has(club.id)}
                 />
               ))}
             </div>
@@ -199,6 +197,39 @@ export default function ClubsLandingPage() {
 
       <CreateClubDialog open={createOpen} onOpenChange={setCreateOpen} />
     </AppShell>
+  );
+}
+
+function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
+  return (
+    <Link href={`/clubs/${club.id}`} className="group block">
+      <Card className="relative h-full transition-colors hover:border-primary/40 hover:bg-muted/30">
+        <CardContent className="flex h-full flex-col items-center gap-2 p-5 text-center">
+          {joined ? (
+            <Badge variant="secondary" className="absolute right-2 top-2 text-[10px]">
+              Joined
+            </Badge>
+          ) : null}
+          <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-base font-semibold text-primary">
+            {club.name.charAt(0).toUpperCase()}
+          </div>
+          <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
+          <p className="line-clamp-2 min-h-[2.5rem] text-xs text-muted-foreground">
+            {club.description || 'No description.'}
+          </p>
+          <div className="mt-auto flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Users2 className="size-3" />
+              {club._count?.members ?? 0}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Hash className="size-3" />
+              {club._count?.channels ?? 0}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 

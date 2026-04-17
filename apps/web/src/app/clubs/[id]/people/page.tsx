@@ -13,12 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { clubsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ClubPeoplePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = getUser();
+  const user = useCurrentUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -47,9 +47,10 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
 
   const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canManage = isSponsor || isAdmin;
   const myMembership = club?.members?.find((member) => member.userId === user?.id);
-  const canInvite = canManage || !!myMembership?.role;
+  const canInvite = canManage || !!myMembership?.role || isStaff;
 
   const directory = club?.directory ?? [];
   const filtered = useMemo(() => {

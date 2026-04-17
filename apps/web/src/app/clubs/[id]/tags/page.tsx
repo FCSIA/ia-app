@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { clubsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 
 const BUILT_IN_TAGS = [
   { token: '@all', description: 'Everyone who can see the channel' },
@@ -21,7 +21,7 @@ const BUILT_IN_TAGS = [
 
 export default function ClubTagsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = getUser();
+  const user = useCurrentUser();
   const [createOpen, setCreateOpen] = useState(false);
 
   const { data: club } = useQuery<ClubDetail>({
