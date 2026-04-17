@@ -11,7 +11,6 @@ import {
   Megaphone,
   Sparkles,
   Users2,
-  Zap,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
@@ -84,7 +83,7 @@ export default function DashboardPage() {
           <HeroStat
             label="Next Flex Friday"
             value={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
-            icon={Zap}
+            icon={Sparkles}
           />
         </div>
 

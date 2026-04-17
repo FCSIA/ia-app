@@ -34,7 +34,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${inter.variable} ${orbitron.variable} font-sans`}>
+      <body className={`${inter.variable} ${orbitron.variable} font-sans`} suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster />
       </body>

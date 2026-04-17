@@ -14,7 +14,7 @@ import {
   Megaphone,
   Settings,
   Shield,
-  Zap,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
@@ -49,7 +49,7 @@ const primaryNav: NavItem[] = [
   { href: '/schedule', label: 'School Day', icon: Clock3 },
   { href: '/events', label: 'Events', icon: Calendar },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
-  { href: '/flex-friday', label: 'Flex Friday', icon: Zap },
+  { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
 ];
 
 const accountNav: NavItem[] = [
