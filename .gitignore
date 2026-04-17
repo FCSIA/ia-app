@@ -1,13 +1,69 @@
-.direnv
-.venv
-__pycache__/
+# Dependencies
 node_modules
-apps/web/.next
-apps/web/.turbo
-apps/web/node_modules
-apps/api/dist
-apps/api/.turbo
-apps/mobile/.expo
-apps/mobile/.env
+
+# Build outputs
+dist
+.next
+out
+
+# Expo / React Native
+.expo
+.expo-shared
+android
+ios
+
+# Environment variables
+*.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Turbo cache
 .turbo
+
+# OS
 .DS_Store
+Thumbs.db
+agent-notes/
+
+# Editors
+.idea
+*.swp
+*.swo
+
+# Claude
+.claude
+
+# Vercel
+.vercel
+
+# Test coverage
+coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# Database
+prisma/migrations/dev.db
+prisma/dev.db
+*.db
+*.db-journal
+pgsql/
+pw.txt
+logfile
+qr-test.html
+test.prisma
+
+# Certificates & keys
+*.pem
+*.p8
+*.p12
+*.jks
+*.mobileprovision

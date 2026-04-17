@@ -182,7 +182,7 @@ export default function DashboardPage() {
             <Panel title="Shortcuts">
               <div className="space-y-3">
                 <QuickLink href="/clubs" title="Clubs" detail="Channels and sponsor spaces" />
-                <QuickLink href="/schedule" title="Schedule" detail="Live blocks and classes" />
+                <QuickLink href="/schedule" title="School Day" detail="View your daily periods" />
                 <QuickLink href="/notifications" title="Notifications" detail="Unread mentions" />
               </div>
             </Panel>

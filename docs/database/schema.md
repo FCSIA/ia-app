@@ -150,15 +150,15 @@ model StudentSchedule {
   updatedAt DateTime @updatedAt
 
   user    User
-  entries studentScheduleClass[]
+  entries StudentScheduleEntry[]
 }
 ```
 
 Each student can have at most one personal schedule. `isPublic` controls whether friends can see it.
 
-### studentScheduleClass
+### StudentScheduleEntry
 ```prisma
-model studentScheduleClass {
+model StudentScheduleEntry {
   id           String          @id @default(cuid())
   scheduleId    String
   weekday       ScheduleWeekday

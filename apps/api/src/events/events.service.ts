@@ -7,11 +7,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ClubAccessPolicy } from '../clubs/club-access.policy';
 import {
   ApprovalStatus,
   ContentType,
   EventStatus,
-  EventType,
   NotificationCategory,
   Role,
 } from '@prisma/client';
@@ -23,21 +23,14 @@ export class EventsService {
     private audit: AuditService,
     private moderation: ModerationService,
     private notifications: NotificationsService,
+    private clubAccessPolicy: ClubAccessPolicy,
   ) {}
 
   async getAll(userId: string, userRole: string, clubId?: string) {
     const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
 
     if (clubId) {
-      const isMember = await this.prisma.clubMember.findFirst({
-        where: { clubId, userId },
-      });
-      const isSponsor = await this.prisma.clubSponsor.findFirst({
-        where: { clubId, userId },
-      });
-      if (!isMember && !isSponsor && !isAdmin) {
-        throw new ForbiddenException('Not a club member');
-      }
+      await this.clubAccessPolicy.getClubContext(clubId, userId, userRole);
       return this.prisma.event.findMany({
         where: {
           clubId,
@@ -97,22 +90,34 @@ export class EventsService {
       userRole === Role.ADMIN ||
       userRole === Role.SUPER_ADMIN ||
       userRole === Role.SUPPORT_STAFF;
-    const isLeader = userRole === Role.STUDENT_LEADER;
+    let canCreate = isAdmin;
+    let isSponsor = false;
+    let hasClubRole = false;
 
-    if (!isAdmin && !isLeader) {
-      throw new ForbiddenException('Insufficient permissions to create events');
+    if (data.clubId) {
+      const context = await this.clubAccessPolicy.getClubContext(data.clubId, authorId, userRole);
+      isSponsor = context.isSponsor;
+      hasClubRole = context.hasClubRole;
+      canCreate = canCreate || isSponsor || hasClubRole;
     }
 
-    // Club events by student leaders need sponsor approval
-    const type = data.clubId ? EventType.CLUB : EventType.GENERAL;
+    if (!canCreate) {
+      throw new ForbiddenException(
+        data.clubId
+          ? 'Insufficient permissions to create club events'
+          : 'Only admins and support staff can create general events',
+      );
+    }
+
     const status =
-      isAdmin || !data.clubId ? EventStatus.PUBLISHED : EventStatus.PENDING_APPROVAL;
+      isAdmin || isSponsor || !data.clubId
+        ? EventStatus.PUBLISHED
+        : EventStatus.PENDING_APPROVAL;
 
     const event = await this.prisma.event.create({
       data: {
         authorId,
         clubId: data.clubId,
-        type,
         status,
         title: data.title,
         description: data.description,
@@ -135,7 +140,7 @@ export class EventsService {
     }
 
     // If club event, create pending approvals for all sponsors
-    if (type === EventType.CLUB && data.clubId) {
+    if (data.clubId && status === EventStatus.PENDING_APPROVAL) {
       const sponsors = await this.prisma.clubSponsor.findMany({
         where: { clubId: data.clubId },
       });

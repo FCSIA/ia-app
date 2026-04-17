@@ -64,9 +64,15 @@ Only applies existing migration files — doesn't create new ones. Used in produ
 
 ## The Init Migration
 
-This project has a single migration: `20260302224513_init`. It creates all tables at once because the entire schema was designed upfront.
+This project currently has a single checked-in init migration: `20260417135236_init`. It creates the full PostgreSQL schema in one pass.
 
-The SQL inside creates all 23 tables, enums, indexes, and foreign key constraints.
+That migration replaced an earlier local development migration chain on April 17, 2026. If your local database was created before that reset, run:
+
+```bash
+pnpm db:reset
+```
+
+That wipes the old local schema, re-applies the current init migration, and re-seeds demo data.
 
 ---
 

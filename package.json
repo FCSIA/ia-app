@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "db:generate": "pnpm --filter api exec prisma generate",
     "db:migrate": "pnpm --filter api exec prisma migrate dev",
+    "db:reset": "pnpm --filter api exec prisma migrate reset --force && pnpm db:seed",
     "db:seed": "pnpm --filter api exec prisma db seed",
     "infra:up": "brew services start postgresql@16 && echo 'PostgreSQL started'",
     "infra:down": "brew services stop postgresql@16 && echo 'PostgreSQL stopped'"

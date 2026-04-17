@@ -4,13 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClubMemberRole, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 
-const SPONSOR_SELECTION_ROLES: Role[] = [Role.SPONSOR];
+const SPONSOR_ELIGIBLE_ROLES: Role[] = [
+  Role.TEACHER,
+  Role.SUPPORT_STAFF,
+  Role.ADMIN,
+  Role.SUPER_ADMIN,
+];
 
 @Injectable()
 export class ClubManagementService {
@@ -22,7 +27,7 @@ export class ClubManagementService {
 
   private buildDirectory(club: {
     members: Array<{
-      role: ClubMemberRole;
+      role: string | null;
       joinedAt: Date;
       user: { id: string; uniqueId: string; firstName: string; lastName: string };
     }>;
@@ -53,8 +58,18 @@ export class ClubManagementService {
 
     return [...sponsorEntries, ...memberEntries].sort((left, right) => {
       if (left.kind !== right.kind) return left.kind === 'SPONSOR' ? -1 : 1;
+      if (left.kind === 'MEMBER' && right.kind === 'MEMBER') {
+        const leftHasRole = !!left.clubRole;
+        const rightHasRole = !!right.clubRole;
+        if (leftHasRole !== rightHasRole) return leftHasRole ? -1 : 1;
+      }
       return `${left.firstName} ${left.lastName}`.localeCompare(`${right.firstName} ${right.lastName}`);
     });
+  }
+
+  private normalizeClubRole(role?: string | null) {
+    const normalized = role?.trim() ?? '';
+    return normalized.length > 0 ? normalized : null;
   }
 
   private async validateSponsorSelection(sponsorIds: string[]) {
@@ -67,17 +82,13 @@ export class ClubManagementService {
       where: {
         id: { in: normalizedIds },
         isActive: true,
-        roles: { hasSome: SPONSOR_SELECTION_ROLES },
+        roles: { hasSome: SPONSOR_ELIGIBLE_ROLES },
       },
-      select: { id: true, roles: true },
+      select: { id: true },
     });
 
     if (sponsors.length !== normalizedIds.length) {
-      throw new BadRequestException('Every sponsor must be an active teacher sponsor');
-    }
-
-    if (!sponsors.some((sponsor) => sponsor.roles.includes(Role.SPONSOR))) {
-      throw new BadRequestException('At least one teacher sponsor is required');
+      throw new BadRequestException('Every sponsor must be an active staff member');
     }
 
     return sponsors.map((sponsor) => sponsor.id);
@@ -126,7 +137,7 @@ export class ClubManagementService {
           include: {
             user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
           },
-          orderBy: [{ role: 'desc' }, { user: { firstName: 'asc' } }],
+          orderBy: { user: { firstName: 'asc' } },
         },
         sponsors: {
           include: {
@@ -234,31 +245,31 @@ export class ClubManagementService {
     return { success: true };
   }
 
-  async promoteMember(clubId: string, memberId: string, actorId: string, actorRole: string) {
+  async setMemberRole(
+    clubId: string,
+    memberId: string,
+    role: string | null | undefined,
+    actorId: string,
+    actorRole: string,
+  ) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
     if (!context.isSponsor && !context.isAdmin) {
-      throw new ForbiddenException('Only sponsors or admins can promote members');
+      throw new ForbiddenException('Only sponsors or admins can assign club roles');
     }
+
+    const normalizedRole = this.normalizeClubRole(role);
 
     await this.prisma.clubMember.update({
       where: { clubId_userId: { clubId, userId: memberId } },
-      data: { role: ClubMemberRole.LEADER },
+      data: { role: normalizedRole },
     });
-
-    const member = await this.prisma.user.findUnique({ where: { id: memberId } });
-    if (member && !member.roles.includes(Role.STUDENT_LEADER)) {
-      await this.prisma.user.update({
-        where: { id: memberId },
-        data: { roles: { push: Role.STUDENT_LEADER } },
-      });
-    }
 
     await this.audit.log({
       actorId,
-      action: 'CLUB_MEMBER_PROMOTED',
+      action: 'CLUB_MEMBER_ROLE_SET',
       entityType: 'Club',
       entityId: clubId,
-      meta: { memberId },
+      meta: { memberId, role: normalizedRole },
     });
 
     return { success: true };

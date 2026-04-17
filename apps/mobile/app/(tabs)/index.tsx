@@ -210,7 +210,7 @@ export default function DashboardScreen() {
             upcomingEvents.map((event) => (
               <View key={event.id} style={styles.itemCard}>
                 <View style={styles.itemHeader}>
-                  <Pill label={event.club?.name || event.type} tone="green" />
+                  <Pill label={event.club?.name || 'General'} tone={event.club ? 'green' : 'neutral'} />
                 </View>
                 <Text style={styles.itemTitle}>{event.title}</Text>
                 <Text style={styles.itemMeta}>{formatDateTimeRange(event.startAt, event.endAt)}</Text>

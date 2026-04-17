@@ -23,7 +23,7 @@ export class CalendarController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.SUPPORT_STAFF)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.SUPPORT_STAFF, Role.TEACHER, Role.STUDENT)
   createManual(
     @Body()
     body: {

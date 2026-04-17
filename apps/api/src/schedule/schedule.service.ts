@@ -14,7 +14,7 @@ import {
   UpsertStudentScheduleDto,
 } from './dto/schedule.dto';
 
-const STUDENT_ROLES: Role[] = [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN];
+const STUDENT_ROLES: Role[] = [Role.STUDENT];
 
 @Injectable()
 export class ScheduleService {
@@ -318,12 +318,12 @@ export class ScheduleService {
         create: { userId: user.id, isPublic: dto.isPublic },
       });
 
-      await tx.studentScheduleClass.deleteMany({
+      await tx.studentScheduleEntry.deleteMany({
         where: { scheduleId: record.id },
       });
 
       if (normalizedEntries.length > 0) {
-        await tx.studentScheduleClass.createMany({
+        await tx.studentScheduleEntry.createMany({
           data: normalizedEntries.map((entry) => ({
             scheduleId: record.id,
             weekday: entry.weekday,

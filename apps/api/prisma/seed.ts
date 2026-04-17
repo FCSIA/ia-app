@@ -48,7 +48,7 @@ async function main() {
       lastName: 'Smith',
       email: 'jsmith@ia.school',
       passwordHash: teacherHash,
-      roles: [Role.TEACHER, Role.SPONSOR],
+      roles: [Role.TEACHER],
     },
   });
 
@@ -77,14 +77,14 @@ async function main() {
     createdStudents.push(student);
   }
 
-  // Promote STU003 to Student Leader, STU004 to Student Admin
+  // Keep school-wide student roles simple; club-specific titles live on memberships.
   await prisma.user.update({
     where: { uniqueId: 'STU003' },
-    data: { roles: [Role.STUDENT, Role.STUDENT_LEADER] },
+    data: { roles: [Role.STUDENT] },
   });
   await prisma.user.update({
     where: { uniqueId: 'STU004' },
-    data: { roles: [Role.STUDENT, Role.STUDENT_ADMIN] },
+    data: { roles: [Role.STUDENT] },
   });
 
   // Create a Club (upsert by name)
@@ -97,8 +97,8 @@ async function main() {
       sponsors: { create: [{ userId: teacher.id }] },
       members: {
         create: [
-          { userId: createdStudents[0].id, role: 'LEADER' },
-          { userId: createdStudents[1].id, role: 'MEMBER' },
+          { userId: createdStudents[0].id, role: 'President' },
+          { userId: createdStudents[1].id },
         ],
       },
       channels: {
@@ -165,13 +165,13 @@ async function main() {
     },
   });
 
-  await prisma.studentScheduleClass.deleteMany({
+  await prisma.studentScheduleEntry.deleteMany({
     where: { scheduleId: { in: [alexSchedule.id, jordanSchedule.id] } },
   });
 
   const scheduleWeekdays = weekdays;
 
-  await prisma.studentScheduleClass.createMany({
+  await prisma.studentScheduleEntry.createMany({
     data: scheduleWeekdays.flatMap((weekday) => [
       { scheduleId: alexSchedule.id, weekday, periodNumber: 1, className: 'English I' },
       { scheduleId: alexSchedule.id, weekday, periodNumber: 2, className: 'Algebra I' },

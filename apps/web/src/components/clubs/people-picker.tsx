@@ -115,12 +115,12 @@ export function PeoplePicker({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium text-foreground">{fullName(person)}</span>
-                          {person.clubRole === 'LEADER' && (
+                          {person.clubRole ? (
                             <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-[10px] text-amber-700 dark:text-amber-300">
                               <Crown className="mr-1 size-3" />
-                              Leader
+                              {formatClubRole(person.clubRole)}
                             </Badge>
-                          )}
+                          ) : null}
                           {person.kind === 'SPONSOR' && (
                             <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-[10px] text-sky-700 dark:text-sky-300">
                               Sponsor
@@ -129,7 +129,7 @@ export function PeoplePicker({
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           {person.uniqueId ? <span className="font-mono">{person.uniqueId}</span> : null}
-                          {person.clubRole && person.clubRole !== 'LEADER' ? <span>{formatClubRole(person.clubRole)}</span> : null}
+                          {person.clubRole ? <span>{formatClubRole(person.clubRole)}</span> : null}
                         </div>
                       </div>
                       <Check className={cn('ml-2 size-4 text-orange-600 transition-opacity', isSelected ? 'opacity-100' : 'opacity-0')} />

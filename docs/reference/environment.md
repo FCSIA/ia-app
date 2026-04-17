@@ -48,6 +48,14 @@ Used by: Prisma (API)
 
 ---
 
+### Redis (currently unused)
+```bash
+REDIS_URL="redis://localhost:6379"
+```
+Configured but Redis is not currently implemented in the API. Left for future use (e.g., rate limiting, caching).
+
+---
+
 ### JWT
 ```bash
 JWT_SECRET="change-me-to-a-long-random-secret-in-production"

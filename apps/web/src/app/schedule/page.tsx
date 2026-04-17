@@ -26,7 +26,7 @@ import {
   ScheduleSearchResult,
   ScheduleWeekday,
   SchoolDayBlockPayload,
-  studentScheduleClass,
+  StudentScheduleEntry,
 } from '@/components/schedule/types';
 import {
   WEEKDAYS,
@@ -53,7 +53,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import { scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
-function buildScheduleRecord(entries: studentScheduleClass[], isPublic: boolean) {
+function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
   return {
     id: 'draft',
     isPublic,
@@ -62,13 +62,13 @@ function buildScheduleRecord(entries: studentScheduleClass[], isPublic: boolean)
 }
 
 export default function SchedulePage() {
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
-  useEffect(() => { setUser(getUser()); }, []);
+  const user = getUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canManageBlocks = isAdmin;
 
   const [activeTab, setActiveTab] = useState<'my' | 'friends' | 'admin'>(
     canEditOwnSchedule ? 'my' : 'admin',
@@ -78,7 +78,7 @@ export default function SchedulePage() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
-  const [scheduleEntries, setScheduleEntries] = useState<studentScheduleClass[]>([]);
+  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleEntry[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -261,7 +261,7 @@ export default function SchedulePage() {
               currentStatus.currentBlock
                 ? currentStatus.currentBlock.periodNumber
                   ? currentStatus.currentEntry?.className ||
-                    `${currentStatus.currentBlock.label} (not filled in)`
+                  `${currentStatus.currentBlock.label} (not filled in)`
                   : currentStatus.currentBlock.label
                 : 'No active block'
             }
@@ -273,10 +273,10 @@ export default function SchedulePage() {
               currentStatus.nextBlock
                 ? currentStatus.nextBlock.periodNumber
                   ? findScheduleEntry(
-                      draftSchedule,
-                      currentStatus.nextBlock.weekday,
-                      currentStatus.nextBlock.periodNumber,
-                    )?.className || currentStatus.nextBlock.label
+                    draftSchedule,
+                    currentStatus.nextBlock.weekday,
+                    currentStatus.nextBlock.periodNumber,
+                  )?.className || currentStatus.nextBlock.label
                   : currentStatus.nextBlock.label
                 : 'Nothing else today'
             }
@@ -301,9 +301,9 @@ export default function SchedulePage() {
                 Friends
               </TabsTrigger>
             ) : null}
-            {isAdmin ? (
+            {canManageBlocks ? (
               <TabsTrigger value="admin" className="rounded-2xl px-4 py-2.5">
-                Admin Blocks
+                School Day Blocks
               </TabsTrigger>
             ) : null}
           </TabsList>
@@ -399,7 +399,7 @@ export default function SchedulePage() {
                     </div>
 
                     <div className="space-y-3">
-                      {normalizedDeferredSearch.length < 2 ? (
+                      {deferredSearch.trim().length < 2 ? (
                         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
                           Type at least two characters to search the student directory. Fuzzy matching handles typos.
                         </div>
@@ -508,21 +508,15 @@ export default function SchedulePage() {
             </TabsContent>
           ) : null}
 
-          {isAdmin ? (
+          {canManageBlocks ? (
             <TabsContent value="admin" className="space-y-6">
               <Card className="rounded-[28px] border-border/70">
                 <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <CardTitle className="text-2xl">School day block timing</CardTitle>
                     <CardDescription>
-                      Period blocks map to student-entered classes. Custom blocks show their own label instead of a class when live.
+                      Configure the timing for periods and other school day segments.
                     </CardDescription>
-                  </div>
-                  <div className="rounded-2xl border border-orange-500/15 bg-orange-500/[0.06] px-4 py-3 text-sm text-foreground/80">
-                    <div className="flex items-center gap-2">
-                      <Shield className="size-4 text-orange-600" />
-                      Admin-only controls
-                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -599,21 +593,7 @@ export default function SchedulePage() {
                                         <Badge variant="secondary" className="rounded-full">
                                           {formatDuration(block.durationMinutes)}
                                         </Badge>
-                                        {block.periodNumber ? (
-                                          <Badge className="rounded-full bg-emerald-500/12 text-emerald-700 dark:text-emerald-300">
-                                            Maps to Period {block.periodNumber}
-                                          </Badge>
-                                        ) : (
-                                          <Badge className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
-                                            Custom block
-                                          </Badge>
-                                        )}
                                       </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        {block.periodNumber
-                                          ? 'Students will see their scheduled class during this block.'
-                                          : 'Students will see this block label instead of a class during this time.'}
-                                      </p>
                                     </div>
                                     <div className="flex gap-2">
                                       <Button
@@ -661,19 +641,7 @@ export default function SchedulePage() {
           ) : null}
         </Tabs>
 
-        {!canEditOwnSchedule && isAdmin ? (
-          <Card className="rounded-[28px] border-border/70">
-            <CardContent className="flex items-start gap-4 p-5">
-              <Sparkles className="mt-0.5 size-5 text-orange-600" />
-              <div className="space-y-2">
-                <p className="font-semibold text-foreground">Admin note</p>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  This account can manage the global bell schedule, but personal class-entry and friend comparison are only enabled for student accounts.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
+
       </PageFrame>
     </AppShell>
   );

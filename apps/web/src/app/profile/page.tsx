@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { getUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -15,8 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
-  useEffect(() => { setUser(getUser()); }, []);
+  const user = getUser();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });

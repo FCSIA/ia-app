@@ -157,11 +157,7 @@ export function SchoolDayBlockFormCard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">
-          {kind === 'PERIOD'
-            ? `Students will see their Period ${periodNumber} class during this block.`
-            : `Students will see "${label || 'this custom block'}" instead of a class during this time.`}
-        </div>
+
 
         <div className="flex flex-wrap gap-2">
           <Button

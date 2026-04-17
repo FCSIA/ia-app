@@ -7,79 +7,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Roles ────────────────────────────────────────────────────────────────────
-
-enum Role {
-  STUDENT
-  STUDENT_LEADER
-  STUDENT_ADMIN
-  TEACHER
-  SPONSOR
-  SUPPORT_STAFF
-  ADMIN
-  SUPER_ADMIN
-}
-
-
-enum Pathway {
-  INFORMATION_TECHNOLOGY
-  HEALTH_SCIENCE
-  ENGINEERING
-}
-
-// ─── Users ────────────────────────────────────────────────────────────────────
-
 model User {
-  id                String    @id @default(cuid())
-  uniqueId          String    @unique @map("unique_id")
-  firstName         String    @map("first_name")
-  lastName          String    @map("last_name")
-  middleName        String?   @map("middle_name")
-  gradeLevel        Int?      @map("grade_level")
-  major             Pathway?  @map("major_pathway")
-  minor             Pathway?  @map("minor_pathway")
-  email             String?   @unique
-  phone             String?
-  cohort            Int?
-  flexFridayCredits Int       @default(0) @map("ff_credits")
-  passwordHash      String?   @map("password_hash")
-  roles             Role[]    @default([STUDENT])
-  isActive          Boolean   @default(true) @map("is_active")
-  deactivatedAt     DateTime? @map("deactivated_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  sessions            AuthSession[]
-  authoredAnnouncements Announcement[] @relation("AnnouncementAuthor")
-  clubMemberships     ClubMember[]
-  clubsSponsored      ClubSponsor[]
-  sentInvites         ClubInvite[]   @relation("InviteSender")
-  receivedInvites     ClubInvite[]   @relation("InviteRecipient")
-  authoredEvents      Event[]        @relation("EventAuthor")
-  ownedEvents         Event[]        @relation("EventOwner")
-  eventApprovals      EventApproval[]
-  eventAttendances    EventAttendee[] @relation("EventAttendeeUser")
-  ownedEventWorkshops EventWorkshop[] @relation("EventWorkshopOwner")
-  flexRegistrations   FlexRegistration[]
-  flexAssignments     FlexAssignment[]
-  reports             Report[]       @relation("ReportSubmitter")
-  reportedContent     Report[]       @relation("ReportedContent")
-  auditEvents         AuditEvent[]
-  notificationPrefs   NotificationPreference[]
-  notificationDeliveries NotificationDelivery[]
-  comments            Comment[]
-  channelMemberships  ClubChannelMembership[]
-  authoredChannelMessages ClubChannelMessage[] @relation("ClubChannelMessageAuthor")
-  clubTagMemberships  ClubTagMember[]
-  createdChannels     ClubChannel[] @relation("ClubChannelCreator")
-  createdTags         ClubTag[] @relation("ClubTagCreator")
-  mentionedInChannelMentions ClubChannelMessageMention[] @relation("ClubChannelMentionUser")
-  reactedToChannelMessages ClubChannelMessageReaction[]
-  studentSchedule     StudentSchedule?
-  scheduleFriends     StudentScheduleFriend[] @relation("StudentScheduleFriendOwner")
-  friendedBySchedules StudentScheduleFriend[] @relation("StudentScheduleFriendTarget")
-  createdSchoolDayBlocks SchoolDayBlock[] @relation("SchoolDayBlockCreator")
+  id                         String                       @id @default(cuid())
+  uniqueId                   String                       @unique @map("unique_id")
+  firstName                  String                       @map("first_name")
+  lastName                   String                       @map("last_name")
+  gradeLevel                 Int?                         @map("grade_level")
+  major                      Pathway?                     @map("major_pathway")
+  minor                      Pathway?                     @map("minor_pathway")
+  email                      String?                      @unique
+  passwordHash               String?                      @map("password_hash")
+  roles                      Role[]                       @default([STUDENT])
+  isActive                   Boolean                      @default(true) @map("is_active")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @updatedAt @map("updated_at")
+  authoredAnnouncements      Announcement[]               @relation("AnnouncementAuthor")
+  auditEvents                AuditEvent[]
+  sessions                   AuthSession[]
+  channelMemberships         ClubChannelMembership[]
+  mentionedInChannelMentions ClubChannelMessageMention[]  @relation("ClubChannelMentionUser")
+  reactedToChannelMessages   ClubChannelMessageReaction[]
+  authoredChannelMessages    ClubChannelMessage[]         @relation("ClubChannelMessageAuthor")
+  createdChannels            ClubChannel[]                @relation("ClubChannelCreator")
+  receivedInvites            ClubInvite[]                 @relation("InviteRecipient")
+  sentInvites                ClubInvite[]                 @relation("InviteSender")
+  clubMemberships            ClubMember[]
+  clubsSponsored             ClubSponsor[]
+  clubTagMemberships         ClubTagMember[]
+  createdTags                ClubTag[]                    @relation("ClubTagCreator")
+  comments                   Comment[]
+  eventApprovals             EventApproval[]
+  authoredEvents             Event[]                      @relation("EventAuthor")
+  flexAssignments            FlexAssignment[]
+  flexRegistrations          FlexRegistration[]
+  notificationDeliveries     NotificationDelivery[]
+  notificationPrefs          NotificationPreference[]
+  reportedContent            Report[]                     @relation("ReportedContent")
+  reports                    Report[]                     @relation("ReportSubmitter")
+  createdSchoolDayBlocks     SchoolDayBlock[]             @relation("SchoolDayBlockCreator")
+  friendedBySchedules        StudentScheduleFriend[]      @relation("StudentScheduleFriendTarget")
+  scheduleFriends            StudentScheduleFriend[]      @relation("StudentScheduleFriendOwner")
+  studentSchedule            StudentSchedule?
 
   @@map("users")
 }
@@ -90,48 +58,32 @@ model AuthSession {
   token     String   @unique
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("auth_sessions")
 }
 
-// ─── Student Schedules ───────────────────────────────────────────────────────
-
-// Retained name for compatibility, but this now supports all seven days.
-enum ScheduleWeekday {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
-
 model StudentSchedule {
-  id        String   @id @default(cuid())
-  userId    String   @unique @map("user_id")
-  isPublic  Boolean  @default(false) @map("is_public")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user    User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries StudentScheduleClass[]
+  id        String                 @id @default(cuid())
+  userId    String                 @unique @map("user_id")
+  isPublic  Boolean                @default(false) @map("is_public")
+  createdAt DateTime               @default(now()) @map("created_at")
+  updatedAt DateTime               @updatedAt @map("updated_at")
+  entries   StudentScheduleEntry[]
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_schedules")
 }
 
-model StudentScheduleClass {
+model StudentScheduleEntry {
   id           String          @id @default(cuid())
-  scheduleId    String         @map("schedule_id")
-  weekday       ScheduleWeekday
-  periodNumber  Int            @map("period_number")
-  className     String         @map("class_name")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-
-  schedule StudentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId   String          @map("schedule_id")
+  weekday      ScheduleWeekday
+  periodNumber Int             @map("period_number")
+  className    String          @map("class_name")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  schedule     StudentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@unique([scheduleId, weekday, periodNumber])
   @@map("student_schedule_entries")
@@ -142,9 +94,8 @@ model StudentScheduleFriend {
   ownerId   String   @map("owner_id")
   friendId  String   @map("friend_id")
   createdAt DateTime @default(now()) @map("created_at")
-
-  owner  User @relation("StudentScheduleFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  friend User @relation("StudentScheduleFriendTarget", fields: [friendId], references: [id], onDelete: Cascade)
+  friend    User     @relation("StudentScheduleFriendTarget", fields: [friendId], references: [id], onDelete: Cascade)
+  owner     User     @relation("StudentScheduleFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, friendId])
   @@index([friendId])
@@ -161,101 +112,77 @@ model SchoolDayBlock {
   createdById  String          @map("created_by_id")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
-
-  createdBy User @relation("SchoolDayBlockCreator", fields: [createdById], references: [id])
+  createdBy    User            @relation("SchoolDayBlockCreator", fields: [createdById], references: [id])
 
   @@index([weekday, startTime])
   @@map("school_day_blocks")
 }
 
-// ─── Announcements ────────────────────────────────────────────────────────────
-
-enum AnnouncementTarget {
-  SCHOOL_WIDE
-  GRADE
-  PATHWAY
-  CLUB
-}
-
-enum AnnouncementStatus {
-  ACTIVE
-  ARCHIVED
-  EXPIRED
-}
-
 model Announcement {
-  id          String             @id @default(cuid())
-  authorId    String             @map("author_id")
-  title       String
-  body        String
-  targetType  AnnouncementTarget @map("target_type")
-  targetGrade Int?               @map("target_grade")
-  targetPathway Pathway?         @map("target_pathway")
-  targetValue String?            @map("target_value")
-  clubId      String?            @map("club_id")
-  allowComments Boolean          @default(false) @map("allow_comments")
-  isAdminGeneral Boolean         @default(false) @map("is_admin_general")
-  status      AnnouncementStatus @default(ACTIVE)
-  expiresAt   DateTime?          @map("expires_at")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  updatedAt   DateTime           @updatedAt @map("updated_at")
-
-  author    User           @relation("AnnouncementAuthor", fields: [authorId], references: [id])
-  club      Club?          @relation(fields: [clubId], references: [id])
-  comments  Comment[]
-  notifications NotificationDelivery[]
+  id             String                 @id @default(cuid())
+  authorId       String                 @map("author_id")
+  title          String
+  body           String
+  targetType     AnnouncementTarget     @map("target_type")
+  targetGrade    Int?                   @map("target_grade")
+  targetPathway  Pathway?               @map("target_pathway")
+  targetValue    String?                @map("target_value")
+  clubId         String?                @map("club_id")
+  allowComments  Boolean                @default(false) @map("allow_comments")
+  isAdminGeneral Boolean                @default(false) @map("is_admin_general")
+  status         AnnouncementStatus     @default(ACTIVE)
+  expiresAt      DateTime?              @map("expires_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  author         User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  club           Club?                  @relation(fields: [clubId], references: [id])
+  comments       Comment[]
   keywordMatches KeywordMatch[]
+  notifications  NotificationDelivery[]
 
   @@map("announcements")
 }
 
 model Comment {
-  id             String   @id @default(cuid())
-  announcementId String   @map("announcement_id")
-  authorId       String   @map("author_id")
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  authorId       String       @map("author_id")
   body           String
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  author       User         @relation(fields: [authorId], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  author         User         @relation(fields: [authorId], references: [id])
 
   @@map("comments")
 }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
-enum ClubMemberRole {
-  MEMBER
-  LEADER
-}
-
 model Club {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
+  id            String                 @id @default(cuid())
+  name          String                 @unique
+  description   String?
+  isActive      Boolean                @default(true) @map("is_active")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+  announcements Announcement[]
+  channels      ClubChannel[]
+  invites       ClubInvite[]
   members       ClubMember[]
   sponsors      ClubSponsor[]
-  invites       ClubInvite[]
-  announcements Announcement[]
-  events        Event[]
-  channels      ClubChannel[]
   tags          ClubTag[]
+  events        Event[]
   notifications NotificationDelivery[]
 
   @@map("clubs")
 }
 
 model ClubMember {
-  id        String         @id @default(cuid())
-  clubId    String         @map("club_id")
-  userId    String         @map("user_id")
-  role      ClubMemberRole @default(MEMBER)
-  joinedAt  DateTime       @default(now()) @map("joined_at")
+  id        String   @id @default(cuid())
+  clubId    String   @map("club_id")
+  userId    String   @map("user_id")
+  role      String?
+  joinedAt  DateTime @default(now()) @map("joined_at")
 
   club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -265,22 +192,15 @@ model ClubMember {
 }
 
 model ClubSponsor {
-  id      String @id @default(cuid())
-  clubId  String @map("club_id")
-  userId  String @map("user_id")
+  id      String   @id @default(cuid())
+  clubId  String   @map("club_id")
+  userId  String   @map("user_id")
   addedAt DateTime @default(now()) @map("added_at")
-
-  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club    Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, userId])
   @@map("club_sponsors")
-}
-
-enum InviteStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
 }
 
 model ClubInvite {
@@ -291,29 +211,27 @@ model ClubInvite {
   status      InviteStatus @default(PENDING)
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
-
-  club      Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  sender    User @relation("InviteSender", fields: [senderId], references: [id])
-  recipient User @relation("InviteRecipient", fields: [recipientId], references: [id])
+  club        Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  recipient   User         @relation("InviteRecipient", fields: [recipientId], references: [id])
+  sender      User         @relation("InviteSender", fields: [senderId], references: [id])
 
   @@unique([clubId, recipientId])
   @@map("club_invites")
 }
 
 model ClubChannel {
-  id          String   @id @default(cuid())
-  clubId      String   @map("club_id")
-  name        String
-  description String?
-  isPrivate   Boolean  @default(false) @map("is_private")
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  club        Club                    @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  createdBy   User                    @relation("ClubChannelCreator", fields: [createdById], references: [id])
-  memberships ClubChannelMembership[]
-  messages    ClubChannelMessage[]
+  id            String                  @id @default(cuid())
+  clubId        String                  @map("club_id")
+  name          String
+  description   String?
+  isPrivate     Boolean                 @default(false) @map("is_private")
+  createdById   String                  @map("created_by_id")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+  memberships   ClubChannelMembership[]
+  messages      ClubChannelMessage[]
+  club          Club                    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy     User                    @relation("ClubChannelCreator", fields: [createdById], references: [id])
   notifications NotificationDelivery[]
 
   @@unique([clubId, name])
@@ -321,30 +239,28 @@ model ClubChannel {
 }
 
 model ClubChannelMembership {
-  id        String   @id @default(cuid())
-  channelId String   @map("channel_id")
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  channel ClubChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String      @id @default(cuid())
+  channelId String      @map("channel_id")
+  userId    String      @map("user_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  channel   ClubChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([channelId, userId])
   @@map("club_channel_memberships")
 }
 
 model ClubTag {
-  id          String   @id @default(cuid())
-  clubId      String   @map("club_id")
+  id          String                      @id @default(cuid())
+  clubId      String                      @map("club_id")
   name        String
   slug        String
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  club      Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  createdBy User            @relation("ClubTagCreator", fields: [createdById], references: [id])
-  members   ClubTagMember[]
-  mentions  ClubChannelMessageMention[]
+  createdById String                      @map("created_by_id")
+  createdAt   DateTime                    @default(now()) @map("created_at")
+  mentions    ClubChannelMessageMention[]
+  members     ClubTagMember[]
+  club        Club                        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  createdBy   User                        @relation("ClubTagCreator", fields: [createdById], references: [id])
 
   @@unique([clubId, slug])
   @@map("club_tags")
@@ -355,95 +271,78 @@ model ClubTagMember {
   tagId     String   @map("tag_id")
   userId    String   @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
-
-  tag  ClubTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag       ClubTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tagId, userId])
   @@map("club_tag_members")
 }
 
 model ClubChannelMessage {
-  id              String   @id @default(cuid())
-  channelId       String   @map("channel_id")
-  authorId        String   @map("author_id")
-  parentMessageId String?  @map("parent_message_id")
+  id              String                         @id @default(cuid())
+  channelId       String                         @map("channel_id")
+  authorId        String                         @map("author_id")
+  parentMessageId String?                        @map("parent_message_id")
   body            String
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  channel       ClubChannel                   @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  author        User                          @relation("ClubChannelMessageAuthor", fields: [authorId], references: [id])
-  parentMessage ClubChannelMessage?           @relation("ClubChannelMessageReplies", fields: [parentMessageId], references: [id], onDelete: Cascade)
-  replies       ClubChannelMessage[]          @relation("ClubChannelMessageReplies")
-  mentions      ClubChannelMessageMention[]
-  attachments   ClubChannelMessageAttachment[]
-  reactions     ClubChannelMessageReaction[]
-  notifications NotificationDelivery[]
+  createdAt       DateTime                       @default(now()) @map("created_at")
+  updatedAt       DateTime                       @updatedAt @map("updated_at")
+  attachments     ClubChannelMessageAttachment[]
+  mentions        ClubChannelMessageMention[]
+  reactions       ClubChannelMessageReaction[]
+  author          User                           @relation("ClubChannelMessageAuthor", fields: [authorId], references: [id])
+  channel         ClubChannel                    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  parentMessage   ClubChannelMessage?            @relation("ClubChannelMessageReplies", fields: [parentMessageId], references: [id], onDelete: Cascade)
+  replies         ClubChannelMessage[]           @relation("ClubChannelMessageReplies")
+  notifications   NotificationDelivery[]
 
   @@index([channelId, parentMessageId, createdAt])
-
   @@map("club_channel_messages")
 }
 
 model ClubChannelMessageAttachment {
-  id        String   @id @default(cuid())
-  messageId String   @map("message_id")
-  fileName  String   @map("file_name")
-  fileUrl   String   @map("file_url")
-  mimeType  String?  @map("mime_type")
+  id        String             @id @default(cuid())
+  messageId String             @map("message_id")
+  fileName  String             @map("file_name")
+  fileUrl   String             @map("file_url")
+  mimeType  String?            @map("mime_type")
   size      Int?
-  createdAt DateTime @default(now()) @map("created_at")
-
-  message ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now()) @map("created_at")
+  message   ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([messageId, createdAt])
   @@map("club_channel_message_attachments")
 }
 
 model ClubChannelMessageReaction {
-  id        String   @id @default(cuid())
-  messageId String   @map("message_id")
-  userId    String   @map("user_id")
+  id        String             @id @default(cuid())
+  messageId String             @map("message_id")
+  userId    String             @map("user_id")
   emoji     String
-  createdAt DateTime @default(now()) @map("created_at")
-
-  message ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now()) @map("created_at")
+  message   ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
   @@index([messageId, emoji])
   @@map("club_channel_message_reactions")
 }
 
-enum ClubMentionKind {
-  USER
-  BUILT_IN_TAG
-  CUSTOM_TAG
-}
-
 model ClubChannelMessageMention {
-  id         String          @id @default(cuid())
-  messageId   String         @map("message_id")
-  userId      String?        @map("user_id")
-  tagId       String?        @map("tag_id")
-  kind        ClubMentionKind
-  token       String
-  createdAt   DateTime       @default(now()) @map("created_at")
-
-  message ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user    User?              @relation("ClubChannelMentionUser", fields: [userId], references: [id], onDelete: Cascade)
-  tag     ClubTag?           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  id        String             @id @default(cuid())
+  messageId String             @map("message_id")
+  userId    String?            @map("user_id")
+  tagId     String?            @map("tag_id")
+  kind      ClubMentionKind
+  token     String
+  createdAt DateTime           @default(now()) @map("created_at")
+  message   ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  tag       ClubTag?           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  user      User?              @relation("ClubChannelMentionUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("club_channel_message_mentions")
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────────
-
-enum EventType {
-  GENERAL
-  CLUB
-}
 
 enum EventStatus {
   DRAFT
@@ -477,8 +376,8 @@ model Event {
   ownerId                  String?     @map("owner_id")
   clubId                   String?     @map("club_id")
   categoryId               String?     @map("category_id")
-  type                     EventType   @default(GENERAL)
   status                   EventStatus @default(DRAFT)
+  type                     EventType   @default(GENERAL)
   title                    String
   description              String?
   location                 String?
@@ -496,28 +395,15 @@ model Event {
   createdAt                DateTime    @default(now()) @map("created_at")
   updatedAt                DateTime    @updatedAt @map("updated_at")
 
-  author           User                 @relation("EventAuthor", fields: [authorId], references: [id])
-  owner            User?                @relation("EventOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  club             Club?                @relation(fields: [clubId], references: [id])
-  category         EventCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  approvals        EventApproval[]
-  sessions         EventSession[]
-  sessionWorkshops EventSessionWorkshop[]
-  attendees        EventAttendee[]
-  calendarEntry    CalendarEntry?
-  notifications    NotificationDelivery[]
-  keywordMatches   KeywordMatch[]
+  author                   User             @relation("EventAuthor", fields: [authorId], references: [id])
+  club                     Club?            @relation(fields: [clubId], references: [id])
+  category                 EventCategory?   @relation(fields: [categoryId], references: [id])
+  approvals                EventApproval[]
+  calendarEntry            CalendarEntry?
+  keywordMatches           KeywordMatch[]
+  notificationDeliveries   NotificationDelivery[]
 
-  @@index([ownerId])
-  @@index([categoryId])
-  @@index([registrationOpensAt, registrationClosesAt])
   @@map("events")
-}
-
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
 }
 
 model EventApproval {
@@ -528,248 +414,99 @@ model EventApproval {
   note      String?
   decidedAt DateTime?      @map("decided_at")
   createdAt DateTime       @default(now()) @map("created_at")
-
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sponsor User  @relation(fields: [sponsorId], references: [id])
+  event     Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sponsor   User           @relation(fields: [sponsorId], references: [id])
 
   @@unique([eventId, sponsorId])
   @@map("event_approvals")
 }
 
-model EventSession {
-  id                 String   @id @default(cuid())
-  eventId            String   @map("event_id")
-  name               String
-  description        String?
-  startAt            DateTime @map("start_at")
-  endAt              DateTime @map("end_at")
-  defaultCapacity    Int?     @map("default_capacity")
-  requiresAttendance Boolean  @default(false) @map("requires_attendance")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  event         Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  workshopLinks EventSessionWorkshop[]
-  attendees     EventAttendee[]
-
-  @@index([eventId, startAt])
-  @@map("event_sessions")
-}
-
-model EventWorkshop {
-  id                             String    @id @default(cuid())
-  name                           String
-  description                    String?
-  location                       String?
-  maxAttendees                   Int?      @map("max_attendees")
-  ownerId                        String?   @map("owner_id")
-  allowedMajorPathways           Pathway[] @default([]) @map("allowed_major_pathways")
-  allowedMinorPathways           Pathway[] @default([]) @map("allowed_minor_pathways")
-  allowedGradeLevels             Int[]     @default([]) @map("allowed_grade_levels")
-  attendMultiple                 Boolean   @default(false) @map("attend_multiple")
-  isOffCampus                    Boolean   @default(false) @map("is_off_campus")
-  pathwayCreditAmount            Int       @default(0) @map("pathway_credit_amount")
-  creditEligiblePathways         Pathway[] @default([]) @map("credit_eligible_pathways")
-  informationTechnologyCreditHours Int?   @map("information_technology_credit_hours")
-  healthScienceCreditHours       Int?      @map("health_science_credit_hours")
-  engineeringCreditHours         Int?      @map("engineering_credit_hours")
-  workshopType                   String?   @map("workshop_type")
-  moreInfoUrl                    String?   @map("more_info_url")
-  createdAt                      DateTime  @default(now()) @map("created_at")
-  updatedAt                      DateTime  @updatedAt @map("updated_at")
-
-  owner          User?                 @relation("EventWorkshopOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  sessionLinks   EventSessionWorkshop[]
-  attendees      EventAttendee[]
-  parentBindings EventWorkshopBinding[] @relation("EventWorkshopBindingParent")
-  childBindings  EventWorkshopBinding[] @relation("EventWorkshopBindingChild")
-
-  @@index([ownerId])
-  @@map("event_workshops")
-}
-
-model EventSessionWorkshop {
-  id                   String   @id @default(cuid())
-  eventId              String   @map("event_id")
-  eventSessionId       String   @map("event_session_id")
-  eventWorkshopId      String   @map("event_workshop_id")
-  alternateLocation    String?  @map("alternate_location")
-  sequence             Int?
-  excludePathwayCredit Boolean  @default(false) @map("exclude_pathway_credit")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  event   Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  session EventSession @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
-  workshop EventWorkshop @relation(fields: [eventWorkshopId], references: [id], onDelete: Cascade)
-
-  @@unique([eventSessionId, eventWorkshopId])
-  @@index([eventId, eventWorkshopId])
-  @@map("event_session_workshops")
-}
-
-model EventWorkshopBinding {
-  id              String   @id @default(cuid())
-  parentWorkshopId String  @map("parent_workshop_id")
-  childWorkshopId String   @map("child_workshop_id")
-  bindingType     String   @map("binding_type")
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  parentWorkshop EventWorkshop @relation("EventWorkshopBindingParent", fields: [parentWorkshopId], references: [id], onDelete: Cascade)
-  childWorkshop  EventWorkshop @relation("EventWorkshopBindingChild", fields: [childWorkshopId], references: [id], onDelete: Cascade)
-
-  @@unique([parentWorkshopId, childWorkshopId, bindingType])
-  @@map("event_workshop_bindings")
-}
-
-model EventAttendee {
-  id               String                @id @default(cuid())
-  eventId          String                @map("event_id")
-  eventSessionId   String                @map("event_session_id")
-  eventWorkshopId  String                @map("event_workshop_id")
-  attendeeId       String                @map("attendee_id")
-  attendanceStatus EventAttendanceStatus? @map("attendance_status")
-  participationType String               @default("ATTENDEE") @map("participation_type")
-  isRequired       Boolean               @default(false) @map("is_required")
-  note             String?
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
-
-  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  session   EventSession  @relation(fields: [eventSessionId], references: [id], onDelete: Cascade)
-  workshop  EventWorkshop @relation(fields: [eventWorkshopId], references: [id], onDelete: Cascade)
-  attendee  User          @relation("EventAttendeeUser", fields: [attendeeId], references: [id], onDelete: Cascade)
-
-  @@unique([eventSessionId, attendeeId])
-  @@index([eventId, attendeeId])
-  @@index([eventWorkshopId, attendanceStatus])
-  @@map("event_attendees")
-}
-
-// ─── Calendar ─────────────────────────────────────────────────────────────────
-
 model CalendarEntry {
-  id          String   @id @default(cuid())
-  eventId     String?  @unique @map("event_id")
+  id          String    @id @default(cuid())
+  eventId     String?   @unique @map("event_id")
   title       String
   description String?
   location    String?
-  startAt     DateTime @map("start_at")
+  startAt     DateTime  @map("start_at")
   endAt       DateTime? @map("end_at")
-  tags        String[] @default([])
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at")
+  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("calendar_entries")
 }
 
-// ─── Flex Friday ──────────────────────────────────────────────────────────────
-
-enum FlexFridayType {
-  ALL_STUDENT
-  GRADE_SPECIFIC
-  PATHWAY_SPECIFIC
-  TEACHER_PD
-}
-
-enum FlexSessionType {
-  STUDENT_CHOICE
-  TEACHER_ASSIGNED
-}
-
 model FlexFriday {
-  id        String         @id @default(cuid())
-  date      DateTime       @db.Date
-  type      FlexFridayType @default(ALL_STUDENT)
-  gradeLevel Int?          @map("grade_level")
-  pathway   Pathway?
-  isSchoolDay Boolean      @default(true) @map("is_school_day")
-  notes     String?
-  createdAt DateTime       @default(now()) @map("created_at")
+  id          String         @id @default(cuid())
+  date        DateTime       @unique @db.Date
+  type        FlexFridayType @default(ALL_STUDENT)
+  gradeLevel  Int?           @map("grade_level")
+  pathway     Pathway?
+  isSchoolDay Boolean        @default(true) @map("is_school_day")
+  notes       String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  sessions    FlexSession[]
 
-  sessions FlexSession[]
-
-  @@unique([date])
   @@map("flex_fridays")
 }
 
 model FlexSession {
-  id            String          @id @default(cuid())
-  flexFridayId  String          @map("flex_friday_id")
-  teacherId     String?         @map("teacher_id")
+  id            String             @id @default(cuid())
+  flexFridayId  String             @map("flex_friday_id")
+  teacherId     String?            @map("teacher_id")
   title         String
   description   String?
   location      String?
   capacity      Int?
-  sessionType   FlexSessionType @default(STUDENT_CHOICE) @map("session_type")
-  targetPathway Pathway?        @map("target_pathway")
-  targetGrade   Int?            @map("target_grade")
-  createdAt     DateTime        @default(now()) @map("created_at")
-
-  flexFriday    FlexFriday         @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
-  registrations FlexRegistration[]
+  sessionType   FlexSessionType    @default(STUDENT_CHOICE) @map("session_type")
+  targetPathway Pathway?           @map("target_pathway")
+  targetGrade   Int?               @map("target_grade")
+  createdAt     DateTime           @default(now()) @map("created_at")
   assignments   FlexAssignment[]
+  registrations FlexRegistration[]
+  flexFriday    FlexFriday         @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
 
   @@map("flex_sessions")
 }
 
 model FlexRegistration {
-  id        String   @id @default(cuid())
-  sessionId String   @map("session_id")
-  studentId String   @map("student_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  session FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student User        @relation(fields: [studentId], references: [id])
+  id        String      @id @default(cuid())
+  sessionId String      @map("session_id")
+  studentId String      @map("student_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  session   FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   User        @relation(fields: [studentId], references: [id])
 
   @@unique([sessionId, studentId])
   @@map("flex_registrations")
 }
 
 model FlexAssignment {
-  id        String   @id @default(cuid())
-  sessionId String   @map("session_id")
-  studentId String   @map("student_id")
-  assignedBy String  @map("assigned_by")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  session FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student User        @relation(fields: [studentId], references: [id])
+  id         String      @id @default(cuid())
+  sessionId  String      @map("session_id")
+  studentId  String      @map("student_id")
+  assignedBy String      @map("assigned_by")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  session    FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student    User        @relation(fields: [studentId], references: [id])
 
   @@unique([sessionId, studentId])
   @@map("flex_assignments")
 }
 
-// ─── Moderation ───────────────────────────────────────────────────────────────
-
-enum ReportStatus {
-  PENDING
-  REVIEWED
-  RESOLVED
-  DISMISSED
-}
-
-enum ContentType {
-  ANNOUNCEMENT
-  COMMENT
-  EVENT
-}
-
 model Report {
-  id            String       @id @default(cuid())
-  submitterId   String       @map("submitter_id")
-  contentType   ContentType  @map("content_type")
-  contentId     String       @map("content_id")
-  reportedUserId String?     @map("reported_user_id")
-  reason        String
-  status        ReportStatus @default(PENDING)
-  reviewNote    String?      @map("review_note")
-  reviewedAt    DateTime?    @map("reviewed_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
-
-  submitter     User  @relation("ReportSubmitter", fields: [submitterId], references: [id])
-  reportedUser  User? @relation("ReportedContent", fields: [reportedUserId], references: [id])
+  id             String       @id @default(cuid())
+  submitterId    String       @map("submitter_id")
+  contentType    ContentType  @map("content_type")
+  contentId      String       @map("content_id")
+  reportedUserId String?      @map("reported_user_id")
+  reason         String
+  status         ReportStatus @default(PENDING)
+  reviewNote     String?      @map("review_note")
+  reviewedAt     DateTime?    @map("reviewed_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  reportedUser   User?        @relation("ReportedContent", fields: [reportedUserId], references: [id])
+  submitter      User         @relation("ReportSubmitter", fields: [submitterId], references: [id])
 
   @@map("reports")
 }
@@ -785,27 +522,16 @@ model KeywordRule {
 }
 
 model KeywordMatch {
-  id             String      @id @default(cuid())
+  id             String        @id @default(cuid())
   keyword        String
-  contentType    ContentType @map("content_type")
-  announcementId String?     @map("announcement_id")
-  eventId        String?     @map("event_id")
-  createdAt      DateTime    @default(now()) @map("created_at")
-
-  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contentType    ContentType   @map("content_type")
+  announcementId String?       @map("announcement_id")
+  eventId        String?       @map("event_id")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  event          Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("keyword_matches")
-}
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-
-enum NotificationCategory {
-  SCHOOL_ANNOUNCEMENT
-  CLUB_ANNOUNCEMENT
-  EVENT
-  FLEX_FRIDAY
-  CLUB_CHANNEL_MENTION
 }
 
 model NotificationPreference {
@@ -814,8 +540,7 @@ model NotificationPreference {
   category NotificationCategory
   clubId   String?              @map("club_id")
   enabled  Boolean              @default(true)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, category, clubId])
   @@map("notification_preferences")
@@ -834,18 +559,15 @@ model NotificationDelivery {
   body           String
   isRead         Boolean              @default(false) @map("is_read")
   createdAt      DateTime             @default(now()) @map("created_at")
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  announcement Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  club         Club?         @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  channel      ClubChannel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  message      ClubChannelMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  announcement   Announcement?        @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  channel        ClubChannel?         @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  club           Club?                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  event          Event?               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  message        ClubChannelMessage?  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_deliveries")
 }
-
-// ─── Audit Log ────────────────────────────────────────────────────────────────
 
 model AuditEvent {
   id         String   @id @default(cuid())
@@ -855,8 +577,106 @@ model AuditEvent {
   entityId   String?  @map("entity_id")
   meta       Json?
   createdAt  DateTime @default(now()) @map("created_at")
-
-  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actor      User?    @relation(fields: [actorId], references: [id])
 
   @@map("audit_events")
+}
+
+enum Role {
+  STUDENT
+  STUDENT_LEADER
+  STUDENT_ADMIN
+  TEACHER
+  SPONSOR
+  SUPPORT_STAFF
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Pathway {
+  INFORMATION_TECHNOLOGY
+  HEALTH_SCIENCE
+  ENGINEERING
+}
+
+enum ScheduleWeekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+enum AnnouncementTarget {
+  SCHOOL_WIDE
+  GRADE
+  PATHWAY
+  CLUB
+}
+
+enum AnnouncementStatus {
+  ACTIVE
+  ARCHIVED
+  EXPIRED
+}
+
+enum ClubMemberRole {
+  MEMBER
+  LEADER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum ClubMentionKind {
+  USER
+  BUILT_IN_TAG
+  CUSTOM_TAG
+}
+
+enum EventType {
+  GENERAL
+  CLUB
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FlexFridayType {
+  ALL_STUDENT
+  GRADE_SPECIFIC
+  PATHWAY_SPECIFIC
+  TEACHER_PD
+}
+
+enum FlexSessionType {
+  STUDENT_CHOICE
+  TEACHER_ASSIGNED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum ContentType {
+  ANNOUNCEMENT
+  COMMENT
+  EVENT
+}
+
+enum NotificationCategory {
+  SCHOOL_ANNOUNCEMENT
+  CLUB_ANNOUNCEMENT
+  EVENT
+  FLEX_FRIDAY
+  CLUB_CHANNEL_MENTION
 }

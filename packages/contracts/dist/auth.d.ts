@@ -1,4 +1,4 @@
-export type AppRole = 'STUDENT' | 'STUDENT_LEADER' | 'STUDENT_ADMIN' | 'TEACHER' | 'SPONSOR' | 'SUPPORT_STAFF' | 'ADMIN' | 'SUPER_ADMIN';
+export type AppRole = 'STUDENT' | 'TEACHER' | 'SUPPORT_STAFF' | 'ADMIN' | 'SUPER_ADMIN';
 export type Pathway = 'INFORMATION_TECHNOLOGY' | 'HEALTH_SCIENCE' | 'ENGINEERING';
 export interface AppUser {
     id: string;

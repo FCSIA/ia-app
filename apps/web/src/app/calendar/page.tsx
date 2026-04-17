@@ -17,6 +17,8 @@ import {
 import { ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
+import { Plus } from 'lucide-react';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -53,16 +55,19 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-xl">
-              <ChevronLeft size={16} />
-            </Button>
-            <span className="font-semibold text-foreground w-36 text-center text-sm">
-              {format(currentMonth, 'MMMM yyyy')}
-            </span>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-xl">
-              <ChevronRight size={16} />
-            </Button>
+          <div className="flex items-center gap-4">
+            <AddCalendarEntryDialog />
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={prevMonth} className="rounded-xl">
+                <ChevronLeft size={16} />
+              </Button>
+              <span className="font-semibold text-foreground w-36 text-center text-sm">
+                {format(currentMonth, 'MMMM yyyy')}
+              </span>
+              <Button variant="ghost" size="icon" onClick={nextMonth} className="rounded-xl">
+                <ChevronRight size={16} />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -173,11 +178,21 @@ export default function CalendarPage() {
                 <CardTitle className="text-base font-semibold">
                   {format(selectedDay, 'EEEE, MMMM d')}
                 </CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  {selectedEvents.length === 0
-                    ? 'No events'
-                    : `${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''}`}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">
+                    {selectedEvents.length === 0
+                      ? 'No events'
+                      : `${selectedEvents.length} event${selectedEvents.length > 1 ? 's' : ''}`}
+                  </span>
+                  <AddCalendarEntryDialog 
+                    initialDate={selectedDay} 
+                    trigger={
+                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-foreground/10 hover:bg-accent-500/10 hover:text-accent-600 transition-all">
+                        <Plus size={14} />
+                      </Button>
+                    }
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4">

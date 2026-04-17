@@ -140,8 +140,8 @@ export const clubsApi = {
   },
   respondToInvite: (inviteId: string, accept: boolean) =>
     api.post(`/clubs/invites/${inviteId}/respond`, { accept }),
-  promoteMember: (clubId: string, memberId: string) =>
-    api.post(`/clubs/${clubId}/members/${memberId}/promote`),
+  setMemberRole: (clubId: string, memberId: string, role?: string) =>
+    api.patch(`/clubs/${clubId}/members/${memberId}/role`, { role }),
   removeMember: (clubId: string, memberId: string) =>
     api.post(`/clubs/${clubId}/members/${memberId}/remove`),
 };
@@ -161,6 +161,14 @@ export const eventsApi = {
 export const calendarApi = {
   getEntries: (startDate?: string, endDate?: string, tags?: string) =>
     api.get('/calendar', { params: { startDate, endDate, tags } }),
+  createEntry: (data: {
+    title: string;
+    description?: string;
+    location?: string;
+    startAt: string;
+    endAt?: string;
+    tags?: string[];
+  }) => api.post('/calendar', data),
 };
 
 // Schedule

@@ -68,7 +68,7 @@ git clone https://github.com/virajdas/ia-app.git && cd ia-app
 pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed
 
 # Start
-brew services start postgresql@16 && sleep 2 && pnpm dev
+brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
 
 # Stop
 lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16

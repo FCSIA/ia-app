@@ -100,8 +100,8 @@ export const clubsApi = {
     api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   respondToInvite: (inviteId: string, accept: boolean) =>
     api.post(`/clubs/invites/${inviteId}/respond`, { accept }),
-  promoteMember: (clubId: string, memberId: string) =>
-    api.post(`/clubs/${clubId}/members/${memberId}/promote`),
+  setMemberRole: (clubId: string, memberId: string, role?: string) =>
+    api.patch(`/clubs/${clubId}/members/${memberId}/role`, { role }),
   removeMember: (clubId: string, memberId: string) =>
     api.post(`/clubs/${clubId}/members/${memberId}/remove`),
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi, moderationApi } from '@/lib/api';
@@ -19,8 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
-  useEffect(() => { setUser(getUser()); }, []);
+  const user = getUser();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [comment, setComment] = useState('');

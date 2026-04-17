@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useDeferredValue, useMemo, useState } from 'react';
+import { type ReactNode, useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -132,8 +132,7 @@ function InviteCard({
 }
 
 export default function ClubsPage() {
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
-  useEffect(() => { setUser(getUser()); }, []);
+  const user = getUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');

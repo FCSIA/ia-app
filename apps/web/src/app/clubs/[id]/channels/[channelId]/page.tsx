@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { use, useDeferredValue, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +29,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { HeroStat, PageFrame } from '@/components/layout/page-frame';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { MentionBody } from '@/components/clubs/mention-body';
-import { fullName } from '@/components/clubs/types';
+import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -806,8 +806,7 @@ export default function ClubChannelPage({
   params: Promise<{ id: string; channelId: string }>;
 }) {
   const { id, channelId } = use(params);
-  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
-  useEffect(() => { setUser(getUser()); }, []);
+  const user = getUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -912,8 +911,8 @@ export default function ClubChannelPage({
       },
       {
         token: 'leaders',
-        label: 'Club leaders',
-        detail: 'Notify the channel-visible leaders',
+        label: 'Members with club roles',
+        detail: 'Notify the channel-visible members with club roles',
         kind: 'built-in',
       },
       {
@@ -937,7 +936,9 @@ export default function ClubChannelPage({
       .map((person) => ({
         token: person.uniqueId!,
         label: fullName(person),
-        detail: person.clubRole ? `${person.kind} · ${person.clubRole}` : person.kind,
+        detail: person.clubRole
+          ? `${person.kind} · ${formatClubRole(person.clubRole)}`
+          : person.kind,
         kind: 'person' as const,
       }));
 

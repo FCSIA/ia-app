@@ -1,4 +1,4 @@
- import {
+import {
   Injectable,
   NotFoundException,
   ConflictException,
@@ -22,7 +22,7 @@ export class UsersService {
   ) { }
 
   private readonly studentRoleWhere = {
-    roles: { hasSome: [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN] },
+    roles: { hasSome: [Role.STUDENT] },
   };
 
   private safeUser(user: any) {

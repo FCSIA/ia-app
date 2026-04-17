@@ -7,7 +7,7 @@ export type {
   SchoolDayBlock,
   SchoolDayBlockKind,
   SchoolDayBlockPayload,
-  studentScheduleClass,
+  StudentScheduleEntry,
   StudentScheduleRecord,
   UpsertStudentSchedulePayload,
 } from '@ia/contracts/schedule';

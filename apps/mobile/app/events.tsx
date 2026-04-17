@@ -55,12 +55,14 @@ export default function EventsScreen() {
     queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
   });
 
+  const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+
   const { data: pendingApprovals = [] } = useQuery<EventRecord[]>({
     queryKey: ['pending-approvals'],
     queryFn: () => eventsApi.getPendingApprovals().then((response) =>
       response.data.map((approval: any) => approval.event),
     ),
-    enabled: !!user && hasRole(user, 'SPONSOR'),
+    enabled: !!user,
   });
 
   const createMutation = useMutation({
@@ -100,7 +102,15 @@ export default function EventsScreen() {
     },
   });
 
-  const canCreate = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'STUDENT_LEADER');
+  const availableClubs = useMemo(
+    () =>
+      [
+        ...(myClubs?.memberOf || []).filter((club) => !!club.role),
+        ...(myClubs?.sponsoring || []),
+      ].filter((club, index, list) => list.findIndex((item) => item.id === club.id) === index),
+    [myClubs],
+  );
+  const canCreate = canCreateGeneral || availableClubs.length > 0;
   const upcomingEvents = useMemo(
     () =>
       events.filter((event) => event.status === 'PUBLISHED' && new Date(event.startAt) >= new Date()),
@@ -111,11 +121,6 @@ export default function EventsScreen() {
       events.filter((event) => event.status === 'PUBLISHED' && new Date(event.startAt) < new Date()),
     [events],
   );
-
-  const availableClubs = [
-    ...(myClubs?.memberOf || []),
-    ...(myClubs?.sponsoring || []),
-  ].filter((club, index, list) => list.findIndex((item) => item.id === club.id) === index);
 
   function updateForm<K extends keyof EventFormState>(key: K, value: EventFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -201,7 +206,7 @@ export default function EventsScreen() {
               <Card key={event.id} style={styles.innerCard}>
                 <View style={styles.pills}>
                   <Pill label={event.status.replace(/_/g, ' ')} tone="green" />
-                  <Pill label={event.club?.name || event.type} tone="blue" />
+                  <Pill label={event.club?.name || 'General'} tone={event.club ? 'blue' : 'neutral'} />
                 </View>
                 <Text style={styles.cardTitle}>{event.title}</Text>
                 <Text style={styles.cardMeta}>{formatDateTimeRange(event.startAt, event.endAt)}</Text>
@@ -231,7 +236,7 @@ export default function EventsScreen() {
             {pastEvents.slice(0, 4).map((event) => (
               <Card key={event.id} style={styles.innerCard}>
                 <View style={styles.pills}>
-                  <Pill label={event.club?.name || event.type} tone="neutral" />
+                  <Pill label={event.club?.name || 'General'} tone="neutral" />
                 </View>
                 <Text style={styles.cardTitle}>{event.title}</Text>
                 <Text style={styles.cardMeta}>{formatDateTimeRange(event.startAt, event.endAt)}</Text>
@@ -265,11 +270,15 @@ export default function EventsScreen() {
         />
         {availableClubs.length > 0 ? (
           <View style={styles.stack}>
-            <Text style={styles.fieldLabel}>Club Event (optional)</Text>
+            <Text style={styles.fieldLabel}>
+              {canCreateGeneral ? 'Club Event (optional)' : 'Choose a club'}
+            </Text>
             <View style={styles.choiceRow}>
-              <Pressable onPress={() => updateForm('clubId', '')}>
-                <Pill label="General" tone={form.clubId ? 'neutral' : 'accent'} />
-              </Pressable>
+              {canCreateGeneral ? (
+                <Pressable onPress={() => updateForm('clubId', '')}>
+                  <Pill label="General" tone={form.clubId ? 'neutral' : 'accent'} />
+                </Pressable>
+              ) : null}
               {availableClubs.map((club) => (
                 <Pressable key={club.id} onPress={() => updateForm('clubId', club.id)}>
                   <Pill label={club.name} tone={form.clubId === club.id ? 'accent' : 'neutral'} />

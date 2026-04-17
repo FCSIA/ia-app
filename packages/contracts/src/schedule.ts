@@ -5,9 +5,7 @@ export type ScheduleWeekday =
   | 'TUESDAY'
   | 'WEDNESDAY'
   | 'THURSDAY'
-  | 'FRIDAY'
-  | 'SATURDAY'
-  | 'SUNDAY';
+  | 'FRIDAY';
 
 export type ScheduleVisibility = 'PUBLIC' | 'PRIVATE' | 'NONE';
 export type SchoolDayBlockKind = 'PERIOD' | 'CUSTOM';
@@ -22,7 +20,7 @@ export interface SchoolDayBlock {
   durationMinutes: number;
 }
 
-export interface studentScheduleClass {
+export interface StudentScheduleEntry {
   id?: string;
   weekday: ScheduleWeekday;
   periodNumber: number;
@@ -32,7 +30,7 @@ export interface studentScheduleClass {
 export interface StudentScheduleRecord {
   id: string;
   isPublic: boolean;
-  entries: studentScheduleClass[];
+  entries: StudentScheduleEntry[];
 }
 
 export interface ScheduleFriend {
@@ -68,5 +66,5 @@ export interface SchoolDayBlockPayload {
 
 export interface UpsertStudentSchedulePayload {
   isPublic: boolean;
-  entries: studentScheduleClass[];
+  entries: StudentScheduleEntry[];
 }
