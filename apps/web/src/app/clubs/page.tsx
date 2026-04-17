@@ -82,9 +82,6 @@ export default function ClubsLandingPage() {
     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
       <div className="min-w-0">
         <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Clubs</h1>
-        <p className="truncate text-xs text-muted-foreground">
-          Your workspaces, invites, and the directory.
-        </p>
       </div>
       {canCreate ? (
         <Button size="sm" onClick={() => setCreateOpen(true)}>
