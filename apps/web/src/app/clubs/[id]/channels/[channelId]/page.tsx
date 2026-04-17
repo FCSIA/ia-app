@@ -1197,7 +1197,7 @@ export default function ClubChannelPage({
               className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground transition hover:text-foreground"
             >
               <ArrowLeft className="size-4" />
-              {channel.clubName ?? 'Club'}
+              {club?.name ?? 'Club'}
             </Link>
             <h2 className="text-2xl font-bold tracking-tight">{channel.name}</h2>
             <Badge className="rounded-full bg-primary/12 text-primary">
