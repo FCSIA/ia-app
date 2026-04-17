@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "IA School",
+    "slug": "ia-school",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "ia-school",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ia.school"
+    },
+    "android": {
+      "package": "com.ia.school"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "local-dev"
+      }
+    }
+  }
+}
