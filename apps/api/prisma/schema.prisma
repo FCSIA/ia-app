@@ -22,6 +22,7 @@ model User {
   createdAt                  DateTime                     @default(now()) @map("created_at")
   updatedAt                  DateTime                     @updatedAt @map("updated_at")
   authoredAnnouncements      Announcement[]               @relation("AnnouncementAuthor")
+  announcementReads          AnnouncementRead[]
   auditEvents                AuditEvent[]
   sessions                   AuthSession[]
   channelMemberships         ClubChannelMembership[]
@@ -145,6 +146,7 @@ model Announcement {
   author         User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
   club           Club?                  @relation(fields: [clubId], references: [id])
   comments       Comment[]
+  reads          AnnouncementRead[]
   keywordMatches KeywordMatch[]
   notifications  NotificationDelivery[]
 
@@ -162,6 +164,20 @@ model Comment {
   author         User         @relation(fields: [authorId], references: [id])
 
   @@map("comments")
+}
+
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  userId         String       @map("user_id")
+  readAt         DateTime     @default(now()) @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, readAt])
+  @@map("announcement_reads")
 }
 
 // ─── Clubs ────────────────────────────────────────────────────────────────────

@@ -25,13 +25,30 @@ export class AnnouncementsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('archived') archived?: string,
     @Query('clubId') clubId?: string,
+    @Query('unreadOnly') unreadOnly?: string,
   ) {
-    return this.announcementsService.getAll(user.id, user.role, archived === 'true', clubId);
+    return this.announcementsService.getAll(
+      user.id,
+      user.role,
+      archived === 'true',
+      clubId,
+      unreadOnly === 'true',
+    );
   }
 
   @Get(':id')
   getOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.announcementsService.getOne(id, user.id, user.role);
+  }
+
+  @Post(':id/read')
+  markRead(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.announcementsService.markRead(id, user.id, user.role);
+  }
+
+  @Delete(':id/read')
+  markUnread(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.announcementsService.markUnread(id, user.id, user.role);
   }
 
   @Post()

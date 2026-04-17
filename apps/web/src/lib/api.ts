@@ -89,11 +89,13 @@ export const usersApi = {
 
 // Announcements
 export const announcementsApi = {
-  getAll: (archived = false, clubId?: string) =>
-    api.get('/announcements', { params: { archived, clubId } }),
+  getAll: (archived = false, clubId?: string, unreadOnly = false) =>
+    api.get('/announcements', { params: { archived, clubId, unreadOnly } }),
   getOne: (id: string) => api.get(`/announcements/${id}`),
   create: (data: any) => api.post('/announcements', data),
   archive: (id: string) => api.patch(`/announcements/${id}/archive`),
+  markRead: (id: string) => api.post(`/announcements/${id}/read`),
+  markUnread: (id: string) => api.delete(`/announcements/${id}/read`),
   addComment: (id: string, body: string) =>
     api.post(`/announcements/${id}/comments`, { body }),
   deleteComment: (commentId: string) => api.delete(`/announcements/comments/${commentId}`),
