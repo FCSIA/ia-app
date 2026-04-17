@@ -242,7 +242,20 @@ export class ScheduleService {
   async getDashboard(user: { id: string; roles: Role[] }) {
     const isStudent = this.isStudentRoles(user.roles);
 
-    const [schedule, blocks, friends] = await Promise.all([
+    const friendWithScheduleSelect = {
+      ...this.userSelect,
+      studentSchedule: {
+        select: {
+          id: true,
+          isPublic: true,
+          entries: {
+            orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
+          },
+        },
+      },
+    } satisfies Prisma.UserSelect;
+
+    const [schedule, blocks, friendships] = await Promise.all([
       isStudent
         ? this.prisma.studentSchedule.findUnique({
             where: { userId: user.id },
@@ -254,55 +267,85 @@ export class ScheduleService {
       }),
       isStudent
         ? this.prisma.studentScheduleFriend.findMany({
-            where: { ownerId: user.id },
-            orderBy: [{ friend: { lastName: 'asc' } }, { friend: { firstName: 'asc' } }],
-            include: {
-              friend: {
-                select: {
-                  ...this.userSelect,
-                  studentSchedule: {
-                    select: {
-                      id: true,
-                      isPublic: true,
-                      entries: {
-                        orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
-                      },
-                    },
-                  },
-                },
-              },
+            where: {
+              OR: [{ requesterId: user.id }, { addresseeId: user.id }],
             },
+            include: {
+              requester: { select: friendWithScheduleSelect },
+              addressee: { select: friendWithScheduleSelect },
+            },
+            orderBy: [{ createdAt: 'desc' }],
           })
         : Promise.resolve([]),
     ]);
 
+    const accepted: typeof friendships = [];
+    const incoming: typeof friendships = [];
+    const outgoing: typeof friendships = [];
+
+    for (const f of friendships) {
+      if (f.status === 'ACCEPTED') accepted.push(f);
+      else if (f.addresseeId === user.id) incoming.push(f);
+      else outgoing.push(f);
+    }
+
+    const otherUser = (f: (typeof friendships)[number]) =>
+      f.requesterId === user.id ? f.addressee : f.requester;
+
+    const friends = accepted
+      .map((f) => ({ f, other: otherUser(f) }))
+      .filter(({ other }) => other.isActive && this.isStudentRoles(other.roles))
+      .sort((a, b) =>
+        a.other.lastName.localeCompare(b.other.lastName) ||
+        a.other.firstName.localeCompare(b.other.firstName),
+      )
+      .map(({ f, other }) => {
+        const visibility = !other.studentSchedule
+          ? ('NONE' as const)
+          : other.studentSchedule.isPublic
+            ? ('PUBLIC' as const)
+            : ('PRIVATE' as const);
+
+        return {
+          id: f.id,
+          user: {
+            id: other.id,
+            uniqueId: other.uniqueId,
+            firstName: other.firstName,
+            lastName: other.lastName,
+          },
+          visibility,
+          schedule:
+            visibility === 'PUBLIC'
+              ? this.serializeSchedule(other.studentSchedule)
+              : null,
+        };
+      });
+
+    const toRequestDto = (f: (typeof friendships)[number]) => {
+      const other = otherUser(f);
+      return {
+        id: f.id,
+        user: {
+          id: other.id,
+          uniqueId: other.uniqueId,
+          firstName: other.firstName,
+          lastName: other.lastName,
+        },
+        createdAt: f.createdAt.toISOString(),
+      };
+    };
+
     return {
       mySchedule: this.serializeSchedule(schedule),
       blocks: blocks.map((block) => this.serializeBlock(block)),
-      friends: friends
-        .filter((entry) => entry.friend.isActive && this.isStudentRoles(entry.friend.roles))
-        .map((entry) => {
-          const visibility = !entry.friend.studentSchedule
-            ? 'NONE'
-            : entry.friend.studentSchedule.isPublic
-              ? 'PUBLIC'
-              : 'PRIVATE';
-
-          return {
-            id: entry.id,
-            user: {
-              id: entry.friend.id,
-              uniqueId: entry.friend.uniqueId,
-              firstName: entry.friend.firstName,
-              lastName: entry.friend.lastName,
-            },
-            visibility,
-            schedule:
-              visibility === 'PUBLIC'
-                ? this.serializeSchedule(entry.friend.studentSchedule)
-                : null,
-          };
-        }),
+      friends,
+      incomingRequests: incoming
+        .filter((f) => otherUser(f).isActive && this.isStudentRoles(otherUser(f).roles))
+        .map(toRequestDto),
+      outgoingRequests: outgoing
+        .filter((f) => otherUser(f).isActive && this.isStudentRoles(otherUser(f).roles))
+        .map(toRequestDto),
     };
   }
 
@@ -376,7 +419,8 @@ export class ScheduleService {
         firstName: string;
         lastName: string;
         isPublic: boolean | null;
-        isFriend: boolean;
+        friendshipStatus: 'PENDING' | 'ACCEPTED' | null;
+        friendshipDirection: 'OUTGOING' | 'INCOMING' | null;
       }>
     >`
       SELECT
@@ -385,12 +429,18 @@ export class ScheduleService {
         u.first_name       AS "firstName",
         u.last_name        AS "lastName",
         s.is_public        AS "isPublic",
-        (f.owner_id IS NOT NULL) AS "isFriend"
+        f.status           AS "friendshipStatus",
+        CASE
+          WHEN f.requester_id = ${user.id} THEN 'OUTGOING'
+          WHEN f.addressee_id = ${user.id} THEN 'INCOMING'
+          ELSE NULL
+        END                AS "friendshipDirection"
       FROM users u
       LEFT JOIN student_schedules s
         ON s.user_id = u.id
       LEFT JOIN student_schedule_friends f
-        ON f.owner_id = ${user.id} AND f.friend_id = u.id
+        ON (f.requester_id = ${user.id} AND f.addressee_id = u.id)
+         OR (f.addressee_id = ${user.id} AND f.requester_id = u.id)
       WHERE u.is_active = TRUE
         AND u.id <> ${user.id}
         AND (
@@ -424,73 +474,141 @@ export class ScheduleService {
       LIMIT ${take}
     `;
 
-    return rows.map((row) => ({
-      id: row.id,
-      uniqueId: row.uniqueId,
-      firstName: row.firstName,
-      lastName: row.lastName,
-      isFriend: row.isFriend,
-      visibility:
-        row.isPublic === null
-          ? ('NONE' as const)
-          : row.isPublic
-            ? ('PUBLIC' as const)
-            : ('PRIVATE' as const),
-    }));
+    return rows.map((row) => {
+      const friendshipStatus =
+        row.friendshipStatus === 'ACCEPTED'
+          ? ('FRIENDS' as const)
+          : row.friendshipStatus === 'PENDING' && row.friendshipDirection === 'OUTGOING'
+            ? ('REQUEST_SENT' as const)
+            : row.friendshipStatus === 'PENDING' && row.friendshipDirection === 'INCOMING'
+              ? ('REQUEST_RECEIVED' as const)
+              : ('NONE' as const);
+
+      return {
+        id: row.id,
+        uniqueId: row.uniqueId,
+        firstName: row.firstName,
+        lastName: row.lastName,
+        friendshipStatus,
+        visibility:
+          row.isPublic === null
+            ? ('NONE' as const)
+            : row.isPublic
+              ? ('PUBLIC' as const)
+              : ('PRIVATE' as const),
+      };
+    });
   }
 
-  async addFriend(user: { id: string; roles: Role[] }, friendId: string) {
+  async sendFriendRequest(user: { id: string; roles: Role[] }, targetId: string) {
     this.ensureStudentAccess(user);
 
-    if (friendId === user.id) {
-      throw new BadRequestException('You cannot add yourself');
+    if (targetId === user.id) {
+      throw new BadRequestException('You cannot friend yourself');
     }
 
-    const friend = await this.validateStudentTarget(friendId);
+    const target = await this.validateStudentTarget(targetId);
 
-    await this.prisma.studentScheduleFriend.upsert({
+    const existing = await this.prisma.studentScheduleFriend.findFirst({
       where: {
-        ownerId_friendId: {
-          ownerId: user.id,
-          friendId,
-        },
+        OR: [
+          { requesterId: user.id, addresseeId: targetId },
+          { requesterId: targetId, addresseeId: user.id },
+        ],
       },
-      update: {},
-      create: {
-        ownerId: user.id,
-        friendId,
+    });
+
+    if (existing) {
+      if (existing.status === 'ACCEPTED') {
+        throw new BadRequestException('Already friends');
+      }
+      // Incoming pending request from target → auto-accept (both parties want it)
+      if (existing.addresseeId === user.id) {
+        const accepted = await this.prisma.studentScheduleFriend.update({
+          where: { id: existing.id },
+          data: { status: 'ACCEPTED', acceptedAt: new Date() },
+        });
+        await this.audit.log({
+          actorId: user.id,
+          action: 'SCHEDULE_FRIEND_ACCEPTED',
+          entityType: 'User',
+          entityId: target.id,
+        });
+        return { success: true, status: accepted.status, id: accepted.id };
+      }
+      // Outgoing pending already exists
+      throw new BadRequestException('Friend request already sent');
+    }
+
+    const created = await this.prisma.studentScheduleFriend.create({
+      data: {
+        requesterId: user.id,
+        addresseeId: targetId,
+        status: 'PENDING',
       },
     });
 
     await this.audit.log({
       actorId: user.id,
-      action: 'SCHEDULE_FRIEND_ADDED',
+      action: 'SCHEDULE_FRIEND_REQUESTED',
       entityType: 'User',
-      entityId: friend.id,
+      entityId: target.id,
+    });
+
+    return { success: true, status: created.status, id: created.id };
+  }
+
+  async acceptFriendRequest(user: { id: string; roles: Role[] }, requesterId: string) {
+    this.ensureStudentAccess(user);
+
+    const request = await this.prisma.studentScheduleFriend.findFirst({
+      where: {
+        requesterId,
+        addresseeId: user.id,
+        status: 'PENDING',
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.prisma.studentScheduleFriend.update({
+      where: { id: request.id },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    });
+
+    await this.audit.log({
+      actorId: user.id,
+      action: 'SCHEDULE_FRIEND_ACCEPTED',
+      entityType: 'User',
+      entityId: requesterId,
     });
 
     return { success: true };
   }
 
-  async removeFriend(user: { id: string; roles: Role[] }, friendId: string) {
+  async removeFriend(user: { id: string; roles: Role[] }, otherUserId: string) {
     this.ensureStudentAccess(user);
 
     const { count } = await this.prisma.studentScheduleFriend.deleteMany({
       where: {
-        ownerId: user.id,
-        friendId,
+        OR: [
+          { requesterId: user.id, addresseeId: otherUserId },
+          { requesterId: otherUserId, addresseeId: user.id },
+        ],
       },
     });
 
     if (count === 0) {
-      throw new NotFoundException('Friend not found');
+      throw new NotFoundException('Friendship not found');
     }
 
     await this.audit.log({
       actorId: user.id,
       action: 'SCHEDULE_FRIEND_REMOVED',
       entityType: 'User',
-      entityId: friendId,
+      entityId: otherUserId,
     });
 
     return { success: true };

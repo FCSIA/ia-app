@@ -22,23 +22,31 @@ export interface StudentScheduleRecord {
     isPublic: boolean;
     entries: StudentScheduleEntry[];
 }
+export type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 export interface ScheduleFriend {
     id: string;
     user: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
     visibility: ScheduleVisibility;
     schedule: StudentScheduleRecord | null;
 }
+export interface ScheduleFriendRequest {
+    id: string;
+    user: Pick<AppUser, 'id' | 'uniqueId' | 'firstName' | 'lastName'>;
+    createdAt: string;
+}
 export interface ScheduleDashboardResponse {
     mySchedule: StudentScheduleRecord | null;
     blocks: SchoolDayBlock[];
     friends: ScheduleFriend[];
+    incomingRequests: ScheduleFriendRequest[];
+    outgoingRequests: ScheduleFriendRequest[];
 }
 export interface ScheduleSearchResult {
     id: string;
     uniqueId: string;
     firstName: string;
     lastName: string;
-    isFriend: boolean;
+    friendshipStatus: FriendshipStatus;
     visibility: ScheduleVisibility;
 }
 export interface SchoolDayBlockPayload {

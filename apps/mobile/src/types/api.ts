@@ -16,8 +16,10 @@ import type {
   ClubTag as ClubChannelTag,
 } from '@ia/contracts/clubs';
 import type {
+  FriendshipStatus,
   ScheduleDashboardResponse,
   ScheduleFriend,
+  ScheduleFriendRequest,
   ScheduleSearchResult,
   ScheduleVisibility,
   ScheduleWeekday,
@@ -46,8 +48,10 @@ export type {
   ClubChannelTag,
 };
 export type {
+  FriendshipStatus,
   ScheduleDashboardResponse,
   ScheduleFriend,
+  ScheduleFriendRequest,
   ScheduleSearchResult,
   ScheduleVisibility,
   ScheduleWeekday,
