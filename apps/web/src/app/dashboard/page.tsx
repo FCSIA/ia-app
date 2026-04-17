@@ -79,7 +79,7 @@ export default function DashboardPage() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <HeroStat label="Announcements" value={announcementsData.length} icon={Megaphone} />
           <HeroStat label="Unread" value={notifData?.count ?? 0} icon={Bell} />
-          <HeroStat label="Upcoming" value={upcomingEvents.length} icon={Calendar} />
+          <HeroStat label="Upcoming" value={upcomingEvents.length} icon={Sparkles} />
           <HeroStat
             label="Next Flex Friday"
             value={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
@@ -163,7 +163,7 @@ export default function DashboardPage() {
                             {format(new Date(event.startAt), 'EEE, MMM d · h:mm a')}
                           </p>
                         </div>
-                        <Calendar className="mt-0.5 size-4 shrink-0 text-primary/70" />
+                        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary/70" />
                       </div>
                       {event.location ? (
                         <p className="mt-3 text-sm text-muted-foreground">{event.location}</p>

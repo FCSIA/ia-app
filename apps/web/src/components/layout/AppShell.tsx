@@ -47,7 +47,7 @@ const primaryNav: NavItem[] = [
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/clubs', label: 'Clubs', icon: BookOpen },
   { href: '/schedule', label: 'School Day', icon: Clock3 },
-  { href: '/events', label: 'Events', icon: Calendar },
+  { href: '/events', label: 'Events', icon: Sparkles },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
   { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
 ];
@@ -207,10 +207,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col bg-card">
           <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
             <div className="flex min-w-0 flex-1 items-center gap-4">
-              <div className="hidden items-center gap-2 md:flex">
-                <span className="font-astronaut text-sm font-bold tracking-[0.2em] text-primary">INNOVATION ACADEMY</span>
-                <div className="h-4 w-px bg-border" />
-              </div>
+
               <div className="flex min-w-0 flex-1 flex-col leading-none">
                 <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
                   {currentMeta.label}
