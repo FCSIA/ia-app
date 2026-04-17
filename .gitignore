@@ -5,3 +5,9 @@ node_modules
 apps/web/.next
 apps/web/.turbo
 apps/web/node_modules
+apps/api/dist
+apps/api/.turbo
+apps/mobile/.expo
+apps/mobile/.env
+.turbo
+.DS_Store
