@@ -30,7 +30,9 @@ export class FlexFridayService {
       include: {
         sessions: {
           include: {
-            _count: { select: { registrations: true } },
+            workshops: {
+              include: { _count: { select: { registrations: true } } },
+            },
           },
         },
       },
@@ -89,8 +91,6 @@ export class FlexFridayService {
     data: {
       title: string;
       description?: string;
-      location?: string;
-      capacity?: number;
       sessionType: FlexSessionType;
       targetPathway?: Pathway;
       targetGrade?: number;
@@ -102,9 +102,12 @@ export class FlexFridayService {
 
     const session = await this.prisma.flexSession.create({
       data: {
-        ...data,
+        title: data.title,
+        description: data.description,
+        sessionType: data.sessionType,
+        targetPathway: data.targetPathway,
+        targetGrade: data.targetGrade,
         flexFriday: { connect: { id: fridayId } },
-        teacherId: actorId,
       },
     });
 
@@ -119,10 +122,53 @@ export class FlexFridayService {
     return session;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getSessions(fridayId: string, userId: string, _userRole: string) {
+  async createWorkshop(
+    sessionId: string,
+    data: {
+      title: string;
+      description?: string;
+      location?: string;
+      capacity?: number;
+    },
+    actorId: string,
+  ) {
+    const session = await this.prisma.flexSession.findUnique({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException('Session not found');
+
+    const workshop = await this.prisma.flexWorkshop.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        capacity: data.capacity,
+        teacherId: actorId,
+        session: { connect: { id: sessionId } },
+      },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'FLEX_WORKSHOP_CREATED',
+      entityType: 'FlexWorkshop',
+      entityId: workshop.id,
+      meta: { sessionId, title: data.title },
+    });
+
+    return workshop;
+  }
+
+  async getSessions(fridayId: string) {
     return this.prisma.flexSession.findMany({
       where: { flexFridayId: fridayId },
+      include: {
+        _count: { select: { workshops: true } },
+      },
+    });
+  }
+
+  async getWorkshops(sessionId: string, userId: string) {
+    return this.prisma.flexWorkshop.findMany({
+      where: { sessionId },
       include: {
         _count: { select: { registrations: true } },
         registrations: {
@@ -137,38 +183,34 @@ export class FlexFridayService {
     });
   }
 
-  async register(sessionId: string, studentId: string) {
-    const session = await this.prisma.flexSession.findUnique({
-      where: { id: sessionId },
-      include: { _count: { select: { registrations: true } } },
+  async register(workshopId: string, studentId: string) {
+    const workshop = await this.prisma.flexWorkshop.findUnique({
+      where: { id: workshopId },
+      include: {
+        _count: { select: { registrations: true } },
+        session: true,
+      },
     });
-    if (!session) throw new NotFoundException('Session not found');
-    if (session.sessionType !== FlexSessionType.STUDENT_CHOICE) {
-      throw new ForbiddenException('This session does not allow student registration');
-    }
+    if (!workshop) throw new NotFoundException('Workshop not found');
 
     // Capacity check
-    if (session.capacity && session._count.registrations >= session.capacity) {
-      throw new ConflictException('Session is at capacity');
+    if (workshop.capacity && workshop._count.registrations >= workshop.capacity) {
+      throw new ConflictException('Workshop is at capacity');
     }
 
-    // Check for conflict on same Friday
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _friday = await this.prisma.flexFriday.findUnique({
-      where: { id: session.flexFridayId },
-    });
+    // Check for conflict: same session, different workshop
     const conflictReg = await this.prisma.flexRegistration.findFirst({
       where: {
         studentId,
-        session: { flexFridayId: session.flexFridayId },
+        workshop: { sessionId: workshop.sessionId },
       },
     });
     if (conflictReg) {
-      throw new ConflictException('Already registered for a session on this Flex Friday');
+      throw new ConflictException('Already registered for a workshop in this session');
     }
 
     const reg = await this.prisma.flexRegistration.create({
-      data: { sessionId, studentId },
+      data: { workshopId, studentId },
     });
 
     await this.audit.log({
@@ -176,15 +218,15 @@ export class FlexFridayService {
       action: 'FLEX_REGISTRATION_CREATED',
       entityType: 'FlexRegistration',
       entityId: reg.id,
-      meta: { sessionId },
+      meta: { workshopId },
     });
 
     return reg;
   }
 
-  async unregister(sessionId: string, studentId: string) {
+  async unregister(workshopId: string, studentId: string) {
     const reg = await this.prisma.flexRegistration.findFirst({
-      where: { sessionId, studentId },
+      where: { workshopId, studentId },
     });
     if (!reg) throw new NotFoundException('Registration not found');
 
@@ -198,23 +240,23 @@ export class FlexFridayService {
     return { success: true };
   }
 
-  async assign(sessionId: string, studentId: string, assignedBy: string) {
-    const session = await this.prisma.flexSession.findUnique({ where: { id: sessionId } });
-    if (!session) throw new NotFoundException('Session not found');
+  async assign(workshopId: string, studentId: string, assignedBy: string) {
+    const workshop = await this.prisma.flexWorkshop.findUnique({ where: { id: workshopId } });
+    if (!workshop) throw new NotFoundException('Workshop not found');
 
-    // Check conflict
+    // Check conflict: same session
     const conflict = await this.prisma.flexAssignment.findFirst({
       where: {
         studentId,
-        session: { flexFridayId: session.flexFridayId },
+        workshop: { sessionId: workshop.sessionId },
       },
     });
-    if (conflict) throw new ConflictException('Student already assigned to a session on this day');
+    if (conflict) throw new ConflictException('Student already assigned to a workshop in this session');
 
     const assignment = await this.prisma.flexAssignment.upsert({
-      where: { sessionId_studentId: { sessionId, studentId } },
+      where: { workshopId_studentId: { workshopId, studentId } },
       update: {},
-      create: { sessionId, studentId, assignedBy },
+      create: { workshopId, studentId, assignedBy },
     });
 
     await this.audit.log({
@@ -222,7 +264,7 @@ export class FlexFridayService {
       action: 'FLEX_ASSIGNMENT_CREATED',
       entityType: 'FlexAssignment',
       entityId: assignment.id,
-      meta: { sessionId, studentId },
+      meta: { workshopId, studentId },
     });
 
     return assignment;
@@ -232,8 +274,12 @@ export class FlexFridayService {
     return this.prisma.flexRegistration.findMany({
       where: { studentId: userId },
       include: {
-        session: {
-          include: { flexFriday: true },
+        workshop: {
+          include: {
+            session: {
+              include: { flexFriday: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -244,33 +290,39 @@ export class FlexFridayService {
     return this.prisma.flexAssignment.findMany({
       where: { studentId: userId },
       include: {
-        session: {
-          include: { flexFriday: true },
+        workshop: {
+          include: {
+            session: {
+              include: { flexFriday: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async getSessionRoster(sessionId: string, actorId: string, actorRole: string) {
-    const session = await this.prisma.flexSession.findUnique({ where: { id: sessionId } });
-    if (!session) throw new NotFoundException('Session not found');
+  async getWorkshopRoster(workshopId: string, actorId: string, actorRole: string) {
+    const workshop = await this.prisma.flexWorkshop.findUnique({
+      where: { id: workshopId },
+    });
+    if (!workshop) throw new NotFoundException('Workshop not found');
 
-    const isTeacher = session.teacherId === actorId;
+    const isTeacher = workshop.teacherId === actorId;
     const isAdmin = actorRole === Role.ADMIN || actorRole === Role.SUPER_ADMIN;
     if (!isTeacher && !isAdmin) throw new ForbiddenException('Cannot view this roster');
 
     const [registrations, assignments] = await Promise.all([
       this.prisma.flexRegistration.findMany({
-        where: { sessionId },
+        where: { workshopId },
         include: { student: { select: { id: true, firstName: true, lastName: true, gradeLevel: true, uniqueId: true } } },
       }),
       this.prisma.flexAssignment.findMany({
-        where: { sessionId },
+        where: { workshopId },
         include: { student: { select: { id: true, firstName: true, lastName: true, gradeLevel: true, uniqueId: true } } },
       }),
     ]);
 
-    return { session, registrations, assignments };
+    return { workshop, registrations, assignments };
   }
 }

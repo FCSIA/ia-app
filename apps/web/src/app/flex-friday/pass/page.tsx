@@ -27,15 +27,15 @@ export default function FlexFridayPassPage() {
     ...(myRegs as any[]).map((r: any) => ({ ...r, kind: 'REGISTERED' })),
     ...(myAssignments as any[]).map((a: any) => ({ ...a, kind: 'ASSIGNED' })),
   ].sort((a, b) => {
-    const dateA = new Date(a.session?.flexFriday?.date ?? 0).getTime();
-    const dateB = new Date(b.session?.flexFriday?.date ?? 0).getTime();
+    const dateA = new Date(a.workshop?.session?.flexFriday?.date ?? 0).getTime();
+    const dateB = new Date(b.workshop?.session?.flexFriday?.date ?? 0).getTime();
     return dateA - dateB;
   });
 
   // Split into upcoming and past
   const now = new Date();
-  const upcoming = allPasses.filter((p) => new Date(p.session?.flexFriday?.date ?? 0) >= now);
-  const past = allPasses.filter((p) => new Date(p.session?.flexFriday?.date ?? 0) < now);
+  const upcoming = allPasses.filter((p) => new Date(p.workshop?.session?.flexFriday?.date ?? 0) >= now);
+  const past = allPasses.filter((p) => new Date(p.workshop?.session?.flexFriday?.date ?? 0) < now);
 
   function pathwayLabel(p?: string) {
     if (!p) return null;
@@ -45,9 +45,10 @@ export default function FlexFridayPassPage() {
   }
 
   function PassCard({ pass, dimmed = false }: { pass: any; dimmed?: boolean }) {
-    const friday = pass.session?.flexFriday;
-    const session = pass.session;
-    if (!friday || !session) return null;
+    const workshop = pass.workshop;
+    const session = workshop?.session;
+    const friday = session?.flexFriday;
+    if (!friday || !session || !workshop) return null;
     const isAssigned = pass.kind === 'ASSIGNED';
 
     return (
@@ -86,7 +87,8 @@ export default function FlexFridayPassPage() {
                   {isAssigned ? 'Teacher Assigned' : 'Student Choice'}
                 </span>
               </div>
-              <h3 className="text-xl font-bold text-foreground leading-tight">{session.title}</h3>
+              <h3 className="text-xl font-bold text-foreground leading-tight">{workshop.title}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{session.title}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <div
@@ -111,14 +113,14 @@ export default function FlexFridayPassPage() {
 
           {/* Details */}
           <div className="space-y-2">
-            {session.description && (
-              <p className="text-sm text-muted-foreground">{session.description}</p>
+            {workshop.description && (
+              <p className="text-sm text-muted-foreground">{workshop.description}</p>
             )}
             <div className="flex flex-wrap gap-4 text-sm">
-              {session.location && (
+              {workshop.location && (
                 <span className="flex items-center gap-1.5 text-foreground/80 font-medium">
                   <MapPin size={13} className="text-orange-500" />
-                  {session.location}
+                  {workshop.location}
                 </span>
               )}
               {session.targetPathway && (
@@ -172,6 +174,7 @@ export default function FlexFridayPassPage() {
               <Ticket size={22} className="text-orange-500" />
               My Passes
             </h1>
+            <p className="text-muted-foreground text-sm">Your Flex Friday workshop passes</p>
           </div>
         </div>
 
@@ -185,9 +188,9 @@ export default function FlexFridayPassPage() {
           <div className="text-center py-20 text-muted-foreground">
             <Ticket size={40} className="mx-auto mb-3 opacity-20" />
             <p className="font-medium">No passes yet</p>
-            <p className="text-sm mt-1">Register for a Flex Friday session to see your pass here.</p>
+            <p className="text-sm mt-1">Register for a Flex Friday workshop to see your pass here.</p>
             <Link href="/flex-friday" className="mt-4 inline-block">
-              <Button size="sm" className="mt-4">Browse Sessions</Button>
+              <Button size="sm" className="mt-4">Browse Workshops</Button>
             </Link>
           </div>
         ) : (
