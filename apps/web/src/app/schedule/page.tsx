@@ -7,12 +7,14 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Loader2,
   Plus,
   Search,
   Shield,
   Sparkles,
   UserPlus,
   Users2,
+  X,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroStat, PageFrame } from '@/components/layout/page-frame';
@@ -91,12 +93,17 @@ export default function SchedulePage() {
     setIsPublic(data?.mySchedule?.isPublic ?? false);
   }, [data?.mySchedule]);
 
-  const { data: searchResults = [] } = useQuery<ScheduleSearchResult[]>({
+  const { data: searchResults = [], isFetching: isSearching } = useQuery<ScheduleSearchResult[]>({
     queryKey: ['schedule-search', normalizedDeferredSearch],
     queryFn: () =>
       scheduleApi.searchPeople(normalizedDeferredSearch).then((response) => response.data),
     enabled: canEditOwnSchedule && normalizedDeferredSearch.length >= 2,
+    staleTime: 30_000,
+    placeholderData: (previous) => previous,
   });
+
+  const searchIsDeferred =
+    canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
 
   const saveScheduleMutation = useMutation({
     mutationFn: () =>
@@ -137,6 +144,7 @@ export default function SchedulePage() {
     mutationFn: (friendId: string) => scheduleApi.removeFriend(friendId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
       toast({ title: 'Friend removed' });
     },
     onError: (error: any) => {
@@ -373,58 +381,84 @@ export default function SchedulePage() {
                       <Input
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        className="rounded-2xl pl-11"
-                        placeholder="Search students"
+                        className="rounded-2xl pl-11 pr-11"
+                        placeholder="Search by name or ID"
                       />
+                      {isSearching || searchIsDeferred ? (
+                        <Loader2 className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                      ) : search ? (
+                        <button
+                          type="button"
+                          onClick={() => setSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-label="Clear search"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      ) : null}
                     </div>
 
                     <div className="space-y-3">
                       {normalizedDeferredSearch.length < 2 ? (
                         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          Type at least two characters to search the student directory.
+                          Type at least two characters to search the student directory. Fuzzy matching handles typos.
                         </div>
                       ) : searchResults.length > 0 ? (
-                        searchResults.map((person) => (
-                          <Card key={person.id} className="rounded-3xl border-border/70 bg-background/90">
-                            <CardContent className="flex items-center justify-between gap-4 p-4">
-                              <div>
-                                <p className="font-medium text-foreground">
-                                  {person.firstName} {person.lastName}
-                                </p>
-                                <p className="mt-1 font-mono text-xs text-muted-foreground">
-                                  {person.uniqueId}
-                                </p>
-                                <Badge
-                                  className={`mt-3 rounded-full ${
-                                    person.visibility === 'PUBLIC'
-                                      ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
-                                      : person.visibility === 'PRIVATE'
-                                        ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
-                                        : 'bg-muted text-muted-foreground'
-                                  }`}
-                                >
-                                  {person.visibility === 'PUBLIC'
-                                    ? 'Public schedule'
-                                    : person.visibility === 'PRIVATE'
-                                      ? 'Private schedule'
-                                      : 'No schedule yet'}
-                                </Badge>
-                              </div>
-                              <Button
-                                className="rounded-2xl"
-                                size="sm"
-                                disabled={person.isFriend || addFriendMutation.isPending}
-                                onClick={() => addFriendMutation.mutate(person.id)}
-                              >
-                                <UserPlus className="mr-2 size-4" />
-                                {person.isFriend ? 'Added' : 'Add'}
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))
+                        <>
+                          <p className="px-1 text-xs text-muted-foreground">
+                            {searchResults.length} result{searchResults.length === 1 ? '' : 's'}
+                          </p>
+                          {searchResults.map((person) => {
+                            const isAddingThis =
+                              addFriendMutation.isPending &&
+                              addFriendMutation.variables === person.id;
+                            return (
+                              <Card key={person.id} className="rounded-3xl border-border/70 bg-background/90">
+                                <CardContent className="flex items-center justify-between gap-4 p-4">
+                                  <div>
+                                    <p className="font-medium text-foreground">
+                                      {person.firstName} {person.lastName}
+                                    </p>
+                                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                      {person.uniqueId}
+                                    </p>
+                                    <Badge
+                                      className={`mt-3 rounded-full ${
+                                        person.visibility === 'PUBLIC'
+                                          ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+                                          : person.visibility === 'PRIVATE'
+                                            ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+                                            : 'bg-muted text-muted-foreground'
+                                      }`}
+                                    >
+                                      {person.visibility === 'PUBLIC'
+                                        ? 'Public schedule'
+                                        : person.visibility === 'PRIVATE'
+                                          ? 'Private schedule'
+                                          : 'No schedule yet'}
+                                    </Badge>
+                                  </div>
+                                  <Button
+                                    className="rounded-2xl"
+                                    size="sm"
+                                    disabled={person.isFriend || isAddingThis}
+                                    onClick={() => addFriendMutation.mutate(person.id)}
+                                  >
+                                    {isAddingThis ? (
+                                      <Loader2 className="mr-2 size-4 animate-spin" />
+                                    ) : (
+                                      <UserPlus className="mr-2 size-4" />
+                                    )}
+                                    {person.isFriend ? 'Added' : isAddingThis ? 'Adding…' : 'Add'}
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </>
                       ) : (
                         <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          No students matched this search.
+                          No students matched &ldquo;{normalizedDeferredSearch}&rdquo;.
                         </div>
                       )}
                     </div>

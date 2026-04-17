@@ -147,6 +147,7 @@ model StudentScheduleFriend {
   friend User @relation("StudentScheduleFriendTarget", fields: [friendId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, friendId])
+  @@index([friendId])
   @@map("student_schedule_friends")
 }
 
