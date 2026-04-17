@@ -39,8 +39,14 @@ export class ScheduleController {
   }
 
   @Get('search')
-  searchPeople(@CurrentUser() user: AuthenticatedUser, @Query('q') query?: string) {
-    return this.scheduleService.searchPeople(user, query ?? '');
+  searchPeople(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('q') query?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const parsed = limit ? Number.parseInt(limit, 10) : undefined;
+    const safeLimit = Number.isFinite(parsed) ? parsed : undefined;
+    return this.scheduleService.searchPeople(user, query ?? '', safeLimit);
   }
 
   @Post('friends')

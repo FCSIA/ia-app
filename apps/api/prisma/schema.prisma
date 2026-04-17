@@ -98,6 +98,7 @@ model StudentScheduleFriend {
   owner     User     @relation("StudentScheduleFriendOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, friendId])
+  @@index([friendId])
   @@map("student_schedule_friends")
 }
 
@@ -376,6 +377,7 @@ model Event {
   clubId                   String?     @map("club_id")
   categoryId               String?     @map("category_id")
   status                   EventStatus @default(DRAFT)
+  type                     EventType   @default(GENERAL)
   title                    String
   description              String?
   location                 String?
@@ -392,6 +394,14 @@ model Event {
   publishedAt              DateTime?   @map("published_at")
   createdAt                DateTime    @default(now()) @map("created_at")
   updatedAt                DateTime    @updatedAt @map("updated_at")
+
+  author                   User             @relation("EventAuthor", fields: [authorId], references: [id])
+  club                     Club?            @relation(fields: [clubId], references: [id])
+  category                 EventCategory?   @relation(fields: [categoryId], references: [id])
+  approvals                EventApproval[]
+  calendarEntry            CalendarEntry?
+  keywordMatches           KeywordMatch[]
+  notificationDeliveries   NotificationDelivery[]
 
   @@map("events")
 }
@@ -630,14 +640,6 @@ enum ClubMentionKind {
 enum EventType {
   GENERAL
   CLUB
-}
-
-enum EventStatus {
-  DRAFT
-  PENDING_APPROVAL
-  APPROVED
-  PUBLISHED
-  CANCELLED
 }
 
 enum ApprovalStatus {

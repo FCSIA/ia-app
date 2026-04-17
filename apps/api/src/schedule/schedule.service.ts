@@ -261,7 +261,13 @@ export class ScheduleService {
                 select: {
                   ...this.userSelect,
                   studentSchedule: {
-                    include: this.scheduleInclude,
+                    select: {
+                      id: true,
+                      isPublic: true,
+                      entries: {
+                        orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
+                      },
+                    },
                   },
                 },
               },
@@ -347,58 +353,89 @@ export class ScheduleService {
     return this.serializeSchedule(schedule);
   }
 
-  async searchPeople(user: { id: string; roles: Role[] }, query: string) {
+  async searchPeople(
+    user: { id: string; roles: Role[] },
+    query: string,
+    limit = 20,
+  ) {
     this.ensureStudentAccess(user);
 
     const search = query.trim();
     if (search.length < 2) return [];
 
-    const [friends, people] = await Promise.all([
-      this.prisma.studentScheduleFriend.findMany({
-        where: { ownerId: user.id },
-        select: { friendId: true },
-      }),
-      this.prisma.user.findMany({
-        where: {
-          id: { not: user.id },
-          isActive: true,
-          roles: { hasSome: STUDENT_ROLES },
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { uniqueId: { contains: search, mode: 'insensitive' } },
-          ],
-        },
-        select: {
-          id: true,
-          uniqueId: true,
-          firstName: true,
-          lastName: true,
-          studentSchedule: {
-            select: {
-              id: true,
-              isPublic: true,
-            },
-          },
-        },
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        take: 20,
-      }),
-    ]);
+    const take = Math.min(Math.max(limit, 1), 50);
+    const pattern = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
-    const friendIds = new Set(friends.map((entry) => entry.friendId));
+    // Ranked fuzzy + substring search powered by pg_trgm GIN indexes.
+    // Trigram similarity handles typos; ILIKE handles exact substrings.
+    // Exact substring hits always beat pure-fuzzy matches in the ranking.
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        uniqueId: string;
+        firstName: string;
+        lastName: string;
+        isPublic: boolean | null;
+        isFriend: boolean;
+      }>
+    >`
+      SELECT
+        u.id,
+        u.unique_id        AS "uniqueId",
+        u.first_name       AS "firstName",
+        u.last_name        AS "lastName",
+        s.is_public        AS "isPublic",
+        (f.owner_id IS NOT NULL) AS "isFriend"
+      FROM users u
+      LEFT JOIN student_schedules s
+        ON s.user_id = u.id
+      LEFT JOIN student_schedule_friends f
+        ON f.owner_id = ${user.id} AND f.friend_id = u.id
+      WHERE u.is_active = TRUE
+        AND u.id <> ${user.id}
+        AND (
+          'STUDENT'::"Role" = ANY(u.roles)
+          OR 'STUDENT_LEADER'::"Role" = ANY(u.roles)
+          OR 'STUDENT_ADMIN'::"Role" = ANY(u.roles)
+        )
+        AND (
+          u.first_name ILIKE ${pattern}
+          OR u.last_name ILIKE ${pattern}
+          OR u.unique_id ILIKE ${pattern}
+          OR (u.first_name || ' ' || u.last_name) ILIKE ${pattern}
+          OR similarity(u.first_name || ' ' || u.last_name, ${search}) > 0.25
+        )
+      ORDER BY
+        -- Exact substring matches first
+        (CASE
+          WHEN u.unique_id ILIKE ${pattern} THEN 0
+          WHEN u.first_name ILIKE ${pattern} OR u.last_name ILIKE ${pattern} THEN 1
+          WHEN (u.first_name || ' ' || u.last_name) ILIKE ${pattern} THEN 2
+          ELSE 3
+        END),
+        -- Then best trigram similarity
+        GREATEST(
+          similarity(u.first_name, ${search}),
+          similarity(u.last_name, ${search}),
+          similarity(u.first_name || ' ' || u.last_name, ${search})
+        ) DESC,
+        u.last_name ASC,
+        u.first_name ASC
+      LIMIT ${take}
+    `;
 
-    return people.map((person) => ({
-      id: person.id,
-      uniqueId: person.uniqueId,
-      firstName: person.firstName,
-      lastName: person.lastName,
-      isFriend: friendIds.has(person.id),
-      visibility: !person.studentSchedule
-        ? 'NONE'
-        : person.studentSchedule.isPublic
-          ? 'PUBLIC'
-          : 'PRIVATE',
+    return rows.map((row) => ({
+      id: row.id,
+      uniqueId: row.uniqueId,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      isFriend: row.isFriend,
+      visibility:
+        row.isPublic === null
+          ? ('NONE' as const)
+          : row.isPublic
+            ? ('PUBLIC' as const)
+            : ('PRIVATE' as const),
     }));
   }
 
@@ -438,12 +475,16 @@ export class ScheduleService {
   async removeFriend(user: { id: string; roles: Role[] }, friendId: string) {
     this.ensureStudentAccess(user);
 
-    await this.prisma.studentScheduleFriend.deleteMany({
+    const { count } = await this.prisma.studentScheduleFriend.deleteMany({
       where: {
         ownerId: user.id,
         friendId,
       },
     });
+
+    if (count === 0) {
+      throw new NotFoundException('Friend not found');
+    }
 
     await this.audit.log({
       actorId: user.id,
