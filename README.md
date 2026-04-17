@@ -109,11 +109,49 @@ pnpm dev
 | ⚙️ API | http://localhost:3001 |
 | 📖 API Docs (Swagger) | http://localhost:3001/docs |
 
----
+If you pull schema changes later, run `pnpm db:migrate` before `pnpm dev`.
+
+If Prisma starts failing with missing-column errors such as `users.middle_name`, your local database is stale relative to the current migration history. Reset and reseed it with:
+
+```bash
+pnpm db:reset
+```
+
+## Local Services
 
 ## 🔑 Test Accounts
 
-All accounts use their **ID as the default password** (e.g. `SUPER001` → password is `SUPER001`).
+```bash
+pnpm infra:up
+pnpm infra:down
+```
+
+`pnpm infra:up` and `pnpm infra:down` manage PostgreSQL through Homebrew.
+
+## Useful Commands
+
+```bash
+pnpm dev         # API + web
+pnpm dev:all     # API + web + mobile
+pnpm dev:mobile  # mobile only
+pnpm build
+pnpm lint
+pnpm test
+pnpm db:generate
+pnpm db:migrate
+pnpm db:reset
+pnpm db:seed
+```
+
+## Local URLs
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001`
+- Swagger: `http://localhost:3001/docs`
+
+## Test Accounts
+
+All demo accounts use their ID as the password.
 
 | ID | Role |
 |----|------|

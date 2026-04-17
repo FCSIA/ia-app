@@ -64,8 +64,8 @@ export default function SchedulePage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'TEACHER');
-  const canManageBlocks = !!user && hasRole(user, 'TEACHER', 'STUDENT_ADMIN');
+  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
+  const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   const [activeTab, setActiveTab] = useState<'my' | 'friends' | 'admin'>(
     canEditOwnSchedule ? 'my' : 'admin',
@@ -250,7 +250,7 @@ export default function SchedulePage() {
               currentStatus.currentBlock
                 ? currentStatus.currentBlock.periodNumber
                   ? currentStatus.currentEntry?.className ||
-                    `${currentStatus.currentBlock.label} (not filled in)`
+                  `${currentStatus.currentBlock.label} (not filled in)`
                   : currentStatus.currentBlock.label
                 : 'No active block'
             }
@@ -262,10 +262,10 @@ export default function SchedulePage() {
               currentStatus.nextBlock
                 ? currentStatus.nextBlock.periodNumber
                   ? findScheduleEntry(
-                      draftSchedule,
-                      currentStatus.nextBlock.weekday,
-                      currentStatus.nextBlock.periodNumber,
-                    )?.className || currentStatus.nextBlock.label
+                    draftSchedule,
+                    currentStatus.nextBlock.weekday,
+                    currentStatus.nextBlock.periodNumber,
+                  )?.className || currentStatus.nextBlock.label
                   : currentStatus.nextBlock.label
                 : 'Nothing else today'
             }
@@ -392,13 +392,12 @@ export default function SchedulePage() {
                                   {person.uniqueId}
                                 </p>
                                 <Badge
-                                  className={`mt-3 rounded-full ${
-                                    person.visibility === 'PUBLIC'
+                                  className={`mt-3 rounded-full ${person.visibility === 'PUBLIC'
                                       ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
                                       : person.visibility === 'PRIVATE'
                                         ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
                                         : 'bg-muted text-muted-foreground'
-                                  }`}
+                                    }`}
                                 >
                                   {person.visibility === 'PUBLIC'
                                     ? 'Public schedule'

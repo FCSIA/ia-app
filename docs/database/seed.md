@@ -103,11 +103,7 @@ The `update` includes `passwordHash` so re-seeding always resets passwords to kn
 To wipe the database and start fresh:
 
 ```bash
-# Drop all tables and re-run migrations
-pnpm --filter api exec prisma migrate reset
-
-# Then re-seed
-pnpm db:seed
+pnpm db:reset
 ```
 
 ⚠️ `migrate reset` deletes all data. Only do this in development.

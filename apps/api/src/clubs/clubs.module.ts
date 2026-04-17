@@ -13,6 +13,6 @@ import { ClubsController } from './clubs.controller';
     ClubInvitationsService,
     ClubChannelsService,
   ],
-  exports: [ClubManagementService, ClubInvitationsService, ClubChannelsService],
+  exports: [ClubAccessPolicy, ClubManagementService, ClubInvitationsService, ClubChannelsService],
 })
 export class ClubsModule {}

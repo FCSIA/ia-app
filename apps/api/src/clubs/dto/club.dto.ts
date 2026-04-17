@@ -153,6 +153,14 @@ export class InviteClubMemberDto {
   uniqueId: string;
 }
 
+export class SetClubMemberRoleDto {
+  @ApiPropertyOptional({ example: 'President', description: 'Clears the role when omitted or blank.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  role?: string | null;
+}
+
 export class RespondToClubInviteDto {
   @ApiProperty()
   accept: boolean;

@@ -187,7 +187,7 @@ export default function FlexFridayPage() {
     },
   });
 
-  const isStudent = user && hasRole(user, 'STUDENT', 'STUDENT_LEADER');
+  const isStudent = user && hasRole(user, 'STUDENT');
 
   return (
     <AppShell>

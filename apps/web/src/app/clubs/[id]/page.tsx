@@ -53,15 +53,15 @@ function DirectoryCard({
   person,
   canManageMembers,
   currentUserId,
-  isSponsor,
-  onPromote,
+  canAssignRole,
+  onSetRole,
   onRemove,
 }: {
   person: ClubDirectoryEntry;
   canManageMembers: boolean;
   currentUserId?: string;
-  isSponsor: boolean;
-  onPromote: (personId: string) => void;
+  canAssignRole: boolean;
+  onSetRole: (person: ClubDirectoryEntry) => void;
   onRemove: (personId: string) => void;
 }) {
   const isCurrentUser = person.id === currentUserId;
@@ -78,10 +78,10 @@ function DirectoryCard({
                 Sponsor
               </Badge>
             ) : null}
-            {person.clubRole === 'LEADER' ? (
+            {person.clubRole ? (
               <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
                 <Crown className="mr-1 size-3" />
-                Leader
+                {formatClubRole(person.clubRole)}
               </Badge>
             ) : null}
             {isCurrentUser ? <Badge variant="outline" className="rounded-full">You</Badge> : null}
@@ -95,10 +95,10 @@ function DirectoryCard({
         </div>
         {canManageMembers && person.kind === 'MEMBER' && !isCurrentUser ? (
           <div className="flex gap-2">
-            {person.clubRole === 'MEMBER' && isSponsor ? (
-              <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => onPromote(person.id)}>
+            {canAssignRole ? (
+              <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => onSetRole(person)}>
                 <Crown className="mr-1.5 size-4" />
-                Promote
+                {person.clubRole ? 'Edit role' : 'Set role'}
               </Button>
             ) : null}
             <Button
@@ -296,11 +296,18 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     },
   });
 
-  const promoteMutation = useMutation({
-    mutationFn: (memberId: string) => clubsApi.promoteMember(id, memberId),
+  const setRoleMutation = useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role?: string }) =>
+      clubsApi.setMemberRole(id, memberId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', id] });
-      toast({ title: 'Member promoted to leader' });
+      toast({ title: 'Club role updated' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to update club role',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -309,6 +316,12 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', id] });
       toast({ title: 'Member removed' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to remove member',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -372,17 +385,34 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
 
   const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?.id);
   const myMembership = club.members?.find((member) => member.userId === user?.id);
-  const isLeader = myMembership?.role === 'LEADER';
+  const hasClubRole = !!myMembership?.role;
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canPost = isSponsor || isLeader || isAdmin;
-  const canInvite = isSponsor || isLeader || isAdmin;
+  const canPost = isSponsor || hasClubRole || isAdmin;
+  const canInvite = isSponsor || hasClubRole || isAdmin;
   const canManageMembers = isSponsor || isAdmin;
-  const canManageChannels = isSponsor || isLeader || isAdmin;
+  const canManageChannels = isSponsor || hasClubRole || isAdmin;
   const channels = club.channels ?? [];
   const tags = club.tags ?? [];
   const recentAnnouncements = announcements.slice(0, 4);
   const totalMessages = channels.reduce((sum, channel) => sum + (channel._count?.messages ?? 0), 0);
   const primaryChannel = channels[0];
+
+  function handleSetRole(person: ClubDirectoryEntry) {
+    const nextRole = window.prompt(
+      `Set a club role for ${fullName(person)}. Leave it blank to clear the role.`,
+      person.clubRole ?? '',
+    );
+    if (nextRole === null) return;
+
+    const normalizedRole = nextRole.trim();
+    const currentRole = person.clubRole?.trim() ?? '';
+    if (normalizedRole === currentRole) return;
+
+    setRoleMutation.mutate({
+      memberId: person.id,
+      role: normalizedRole || undefined,
+    });
+  }
 
   return (
     <AppShell>
@@ -400,9 +430,10 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             {isSponsor ? (
               <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-sky-700 dark:text-sky-300">Sponsor</Badge>
             ) : null}
-            {isLeader ? (
+            {myMembership?.role ? (
               <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-amber-700 dark:text-amber-300">
-                <Crown className="mr-1 size-3" />Leader
+                <Crown className="mr-1 size-3" />
+                {formatClubRole(myMembership.role)}
               </Badge>
             ) : null}
           </div>
@@ -577,8 +608,8 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                           person={person}
                           canManageMembers={false}
                           currentUserId={user?.id}
-                          isSponsor={isSponsor}
-                          onPromote={() => undefined}
+                          canAssignRole={false}
+                          onSetRole={() => undefined}
                           onRemove={() => undefined}
                         />
                       ))
@@ -604,8 +635,8 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                             person={person}
                             canManageMembers={canManageMembers}
                             currentUserId={user?.id}
-                            isSponsor={isSponsor}
-                            onPromote={(memberId) => promoteMutation.mutate(memberId)}
+                            canAssignRole={canManageMembers}
+                            onSetRole={handleSetRole}
                             onRemove={(memberId) => removeMutation.mutate(memberId)}
                           />
                         ))}
@@ -628,7 +659,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
                     </div>
                     <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
                       <p className="text-sm font-semibold text-foreground">@leaders</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Club leaders who can coordinate or unblock work.</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">Members with club roles who can coordinate or unblock work.</p>
                     </div>
                     <div className="rounded-[1.5rem] border border-border/70 bg-muted/20 p-4">
                       <p className="text-sm font-semibold text-foreground">@sponsors</p>
@@ -719,7 +750,7 @@ export default function ClubDetailPage({ params }: { params: Promise<{ id: strin
             <Panel title="Mention guide">
               <div className="space-y-3 text-sm leading-6 text-muted-foreground">
                 <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@all` notifies the whole visible audience.</div>
-                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@leaders` notifies club leaders.</div>
+                <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@leaders` notifies members with club roles.</div>
                 <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">`@sponsors` reaches faculty sponsors across any channel.</div>
                 <div className="rounded-[1.4rem] border border-border/70 bg-muted/20 p-4">Custom tags notify the members currently assigned to that tag.</div>
               </div>

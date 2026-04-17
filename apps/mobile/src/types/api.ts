@@ -108,7 +108,7 @@ export interface EventRecord {
   startAt: string;
   endAt?: string | null;
   status: string;
-  type: string;
+  clubId?: string | null;
   createdAt?: string;
   club?: Pick<ClubSummary, 'id' | 'name'> | null;
   author?: {
@@ -129,7 +129,7 @@ export interface CalendarEntry {
   event?: {
     id: string;
     status: string;
-    type: string;
+    clubId?: string | null;
     club?: Pick<ClubSummary, 'id' | 'name'> | null;
   } | null;
 }

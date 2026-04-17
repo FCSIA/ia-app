@@ -383,7 +383,7 @@ export default function ClubChannelScreen() {
   const suggestionEntries = useMemo<MentionSuggestion[]>(() => {
     const builtIns: MentionSuggestion[] = [
       { token: 'all', label: 'Everyone in this channel', kind: 'built-in' },
-      { token: 'leaders', label: 'Club leaders', kind: 'built-in' },
+      { token: 'leaders', label: 'Members with club roles', kind: 'built-in' },
       { token: 'sponsors', label: 'Teacher sponsors', kind: 'built-in' },
     ];
 

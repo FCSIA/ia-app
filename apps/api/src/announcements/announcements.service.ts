@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ModerationService } from '../moderation/moderation.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ClubAccessPolicy } from '../clubs/club-access.policy';
 import { CreateAnnouncementDto, CreateCommentDto } from './dto/announcement.dto';
 import {
   AnnouncementStatus,
@@ -23,6 +24,7 @@ export class AnnouncementsService {
     private audit: AuditService,
     private moderation: ModerationService,
     private notifications: NotificationsService,
+    private clubAccessPolicy: ClubAccessPolicy,
   ) { }
 
   private async canPost(userId: string, userRole: string, clubId?: string): Promise<boolean> {
@@ -34,18 +36,10 @@ export class AnnouncementsService {
     )
       return true;
 
-    // STUDENT_LEADER system role can post for their club
-    if (clubId && userRole === Role.STUDENT_LEADER) return true;
+    if (!clubId) return false;
 
-    // Check if user is a club LEADER (club-level role) in this specific club
-    if (clubId) {
-      const membership = await this.prisma.clubMember.findFirst({
-        where: { clubId, userId, role: 'LEADER' as any },
-      });
-      if (membership) return true;
-    }
-
-    return false;
+    const context = await this.clubAccessPolicy.getClubContext(clubId, userId, userRole);
+    return context.isSponsor || context.hasClubRole || context.isAdmin;
   }
 
   async archiveExpired() {
@@ -122,17 +116,7 @@ export class AnnouncementsService {
     });
     if (!ann) throw new NotFoundException('Announcement not found');
     if (ann.clubId) {
-      const isMember = await this.prisma.clubMember.findFirst({
-        where: { clubId: ann.clubId, userId },
-      });
-      const isSponsor = await this.prisma.clubSponsor.findFirst({
-        where: { clubId: ann.clubId, userId },
-      });
-      const isAdmin =
-        userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
-      if (!isMember && !isSponsor && !isAdmin) {
-        throw new ForbiddenException('Not a club member');
-      }
+      await this.clubAccessPolicy.getClubContext(ann.clubId, userId, userRole);
     }
     return ann;
   }

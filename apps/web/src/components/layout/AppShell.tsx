@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const showSchedule =
-    user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'TEACHER');
+    user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN');
 
   const primary = primaryNav.filter((i) => i.href !== '/schedule' || showSchedule);
 
@@ -160,123 +160,123 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex min-h-screen w-full bg-background">
-          {/* Narrow dark sidebar (icon-only, sticky) */}
-          <aside
-            className="sticky top-0 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
-            aria-label="Primary navigation"
+        {/* Narrow dark sidebar (icon-only, sticky) */}
+        <aside
+          className="sticky top-0 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
+          aria-label="Primary navigation"
+        >
+          <Link
+            href="/dashboard"
+            aria-label="Home"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
           >
-            <Link
-              href="/dashboard"
-              aria-label="Home"
-              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-            >
-              <span className="font-astronaut text-xs font-bold tracking-widest">IA</span>
-            </Link>
+            <span className="font-astronaut text-xs font-bold tracking-widest">IA</span>
+          </Link>
 
-            <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-0">
-              {primary.map((item) => (
-                <NavIcon
-                  key={item.href}
-                  item={item}
-                  active={isActive(item.href)}
-                  badge={item.href === '/notifications' ? unreadBadge : undefined}
-                />
-              ))}
-            </div>
-
-            <div className="flex shrink-0 flex-col items-center gap-1.5 pt-3">
-              {accountNav.map((item) => (
-                <NavIcon
-                  key={item.href}
-                  item={item}
-                  active={isActive(item.href)}
-                  badge={item.href === '/notifications' ? unreadBadge : undefined}
-                />
-              ))}
-              {showAdmin
-                ? adminNav.map((item) => (
-                  <NavIcon key={item.href} item={item} active={isActive(item.href)} />
-                ))
-                : null}
-              <div className="my-2 h-px w-8 bg-white/10" />
-              <ThemeToggle />
-            </div>
-          </aside>
-
-          {/* Main */}
-          <div className="flex min-w-0 flex-1 flex-col bg-card">
-            <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
-              <div className="flex min-w-0 flex-1 items-center gap-4">
-                <div className="hidden items-center gap-2 md:flex">
-                  <span className="font-astronaut text-sm font-bold tracking-[0.2em] text-primary">INNOVATION ACADEMY</span>
-                  <div className="h-4 w-px bg-border" />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col leading-none">
-                  <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-                    {currentMeta.label}
-                  </h1>
-                  <p className="hidden truncate text-[11px] text-muted-foreground md:block">
-                    {currentMeta.detail}
-                  </p>
-                </div>
-              </div>
-              {user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <span className="text-xs font-semibold">
-                          {user.firstName.charAt(0)}
-                          {user.lastName.charAt(0)}
-                        </span>
-                      </div>
-                      <div className="hidden min-w-0 leading-tight sm:block">
-                        <p className="truncate text-left text-sm font-medium text-foreground">
-                          {user.firstName} {user.lastName}
-                        </p>
-                        <p className="truncate text-left text-[11px] text-muted-foreground">
-                          {user.uniqueId}
-                        </p>
-                      </div>
-                      <ChevronDown className="size-4 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {user.firstName} {user.lastName}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.uniqueId}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="cursor-pointer">
-                        <Settings className="mr-2 size-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-600"
-                    >
-                      <LogOut className="mr-2 size-4" />
-                      <span>Sign out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
-            </header>
-
-            <main className="flex-1 px-6 pb-8 lg:px-8">{children}</main>
+          <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-0">
+            {primary.map((item) => (
+              <NavIcon
+                key={item.href}
+                item={item}
+                active={isActive(item.href)}
+                badge={item.href === '/notifications' ? unreadBadge : undefined}
+              />
+            ))}
           </div>
+
+          <div className="flex shrink-0 flex-col items-center gap-1.5 pt-3">
+            {accountNav.map((item) => (
+              <NavIcon
+                key={item.href}
+                item={item}
+                active={isActive(item.href)}
+                badge={item.href === '/notifications' ? unreadBadge : undefined}
+              />
+            ))}
+            {showAdmin
+              ? adminNav.map((item) => (
+                <NavIcon key={item.href} item={item} active={isActive(item.href)} />
+              ))
+              : null}
+            <div className="my-2 h-px w-8 bg-white/10" />
+            <ThemeToggle />
+          </div>
+        </aside>
+
+        {/* Main */}
+        <div className="flex min-w-0 flex-1 flex-col bg-card">
+          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <div className="hidden items-center gap-2 md:flex">
+                <span className="font-astronaut text-sm font-bold tracking-[0.2em] text-primary">INNOVATION ACADEMY</span>
+                <div className="h-4 w-px bg-border" />
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col leading-none">
+                <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+                  {currentMeta.label}
+                </h1>
+                <p className="hidden truncate text-[11px] text-muted-foreground md:block">
+                  {currentMeta.detail}
+                </p>
+              </div>
+            </div>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <span className="text-xs font-semibold">
+                        {user.firstName.charAt(0)}
+                        {user.lastName.charAt(0)}
+                      </span>
+                    </div>
+                    <div className="hidden min-w-0 leading-tight sm:block">
+                      <p className="truncate text-left text-sm font-medium text-foreground">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="truncate text-left text-[11px] text-muted-foreground">
+                        {user.uniqueId}
+                      </p>
+                    </div>
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.uniqueId}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <Settings className="mr-2 size-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-600"
+                  >
+                    <LogOut className="mr-2 size-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </header>
+
+          <main className="flex-1 px-6 pb-8 lg:px-8">{children}</main>
+        </div>
       </div>
     </TooltipProvider>
   );

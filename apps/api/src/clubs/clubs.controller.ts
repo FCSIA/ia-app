@@ -24,6 +24,7 @@ import {
   CreateClubTagDto,
   InviteClubMemberDto,
   RespondToClubInviteDto,
+  SetClubMemberRoleDto,
   ToggleClubChannelReactionDto,
   UpdateClubDto,
 } from './dto/club.dto';
@@ -175,13 +176,14 @@ export class ClubsController {
     return this.clubInvitations.respondToInvite(inviteId, body.accept, user.id);
   }
 
-  @Post(':id/members/:memberId/promote')
-  promoteMember(
+  @Patch(':id/members/:memberId/role')
+  setMemberRole(
     @Param('id') clubId: string,
     @Param('memberId') memberId: string,
+    @Body() body: SetClubMemberRoleDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.clubManagement.promoteMember(clubId, memberId, user.id, user.role);
+    return this.clubManagement.setMemberRole(clubId, memberId, body.role, user.id, user.role);
   }
 
   @Post(':id/members/:memberId/remove')
