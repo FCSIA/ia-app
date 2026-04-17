@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useDeferredValue, useMemo, useRef, useState, type ReactNode } from 'react';
+import { use, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -806,7 +806,8 @@ export default function ClubChannelPage({
   params: Promise<{ id: string; channelId: string }>;
 }) {
   const { id, channelId } = use(params);
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

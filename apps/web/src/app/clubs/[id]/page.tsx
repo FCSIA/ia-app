@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useDeferredValue, useMemo, useState } from 'react';
+import { use, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -155,7 +155,8 @@ function ChannelTile({
 
 export default function ClubDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [tab, setTab] = useState<TabKey>('overview');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
@@ -20,7 +20,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function FlexFridayPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const qc = useQueryClient();
   const { toast } = useToast();
   const [selectedFriday, setSelectedFriday] = useState<any>(null);

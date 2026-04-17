@@ -60,7 +60,8 @@ function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean)
 }
 
 export default function SchedulePage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

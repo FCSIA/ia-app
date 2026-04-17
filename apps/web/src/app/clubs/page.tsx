@@ -132,7 +132,8 @@ function InviteCard({
 }
 
 export default function ClubsPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');

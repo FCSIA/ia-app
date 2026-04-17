@@ -53,7 +53,8 @@ function downloadCsv(filename: string, rows: Array<Array<unknown>>, headers: str
 }
 
 export default function AdminPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const router = useRouter();
   const { toast } = useToast();
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsApi } from '@/lib/api';
@@ -60,7 +60,8 @@ function EventCard({ event, onApprove, onReject, onCancel, user }: any) {
 }
 
 export default function EventsPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);

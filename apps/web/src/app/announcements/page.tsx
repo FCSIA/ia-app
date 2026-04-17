@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi } from '@/lib/api';
@@ -71,7 +71,8 @@ function AnnouncementCard({ ann, onArchive, canArchive }: any) {
 }
 
 export default function AnnouncementsPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showArchived, setShowArchived] = useState(false);

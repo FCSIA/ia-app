@@ -1,6 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser } from '@/lib/auth';
@@ -10,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default function FlexFridayPassPage() {
-  const user = getUser();
+  const [user, setUser] = useState<ReturnType<typeof getUser>>(null);
+  useEffect(() => { setUser(getUser()); }, []);
 
   const { data: myRegs = [], isLoading } = useQuery({
     queryKey: ['my-flex-registrations'],
