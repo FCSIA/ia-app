@@ -128,12 +128,79 @@ export class ClubManagementService {
   }
 
   async getOne(id: string, userId: string, userRole: string) {
-    await this.accessPolicy.getClubContext(id, userId, userRole);
+    const viewer = await this.accessPolicy.getViewerContext(id, userId, userRole);
+
+    if (viewer.canAccessWorkspace) {
+      const club = await this.prisma.club.findUnique({
+        where: { id },
+        include: {
+          members: {
+            include: {
+              user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+            },
+            orderBy: { user: { firstName: 'asc' } },
+          },
+          sponsors: {
+            include: {
+              user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+            },
+            orderBy: { user: { firstName: 'asc' } },
+          },
+          tags: {
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+                },
+              },
+            },
+            orderBy: { name: 'asc' },
+          },
+          joinRequests: viewer.canManageMembership
+            ? {
+                where: { status: 'PENDING' },
+                include: {
+                  requester: {
+                    select: { id: true, uniqueId: true, firstName: true, lastName: true },
+                  },
+                },
+                orderBy: { createdAt: 'asc' },
+              }
+            : false,
+          _count: { select: { members: true, channels: true, tags: true } },
+        },
+      });
+      if (!club) throw new NotFoundException('Club not found');
+
+      const channels = await this.accessPolicy.getVisibleChannels(id, userId, userRole);
+      const pendingJoinRequests = ((club as any).joinRequests ?? []).map((request: any) => ({
+        id: request.id,
+        status: request.status,
+        createdAt: request.createdAt.toISOString(),
+        requester: request.requester,
+      }));
+      return {
+        ...club,
+        joinCode: undefined,
+        viewer,
+        channels,
+        directory: this.buildDirectory(club),
+        leaders: club.members.filter((member) => !!member.role?.trim()),
+        activeJoinCode: viewer.canManageMembership && club.joinCode
+          ? {
+              code: club.joinCode,
+              updatedAt: club.joinCodeUpdatedAt?.toISOString() ?? null,
+            }
+          : null,
+        pendingJoinRequests,
+      };
+    }
 
     const club = await this.prisma.club.findUnique({
       where: { id },
       include: {
         members: {
+          where: { role: { not: null } },
           include: {
             user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
           },
@@ -145,25 +212,21 @@ export class ClubManagementService {
           },
           orderBy: { user: { firstName: 'asc' } },
         },
-        tags: {
-          include: {
-            members: {
-              include: {
-                user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
-              },
-            },
-          },
-          orderBy: { name: 'asc' },
-        },
+        _count: { select: { members: true, channels: true, tags: true } },
       },
     });
     if (!club) throw new NotFoundException('Club not found');
 
-    const channels = await this.accessPolicy.getVisibleChannels(id, userId, userRole);
     return {
       ...club,
-      channels,
-      directory: this.buildDirectory(club),
+      viewer,
+      members: [],
+      channels: [],
+      tags: [],
+      directory: [],
+      leaders: club.members.filter((member) => !!member.role?.trim()),
+      activeJoinCode: null,
+      pendingJoinRequests: [],
     };
   }
 
@@ -174,6 +237,7 @@ export class ClubManagementService {
       data: {
         name: dto.name.trim(),
         description: dto.description?.trim() || undefined,
+        joinPolicy: dto.joinPolicy ?? 'OPEN',
         sponsors: {
           create: sponsorIds.map((sponsorId) => ({ userId: sponsorId })),
         },
@@ -197,6 +261,7 @@ export class ClubManagementService {
       data: {
         name: dto.name?.trim(),
         description: dto.description?.trim(),
+        joinPolicy: dto.joinPolicy,
       },
     });
 

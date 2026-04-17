@@ -1,20 +1,309 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { Megaphone, MessageSquareText, UserPlus } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  KeyRound,
+  Megaphone,
+  MessageSquareText,
+  Shield,
+  Sparkles,
+  UserPlus,
+  Users2,
+} from 'lucide-react';
 import type { ClubDetail } from '@ia/contracts/clubs';
+import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { fullName, type AnnouncementSummary } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { announcementsApi, clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
+
+function RequestsPanel({
+  club,
+}: {
+  club: ClubDetail;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const respondMutation = useMutation({
+    mutationFn: ({ requestId, accept }: { requestId: string; accept: boolean }) =>
+      clubsApi.respondToJoinRequest(club.id, requestId, accept),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
+      queryClient.invalidateQueries({ queryKey: ['clubs'] });
+      toast({ title: 'Join request updated' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to update request',
+        variant: 'destructive',
+      }),
+  });
+
+  if (!club.pendingJoinRequests?.length) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Pending join requests</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {club.pendingJoinRequests.map((request) => (
+          <div
+            key={request.id}
+            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-foreground">{fullName(request.requester)}</p>
+              <p className="text-sm text-muted-foreground">
+                {request.requester.uniqueId || 'Student'} · requested{' '}
+                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => respondMutation.mutate({ requestId: request.id, accept: false })}
+              >
+                Decline
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => respondMutation.mutate({ requestId: request.id, accept: true })}
+              >
+                Approve
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function JoinCodePanel({ club }: { club: ClubDetail }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [redeemOpen, setRedeemOpen] = useState(false);
+  const [code, setCode] = useState('');
+
+  const generateMutation = useMutation({
+    mutationFn: () => clubsApi.generateJoinCode(club.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
+      toast({ title: 'Join code generated' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to generate code',
+        variant: 'destructive',
+      }),
+  });
+
+  const redeemMutation = useMutation({
+    mutationFn: () => clubsApi.redeemJoinCode(club.id, code.trim().toUpperCase()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
+      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
+      toast({ title: 'Joined club with code' });
+      setCode('');
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Invalid join code',
+        variant: 'destructive',
+      }),
+  });
+
+  if (club.viewer.canManageMembership) {
+    return (
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Join code</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Generate a reusable join code for students who should be able to enter directly.
+          </p>
+          {club.activeJoinCode?.code ? (
+            <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                Active code
+              </p>
+              <p className="mt-2 text-2xl font-semibold tracking-[0.32em] text-foreground">
+                {club.activeJoinCode.code}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Generated{' '}
+                {club.activeJoinCode.updatedAt
+                  ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
+                  : 'recently'}
+              </p>
+            </div>
+          ) : null}
+          <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+            <Sparkles className="mr-2 size-4" />
+            {club.activeJoinCode?.code ? 'Regenerate join code' : 'Generate join code'}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (club.joinPolicy !== 'REQUEST') return null;
+
+  return (
+    <div className="space-y-3">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setRedeemOpen((current) => !current)}
+      >
+        <KeyRound className="mr-2 size-4" />
+        Use join code
+      </Button>
+      {redeemOpen ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:flex-row">
+          <Input
+            value={code}
+            onChange={(event) => setCode(event.target.value.toUpperCase())}
+            placeholder="Enter join code"
+          />
+          <Button onClick={() => redeemMutation.mutate()} disabled={!code.trim() || redeemMutation.isPending}>
+            Join with code
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PublicClubOverview({ club }: { club: ClubDetail }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const joinMutation = useMutation({
+    mutationFn: () => clubsApi.join(club.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
+      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
+      toast({ title: 'Joined club' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to join club',
+        variant: 'destructive',
+      }),
+  });
+
+  const requestMutation = useMutation({
+    mutationFn: () => clubsApi.requestToJoin(club.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
+      toast({ title: 'Join request sent' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to send request',
+        variant: 'destructive',
+      }),
+  });
+
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
+      <Card className="border-primary/10 bg-card/95">
+        <CardContent className="space-y-5 p-6 sm:p-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+            {club.viewer.hasPendingJoinRequest ? (
+              <Badge variant="outline">Request pending</Badge>
+            ) : null}
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
+            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+              {club.description || 'No club description yet.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {club.joinPolicy === 'OPEN' ? (
+              <Button onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending}>
+                <UserPlus className="mr-2 size-4" />
+                Join club
+              </Button>
+            ) : (
+              <Button
+                onClick={() => requestMutation.mutate()}
+                disabled={club.viewer.hasPendingJoinRequest || requestMutation.isPending}
+              >
+                <UserPlus className="mr-2 size-4" />
+                {club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
+              </Button>
+            )}
+            <JoinCodePanel club={club} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Student leaders</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {club.leaders.length > 0 ? (
+              club.leaders.map((leader) => (
+                <div key={leader.userId} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3">
+                  <ClubAvatar person={leader.user} className="size-10" fallbackClassName="text-xs" />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{fullName(leader.user)}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {leader.role || 'Club leader'}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No club leaders listed yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Sponsors</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {club.sponsors.map((sponsor) => (
+              <div key={sponsor.userId} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3">
+                <ClubAvatar person={sponsor.user} className="size-10" fallbackClassName="text-xs" />
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{fullName(sponsor.user)}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {sponsor.user.uniqueId || 'Sponsor'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 export default function ClubOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -30,11 +319,21 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const { data: announcements = [] } = useQuery<AnnouncementSummary[]>({
     queryKey: ['club-announcements', id],
     queryFn: () => announcementsApi.getAll(false, id).then((r) => r.data),
-    enabled: !!club,
+    enabled: !!club?.viewer.canAccessWorkspace,
   });
 
-  const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
-  const myMembership = club?.members?.find((member) => member.userId === user?.id);
+  if (!club) return null;
+
+  if (!club.viewer.canAccessWorkspace) {
+    return (
+      <AppShell>
+        <PublicClubOverview club={club} />
+      </AppShell>
+    );
+  }
+
+  const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?.id);
+  const myMembership = club.members?.find((member) => member.userId === user?.id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canPost = isSponsor || !!myMembership?.role || isAdmin;
@@ -42,8 +341,8 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
 
   const title = (
     <div className="min-w-0">
-      <h1 className="truncate text-base font-semibold text-foreground">{club?.name ?? 'Club'}</h1>
-      {club?.description ? (
+      <h1 className="truncate text-base font-semibold text-foreground">{club.name}</h1>
+      {club.description ? (
         <p className="truncate text-xs text-muted-foreground">{club.description}</p>
       ) : null}
     </div>
@@ -66,7 +365,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     </>
   );
 
-  const rightPane = club ? (
+  const rightPane = (
     <div className="space-y-6 p-5">
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -89,12 +388,33 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
 
       <section className="space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Student leaders
+        </h3>
+        <div className="space-y-2">
+          {club.leaders.length > 0 ? (
+            club.leaders.map((leader) => (
+              <div key={leader.userId} className="flex items-center gap-2.5">
+                <ClubAvatar person={leader.user} className="size-8" fallbackClassName="text-[10px]" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{fullName(leader.user)}</p>
+                  <p className="truncate text-xs text-muted-foreground">{leader.role || 'Leader'}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-muted-foreground">No leaders assigned yet.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Stats
         </h3>
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Members</dt>
-            <dd className="font-medium">{club.members.length}</dd>
+            <dd className="font-medium">{club._count?.members ?? club.members.length}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Channels</dt>
@@ -107,11 +427,14 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
         </dl>
       </section>
     </div>
-  ) : null;
+  );
 
   return (
     <ClubWorkspace clubId={id} title={title} actions={actions} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
+        {club.viewer.canManageMembership ? <JoinCodePanel club={club} /> : null}
+        {club.viewer.canManageMembership ? <RequestsPanel club={club} /> : null}
+
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Announcements</h2>
@@ -139,9 +462,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
                     {announcement.author
                       ? `${announcement.author.firstName} ${announcement.author.lastName}`
                       : 'Unknown author'}
-                    {announcement._count?.comments
-                      ? ` · ${announcement._count.comments} comments`
-                      : ''}
+                    {announcement._count?.comments ? ` · ${announcement._count.comments} comments` : ''}
                   </p>
                 </Link>
               ))}

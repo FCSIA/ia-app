@@ -8,14 +8,25 @@ import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ClubContext {
-  club: { id: string; name: string; description: string | null; isActive: boolean };
+  club: {
+    id: string;
+    name: string;
+    description: string | null;
+    isActive: boolean;
+    joinPolicy: 'OPEN' | 'REQUEST';
+    joinCode: string | null;
+    joinCodeUpdatedAt: Date | null;
+  };
   membership: { role: string | null } | null;
   isMember: boolean;
   hasClubRole: boolean;
   isSponsor: boolean;
   isAdmin: boolean;
+  canAccessWorkspace: boolean;
   canManageChannels: boolean;
+  canManageMembership: boolean;
   canSeePrivateChannels: boolean;
+  hasPendingJoinRequest: boolean;
 }
 
 @Injectable()
@@ -26,14 +37,22 @@ export class ClubAccessPolicy {
     return role === Role.ADMIN || role === Role.SUPER_ADMIN;
   }
 
-  async getClubContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
+  async getViewerContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
     const club = await this.prisma.club.findUnique({
       where: { id: clubId },
-      select: { id: true, name: true, description: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+        joinPolicy: true,
+        joinCode: true,
+        joinCodeUpdatedAt: true,
+      },
     });
     if (!club) throw new NotFoundException('Club not found');
 
-    const [membership, sponsor] = await Promise.all([
+    const [membership, sponsor, pendingJoinRequest] = await Promise.all([
       this.prisma.clubMember.findFirst({
         where: { clubId, userId },
         select: { role: true },
@@ -42,18 +61,20 @@ export class ClubAccessPolicy {
         where: { clubId, userId },
         select: { userId: true },
       }),
+      this.prisma.clubJoinRequest.findFirst({
+        where: { clubId, requesterId: userId, status: 'PENDING' },
+        select: { id: true },
+      }),
     ]);
 
     const isAdmin = this.isAdmin(userRole);
     const isMember = !!membership;
     const hasClubRole = !!membership?.role?.trim();
     const isSponsor = !!sponsor;
+    const canAccessWorkspace = isMember || isSponsor || isAdmin;
     const canManageChannels = isSponsor || hasClubRole || isAdmin;
+    const canManageMembership = canManageChannels;
     const canSeePrivateChannels = isSponsor || isAdmin;
-
-    if (!isMember && !isSponsor && !isAdmin) {
-      throw new ForbiddenException('Not a club member');
-    }
 
     return {
       club,
@@ -62,9 +83,20 @@ export class ClubAccessPolicy {
       hasClubRole,
       isSponsor,
       isAdmin,
+      canAccessWorkspace,
       canManageChannels,
+      canManageMembership,
       canSeePrivateChannels,
+      hasPendingJoinRequest: !!pendingJoinRequest,
     };
+  }
+
+  async getClubContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
+    const context = await this.getViewerContext(clubId, userId, userRole);
+    if (!context.canAccessWorkspace) {
+      throw new ForbiddenException('Not a club member');
+    }
+    return context;
   }
 
   async getVisibleChannels(clubId: string, userId: string, userRole: string) {

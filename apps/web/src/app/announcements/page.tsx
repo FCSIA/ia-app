@@ -137,11 +137,13 @@ function AnnouncementCard({
   onArchive,
   canArchive,
   onTagClick,
+  onClubClick,
 }: {
   ann: any;
   onArchive: (id: string) => void;
   canArchive: boolean;
   onTagClick: (tag: string) => void;
+  onClubClick: (clubId: string) => void;
 }) {
   return (
     <Card className="transition-all duration-200 hover:-translate-y-0.5">
@@ -177,7 +179,11 @@ function AnnouncementCard({
                   {TAG_LABELS[ann.targetType] || ann.targetType.replace(/_/g, ' ')}
                 </Badge>
               </button>
-              {ann.club?.name ? <Badge variant="outline">{ann.club.name}</Badge> : null}
+              {ann.club?.name ? (
+                <button type="button" onClick={() => onClubClick(ann.club.id)}>
+                  <Badge variant="outline">{ann.club.name}</Badge>
+                </button>
+              ) : null}
             </div>
 
             <Link href={`/announcements/${ann.id}`}>
@@ -657,6 +663,10 @@ export default function AnnouncementsPage() {
                 canArchive={canArchive}
                 onArchive={(id: string) => archiveMutation.mutate(id)}
                 onTagClick={handleTagClick}
+                onClubClick={(clubId: string) => {
+                  setActiveTag('CLUB');
+                  setSelectedClubIds([clubId]);
+                }}
               />
             ))}
           </div>

@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ClubJoinPolicy } from '@prisma/client';
 
 export class CreateClubDto {
   @ApiProperty({ example: 'Robotics Club' })
@@ -25,6 +26,10 @@ export class CreateClubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ enum: ClubJoinPolicy, default: ClubJoinPolicy.OPEN })
+  @IsOptional()
+  joinPolicy?: ClubJoinPolicy;
 
   @ApiProperty({ type: [String], description: 'At least one sponsor is required' })
   @IsArray()
@@ -45,6 +50,10 @@ export class UpdateClubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ enum: ClubJoinPolicy })
+  @IsOptional()
+  joinPolicy?: ClubJoinPolicy;
 }
 
 export class AddClubSponsorDto {
@@ -162,6 +171,18 @@ export class SetClubMemberRoleDto {
 }
 
 export class RespondToClubInviteDto {
+  @ApiProperty()
+  accept: boolean;
+}
+
+export class RedeemClubJoinCodeDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(4)
+  code: string;
+}
+
+export class RespondToClubJoinRequestDto {
   @ApiProperty()
   accept: boolean;
 }

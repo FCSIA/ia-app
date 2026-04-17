@@ -37,6 +37,7 @@ export default function NotificationsPage() {
   const categoryColors: Record<string, string> = {
     SCHOOL_ANNOUNCEMENT: 'bg-blue-500/15 text-blue-400 border-blue-500/25',
     CLUB_ANNOUNCEMENT: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+    CLUB_JOIN_REQUEST: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',
     EVENT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     FLEX_FRIDAY: 'bg-foreground/10 text-foreground border-foreground/20',
     CLUB_CHANNEL_MENTION: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',

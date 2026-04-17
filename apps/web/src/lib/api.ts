@@ -107,6 +107,13 @@ export const clubsApi = {
   getMyClubs: () => api.get('/clubs/my'),
   getMyInvites: () => api.get('/clubs/my/invites'),
   getOne: (id: string) => api.get(`/clubs/${id}`),
+  join: (id: string) => api.post(`/clubs/${id}/join`),
+  requestToJoin: (id: string) => api.post(`/clubs/${id}/request-join`),
+  redeemJoinCode: (id: string, code: string) =>
+    api.post(`/clubs/${id}/join-code/redeem`, { code }),
+  generateJoinCode: (id: string) => api.post(`/clubs/${id}/join-code`),
+  respondToJoinRequest: (id: string, requestId: string, accept: boolean) =>
+    api.post(`/clubs/${id}/join-requests/${requestId}/respond`, { accept }),
   getChannels: (clubId: string) => api.get(`/clubs/${clubId}/channels`),
   getChannelMessages: (clubId: string, channelId: string) =>
     api.get(`/clubs/${clubId}/channels/${channelId}/messages`),

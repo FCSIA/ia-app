@@ -32,6 +32,7 @@ model User {
   createdChannels            ClubChannel[]                @relation("ClubChannelCreator")
   receivedInvites            ClubInvite[]                 @relation("InviteRecipient")
   sentInvites                ClubInvite[]                 @relation("InviteSender")
+  clubJoinRequests           ClubJoinRequest[]
   clubMemberships            ClubMember[]
   clubsSponsored             ClubSponsor[]
   clubTagMemberships         ClubTagMember[]
@@ -186,12 +187,16 @@ model Club {
   id            String                 @id @default(cuid())
   name          String                 @unique
   description   String?
+  joinPolicy    ClubJoinPolicy         @default(OPEN) @map("join_policy")
+  joinCode      String?                @map("join_code")
+  joinCodeUpdatedAt DateTime?          @map("join_code_updated_at")
   isActive      Boolean                @default(true) @map("is_active")
   createdAt     DateTime               @default(now()) @map("created_at")
   updatedAt     DateTime               @updatedAt @map("updated_at")
   announcements Announcement[]
   channels      ClubChannel[]
   invites       ClubInvite[]
+  joinRequests  ClubJoinRequest[]
   members       ClubMember[]
   sponsors      ClubSponsor[]
   tags          ClubTag[]
@@ -241,6 +246,21 @@ model ClubInvite {
 
   @@unique([clubId, recipientId])
   @@map("club_invites")
+}
+
+model ClubJoinRequest {
+  id          String                @id @default(cuid())
+  clubId      String                @map("club_id")
+  requesterId String                @map("requester_id")
+  status      ClubJoinRequestStatus @default(PENDING)
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  club        Club                  @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  requester   User                  @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, requesterId])
+  @@index([clubId, status])
+  @@map("club_join_requests")
 }
 
 model ClubChannel {
@@ -662,6 +682,17 @@ enum InviteStatus {
   DECLINED
 }
 
+enum ClubJoinPolicy {
+  OPEN
+  REQUEST
+}
+
+enum ClubJoinRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 enum ClubMentionKind {
   USER
   BUILT_IN_TAG
@@ -707,6 +738,7 @@ enum ContentType {
 enum NotificationCategory {
   SCHOOL_ANNOUNCEMENT
   CLUB_ANNOUNCEMENT
+  CLUB_JOIN_REQUEST
   EVENT
   FLEX_FRIDAY
   CLUB_CHANNEL_MENTION

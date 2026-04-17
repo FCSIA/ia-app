@@ -2,6 +2,7 @@ import type { AppRole } from './auth';
 export type ClubDirectoryKind = 'SPONSOR' | 'MEMBER';
 export type ClubMemberRole = string;
 export type ClubMentionKind = 'USER' | 'BUILT_IN_TAG' | 'CUSTOM_TAG';
+export type ClubJoinPolicy = 'OPEN' | 'REQUEST';
 export interface ClubUserRef {
     id: string;
     uniqueId?: string | null;
@@ -14,6 +15,8 @@ export interface ClubMember {
     userId: string;
     role?: ClubMemberRole | null;
     user: ClubUserRef;
+}
+export interface ClubLeader extends ClubMember {
 }
 export interface ClubSponsor {
     userId: string;
@@ -49,6 +52,7 @@ export interface ClubSummary {
     id: string;
     name: string;
     description?: string | null;
+    joinPolicy?: ClubJoinPolicy;
     role?: ClubMemberRole | null;
     sponsors?: ClubSponsor[];
     _count?: {
@@ -56,12 +60,35 @@ export interface ClubSummary {
         channels?: number;
     };
 }
+export interface ClubViewerState {
+    isMember: boolean;
+    hasClubRole: boolean;
+    isSponsor: boolean;
+    isAdmin: boolean;
+    canAccessWorkspace: boolean;
+    canManageChannels: boolean;
+    canManageMembership: boolean;
+    hasPendingJoinRequest: boolean;
+}
+export interface ClubJoinRequest {
+    id: string;
+    status: 'PENDING' | 'APPROVED' | 'DECLINED';
+    createdAt: string;
+    requester: ClubUserRef;
+}
 export interface ClubDetail extends ClubSummary {
     members: ClubMember[];
+    leaders: ClubLeader[];
     sponsors: ClubSponsor[];
     channels?: ClubChannel[];
     tags?: ClubTag[];
     directory: ClubDirectoryEntry[];
+    viewer: ClubViewerState;
+    pendingJoinRequests?: ClubJoinRequest[];
+    activeJoinCode?: {
+        code: string;
+        updatedAt?: string | null;
+    } | null;
 }
 export interface ClubInvite {
     id: string;

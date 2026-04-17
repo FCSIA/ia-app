@@ -52,6 +52,7 @@ export class NotificationsService {
   async bootstrapPreferences(userId: string) {
     const categories: NotificationCategory[] = [
       NotificationCategory.SCHOOL_ANNOUNCEMENT,
+      NotificationCategory.CLUB_JOIN_REQUEST,
       NotificationCategory.EVENT,
       NotificationCategory.FLEX_FRIDAY,
       NotificationCategory.CLUB_CHANNEL_MENTION,

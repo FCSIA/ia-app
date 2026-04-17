@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
@@ -34,6 +35,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sponsorIds, setSponsorIds] = useState<string[]>([]);
+  const [joinPolicy, setJoinPolicy] = useState<'OPEN' | 'REQUEST'>('OPEN');
 
   const { data: staff } = useQuery<UserDirectoryResponse>({
     queryKey: ['club-sponsor-directory'],
@@ -55,6 +57,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         name: name.trim(),
         description: description.trim() || undefined,
         sponsorIds,
+        joinPolicy,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clubs'] });
@@ -63,6 +66,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
       setName('');
       setDescription('');
       setSponsorIds([]);
+      setJoinPolicy('OPEN');
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -115,6 +119,19 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
               rows={3}
               placeholder="What is this club for?"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Join behavior</Label>
+            <Select value={joinPolicy} onValueChange={(value: 'OPEN' | 'REQUEST') => setJoinPolicy(value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Public join</SelectItem>
+                <SelectItem value="REQUEST">Request approval</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">

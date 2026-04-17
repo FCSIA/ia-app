@@ -48,6 +48,7 @@ export default function ProfilePage() {
 
   const categories = [
     { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
+    { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
     { key: 'EVENT', label: 'Events' },
     { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
   ];

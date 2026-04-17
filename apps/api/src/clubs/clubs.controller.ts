@@ -23,7 +23,9 @@ import {
   CreateClubDto,
   CreateClubTagDto,
   InviteClubMemberDto,
+  RedeemClubJoinCodeDto,
   RespondToClubInviteDto,
+  RespondToClubJoinRequestDto,
   SetClubMemberRoleDto,
   ToggleClubChannelReactionDto,
   UpdateClubDto,
@@ -59,6 +61,49 @@ export class ClubsController {
   @Get(':id')
   getOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.clubManagement.getOne(id, user.id, user.role);
+  }
+
+  @Post(':id/join')
+  joinClub(@Param('id') clubId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.clubInvitations.joinOpenClub(clubId, user.id);
+  }
+
+  @Post(':id/request-join')
+  requestToJoin(@Param('id') clubId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.clubInvitations.requestToJoin(clubId, user.id);
+  }
+
+  @Post(':id/join-code/redeem')
+  redeemJoinCode(
+    @Param('id') clubId: string,
+    @Body() body: RedeemClubJoinCodeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubInvitations.redeemJoinCode(clubId, user.id, body.code);
+  }
+
+  @Post(':id/join-code')
+  generateJoinCode(
+    @Param('id') clubId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubInvitations.generateJoinCode(clubId, user.id, user.role);
+  }
+
+  @Post(':id/join-requests/:requestId/respond')
+  respondToJoinRequest(
+    @Param('id') clubId: string,
+    @Param('requestId') requestId: string,
+    @Body() body: RespondToClubJoinRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubInvitations.respondToJoinRequest(
+      clubId,
+      requestId,
+      body.accept,
+      user.id,
+      user.role,
+    );
   }
 
   @Get(':id/channels')
