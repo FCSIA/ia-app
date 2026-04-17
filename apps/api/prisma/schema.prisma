@@ -620,11 +620,6 @@ enum AnnouncementStatus {
   EXPIRED
 }
 
-enum ClubMemberRole {
-  MEMBER
-  LEADER
-}
-
 enum InviteStatus {
   PENDING
   ACCEPTED
