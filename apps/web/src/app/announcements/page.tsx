@@ -130,7 +130,6 @@ export default function AnnouncementsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
-            <p className="text-muted-foreground text-sm">School-wide and targeted communications</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -271,7 +270,7 @@ export default function AnnouncementsPage() {
         ) : !data?.length ? (
           <Card className="text-center py-16 border-dashed">
             <CardContent className="pt-6">
-              <p className="text-muted-foreground">{showArchived ? 'No archived announcements' : 'No announcements yet'}</p>
+              {showArchived ? 'No archived announcements' : 'No announcements yet'}
             </CardContent>
           </Card>
         ) : (

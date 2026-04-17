@@ -215,9 +215,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
                   {currentMeta.label}
                 </h1>
-                <p className="hidden truncate text-[11px] text-muted-foreground md:block">
-                  {currentMeta.detail}
-                </p>
               </div>
             </div>
             {user ? (

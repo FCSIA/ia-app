@@ -195,7 +195,6 @@ export default function FlexFridayPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Flex Friday</h1>
-            <p className="text-muted-foreground text-sm">Sessions and registration</p>
           </div>
           {canManage && <Button onClick={() => setShowNewFriday(true)} className="flex items-center gap-2"><Plus size={16} /> Schedule Friday</Button>}
           {isStudent && (
