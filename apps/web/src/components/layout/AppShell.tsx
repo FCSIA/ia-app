@@ -14,7 +14,6 @@ import {
   Megaphone,
   Settings,
   Shield,
-  Sparkles,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,28 +23,26 @@ import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarSeparator,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 
-const navItems = [
+type NavItem = { href: string; label: string; icon: LucideIcon };
+
+const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/clubs', label: 'Clubs', icon: BookOpen },
@@ -55,53 +52,61 @@ const navItems = [
   { href: '/flex-friday', label: 'Flex Friday', icon: Zap },
 ];
 
-const utilityNavItems = [
+const accountNav: NavItem[] = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/profile', label: 'Profile & Settings', icon: Settings },
 ];
 
-const adminNavItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }];
+const adminNav: NavItem[] = [{ href: '/admin', label: 'Admin Panel', icon: Shield }];
 
-const pageMeta = [
-  { href: '/dashboard', label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
-  { href: '/announcements', label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
-  { href: '/clubs', label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
-  { href: '/schedule', label: 'Schedule', detail: 'Live blocks, friend schedules, and week structure.' },
-  { href: '/events', label: 'Events', detail: 'What is next, what needs attention, what is live.' },
-  { href: '/calendar', label: 'Calendar', detail: 'Shared planning across the school week.' },
-  { href: '/flex-friday', label: 'Flex Friday', detail: 'Sign-ups, sections, and movement for Friday.' },
-  { href: '/notifications', label: 'Notifications', detail: 'Unread mentions, updates, and direct follow-up.' },
-  { href: '/profile', label: 'Profile', detail: 'Identity, preferences, and account settings.' },
-  { href: '/admin', label: 'Admin', detail: 'Controls, permissions, and operational views.' },
-];
+const pageMeta: Record<string, { label: string; detail: string }> = {
+  '/dashboard': { label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
+  '/announcements': { label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
+  '/clubs': { label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
+  '/schedule': { label: 'Schedule', detail: 'Live blocks and the week at a glance.' },
+  '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
+  '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
+  '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
+  '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
+  '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
+  '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },
+};
 
-function NavLink({
-  href,
-  label,
-  icon: Icon,
+function NavIcon({
+  item,
   active,
   badge,
 }: {
-  href: string;
-  label: string;
-  icon: LucideIcon;
+  item: NavItem;
   active: boolean;
   badge?: ReactNode;
 }) {
+  const { icon: Icon, label, href } = item;
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        tooltip={label}
-        isActive={active}
-      >
-        <Link href={href}>
-          <Icon />
-          <span>{label}</span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={href}
+          aria-label={label}
+          className={cn(
+            'group relative flex size-11 items-center justify-center rounded-full transition-colors',
+            active
+              ? 'bg-white text-zinc-900 shadow-sm'
+              : 'text-zinc-400 hover:bg-white/8 hover:text-white',
+          )}
+        >
+          <Icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
+          {badge ? (
+            <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {badge}
+            </span>
+          ) : null}
         </Link>
-      </SidebarMenuButton>
-      {badge ? <SidebarMenuBadge>{badge}</SidebarMenuBadge> : null}
-    </SidebarMenuItem>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -138,119 +143,135 @@ export function AppShell({ children }: { children: ReactNode }) {
   const showSchedule =
     user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN');
 
-  const navGroups = [
-    {
-      label: 'Explore',
-      items: navItems.filter((item) => item.href !== '/schedule' || showSchedule),
-    },
-    { label: 'Account', items: utilityNavItems },
-    ...(showAdmin ? [{ label: 'Admin', items: adminNavItems }] : []),
-  ];
+  const primary = primaryNav.filter((i) => i.href !== '/schedule' || showSchedule);
 
   const currentMeta =
-    [...pageMeta]
-      .sort((left, right) => right.href.length - left.href.length)
-      .find(
-        (entry) =>
-          safePathname === entry.href ||
-          (entry.href !== '/dashboard' && safePathname.startsWith(entry.href)),
-      ) ?? pageMeta[0];
+    Object.entries(pageMeta)
+      .sort(([a], [b]) => b.length - a.length)
+      .find(([href]) => safePathname === href || (href !== '/dashboard' && safePathname.startsWith(href)))?.[1]
+    ?? pageMeta['/dashboard'];
+
+  const unreadBadge = unreadData?.count
+    ? unreadData.count > 9
+      ? '9+'
+      : String(unreadData.count)
+    : undefined;
 
   return (
-    <SidebarProvider defaultOpen>
-      <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <Link href="/dashboard">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Sparkles className="size-4" />
-                  </div>
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold text-sidebar-foreground">IA School</span>
-                    <span className="text-xs text-sidebar-foreground/70">Student OS</span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-
-        <SidebarContent>
-          {navGroups.map((group, index) => (
-            <SidebarGroup key={group.label}>
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => (
-                    <NavLink
-                      key={item.href}
-                      {...item}
-                      active={isActive(item.href)}
-                      badge={
-                        item.href === '/notifications' && unreadData?.count
-                          ? unreadData.count > 9
-                            ? '9+'
-                            : unreadData.count
-                          : undefined
-                      }
-                    />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
-        </SidebarContent>
-
-        <SidebarFooter>
-          {user ? (
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <div className="flex items-center gap-2 px-2 py-2">
-                  <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary/10 text-sidebar-primary">
-                    <span className="text-xs font-medium">
-                      {user.firstName.charAt(0)}
-                      {user.lastName.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="hidden min-w-0 flex-1 group-data-[collapsible=icon]:block">
-                    <p className="truncate text-sm font-medium">{user.firstName} {user.lastName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{user.uniqueId}</p>
-                  </div>
-                </div>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          ) : null}
-          <div className="px-2 py-2">
-            <ThemeToggle />
-          </div>
-          <div className="px-2 pb-2">
-            <Button
-              variant="ghost"
-              onClick={handleLogout}
-              className="w-full justify-start text-red-500 hover:bg-red-500/10 hover:text-red-600"
+    <TooltipProvider delayDuration={150}>
+      <div className="flex min-h-screen w-full bg-background">
+          {/* Narrow dark sidebar (icon-only, sticky) */}
+          <aside
+            className="sticky top-0 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
+            aria-label="Primary navigation"
+          >
+            <Link
+              href="/dashboard"
+              aria-label="Home"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
             >
-              <LogOut className="mr-2 size-4" />
-              <span>Sign Out</span>
-            </Button>
-          </div>
-        </SidebarFooter>
-      </Sidebar>
+              <span className="text-sm font-bold tracking-tight">IA</span>
+            </Link>
 
-      <SidebarInset>
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 px-4 pr-6 backdrop-blur">
-          <SidebarTrigger />
-          <div className="flex min-w-0 items-center gap-2 border-l pl-3 text-sm">
-            <p className="font-semibold text-foreground">
-              {currentMeta.label}
-            </p>
-            <p className="truncate text-muted-foreground hidden sm:block">• {currentMeta.detail}</p>
-          </div>
-        </header>
+            <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto px-0">
+              {primary.map((item) => (
+                <NavIcon
+                  key={item.href}
+                  item={item}
+                  active={isActive(item.href)}
+                  badge={item.href === '/notifications' ? unreadBadge : undefined}
+                />
+              ))}
+            </div>
 
-        <main className="flex-1 overflow-x-hidden p-6 md:p-8">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+            <div className="flex shrink-0 flex-col items-center gap-1.5 pt-3">
+              {accountNav.map((item) => (
+                <NavIcon
+                  key={item.href}
+                  item={item}
+                  active={isActive(item.href)}
+                  badge={item.href === '/notifications' ? unreadBadge : undefined}
+                />
+              ))}
+              {showAdmin
+                ? adminNav.map((item) => (
+                  <NavIcon key={item.href} item={item} active={isActive(item.href)} />
+                ))
+                : null}
+              <div className="my-2 h-px w-8 bg-white/10" />
+              <ThemeToggle />
+            </div>
+          </aside>
+
+          {/* Main */}
+          <div className="flex min-w-0 flex-1 flex-col bg-card">
+            <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-4 border-b bg-card/95 px-6 backdrop-blur lg:px-8">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+                  {currentMeta.label}
+                </h1>
+                <p className="hidden truncate text-sm text-muted-foreground md:block">
+                  {currentMeta.detail}
+                </p>
+              </div>
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <span className="text-xs font-semibold">
+                          {user.firstName.charAt(0)}
+                          {user.lastName.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="hidden min-w-0 leading-tight sm:block">
+                        <p className="truncate text-left text-sm font-medium text-foreground">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="truncate text-left text-[11px] text-muted-foreground">
+                          {user.uniqueId}
+                        </p>
+                      </div>
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.uniqueId}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <Settings className="mr-2 size-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-600"
+                    >
+                      <LogOut className="mr-2 size-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </header>
+
+            <main className="flex-1 px-6 pb-8 lg:px-8">{children}</main>
+          </div>
+      </div>
+    </TooltipProvider>
   );
 }

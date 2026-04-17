@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 type PageFrameProps = {
@@ -34,18 +33,19 @@ type PanelProps = {
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  tone?: 'default' | 'accent';
 };
 
 export function PageFrame({ children, className }: PageFrameProps) {
   return (
-    <main
+    <div
       className={cn(
-        'mx-auto flex w-full max-w-[1580px] flex-col gap-8 px-4 pb-8 pt-2 sm:px-6 lg:px-8',
+        'mx-auto flex w-full max-w-[1580px] flex-col gap-6 pb-8 pt-2',
         className,
       )}
     >
       {children}
-    </main>
+    </div>
   );
 }
 
@@ -60,61 +60,56 @@ export function HeroBand({
   contentClassName,
 }: HeroBandProps) {
   return (
-    <section
-      className={cn(
-        'rounded-xl border bg-muted/30 pb-6 pt-8 px-6 sm:px-8',
-        className,
-      )}
-    >
-      <div className="flex flex-col xl:flex-row gap-8 items-start xl:items-center justify-between">
-        <div className={cn('space-y-6 flex-1', contentClassName)}>
+    <section className={cn('flex flex-col gap-8', className)}>
+      <div className="flex flex-col gap-8 xl:flex-row xl:items-start xl:justify-between">
+        <div className={cn('flex-1 space-y-5', contentClassName)}>
           {badge ? <div className="flex flex-wrap items-center gap-3">{badge}</div> : null}
           <div className="space-y-4">
-            <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="max-w-3xl text-3xl font-bold tracking-tight text-foreground sm:text-[2.5rem] sm:leading-[1.1]">
               {title}
-            </h1>
+            </h2>
             {description ? (
-              <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+              <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
                 {description}
               </p>
             ) : null}
           </div>
           {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
-          {children}
         </div>
-        {aside ? <div className="w-full xl:w-auto flex flex-col gap-3">{aside}</div> : null}
+        {aside ? (
+          <div className="grid w-full grid-cols-2 gap-3 xl:w-[360px] xl:grid-cols-1">
+            {aside}
+          </div>
+        ) : null}
       </div>
+      {children}
     </section>
   );
 }
 
 export function HeroStat({ label, value, description, icon: Icon, className }: HeroStatProps) {
   return (
-    <Card
+    <div
       className={cn(
-        'rounded-xl shadow-sm border',
+        'flex items-start justify-between gap-3 rounded-2xl border bg-card p-5',
         className,
       )}
     >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              {label}
-            </p>
-            <div className="text-3xl font-bold tracking-tight text-foreground">{value}</div>
-          </div>
-          {Icon ? (
-            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="size-5" />
-            </div>
-          ) : null}
-        </div>
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          {label}
+        </p>
+        <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
         {description ? (
-          <p className="mt-3 text-sm text-muted-foreground">{description}</p>
+          <p className="text-xs leading-5 text-muted-foreground">{description}</p>
         ) : null}
       </div>
-    </Card>
+      {Icon ? (
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="size-4" />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -125,13 +120,22 @@ export function Panel({
   children,
   className,
   contentClassName,
+  tone = 'default',
 }: PanelProps) {
   return (
-    <section className={cn('rounded-[1.75rem] border border-border/70 bg-card text-card-foreground shadow-sm shadow-black/5', className)}>
+    <section
+      className={cn(
+        'rounded-3xl border',
+        tone === 'accent' ? 'border-transparent bg-accent' : 'bg-card',
+        className,
+      )}
+    >
       {title || description || action ? (
-        <div className="flex flex-col gap-4 border-b border-border/70 p-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            {title ? <h2 className="text-2xl font-semibold tracking-tight leading-none">{title}</h2> : null}
+        <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            {title ? (
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+            ) : null}
             {description ? (
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
             ) : null}
@@ -139,7 +143,7 @@ export function Panel({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className={cn('p-6 space-y-6', contentClassName)}>{children}</div>
+      <div className={cn('p-6', contentClassName)}>{children}</div>
     </section>
   );
 }

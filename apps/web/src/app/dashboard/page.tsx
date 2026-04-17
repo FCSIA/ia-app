@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { announcementsApi, eventsApi, flexFridayApi, notificationsApi } from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import type { AppUser } from '@ia/contracts/auth';
 
 function QuickLink({
   href,
@@ -43,7 +45,8 @@ function QuickLink({
 }
 
 export default function DashboardPage() {
-  const user = getUser();
+  const [user, setUser] = useState<AppUser | null>(null);
+  useEffect(() => { setUser(getUser()); }, []);
 
   const { data: announcementsData = [] } = useQuery({
     queryKey: ['announcements'],
@@ -74,90 +77,20 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <PageFrame>
-        <HeroBand
-          badge={
-            <Badge className="rounded-full bg-primary/12 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-primary">
-              Daily briefing
-            </Badge>
-          }
-          title={
-            <>
-              Keep the school day legible
-              <span className="block text-foreground/75">before the noise starts.</span>
-            </>
-          }
-          description={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. This is the fast read on what changed, what is coming up, and where attention probably belongs next.`}
-          actions={
-            <>
-              <Button asChild className="h-11 rounded-2xl px-5">
-                <Link href="/announcements">
-                  Review announcements
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="h-11 rounded-2xl px-5">
-                <Link href="/clubs">Open club workspaces</Link>
-              </Button>
-            </>
-          }
-          aside={
-            <>
-              <HeroStat
-                label="Announcements"
-                value={announcementsData.length}
-                description="Recent broadcast updates across the school."
-                icon={Megaphone}
-              />
-              <HeroStat
-                label="Unread"
-                value={notifData?.count ?? 0}
-                description="Notifications that still need a glance."
-                icon={Bell}
-              />
-              <HeroStat
-                label="Upcoming"
-                value={upcomingEvents.length}
-                description="Events still ahead on the calendar."
-                icon={Calendar}
-              />
-              <HeroStat
-                label="Next Flex Friday"
-                value={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
-                description="The next configured Flex Friday date."
-                icon={Zap}
-              />
-            </>
-          }
-        >
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Today</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                {format(new Date(), 'EEEE, MMMM d, yyyy')}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">The dashboard resets the scene before you dive into modules.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Noise level</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                {notifData?.count ? `${notifData.count} unread notifications` : 'Inbox is quiet'}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">If mentions or alerts stack up, clear them before context switches pile on.</p>
-            </div>
-            <div className="surface-rail px-4 py-3">
-              <p className="section-kicker">Momentum</p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                {upcomingEvents[0]?.title ?? 'No immediate events'}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">Upcoming events and club workspaces are the two fastest routes back into action.</p>
-            </div>
-          </div>
-        </HeroBand>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <HeroStat label="Announcements" value={announcementsData.length} icon={Megaphone} />
+          <HeroStat label="Unread" value={notifData?.count ?? 0} icon={Bell} />
+          <HeroStat label="Upcoming" value={upcomingEvents.length} icon={Calendar} />
+          <HeroStat
+            label="Next Flex Friday"
+            value={nextFriday ? format(new Date(nextFriday.date), 'MMM d') : 'None'}
+            icon={Zap}
+          />
+        </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <Panel
             title="Recent announcements"
-            description="The official voice of the school. Treat this as the source of truth before scanning chats."
             action={
               <Button asChild variant="ghost" className="rounded-2xl">
                 <Link href="/announcements">
@@ -207,7 +140,6 @@ export default function DashboardPage() {
           <div className="space-y-6">
             <Panel
               title="Upcoming events"
-              description="What is most likely to pull people out of flow next."
               action={
                 <Button asChild variant="ghost" className="rounded-2xl">
                   <Link href="/events">
@@ -247,11 +179,11 @@ export default function DashboardPage() {
               )}
             </Panel>
 
-            <Panel title="Fast paths" description="The three places that usually matter first.">
+            <Panel title="Shortcuts">
               <div className="space-y-3">
-                <QuickLink href="/clubs" title="Club workspaces" detail="Jump into channels, sponsor spaces, and invites." />
-                <QuickLink href="/schedule" title="Schedule" detail="Check live blocks, classes, and friend schedules." />
-                <QuickLink href="/notifications" title="Notifications" detail="Clear mentions and direct follow-up." />
+                <QuickLink href="/clubs" title="Clubs" detail="Channels and sponsor spaces" />
+                <QuickLink href="/schedule" title="Schedule" detail="Live blocks and classes" />
+                <QuickLink href="/notifications" title="Notifications" detail="Unread mentions" />
               </div>
             </Panel>
 

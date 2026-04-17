@@ -23,56 +23,6 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/** Static background blur orbs — purely decorative, pointer-events-none */
-function BackgroundBlobs() {
-  return (
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
-      {/* Top-right warm orange orb */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-80px',
-          right: '-80px',
-          width: '500px',
-          height: '500px',
-          borderRadius: '50%',
-          background: '#f97316',
-          filter: 'blur(120px)',
-          opacity: 0.04,
-        }}
-      />
-      {/* Bottom-left amber orb */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '-100px',
-          left: '-100px',
-          width: '420px',
-          height: '420px',
-          borderRadius: '50%',
-          background: '#d97706',
-          filter: 'blur(100px)',
-          opacity: 0.03,
-        }}
-      />
-      {/* Centre-right deep orange orb */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '40%',
-          right: '10%',
-          width: '300px',
-          height: '300px',
-          borderRadius: '50%',
-          background: '#c2410c',
-          filter: 'blur(90px)',
-          opacity: 0.025,
-        }}
-      />
-    </div>
-  );
-}
-
 export default function RootLayout({
   children,
 }: {
@@ -83,11 +33,8 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${inter.className} relative`}>
-        <BackgroundBlobs />
-        <div className="relative z-10">
-          <Providers>{children}</Providers>
-        </div>
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
         <Toaster />
       </body>
     </html>
