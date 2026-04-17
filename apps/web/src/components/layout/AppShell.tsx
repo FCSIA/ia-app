@@ -8,13 +8,14 @@ import {
   BookOpen,
   Calendar,
   CalendarRange,
-  Clock3,
   Home,
   LogOut,
   Megaphone,
+  School,
   Settings,
   Shield,
   Sparkles,
+  Ticket,
   type LucideIcon,
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
@@ -46,8 +47,8 @@ const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/clubs', label: 'Clubs', icon: BookOpen },
-  { href: '/schedule', label: 'School Day', icon: Clock3 },
-  { href: '/events', label: 'Events', icon: Sparkles },
+  { href: '/schedule', label: 'School Day', icon: School },
+  { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
   { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
 ];
