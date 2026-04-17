@@ -12,7 +12,7 @@ tags: [reference, commands, dev]
 
 ### Start (after first-time setup)
 ```bash
-brew services start postgresql@16 && sleep 2 && pnpm dev
+brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
 ```
 
 ### Stop
@@ -48,13 +48,16 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 | Command | What it does |
 |---------|-------------|
 | `pnpm db:migrate` | Apply pending migrations to the database |
+| `pnpm db:reset` | Reset the local database, re-apply migrations, and re-seed demo data |
 | `pnpm db:generate` | Regenerate Prisma TypeScript client from schema |
 | `pnpm db:seed` | Populate database with demo data |
 
 ### Full database reset (⚠️ deletes all data)
 ```bash
-pnpm --filter api exec prisma migrate reset && pnpm db:seed
+pnpm db:reset
 ```
+
+If Prisma reports missing-column errors such as `users.middle_name`, use `pnpm db:reset`. That indicates the local database predates the current migration history.
 
 ### Connect to database directly
 ```bash

@@ -158,5 +158,10 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 ## Start Again (After First Setup)
 ```bash
-brew services start postgresql@16 && sleep 2 && pnpm dev
+brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
+```
+
+If Prisma reports missing-column errors such as `users.middle_name`, your local database is from before the current migration reset. Run:
+```bash
+pnpm db:reset
 ```

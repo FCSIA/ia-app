@@ -93,6 +93,13 @@ pnpm db:migrate
 ```
 Applies the database schema (creates all tables) to the empty database.
 
+After you pull later schema changes, run `pnpm db:migrate` again before `pnpm dev`.
+
+If Prisma reports missing-column errors such as `users.middle_name`, reset the local database and re-seed it:
+```bash
+pnpm db:reset
+```
+
 ### 12. Seed Demo Data
 ```bash
 pnpm db:seed
