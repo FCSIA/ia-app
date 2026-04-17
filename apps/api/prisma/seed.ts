@@ -1,16 +1,80 @@
-import { PrismaClient, Role, Pathway, ScheduleWeekday } from '@prisma/client';
+import { AnnouncementTarget, Pathway, PrismaClient, Role, ScheduleWeekday } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+async function resetPassword(uniqueId: string) {
+  return bcrypt.hash(uniqueId, 12);
+}
+
+async function ensureAnnouncement({
+  title,
+  body,
+  authorId,
+  targetType,
+  allowComments = false,
+  isAdminGeneral = false,
+  targetGrade,
+  targetPathway,
+  clubId,
+}: {
+  title: string;
+  body: string;
+  authorId: string;
+  targetType: AnnouncementTarget;
+  allowComments?: boolean;
+  isAdminGeneral?: boolean;
+  targetGrade?: number;
+  targetPathway?: Pathway;
+  clubId?: string;
+}) {
+  const existing = await prisma.announcement.findFirst({ where: { title } });
+
+  if (existing) {
+    return prisma.announcement.update({
+      where: { id: existing.id },
+      data: {
+        body,
+        authorId,
+        targetType,
+        allowComments,
+        isAdminGeneral,
+        targetGrade,
+        targetPathway,
+        clubId,
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  return prisma.announcement.create({
+    data: {
+      title,
+      body,
+      authorId,
+      targetType,
+      allowComments,
+      isAdminGeneral,
+      targetGrade,
+      targetPathway,
+      clubId,
+    },
+  });
+}
+
 async function main() {
   console.log('Seeding database...');
 
-  // Create Super Admin (update: includes passwordHash so re-seeding resets passwords)
-  const superAdminHash = await bcrypt.hash('SUPER001', 12);
+  const superAdminHash = await resetPassword('SUPER001');
   const superAdmin = await prisma.user.upsert({
     where: { uniqueId: 'SUPER001' },
-    update: { passwordHash: superAdminHash },
+    update: {
+      firstName: 'Super',
+      lastName: 'Admin',
+      email: 'superadmin@ia.school',
+      passwordHash: superAdminHash,
+      roles: [Role.SUPER_ADMIN, Role.ADMIN],
+    },
     create: {
       uniqueId: 'SUPER001',
       firstName: 'Super',
@@ -20,13 +84,18 @@ async function main() {
       roles: [Role.SUPER_ADMIN, Role.ADMIN],
     },
   });
-  console.log('Super Admin created:', superAdmin.uniqueId);
+  console.log('Super Admin ready:', superAdmin.uniqueId);
 
-  // Create Admin
-  const adminHash = await bcrypt.hash('ADMIN001', 12);
+  const adminHash = await resetPassword('ADMIN001');
   const admin = await prisma.user.upsert({
     where: { uniqueId: 'ADMIN001' },
-    update: { passwordHash: adminHash },
+    update: {
+      firstName: 'School',
+      lastName: 'Admin',
+      email: 'admin@ia.school',
+      passwordHash: adminHash,
+      roles: [Role.ADMIN],
+    },
     create: {
       uniqueId: 'ADMIN001',
       firstName: 'School',
@@ -37,79 +106,287 @@ async function main() {
     },
   });
 
-  // Create a Teacher / Sponsor
-  const teacherHash = await bcrypt.hash('TCH001', 12);
+  const teacherHash = await resetPassword('TCH001');
   const teacher = await prisma.user.upsert({
     where: { uniqueId: 'TCH001' },
-    update: { passwordHash: teacherHash },
+    update: {
+      firstName: 'Jane',
+      lastName: 'Smith',
+      email: 'jsmith@ia.school',
+      passwordHash: teacherHash,
+      roles: [Role.TEACHER, Role.SPONSOR],
+    },
     create: {
       uniqueId: 'TCH001',
       firstName: 'Jane',
       lastName: 'Smith',
       email: 'jsmith@ia.school',
       passwordHash: teacherHash,
-      roles: [Role.TEACHER],
+      roles: [Role.TEACHER, Role.SPONSOR],
     },
   });
 
-  // Create sample students (password = uniqueId)
   const studentData = [
-    { uniqueId: 'STU001', firstName: 'Alex', lastName: 'Johnson', gradeLevel: 9, major: Pathway.INFORMATION_TECHNOLOGY },
-    { uniqueId: 'STU002', firstName: 'Sam', lastName: 'Lee', gradeLevel: 10, major: Pathway.HEALTH_SCIENCE },
-    { uniqueId: 'STU003', firstName: 'Jordan', lastName: 'Park', gradeLevel: 11, major: Pathway.ENGINEERING },
-    { uniqueId: 'STU004', firstName: 'Taylor', lastName: 'Kim', gradeLevel: 12, major: Pathway.INFORMATION_TECHNOLOGY },
+    {
+      uniqueId: 'STU001',
+      firstName: 'Alex',
+      lastName: 'Johnson',
+      gradeLevel: 9,
+      major: Pathway.INFORMATION_TECHNOLOGY,
+      minor: Pathway.ENGINEERING,
+    },
+    {
+      uniqueId: 'STU002',
+      firstName: 'Sam',
+      lastName: 'Lee',
+      gradeLevel: 10,
+      major: Pathway.HEALTH_SCIENCE,
+      minor: Pathway.INFORMATION_TECHNOLOGY,
+    },
+    {
+      uniqueId: 'STU003',
+      firstName: 'Jordan',
+      lastName: 'Park',
+      gradeLevel: 11,
+      major: Pathway.ENGINEERING,
+      minor: Pathway.INFORMATION_TECHNOLOGY,
+    },
+    {
+      uniqueId: 'STU004',
+      firstName: 'Taylor',
+      lastName: 'Kim',
+      gradeLevel: 12,
+      major: Pathway.INFORMATION_TECHNOLOGY,
+      minor: Pathway.HEALTH_SCIENCE,
+    },
+    {
+      uniqueId: 'STU005',
+      firstName: 'Morgan',
+      lastName: 'Patel',
+      gradeLevel: 9,
+      major: Pathway.ENGINEERING,
+      minor: Pathway.INFORMATION_TECHNOLOGY,
+    },
+    {
+      uniqueId: 'STU006',
+      firstName: 'Riley',
+      lastName: 'Nguyen',
+      gradeLevel: 10,
+      major: Pathway.INFORMATION_TECHNOLOGY,
+      minor: Pathway.ENGINEERING,
+    },
+    {
+      uniqueId: 'STU007',
+      firstName: 'Casey',
+      lastName: 'Brooks',
+      gradeLevel: 11,
+      major: Pathway.HEALTH_SCIENCE,
+      minor: Pathway.ENGINEERING,
+    },
+    {
+      uniqueId: 'STU008',
+      firstName: 'Avery',
+      lastName: 'Rivera',
+      gradeLevel: 12,
+      major: Pathway.ENGINEERING,
+      minor: Pathway.HEALTH_SCIENCE,
+    },
+    {
+      uniqueId: 'STU009',
+      firstName: 'Quinn',
+      lastName: 'Carter',
+      gradeLevel: 10,
+      major: Pathway.INFORMATION_TECHNOLOGY,
+      minor: Pathway.HEALTH_SCIENCE,
+    },
+    {
+      uniqueId: 'STU010',
+      firstName: 'Jamie',
+      lastName: 'Flores',
+      gradeLevel: 11,
+      major: Pathway.HEALTH_SCIENCE,
+      minor: Pathway.INFORMATION_TECHNOLOGY,
+    },
   ];
 
-  const createdStudents = [];
-  for (const s of studentData) {
+  const studentsByUniqueId = new Map<string, Awaited<ReturnType<typeof prisma.user.upsert>>>();
+  for (const studentDataEntry of studentData) {
     const student = await prisma.user.upsert({
-      where: { uniqueId: s.uniqueId },
+      where: { uniqueId: studentDataEntry.uniqueId },
       update: {
-        gradeLevel: s.gradeLevel,
-        major: s.major,
+        firstName: studentDataEntry.firstName,
+        lastName: studentDataEntry.lastName,
+        gradeLevel: studentDataEntry.gradeLevel,
+        major: studentDataEntry.major,
+        minor: studentDataEntry.minor,
+        passwordHash: await resetPassword(studentDataEntry.uniqueId),
+        roles: [Role.STUDENT],
+        isActive: true,
       },
       create: {
-        ...s,
-        passwordHash: await bcrypt.hash(s.uniqueId, 12),
+        ...studentDataEntry,
+        passwordHash: await resetPassword(studentDataEntry.uniqueId),
         roles: [Role.STUDENT],
       },
     });
-    createdStudents.push(student);
+
+    studentsByUniqueId.set(student.uniqueId, student);
   }
+  console.log(`Students ready: ${studentsByUniqueId.size}`);
 
-  // Keep school-wide student roles simple; club-specific titles live on memberships.
-  await prisma.user.update({
-    where: { uniqueId: 'STU003' },
-    data: { roles: [Role.STUDENT] },
-  });
-  await prisma.user.update({
-    where: { uniqueId: 'STU004' },
-    data: { roles: [Role.STUDENT] },
-  });
-
-  // Create a Club (upsert by name)
-  const existingClub = await prisma.club.findFirst({ where: { name: 'Robotics Club' } });
-  const club = existingClub ?? await prisma.club.create({
-    data: {
-      id: 'robotics',
+  const clubDefinitions = [
+    {
       name: 'Robotics Club',
-      description: 'Building robots and competing in regional events.',
-      sponsors: { create: [{ userId: teacher.id }] },
-      members: {
-        create: [
-          { userId: createdStudents[0].id },
-          { userId: createdStudents[1].id },
-        ],
-      },
-      channels: {
-        create: [
-          { id: 'general', name: 'general', description: 'General robotics discussion.', createdById: createdStudents[0].id },
-          { id: 'officers', name: 'officers', description: 'Leadership coordination.', isPrivate: true, createdById: createdStudents[0].id },
-        ],
-      },
+      description: 'Build competition robots, test autonomous routines, and prep for regional scrimmages.',
+      memberRoles: [
+        { uniqueId: 'STU001', role: 'LEADER' },
+        { uniqueId: 'STU003', role: 'LEADER' },
+        { uniqueId: 'STU005', role: null },
+        { uniqueId: 'STU008', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'General robotics discussion.', isPrivate: false, createdBy: 'STU001' },
+        { name: 'officers', description: 'Leadership coordination and event planning.', isPrivate: true, createdBy: 'STU003' },
+      ],
     },
-  });
-  console.log('Club ready:', club.name);
+    {
+      name: 'Girls Who Code',
+      description: 'Peer-led coding workshops, portfolio builds, and hackathon prep.',
+      memberRoles: [
+        { uniqueId: 'STU004', role: 'LEADER' },
+        { uniqueId: 'STU006', role: null },
+        { uniqueId: 'STU009', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'Coding resources and practice prompts.', isPrivate: false, createdBy: 'STU004' },
+        { name: 'hackathon-planning', description: 'Competition prep and team formation.', isPrivate: false, createdBy: 'STU004' },
+      ],
+    },
+    {
+      name: 'HOSA',
+      description: 'Healthcare competition prep, clinical skills practice, and service projects.',
+      memberRoles: [
+        { uniqueId: 'STU002', role: 'LEADER' },
+        { uniqueId: 'STU007', role: 'LEADER' },
+        { uniqueId: 'STU010', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'Competition updates and practice schedules.', isPrivate: false, createdBy: 'STU002' },
+        { name: 'officers', description: 'Leadership logistics for HOSA events.', isPrivate: true, createdBy: 'STU007' },
+      ],
+    },
+    {
+      name: 'Science Olympiad',
+      description: 'Prepare for build and study events across engineering, biology, and chemistry.',
+      memberRoles: [
+        { uniqueId: 'STU003', role: 'LEADER' },
+        { uniqueId: 'STU007', role: null },
+        { uniqueId: 'STU009', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'Event updates and shared prep materials.', isPrivate: false, createdBy: 'STU003' },
+        { name: 'build-events', description: 'Bridge, tower, and prototype build coordination.', isPrivate: false, createdBy: 'STU003' },
+      ],
+    },
+    {
+      name: 'Math Team',
+      description: 'Weekly problem solving, AMC prep, and peer tutoring for competition math.',
+      memberRoles: [
+        { uniqueId: 'STU006', role: 'LEADER' },
+        { uniqueId: 'STU008', role: null },
+        { uniqueId: 'STU010', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'Practice sets and meeting reminders.', isPrivate: false, createdBy: 'STU006' },
+        { name: 'contest-prep', description: 'Scrimmage rosters and solution writeups.', isPrivate: false, createdBy: 'STU006' },
+      ],
+    },
+    {
+      name: 'Quiz Bowl',
+      description: 'Fast-paced academic team for tossup and bonus practice across all subjects.',
+      memberRoles: [
+        { uniqueId: 'STU001', role: null },
+        { uniqueId: 'STU004', role: 'LEADER' },
+        { uniqueId: 'STU005', role: null },
+        { uniqueId: 'STU009', role: null },
+      ],
+      channels: [
+        { name: 'general', description: 'Practice schedules and packet links.', isPrivate: false, createdBy: 'STU004' },
+        { name: 'captains', description: 'Captain planning and lineup decisions.', isPrivate: true, createdBy: 'STU004' },
+      ],
+    },
+  ];
+
+  const clubsByName = new Map<string, Awaited<ReturnType<typeof prisma.club.upsert>>>();
+  for (const clubDefinition of clubDefinitions) {
+    const club = await prisma.club.upsert({
+      where: { name: clubDefinition.name },
+      update: {
+        description: clubDefinition.description,
+        isActive: true,
+      },
+      create: {
+        name: clubDefinition.name,
+        description: clubDefinition.description,
+      },
+    });
+
+    clubsByName.set(club.name, club);
+
+    await prisma.clubSponsor.createMany({
+      data: [{ clubId: club.id, userId: teacher.id }],
+      skipDuplicates: true,
+    });
+
+    await prisma.clubMember.createMany({
+      data: clubDefinition.memberRoles.map((member) => ({
+        clubId: club.id,
+        userId: studentsByUniqueId.get(member.uniqueId)!.id,
+        role: member.role ?? undefined,
+      })),
+      skipDuplicates: true,
+    });
+
+    for (const member of clubDefinition.memberRoles) {
+      await prisma.clubMember.update({
+        where: {
+          clubId_userId: {
+            clubId: club.id,
+            userId: studentsByUniqueId.get(member.uniqueId)!.id,
+          },
+        },
+        data: { role: member.role ?? null },
+      });
+    }
+
+    await prisma.clubChannel.createMany({
+      data: clubDefinition.channels.map((channel) => ({
+        clubId: club.id,
+        name: channel.name,
+        description: channel.description,
+        isPrivate: channel.isPrivate,
+        createdById: studentsByUniqueId.get(channel.createdBy)!.id,
+      })),
+      skipDuplicates: true,
+    });
+
+    for (const channel of clubDefinition.channels) {
+      await prisma.clubChannel.update({
+        where: {
+          clubId_name: {
+            clubId: club.id,
+            name: channel.name,
+          },
+        },
+        data: {
+          description: channel.description,
+          isPrivate: channel.isPrivate,
+          createdById: studentsByUniqueId.get(channel.createdBy)!.id,
+        },
+      });
+    }
+  }
+  console.log(`Clubs ready: ${clubsByName.size}`);
 
   await prisma.schoolDayBlock.deleteMany();
 
@@ -148,19 +425,19 @@ async function main() {
   console.log('School day blocks ready');
 
   const alexSchedule = await prisma.studentSchedule.upsert({
-    where: { userId: createdStudents[0].id },
+    where: { userId: studentsByUniqueId.get('STU001')!.id },
     update: { isPublic: true },
     create: {
-      userId: createdStudents[0].id,
+      userId: studentsByUniqueId.get('STU001')!.id,
       isPublic: true,
     },
   });
 
   const jordanSchedule = await prisma.studentSchedule.upsert({
-    where: { userId: createdStudents[2].id },
+    where: { userId: studentsByUniqueId.get('STU003')!.id },
     update: { isPublic: true },
     create: {
-      userId: createdStudents[2].id,
+      userId: studentsByUniqueId.get('STU003')!.id,
       isPublic: true,
     },
   });
@@ -169,10 +446,8 @@ async function main() {
     where: { scheduleId: { in: [alexSchedule.id, jordanSchedule.id] } },
   });
 
-  const scheduleWeekdays = weekdays;
-
   await prisma.studentScheduleEntry.createMany({
-    data: scheduleWeekdays.flatMap((weekday) => [
+    data: weekdays.flatMap((weekday) => [
       { scheduleId: alexSchedule.id, weekday, periodNumber: 1, className: 'English I' },
       { scheduleId: alexSchedule.id, weekday, periodNumber: 2, className: 'Algebra I' },
       { scheduleId: alexSchedule.id, weekday, periodNumber: 3, className: 'Biology' },
@@ -194,20 +469,20 @@ async function main() {
 
   await prisma.studentScheduleFriend.createMany({
     data: [
-      { requesterId: createdStudents[0].id, addresseeId: createdStudents[2].id, status: 'ACCEPTED' },
-      { requesterId: createdStudents[2].id, addresseeId: createdStudents[0].id, status: 'ACCEPTED' },
+      { requesterId: studentsByUniqueId.get('STU001')!.id, addresseeId: studentsByUniqueId.get('STU003')!.id, status: 'ACCEPTED' },
+      { requesterId: studentsByUniqueId.get('STU003')!.id, addresseeId: studentsByUniqueId.get('STU001')!.id, status: 'ACCEPTED' },
+      { requesterId: studentsByUniqueId.get('STU004')!.id, addresseeId: studentsByUniqueId.get('STU006')!.id, status: 'ACCEPTED' },
+      { requesterId: studentsByUniqueId.get('STU006')!.id, addresseeId: studentsByUniqueId.get('STU004')!.id, status: 'ACCEPTED' },
     ],
     skipDuplicates: true,
   });
   console.log('Sample schedules ready');
 
-  // Bootstrap notification preferences for all users using createMany + skipDuplicates
-  // (avoids upsert null-in-composite-key issue with Prisma 6)
   const allUsers = await prisma.user.findMany({ select: { id: true } });
-  const prefRecords = allUsers.flatMap((u) => [
-    { userId: u.id, category: 'SCHOOL_ANNOUNCEMENT' as const, enabled: true },
-    { userId: u.id, category: 'EVENT' as const, enabled: true },
-    { userId: u.id, category: 'FLEX_FRIDAY' as const, enabled: true },
+  const prefRecords = allUsers.flatMap((user) => [
+    { userId: user.id, category: 'SCHOOL_ANNOUNCEMENT' as const, enabled: true },
+    { userId: user.id, category: 'EVENT' as const, enabled: true },
+    { userId: user.id, category: 'FLEX_FRIDAY' as const, enabled: true },
   ]);
   await prisma.notificationPreference.createMany({
     data: prefRecords,
@@ -215,7 +490,6 @@ async function main() {
   });
   console.log(`Bootstrapped preferences for ${allUsers.length} users`);
 
-  // Sample keyword rules
   await prisma.keywordRule.createMany({
     data: [
       { keyword: 'violence', addedById: superAdmin.id },
@@ -225,28 +499,67 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // Sample announcement (only if none exist)
-  const existingAnn = await prisma.announcement.findFirst();
-  if (!existingAnn) {
-    await prisma.announcement.create({
-      data: {
-        authorId: admin.id,
-        title: 'Welcome to IA School App',
-        body: 'This is the official school communication platform. Stay informed about school events, clubs, and Flex Fridays!',
-        targetType: 'SCHOOL_WIDE',
-        isAdminGeneral: true,
-        allowComments: false,
-      },
-    });
-    console.log('Sample announcement created');
-  }
+  await ensureAnnouncement({
+    authorId: admin.id,
+    title: 'Welcome to IA School App',
+    body: 'This is the official school communication platform. Stay informed about school events, clubs, and Flex Fridays.',
+    targetType: 'SCHOOL_WIDE',
+    isAdminGeneral: true,
+    allowComments: false,
+  });
+
+  await ensureAnnouncement({
+    authorId: admin.id,
+    title: 'April Flex Friday Registration Opens Monday',
+    body: 'Registration opens Monday at 8:00 AM in the IA Events portal. Students need 12 Flex Friday credits each school year, so reserve your workshop early.',
+    targetType: 'SCHOOL_WIDE',
+    isAdminGeneral: true,
+    allowComments: true,
+  });
+
+  await ensureAnnouncement({
+    authorId: admin.id,
+    title: 'Freshman GT Block Pathway Showcase',
+    body: 'Ninth graders will rotate through Health Science, Engineering, and IT labs during next week’s GT Block showcase. Bring your lanyard and Chromebook.',
+    targetType: 'GRADE',
+    targetGrade: 9,
+    allowComments: true,
+  });
+
+  await ensureAnnouncement({
+    authorId: teacher.id,
+    title: 'AI Track Interest Meeting for IT Students',
+    body: 'Information Technology students interested in the new AI track should join the interest meeting after school in Lab 214. We will cover pathway sequencing and project expectations.',
+    targetType: 'PATHWAY',
+    targetPathway: Pathway.INFORMATION_TECHNOLOGY,
+    allowComments: true,
+  });
+
+  await ensureAnnouncement({
+    authorId: teacher.id,
+    title: 'Robotics Club Scrimmage Build Saturday',
+    body: 'Robotics Club will run a Saturday build and driver practice session in the fabrication lab. Wear closed-toe shoes and check the officers channel for the task board.',
+    targetType: 'CLUB',
+    clubId: clubsByName.get('Robotics Club')!.id,
+    allowComments: true,
+  });
+
+  await ensureAnnouncement({
+    authorId: teacher.id,
+    title: 'HOSA Clinical Skills Workshop Sign-Up',
+    body: 'HOSA members can sign up for the after-school clinical skills workshop focused on patient assessment and EMT scenarios. Space is limited to the first 20 registrations.',
+    targetType: 'CLUB',
+    clubId: clubsByName.get('HOSA')!.id,
+    allowComments: true,
+  });
+  console.log('Announcements ready: 6');
 
   console.log('\nSeeding complete!');
   console.log('\nDefault credentials (password = uniqueId):');
-  console.log('  SUPER001  →  Super Admin');
-  console.log('  ADMIN001  →  Admin');
-  console.log('  TCH001    →  Teacher / Sponsor');
-  console.log('  STU001–STU004  →  Students');
+  console.log('  SUPER001  ->  Super Admin');
+  console.log('  ADMIN001  ->  Admin');
+  console.log('  TCH001    ->  Teacher / Sponsor');
+  console.log('  STU001-STU010  ->  Students');
 }
 
 main()

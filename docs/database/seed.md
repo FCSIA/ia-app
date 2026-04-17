@@ -34,11 +34,17 @@ This runs the seed file using `ts-node`. It's idempotent — you can run it mult
 |----------|------|-------|-------|---------------|----------|
 | `SUPER001` | — | SUPER_ADMIN, ADMIN | — | — | `SUPER001` |
 | `ADMIN001` | — | ADMIN | — | — | `ADMIN001` |
-| `TCH001` | — | TEACHER, SPONSOR | — | — | `TCH001` |
+| `TCH001` | Jane Smith | TEACHER, SPONSOR | — | — | `TCH001` |
 | `STU001` | Alex Johnson | STUDENT | 9 | INFORMATION_TECHNOLOGY | `STU001` |
 | `STU002` | Sam Lee | STUDENT | 10 | HEALTH_SCIENCE | `STU002` |
-| `STU003` | Jordan Park | STUDENT_LEADER | 11 | ENGINEERING | `STU003` |
-| `STU004` | Taylor Kim | STUDENT_ADMIN | 12 | INFORMATION_TECHNOLOGY | `STU004` |
+| `STU003` | Jordan Park | STUDENT | 11 | ENGINEERING | `STU003` |
+| `STU004` | Taylor Kim | STUDENT | 12 | INFORMATION_TECHNOLOGY | `STU004` |
+| `STU005` | Morgan Patel | STUDENT | 9 | ENGINEERING | `STU005` |
+| `STU006` | Riley Nguyen | STUDENT | 10 | INFORMATION_TECHNOLOGY | `STU006` |
+| `STU007` | Casey Brooks | STUDENT | 11 | HEALTH_SCIENCE | `STU007` |
+| `STU008` | Avery Rivera | STUDENT | 12 | ENGINEERING | `STU008` |
+| `STU009` | Quinn Carter | STUDENT | 10 | INFORMATION_TECHNOLOGY | `STU009` |
+| `STU010` | Jamie Flores | STUDENT | 11 | HEALTH_SCIENCE | `STU010` |
 
 **Password = uniqueId** for all accounts.
 
@@ -53,12 +59,20 @@ await prisma.user.upsert({
 ```
 
 ### Demo Clubs
-- Chess Club (TCH001 as sponsor, STU001 and STU002 as members)
-- Coding Club (TCH001 as sponsor, STU003 as member)
+- Robotics Club
+- Girls Who Code
+- HOSA
+- Science Olympiad
+- Math Team
+- Quiz Bowl
 
 ### Demo Announcements
 - A school-wide welcome announcement
-- A chess club announcement
+- A Flex Friday registration announcement
+- A freshman GT Block announcement
+- An IT pathway announcement
+- A Robotics Club announcement
+- A HOSA announcement
 
 ### Demo Events
 - A school talent show event
