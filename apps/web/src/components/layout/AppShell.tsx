@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
-  BookOpen,
   Calendar,
   CalendarRange,
   Home,
   LogOut,
   Megaphone,
+  Puzzle,
   School,
   Settings,
   Shield,
@@ -46,7 +46,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon };
 const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/clubs', label: 'Clubs', icon: BookOpen },
+  { href: '/clubs', label: 'Clubs', icon: Puzzle },
   { href: '/schedule', label: 'School Day', icon: School },
   { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
