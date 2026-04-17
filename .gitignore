@@ -2,3 +2,6 @@
 .venv
 __pycache__/
 node_modules
+apps/web/.next
+apps/web/.turbo
+apps/web/node_modules
