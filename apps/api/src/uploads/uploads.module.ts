@@ -6,7 +6,7 @@ import { extname } from 'path';
 import { mkdirSync } from 'fs';
 
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
-try { mkdirSync(uploadDir, { recursive: true }); } catch {}
+try { mkdirSync(uploadDir, { recursive: true }); } catch { /* ignore */ }
 
 @Module({
   imports: [

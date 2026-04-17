@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { NotificationCategory } from '@prisma/client';
