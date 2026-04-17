@@ -273,7 +273,7 @@ ClubsService stores ClubChannelMessage + mention records
          ↓
 NotificationsService creates CLUB_CHANNEL_MENTION deliveries
          ↓
-Web and mobile notifications refetch
+Web notifications refetch
          ↓
 Tap notification → open the matching club channel
 ```

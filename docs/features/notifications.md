@@ -99,7 +99,7 @@ onClick={() => !n.isRead && markReadMutation.mutate(n.id)}
 
 The "Mark all read" button calls `/notifications/mark-all-read`.
 
-For `CLUB_CHANNEL_MENTION`, notification rows also store `clubId`, `channelId`, and `messageId`. The web notifications page and the mobile notifications screen use those IDs to open the corresponding channel thread directly.
+For `CLUB_CHANNEL_MENTION`, notification rows also store `clubId`, `channelId`, and `messageId`. The web notifications page uses those IDs to open the corresponding channel thread directly.
 
 ---
 

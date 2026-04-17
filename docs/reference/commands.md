@@ -27,8 +27,6 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 | Command           | What it does                            |
 | ----------------- | --------------------------------------- |
 | `pnpm dev`        | Start API (3001) + Web (3000) via Turbo |
-| `pnpm dev:all`    | Start API + Web + Mobile                |
-| `pnpm dev:mobile` | Start only the Expo mobile dev server   |
 | `pnpm build`      | Build all apps for production           |
 | `pnpm lint`       | Run ESLint across all apps              |
 
@@ -94,7 +92,6 @@ UPDATE "User" SET "passwordHash" = '$2b$12$...' WHERE "uniqueId" = 'STU001';
 | `pnpm install` | Install all dependencies for all apps |
 | `pnpm --filter api add <package>` | Add package to the API only |
 | `pnpm --filter web add <package>` | Add package to the web app only |
-| `pnpm --filter mobile add <package>` | Add package to mobile only |
 
 The `--filter` flag tells pnpm which workspace to target.
 

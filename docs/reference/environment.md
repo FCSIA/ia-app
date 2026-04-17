@@ -26,7 +26,6 @@ Variables are defined in `.env` files and accessed in code as `process.env.VARIA
 | `.env` | Root config (PostgreSQL, JWT secret) | ❌ (gitignored) |
 | `.env.example` | Template showing required variables | ✅ |
 | `apps/api/.env` | API-specific config | ❌ (gitignored) |
-| `apps/mobile/.env.example` | Mobile config template | ✅ |
 
 On a new machine, copy the examples:
 ```bash
@@ -85,16 +84,6 @@ NEXT_PUBLIC_API_URL="http://localhost:3001"
 The URL the Next.js web app uses to call the API. The `NEXT_PUBLIC_` prefix is required by Next.js to expose a variable to the browser — without it, the variable is server-only.
 
 Used by: Axios in `apps/web/src/lib/api.ts`
-
----
-
-### Mobile App URL
-```bash
-EXPO_PUBLIC_API_URL=http://localhost:3001
-```
-The URL the Expo mobile app uses to call the API. `EXPO_PUBLIC_` prefix works the same as `NEXT_PUBLIC_` — exposes to the JavaScript bundle.
-
-Used by: Axios in `apps/mobile/src/lib/api.ts`
 
 ---
 

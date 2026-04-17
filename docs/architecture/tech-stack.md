@@ -41,17 +41,6 @@ tags: [architecture, tech-stack]
 
 ---
 
-## Mobile
-
-| Technology | Role | Why |
-|-----------|------|-----|
-| **Expo SDK 54** | React Native toolkit | Simplifies native builds |
-| **React Native** | Native UI framework | Write JS, get native iOS/Android views |
-| **Expo Router v6** | File-based routing | Same pattern as Next.js |
-| **expo-secure-store** | Encrypted storage | Secure token storage on device |
-
----
-
 ## Infrastructure & Tooling
 
 | Technology | Role |
@@ -65,7 +54,7 @@ tags: [architecture, tech-stack]
 
 ## Language: TypeScript
 
-The entire codebase — backend, web, and mobile — is written in **TypeScript**. TypeScript is JavaScript with a type system layered on top.
+The entire codebase — backend and web — is written in **TypeScript**. TypeScript is JavaScript with a type system layered on top.
 
 ```typescript
 // JavaScript — no types, error only at runtime

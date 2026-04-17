@@ -181,7 +181,7 @@ export const notificationsApi = {
 };
 ```
 
-Channel-mention notifications include `clubId`, `channelId`, and `messageId` in the payload. The web and mobile clients use those IDs to route directly into the relevant club channel instead of only marking the notification as read.
+Channel-mention notifications include `clubId`, `channelId`, and `messageId` in the payload. The web client uses those IDs to route directly into the relevant club channel instead of only marking the notification as read.
 
 For club channels and tags, the web UI now prefers `memberIds` selected from the club directory. `memberUniqueIds` still exists in the API for compatibility with older clients.
 

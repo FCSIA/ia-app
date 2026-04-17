@@ -79,7 +79,7 @@ See [[environment]] for what each variable does.
 ```bash
 pnpm install
 ```
-Installs all packages for all three apps (api, web, mobile) in one command.
+Installs all packages for all apps (api, web) in one command.
 
 ### 10. Generate Prisma Client
 ```bash

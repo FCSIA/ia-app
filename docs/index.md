@@ -39,9 +39,6 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[state-management]] — TanStack Query for data fetching
 - [[styling]] — Tailwind CSS and the glassmorphic design system
 
-### Mobile
-- [[mobile-overview]] — Expo, React Native, and how it differs from web
-
 ### Features
 - [[announcements]] — School-wide and club announcements with comments
 - [[clubs]] — Club management, membership, and invites
@@ -88,8 +85,7 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 ia-app/
 ├── apps/
 │   ├── api/        → NestJS backend (port 3001)
-│   ├── web/        → Next.js web app (port 3000)
-│   └── mobile/     → Expo mobile app
+│   └── web/        → Next.js web app (port 3000)
 ├── docs/           → This documentation vault
 ├── infra/          → Docker / infrastructure config
 ├── SETUP.md        → New machine setup guide

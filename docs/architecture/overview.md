@@ -16,28 +16,25 @@ tags: [architecture, overview]
 |-------|-----------|------------|
 | **Backend** | Server program. Handles logic, talks to database, has no UI | [[backend-overview\|NestJS]] |
 | **Frontend** | Browser program. Shows the UI, calls the backend for data | [[frontend-overview\|Next.js]] |
-| **Mobile** | Phone app. Same as frontend but for iOS/Android | [[mobile-overview\|Expo]] |
 | **Database** | Stores all data permanently | [[database-overview\|PostgreSQL]] |
 
 ```
 Browser (Next.js)  ──→  Backend (NestJS API)  ──→  PostgreSQL
-Phone (Expo)       ──→  Backend (NestJS API)  ──→  (same database)
 ```
 
-The backend is the **single source of truth**. Both web and mobile talk to the same API. Neither the browser nor the phone ever touches the database directly.
+The backend is the **single source of truth**. The browser never touches the database directly — all data flows through the API.
 
 ---
 
 ## The Monorepo
 
-A **monorepo** (mono = one) puts all three apps in a single git repository so they're easier to manage together.
+A **monorepo** (mono = one) puts all apps in a single git repository so they're easier to manage together.
 
 ```
 ia-app/                     ← one git repo
 ├── apps/
 │   ├── api/                ← backend
-│   ├── web/                ← web frontend
-│   └── mobile/             ← mobile app
+│   └── web/                ← web frontend
 ├── package.json            ← root configuration
 ├── pnpm-workspace.yaml     ← declares all apps as one workspace
 └── turbo.json              ← task runner config

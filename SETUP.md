@@ -99,7 +99,7 @@ cp .env.example .env && cp .env.example apps/api/.env
 ```bash
 pnpm install
 ```
-> This installs everything for all apps (api, web, mobile) in one go.
+> This installs everything for all apps (api, web) in one go.
 
 ---
 

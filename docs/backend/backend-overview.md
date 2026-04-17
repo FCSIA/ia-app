@@ -12,7 +12,7 @@ tags: [backend, nestjs]
 
 The backend is a program that runs on a server (or your laptop during development). It:
 - Has no visual interface — it only speaks JSON over HTTP
-- Receives requests from the web and mobile apps
+- Receives requests from the web app
 - Applies business logic (checks permissions, validates data)
 - Reads and writes to the database
 - Returns structured responses

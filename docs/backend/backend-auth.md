@@ -199,12 +199,7 @@ Controller method runs with @CurrentUser() user
 
 ## Token Storage
 
-| Platform | Storage | Why |
-|----------|---------|-----|
-| Web (Next.js) | `localStorage` | Simple, persistent across browser sessions |
-| Mobile (Expo) | `expo-secure-store` | Encrypted, backed by device secure enclave |
-
-The web app stores the token under the key `ia_token`. Every Axios request reads it and adds it to the `Authorization` header automatically. See [[frontend-auth]].
+The web app stores the JWT in `localStorage` under the key `ia_token`. It's persistent across browser sessions. Every Axios request reads it and adds it to the `Authorization` header automatically. See [[frontend-auth]].
 
 ---
 

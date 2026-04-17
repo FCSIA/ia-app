@@ -93,7 +93,7 @@ Supported mention styles inside channel messages:
 - `@tag-name` for custom club tags
 - `@STU001` for a direct user mention by `uniqueId`
 
-Mentions create `CLUB_CHANNEL_MENTION` notifications. Those notifications appear in both the web and mobile apps and deep-link into the matching club channel.
+Mentions create `CLUB_CHANNEL_MENTION` notifications. Those notifications appear in the web app and deep-link into the matching club channel.
 
 ---
 
@@ -141,11 +141,6 @@ Mentions create `CLUB_CHANNEL_MENTION` notifications. Those notifications appear
 - `/clubs` — workspace landing page with pending invites, club search, sponsor-aware club creation, and membership/sponsorship sections
 - `/clubs/:id` — club workspace with channel rail, quick-action sheets, searchable directory, and member-based tag creation
 - `/clubs/:id/channels/:channelId` — three-pane chat layout with channel rail, live composer, mention helpers, and audience visibility panel
-
-## Mobile Pages
-
-- `/clubs/[id]` — club detail with a Channels tab and visible mention tags
-- `/clubs/[id]/channels/[channelId]` — phone-friendly message timeline and composer
 
 ---
 

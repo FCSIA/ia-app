@@ -1,6 +1,6 @@
 # 🎓 IA School App
 
-A full-stack school communication and management platform built for **FCS Innovation Academy**. It connects students, teachers, and administrators through a unified web and mobile experience.
+A full-stack school communication and management platform built for **FCS Innovation Academy**. It connects students, teachers, and administrators through a unified web experience.
 
 ---
 
@@ -16,7 +16,6 @@ A full-stack school communication and management platform built for **FCS Innova
 - 🔔 **Notifications** — In-app notification delivery with preferences per category
 - 👥 **User Management** — Bulk import students via CSV, role assignment, account activation/deactivation
 - 📊 **Audit Log** — Full audit trail of admin actions
-- 📱 **Mobile App** — Companion React Native (Expo) mobile app
 
 ---
 
@@ -27,7 +26,6 @@ A full-stack school communication and management platform built for **FCS Innova
 | **API** | [NestJS](https://nestjs.com/) + TypeScript |
 | **Database** | SQLite (dev) via [Prisma ORM](https://www.prisma.io/) |
 | **Web Frontend** | [Next.js 15](https://nextjs.org/) + Tailwind CSS + shadcn/ui |
-| **Mobile** | [Expo](https://expo.dev/) (React Native) SDK 54 |
 | **Auth** | JWT + bcrypt |
 | **Monorepo** | [Turborepo](https://turbo.build/) + pnpm workspaces |
 | **API Docs** | Swagger / OpenAPI |
@@ -53,8 +51,7 @@ ia-app/
 │   │   │   └── audit/
 │   │   └── prisma/
 │   │       └── schema.prisma
-│   ├── web/          # Next.js web app (port 3000)
-│   └── mobile/       # Expo React Native app
+│   └── web/          # Next.js web app (port 3000)
 ├── turbo.json
 ├── pnpm-workspace.yaml
 └── .env.example
@@ -132,8 +129,6 @@ pnpm infra:down
 
 ```bash
 pnpm dev         # API + web
-pnpm dev:all     # API + web + mobile
-pnpm dev:mobile  # mobile only
 pnpm build
 pnpm lint
 pnpm test

@@ -150,7 +150,7 @@ Storing JWTs in `localStorage` is common but has trade-offs:
 - **Accessible to JavaScript** — vulnerable to XSS if malicious scripts run on the page
 - **Alternative**: `httpOnly` cookies (not accessible to JS, but requires CSRF protection)
 
-For a school app, `localStorage` is an acceptable choice. See [[mobile-overview]] for how the mobile app uses the more secure `SecureStore` instead.
+For a school app, `localStorage` is an acceptable choice.
 
 ---
 
@@ -158,4 +158,3 @@ For a school app, `localStorage` is an acceptable choice. See [[mobile-overview]
 
 - [[backend-auth]] — How the backend signs and validates tokens
 - [[api-layer]] — The Axios interceptor that attaches the token
-- [[mobile-overview]] — SecureStore on mobile
