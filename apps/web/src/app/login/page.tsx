@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/lib/api';
 import { setAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +25,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(uniqueId, password);
       setAuth(res.data.token, res.data.user);
+      queryClient.clear();
       toast({ title: 'Logged in successfully' });
       router.replace('/dashboard');
     } catch (err: any) {

@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
@@ -115,6 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const safePathname = pathname ?? '/dashboard';
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       await authApi.logout();
     } catch { }
     clearAuth();
+    queryClient.clear();
     router.replace('/login');
     toast({ title: 'Logged out' });
   };
