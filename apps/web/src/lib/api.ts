@@ -204,15 +204,19 @@ export const flexFridayApi = {
   getSessions: (fridayId: string) => api.get(`/flex-friday/${fridayId}/sessions`),
   createSession: (fridayId: string, data: any) =>
     api.post(`/flex-friday/${fridayId}/sessions`, data),
-  register: (sessionId: string) =>
-    api.post(`/flex-friday/sessions/${sessionId}/register`),
-  unregister: (sessionId: string) =>
-    api.delete(`/flex-friday/sessions/${sessionId}/register`),
-  assign: (sessionId: string, studentId: string) =>
-    api.post(`/flex-friday/sessions/${sessionId}/assign`, { studentId }),
+  getWorkshops: (fridayId: string, sessionId: string) =>
+    api.get(`/flex-friday/${fridayId}/sessions/${sessionId}/workshops`),
+  createWorkshop: (fridayId: string, sessionId: string, data: any) =>
+    api.post(`/flex-friday/${fridayId}/sessions/${sessionId}/workshops`, data),
+  register: (workshopId: string) =>
+    api.post(`/flex-friday/workshops/${workshopId}/register`),
+  unregister: (workshopId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}/register`),
+  assign: (workshopId: string, studentId: string) =>
+    api.post(`/flex-friday/workshops/${workshopId}/assign`, { studentId }),
   getMyRegistrations: () => api.get('/flex-friday/my/registrations'),
   getMyAssignments: () => api.get('/flex-friday/my/assignments'),
-  getRoster: (sessionId: string) => api.get(`/flex-friday/sessions/${sessionId}/roster`),
+  getRoster: (workshopId: string) => api.get(`/flex-friday/workshops/${workshopId}/roster`),
 };
 
 // Notifications

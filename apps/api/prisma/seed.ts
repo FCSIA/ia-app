@@ -97,7 +97,7 @@ async function main() {
       sponsors: { create: [{ userId: teacher.id }] },
       members: {
         create: [
-          { userId: createdStudents[0].id, role: 'President' },
+          { userId: createdStudents[0].id },
           { userId: createdStudents[1].id },
         ],
       },
@@ -194,8 +194,8 @@ async function main() {
 
   await prisma.studentScheduleFriend.createMany({
     data: [
-      { ownerId: createdStudents[0].id, friendId: createdStudents[2].id },
-      { ownerId: createdStudents[2].id, friendId: createdStudents[0].id },
+      { requesterId: createdStudents[0].id, addresseeId: createdStudents[2].id, status: 'ACCEPTED' },
+      { requesterId: createdStudents[2].id, addresseeId: createdStudents[0].id, status: 'ACCEPTED' },
     ],
     skipDuplicates: true,
   });
