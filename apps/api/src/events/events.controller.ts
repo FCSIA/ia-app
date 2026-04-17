@@ -9,9 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
-import { Role } from '@prisma/client';
 import { EventsService } from './events.service';
-import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('events')
@@ -56,7 +54,6 @@ export class EventsController {
   }
 
   @Post(':id/approve')
-  @Roles(Role.SPONSOR)
   approve(
     @Param('id') id: string,
     @Body() body: { note?: string },
@@ -66,7 +63,6 @@ export class EventsController {
   }
 
   @Post(':id/reject')
-  @Roles(Role.SPONSOR)
   reject(
     @Param('id') id: string,
     @Body() body: { note?: string },

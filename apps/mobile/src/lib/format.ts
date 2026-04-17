@@ -34,6 +34,17 @@ export function formatPathway(value?: string | null) {
   return formatEnumLabel(value);
 }
 
+export function formatClubRole(value?: string | null) {
+  if (!value) return '';
+
+  return value
+    .trim()
+    .replace(/[_-]+/g, ' ')
+    .split(/\s+/)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+}
+
 export function pathParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] || '';
   return value || '';

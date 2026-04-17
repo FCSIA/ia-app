@@ -155,6 +155,8 @@ model Comment {
   @@map("comments")
 }
 
+// ─── Clubs ────────────────────────────────────────────────────────────────────
+
 model Club {
   id            String                 @id @default(cuid())
   name          String                 @unique
@@ -175,13 +177,14 @@ model Club {
 }
 
 model ClubMember {
-  id       String         @id @default(cuid())
-  clubId   String         @map("club_id")
-  userId   String         @map("user_id")
-  role     ClubMemberRole @default(MEMBER)
-  joinedAt DateTime       @default(now()) @map("joined_at")
-  club     Club           @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  clubId    String   @map("club_id")
+  userId    String   @map("user_id")
+  role      String?
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, userId])
   @@map("club_members")
@@ -338,27 +341,57 @@ model ClubChannelMessageMention {
   @@map("club_channel_message_mentions")
 }
 
+// ─── Events ───────────────────────────────────────────────────────────────────
+
+enum EventStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHED
+  CANCELLED
+}
+
+enum EventAttendanceStatus {
+  PRESENT
+  ABSENT
+  TARDY
+}
+
+model EventCategory {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  events Event[]
+
+  @@map("event_categories")
+}
+
 model Event {
-  id             String                 @id @default(cuid())
-  authorId       String                 @map("author_id")
-  clubId         String?                @map("club_id")
-  type           EventType              @default(GENERAL)
-  status         EventStatus            @default(DRAFT)
-  title          String
-  description    String?
-  location       String?
-  flyerUrl       String?                @map("flyer_url")
-  startAt        DateTime               @map("start_at")
-  endAt          DateTime?              @map("end_at")
-  publishedAt    DateTime?              @map("published_at")
-  createdAt      DateTime               @default(now()) @map("created_at")
-  updatedAt      DateTime               @updatedAt @map("updated_at")
-  calendarEntry  CalendarEntry?
-  approvals      EventApproval[]
-  author         User                   @relation("EventAuthor", fields: [authorId], references: [id])
-  club           Club?                  @relation(fields: [clubId], references: [id])
-  keywordMatches KeywordMatch[]
-  notifications  NotificationDelivery[]
+  id                       String      @id @default(cuid())
+  authorId                 String      @map("author_id")
+  ownerId                  String?     @map("owner_id")
+  clubId                   String?     @map("club_id")
+  categoryId               String?     @map("category_id")
+  status                   EventStatus @default(DRAFT)
+  title                    String
+  description              String?
+  location                 String?
+  flyerUrl                 String?     @map("flyer_url")
+  startAt                  DateTime    @map("start_at")
+  endAt                    DateTime?   @map("end_at")
+  registrationOpensAt      DateTime?   @map("registration_opens_at")
+  registrationClosesAt     DateTime?   @map("registration_closes_at")
+  allowedMajorPathways     Pathway[]   @default([]) @map("allowed_major_pathways")
+  allowedMinorPathways     Pathway[]   @default([]) @map("allowed_minor_pathways")
+  requiredMajorWorkshopCount Int       @default(0) @map("required_major_workshop_count")
+  isInactive               Boolean     @default(false) @map("is_inactive")
+  deactivatedAt            DateTime?   @map("deactivated_at")
+  publishedAt              DateTime?   @map("published_at")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
 
   @@map("events")
 }

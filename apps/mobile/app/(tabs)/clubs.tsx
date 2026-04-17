@@ -6,6 +6,7 @@ import { BookOpenCheck } from 'lucide-react-native';
 import { Card, EmptyState, Pill, Screen, TopBar } from '@/components/ui';
 import { clubsApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { formatClubRole } from '@/lib/format';
 import type { ClubInvite, ClubSummary } from '@/types/api';
 import { theme } from '@/theme';
 
@@ -120,7 +121,7 @@ export default function ClubsScreen() {
                   <Text style={styles.clubName}>{club.name}</Text>
                   <Text style={styles.clubMeta}>{club.description || 'No description provided.'}</Text>
                 </View>
-                {club.role === 'LEADER' ? <Pill label="Leader" tone="amber" /> : null}
+                {club.role ? <Pill label={formatClubRole(club.role)} tone="amber" /> : null}
                 {!showMineOnly && memberIds.has(club.id) ? <Pill label="Member" tone="green" /> : null}
               </View>
               <View style={styles.clubFooter}>

@@ -1,7 +1,7 @@
 import type { AppRole } from './auth';
 
 export type ClubDirectoryKind = 'SPONSOR' | 'MEMBER';
-export type ClubMemberRole = 'MEMBER' | 'LEADER';
+export type ClubMemberRole = string;
 export type ClubMentionKind = 'USER' | 'BUILT_IN_TAG' | 'CUSTOM_TAG';
 
 export interface ClubUserRef {
@@ -15,7 +15,7 @@ export interface ClubUserRef {
 
 export interface ClubMember {
   userId: string;
-  role: ClubMemberRole;
+  role?: ClubMemberRole | null;
   user: ClubUserRef;
 }
 
@@ -55,7 +55,7 @@ export interface ClubSummary {
   id: string;
   name: string;
   description?: string | null;
-  role?: ClubMemberRole;
+  role?: ClubMemberRole | null;
   sponsors?: ClubSponsor[];
   _count?: {
     members?: number;

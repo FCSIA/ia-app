@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  ClubMemberRole,
   NotificationCategory,
   Prisma,
 } from '@prisma/client';
@@ -250,13 +249,13 @@ export class ClubChannelsService {
     const normalizedUserIds = Array.from(new Set(tokens.map((token) => token.toUpperCase())));
     const sluggedTokens = Array.from(new Set(tokens.map((token) => this.slugifyTag(token))));
 
-    const [customTags, leaders, sponsors, mentionedUsers] = await Promise.all([
+    const [customTags, roleHolders, sponsors, mentionedUsers] = await Promise.all([
       this.prisma.clubTag.findMany({
         where: { clubId, slug: { in: sluggedTokens } },
         include: { members: true },
       }),
       this.prisma.clubMember.findMany({
-        where: { clubId, role: ClubMemberRole.LEADER },
+        where: { clubId, role: { not: null } },
         select: { userId: true },
       }),
       this.prisma.clubSponsor.findMany({
@@ -273,7 +272,7 @@ export class ClubChannelsService {
     const userByUniqueId = new Map(
       mentionedUsers.map((user) => [user.uniqueId.toUpperCase(), user]),
     );
-    const leaderIds = leaders.map((entry) => entry.userId);
+    const roleHolderIds = roleHolders.map((entry) => entry.userId);
     const sponsorIds = sponsors.map((entry) => entry.userId);
 
     const mentionRows: Array<{
@@ -298,7 +297,7 @@ export class ClubChannelsService {
 
       if (lower === 'leaders') {
         mentionRows.push({ kind: 'BUILT_IN_TAG', token: lower });
-        for (const userId of leaderIds) {
+        for (const userId of roleHolderIds) {
           if (userId !== actorId && audienceSet.has(userId)) notifyUserIds.add(userId);
         }
         continue;
@@ -349,7 +348,7 @@ export class ClubChannelsService {
   ) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
     if (!context.canManageChannels) {
-      throw new ForbiddenException('Only leaders, sponsors, or admins can create channels');
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can create channels');
     }
 
     const name = dto.name.trim();
@@ -399,7 +398,7 @@ export class ClubChannelsService {
   async createTag(clubId: string, dto: CreateClubTagDto, actorId: string, actorRole: string) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
     if (!context.canManageChannels) {
-      throw new ForbiddenException('Only leaders, sponsors, or admins can create tags');
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can create tags');
     }
 
     const name = dto.name.trim();

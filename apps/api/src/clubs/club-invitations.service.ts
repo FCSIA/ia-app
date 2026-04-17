@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import * as csv from 'csv-parser';
 import { Readable } from 'stream';
-import { ClubMemberRole, InviteStatus, NotificationCategory } from '@prisma/client';
+import { InviteStatus, NotificationCategory } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
@@ -150,7 +150,7 @@ export class ClubInvitationsService {
     await this.prisma.$transaction(async (tx) => {
       if (accept) {
         await tx.clubMember.create({
-          data: { clubId: invite.clubId, userId, role: ClubMemberRole.MEMBER },
+          data: { clubId: invite.clubId, userId, role: null },
         });
 
         await tx.notificationPreference.upsert({

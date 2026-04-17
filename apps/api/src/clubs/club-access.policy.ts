@@ -4,14 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ClubMemberRole, Prisma, Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ClubContext {
   club: { id: string; name: string; description: string | null; isActive: boolean };
-  membership: { role: ClubMemberRole } | null;
+  membership: { role: string | null } | null;
   isMember: boolean;
-  isLeader: boolean;
+  hasClubRole: boolean;
   isSponsor: boolean;
   isAdmin: boolean;
   canManageChannels: boolean;
@@ -46,9 +46,9 @@ export class ClubAccessPolicy {
 
     const isAdmin = this.isAdmin(userRole);
     const isMember = !!membership;
-    const isLeader = membership?.role === ClubMemberRole.LEADER;
+    const hasClubRole = !!membership?.role?.trim();
     const isSponsor = !!sponsor;
-    const canManageChannels = isSponsor || isLeader || isAdmin;
+    const canManageChannels = isSponsor || hasClubRole || isAdmin;
     const canSeePrivateChannels = isSponsor || isAdmin;
 
     if (!isMember && !isSponsor && !isAdmin) {
@@ -59,7 +59,7 @@ export class ClubAccessPolicy {
       club,
       membership,
       isMember,
-      isLeader,
+      hasClubRole,
       isSponsor,
       isAdmin,
       canManageChannels,
@@ -188,8 +188,8 @@ export class ClubAccessPolicy {
 
   async requireInvitePermissions(clubId: string, senderId: string, senderRole: string) {
     const context = await this.getClubContext(clubId, senderId, senderRole);
-    if (!context.isSponsor && !context.isLeader && !context.isAdmin) {
-      throw new ForbiddenException('Only leaders, sponsors, or admins can invite members');
+    if (!context.isSponsor && !context.hasClubRole && !context.isAdmin) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can invite members');
     }
     return context.club;
   }

@@ -237,7 +237,7 @@ export default function ScheduleScreen() {
     getUser().then(setUser);
   }, []);
 
-  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   useEffect(() => {

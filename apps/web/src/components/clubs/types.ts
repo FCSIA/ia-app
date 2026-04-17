@@ -46,5 +46,7 @@ export function formatClubRole(role?: string | null) {
 }
 
 export function isSponsorEligible(person: { roles?: string[] }) {
-  return !!person.roles?.includes('SPONSOR');
+  return !!person.roles?.some((role) =>
+    ['TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(role),
+  );
 }

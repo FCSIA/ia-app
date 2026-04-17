@@ -14,7 +14,7 @@ import {
   UpsertStudentScheduleDto,
 } from './dto/schedule.dto';
 
-const STUDENT_ROLES: Role[] = [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN];
+const STUDENT_ROLES: Role[] = [Role.STUDENT];
 
 @Injectable()
 export class ScheduleService {

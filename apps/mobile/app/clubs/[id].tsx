@@ -16,7 +16,7 @@ import { announcementsApi, clubsApi } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatDistanceToNow } from 'date-fns';
 import { getUser, hasRole } from '@/lib/auth';
-import { initials, pathParam } from '@/lib/format';
+import { formatClubRole, initials, pathParam } from '@/lib/format';
 import type { AnnouncementSummary, AppUser, ClubDetail } from '@/types/api';
 import { theme } from '@/theme';
 
@@ -31,10 +31,13 @@ export default function ClubDetailScreen() {
   const [tab, setTab] = useState<TabKey>('announcements');
   const [showInvite, setShowInvite] = useState(false);
   const [showPost, setShowPost] = useState(false);
+  const [showRoleEditor, setShowRoleEditor] = useState(false);
   const [inviteValue, setInviteValue] = useState('');
   const [postTitle, setPostTitle] = useState('');
   const [postBody, setPostBody] = useState('');
   const [allowComments, setAllowComments] = useState(false);
+  const [roleValue, setRoleValue] = useState('');
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     getUser().then(setUser);
@@ -85,13 +88,17 @@ export default function ClubDetailScreen() {
     },
   });
 
-  const promoteMutation = useMutation({
-    mutationFn: (memberId: string) => clubsApi.promoteMember(id, memberId),
+  const setRoleMutation = useMutation({
+    mutationFn: ({ memberId, role }: { memberId: string; role?: string }) =>
+      clubsApi.setMemberRole(id, memberId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', id] });
+      setShowRoleEditor(false);
+      setSelectedMemberId(null);
+      setRoleValue('');
     },
     onError: (error) => {
-      Alert.alert('Could not promote member', getErrorMessage(error, 'Try again.'));
+      Alert.alert('Could not update club role', getErrorMessage(error, 'Try again.'));
     },
   });
 
@@ -113,9 +120,39 @@ export default function ClubDetailScreen() {
     () => club?.members?.find((member) => member.userId === user?.id),
     [club?.members, user?.id],
   );
-  const isLeader = myMembership?.role === 'LEADER';
-  const canPost = !!user && (isSponsor || isLeader || hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
+  const hasClubRole = !!myMembership?.role?.trim();
+  const canPost = !!user && (isSponsor || hasClubRole || hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
+  const canInvite = !!user && (isSponsor || hasClubRole || hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
   const canManageMembers = !!user && (isSponsor || hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
+  const selectedMember = club?.members?.find((member) => member.userId === selectedMemberId) ?? null;
+
+  function openRoleEditor(member: ClubDetail['members'][number]) {
+    setSelectedMemberId(member.userId);
+    setRoleValue(member.role ?? '');
+    setShowRoleEditor(true);
+  }
+
+  function closeRoleEditor() {
+    setShowRoleEditor(false);
+    setSelectedMemberId(null);
+    setRoleValue('');
+  }
+
+  function submitRoleUpdate() {
+    if (!selectedMember) return;
+
+    const normalizedRole = roleValue.trim();
+    const currentRole = selectedMember.role?.trim() ?? '';
+    if (normalizedRole === currentRole) {
+      closeRoleEditor();
+      return;
+    }
+
+    setRoleMutation.mutate({
+      memberId: selectedMember.userId,
+      role: normalizedRole || undefined,
+    });
+  }
 
   return (
     <Screen scroll>
@@ -134,7 +171,7 @@ export default function ClubDetailScreen() {
           <Card style={styles.summaryCard}>
             <View style={styles.pills}>
               {isSponsor ? <Pill label="Sponsor" tone="blue" /> : null}
-              {isLeader ? <Pill label="Leader" tone="amber" /> : null}
+              {myMembership?.role ? <Pill label={formatClubRole(myMembership.role)} tone="amber" /> : null}
               <Pill label={`${club.members.length} members`} tone="neutral" />
             </View>
             <Text style={styles.summaryText}>
@@ -142,7 +179,7 @@ export default function ClubDetailScreen() {
               {club.sponsors.map((sponsor) => `${sponsor.user.firstName} ${sponsor.user.lastName}`).join(', ')}
             </Text>
             <View style={styles.actionRow}>
-              {(canManageMembers || isLeader) && (
+              {canInvite && (
                 <AppButton
                   label="Invite Member"
                   tone="secondary"
@@ -223,19 +260,15 @@ export default function ClubDetailScreen() {
                       <Text style={styles.cardTitle}>
                         {member.user.firstName} {member.user.lastName}
                       </Text>
-                      {member.role === 'LEADER' ? (
-                        <Pill label="Leader" tone="amber" />
-                      ) : null}
+                      {member.role ? <Pill label={formatClubRole(member.role)} tone="amber" /> : null}
                     </View>
                     <Text style={styles.cardMeta}>{member.user.uniqueId}</Text>
                   </View>
                   {canManageMembers && member.userId !== user?.id ? (
                     <View style={styles.memberActions}>
-                      {member.role === 'MEMBER' && isSponsor ? (
-                        <Pressable onPress={() => promoteMutation.mutate(member.userId)}>
-                          <Crown size={16} color={theme.colors.amber} />
-                        </Pressable>
-                      ) : null}
+                      <Pressable onPress={() => openRoleEditor(member)}>
+                        <Crown size={16} color={theme.colors.amber} />
+                      </Pressable>
                       <Pressable onPress={() => removeMutation.mutate(member.userId)}>
                         <UserMinus size={16} color={theme.colors.red} />
                       </Pressable>
@@ -274,7 +307,7 @@ export default function ClubDetailScreen() {
 
               <Card>
                 <Text style={styles.cardTitle}>Mention tags</Text>
-                <Text style={styles.cardMeta}>Built-ins: @all, @leaders, @sponsors</Text>
+                <Text style={styles.cardMeta}>Built-ins: @all, @leaders (club roles), @sponsors</Text>
                 {club.tags?.length ? (
                   <View style={styles.pills}>
                     {club.tags.map((tag) => (
@@ -329,6 +362,33 @@ export default function ClubDetailScreen() {
           <AppButton label="Cancel" tone="secondary" onPress={() => setShowPost(false)} style={styles.flexButton} />
         </View>
       </ModalSheet>
+
+      <ModalSheet
+        visible={showRoleEditor}
+        onClose={closeRoleEditor}
+        title={
+          selectedMember
+            ? `Set role for ${selectedMember.user.firstName} ${selectedMember.user.lastName}`
+            : 'Set Club Role'
+        }
+      >
+        <AppInput
+          label="Club role"
+          placeholder="President, Captain, Treasurer..."
+          value={roleValue}
+          onChangeText={setRoleValue}
+        />
+        <Text style={styles.helperText}>Leave it blank to clear this member&apos;s club role.</Text>
+        <View style={styles.actionRow}>
+          <AppButton
+            label="Save Role"
+            onPress={submitRoleUpdate}
+            loading={setRoleMutation.isPending}
+            style={styles.flexButton}
+          />
+          <AppButton label="Cancel" tone="secondary" onPress={closeRoleEditor} style={styles.flexButton} />
+        </View>
+      </ModalSheet>
     </Screen>
   );
 }
@@ -363,6 +423,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     lineHeight: 20,
+  },
+  helperText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   summaryCard: {
     gap: 12,
