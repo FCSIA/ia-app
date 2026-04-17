@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi, moderationApi } from '@/lib/api';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -30,6 +31,20 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     queryKey: ['announcement', id],
     queryFn: () => announcementsApi.getOne(id).then((r) => r.data),
   });
+
+  const autoReadMutation = useMutation({
+    mutationFn: () => announcementsApi.markRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      qc.invalidateQueries({ queryKey: ['announcement', id] });
+    },
+  });
+
+  useEffect(() => {
+    if (ann && !ann.isRead && !autoReadMutation.isPending) {
+      autoReadMutation.mutate();
+    }
+  }, [ann, autoReadMutation]);
 
   const addCommentMutation = useMutation({
     mutationFn: (body: string) => announcementsApi.addComment(id, body),
@@ -83,10 +98,17 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         {/* Announcement body */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 flex-wrap mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               {ann.isAdminGeneral && <Badge variant="destructive">Admin</Badge>}
               <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20">{ann.targetType.replace(/_/g, ' ')}</Badge>
+              <Badge variant={ann.isRead ? 'outline' : 'secondary'} className={ann.isRead ? '' : 'bg-primary/10 text-primary'}>
+                {ann.isRead ? 'Read' : 'Unread'}
+              </Badge>
+              {ann.club?.name ? <Badge variant="outline">{ann.club.name}</Badge> : null}
               {ann.status !== 'ACTIVE' && <Badge variant="outline">{ann.status}</Badge>}
+            </div>
+            <div className="mb-5 flex justify-end">
+              <AnnouncementReadToggle announcementId={ann.id} isRead={ann.isRead} />
             </div>
             <div className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">{ann.body}</div>
             <div className="mt-6 pt-4 border-t text-xs text-muted-foreground flex items-center gap-1">
