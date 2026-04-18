@@ -14,6 +14,8 @@ import type {
   UpsertStudentSchedulePayload,
 } from '@ia/contracts/schedule';
 
+export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function toApiUrl(path: string) {
@@ -122,6 +124,10 @@ export const clubsApi = {
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
   createChannel: (clubId: string, data: CreateClubChannelPayload) =>
     api.post(`/clubs/${clubId}/channels`, data),
+  deleteChannel: (clubId: string, channelId: string) =>
+    api.delete(`/clubs/${clubId}/channels/${channelId}`),
+  updateChannel: (clubId: string, channelId: string, data: UpdateClubChannelPayload) =>
+    api.patch(`/clubs/${clubId}/channels/${channelId}`, data),
   createTag: (clubId: string, data: CreateClubTagPayload) =>
     api.post(`/clubs/${clubId}/tags`, data),
   postChannelMessage: (

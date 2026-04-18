@@ -23,6 +23,10 @@
     "./schedule": {
       "types": "./dist/schedule.d.ts",
       "default": "./dist/schedule.js"
+    },
+    "./courses": {
+      "types": "./dist/courses.d.ts",
+      "default": "./dist/courses.js"
     }
   }
 }

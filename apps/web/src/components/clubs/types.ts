@@ -42,7 +42,15 @@ export function initialsOf(person: Pick<ClubUserRef, 'firstName' | 'lastName'>) 
 
 export function formatClubRole(role?: string | null) {
   if (!role) return null;
-  return role.toLowerCase().replace(/_/g, ' ');
+  // If it's a known snake_case role, capitalize it. If it's already mixed case (custom), preserve it.
+  const hasMultipleLower = /[a-z].*[a-z]/.test(role);
+  if (hasMultipleLower && !role.includes('_')) return role;
+
+  return role
+    .toLowerCase()
+    .split(/_|\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 export function isSponsorEligible(person: { roles?: string[] }) {

@@ -31,7 +31,7 @@ export interface ClubContext {
 
 @Injectable()
 export class ClubAccessPolicy {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private readonly channelOrder: Record<ClubChannelVisibility, number> = {
     PUBLIC: 0,

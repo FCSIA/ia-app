@@ -3,13 +3,15 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AtSign,
   Check,
   ChevronsUpDown,
   Home,
   Plus,
+  Pencil,
+  Trash2,
   Users2,
 } from 'lucide-react';
 import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
@@ -24,9 +26,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CreateChannelDialog } from '@/components/clubs/dialogs/create-channel-dialog';
+import { ChannelDialog } from '@/components/clubs/dialogs/channel-dialog';
 import { clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ClubDetail, ClubSummary } from '@ia/contracts/clubs';
 
@@ -58,6 +61,23 @@ export function ClubWorkspace({
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', clubId],
     queryFn: () => clubsApi.getOne(clubId).then((response) => response.data),
+  });
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const deleteChannelMutation = useMutation({
+    mutationFn: (channelId: string) => clubsApi.deleteChannel(clubId, channelId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
+      toast({ title: 'Channel deleted' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to delete channel',
+        variant: 'destructive',
+      });
+    },
   });
 
   const { data: myData } = useQuery<MyClubsResponse>({
@@ -220,7 +240,7 @@ export function ClubWorkspace({
                           key={channel.id}
                           href={`/clubs/${clubId}/channels/${channel.id}`}
                           className={cn(
-                            'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+                            'group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors',
                             active
                               ? 'bg-muted font-medium text-foreground'
                               : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
@@ -230,7 +250,26 @@ export function ClubWorkspace({
                             visibility={channel.visibility}
                             className="size-3.5 text-muted-foreground"
                           />
-                          <span className="truncate">{channel.name}</span>
+                          <span className="flex-1 truncate">{channel.name}</span>
+                          {canManageChannels && (
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ChannelActionsTrigger clubId={clubId} channel={channel} />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (confirm(`Are you sure you want to delete #${channel.name}?`)) {
+                                    deleteChannelMutation.mutate(channel.id);
+                                  }
+                                }}
+                                className="p-1 hover:bg-destructive/10 hover:text-destructive rounded transition-all"
+                                aria-label="Delete channel"
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            </div>
+                          )}
                         </Link>
                       );
                     })
@@ -273,7 +312,33 @@ function CreateChannelTrigger({ clubId }: { clubId: string }) {
       >
         <Plus className="size-3.5" />
       </Button>
-      <CreateChannelDialog clubId={clubId} open={open} onOpenChange={setOpen} />
+      <ChannelDialog clubId={clubId} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+function ChannelActionsTrigger({ clubId, channel }: { clubId: string; channel: any }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        className="p-1 hover:bg-muted rounded transition-all"
+        aria-label="Edit channel"
+      >
+        <Pencil className="size-3" />
+      </button>
+      <ChannelDialog
+        clubId={clubId}
+        channel={channel}
+        open={open}
+        onOpenChange={setOpen}
+      />
     </>
   );
 }

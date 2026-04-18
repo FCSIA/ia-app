@@ -45,12 +45,9 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
     },
   });
 
-  const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
-  const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canManage = !!club?.viewer.canManageMembership;
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
-  const canManage = isSponsor || isAdmin;
-  const myMembership = club?.members?.find((member) => member.userId === user?.id);
-  const canInvite = canManage || !!myMembership?.role || isStaff;
+  const canInvite = canManage || isStaff;
 
   const directory = club?.directory ?? [];
   const filtered = useMemo(() => {

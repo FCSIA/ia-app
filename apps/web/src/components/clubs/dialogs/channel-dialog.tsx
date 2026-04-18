@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ClubChannelVisibility, ClubDetail } from '@ia/contracts/clubs';
 import {
@@ -32,17 +32,35 @@ import { useToast } from '@/hooks/use-toast';
 
 type Props = {
   clubId: string;
+  channel?: {
+    id: string;
+    name: string;
+    description?: string | null;
+    visibility: ClubChannelVisibility;
+    memberships?: Array<{ userId: string }>;
+  } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
+export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<ClubChannelVisibility>('PUBLIC');
   const [memberIds, setMemberIds] = useState<string[]>([]);
+
+  const isEdit = !!channel;
+
+  useEffect(() => {
+    if (open) {
+      setName(channel?.name ?? '');
+      setDescription(channel?.description ?? '');
+      setVisibility(channel?.visibility ?? 'PUBLIC');
+      setMemberIds(channel?.memberships?.map((m) => m.userId) ?? []);
+    }
+  }, [open, channel]);
 
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', clubId],
@@ -56,25 +74,31 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
   );
 
   const mutation = useMutation({
-    mutationFn: () =>
-      clubsApi.createChannel(clubId, {
+    mutationFn: () => {
+      const payload = {
         name: name.trim(),
         description: description.trim() || undefined,
         visibility,
         memberIds: visibility === 'PRIVATE' ? memberIds : [],
-      }),
+      };
+      return isEdit
+        ? clubsApi.updateChannel(clubId, channel.id, payload)
+        : clubsApi.createChannel(clubId, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: 'Channel created' });
-      setName('');
-      setDescription('');
-      setVisibility('PUBLIC');
-      setMemberIds([]);
+      toast({ title: isEdit ? 'Channel updated' : 'Channel created' });
+      if (!isEdit) {
+        setName('');
+        setDescription('');
+        setVisibility('PUBLIC');
+        setMemberIds([]);
+      }
       onOpenChange(false);
     },
     onError: (error: any) => {
       toast({
-        title: error.response?.data?.message || 'Failed to create channel',
+        title: error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} channel`,
         variant: 'destructive',
       });
     },
@@ -84,9 +108,11 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New channel</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit channel' : 'New channel'}</DialogTitle>
           <DialogDescription>
-            Pick how the club should use this space. Public channels are open to all members, private channels are invitation-only, and read-only channels work well for announcements.
+            {isEdit
+              ? 'Update the channel settings and permissions.'
+              : 'Pick how the club should use this space. Public channels are open to all members, private channels are invitation-only, and read-only channels work well for announcements.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +182,7 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !name.trim()}
           >
-            {mutation.isPending ? 'Creating…' : 'Create channel'}
+            {mutation.isPending ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create channel')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -97,6 +97,24 @@ export class CreateClubChannelDto extends ClubPeopleSelectionDto {
   visibility?: ClubChannelVisibility;
 }
 
+export class UpdateClubChannelDto extends ClubPeopleSelectionDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ClubChannelVisibility })
+  @IsOptional()
+  @IsEnum(ClubChannelVisibility)
+  visibility?: ClubChannelVisibility;
+}
+
 export class CreateClubTagDto extends ClubPeopleSelectionDto {
   @ApiProperty()
   @IsString()

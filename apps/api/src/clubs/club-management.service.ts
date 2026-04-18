@@ -318,8 +318,8 @@ export class ClubManagementService {
     actorRole: string,
   ) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
-    if (!context.isSponsor && !context.isAdmin) {
-      throw new ForbiddenException('Only sponsors or admins can assign club roles');
+    if (!context.canManageMembership) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can assign club roles');
     }
 
     const normalizedRole = this.normalizeClubRole(role);
@@ -342,8 +342,8 @@ export class ClubManagementService {
 
   async removeMember(clubId: string, memberId: string, actorId: string, actorRole: string) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
-    if (!context.isSponsor && !context.isAdmin) {
-      throw new ForbiddenException('Only sponsors or admins can remove members');
+    if (!context.canManageMembership) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can remove members');
     }
 
     await this.prisma.clubMember.delete({

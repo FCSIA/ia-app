@@ -5,12 +5,14 @@ import {
   Patch,
   Body,
   Param,
+  Delete,
   BadRequestException,
   UploadedFile,
   UseInterceptors,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { ClubChannelsService } from './club-channels.service';
@@ -19,6 +21,7 @@ import { ClubManagementService } from './club-management.service';
 import {
   AddClubSponsorDto,
   CreateClubChannelDto,
+  UpdateClubChannelDto,
   CreateClubChannelMessageDto,
   CreateClubDto,
   CreateClubTagDto,
@@ -145,6 +148,17 @@ export class ClubsController {
     return this.clubChannels.createChannel(clubId, body, user.id, user.role);
   }
 
+  @Patch(':id/channels/:channelId')
+  @ApiOperation({ summary: 'Update a club channel' })
+  updateChannel(
+    @Param('id') id: string,
+    @Param('channelId') channelId: string,
+    @Body() dto: UpdateClubChannelDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.updateChannel(id, channelId, dto, user.id, user.role);
+  }
+
   @Post(':id/tags')
   createTag(
     @Param('id') clubId: string,
@@ -152,6 +166,15 @@ export class ClubsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.clubChannels.createTag(clubId, body, user.id, user.role);
+  }
+
+  @Delete(':id/channels/:channelId')
+  deleteChannel(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.deleteChannel(clubId, channelId, user.id, user.role);
   }
 
   @Get(':id/channels/:channelId/messages')

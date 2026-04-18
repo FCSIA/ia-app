@@ -540,6 +540,7 @@ export default function AdminPage() {
               </Card>
 
               {/* Reports */}
+              <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-base">Reports</CardTitle>

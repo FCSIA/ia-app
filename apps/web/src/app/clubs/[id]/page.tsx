@@ -21,7 +21,7 @@ import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { fullName, type AnnouncementSummary } from '@/components/clubs/types';
+import { formatClubRole, fullName, type AnnouncementSummary } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -273,7 +273,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">{fullName(leader.user)}</p>
                     <p className="truncate text-sm text-muted-foreground">
-                      {leader.role || 'Club leader'}
+                      {formatClubRole(leader.role) || 'Club leader'}
                     </p>
                   </div>
                 </div>
@@ -410,7 +410,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
                 <ClubAvatar person={leader.user} className="size-8" fallbackClassName="text-[10px]" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{fullName(leader.user)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{leader.role || 'Leader'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{formatClubRole(leader.role) || 'Leader'}</p>
                 </div>
               </div>
             ))

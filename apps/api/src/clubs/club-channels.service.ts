@@ -17,6 +17,7 @@ import {
   CreateClubChannelDto,
   CreateClubChannelMessageDto,
   CreateClubTagDto,
+  UpdateClubChannelDto,
   ToggleClubChannelReactionDto,
 } from './dto/club.dto';
 
@@ -408,6 +409,68 @@ export class ClubChannelsService {
     return channel;
   }
 
+  async updateChannel(
+    clubId: string,
+    channelId: string,
+    dto: UpdateClubChannelDto,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
+    if (!context.canManageChannels) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can update channels');
+    }
+
+    const channel = await this.accessPolicy.getChannelOrThrow(clubId, channelId);
+
+    const name = dto.name?.trim();
+    const visibility = dto.visibility;
+    const membershipUserIds = (await this.accessPolicy.resolveClubPeople(clubId, dto)).map(
+      (p) => p.id,
+    );
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const up = await tx.clubChannel.update({
+        where: { id: channelId },
+        data: {
+          name: name || undefined,
+          description: dto.description?.trim() || undefined,
+          visibility: visibility || undefined,
+        },
+      });
+
+      // Synchronize memberships if it's a private channel or becoming one
+      const finalVisibility = visibility || channel.visibility;
+      if (finalVisibility === ClubChannelVisibility.PRIVATE && (dto.memberIds || dto.memberUniqueIds)) {
+        await tx.clubChannelMembership.deleteMany({ where: { channelId } });
+        await tx.clubChannelMembership.createMany({
+          data: membershipUserIds.map((userId) => ({ channelId, userId })),
+        });
+      } else if (finalVisibility !== ClubChannelVisibility.PRIVATE) {
+        // Clear memberships if changing from PRIVATE to non-PRIVATE
+        await tx.clubChannelMembership.deleteMany({ where: { channelId } });
+      }
+
+      return up;
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'CLUB_CHANNEL_UPDATED',
+      entityType: 'ClubChannel',
+      entityId: channelId,
+      meta: {
+        clubId,
+        name: updated.name,
+        visibility: updated.visibility,
+        memberIds:
+          updated.visibility === ClubChannelVisibility.PRIVATE ? membershipUserIds : [],
+      },
+    });
+
+    return updated;
+  }
+
   async createTag(clubId: string, dto: CreateClubTagDto, actorId: string, actorRole: string) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
     if (!context.canManageChannels) {
@@ -446,6 +509,40 @@ export class ClubChannelsService {
     });
 
     return tag;
+  }
+
+  async deleteChannel(clubId: string, channelId: string, actorId: string, actorRole: string) {
+    const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
+    if (!context.canManageChannels) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can delete channels');
+    }
+
+    const channel = await this.accessPolicy.getChannelOrThrow(clubId, channelId);
+
+    await this.prisma.$transaction([
+      this.prisma.clubChannelMembership.deleteMany({ where: { channelId } }),
+      this.prisma.clubChannelMessageReaction.deleteMany({
+        where: { message: { channelId } },
+      }),
+      this.prisma.clubChannelMessageMention.deleteMany({
+        where: { message: { channelId } },
+      }),
+      this.prisma.clubChannelMessageAttachment.deleteMany({
+        where: { message: { channelId } },
+      }),
+      this.prisma.clubChannelMessage.deleteMany({ where: { channelId } }),
+      this.prisma.clubChannel.delete({ where: { id: channelId } }),
+    ]);
+
+    await this.audit.log({
+      actorId,
+      action: 'CLUB_CHANNEL_DELETED',
+      entityType: 'ClubChannel',
+      entityId: channelId,
+      meta: { clubId, name: channel.name },
+    });
+
+    return { success: true };
   }
 
   async getChannelMessages(clubId: string, channelId: string, userId: string, userRole: string) {
