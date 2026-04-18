@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
 import { format, parseISO } from 'date-fns';
-import { Plus, Users, MapPin, CheckCircle, CalendarIcon, Ticket, ChevronRight } from 'lucide-react';
+import { Plus, Users, MapPin, CheckCircle, CalendarIcon, Ticket, ChevronRight, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,11 @@ export default function FlexFridayPage() {
     capacity: '',
   });
 
+  const [sessionSearch, setSessionSearch] = useState('');
+  const deferredSessionSearch = useDeferredValue(sessionSearch);
+  const [workshopSearch, setWorkshopSearch] = useState('');
+  const deferredWorkshopSearch = useDeferredValue(workshopSearch);
+
   const pathwayOptions = [
     { value: 'INFORMATION_TECHNOLOGY', label: 'IT' },
     { value: 'HEALTH_SCIENCE', label: 'Health Science' },
@@ -83,6 +88,24 @@ export default function FlexFridayPage() {
     queryKey: ['my-flex-registrations'],
     queryFn: () => flexFridayApi.getMyRegistrations().then((r) => r.data),
   });
+
+  const filteredSessions = useMemo(() => {
+    const query = deferredSessionSearch.trim().toLowerCase();
+    if (!query) return sessions;
+    return (sessions as any[]).filter((s) => {
+      const searchable = [s.title, s.description].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [sessions, deferredSessionSearch]);
+
+  const filteredWorkshops = useMemo(() => {
+    const query = deferredWorkshopSearch.trim().toLowerCase();
+    if (!query) return workshops;
+    return (workshops as any[]).filter((w) => {
+      const searchable = [w.title, w.description, w.location].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [workshops, deferredWorkshopSearch]);
 
   const myRegWorkshopIds = new Set((myRegs as any[]).map((r: any) => r.workshopId));
   const selectedCreateDate = fridayForm.date ? parseISO(fridayForm.date) : undefined;
@@ -354,6 +377,25 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
+                <div className="relative mb-4">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={sessionSearch}
+                    onChange={(e) => setSessionSearch(e.target.value)}
+                    className="pl-10 pr-10 h-9 rounded-xl border-foreground/10"
+                    placeholder="Search sessions..."
+                  />
+                  {sessionSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setSessionSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+
                 {showNewSession && canCreateSession && (
                   <Card className="mb-4">
                     <CardHeader className="pb-3 border-b mb-4">
@@ -422,15 +464,22 @@ export default function FlexFridayPage() {
                   </Card>
                 )}
 
-                {(sessions as any[]).length === 0 ? (
+                {filteredSessions.length === 0 ? (
                   <Card className="text-center py-8 border-dashed">
                     <CardContent className="pt-6">
-                      <p className="text-muted-foreground text-sm">No sessions yet</p>
+                      <p className="text-muted-foreground text-sm">
+                        {deferredSessionSearch ? 'No sessions match your search' : 'No sessions yet'}
+                      </p>
+                      {deferredSessionSearch && (
+                        <Button variant="link" size="sm" onClick={() => setSessionSearch('')} className="mt-1 font-semibold text-accent-500">
+                          Clear search
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-2">
-                    {(sessions as any[]).map((s) => (
+                    {filteredSessions.map((s: any) => (
                       <button
                         key={s.id}
                         onClick={() => setSelectedSession(s)}
@@ -486,6 +535,25 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
+                <div className="relative mb-4">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={workshopSearch}
+                    onChange={(e) => setWorkshopSearch(e.target.value)}
+                    className="pl-10 pr-10 h-9 rounded-xl border-foreground/10"
+                    placeholder="Search workshops..."
+                  />
+                  {workshopSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setWorkshopSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+
                 {showNewWorkshop && canCreateSession && (
                   <Card className="mb-4">
                     <CardHeader className="pb-3 border-b mb-4">
@@ -531,15 +599,22 @@ export default function FlexFridayPage() {
                   </Card>
                 )}
 
-                {(workshops as any[]).length === 0 ? (
+                {(filteredWorkshops as any[]).length === 0 ? (
                   <Card className="text-center py-8 border-dashed">
                     <CardContent className="pt-6">
-                      <p className="text-muted-foreground text-sm">No workshops yet</p>
+                      <p className="text-muted-foreground text-sm">
+                        {deferredWorkshopSearch ? 'No workshops match your search' : 'No workshops yet'}
+                      </p>
+                      {deferredWorkshopSearch && (
+                        <Button variant="link" size="sm" onClick={() => setWorkshopSearch('')} className="mt-1 font-semibold text-accent-500">
+                          Clear search
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ) : (
                   <div className="space-y-3">
-                    {(workshops as any[]).map((w) => {
+                    {(filteredWorkshops as any[]).map((w) => {
                       const isRegistered = myRegWorkshopIds.has(w.id);
                       const isFull = w.capacity && w._count?.registrations >= w.capacity;
                       const isRegistering = registerMutation.isPending && registerMutation.variables === w.id;

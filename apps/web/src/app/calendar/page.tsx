@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery } from '@tanstack/react-query';
 import { calendarApi } from '@/lib/api';
@@ -14,17 +14,20 @@ import {
   endOfWeek,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, MapPin, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
 
   const calStart = startOfWeek(startOfMonth(currentMonth));
   const calEnd = endOfWeek(endOfMonth(currentMonth));
@@ -37,6 +40,23 @@ export default function CalendarPage() {
     queryKey: ['calendar', startDate, endDate],
     queryFn: () => calendarApi.getEntries(startDate, endDate).then((r) => r.data),
   });
+
+  const filteredEntries = useMemo(() => {
+    const query = deferredSearch.trim().toLowerCase();
+    if (!query) return [];
+    
+    return (entries as any[]).filter((e) => {
+      const searchable = [
+        e.title,
+        e.description,
+        e.location,
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      return searchable.includes(query);
+    });
+  }, [entries, deferredSearch]);
+
+  const isSearching = deferredSearch.trim() !== '';
 
   const getEventsForDay = (day: Date) =>
     (entries as any[]).filter((e) => isSameDay(new Date(e.startAt), day));
@@ -55,6 +75,26 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
+          <div className="flex items-center gap-4 flex-1 max-w-md ml-8 mr-6">
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 pr-10 h-9 rounded-xl border-foreground/10"
+                placeholder="Search events..."
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+          </div>
           <div className="flex items-center gap-4">
             <AddCalendarEntryDialog />
             <div className="flex items-center gap-1">
@@ -71,104 +111,154 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Calendar grid */}
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <div className="min-w-[500px]">
-
-              {/* Day-of-week headers */}
-              <div className="grid grid-cols-7 border-b border-foreground/[0.07]">
-                {DAY_LABELS.map((d) => (
-                  <div
-                    key={d}
-                    className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-3 bg-foreground/[0.02]"
-                  >
-                    {d}
-                  </div>
+        {/* Calendar Content */}
+        {isSearching ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Search Results ({filteredEntries.length})
+              </h2>
+              <Button variant="ghost" size="sm" onClick={() => setSearch('')} className="text-xs">
+                Back to Grid
+              </Button>
+            </div>
+            {filteredEntries.length === 0 ? (
+              <Card className="text-center py-16 border-dashed">
+                <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
+                <p className="font-medium">No events match your search</p>
+                <p className="text-sm text-muted-foreground mt-1">Try a different title or location.</p>
+                <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+                  Clear search
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {filteredEntries.map((e: any) => (
+                  <Card key={e.id} className="overflow-hidden border-foreground/10 hover:border-accent-500/30 transition-colors">
+                    <CardContent className="p-4 flex gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-accent-500/10 flex flex-col items-center justify-center shrink-0 border border-accent-500/20">
+                        <span className="text-[10px] font-bold text-accent-600 uppercase">
+                          {format(new Date(e.startAt), 'MMM')}
+                        </span>
+                        <span className="text-lg font-bold text-accent-700 leading-none">
+                          {format(new Date(e.startAt), 'd')}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground">{e.title}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(e.startAt), 'h:mm a')}</span>
+                          {e.location && <span className="flex items-center gap-1"><MapPin size={12} /> {e.location}</span>}
+                        </div>
+                        {e.description && (
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{e.description}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
+            )}
+          </div>
+        ) : (
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <div className="min-w-[500px]">
 
-              {/* Day cells */}
-              <div className="grid grid-cols-7">
-                {days.map((day, i) => {
-                  const dayEvents = getEventsForDay(day);
-                  const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-                  const isSelected = !!selectedDay && isSameDay(day, selectedDay);
-                  const isTodays = isToday(day);
-                  const isLastRow = i >= days.length - 7;
-
-                  return (
-                    <button
-                      key={day.toISOString()}
-                      onClick={() =>
-                        setSelectedDay(selectedDay && isSameDay(day, selectedDay) ? null : day)
-                      }
-                      className={[
-                        'p-2 min-h-[88px] text-left transition-all duration-150 relative group',
-                        !isCurrentMonth ? 'opacity-25' : 'hover:bg-foreground/[0.03]',
-                        isSelected ? 'bg-accent-500/[0.06]' : '',
-                        !isLastRow ? 'border-b border-foreground/[0.06]' : '',
-                        i % 7 !== 6 ? 'border-r border-foreground/[0.06]' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
+                {/* Day-of-week headers */}
+                <div className="grid grid-cols-7 border-b border-foreground/[0.07]">
+                  {DAY_LABELS.map((d) => (
+                    <div
+                      key={d}
+                      className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground py-3 bg-foreground/[0.02]"
                     >
-                      {/* Selected ring overlay */}
-                      {isSelected && (
-                        <span className="absolute inset-0 ring-1 ring-inset ring-accent-500/40 rounded-none pointer-events-none" />
-                      )}
+                      {d}
+                    </div>
+                  ))}
+                </div>
 
-                      {/* Date number */}
-                      <span
+                {/* Day cells */}
+                <div className="grid grid-cols-7">
+                  {days.map((day, i) => {
+                    const dayEvents = getEventsForDay(day);
+                    const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+                    const isSelected = !!selectedDay && isSameDay(day, selectedDay);
+                    const isTodays = isToday(day);
+                    const isLastRow = i >= days.length - 7;
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        onClick={() =>
+                          setSelectedDay(selectedDay && isSameDay(day, selectedDay) ? null : day)
+                        }
                         className={[
-                          'text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all mb-1.5',
-                          isTodays
-                            ? 'text-white font-bold'
-                            : isSelected
-                            ? 'text-accent-500 dark:text-accent-400 font-semibold'
-                            : 'text-foreground/80',
+                          'p-2 min-h-[88px] text-left transition-all duration-150 relative group',
+                          !isCurrentMonth ? 'opacity-25' : 'hover:bg-foreground/[0.03]',
+                          isSelected ? 'bg-accent-500/[0.06]' : '',
+                          !isLastRow ? 'border-b border-foreground/[0.06]' : '',
+                          i % 7 !== 6 ? 'border-r border-foreground/[0.06]' : '',
                         ]
                           .filter(Boolean)
                           .join(' ')}
-                        style={
-                          isTodays
-                            ? {
-                                background: 'linear-gradient(135deg, #f97316, #ea580c)',
-                                boxShadow: '0 2px 10px rgba(249,115,22,0.4)',
-                              }
-                            : undefined
-                        }
                       >
-                        {format(day, 'd')}
-                      </span>
-
-                      {/* Event pills */}
-                      <div className="space-y-0.5">
-                        {dayEvents.slice(0, 2).map((e: any) => (
-                          <div
-                            key={e.id}
-                            className="text-[10px] rounded px-1.5 py-0.5 truncate font-medium"
-                            style={{
-                              background: 'rgba(249,115,22,0.12)',
-                              color: '#f97316',
-                            }}
-                          >
-                            {e.title}
-                          </div>
-                        ))}
-                        {dayEvents.length > 2 && (
-                          <div className="text-[10px] text-muted-foreground font-medium pl-0.5">
-                            +{dayEvents.length - 2} more
-                          </div>
+                        {/* Selected ring overlay */}
+                        {isSelected && (
+                          <span className="absolute inset-0 ring-1 ring-inset ring-accent-500/40 rounded-none pointer-events-none" />
                         )}
-                      </div>
-                    </button>
-                  );
-                })}
+
+                        {/* Date number */}
+                        <span
+                          className={[
+                            'text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full transition-all mb-1.5',
+                            isTodays
+                              ? 'text-white font-bold'
+                              : isSelected
+                              ? 'text-accent-500 dark:text-accent-400 font-semibold'
+                              : 'text-foreground/80',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          style={
+                            isTodays
+                              ? {
+                                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                                  boxShadow: '0 2px 10px rgba(249,115,22,0.4)',
+                                }
+                              : undefined
+                          }
+                        >
+                          {format(day, 'd')}
+                        </span>
+
+                        {/* Event pills */}
+                        <div className="space-y-0.5">
+                          {dayEvents.slice(0, 2).map((e: any) => (
+                            <div
+                              key={e.id}
+                              className="text-[10px] rounded px-1.5 py-0.5 truncate font-medium"
+                              style={{
+                                background: 'rgba(249,115,22,0.12)',
+                                color: '#f97316',
+                              }}
+                            >
+                              {e.title}
+                            </div>
+                          ))}
+                          {dayEvents.length > 2 && (
+                            <div className="text-[10px] text-muted-foreground font-medium pl-0.5">
+                              +{dayEvents.length - 2} more
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {/* Selected day detail */}
         {selectedDay && (

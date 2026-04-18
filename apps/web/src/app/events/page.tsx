@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clubsApi, eventsApi } from '@/lib/api';
@@ -8,7 +8,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MapPin, Clock, Check, X, AlertCircle } from 'lucide-react';
+import { Plus, MapPin, Clock, Check, X, AlertCircle, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +76,8 @@ export default function EventsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
@@ -145,6 +147,27 @@ export default function EventsPage() {
   const pending = pendingApprovals;
   const past = (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) < new Date());
 
+  const filterEvents = (list: any[]) => {
+    const query = deferredSearch.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((e) => {
+      const searchable = [
+        e.title,
+        e.description,
+        e.location,
+        e.club?.name,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(query);
+    });
+  };
+
+  const filteredUpcoming = useMemo(() => filterEvents(upcoming), [upcoming, deferredSearch]);
+  const filteredPending = useMemo(() => filterEvents(pending), [pending, deferredSearch]);
+  const filteredPast = useMemo(() => filterEvents(past), [past, deferredSearch]);
+
+  const hasResults = filteredUpcoming.length > 0 || filteredPending.length > 0 || filteredPast.length > 0;
+  const isSearching = deferredSearch.trim() !== '';
+
   return (
     <AppShell>
       <div className="max-w-3xl mx-auto">
@@ -157,6 +180,26 @@ export default function EventsPage() {
               <Plus size={16} /> New Event
             </Button>
           )}
+        </div>
+
+        <div className="relative mb-6">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-10"
+            placeholder="Search events by title, location, or club..."
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
         </div>
 
         {showNew && canCreate && (
@@ -218,37 +261,50 @@ export default function EventsPage() {
           </Card>
         )}
 
-        {pending.length > 0 && (
-          <div className="mb-6">
-            <h2 className="font-semibold text-muted-foreground mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-              <AlertCircle size={16} className="text-amber-500" /> Pending Approval ({pending.length})
-            </h2>
-            <div className="space-y-4">
-              {pending.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}
-            </div>
-          </div>
-        )}
+        {!hasResults && isSearching ? (
+          <Card className="text-center py-16 border-dashed">
+            <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
+            <p className="font-medium">No events match your search</p>
+            <p className="text-sm text-muted-foreground mt-1">Try a different title, location, or club name.</p>
+            <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+              Clear search
+            </Button>
+          </Card>
+        ) : (
+          <>
+            {filteredPending.length > 0 && (
+              <div className="mb-6">
+                <h2 className="font-semibold text-muted-foreground mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+                  <AlertCircle size={16} className="text-amber-500" /> Pending Approval ({filteredPending.length})
+                </h2>
+                <div className="space-y-4">
+                  {filteredPending.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}
+                </div>
+              </div>
+            )}
 
-        <div className="mb-8">
-          <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Upcoming Events</h2>
-          {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> :
-            upcoming.length === 0 ? (
-              <Card className="text-center py-12 border-dashed">
-                <CardContent className="pt-6">
-                  <p className="text-muted-foreground">No upcoming events</p>
-                </CardContent>
-              </Card>
-            ) :
-              <div className="space-y-4">{upcoming.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}</div>}
-        </div>
-
-        {past.length > 0 && (
-          <div>
-            <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Past Events</h2>
-            <div className="space-y-4">
-              {past.slice(0, 5).map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
+            <div className="mb-8">
+              <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Upcoming Events</h2>
+              {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> :
+                filteredUpcoming.length === 0 ? (
+                  <Card className="text-center py-12 border-dashed">
+                    <CardContent className="pt-6">
+                      <p className="text-muted-foreground">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
+                    </CardContent>
+                  </Card>
+                ) :
+                  <div className="space-y-4">{filteredUpcoming.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}</div>}
             </div>
-          </div>
+
+            {filteredPast.length > 0 && (
+              <div>
+                <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Past Events</h2>
+                <div className="space-y-4">
+                  {filteredPast.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppShell>

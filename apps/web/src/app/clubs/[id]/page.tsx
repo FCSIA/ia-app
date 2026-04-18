@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -8,10 +8,12 @@ import {
   KeyRound,
   Megaphone,
   MessageSquareText,
+  Search,
   Shield,
   Sparkles,
   UserPlus,
   Users2,
+  X,
 } from 'lucide-react';
 import type { ClubDetail } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
@@ -311,6 +313,9 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
 
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', id],
     queryFn: () => clubsApi.getOne(id).then((r) => r.data),
@@ -321,6 +326,14 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     queryFn: () => announcementsApi.getAll(false, id).then((r) => r.data),
     enabled: !!club?.viewer.canAccessWorkspace,
   });
+
+  const filteredAnnouncements = useMemo(() => {
+    const query = deferredSearch.trim().toLowerCase();
+    if (!query) return announcements;
+    return announcements.filter((a) =>
+      [a.title, a.body].filter(Boolean).some((text) => text.toLowerCase().includes(query))
+    );
+  }, [announcements, deferredSearch]);
 
   if (!club) return null;
 
@@ -441,9 +454,29 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             <span className="text-xs text-muted-foreground">{announcements.length} total</span>
           </div>
 
-          {announcements.length > 0 ? (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-10"
+              placeholder="Search announcements..."
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {filteredAnnouncements.length > 0 ? (
             <div className="space-y-3">
-              {announcements.map((announcement) => (
+              {filteredAnnouncements.map((announcement) => (
                 <Link
                   key={announcement.id}
                   href={`/announcements/${announcement.id}`}
@@ -471,13 +504,22 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             <Empty className="rounded-lg border bg-muted/20">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
-                  <MessageSquareText />
+                  {deferredSearch ? <Search /> : <MessageSquareText />}
                 </EmptyMedia>
-                <EmptyTitle>No announcements yet</EmptyTitle>
+                <EmptyTitle>{deferredSearch ? 'No matches found' : 'No announcements yet'}</EmptyTitle>
                 <EmptyDescription>
-                  {canPost ? 'Post the first announcement to get started.' : 'Check back later for updates.'}
+                  {deferredSearch
+                    ? 'Try a different search term.'
+                    : canPost
+                      ? 'Post the first announcement to get started.'
+                      : 'Check back later for updates.'}
                 </EmptyDescription>
               </EmptyHeader>
+              {deferredSearch && (
+                <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+                  Clear search
+                </Button>
+              )}
             </Empty>
           )}
         </section>

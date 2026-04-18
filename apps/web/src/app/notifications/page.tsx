@@ -1,25 +1,44 @@
 'use client';
 
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Search, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 
 export default function NotificationsPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => notificationsApi.getAll().then((r) => r.data),
   });
+
+  const filteredNotifications = useMemo(() => {
+    const query = deferredSearch.trim().toLowerCase();
+    if (!query) return notifications;
+    
+    return (notifications as any[]).filter((n) => {
+      const searchable = [
+        n.title,
+        n.body,
+        n.category,
+      ].filter(Boolean).join(' ').toLowerCase();
+      
+      return searchable.includes(query);
+    });
+  }, [notifications, deferredSearch]);
 
   const markAllMutation = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
@@ -84,17 +103,40 @@ export default function NotificationsPage() {
           )}
         </div>
 
+        <div className="relative mb-6">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-10"
+            placeholder="Search notifications..."
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
+
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading…</div>
-        ) : (notifications as any[]).length === 0 ? (
+        ) : filteredNotifications.length === 0 ? (
           <Card className="text-center p-16 border-dashed">
-            <Bell size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
-            <p className="font-medium">No notifications</p>
-            <p className="text-sm text-muted-foreground mt-1">You&apos;re all caught up!</p>
+            <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
+            <p className="font-medium">No results found</p>
+            <p className="text-sm text-muted-foreground mt-1">Try a different search term.</p>
+            <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+              Clear search
+            </Button>
           </Card>
         ) : (
           <div className="space-y-2">
-            {(notifications as any[]).map((n) => (
+            {filteredNotifications.map((n: any) => (
               <Card
                 key={n.id}
                 onClick={() => openNotification(n)}

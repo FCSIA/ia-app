@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useDeferredValue, useMemo } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, moderationApi, auditApi } from '@/lib/api';
@@ -8,7 +8,7 @@ import { getUser, hasRole } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, FileText, Upload, Plus, Trash2, CalendarDays, Download } from 'lucide-react';
+import { Users, Shield, FileText, Upload, Plus, Trash2, CalendarDays, Download, Search, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,11 @@ export default function AdminPage() {
   const [studentCsvInputKey, setStudentCsvInputKey] = useState(0);
   const [generatePasswords, setGeneratePasswords] = useState(true);
   const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
+
+  const [moderationSearch, setModerationSearch] = useState('');
+  const deferredModerationSearch = useDeferredValue(moderationSearch);
+  const [auditSearch, setAuditSearch] = useState('');
+  const deferredAuditSearch = useDeferredValue(auditSearch);
   const qc = useQueryClient();
 
   // Permission: can current user deactivate this target user?
@@ -107,6 +112,36 @@ export default function AdminPage() {
     queryFn: () => auditApi.getAll().then((r) => r.data),
     enabled: activeTab === 'audit',
   });
+
+  const filteredReports = useMemo(() => {
+    const query = deferredModerationSearch.trim().toLowerCase();
+    if (!query) return reports;
+    return (reports as any[]).filter((r) => {
+      const searchable = [
+        r.reason,
+        r.contentType,
+        r.submitter?.firstName,
+        r.submitter?.lastName,
+        r.status,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [reports, deferredModerationSearch]);
+
+  const filteredAuditEvents = useMemo(() => {
+    const query = deferredAuditSearch.trim().toLowerCase();
+    if (!query) return auditEvents;
+    return (auditEvents as any[]).filter((e) => {
+      const searchable = [
+        e.action,
+        e.entityType,
+        e.entityId,
+        e.actor?.firstName,
+        e.actor?.lastName,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchable.includes(query);
+    });
+  }, [auditEvents, deferredAuditSearch]);
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => usersApi.deactivate(id),
@@ -505,19 +540,47 @@ export default function AdminPage() {
               </Card>
 
               {/* Reports */}
-              <Card>
-                <CardHeader className="flex flex-row items-center gap-2 pb-2">
-                  <CardTitle className="text-base">Reports</CardTitle>
-                  {pendingReports > 0 && (
-                    <Badge variant="destructive">{pendingReports} pending</Badge>
-                  )}
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base">Reports</CardTitle>
+                    {pendingReports > 0 && (
+                      <Badge variant="destructive">{pendingReports} pending</Badge>
+                    )}
+                  </div>
+                  <div className="relative w-full max-w-xs">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={moderationSearch}
+                      onChange={(e) => setModerationSearch(e.target.value)}
+                      className="pl-10 pr-10 h-8 text-xs rounded-lg"
+                      placeholder="Search reports..."
+                    />
+                    {moderationSearch ? (
+                      <button
+                        type="button"
+                        onClick={() => setModerationSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    ) : null}
+                  </div>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  {(reports as any[]).length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No reports submitted</p>
+                  {filteredReports.length === 0 ? (
+                    <div className="text-center py-10">
+                      <p className="text-muted-foreground text-sm">
+                        {deferredModerationSearch ? 'No reports match your search' : 'No reports submitted'}
+                      </p>
+                      {deferredModerationSearch && (
+                        <Button variant="link" size="sm" onClick={() => setModerationSearch('')} className="mt-1 font-semibold text-accent-500">
+                          Clear search
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      {(reports as any[]).map((r) => (
+                      {filteredReports.map((r: any) => (
                         <div
                           key={r.id}
                           className="rounded-xl p-4 border bg-card transition-colors hover:bg-muted/30"
@@ -571,8 +634,26 @@ export default function AdminPage() {
           {/* ── Audit Log Tab ── */}
           <TabsContent value="audit">
             <Card>
-              <CardHeader className="border-b pb-4">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
                 <CardTitle className="text-base">Recent Audit Events</CardTitle>
+                <div className="relative w-full max-w-xs ml-4">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="pl-10 pr-10 h-8 text-xs rounded-lg"
+                    placeholder="Search logs..."
+                  />
+                  {auditSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setAuditSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  ) : null}
+                </div>
               </CardHeader>
               <Table>
                 <TableHeader className="bg-muted/50">
@@ -585,7 +666,7 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(auditEvents as any[]).map((e) => (
+                  {filteredAuditEvents.map((e: any) => (
                     <TableRow key={e.id} className="hover:bg-muted/30">
                       <TableCell className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
                         {format(new Date(e.createdAt), 'MMM d HH:mm:ss')}
@@ -601,8 +682,17 @@ export default function AdminPage() {
                   ))}
                 </TableBody>
               </Table>
-              {(auditEvents as any[]).length === 0 && (
-                <div className="text-center py-10 text-muted-foreground">No audit events</div>
+              {filteredAuditEvents.length === 0 && (
+                <div className="text-center py-10">
+                  <p className="text-muted-foreground text-sm">
+                    {deferredAuditSearch ? 'No logs match your search' : 'No audit events'}
+                  </p>
+                  {deferredAuditSearch && (
+                    <Button variant="link" size="sm" onClick={() => setAuditSearch('')} className="mt-1 font-semibold text-accent-500">
+                      Clear search
+                    </Button>
+                  )}
+                </div>
               )}
             </Card>
           </TabsContent>
