@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { ClubChannelVisibility, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ClubContext {
@@ -32,6 +32,62 @@ export interface ClubContext {
 @Injectable()
 export class ClubAccessPolicy {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly channelOrder: Record<ClubChannelVisibility, number> = {
+    PUBLIC: 0,
+    MEMBER_READONLY: 1,
+    PRIVATE: 2,
+  };
+
+  private canReadChannel(
+    channel: {
+      visibility: ClubChannelVisibility;
+      memberships: Array<{ userId: string }>;
+    },
+    context: ClubContext,
+    userId: string,
+  ) {
+    if (channel.visibility === ClubChannelVisibility.PRIVATE) {
+      return (
+        context.canSeePrivateChannels ||
+        channel.memberships.some((membership) => membership.userId === userId)
+      );
+    }
+
+    return context.canAccessWorkspace;
+  }
+
+  private canPostInChannel(
+    channel: {
+      visibility: ClubChannelVisibility;
+      memberships: Array<{ userId: string }>;
+    },
+    context: ClubContext,
+    userId: string,
+  ) {
+    if (channel.visibility === ClubChannelVisibility.MEMBER_READONLY) {
+      return context.hasClubRole || context.isSponsor || context.isAdmin;
+    }
+
+    return this.canReadChannel(channel, context, userId);
+  }
+
+  private decorateChannelForViewer(
+    channel: Prisma.ClubChannelGetPayload<{
+      include: {
+        memberships: { select: { userId: true } };
+        _count: { select: { messages: true } };
+      };
+    }>,
+    context: ClubContext,
+    userId: string,
+  ) {
+    return {
+      ...channel,
+      viewerCanRead: this.canReadChannel(channel, context, userId),
+      viewerCanPost: this.canPostInChannel(channel, context, userId),
+    };
+  }
 
   isAdmin(role: string) {
     return role === Role.ADMIN || role === Role.SUPER_ADMIN;
@@ -107,15 +163,17 @@ export class ClubAccessPolicy {
         memberships: { select: { userId: true } },
         _count: { select: { messages: true } },
       },
-      orderBy: [{ isPrivate: 'asc' }, { name: 'asc' }],
+      orderBy: { name: 'asc' },
     });
 
-    return channels.filter(
-      (channel) =>
-        !channel.isPrivate ||
-        context.canSeePrivateChannels ||
-        channel.memberships.some((entry) => entry.userId === userId),
-    );
+    return channels
+      .filter((channel) => this.canReadChannel(channel, context, userId))
+      .sort(
+        (left, right) =>
+          this.channelOrder[left.visibility] - this.channelOrder[right.visibility] ||
+          left.name.localeCompare(right.name),
+      )
+      .map((channel) => this.decorateChannelForViewer(channel, context, userId));
   }
 
   async resolveClubPeople(
@@ -185,11 +243,23 @@ export class ClubAccessPolicy {
     ]);
 
     const isChannelMember = channel.memberships.some((membership) => membership.userId === userId);
-    if (channel.isPrivate && !isChannelMember && !context.canSeePrivateChannels) {
-      throw new ForbiddenException('Not allowed to access this private channel');
+    if (!this.canReadChannel(channel, context, userId)) {
+      throw new ForbiddenException('Not allowed to access this channel');
     }
 
-    return { context, channel, isChannelMember };
+    return {
+      context,
+      channel: this.decorateChannelForViewer(
+        {
+          ...channel,
+          _count: { messages: 0 },
+        },
+        context,
+        userId,
+      ),
+      isChannelMember,
+      canPost: this.canPostInChannel(channel, context, userId),
+    };
   }
 
   async getChannelAudienceUserIds(clubId: string, channelId: string) {
@@ -206,7 +276,7 @@ export class ClubAccessPolicy {
       }),
     ]);
 
-    if (!channel.isPrivate) {
+    if (channel.visibility !== ClubChannelVisibility.PRIVATE) {
       return Array.from(new Set([...memberIds.map((entry) => entry.userId), ...sponsorIds.map((entry) => entry.userId)]));
     }
 

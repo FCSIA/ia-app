@@ -1,4 +1,5 @@
 import type { AppUser } from './auth';
+import type { CourseSummary } from './courses';
 
 export type ScheduleWeekday =
   | 'MONDAY'
@@ -25,6 +26,8 @@ export interface StudentScheduleEntry {
   weekday: ScheduleWeekday;
   periodNumber: number;
   className: string;
+  courseId?: string | null;
+  course?: CourseSummary | null;
 }
 
 export interface StudentScheduleRecord {
@@ -80,5 +83,5 @@ export interface SchoolDayBlockPayload {
 
 export interface UpsertStudentSchedulePayload {
   isPublic: boolean;
-  entries: StudentScheduleEntry[];
+  entries: Array<Pick<StudentScheduleEntry, 'weekday' | 'periodNumber' | 'courseId'>>;
 }

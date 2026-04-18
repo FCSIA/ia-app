@@ -3,8 +3,10 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
+  IsObject,
   IsString,
   Max,
   MaxLength,
@@ -14,7 +16,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ClubJoinPolicy } from '@prisma/client';
+import { ClubChannelVisibility, ClubJoinPolicy } from '@prisma/client';
 
 export class CreateClubDto {
   @ApiProperty({ example: 'Robotics Club' })
@@ -89,10 +91,10 @@ export class CreateClubChannelDto extends ClubPeopleSelectionDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: ClubChannelVisibility, default: ClubChannelVisibility.PUBLIC })
   @IsOptional()
-  @IsBoolean()
-  isPrivate?: boolean;
+  @IsEnum(ClubChannelVisibility)
+  visibility?: ClubChannelVisibility;
 }
 
 export class CreateClubTagDto extends ClubPeopleSelectionDto {
@@ -133,6 +135,12 @@ export class CreateClubChannelMessageDto {
   @IsString()
   @MinLength(1)
   body?: string;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  bodyRich?: Record<string, unknown>[];
 
   @ApiPropertyOptional()
   @IsOptional()

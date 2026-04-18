@@ -4,6 +4,7 @@ export type ClubDirectoryKind = 'SPONSOR' | 'MEMBER';
 export type ClubMemberRole = string;
 export type ClubMentionKind = 'USER' | 'BUILT_IN_TAG' | 'CUSTOM_TAG';
 export type ClubJoinPolicy = 'OPEN' | 'REQUEST';
+export type ClubChannelVisibility = 'PUBLIC' | 'PRIVATE' | 'MEMBER_READONLY';
 
 export interface ClubUserRef {
   id: string;
@@ -32,7 +33,9 @@ export interface ClubChannel {
   clubId?: string;
   name: string;
   description?: string | null;
-  isPrivate: boolean;
+  visibility: ClubChannelVisibility;
+  viewerCanRead?: boolean;
+  viewerCanPost?: boolean;
   memberships?: Array<{ userId: string }>;
   _count?: {
     messages?: number;
@@ -123,6 +126,8 @@ export interface ClubChannelMessageAttachment {
   createdAt: string;
 }
 
+export type ClubChannelMessageRichBody = Array<Record<string, unknown>>;
+
 export interface ClubChannelReactionSummary {
   emoji: string;
   count: number;
@@ -133,6 +138,7 @@ export interface ClubChannelReactionSummary {
 export interface ClubChannelMessage {
   id: string;
   body: string;
+  bodyRich?: ClubChannelMessageRichBody | null;
   createdAt: string;
   updatedAt?: string;
   parentMessageId?: string | null;
@@ -148,7 +154,7 @@ export interface ClubChannelMessage {
 export interface CreateClubChannelPayload {
   name: string;
   description?: string;
-  isPrivate?: boolean;
+  visibility?: ClubChannelVisibility;
   memberIds?: string[];
   memberUniqueIds?: string[];
 }
@@ -161,6 +167,7 @@ export interface CreateClubTagPayload {
 
 export interface CreateClubChannelMessagePayload {
   body?: string;
+  bodyRich?: ClubChannelMessageRichBody;
   parentMessageId?: string;
   attachments?: Array<{
     fileName: string;

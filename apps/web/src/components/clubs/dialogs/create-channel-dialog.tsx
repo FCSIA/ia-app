@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ClubDetail } from '@ia/contracts/clubs';
+import type { ClubChannelVisibility, ClubDetail } from '@ia/contracts/clubs';
+import {
+  getClubChannelVisibilityDescription,
+  getClubChannelVisibilityLabel,
+} from '@/components/clubs/channel-visibility';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,7 +18,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker } from '@/components/clubs/people-picker';
 import { clubsApi } from '@/lib/api';
@@ -31,7 +41,7 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [visibility, setVisibility] = useState<ClubChannelVisibility>('PUBLIC');
   const [memberIds, setMemberIds] = useState<string[]>([]);
 
   const { data: club } = useQuery<ClubDetail>({
@@ -50,15 +60,15 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
       clubsApi.createChannel(clubId, {
         name: name.trim(),
         description: description.trim() || undefined,
-        isPrivate,
-        memberIds,
+        visibility,
+        memberIds: visibility === 'PRIVATE' ? memberIds : [],
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', clubId] });
       toast({ title: 'Channel created' });
       setName('');
       setDescription('');
-      setIsPrivate(false);
+      setVisibility('PUBLIC');
       setMemberIds([]);
       onOpenChange(false);
     },
@@ -76,7 +86,7 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>New channel</DialogTitle>
           <DialogDescription>
-            Public channels are visible to every club member. Private channels restrict access to the selected members; sponsors always retain visibility.
+            Pick how the club should use this space. Public channels are open to all members, private channels are invitation-only, and read-only channels work well for announcements.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,28 +112,37 @@ export function CreateChannelDialog({ clubId, open, onOpenChange }: Props) {
             />
           </div>
 
-          <div className="flex items-center justify-between rounded-md border px-3 py-2.5">
-            <div>
-              <p className="text-sm font-medium">Private</p>
-              <p className="text-xs text-muted-foreground">Restrict to selected members</p>
-            </div>
-            <Switch
-              checked={isPrivate}
-              onCheckedChange={(checked) => {
-                setIsPrivate(checked);
-                if (!checked) setMemberIds([]);
+          <div className="space-y-1.5">
+            <Label htmlFor="channel-visibility">Visibility</Label>
+            <Select
+              value={visibility}
+              onValueChange={(value) => {
+                setVisibility(value as ClubChannelVisibility);
+                if (value !== 'PRIVATE') setMemberIds([]);
               }}
-            />
+            >
+              <SelectTrigger id="channel-visibility">
+                <SelectValue placeholder="Choose a visibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PUBLIC">Public</SelectItem>
+                <SelectItem value="MEMBER_READONLY">Member read only</SelectItem>
+                <SelectItem value="PRIVATE">Private</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {getClubChannelVisibilityDescription(visibility)}
+            </p>
           </div>
 
-          {isPrivate ? (
+          {visibility === 'PRIVATE' ? (
             <div className="space-y-1.5">
               <Label>Members</Label>
               <PeoplePicker
                 people={memberOptions}
                 selectedIds={memberIds}
                 onChange={setMemberIds}
-                placeholder="Select members"
+                placeholder={`Select people for ${getClubChannelVisibilityLabel(visibility).toLowerCase()} access`}
               />
             </div>
           ) : null}

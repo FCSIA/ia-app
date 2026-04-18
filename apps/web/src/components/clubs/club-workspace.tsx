@@ -8,12 +8,11 @@ import {
   AtSign,
   Check,
   ChevronsUpDown,
-  Hash,
   Home,
-  Lock,
   Plus,
   Users2,
 } from 'lucide-react';
+import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -227,11 +226,10 @@ export function ClubWorkspace({
                               : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                           )}
                         >
-                          {channel.isPrivate ? (
-                            <Lock className="size-3.5 shrink-0" />
-                          ) : (
-                            <Hash className="size-3.5 shrink-0" />
-                          )}
+                          <ClubChannelVisibilityIcon
+                            visibility={channel.visibility}
+                            className="size-3.5 text-muted-foreground"
+                          />
                           <span className="truncate">{channel.name}</span>
                         </Link>
                       );

@@ -17,6 +17,35 @@ import {
 
 const STUDENT_ROLES: Role[] = [Role.STUDENT];
 
+const scheduleCourseSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  courseNumbers: true,
+  department: true,
+  pathway: true,
+  catalogSource: true,
+  term: true,
+  gradeText: true,
+  minGrade: true,
+  maxGrade: true,
+} satisfies Prisma.CourseSelect;
+
+const scheduleInclude = {
+  entries: {
+    orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
+    include: {
+      course: {
+        select: scheduleCourseSelect,
+      },
+    },
+  },
+} satisfies Prisma.StudentScheduleInclude;
+
+type ScheduleWithEntriesRecord = Prisma.StudentScheduleGetPayload<{
+  include: typeof scheduleInclude;
+}>;
+
 @Injectable()
 export class ScheduleService {
   constructor(
@@ -33,12 +62,6 @@ export class ScheduleService {
     roles: true,
     isActive: true,
   } satisfies Prisma.UserSelect;
-
-  private readonly scheduleInclude = {
-    entries: {
-      orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
-    },
-  } satisfies Prisma.StudentScheduleInclude;
 
   private parseTimeString(value: string) {
     const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
@@ -58,13 +81,7 @@ export class ScheduleService {
     }
   }
 
-  private serializeSchedule(
-    schedule: {
-      id: string;
-      isPublic: boolean;
-      entries: Array<{ id: string; weekday: ScheduleWeekday; periodNumber: number; className: string }>;
-    } | null,
-  ) {
+  private serializeSchedule(schedule: ScheduleWithEntriesRecord | null) {
     if (!schedule) return null;
 
     return {
@@ -75,6 +92,8 @@ export class ScheduleService {
         weekday: entry.weekday,
         periodNumber: entry.periodNumber,
         className: entry.className,
+        courseId: entry.courseId,
+        course: entry.course,
       })),
     };
   }
@@ -109,9 +128,9 @@ export class ScheduleService {
     const seen = new Set<string>();
 
     return entries.map((entry) => {
-      const className = entry.className.trim();
-      if (!className) {
-        throw new BadRequestException('Class names cannot be empty');
+      const courseId = entry.courseId.trim();
+      if (!courseId) {
+        throw new BadRequestException('Course selections cannot be empty');
       }
 
       const key = `${entry.weekday}:${entry.periodNumber}`;
@@ -123,7 +142,7 @@ export class ScheduleService {
       return {
         weekday: entry.weekday,
         periodNumber: entry.periodNumber,
-        className,
+        courseId,
       };
     });
   }
@@ -251,6 +270,11 @@ export class ScheduleService {
           id: true,
           isPublic: true,
           entries: {
+            include: {
+              course: {
+                select: scheduleCourseSelect,
+              },
+            },
             orderBy: [{ weekday: 'asc' }, { periodNumber: 'asc' }],
           },
         },
@@ -261,7 +285,7 @@ export class ScheduleService {
       isStudent
         ? this.prisma.studentSchedule.findUnique({
             where: { userId: user.id },
-            include: this.scheduleInclude,
+            include: scheduleInclude,
           })
         : Promise.resolve(null),
       this.prisma.schoolDayBlock.findMany({
@@ -357,6 +381,23 @@ export class ScheduleService {
     const normalizedEntries = this.normalizeScheduleEntries(dto.entries);
 
     const schedule = await this.prisma.$transaction(async (tx) => {
+      const courses = normalizedEntries.length
+        ? await tx.course.findMany({
+            where: {
+              id: { in: normalizedEntries.map((entry) => entry.courseId) },
+            },
+            select: {
+              id: true,
+              title: true,
+            },
+          })
+        : [];
+
+      const courseById = new Map(courses.map((course) => [course.id, course]));
+      if (courseById.size !== new Set(normalizedEntries.map((entry) => entry.courseId)).size) {
+        throw new BadRequestException('One or more selected courses were not found');
+      }
+
       const record = await tx.studentSchedule.upsert({
         where: { userId: user.id },
         update: { isPublic: dto.isPublic },
@@ -373,14 +414,15 @@ export class ScheduleService {
             scheduleId: record.id,
             weekday: entry.weekday,
             periodNumber: entry.periodNumber,
-            className: entry.className,
+            courseId: entry.courseId,
+            className: courseById.get(entry.courseId)!.title,
           })),
         });
       }
 
       return tx.studentSchedule.findUnique({
         where: { id: record.id },
-        include: this.scheduleInclude,
+        include: scheduleInclude,
       });
     });
 

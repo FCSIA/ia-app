@@ -1,6 +1,9 @@
 export type AppRole =
   | 'STUDENT'
+  | 'STUDENT_LEADER'
+  | 'STUDENT_ADMIN'
   | 'TEACHER'
+  | 'SPONSOR'
   | 'SUPPORT_STAFF'
   | 'ADMIN'
   | 'SUPER_ADMIN';

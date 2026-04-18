@@ -65,6 +65,33 @@ model AuthSession {
   @@map("auth_sessions")
 }
 
+model Course {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  title             String
+  courseNumbers     String[]            @default([]) @map("course_numbers")
+  department        String
+  pathway           Pathway?
+  catalogSource     CourseCatalogSource @default(COURSE_CATALOG) @map("catalog_source")
+  term              String?
+  gradeText         String?             @map("grade_text")
+  minGrade          Int?                @map("min_grade")
+  maxGrade          Int?                @map("max_grade")
+  prerequisitesText String?             @map("prerequisites_text") @db.Text
+  summary           String?             @db.Text
+  majorTopics       String?             @map("major_topics") @db.Text
+  essentialSkills   String?             @map("essential_skills") @db.Text
+  studentWorkload   String?             @map("student_workload")
+  teacherWorkload   String?             @map("teacher_workload")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  scheduleEntries   StudentScheduleEntry[]
+
+  @@index([department, title])
+  @@index([pathway, minGrade, maxGrade])
+  @@map("courses")
+}
+
 model StudentSchedule {
   id        String                 @id @default(cuid())
   userId    String                 @unique @map("user_id")
@@ -80,14 +107,17 @@ model StudentSchedule {
 model StudentScheduleEntry {
   id           String          @id @default(cuid())
   scheduleId   String          @map("schedule_id")
+  courseId     String?         @map("course_id")
   weekday      ScheduleWeekday
   periodNumber Int             @map("period_number")
   className    String          @map("class_name")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
   schedule     StudentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@unique([scheduleId, weekday, periodNumber])
+  @@index([courseId])
   @@map("student_schedule_entries")
 }
 
@@ -268,7 +298,7 @@ model ClubChannel {
   clubId        String                  @map("club_id")
   name          String
   description   String?
-  isPrivate     Boolean                 @default(false) @map("is_private")
+  visibility    ClubChannelVisibility   @default(PUBLIC)
   createdById   String                  @map("created_by_id")
   createdAt     DateTime                @default(now()) @map("created_at")
   updatedAt     DateTime                @updatedAt @map("updated_at")
@@ -279,6 +309,7 @@ model ClubChannel {
   notifications NotificationDelivery[]
 
   @@unique([clubId, name])
+  @@index([clubId, visibility])
   @@map("club_channels")
 }
 
@@ -328,6 +359,7 @@ model ClubChannelMessage {
   authorId        String                         @map("author_id")
   parentMessageId String?                        @map("parent_message_id")
   body            String
+  bodyRich        Json?                          @map("body_rich")
   createdAt       DateTime                       @default(now()) @map("created_at")
   updatedAt       DateTime                       @updatedAt @map("updated_at")
   attachments     ClubChannelMessageAttachment[]
@@ -655,6 +687,12 @@ enum Pathway {
   ENGINEERING
 }
 
+enum CourseCatalogSource {
+  COURSE_CATALOG
+  AP_CATALOG
+  MERGED
+}
+
 enum ScheduleWeekday {
   MONDAY
   TUESDAY
@@ -680,6 +718,12 @@ enum InviteStatus {
   PENDING
   ACCEPTED
   DECLINED
+}
+
+enum ClubChannelVisibility {
+  PUBLIC
+  PRIVATE
+  MEMBER_READONLY
 }
 
 enum ClubJoinPolicy {

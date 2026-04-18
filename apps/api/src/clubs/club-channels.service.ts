@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ClubChannelVisibility,
   NotificationCategory,
   Prisma,
 } from '@prisma/client';
@@ -129,6 +130,7 @@ export class ClubChannelsService {
     return {
       id: message.id,
       body: message.body,
+      bodyRich: Array.isArray(message.bodyRich) ? message.bodyRich : null,
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
       parentMessageId: message.parentMessageId,
@@ -163,6 +165,7 @@ export class ClubChannelsService {
     return {
       id: message.id,
       body: message.body,
+      bodyRich: Array.isArray(message.bodyRich) ? message.bodyRich : null,
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
       parentMessageId: message.parentMessageId,
@@ -203,6 +206,14 @@ export class ClubChannelsService {
           .map((attachment) => [attachment.fileUrl, attachment]),
       ).values(),
     );
+  }
+
+  private normalizeRichBody(bodyRich: CreateClubChannelMessageDto['bodyRich']) {
+    if (!Array.isArray(bodyRich) || bodyRich.length === 0) {
+      return null;
+    }
+
+    return bodyRich as Prisma.InputJsonValue;
   }
 
   private async resolveThreadParent(channelId: string, parentMessageId?: string) {
@@ -354,7 +365,8 @@ export class ClubChannelsService {
     const name = dto.name.trim();
     if (!name) throw new BadRequestException('Channel name is required');
 
-    const selectedPeople = dto.isPrivate
+    const visibility = dto.visibility ?? ClubChannelVisibility.PUBLIC;
+    const selectedPeople = visibility === ClubChannelVisibility.PRIVATE
       ? await this.accessPolicy.resolveClubPeople(clubId, dto)
       : [];
 
@@ -367,9 +379,9 @@ export class ClubChannelsService {
         clubId,
         name,
         description: dto.description?.trim() || undefined,
-        isPrivate: !!dto.isPrivate,
+        visibility,
         createdById: actorId,
-        memberships: dto.isPrivate
+        memberships: visibility === ClubChannelVisibility.PRIVATE
           ? { create: membershipUserIds.map((userId) => ({ userId })) }
           : undefined,
       },
@@ -387,8 +399,9 @@ export class ClubChannelsService {
       meta: {
         clubId,
         name,
-        isPrivate: !!dto.isPrivate,
-        memberIds: membershipUserIds,
+        visibility,
+        memberIds:
+          visibility === ClubChannelVisibility.PRIVATE ? membershipUserIds : [],
       },
     });
 
@@ -457,14 +470,19 @@ export class ClubChannelsService {
     actorId: string,
     actorRole: string,
   ) {
-    const { context, channel } = await this.accessPolicy.assertChannelAccess(
+    const { context, channel, canPost } = await this.accessPolicy.assertChannelAccess(
       clubId,
       channelId,
       actorId,
       actorRole,
     );
 
+    if (!canPost) {
+      throw new ForbiddenException('This channel is read-only for members');
+    }
+
     const trimmedBody = dto.body?.trim() ?? '';
+    const richBody = this.normalizeRichBody(dto.bodyRich);
     const attachments = this.normalizeAttachments(dto.attachments);
     if (!trimmedBody && attachments.length === 0) {
       throw new BadRequestException('Message body or attachment is required');
@@ -495,6 +513,7 @@ export class ClubChannelsService {
         authorId: actorId,
         parentMessageId: threadParent?.id,
         body: trimmedBody,
+        bodyRich: richBody ?? undefined,
         mentions: {
           create: mentionRows.map((mention) => ({
             kind: mention.kind,
