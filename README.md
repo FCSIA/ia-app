@@ -141,6 +141,7 @@ pnpm db:generate
 pnpm db:migrate
 pnpm db:reset
 pnpm db:seed
+pnpm db:studio   # Open database in Prisma Studio
 pnpm setup:win   # Windows: Full automated setup
 pnpm infra:up:win # Windows: Start database
 ```

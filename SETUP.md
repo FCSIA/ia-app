@@ -155,7 +155,7 @@ Run this from the project root:
 ```powershell
 pnpm setup:win
 ```
-*This command downloads PostgreSQL, starts the server, installs dependencies, and initializes the database.*
+*This command downloads PostgreSQL, starts the server, installs dependencies, initializes the database, and opens **Prisma Studio** in a new window.*
 
 ### 3. Start Developing
 ```powershell

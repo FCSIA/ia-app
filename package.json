@@ -12,10 +12,11 @@
     "db:migrate": "pnpm --filter api exec prisma migrate dev",
     "db:reset": "pnpm --filter api exec prisma migrate reset --force && pnpm db:seed",
     "db:seed": "pnpm --filter api exec prisma db seed",
+    "db:studio": "pnpm --filter api exec prisma studio",
     "infra:up": "brew services start postgresql@16 && echo 'PostgreSQL started'",
     "infra:up:win": "powershell -ExecutionPolicy Bypass -File setup_pg.ps1",
     "infra:down": "brew services stop postgresql@16 && echo 'PostgreSQL stopped'",
-    "setup:win": "pnpm infra:up:win && pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed"
+    "setup:win": "pnpm infra:up:win && pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed && start pnpm db:studio"
   },
   "devDependencies": {
     "turbo": "^2.8.14",
