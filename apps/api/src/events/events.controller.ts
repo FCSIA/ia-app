@@ -11,6 +11,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { EventsService } from './events.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateEventDto, RespondToEventDto } from './dto/event.dto';
 
 @ApiTags('events')
 @ApiBearerAuth()
@@ -38,16 +39,7 @@ export class EventsController {
 
   @Post()
   create(
-    @Body()
-    body: {
-      title: string;
-      description?: string;
-      location?: string;
-      flyerUrl?: string;
-      startAt: string;
-      endAt?: string;
-      clubId?: string;
-    },
+    @Body() body: CreateEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.create(body, user.id, user.role);
@@ -56,7 +48,7 @@ export class EventsController {
   @Post(':id/approve')
   approve(
     @Param('id') id: string,
-    @Body() body: { note?: string },
+    @Body() body: RespondToEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.approveOrReject(id, user.id, 'approve', body.note);
@@ -65,7 +57,7 @@ export class EventsController {
   @Post(':id/reject')
   reject(
     @Param('id') id: string,
-    @Body() body: { note?: string },
+    @Body() body: RespondToEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.eventsService.approveOrReject(id, user.id, 'reject', body.note);

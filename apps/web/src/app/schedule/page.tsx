@@ -1,8 +1,11 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CourseSummary } from '@ia/contracts/courses';
 import {
+  BookOpen,
   Clock3,
   Copy,
   Eye,
@@ -50,7 +53,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getUser, hasRole } from '@/lib/auth';
-import { scheduleApi } from '@/lib/api';
+import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
@@ -87,6 +90,11 @@ export default function SchedulePage() {
     queryKey: ['schedule-dashboard'],
     queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
   });
+  const { data: courses = [] } = useQuery<CourseSummary[]>({
+    queryKey: ['courses', 'all'],
+    queryFn: () => coursesApi.list({ limit: 200 }).then((response) => response.data),
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     setScheduleEntries(data?.mySchedule?.entries ?? []);
@@ -110,8 +118,8 @@ export default function SchedulePage() {
       scheduleApi.saveMine({
         isPublic,
         entries: scheduleEntries
-          .map(({ weekday, periodNumber, className }) => ({ weekday, periodNumber, className: className.trim() }))
-          .filter((entry) => entry.className.length > 0),
+          .map(({ weekday, periodNumber, courseId }) => ({ weekday, periodNumber, courseId: courseId?.trim() ?? '' }))
+          .filter((entry) => entry.courseId.length > 0),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
@@ -232,23 +240,45 @@ export default function SchedulePage() {
   const activeWeekdayLabel = currentStatus.weekday
     ? WEEKDAYS.find((day) => day.value === currentStatus.weekday)?.label
     : null;
+  const nextEntry =
+    currentStatus.nextBlock?.periodNumber != null
+      ? findScheduleEntry(
+        draftSchedule,
+        currentStatus.nextBlock.weekday,
+        currentStatus.nextBlock.periodNumber,
+      )
+      : null;
 
   const updateScheduleEntry = (
     weekday: ScheduleWeekday,
     periodNumber: number,
-    className: string,
+    course: CourseSummary | null,
   ) => {
     setScheduleEntries((current) => {
       const existingIndex = current.findIndex(
         (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
       );
 
+      if (!course) {
+        return current.filter(
+          (entry) => !(entry.weekday === weekday && entry.periodNumber === periodNumber),
+        );
+      }
+
+      const nextEntry = {
+        weekday,
+        periodNumber,
+        courseId: course.id,
+        course,
+        className: course.title,
+      };
+
       if (existingIndex === -1) {
-        return [...current, { weekday, periodNumber, className }];
+        return [...current, nextEntry];
       }
 
       const next = [...current];
-      next[existingIndex] = { ...next[existingIndex], className };
+      next[existingIndex] = { ...next[existingIndex], ...nextEntry };
       return next;
     });
   };
@@ -279,8 +309,15 @@ export default function SchedulePage() {
             value={
               currentStatus.currentBlock
                 ? currentStatus.currentBlock.periodNumber
-                  ? currentStatus.currentEntry?.className ||
-                  `${currentStatus.currentBlock.label} (not filled in)`
+                  ? currentStatus.currentEntry?.course ? (
+                    <Link
+                      href={`/courses/${currentStatus.currentEntry.course.slug}`}
+                      className="transition-colors hover:text-primary"
+                    >
+                      {currentStatus.currentEntry.course.title}
+                    </Link>
+                  ) : currentStatus.currentEntry?.className ||
+                    `${currentStatus.currentBlock.label} (not filled in)`
                   : currentStatus.currentBlock.label
                 : 'No active block'
             }
@@ -291,11 +328,14 @@ export default function SchedulePage() {
             value={
               currentStatus.nextBlock
                 ? currentStatus.nextBlock.periodNumber
-                  ? findScheduleEntry(
-                    draftSchedule,
-                    currentStatus.nextBlock.weekday,
-                    currentStatus.nextBlock.periodNumber,
-                  )?.className || currentStatus.nextBlock.label
+                  ? nextEntry?.course ? (
+                    <Link
+                      href={`/courses/${nextEntry.course.slug}`}
+                      className="transition-colors hover:text-primary"
+                    >
+                      {nextEntry.course.title}
+                    </Link>
+                  ) : nextEntry?.className || currentStatus.nextBlock.label
                   : currentStatus.nextBlock.label
                 : 'Nothing else today'
             }
@@ -334,15 +374,23 @@ export default function SchedulePage() {
                   <div>
                     <CardTitle className="text-2xl">Your class grid</CardTitle>
                     <CardDescription>
-                      Enter your classes by period. Custom blocks like lunch or assemblies are controlled by admins and do not need class names.
+                      Choose catalog courses by period. Custom blocks like lunch or assemblies are controlled by admins and do not need class selections.
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Public schedule</p>
-                      <p className="text-xs text-muted-foreground">Friends can view it if enabled</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link href="/courses">
+                      <Button variant="outline" className="rounded-2xl">
+                        <BookOpen className="mr-2 size-4" />
+                        Browse {courses.length > 0 ? `${courses.length} courses` : 'course catalog'}
+                      </Button>
+                    </Link>
+                    <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Public schedule</p>
+                        <p className="text-xs text-muted-foreground">Friends can view it if enabled</p>
+                      </div>
+                      <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                     </div>
-                    <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -374,6 +422,8 @@ export default function SchedulePage() {
                           weekday={day.value}
                           blocks={blocks}
                           entries={scheduleEntries}
+                          courses={courses}
+                          preferredGradeLevel={user?.gradeLevel ?? undefined}
                           onChange={updateScheduleEntry}
                         />
                       </TabsContent>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Eye, EyeOff, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +27,12 @@ export function FriendScheduleCard({
   onRemove,
   isRemoving,
 }: FriendScheduleCardProps) {
+  const currentLabel = current.currentBlock?.periodNumber
+    ? current.currentEntry?.course
+      ? current.currentEntry.course.title
+      : current.currentEntry?.className || `${current.currentBlock.label} (not filled in)`
+    : current.currentBlock?.label || 'No live block right now';
+
   const visibilityTone =
     friend.visibility === 'PUBLIC'
       ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
@@ -69,11 +76,16 @@ export function FriendScheduleCard({
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Current
               </p>
-              <p className="mt-2 text-base font-semibold text-foreground">
-                {current.currentBlock?.periodNumber
-                  ? current.currentEntry?.className || `${current.currentBlock.label} (not filled in)`
-                  : current.currentBlock?.label || 'No live block right now'}
-              </p>
+              {current.currentEntry?.course ? (
+                <Link
+                  href={`/courses/${current.currentEntry.course.slug}`}
+                  className="mt-2 inline-flex text-base font-semibold text-foreground transition-colors hover:text-primary"
+                >
+                  {currentLabel}
+                </Link>
+              ) : (
+                <p className="mt-2 text-base font-semibold text-foreground">{currentLabel}</p>
+              )}
             </div>
 
             {todayBlocks.length > 0 ? (
@@ -84,11 +96,21 @@ export function FriendScheduleCard({
                     className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/20 px-4 py-3"
                   >
                     <div>
-                      <p className="font-medium text-foreground">
-                        {block.periodNumber
-                          ? findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)?.className || block.label
-                          : block.label}
-                      </p>
+                      {block.periodNumber &&
+                      findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)?.course ? (
+                        <Link
+                          href={`/courses/${findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)!.course!.slug}`}
+                          className="font-medium text-foreground transition-colors hover:text-primary"
+                        >
+                          {findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)!.course!.title}
+                        </Link>
+                      ) : (
+                        <p className="font-medium text-foreground">
+                          {block.periodNumber
+                            ? findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)?.className || block.label
+                            : block.label}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {block.periodNumber ? `Period ${block.periodNumber}` : 'Custom block'}
                       </p>

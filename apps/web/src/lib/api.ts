@@ -8,6 +8,7 @@ import type {
   CreateClubTagPayload,
   ToggleClubChannelReactionPayload,
 } from '@ia/contracts/clubs';
+import type { CourseDetail, CourseSummary } from '@ia/contracts/courses';
 import type {
   SchoolDayBlockPayload,
   UpsertStudentSchedulePayload,
@@ -193,6 +194,17 @@ export const scheduleApi = {
   updateBlock: (blockId: string, data: SchoolDayBlockPayload) =>
     api.patch(`/schedule/blocks/${blockId}`, data),
   deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
+};
+
+export const coursesApi = {
+  list: (params?: {
+    q?: string;
+    department?: string;
+    pathway?: string;
+    gradeLevel?: number;
+    limit?: number;
+  }) => api.get<CourseSummary[]>('/courses', { params }),
+  getOne: (slug: string) => api.get<CourseDetail>(`/courses/${slug}`),
 };
 
 export const uploadsApi = {

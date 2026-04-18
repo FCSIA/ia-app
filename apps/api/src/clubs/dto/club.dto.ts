@@ -180,6 +180,7 @@ export class SetClubMemberRoleDto {
 
 export class RespondToClubInviteDto {
   @ApiProperty()
+  @IsBoolean()
   accept: boolean;
 }
 
@@ -192,5 +193,6 @@ export class RedeemClubJoinCodeDto {
 
 export class RespondToClubJoinRequestDto {
   @ApiProperty()
+  @IsBoolean()
   accept: boolean;
 }

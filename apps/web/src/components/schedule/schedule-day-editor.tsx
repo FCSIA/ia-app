@@ -1,8 +1,11 @@
 'use client';
 
+import Link from 'next/link';
+import type { CourseSummary } from '@ia/contracts/courses';
 import { Lock, PencilLine } from 'lucide-react';
+import { CourseMeta } from '@/components/courses/course-meta';
+import { CoursePicker } from '@/components/courses/course-picker';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
 import { SchoolDayBlock, ScheduleWeekday, StudentScheduleEntry } from './types';
@@ -11,13 +14,21 @@ type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
   entries: StudentScheduleEntry[];
-  onChange: (weekday: ScheduleWeekday, periodNumber: number, className: string) => void;
+  courses: CourseSummary[];
+  preferredGradeLevel?: number;
+  onChange: (
+    weekday: ScheduleWeekday,
+    periodNumber: number,
+    course: CourseSummary | null,
+  ) => void;
 };
 
 export function ScheduleDayEditor({
   weekday,
   blocks,
   entries,
+  courses,
+  preferredGradeLevel,
   onChange,
 }: ScheduleDayEditorProps) {
   const dayBlocks = getBlocksForDay(blocks, weekday);
@@ -66,12 +77,28 @@ export function ScheduleDayEditor({
                     </Badge>
                   ) : null}
                 </div>
-                <Input
-                  value={entry?.className ?? ''}
-                  onChange={(event) => onChange(weekday, periodNumber, event.target.value)}
-                  className="rounded-2xl"
-                  placeholder={`Enter your Period ${periodNumber} class`}
+                <CoursePicker
+                  courses={courses}
+                  selectedCourseId={entry?.courseId}
+                  preferredGradeLevel={preferredGradeLevel}
+                  onChange={(course) => onChange(weekday, periodNumber, course)}
+                  placeholder={`Select your Period ${periodNumber} class`}
                 />
+                {entry?.course ? (
+                  <div className="space-y-2">
+                    <CourseMeta course={entry.course} />
+                    <Link
+                      href={`/courses/${entry.course.slug}`}
+                      className="inline-flex text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                    >
+                      View class details
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Choose a real catalog course so this period links to class information and stays consistent across your schedule.
+                  </p>
+                )}
               </CardContent>
             </Card>
           );

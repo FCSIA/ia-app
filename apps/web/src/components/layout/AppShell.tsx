@@ -61,6 +61,7 @@ const pageMeta: Record<string, { label: string; detail: string }> = {
   '/dashboard': { label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
   '/announcements': { label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
   '/clubs': { label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
+  '/courses': { label: 'Courses', detail: 'Catalog, prerequisites, and class details.' },
   '/schedule': { label: 'Schedule', detail: 'View and manage your daily periods.' },
   '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
   '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
