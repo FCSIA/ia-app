@@ -445,8 +445,6 @@ export class ScheduleService {
     query: string,
     limit = 20,
   ) {
-    this.ensureStudentAccess(user);
-
     const search = query.trim();
     if (search.length < 2) return [];
 
