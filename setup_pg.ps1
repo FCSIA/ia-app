@@ -10,9 +10,10 @@ if (-not (Test-Path "pgsql")) {
 }
 
 if (-not (Test-Path "pgsql\data")) {
-    Write-Host "Initializing Database Cluster..."
+    Write-Host "Initializing Database Cluster with UTF8 encoding..."
     Set-Content -Path "pw.txt" -Value "ia_password"
-    .\pgsql\bin\initdb.exe -D .\pgsql\data -U ia_user --pwfile=pw.txt --auth=md5
+    .\pgsql\bin\initdb.exe -D .\pgsql\data -U ia_user --pwfile=pw.txt --auth=md5 -E UTF8
+    Remove-Item "pw.txt" -Force
 }
 
 Write-Host "Starting PostgreSQL Server..."
@@ -20,12 +21,14 @@ Start-Process -FilePath ".\pgsql\bin\pg_ctl.exe" -ArgumentList "-D .\pgsql\data 
 Start-Sleep -Seconds 5
 
 Write-Host "Creating ia_db database (if not exists)..."
-$existingDbs = .\pgsql\bin\psql.exe -U ia_user -p 5432 -c "\l" postgres
-if ($existingDbs -notmatch "ia_db") {
+$env:PGPASSWORD = "ia_password"
+$dbExists = .\pgsql\bin\psql.exe -U ia_user -p 5432 -d postgres -t -c "SELECT 1 FROM pg_database WHERE datname = 'ia_db'"
+if ($dbExists -notmatch "1") {
     .\pgsql\bin\createdb.exe -U ia_user -p 5432 ia_db
     Write-Host "Database ia_db created."
 } else {
     Write-Host "Database ia_db already exists."
 }
+$env:PGPASSWORD = $null
 
 Write-Host "PostgreSQL setup complete and running."

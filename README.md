@@ -97,7 +97,12 @@ pnpm db:seed       # Seed with test data
 ### 5. Start the app
 
 ```bash
+# macOS/Linux
 pnpm dev
+
+# Windows
+pnpm infra:up:win  # Start PostgreSQL
+pnpm dev           # Start the app
 ```
 
 | Service | URL |
@@ -136,6 +141,8 @@ pnpm db:generate
 pnpm db:migrate
 pnpm db:reset
 pnpm db:seed
+pnpm setup:win   # Windows: Full automated setup
+pnpm infra:up:win # Windows: Start database
 ```
 
 ## Local URLs
