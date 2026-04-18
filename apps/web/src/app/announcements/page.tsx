@@ -149,17 +149,13 @@ function AnnouncementCard({
   onClubClick: (clubId: string) => void;
 }) {
   return (
-    <Card
-      className={`relative transition-all duration-200 hover:-translate-y-0.5 ${
-        ann.isRead
-          ? ''
-          : 'border-sky-500/25 bg-slate-100/95 dark:border-sky-400/20 dark:bg-slate-800/95'
-      }`}
+    <div
+      className="relative rounded-[1.4rem] border border-border/70 bg-background/85 px-5 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
     >
       {!ann.isRead ? (
-        <span className="absolute right-4 top-4 size-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.14)]" />
+        <span className="absolute right-4 top-4 size-2 rounded-full bg-primary" />
       ) : null}
-      <CardContent className="p-4">
+      <div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -244,8 +240,8 @@ function AnnouncementCard({
             ) : null}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -389,51 +385,51 @@ export default function AnnouncementsPage() {
   const hasActiveFilters =
     !!activeTag || !!deferredSearch.trim() || selectedClubIds.length > 0 || readFilter !== 'all';
 
+  const headerSlot = (
+    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+      <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Announcements</h1>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button
+          variant={showArchived ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowArchived(!showArchived)}
+        >
+          {showArchived ? 'Active' : 'Archived'}
+        </Button>
+        {canPost ? (
+          <Button size="sm" onClick={() => setShowNew(true)}>
+            <Plus className="mr-1.5 size-4" /> New
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
   return (
-    <AppShell>
+    <AppShell headerSlot={headerSlot}>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={showArchived ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setShowArchived(!showArchived)}
-              className={
-                showArchived ? 'border-accent-500/50 text-accent-600 dark:text-accent-400' : ''
-              }
-            >
-              {showArchived ? 'Active' : 'Archived'}
-            </Button>
-            {canPost ? (
-              <Button size="sm" onClick={() => setShowNew(true)} className="flex items-center gap-2">
-                <Plus size={16} /> New
-              </Button>
-            ) : null}
-          </div>
-        </div>
 
         <div className="mb-5 space-y-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="pl-10 pr-10"
-              placeholder="Search announcements..."
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
+          <div className="border-b pb-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="h-11 border-0 bg-transparent pl-9 pr-9 text-base shadow-none focus-visible:ring-0"
+                placeholder="Search announcements..."
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -701,18 +697,17 @@ export default function AnnouncementsPage() {
             ) : null}
             <div className="space-y-4">
               {(filtered as any[]).map((announcement) => (
-                <div key={announcement.id} className="mx-auto w-full max-w-3xl">
-                  <AnnouncementCard
-                    ann={announcement}
-                    canArchive={canArchive}
-                    onArchive={(id: string) => archiveMutation.mutate(id)}
-                    onTagClick={handleTagClick}
-                    onClubClick={(clubId: string) => {
-                      setActiveTag('CLUB');
-                      setSelectedClubIds([clubId]);
-                    }}
-                  />
-                </div>
+                <AnnouncementCard
+                  key={announcement.id}
+                  ann={announcement}
+                  canArchive={canArchive}
+                  onArchive={(id: string) => archiveMutation.mutate(id)}
+                  onTagClick={handleTagClick}
+                  onClubClick={(clubId: string) => {
+                    setActiveTag('CLUB');
+                    setSelectedClubIds([clubId]);
+                  }}
+                />
               ))}
             </div>
           </div>

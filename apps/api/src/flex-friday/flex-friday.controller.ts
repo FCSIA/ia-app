@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -17,7 +18,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 @ApiBearerAuth()
 @Controller('flex-friday')
 export class FlexFridayController {
-  constructor(private flexFridayService: FlexFridayService) { }
+  constructor(private flexFridayService: FlexFridayService) {}
 
   @Get()
   getAllFridays() {
@@ -56,6 +57,10 @@ export class FlexFridayController {
     return this.flexFridayService.createFriday(body, user.id);
   }
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Sessions
+  // ────────────────────────────────────────────────────────────────────────
+
   @Get(':fridayId/sessions')
   getSessions(@Param('fridayId') fridayId: string) {
     return this.flexFridayService.getSessions(fridayId);
@@ -70,13 +75,43 @@ export class FlexFridayController {
       title: string;
       description?: string;
       sessionType: FlexSessionType;
-      targetPathway?: Pathway;
-      targetGrade?: number;
+      startTime: string;
+      endTime: string;
     },
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.flexFridayService.createSession(fridayId, body, user.id);
   }
+
+  @Patch('sessions/:sessionId')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  updateSession(
+    @Param('sessionId') sessionId: string,
+    @Body()
+    body: {
+      title?: string;
+      description?: string | null;
+      sessionType?: FlexSessionType;
+      startTime?: string;
+      endTime?: string;
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.updateSession(sessionId, body, user.id);
+  }
+
+  @Delete('sessions/:sessionId')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  deleteSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.deleteSession(sessionId, user.id);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Workshops
+  // ────────────────────────────────────────────────────────────────────────
 
   @Get(':fridayId/sessions/:sessionId/workshops')
   getWorkshops(
@@ -86,21 +121,58 @@ export class FlexFridayController {
     return this.flexFridayService.getWorkshops(sessionId, user.id);
   }
 
-  @Post(':fridayId/sessions/:sessionId/workshops')
+  @Post(':fridayId/workshops')
   @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
   createWorkshop(
-    @Param('sessionId') sessionId: string,
+    @Param('fridayId') fridayId: string,
     @Body()
     body: {
       title: string;
       description?: string;
       location?: string;
       capacity?: number;
+      sessionIds: string[];
+      targetGrades?: number[];
+      targetMajorPathways?: Pathway[];
+      targetMinorPathways?: Pathway[];
     },
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.flexFridayService.createWorkshop(sessionId, body, user.id);
+    return this.flexFridayService.createWorkshop(fridayId, body, user.id);
   }
+
+  @Patch('workshops/:workshopId')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  updateWorkshop(
+    @Param('workshopId') workshopId: string,
+    @Body()
+    body: {
+      title?: string;
+      description?: string | null;
+      location?: string | null;
+      capacity?: number | null;
+      sessionIds?: string[];
+      targetGrades?: number[];
+      targetMajorPathways?: Pathway[];
+      targetMinorPathways?: Pathway[];
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.updateWorkshop(workshopId, body, user.id);
+  }
+
+  @Delete('workshops/:workshopId')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  deleteWorkshop(
+    @Param('workshopId') workshopId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.deleteWorkshop(workshopId, user.id);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Registration / Assignment
+  // ────────────────────────────────────────────────────────────────────────
 
   @Post('workshops/:workshopId/register')
   register(@Param('workshopId') workshopId: string, @CurrentUser() user: AuthenticatedUser) {

@@ -56,6 +56,27 @@ export class UpdateClubDto {
   @ApiPropertyOptional({ enum: ClubJoinPolicy })
   @IsOptional()
   joinPolicy?: ClubJoinPolicy;
+
+  @ApiPropertyOptional({ description: 'Public URL to the club logo image' })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Public URL to the club banner image' })
+  @IsOptional()
+  @IsString()
+  bannerUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Accent color (hex) used on the club hero' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  accentColor?: string | null;
+
+  @ApiPropertyOptional({ description: 'Long-form club overview / description for the home tab' })
+  @IsOptional()
+  @IsString()
+  overview?: string | null;
 }
 
 export class AddClubSponsorDto {

@@ -37,4 +37,15 @@ export class UploadsController {
     if (!file) throw new BadRequestException('No file provided');
     return this.serializeUpload(file);
   }
+
+  @Post('club-image')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadClubImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('File must be an image');
+    }
+    return this.serializeUpload(file);
+  }
 }

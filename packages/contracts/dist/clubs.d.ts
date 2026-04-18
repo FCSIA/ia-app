@@ -55,6 +55,10 @@ export interface ClubSummary {
     id: string;
     name: string;
     description?: string | null;
+    overview?: string | null;
+    logoUrl?: string | null;
+    bannerUrl?: string | null;
+    accentColor?: string | null;
     joinPolicy?: ClubJoinPolicy;
     role?: ClubMemberRole | null;
     sponsors?: ClubSponsor[];

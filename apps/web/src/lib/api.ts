@@ -174,9 +174,18 @@ export const eventsApi = {
 };
 
 // Calendar
+export type CalendarSource = 'DISTRICT' | 'SCHOOL' | 'CLUB' | 'PERSONAL';
+
 export const calendarApi = {
-  getEntries: (startDate?: string, endDate?: string, tags?: string) =>
-    api.get('/calendar', { params: { startDate, endDate, tags } }),
+  getEntries: (startDate?: string, endDate?: string, tags?: string, sources?: CalendarSource[]) =>
+    api.get('/calendar', {
+      params: {
+        startDate,
+        endDate,
+        tags,
+        sources: sources && sources.length > 0 ? sources.join(',') : undefined,
+      },
+    }),
   createEntry: (data: {
     title: string;
     description?: string;
@@ -185,6 +194,7 @@ export const calendarApi = {
     endAt?: string;
     tags?: string[];
   }) => api.post('/calendar', data),
+  deleteEntry: (id: string) => api.delete(`/calendar/${id}`),
 };
 
 // Schedule
@@ -221,6 +231,15 @@ export const uploadsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  uploadClubImage: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post<{ url: string; filename: string; originalName: string; mimeType: string; size: number }>(
+      '/uploads/club-image',
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
 };
 
 // Flex Friday
@@ -231,10 +250,18 @@ export const flexFridayApi = {
   getSessions: (fridayId: string) => api.get(`/flex-friday/${fridayId}/sessions`),
   createSession: (fridayId: string, data: any) =>
     api.post(`/flex-friday/${fridayId}/sessions`, data),
+  updateSession: (sessionId: string, data: any) =>
+    api.patch(`/flex-friday/sessions/${sessionId}`, data),
+  deleteSession: (sessionId: string) =>
+    api.delete(`/flex-friday/sessions/${sessionId}`),
   getWorkshops: (fridayId: string, sessionId: string) =>
     api.get(`/flex-friday/${fridayId}/sessions/${sessionId}/workshops`),
-  createWorkshop: (fridayId: string, sessionId: string, data: any) =>
-    api.post(`/flex-friday/${fridayId}/sessions/${sessionId}/workshops`, data),
+  createWorkshop: (fridayId: string, data: any) =>
+    api.post(`/flex-friday/${fridayId}/workshops`, data),
+  updateWorkshop: (workshopId: string, data: any) =>
+    api.patch(`/flex-friday/workshops/${workshopId}`, data),
+  deleteWorkshop: (workshopId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}`),
   register: (workshopId: string) =>
     api.post(`/flex-friday/workshops/${workshopId}/register`),
   unregister: (workshopId: string) =>

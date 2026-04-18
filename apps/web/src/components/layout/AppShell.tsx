@@ -185,9 +185,13 @@ export function AppShell({
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex min-h-screen w-full bg-background">
-        {/* Narrow dark sidebar (icon-only, sticky) */}
+        {/* Narrow dark sidebar (icon-only, sticky).
+            z-40 creates a stacking context above all sibling content (including
+            the clubs workspace secondary sidebar at bg-background / z-auto), so
+            the hover label that extends to the right of the 72px column floats
+            on top of everything instead of being clipped behind the next pane. */}
         <aside
-          className="sticky top-0 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
+          className="sticky top-0 z-40 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
           aria-label="Primary navigation"
         >
           <Link

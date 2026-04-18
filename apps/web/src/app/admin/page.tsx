@@ -264,12 +264,17 @@ export default function AdminPage() {
           <TabsContent value="users">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 flex-wrap">
-                <Input
-                  className="max-w-xs"
-                  placeholder="Search users…"
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                />
+                <div className="max-w-xs flex-1 border-b pb-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="h-10 border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
+                      placeholder="Search users…"
+                      value={search}
+                      onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                    />
+                  </div>
+                </div>
                 {isSuperAdmin && (
                   <p className="text-xs text-muted-foreground">
                     Student roster import/export lives in the Schedule tab.
@@ -548,23 +553,25 @@ export default function AdminPage() {
                       <Badge variant="destructive">{pendingReports} pending</Badge>
                     )}
                   </div>
-                  <div className="relative w-full max-w-xs">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={moderationSearch}
-                      onChange={(e) => setModerationSearch(e.target.value)}
-                      className="pl-10 pr-10 h-8 text-xs rounded-lg"
-                      placeholder="Search reports..."
-                    />
-                    {moderationSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setModerationSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    ) : null}
+                  <div className="w-full max-w-xs border-b pb-1">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={moderationSearch}
+                        onChange={(e) => setModerationSearch(e.target.value)}
+                        className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
+                        placeholder="Search reports..."
+                      />
+                      {moderationSearch ? (
+                        <button
+                          type="button"
+                          onClick={() => setModerationSearch('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
@@ -637,23 +644,25 @@ export default function AdminPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
                 <CardTitle className="text-base">Recent Audit Events</CardTitle>
-                <div className="relative w-full max-w-xs ml-4">
+                <div className="ml-4 w-full max-w-xs border-b pb-1">
+                  <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={auditSearch}
                     onChange={(e) => setAuditSearch(e.target.value)}
-                    className="pl-10 pr-10 h-8 text-xs rounded-lg"
+                    className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
                     placeholder="Search logs..."
                   />
                   {auditSearch ? (
                     <button
                       type="button"
                       onClick={() => setAuditSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <X className="size-3" />
                     </button>
                   ) : null}
+                  </div>
                 </div>
               </CardHeader>
               <Table>

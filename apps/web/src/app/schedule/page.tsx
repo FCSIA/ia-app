@@ -445,12 +445,13 @@ export default function SchedulePage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <div className="border-b pb-3">
+                      <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        className="rounded-2xl pl-11 pr-11"
+                        className="h-11 border-0 bg-transparent pl-9 pr-9 text-base shadow-none focus-visible:ring-0"
                         placeholder="Search by name or ID"
                       />
                       {isSearching || searchIsDeferred ? (
@@ -465,6 +466,7 @@ export default function SchedulePage() {
                           <X className="size-4" />
                         </button>
                       ) : null}
+                      </div>
                     </div>
 
                     <div className="space-y-3">

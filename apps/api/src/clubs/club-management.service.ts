@@ -256,12 +256,23 @@ export class ClubManagementService {
   }
 
   async update(id: string, dto: UpdateClubDto, actorId: string) {
+    const normalizeNullable = (value: string | null | undefined) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    };
+
     const club = await this.prisma.club.update({
       where: { id },
       data: {
         name: dto.name?.trim(),
         description: dto.description?.trim(),
         joinPolicy: dto.joinPolicy,
+        logoUrl: normalizeNullable(dto.logoUrl),
+        bannerUrl: normalizeNullable(dto.bannerUrl),
+        accentColor: normalizeNullable(dto.accentColor),
+        overview: normalizeNullable(dto.overview),
       },
     });
 

@@ -21,6 +21,7 @@ import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { ClubHero } from '@/components/clubs/club-hero';
 import { formatClubRole, fullName, type AnnouncementSummary } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -224,10 +225,33 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
       }),
   });
 
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+  const resolve = (u?: string | null) => (u ? (u.startsWith('http') ? u : `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`) : undefined);
+  const bannerUrl = resolve(club.bannerUrl);
+  const logoUrl = resolve(club.logoUrl);
+
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
-      <Card className="border-primary/10 bg-card/95">
-        <CardContent className="space-y-5 p-6 sm:p-8">
+      <Card className="overflow-hidden border-primary/10 bg-card/95">
+        {(bannerUrl || club.accentColor) && (
+          <div
+            className="h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
+            style={
+              bannerUrl
+                ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : club.accentColor
+                  ? { background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)` }
+                  : undefined
+            }
+          />
+        )}
+        <CardContent className={`space-y-5 p-6 sm:p-8 ${bannerUrl || club.accentColor ? '-mt-10' : ''}`}>
+          {logoUrl && (
+            <div className="size-20 overflow-hidden rounded-2xl border-4 border-background bg-muted shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt={club.name} className="size-full object-cover" />
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
             {club.viewer.hasPendingJoinRequest ? (
@@ -237,7 +261,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
-              {club.description || 'No club description yet.'}
+              {club.overview || club.description || 'No club description yet.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -445,6 +469,10 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   return (
     <ClubWorkspace clubId={id} title={title} actions={actions} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
+        <ClubHero
+          club={club}
+          canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
+        />
         {club.viewer.canManageMembership ? <JoinCodePanel club={club} /> : null}
         {club.viewer.canManageMembership ? <RequestsPanel club={club} /> : null}
 
