@@ -186,15 +186,15 @@ Every 30 seconds, a request goes to `/notifications/unread-count` and updates th
 
 ---
 
-## Conditional Fetching
+### Invalidation
+```typescript
+const qc = useQueryClient();
 
-Only fetch when a condition is met:
-
-```tsx
-const { data: announcements = [] } = useQuery({
-  queryKey: ['club-announcements', id],
-  queryFn: () => announcementsApi.getAll(false, id).then(r => r.data),
-  enabled: tab === 'announcements', // only fetch when this tab is active
+const mutation = useMutation({
+  mutationFn: (data) => api.post('/some-action', data),
+  onSuccess: () => {
+    qc.invalidateQueries({ queryKey: ['some-resource'] });
+  },
 });
 ```
 
@@ -202,6 +202,7 @@ const { data: announcements = [] } = useQuery({
 
 ## Related
 
-- [[api-layer]] — The API calls that queryFn calls
-- [[components]] — Where useQuery and useMutation are used
+- [[api-layer]] — The Axios definitions
+- [[components]] — Where TanStack Query is used
 - [[frontend-overview]] — React overview
+

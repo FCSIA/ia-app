@@ -23,86 +23,41 @@ Announcements are messages broadcast to specific audiences. They support comment
 
 Every announcement targets a specific audience:
 
-| Target | Who sees it |
+| Target | Description |
 |--------|-------------|
 | `SCHOOL_WIDE` | Every user |
-| `GRADE` | Students whose `gradeLevel` matches `targetGrade` (integer: 9, 10, 11, or 12) |
-| `PATHWAY` | Students whose `major` matches `targetPathway` (`INFORMATION_TECHNOLOGY`, `HEALTH_SCIENCE`, or `ENGINEERING`) |
-| `CLUB` | Members of the specified club |
+| `GRADE` | Students in a specific `targetGrade` (9, 10, 11, or 12) |
+| `PATHWAY` | Students in a specific `targetPathway` |
+| `CLUB` | Members of the specified `clubId` |
 
-The backend filters by the logged-in student's grade/pathway when returning announcements. Teachers and Admins see all announcements.
+### Flexible Targeting
+The `targetValue` field allows for future-proof targeting (e.g. specific advisor groups or GT blocks) without modifying the enum schema.
 
 ---
 
-## Admin General
+## Read Tracking
 
-`isAdminGeneral: true` marks an announcement as a pinned admin message. These:
-- Always appear at the top of the list
-- Always trigger notifications regardless of user preferences
+The system tracks which users have viewed which announcements using the `AnnouncementRead` model.
+- **Unread indicators** appear in the student dashboard.
+- **Analytics** (future) can show sponsors what percentage of their club has read a message.
 
 ---
 
 ## Lifecycle
 
-```
-Created (ACTIVE)
-    ↓
-Optional: expiresAt passes → EXPIRED (auto)
-    ↓
-Or: Admin manually archives → ARCHIVED
-```
+Announcements are born `ACTIVE`. They can transition to `EXPIRED` automatically based on `expiresAt`, or be manually `ARCHIVED` by an author or admin.
 
 ---
 
-## Comments
-
-If `allowComments: true`, users can post comments on an announcement.
-
-- Comments are always visible to anyone who can see the announcement
-- The announcement author, admins, and super admins can delete any comment
-- Authors can delete their own comments
-- Comments trigger moderation keyword checks
-
----
-
-## Moderation
-
-When an announcement is created, the backend scans the `body` against all active `KeywordRule` records. If a match is found, a `KeywordMatch` is recorded and the content may be flagged for review. See [[moderation]].
-
-Users can also manually report an announcement using the flag button on the detail page.
-
----
-
-## API Endpoints
+## API Surface
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/announcements` | List (filtered by user's grade/pathway) |
-| GET | `/announcements/:id` | Get one with comments |
-| POST | `/announcements` | Create |
-| PATCH | `/announcements/:id/archive` | Archive |
+| GET | `/announcements` | List matching the user's grade/pathway/clubs |
+| GET | `/announcements/:id` | Get detail + comments |
+| POST | `/announcements/:id/read` | Mark as read |
+| POST | `/announcements` | Create (scanning for keywords) |
 | POST | `/announcements/:id/comments` | Add comment |
-| DELETE | `/announcements/comments/:id` | Delete comment |
-
----
-
-## Permissions
-
-| Action | Who can |
-|--------|---------|
-| View school-wide | All authenticated |
-| View club announcements | Club members |
-| Create | TEACHER, SPONSOR, ADMIN, SUPER_ADMIN |
-| Create admin-general | ADMIN, SUPER_ADMIN |
-| Archive | Author, ADMIN, SUPER_ADMIN |
-| Delete comments | Comment author, ADMIN, SUPER_ADMIN |
-
----
-
-## Web Pages
-
-- `/announcements` — list, sorted by newest, filterable by admin-only
-- `/announcements/:id` — full announcement with comment thread
 
 ---
 
@@ -111,3 +66,4 @@ Users can also manually report an announcement using the flag button on the deta
 - [[clubs]] — Club-targeted announcements
 - [[moderation]] — Keyword filter + reports
 - [[notifications]] — Notifications triggered by new announcements
+

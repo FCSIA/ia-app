@@ -23,81 +23,40 @@ The moderation system has two parts: automated keyword filtering that scans cont
 
 ### How It Works
 
-1. Admin adds keywords to `KeywordRule` via the Admin Panel
-2. When an announcement or event is created, the backend scans the content
-3. If a keyword is found, a `KeywordMatch` record is created
-4. Content may be flagged for admin review
-
-```typescript
-// In announcements.service.ts, after creating:
-await this.moderationService.checkContent(announcement.body, announcement.id, 'ANNOUNCEMENT');
-```
-
-```typescript
-// In moderation.service.ts:
-async checkContent(text: string, contentId: string, contentType: ContentType) {
-  const keywords = await this.prisma.keywordRule.findMany({ where: { isActive: true } });
-  for (const rule of keywords) {
-    if (text.toLowerCase().includes(rule.keyword.toLowerCase())) {
-      await this.prisma.keywordMatch.create({ data: { contentId, contentType, keywordId: rule.id } });
-    }
-  }
-}
-```
+1. Admin adds keywords to `KeywordRule` via the Admin Panel.
+2. When content (Announcement or Event) is created, the backend scans the text.
+3. If a keyword is found, a `KeywordMatch` record is created, linking the keyword to the specific content ID.
+4. Admins can view a history of all matches in the moderation dashboard.
 
 ---
 
 ## User Reports
 
-Any user can report an announcement, comment, or event using the flag button:
+Any user can report an announcement, comment, or event.
 
-```
-User clicks report → fills in reason → submits
-         ↓
-Report created (status: PENDING)
-         ↓
-Admin sees it in Admin Panel → Moderation tab
-         ↓
-Admin reviews and: Resolves or Dismisses
-```
-
-### Report Statuses
-
-| Status | Meaning |
-|--------|---------|
-| `PENDING` | Not yet reviewed |
-| `REVIEWED` | Seen but no action yet |
-| `RESOLVED` | Action taken (content removed, user warned, etc.) |
-| `DISMISSED` | No action needed |
+### Reporting Flow
+- **Submitter**: Provides a reason and optionally identifies the `reportedUserId` if reporting a specific person's behavior (e.g. in a comment).
+- **Status Transitions**: Reports start as `PENDING` and move to `RESOLVED` or `DISMISSED` after admin review.
+- **Notes**: Admins provide a `reviewNote` explaining their decision.
 
 ---
 
-## API Endpoints
+## API Surface
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/moderation/keywords` | All keyword rules |
-| POST | `/moderation/keywords` | Add a keyword |
-| DELETE | `/moderation/keywords/:id` | Remove a keyword |
-| GET | `/moderation/reports` | All reports |
-| POST | `/moderation/reports` | Submit a report |
-| PATCH | `/moderation/reports/:id` | Update report status |
-
----
-
-## Permissions
-
-| Action | Who can |
-|--------|---------|
-| Submit reports | All authenticated |
-| View reports | ADMIN, SUPER_ADMIN, SUPPORT_STAFF |
-| Manage keywords | ADMIN, SUPER_ADMIN |
-| Resolve/Dismiss | ADMIN, SUPER_ADMIN, SUPPORT_STAFF |
+| GET | `/moderation/keywords` | List active rules |
+| POST | `/moderation/keywords` | Add a case-insensitive keyword |
+| GET | `/moderation/reports` | List reports for admin review |
+| POST | `/moderation/reports` | Submit a new report |
+| PATCH | `/moderation/reports/:id` | Resolve/Dismiss a report |
+| GET | `/moderation/matches` | Recent keyword match history |
 
 ---
 
 ## Related
 
 - [[announcements]] — Content that gets scanned and can be reported
-- [[audit-log]] — Moderation actions are logged
-- [[roles-and-permissions]] — Who can manage moderation
+- [[audit-log]] — Moderation actions (adding keywords, reviewing reports) are logged
+- [[roles-and-permissions]] — Admins and Support Staff permissions
+

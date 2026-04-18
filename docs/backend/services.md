@@ -121,51 +121,60 @@ The controller doesn't need any try/catch — NestJS handles it.
 
 ### UsersService
 - CRUD for user records
-- Assigns roles
-- Activates/deactivates accounts
+- Assigns roles and activates/deactivates accounts
 - Parses and imports CSV files of users
 
 ### AnnouncementsService
 - Creates announcements (with keyword check)
 - Filters by target type (SCHOOL_WIDE, GRADE, PATHWAY, CLUB)
-- Manages comments (add, delete)
-- Archives expired announcements
+- Manages reading-status tracking and comments
 
-### ClubsService
+### ClubManagementService
 - Creates and updates clubs
 - Manages membership (add, remove, promote)
-- Handles invite workflow (send, accept, decline)
-- Manages sponsors
+- Manages sponsors and join codes
+
+### ClubInvitationsService
+- Handles the invite workflow (send, accept, decline)
+- Manages join requests for private/restricted clubs
+
+### ClubChannelsService
+- Creates channels with specific visibility (Public, Private, Read-Only)
+- Manages channel memberships and messaging features
 
 ### EventsService
-- Creates events (starts as DRAFT)
-- Moves through approval workflow
-- Sends notifications on publish
+- Creates events and moves them through approval workflow
+- Manages event categories and flyer uploads
+
+### CoursesService
+- Provides searchable course catalog
+- Filters by department, pathway, and grade-level eligibility
+
+### ScheduleService
+- High-performance student schedule management
+- Handles friend requests and accepted sharing relationships
+- Manages the school "bell schedule" (SchoolDayBlocks)
 
 ### CalendarService
-- Fetches calendar entries filtered by date range and tags
-- Aggregates entries from both CalendarEntry model and published Events
+- Fetches calendar entries filtered by date range
+- Aggregates entries from standalone records and published Events
 
 ### FlexFridayService
-- Creates Flex Friday dates and sessions
-- Handles student registration with capacity checks
-- Handles teacher assignment
-- Returns rosters per session
+- Manages Flex Friday dates, sessions, and workshops
+- Handles student registration with capacity enforcement
+- Manages teacher assignments and rosters
 
 ### NotificationsService
-- Creates `NotificationDelivery` rows for affected users
-- Returns unread count (polled every 30s by the web app)
-- Marks notifications as read
+- Delivers `NotificationDelivery` rows based on user preferences
+- Supports deep-linking back to source entities (Announcements, Events, etc.)
 
 ### ModerationService
-- Adds/removes keyword rules
-- Scans content against all active rules
-- Creates `KeywordMatch` records on violation
-- Manages report lifecycle (PENDING → RESOLVED/DISMISSED)
+- Manages keyword rules and automated content scanning
+- Handles the reporting lifecycle (PENDING → RESOLVED/DISMISSED)
 
 ### AuditService
-- Creates `AuditEvent` records
-- Returns paginated audit log
+- Captures system-wide `AuditEvent` records for tracking sensitive actions
+
 
 ---
 

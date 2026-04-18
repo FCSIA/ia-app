@@ -40,9 +40,7 @@ ia-app/                     ← one git repo
 └── turbo.json              ← task runner config
 ```
 
-### Why a Monorepo?
-
-- Share code and types between apps (the `packages/shared-types/` folder)
+- Share code and types between apps (the `packages/contracts/` folder)
 - Run all dev servers with one command (`pnpm dev`)
 - Manage all dependencies from one place
 

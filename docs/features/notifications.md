@@ -40,85 +40,56 @@ await prisma.notificationDelivery.createMany({
 
 ## Notification Categories
 
-| Category | Triggered by |
-|----------|-------------|
-| `SCHOOL_ANNOUNCEMENT` | New school-wide or grade/pathway announcement |
-| `CLUB_ANNOUNCEMENT` | New club announcement (sent to club members) |
-| `CLUB_CHANNEL_MENTION` | Channel messages that mention a user, tag, or audience like `@leaders` |
-| `EVENT` | Event published |
-| `FLEX_FRIDAY` | New Flex Friday created |
+| Category | Triggered by | Deep-links to |
+|----------|-------------|---------------|
+| `SCHOOL_ANNOUNCEMENT` | New school/grade/pathway announcement | `/announcements/:id` |
+| `CLUB_ANNOUNCEMENT` | New club announcement | `/clubs/:id` |
+| `CLUB_JOIN_REQUEST` | Student requests to join a club | `/clubs/:id?tab=management` |
+| `CLUB_CHANNEL_MENTION` | User/Tag mention in chat | `/clubs/:id/channels/:channelId` |
+| `EVENT` | Event published | `/events/:id` |
+| `FLEX_FRIDAY` | New Friday or Assignment | `/flex-friday` |
+| `FRIEND_REQUEST` | Coworker wants to share schedules | `/schedule` (friends tab) |
+
+---
+
+## Data Model and Deep-Linking
+
+The `NotificationDelivery` model stores nullable foreign keys to provide a high-performance deep-link experience:
+- `announcementId`, `eventId`, `clubId`, `channelId`, `messageId`
+
+The frontend uses these fields to construct the correct URL and application state upon clicking a notification.
 
 ---
 
 ## Notification Preferences
 
-Users can disable any category in `/profile`. Preferences are stored in `NotificationPreference`:
+Users can disable any category. For `CLUB_ANNOUNCEMENT` and `CLUB_CHANNEL_MENTION`, users can toggle notifications **per club**.
 
 ```
 userId + category + clubId → enabled (boolean)
 ```
 
-`clubId: null` = global preference for that category.
-
-When creating notifications, the service checks preferences:
-```typescript
-const pref = await prisma.notificationPreference.findFirst({
-  where: { userId, category, clubId: null },
-});
-if (pref && !pref.enabled) return; // skip this user
-```
-
-**Exception**: `isAdminGeneral` announcements always notify, regardless of preferences.
+- `clubId: null`: Global preference for that category.
+- `clubId: "..."`: Override for a specific club's activity.
 
 ---
 
-## The Badge Polling
-
-The notification bell badge in the sidebar updates every 30 seconds:
-
-```typescript
-// AppShell.tsx
-const { data: unreadCount = 0 } = useQuery({
-  queryKey: ['unread-count'],
-  queryFn: () => notificationsApi.getUnreadCount().then(r => r.data.count),
-  refetchInterval: 30_000,
-});
-```
-
-`NotificationDelivery` rows with `isRead: false` are counted. The badge shows the count and pulses when > 0.
-
----
-
-## Marking as Read
-
-Clicking an unread notification marks it read:
-
-```typescript
-onClick={() => !n.isRead && markReadMutation.mutate(n.id)}
-```
-
-The "Mark all read" button calls `/notifications/mark-all-read`.
-
-For `CLUB_CHANNEL_MENTION`, notification rows also store `clubId`, `channelId`, and `messageId`. The web notifications page uses those IDs to open the corresponding channel thread directly.
-
----
-
-## API Endpoints
+## API Surface
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/notifications` | All notifications for current user |
-| GET | `/notifications/unread-count` | Count of unread |
+| GET | `/notifications/unread-count` | Polled every 30s by the sidebar |
 | POST | `/notifications/mark-read` | Mark specific IDs as read |
-| POST | `/notifications/mark-all-read` | Mark all as read |
-| GET | `/notifications/preferences` | Get preferences |
-| PUT | `/notifications/preferences` | Update a preference |
+| POST | `/notifications/mark-all-read` | Clear all badges |
+| PUT | `/notifications/preferences` | Update a global or club-specific preference |
 
 ---
 
 ## Related
 
-- [[announcements]] — Trigger `SCHOOL_ANNOUNCEMENT` / `CLUB_ANNOUNCEMENT`
-- [[events]] — Trigger `EVENT` on publish
-- [[flex-friday]] — Trigger `FLEX_FRIDAY` on creation
-- [[components]] — The badge in AppShell
+- [[announcements]] — Trigger school/club announcements
+- [[clubs]] — Trigger mentions and join requests
+- [[schedule]] — Trigger friend requests
+- [[flex-friday]] — Trigger registration/assignment alerts
+

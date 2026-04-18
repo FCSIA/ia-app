@@ -60,20 +60,22 @@ The web calendar page:
 
 ---
 
-## API Endpoints
+## API Surface
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/calendar/entries` | All entries in a date range |
+| GET | `/calendar` | All entries in a date range |
+| POST | `/calendar` | Create manual entry (restricted roles) |
 
-Query parameters:
-- `from` — start date (ISO string)
-- `to` — end date (ISO string)
-- `tags` — comma-separated tag filter
+### Query Parameters (GET)
+- `startDate` — filter entries after this UTC date
+- `endDate` — filter entries before this UTC date
+- `tags` — comma-separated tag filter (e.g. `?tags=holiday,academic`)
 
 ---
 
 ## Related
 
-- [[events]] — Published events appear here automatically
-- [[flex-friday]] — Flex Friday dates also appear on the calendar
+- [[events]] — Published events create calendar entries automatically
+- [[flex-friday]] — Flex Friday dates appear on the calendar grid
+
