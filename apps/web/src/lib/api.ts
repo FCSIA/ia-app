@@ -1,3 +1,4 @@
+import 'client-only';
 import axios from 'axios';
 import type { AppUser, AuthLoginResponse } from '@ia/contracts/auth';
 import type {
