@@ -17,6 +17,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
+import {
+  ANNOUNCEMENT_BADGE_TEXT_CLASS,
+  ANNOUNCEMENT_TAG_LABELS,
+} from '@/components/announcements/announcement-card';
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -99,13 +103,27 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              {ann.isAdminGeneral && <Badge variant="destructive">Admin</Badge>}
-              <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20">{ann.targetType.replace(/_/g, ' ')}</Badge>
-              <Badge variant={ann.isRead ? 'outline' : 'secondary'} className={ann.isRead ? '' : 'bg-primary/10 text-primary'}>
-                {ann.isRead ? 'Read' : 'Unread'}
+              {ann.isAdminGeneral ? (
+                <Badge variant="destructive" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                  Admin
+                </Badge>
+              ) : null}
+              <Badge
+                variant="secondary"
+                className={`${ANNOUNCEMENT_BADGE_TEXT_CLASS} bg-blue-500/10 text-blue-500 hover:bg-blue-500/20`}
+              >
+                {ANNOUNCEMENT_TAG_LABELS[ann.targetType] || ann.targetType.replace(/_/g, ' ')}
               </Badge>
-              {ann.club?.name ? <Badge variant="outline">{ann.club.name}</Badge> : null}
-              {ann.status !== 'ACTIVE' && <Badge variant="outline">{ann.status}</Badge>}
+              {ann.club?.name ? (
+                <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                  {ann.club.name}
+                </Badge>
+              ) : null}
+              {ann.status !== 'ACTIVE' ? (
+                <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                  {ann.status}
+                </Badge>
+              ) : null}
             </div>
             <div className="mb-5 flex justify-end">
               <AnnouncementReadToggle announcementId={ann.id} isRead={ann.isRead} />

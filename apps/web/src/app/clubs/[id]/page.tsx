@@ -380,7 +380,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     <div className="min-w-0">
       <h1 className="truncate text-base font-semibold text-foreground">{club.name}</h1>
       {club.description ? (
-        <p className="truncate text-xs text-muted-foreground">{club.description}</p>
+        <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{club.description}</p>
       ) : null}
     </div>
   );

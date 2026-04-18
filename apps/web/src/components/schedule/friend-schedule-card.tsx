@@ -27,6 +27,7 @@ export function FriendScheduleCard({
   onRemove,
   isRemoving,
 }: FriendScheduleCardProps) {
+  const current = getCurrentScheduleStatus(friend.schedule, blocks);
   const currentLabel = current.currentBlock?.periodNumber
     ? current.currentEntry?.course
       ? current.currentEntry.course.title
@@ -40,7 +41,6 @@ export function FriendScheduleCard({
         ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
         : 'bg-muted text-muted-foreground';
 
-  const current = getCurrentScheduleStatus(friend.schedule, blocks);
   const weekday = getWeekdayForDate(new Date());
   const todayBlocks = weekday ? getBlocksForDay(blocks, weekday) : [];
 

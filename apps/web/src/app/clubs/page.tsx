@@ -211,7 +211,7 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
             {club.name.charAt(0).toUpperCase()}
           </div>
           <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
-          <p className="line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-muted-foreground">
+          <p className="line-clamp-4 min-h-[5rem] text-xs leading-5 text-muted-foreground">
             {club.description || 'No description.'}
           </p>
           <div className="mt-auto flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
@@ -243,7 +243,7 @@ function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode 
           </div>
           <div>
             <p className="font-medium text-foreground">{club.name}</p>
-            <p className="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground">
+            <p className="mt-1 line-clamp-4 text-sm leading-6 text-muted-foreground">
               {club.description || 'No description.'}
             </p>
           </div>
