@@ -1,18 +1,46 @@
 'use client';
 
 import { useState, useEffect, useDeferredValue, useMemo } from 'react';
+import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, moderationApi, auditApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Shield, FileText, Upload, Plus, Trash2, CalendarDays, Download, Search, X } from 'lucide-react';
+import {
+  Users,
+  Shield,
+  FileText,
+  Upload,
+  Plus,
+  Trash2,
+  CalendarDays,
+  Download,
+  Search,
+  X,
+  Eye,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -28,6 +56,188 @@ type StudentImportResult = {
     temporaryPassword: string;
   }>;
 };
+
+type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
+
+type AuditEventRecord = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  createdAt: string;
+  meta?: Record<string, unknown> | null;
+  actor?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    uniqueId: string;
+  } | null;
+};
+
+type AuditEventDetail = AuditEventRecord & {
+  entityPreview?: {
+    kind: string;
+    title: string;
+    subtitle?: string | null;
+    body?: string | null;
+    href?: string | null;
+    hrefLabel?: string | null;
+    fields?: Array<{
+      label: string;
+      value: string;
+    }>;
+  } | null;
+};
+
+type AdminUserRecord = {
+  id: string;
+  uniqueId: string;
+  firstName: string;
+  lastName: string;
+  role?: string | null;
+  roles?: string[];
+  gradeLevel?: number | null;
+  isActive?: boolean;
+};
+
+const STUDENT_ROLES = new Set(['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN']);
+const TEACHER_ROLES = new Set(['TEACHER', 'SPONSOR']);
+const AUDIT_FETCH_LIMIT = 250;
+
+function getUserRoles(user: AdminUserRecord) {
+  if (user.roles?.length) return user.roles;
+  return user.role ? [user.role] : [];
+}
+
+function getUserBucket(user: AdminUserRecord) {
+  const roles = getUserRoles(user);
+  if (roles.some((role) => STUDENT_ROLES.has(role))) return 'students' as const;
+  if (roles.some((role) => TEACHER_ROLES.has(role))) return 'teachers' as const;
+  return 'other' as const;
+}
+
+function formatRoleLabel(role: string) {
+  return role.replace(/_/g, ' ');
+}
+
+function UserTableSection({
+  title,
+  emptyMessage,
+  users,
+  showGrade = false,
+  currentUserId,
+  canDeactivate,
+  onDeactivate,
+  onActivate,
+}: {
+  title: string;
+  emptyMessage: string;
+  users: AdminUserRecord[];
+  showGrade?: boolean;
+  currentUserId?: string;
+  canDeactivate: (user: AdminUserRecord) => boolean;
+  onDeactivate: (userId: string) => void;
+  onActivate: (userId: string) => void;
+}) {
+  const headers = showGrade
+    ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
+    : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
+
+  return (
+    <Card>
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="text-base">{title}</CardTitle>
+          <Badge variant="secondary">{users.length}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              {headers.map((header) => (
+                <TableHead key={header} className="px-4 py-3 text-xs uppercase tracking-wide">
+                  {header}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={headers.length} className="px-4 py-10 text-center text-muted-foreground">
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user) => (
+                <TableRow key={user.id} className="hover:bg-muted/30">
+                  <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {user.uniqueId}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 font-medium">
+                    {user.firstName} {user.lastName}
+                  </TableCell>
+                  {showGrade ? (
+                    <TableCell className="px-4 py-3 text-muted-foreground">
+                      {user.gradeLevel || '—'}
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {getUserRoles(user).map((role) => (
+                        <Badge key={role} variant="outline" className="text-[10px]">
+                          {formatRoleLabel(role)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <Badge
+                      variant={user.isActive ? 'default' : 'secondary'}
+                      className={
+                        user.isActive
+                          ? 'bg-emerald-500/15 text-emerald-500 border-none'
+                          : 'bg-red-500/15 text-red-500 border-none'
+                      }
+                    >
+                      {user.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    {user.isActive ? (
+                      canDeactivate(user) && user.id !== currentUserId ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDeactivate(user.id)}
+                          className="h-8 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                        >
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onActivate(user.id)}
+                        className="h-8 text-xs text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+                      >
+                        Activate
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
 
 function escapeCsvCell(value: unknown) {
   const stringValue = String(value ?? '');
@@ -53,7 +263,7 @@ function downloadCsv(filename: string, rows: Array<Array<unknown>>, headers: str
 }
 
 export default function AdminPage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const router = useRouter();
   const { toast } = useToast();
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
@@ -70,13 +280,23 @@ export default function AdminPage() {
   const deferredModerationSearch = useDeferredValue(moderationSearch);
   const [auditSearch, setAuditSearch] = useState('');
   const deferredAuditSearch = useDeferredValue(auditSearch);
+  const [auditActor, setAuditActor] = useState('');
+  const deferredAuditActor = useDeferredValue(auditActor);
+  const [auditEntityId, setAuditEntityId] = useState('');
+  const deferredAuditEntityId = useDeferredValue(auditEntityId);
+  const [auditActionFilter, setAuditActionFilter] = useState('ALL');
+  const [auditEntityTypeFilter, setAuditEntityTypeFilter] = useState('ALL');
+  const [auditActorScope, setAuditActorScope] = useState<AuditActorScope>('ALL');
+  const [auditStartDate, setAuditStartDate] = useState('');
+  const [auditEndDate, setAuditEndDate] = useState('');
+  const [selectedAuditEventId, setSelectedAuditEventId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   // Permission: can current user deactivate this target user?
-  const canDeactivate = (targetUser: any) => {
+  const canDeactivate = (targetUser: AdminUserRecord) => {
     if (!user) return false;
-    const targetRole = targetUser.role || (targetUser.roles?.[0] ?? '');
-    const isTargetPrivileged = targetRole === 'ADMIN' || targetRole === 'SUPER_ADMIN';
+    const targetRoles = getUserRoles(targetUser);
+    const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
     // Only Super Admin can deactivate privileged users
     if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
     // Admins can deactivate everyone else
@@ -89,7 +309,13 @@ export default function AdminPage() {
     }
   }, [user, router]);
 
-  const { data: usersData } = useQuery({
+  const {
+    data: usersData,
+    isLoading: isUsersLoading,
+    isError: isUsersError,
+    error: usersError,
+    refetch: refetchUsers,
+  } = useQuery({
     queryKey: ['admin-users', page, search],
     queryFn: () => usersApi.getAll(page, 20, search || undefined).then((r) => r.data),
     enabled: activeTab === 'users',
@@ -107,10 +333,46 @@ export default function AdminPage() {
     enabled: activeTab === 'moderation',
   });
 
-  const { data: auditEvents = [] } = useQuery({
-    queryKey: ['audit'],
-    queryFn: () => auditApi.getAll().then((r) => r.data),
+  const auditQueryParams = useMemo(
+    () => ({
+      limit: AUDIT_FETCH_LIMIT,
+      query: deferredAuditSearch.trim() || undefined,
+      actor: deferredAuditActor.trim() || undefined,
+      entityId: deferredAuditEntityId.trim() || undefined,
+      action: auditActionFilter !== 'ALL' ? auditActionFilter : undefined,
+      entityType: auditEntityTypeFilter !== 'ALL' ? auditEntityTypeFilter : undefined,
+      actorScope: auditActorScope !== 'ALL' ? auditActorScope : undefined,
+      startDate: auditStartDate || undefined,
+      endDate: auditEndDate || undefined,
+    }),
+    [
+      auditActionFilter,
+      auditActorScope,
+      auditEndDate,
+      auditEntityTypeFilter,
+      auditStartDate,
+      deferredAuditSearch,
+      deferredAuditActor,
+      deferredAuditEntityId,
+    ],
+  );
+
+  const { data: auditEvents = [], isLoading: isAuditLoading } = useQuery<AuditEventRecord[]>({
+    queryKey: ['audit', auditQueryParams],
+    queryFn: () => auditApi.getAll(auditQueryParams).then((r) => r.data),
     enabled: activeTab === 'audit',
+  });
+
+  const { data: auditFilterSource = [] } = useQuery<AuditEventRecord[]>({
+    queryKey: ['audit', 'filter-source'],
+    queryFn: () => auditApi.getAll({ limit: 500 }).then((r) => r.data),
+    enabled: activeTab === 'audit',
+  });
+
+  const { data: auditEventDetail, isLoading: isAuditDetailLoading } = useQuery<AuditEventDetail>({
+    queryKey: ['audit', 'entry', selectedAuditEventId],
+    queryFn: () => auditApi.getOne(selectedAuditEventId!).then((r) => r.data),
+    enabled: !!selectedAuditEventId,
   });
 
   const filteredReports = useMemo(() => {
@@ -128,20 +390,64 @@ export default function AdminPage() {
     });
   }, [reports, deferredModerationSearch]);
 
-  const filteredAuditEvents = useMemo(() => {
-    const query = deferredAuditSearch.trim().toLowerCase();
-    if (!query) return auditEvents;
-    return (auditEvents as any[]).filter((e) => {
-      const searchable = [
-        e.action,
-        e.entityType,
-        e.entityId,
-        e.actor?.firstName,
-        e.actor?.lastName,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [auditEvents, deferredAuditSearch]);
+  const auditActionOptions = useMemo(
+    () => Array.from(new Set(auditFilterSource.map((event) => event.action))).sort(),
+    [auditFilterSource],
+  );
+
+  const auditEntityTypeOptions = useMemo(
+    () => Array.from(new Set(auditFilterSource.map((event) => event.entityType))).sort(),
+    [auditFilterSource],
+  );
+
+  const hasActiveAuditFilters =
+    !!auditSearch.trim() ||
+    !!auditActor.trim() ||
+    !!auditEntityId.trim() ||
+    auditActionFilter !== 'ALL' ||
+    auditEntityTypeFilter !== 'ALL' ||
+    auditActorScope !== 'ALL' ||
+    !!auditStartDate ||
+    !!auditEndDate;
+
+  const clearAuditFilters = () => {
+    setAuditSearch('');
+    setAuditActor('');
+    setAuditEntityId('');
+    setAuditActionFilter('ALL');
+    setAuditEntityTypeFilter('ALL');
+    setAuditActorScope('ALL');
+    setAuditStartDate('');
+    setAuditEndDate('');
+  };
+
+  const setAuditStartDateWithBounds = (value: string) => {
+    setAuditStartDate(value);
+    if (value && auditEndDate && value > auditEndDate) {
+      setAuditEndDate(value);
+    }
+  };
+
+  const setAuditEndDateWithBounds = (value: string) => {
+    setAuditEndDate(value);
+    if (value && auditStartDate && value < auditStartDate) {
+      setAuditStartDate(value);
+    }
+  };
+
+  const groupedUsers = useMemo(() => {
+    const buckets = {
+      students: [] as AdminUserRecord[],
+      teachers: [] as AdminUserRecord[],
+      other: [] as AdminUserRecord[],
+    };
+
+    for (const account of ((usersData?.users || []) as AdminUserRecord[])) {
+      buckets[getUserBucket(account)].push(account);
+    }
+
+    return buckets;
+  }, [usersData?.users]);
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => usersApi.deactivate(id),
@@ -228,6 +534,21 @@ export default function AdminPage() {
 
   const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
 
+  const auditFilterChips = [
+    auditSearch.trim() ? `Search: ${auditSearch.trim()}` : null,
+    auditActor.trim() ? `Actor: ${auditActor.trim()}` : null,
+    auditEntityId.trim() ? `Entity ID: ${auditEntityId.trim()}` : null,
+    auditActionFilter !== 'ALL' ? `Action: ${auditActionFilter}` : null,
+    auditEntityTypeFilter !== 'ALL' ? `Entity: ${auditEntityTypeFilter}` : null,
+    auditActorScope !== 'ALL'
+      ? `Source: ${auditActorScope === 'SYSTEM' ? 'System' : 'User'}`
+      : null,
+    auditStartDate
+      ? `From: ${format(new Date(`${auditStartDate}T00:00:00`), 'MMM d, yyyy')}`
+      : null,
+    auditEndDate ? `To: ${format(new Date(`${auditEndDate}T00:00:00`), 'MMM d, yyyy')}` : null,
+  ].filter((value): value is string => !!value);
+
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto">
@@ -282,68 +603,64 @@ export default function AdminPage() {
                 )}
               </div>
 
-              <Card>
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      {['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'].map((h) => (
-                        <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
-                          {h}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(usersData?.users || []).map((u: any) => (
-                      <TableRow key={u.id} className="hover:bg-muted/30">
-                        <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{u.uniqueId}</TableCell>
-                        <TableCell className="px-4 py-3 font-medium">{u.firstName} {u.lastName}</TableCell>
-                        <TableCell className="px-4 py-3 text-muted-foreground">{u.gradeLevel || '—'}</TableCell>
-                        <TableCell className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {u.roles?.map((r: string) => (
-                              <Badge key={r} variant="outline" className="text-[10px]">{r.replace(/_/g, ' ')}</Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
-                          <Badge variant={u.isActive ? "default" : "secondary"} className={u.isActive ? "bg-emerald-500/15 text-emerald-500 border-none" : "bg-red-500/15 text-red-500 border-none"}>
-                            {u.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
-                          {u.isActive ? (
-                            canDeactivate(u) && u.id !== user?.id ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deactivateMutation.mutate(u.id)}
-                                className="text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8"
-                              >
-                                Deactivate
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => activateMutation.mutate(u.id)}
-                              className="text-xs text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 h-8"
-                            >
-                              Activate
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {(usersData?.users || []).length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">No users found.</div>
-                )}
-              </Card>
+              {isUsersLoading && !usersData ? (
+                <Card>
+                  <CardContent className="py-10 text-center text-muted-foreground">
+                    Loading users...
+                  </CardContent>
+                </Card>
+              ) : isUsersError ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                    <div>
+                      <p className="font-medium text-foreground">Could not load users.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" onClick={() => refetchUsers()}>
+                      Try again
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (usersData?.users || []).length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center text-muted-foreground">
+                    No users found.
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  <UserTableSection
+                    title="Students"
+                    emptyMessage="No students found."
+                    users={groupedUsers.students}
+                    showGrade
+                    currentUserId={user?.id}
+                    canDeactivate={canDeactivate}
+                    onDeactivate={(userId) => deactivateMutation.mutate(userId)}
+                    onActivate={(userId) => activateMutation.mutate(userId)}
+                  />
+                  <UserTableSection
+                    title="Teachers"
+                    emptyMessage="No teachers found."
+                    users={groupedUsers.teachers}
+                    currentUserId={user?.id}
+                    canDeactivate={canDeactivate}
+                    onDeactivate={(userId) => deactivateMutation.mutate(userId)}
+                    onActivate={(userId) => activateMutation.mutate(userId)}
+                  />
+                  <UserTableSection
+                    title="Other Roles"
+                    emptyMessage="No admin or staff accounts found."
+                    users={groupedUsers.other}
+                    currentUserId={user?.id}
+                    canDeactivate={canDeactivate}
+                    onDeactivate={(userId) => deactivateMutation.mutate(userId)}
+                    onActivate={(userId) => activateMutation.mutate(userId)}
+                  />
+                </div>
+              )}
 
               {usersData?.total > 20 && (
                 <div className="flex justify-center items-center gap-4 mt-2">
@@ -642,69 +959,378 @@ export default function AdminPage() {
           {/* ── Audit Log Tab ── */}
           <TabsContent value="audit">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-                <CardTitle className="text-base">Recent Audit Events</CardTitle>
-                <div className="ml-4 w-full max-w-xs border-b pb-1">
-                  <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={auditSearch}
-                    onChange={(e) => setAuditSearch(e.target.value)}
-                    className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                    placeholder="Search logs..."
-                  />
-                  {auditSearch ? (
-                    <button
-                      type="button"
-                      onClick={() => setAuditSearch('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  ) : null}
+              <CardHeader className="border-b pb-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <CardTitle className="text-base">Audit Log</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Filter by actor, entity, source, and date range, then inspect the exact context behind a logged action.
+                    </p>
                   </div>
+                  {hasActiveAuditFilters ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={clearAuditFilters}>
+                      <X className="mr-1 size-4" />
+                      Clear filters
+                    </Button>
+                  ) : null}
                 </div>
               </CardHeader>
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    {['Time', 'Actor', 'Action', 'Entity'].map((h) => (
-                      <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
-                        {h}
-                      </TableHead>
+              <CardContent className="space-y-5 pt-6">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Search</label>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={auditSearch}
+                        onChange={(e) => setAuditSearch(e.target.value)}
+                        className="pl-10 pr-10"
+                        placeholder="Action, actor, entity…"
+                      />
+                      {auditSearch ? (
+                        <button
+                          type="button"
+                          onClick={() => setAuditSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Actor</label>
+                    <Input
+                      value={auditActor}
+                      onChange={(e) => setAuditActor(e.target.value)}
+                      placeholder="Name or unique ID"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Entity ID</label>
+                    <Input
+                      value={auditEntityId}
+                      onChange={(e) => setAuditEntityId(e.target.value)}
+                      placeholder="Specific record ID"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Source</label>
+                    <Select
+                      value={auditActorScope}
+                      onValueChange={(value) => setAuditActorScope(value as AuditActorScope)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All sources</SelectItem>
+                        <SelectItem value="USER">User actions</SelectItem>
+                        <SelectItem value="SYSTEM">System actions</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Action</label>
+                    <Select value={auditActionFilter} onValueChange={setAuditActionFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any action" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All actions</SelectItem>
+                        {auditActionOptions.map((action) => (
+                          <SelectItem key={action} value={action}>
+                            {action}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Entity Type</label>
+                    <Select value={auditEntityTypeFilter} onValueChange={setAuditEntityTypeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any entity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All entity types</SelectItem>
+                        {auditEntityTypeOptions.map((entityType) => (
+                          <SelectItem key={entityType} value={entityType}>
+                            {entityType}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">From</label>
+                    <DatePicker
+                      value={auditStartDate}
+                      onChange={setAuditStartDateWithBounds}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        auditEndDate
+                          ? (date) => format(date, 'yyyy-MM-dd') > auditEndDate
+                          : undefined
+                      }
+                      allowClear
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">To</label>
+                    <DatePicker
+                      value={auditEndDate}
+                      onChange={setAuditEndDateWithBounds}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        auditStartDate
+                          ? (date) => format(date, 'yyyy-MM-dd') < auditStartDate
+                          : undefined
+                      }
+                      allowClear
+                    />
+                  </div>
+                </div>
+
+                {auditFilterChips.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {auditFilterChips.map((chip) => (
+                      <Badge key={chip} variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
+                        {chip}
+                      </Badge>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAuditEvents.map((e: any) => (
-                    <TableRow key={e.id} className="hover:bg-muted/30">
-                      <TableCell className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap font-mono">
-                        {format(new Date(e.createdAt), 'MMM d HH:mm:ss')}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 text-xs">
-                        {e.actor ? `${e.actor.firstName} ${e.actor.lastName}` : '—'}
-                      </TableCell>
-                      <TableCell className="px-4 py-3 font-mono text-xs text-accent-600 dark:text-accent-400">{e.action}</TableCell>
-                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                        {e.entityType}{e.entityId ? ` #${e.entityId.slice(0, 8)}` : ''}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredAuditEvents.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-muted-foreground text-sm">
-                    {deferredAuditSearch ? 'No logs match your search' : 'No audit events'}
-                  </p>
-                  {deferredAuditSearch && (
-                    <Button variant="link" size="sm" onClick={() => setAuditSearch('')} className="mt-1 font-semibold text-accent-500">
-                      Clear search
-                    </Button>
+                  </div>
+                ) : null}
+
+                <p className="text-xs text-muted-foreground">
+                  Showing {auditEvents.length} matching event{auditEvents.length === 1 ? '' : 's'}
+                  {auditEvents.length >= AUDIT_FETCH_LIMIT ? ` from the latest ${AUDIT_FETCH_LIMIT}` : ''}.
+                </p>
+
+                {isAuditLoading ? (
+                  <div className="py-12 text-center text-sm text-muted-foreground">
+                    Loading audit events…
+                  </div>
+                ) : auditEvents.length > 0 ? (
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        {['Time', 'Actor', 'Action', 'Entity', 'Inspect'].map((h) => (
+                          <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
+                            {h}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {auditEvents.map((event) => {
+                        const meta = event.meta ?? {};
+                        const contextHint =
+                          (typeof meta.clubName === 'string' && typeof meta.channelName === 'string'
+                            ? `${meta.clubName} · #${meta.channelName}`
+                            : typeof meta.title === 'string'
+                              ? meta.title
+                              : typeof meta.name === 'string'
+                                ? meta.name
+                                : typeof meta.bodyPreview === 'string'
+                                  ? meta.bodyPreview
+                                  : null) ?? null;
+
+                        return (
+                          <TableRow key={event.id} className="hover:bg-muted/30">
+                            <TableCell className="px-4 py-3 align-top text-xs whitespace-nowrap font-mono text-muted-foreground">
+                              {format(new Date(event.createdAt), 'MMM d, yyyy')}
+                              <div className="mt-1">{format(new Date(event.createdAt), 'h:mm:ss a')}</div>
+                            </TableCell>
+                            <TableCell className="px-4 py-3 align-top text-xs">
+                              <div className="font-medium text-foreground">
+                                {event.actor
+                                  ? `${event.actor.firstName} ${event.actor.lastName}`
+                                  : 'System'}
+                              </div>
+                              {event.actor?.uniqueId ? (
+                                <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                                  {event.actor.uniqueId}
+                                </div>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 align-top">
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-[11px] text-accent-600 dark:text-accent-400"
+                              >
+                                {event.action}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="px-4 py-3 align-top text-xs text-muted-foreground">
+                              <div className="font-medium text-foreground">
+                                {event.entityType}
+                                {event.entityId ? ` #${event.entityId.slice(0, 8)}` : ''}
+                              </div>
+                              {contextHint ? (
+                                <div className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                                  {contextHint}
+                                </div>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 align-top">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="rounded-xl"
+                                onClick={() => setSelectedAuditEventId(event.id)}
+                              >
+                                <Eye className="mr-1.5 size-4" />
+                                Inspect
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground text-sm">
+                      {hasActiveAuditFilters ? 'No audit events match these filters' : 'No audit events'}
+                    </p>
+                    {hasActiveAuditFilters ? (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={clearAuditFilters}
+                        className="mt-1 font-semibold text-accent-500"
+                      >
+                        Clear filters
+                      </Button>
+                    ) : null}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Sheet open={!!selectedAuditEventId} onOpenChange={(open) => !open && setSelectedAuditEventId(null)}>
+              <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+                <SheetHeader>
+                  <SheetTitle>Audit Event Details</SheetTitle>
+                  <SheetDescription>
+                    Inspect the recorded action, the resolved entity context, and the raw metadata captured at the time.
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-6">
+                  {isAuditDetailLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading audit context…</div>
+                  ) : auditEventDetail ? (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Action</p>
+                          <p className="mt-2 font-mono text-sm text-foreground">{auditEventDetail.action}</p>
+                        </div>
+                        <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">When</p>
+                          <p className="mt-2 text-sm text-foreground">
+                            {format(new Date(auditEventDetail.createdAt), 'PPP p')}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Actor</p>
+                          <p className="mt-2 text-sm text-foreground">
+                            {auditEventDetail.actor
+                              ? `${auditEventDetail.actor.firstName} ${auditEventDetail.actor.lastName}`
+                              : 'System'}
+                          </p>
+                          {auditEventDetail.actor?.uniqueId ? (
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">
+                              {auditEventDetail.actor.uniqueId}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Entity</p>
+                          <p className="mt-2 text-sm text-foreground">{auditEventDetail.entityType}</p>
+                          {auditEventDetail.entityId ? (
+                            <p className="mt-1 font-mono text-xs text-muted-foreground">
+                              {auditEventDetail.entityId}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {auditEventDetail.entityPreview ? (
+                        <div className="rounded-3xl border border-border/70 bg-card/95 p-5">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                Resolved context
+                              </p>
+                              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                                {auditEventDetail.entityPreview.title}
+                              </h3>
+                              {auditEventDetail.entityPreview.subtitle ? (
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {auditEventDetail.entityPreview.subtitle}
+                                </p>
+                              ) : null}
+                            </div>
+                            {auditEventDetail.entityPreview.href ? (
+                              <Button asChild variant="outline" size="sm" className="rounded-xl">
+                                <Link href={auditEventDetail.entityPreview.href}>
+                                  {auditEventDetail.entityPreview.hrefLabel || 'Open record'}
+                                </Link>
+                              </Button>
+                            ) : null}
+                          </div>
+
+                          {auditEventDetail.entityPreview.body ? (
+                            <div className="mt-4 rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm leading-6 text-foreground/90">
+                              {auditEventDetail.entityPreview.body}
+                            </div>
+                          ) : null}
+
+                          {auditEventDetail.entityPreview.fields?.length ? (
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              {auditEventDetail.entityPreview.fields.map((field) => (
+                                <div key={`${field.label}-${field.value}`} className="rounded-2xl border border-border/70 bg-muted/15 p-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                    {field.label}
+                                  </p>
+                                  <p className="mt-2 text-sm text-foreground">{field.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {auditEventDetail.meta ? (
+                        <div className="space-y-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                            Raw metadata
+                          </p>
+                          <pre className="overflow-x-auto rounded-2xl border border-border/70 bg-muted/20 p-4 text-xs leading-6 text-foreground/80">
+                            {JSON.stringify(auditEventDetail.meta, null, 2)}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      This audit event could not be loaded.
+                    </div>
                   )}
                 </div>
-              )}
-            </Card>
+              </SheetContent>
+            </Sheet>
           </TabsContent>
         </Tabs>
       </div>

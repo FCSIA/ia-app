@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 type ClubSummary = {
   id: string;
@@ -210,18 +211,51 @@ export default function EventsPage() {
               <CardTitle className="text-lg">Create Event</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ ...form, clubId: form.clubId || undefined, endAt: form.endAt || undefined }); }} className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!form.startAt) {
+                    toast({ title: 'Start date is required', variant: 'destructive' });
+                    return;
+                  }
+                  createMutation.mutate({
+                    ...form,
+                    clubId: form.clubId || undefined,
+                    endAt: form.endAt || undefined,
+                  });
+                }}
+                className="space-y-4"
+              >
                 <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
                 <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
                 <Input placeholder="Location (optional)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Start *</label>
-                    <Input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} required />
+                    <DateTimePicker
+                      value={form.startAt}
+                      onChange={(startAt) => setForm({ ...form, startAt })}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        form.endAt
+                          ? (date) => format(date, 'yyyy-MM-dd') > form.endAt.slice(0, 10)
+                          : undefined
+                      }
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">End (optional)</label>
-                    <Input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} />
+                    <DateTimePicker
+                      value={form.endAt}
+                      onChange={(endAt) => setForm({ ...form, endAt })}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        form.startAt
+                          ? (date) => format(date, 'yyyy-MM-dd') < form.startAt.slice(0, 10)
+                          : undefined
+                      }
+                      allowClear
+                    />
                   </div>
                 </div>
                 {availableClubs.length > 0 ? (

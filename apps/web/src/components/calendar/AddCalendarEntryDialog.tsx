@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Plus, Clock, MapPin, AlignLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -114,16 +115,13 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Date
               </Label>
-              <Input
-                id="date"
-                type="date"
+              <DatePicker
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
-                required
+                onChange={(date) => setForm({ ...form, date })}
+                buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
               />
             </div>
             <div className="space-y-2">

@@ -16,7 +16,7 @@ import type {
 
 export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export function toApiUrl(path: string) {
   if (!path) return path;
@@ -297,6 +297,17 @@ export const moderationApi = {
 
 // Audit
 export const auditApi = {
-  getAll: (limit = 100, offset = 0) =>
-    api.get('/audit', { params: { limit, offset } }),
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    query?: string;
+    actor?: string;
+    entityId?: string;
+    action?: string;
+    entityType?: string;
+    actorScope?: 'USER' | 'SYSTEM';
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/audit', { params }),
+  getOne: (id: string) => api.get(`/audit/entries/${id}`),
 };

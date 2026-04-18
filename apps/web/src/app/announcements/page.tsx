@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -615,10 +616,10 @@ export default function AnnouncementsPage() {
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Expires (optional)
                   </label>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={form.expiresAt}
-                    onChange={(event) => setForm({ ...form, expiresAt: event.target.value })}
+                    onChange={(expiresAt) => setForm({ ...form, expiresAt })}
+                    allowClear
                   />
                 </div>
                 <div className="flex items-center gap-6 pt-2">

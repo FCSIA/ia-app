@@ -27,9 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/date-picker';
 import Link from 'next/link';
 
 const PATHWAY_OPTIONS = [
@@ -155,7 +153,6 @@ export default function FlexFridayPage() {
   }, [workshops, deferredWorkshopSearch]);
 
   const myRegWorkshopIds = new Set((myRegs as any[]).map((r: any) => r.workshopId));
-  const selectedCreateDate = fridayForm.date ? parseISO(fridayForm.date) : undefined;
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const createFridayMutation = useMutation({
@@ -458,27 +455,11 @@ export default function FlexFridayPage() {
               >
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Date *</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn('w-full justify-start text-left font-normal', !fridayForm.date && 'text-muted-foreground')}
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {fridayForm.date ? format(selectedCreateDate!, 'PPP') : 'Pick a Friday'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[19rem] p-0" align="start">
-                      <Calendar
-                        className="w-full"
-                        mode="single"
-                        selected={selectedCreateDate}
-                        onSelect={(date) => setFridayForm({ ...fridayForm, date: date ? format(date, 'yyyy-MM-dd') : '' })}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    value={fridayForm.date}
+                    onChange={(date) => setFridayForm({ ...fridayForm, date })}
+                    buttonClassName="w-full"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Type</label>
