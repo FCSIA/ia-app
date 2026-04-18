@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { calendarApi } from '@/lib/api';
+import { eventsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -39,9 +39,10 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => calendarApi.createEntry(data),
+    mutationFn: (data: any) => eventsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
       setOpen(false);
       setForm({
         title: '',

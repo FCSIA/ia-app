@@ -21,21 +21,4 @@ export class CalendarController {
     const tagList = tags ? tags.split(',') : undefined;
     return this.calendarService.getEntries(startDate, endDate, tagList);
   }
-
-  @Post()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.SUPPORT_STAFF, Role.TEACHER, Role.STUDENT)
-  createManual(
-    @Body()
-    body: {
-      title: string;
-      description?: string;
-      location?: string;
-      startAt: string;
-      endAt?: string;
-      tags?: string[];
-    },
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.calendarService.createManual(body, user.id);
-  }
 }

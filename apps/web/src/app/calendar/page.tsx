@@ -26,17 +26,17 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  const calStart = startOfWeek(startOfMonth(currentMonth));
+  const calEnd = endOfWeek(endOfMonth(currentMonth));
+  const days = eachDayOfInterval({ start: calStart, end: calEnd });
+
+  const startDate = format(calStart, 'yyyy-MM-dd');
+  const endDate = format(calEnd, 'yyyy-MM-dd');
 
   const { data: entries = [] } = useQuery({
     queryKey: ['calendar', startDate, endDate],
     queryFn: () => calendarApi.getEntries(startDate, endDate).then((r) => r.data),
   });
-
-  const calStart = startOfWeek(startOfMonth(currentMonth));
-  const calEnd = endOfWeek(endOfMonth(currentMonth));
-  const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
   const getEventsForDay = (day: Date) =>
     (entries as any[]).filter((e) => isSameDay(new Date(e.startAt), day));
