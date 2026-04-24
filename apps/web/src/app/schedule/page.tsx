@@ -58,7 +58,7 @@ export default function SchedulePage() {
     <Suspense
       fallback={
         <AppShell>
-          <PageFrame title="Schedule" description="Manage your schedule and friend requests.">
+          <PageFrame>
             <div className="h-48 animate-pulse rounded-lg bg-muted" />
           </PageFrame>
         </AppShell>

@@ -75,6 +75,7 @@ export interface ClubViewerState {
     canAccessWorkspace: boolean;
     canManageChannels: boolean;
     canManageMembership: boolean;
+    canApproveJoinRequests: boolean;
     hasPendingJoinRequest: boolean;
 }
 export interface ClubJoinRequest {
