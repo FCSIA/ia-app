@@ -33,6 +33,14 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ClubDetail, ClubSummary } from '@ia/contracts/clubs';
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+
+function resolveMediaUrl(url?: string | null) {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 type MyClubsResponse = {
   memberOf: ClubSummary[];
   sponsoring: ClubSummary[];
@@ -149,10 +157,15 @@ export function ClubWorkspace({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
+                  className="flex w-full items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
                 >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
-                    {club?.name?.charAt(0).toUpperCase() ?? 'C'}
+                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/50">
+                    {club?.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover bg-background" />
+                    ) : (
+                      club?.name?.charAt(0).toUpperCase() ?? 'C'
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">
@@ -172,11 +185,16 @@ export function ClubWorkspace({
                 {myClubs.length > 0 ? (
                   myClubs.map((entry) => (
                     <DropdownMenuItem key={entry.id} asChild>
-                      <Link href={`/clubs/${entry.id}`} className="cursor-pointer">
-                        <div className="flex size-6 items-center justify-center rounded bg-primary/10 text-[11px] font-semibold text-primary">
-                          {entry.name.charAt(0).toUpperCase()}
+                      <Link href={`/clubs/${entry.id}`} className="cursor-pointer gap-2.5 py-2">
+                        <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
+                          {entry.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={resolveMediaUrl(entry.logoUrl)} alt={entry.name} className="size-full object-cover bg-background" />
+                          ) : (
+                            entry.name.charAt(0).toUpperCase()
+                          )}
                         </div>
-                        <span className="flex-1 truncate">{entry.name}</span>
+                        <span className="flex-1 font-medium truncate">{entry.name}</span>
                         {entry.id === clubId ? (
                           <Check className="size-4 text-muted-foreground" />
                         ) : null}

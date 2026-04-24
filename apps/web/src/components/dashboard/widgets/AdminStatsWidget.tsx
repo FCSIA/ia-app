@@ -64,8 +64,7 @@ export function AdminStatsWidget() {
 
   return (
     <Panel
-      title="Admin overview"
-      description="A quick pulse on the things that need attention."
+      title="Instance pulse"
       action={
         <Button asChild variant="ghost" className="rounded-2xl">
           <Link href="/admin">

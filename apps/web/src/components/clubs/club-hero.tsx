@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ImagePlus, Loader2, Palette, Settings2, Trash2, X } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, Palette, Settings2, Trash2, X } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ClubDetail } from '@ia/contracts/clubs';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,29 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
+  const quickLogoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleQuickLogoUpload = async (file: File) => {
+    setUploadingLogo(true);
+    try {
+      const { data } = await uploadsApi.uploadClubImage(file);
+      await clubsApi.update(club.id, { logoUrl: data.url });
+      
+      qc.invalidateQueries({ queryKey: ['club', club.id] });
+      qc.invalidateQueries({ queryKey: ['clubs'] });
+      qc.invalidateQueries({ queryKey: ['my-clubs'] });
+      toast({ title: 'Club logo updated' });
+      
+      setForm((c) => ({ ...c, logoUrl: data.url }));
+    } catch (e: any) {
+      toast({
+        title: e.response?.data?.message || 'Upload failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: (payload: any) => clubsApi.update(club.id, payload),
@@ -126,7 +149,7 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
 
       <CardContent className="relative -mt-12 space-y-4 px-6 pb-6 pt-0">
         <div className="flex items-end gap-4">
-          <div className="size-24 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-muted shadow-sm">
+          <div className="group relative size-24 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-muted shadow-sm">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
@@ -136,6 +159,34 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
                 className="size-full rounded-none"
                 fallbackClassName="text-2xl"
               />
+            )}
+            {canEdit && (
+              <>
+                <div 
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity cursor-pointer",
+                    uploadingLogo ? "opacity-100" : "group-hover:opacity-100"
+                  )}
+                  onClick={() => quickLogoInputRef.current?.click()}
+                >
+                  {uploadingLogo ? (
+                    <Loader2 className="size-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="size-6 text-white" />
+                  )}
+                </div>
+                <input
+                  ref={quickLogoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleQuickLogoUpload(file);
+                    if (quickLogoInputRef.current) quickLogoInputRef.current.value = '';
+                  }}
+                />
+              </>
             )}
           </div>
           <div className="min-w-0 pb-1">

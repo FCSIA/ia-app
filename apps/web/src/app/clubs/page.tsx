@@ -17,6 +17,14 @@ import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+
+function resolveMediaUrl(url?: string | null) {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 type MyClubsResponse = {
   memberOf: ClubSummary[];
   sponsoring: ClubSummary[];
@@ -204,8 +212,13 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
               Joined
             </Badge>
           ) : null}
-          <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-base font-semibold text-primary">
-            {club.name.charAt(0).toUpperCase()}
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-base font-semibold text-primary border border-border/40">
+            {club.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
+            ) : (
+              club.name.charAt(0).toUpperCase()
+            )}
           </div>
           <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
           <p className="line-clamp-4 min-h-[5rem] text-xs leading-5 text-muted-foreground">
@@ -233,8 +246,13 @@ function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode 
       <Card className={cn('h-full transition-colors hover:border-border hover:bg-muted/50')}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
-              {club.name.charAt(0).toUpperCase()}
+            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/40">
+              {club.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
+              ) : (
+                club.name.charAt(0).toUpperCase()
+              )}
             </div>
             {badge}
           </div>

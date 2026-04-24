@@ -83,8 +83,7 @@ export default function CourseDetailPage({
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
               <Panel
-                title="Course overview"
-                description="This detail view is the same record schedule links point to."
+                title="Class meta"
               >
                 <div className="space-y-5">
                   <section className="space-y-2">

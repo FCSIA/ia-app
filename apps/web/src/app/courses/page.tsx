@@ -96,7 +96,6 @@ export default function CoursesPage() {
             </span>
           }
           title="Browse every seeded IA class from the 2026-2027 catalogs."
-          description="Search by title, course number, department, pathway, or grade band. Every schedule-linked class routes back to these pages, so the catalog and student schedules stay in sync."
           aside={
             <>
               <HeroStat label="Courses" value={courses.length} />
@@ -108,7 +107,6 @@ export default function CoursesPage() {
 
         <Panel
           title="Find a course"
-          description="Use the same catalog dataset that powers schedule selection."
           action={
             user?.gradeLevel ? (
               <Button

@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -72,129 +71,129 @@ export function SchoolDayBlockFormCard({
   }, [endTime, startTime]);
 
   return (
-    <Card className="rounded-3xl border-border/70 bg-background/90">
-      <CardHeader className="space-y-2 pb-4">
-        <CardTitle className="text-base">{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Block type</Label>
-            <Select value={kind} onValueChange={(value) => setKind(value as 'PERIOD' | 'CUSTOM')}>
-              <SelectTrigger className="rounded-2xl">
+    <div className="rounded-xl border border-border/50 bg-muted/20 p-5 space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+        </div>
+        {onCancel ? (
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={onCancel}>
+            <X className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Block type</Label>
+          <Select value={kind} onValueChange={(value) => setKind(value as 'PERIOD' | 'CUSTOM')}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PERIOD">Period block</SelectItem>
+              <SelectItem value="CUSTOM">Custom block</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {kind === 'PERIOD' ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Period</Label>
+            <Select value={periodNumber} onValueChange={setPeriodNumber}>
+              <SelectTrigger className="h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PERIOD">Period block</SelectItem>
-                <SelectItem value="CUSTOM">Custom block</SelectItem>
+                {Array.from({ length: 8 }, (_, index) => (
+                  <SelectItem key={index + 1} value={(index + 1).toString()}>
+                    Period {index + 1}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Custom label</Label>
+            <Input
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              className="h-9"
+              placeholder="Assembly, advisory, lunch..."
+            />
+          </div>
+        )}
+      </div>
 
-          {kind === 'PERIOD' ? (
-            <div className="space-y-2">
-              <Label>Period</Label>
-              <Select value={periodNumber} onValueChange={setPeriodNumber}>
-                <SelectTrigger className="rounded-2xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 8 }, (_, index) => (
-                    <SelectItem key={index + 1} value={(index + 1).toString()}>
-                      Period {index + 1}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Custom label</Label>
-              <Input
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                className="rounded-2xl"
-                placeholder="Assembly, advisory, lunch..."
-              />
-            </div>
-          )}
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Start time</Label>
+          <Input
+            type="time"
+            value={startTime}
+            onChange={(event) => setStartTime(event.target.value)}
+            className="h-9"
+          />
         </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Start time</Label>
-            <Input
-              type="time"
-              value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
-              className="rounded-2xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>End time</Label>
-            <Input
-              type="time"
-              value={endTime}
-              onChange={(event) => setEndTime(event.target.value)}
-              className="rounded-2xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Duration</Label>
-            <Input
-              type="number"
-              min={1}
-              value={durationMinutes || ''}
-              onChange={(event) => {
-                const nextDuration = Number.parseInt(event.target.value, 10);
-                if (Number.isInteger(nextDuration) && nextDuration > 0) {
-                  setEndTime(addMinutes(startTime, nextDuration));
-                }
-              }}
-              className="rounded-2xl"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">End time</Label>
+          <Input
+            type="time"
+            value={endTime}
+            onChange={(event) => setEndTime(event.target.value)}
+            className="h-9"
+          />
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Duration (min)</Label>
+          <Input
+            type="number"
+            min={1}
+            value={durationMinutes || ''}
+            onChange={(event) => {
+              const nextDuration = Number.parseInt(event.target.value, 10);
+              if (Number.isInteger(nextDuration) && nextDuration > 0) {
+                setEndTime(addMinutes(startTime, nextDuration));
+              }
+            }}
+            className="h-9"
+          />
+        </div>
+      </div>
 
-
-
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button
+          size="sm"
+          disabled={isPending}
+          onClick={() =>
+            onSubmit({
+              weekday,
+              kind,
+              periodNumber: kind === 'PERIOD' ? Number.parseInt(periodNumber, 10) : undefined,
+              label: kind === 'CUSTOM' ? label : undefined,
+              startTime,
+              endTime,
+            })
+          }
+        >
+          {submitIcon === 'plus' ? <Plus className="mr-1.5 size-3.5" /> : <Save className="mr-1.5 size-3.5" />}
+          {submitLabel}
+        </Button>
+        {onDelete ? (
           <Button
-            className="rounded-2xl"
-            disabled={isPending}
-            onClick={() =>
-              onSubmit({
-                weekday,
-                kind,
-                periodNumber: kind === 'PERIOD' ? Number.parseInt(periodNumber, 10) : undefined,
-                label: kind === 'CUSTOM' ? label : undefined,
-                startTime,
-                endTime,
-              })
-            }
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            disabled={isDeleting}
+            onClick={onDelete}
           >
-            {submitIcon === 'plus' ? <Plus className="mr-2 size-4" /> : <Save className="mr-2 size-4" />}
-            {submitLabel}
+            <Trash2 className="mr-1.5 size-3.5" />
+            Delete
           </Button>
-          {onDelete ? (
-            <Button
-              variant="outline"
-              className="rounded-2xl text-destructive hover:text-destructive"
-              disabled={isDeleting}
-              onClick={onDelete}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </Button>
-          ) : null}
-          {onCancel ? (
-            <Button variant="outline" className="rounded-2xl" onClick={onCancel}>
-              Cancel
-            </Button>
-          ) : null}
-        </div>
-      </CardContent>
-    </Card>
+        ) : null}
+      </div>
+    </div>
   );
 }

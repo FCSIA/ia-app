@@ -137,15 +137,7 @@ export function DashboardLayout() {
   return (
     <PageFrame>
       {/* Header toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Your dashboard
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add, remove, and reorder widgets to tailor this page to you.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
 
         <div className="flex flex-wrap items-center gap-2">
           {editing ? (

@@ -38,7 +38,7 @@ export function QuickActionsWidget() {
   );
 
   return (
-    <Panel title="Quick actions" description="Jump to the places you use the most.">
+    <Panel title="Quick actions">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {actions.map(({ label, href, Icon }) => (
           <Link
