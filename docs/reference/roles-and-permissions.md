@@ -130,7 +130,7 @@ Note: hiding UI elements is for UX only. The real enforcement is always on the b
 | `SUPER001` | `[SUPER_ADMIN, ADMIN]` |
 | `ADMIN001` | `[ADMIN]` |
 | `TCH001` | `[TEACHER, SPONSOR]` |
-| `STU001`–`STU004` | `[STUDENT]` |
+| `STU001`–`STU010` | `[STUDENT]` |
 
 See [[seed]] for full details.
 

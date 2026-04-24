@@ -86,3 +86,10 @@ export class AssignRolesDto {
   @IsEnum(Role, { each: true })
   roles: Role[];
 }
+
+export class ResetPasswordDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}

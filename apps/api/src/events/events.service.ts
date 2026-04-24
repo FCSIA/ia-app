@@ -87,6 +87,12 @@ export class EventsService {
     authorId: string,
     userRole: string,
   ) {
+    const [titleModeration, descriptionModeration, locationModeration] = await Promise.all([
+      this.moderation.maskProfanity(data.title.trim()),
+      this.moderation.maskProfanity(data.description?.trim() ?? ''),
+      this.moderation.maskProfanity(data.location?.trim() ?? ''),
+    ]);
+
     const isAdmin =
       userRole === Role.ADMIN ||
       userRole === Role.SUPER_ADMIN ||
@@ -121,9 +127,9 @@ export class EventsService {
         authorId,
         clubId: data.clubId,
         status,
-        title: data.title,
-        description: data.description,
-        location: data.location,
+        title: titleModeration.masked,
+        description: descriptionModeration.masked || undefined,
+        location: locationModeration.masked || undefined,
         flyerUrl: data.flyerUrl,
         startAt: new Date(data.startAt),
         endAt: data.endAt ? new Date(data.endAt) : undefined,
@@ -132,8 +138,32 @@ export class EventsService {
     });
 
     // Keyword scan
-    const text = `${data.title} ${data.description || ''}`;
+    const text = `${titleModeration.masked} ${descriptionModeration.masked || ''}`;
     await this.moderation.scanContent(text, ContentType.EVENT, event.id, 'eventId');
+
+    if (titleModeration.wasFiltered || descriptionModeration.wasFiltered || locationModeration.wasFiltered) {
+      const matchedWords = Array.from(new Set([
+        ...titleModeration.matchedWords,
+        ...descriptionModeration.matchedWords,
+        ...locationModeration.matchedWords,
+      ]));
+
+      await this.notifications.deliver({
+        userIds: [authorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Event content filtered for language',
+        body: 'We replaced flagged words in your event details.',
+        eventId: event.id,
+        clubId: data.clubId,
+      });
+
+      await this.moderation.createAutomatedReport(
+        ContentType.EVENT,
+        event.id,
+        authorId,
+        matchedWords,
+      );
+    }
 
     // If published immediately, create calendar entry + notify
     if (status === EventStatus.PUBLISHED) {
@@ -162,7 +192,7 @@ export class EventsService {
       action: 'EVENT_CREATED',
       entityType: 'Event',
       entityId: event.id,
-      meta: { title: data.title, status },
+      meta: { title: titleModeration.masked, status },
     });
 
     return event;

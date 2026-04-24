@@ -1,9 +1,10 @@
 'use client';
 
+import Link from 'next/link';
+import type { CourseSummary } from '@ia/contracts/courses';
 import { Lock, PencilLine } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+
+import { CoursePicker } from '@/components/courses/course-picker';
 import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
 import { SchoolDayBlock, ScheduleWeekday, StudentScheduleEntry } from './types';
 
@@ -11,41 +12,56 @@ type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
   entries: StudentScheduleEntry[];
-  onChange: (weekday: ScheduleWeekday, periodNumber: number, className: string) => void;
+  courses: CourseSummary[];
+  preferredGradeLevel?: number;
+  onChange: (
+    weekday: ScheduleWeekday,
+    periodNumber: number,
+    course: CourseSummary | null,
+  ) => void;
 };
 
 export function ScheduleDayEditor({
   weekday,
   blocks,
   entries,
+  courses,
+  preferredGradeLevel,
   onChange,
 }: ScheduleDayEditorProps) {
   const dayBlocks = getBlocksForDay(blocks, weekday);
   const periodNumbers = getPeriodNumbersForDay(blocks, weekday);
+  const customBlocks = dayBlocks.filter((block) => block.periodNumber == null);
 
   return (
-    <div className="space-y-4">
-      {dayBlocks.filter((block) => block.periodNumber == null).length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2">
-          {dayBlocks
-            .filter((block) => block.periodNumber == null)
-            .map((block) => (
-              <Card key={block.id} className="rounded-3xl border-border/70 bg-muted/20">
-                <CardContent className="flex items-start gap-3 p-4">
-                  <Lock className="mt-0.5 size-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">{block.label}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {block.startTime} - {block.endTime}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    <div className="space-y-5">
+      {/* Custom (non-period) blocks — rendered as a small inline notice */}
+      {customBlocks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {customBlocks.map((block) => (
+            <div
+              key={block.id}
+              className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm"
+            >
+              <Lock className="size-3 text-muted-foreground" />
+              <span className="font-medium text-foreground">{block.label}</span>
+              <span className="text-xs text-muted-foreground">
+                {block.startTime} – {block.endTime}
+              </span>
+            </div>
+          ))}
         </div>
-      ) : null}
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Period slots */}
+      <div className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden divide-y divide-border/40">
+        {/* Table header */}
+        <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="w-8 shrink-0 text-center">Per</div>
+          <div className="flex-1">Class</div>
+          <div className="w-24 shrink-0 text-right hidden sm:block">Time</div>
+        </div>
+        {/* Rows */}
         {periodNumbers.map((periodNumber) => {
           const entry = entries.find(
             (item) => item.weekday === weekday && item.periodNumber === periodNumber,
@@ -53,27 +69,50 @@ export function ScheduleDayEditor({
           const matchingBlock = dayBlocks.find((block) => block.periodNumber === periodNumber);
 
           return (
-            <Card key={periodNumber} className="rounded-3xl border-border/70 bg-background/90">
-              <CardContent className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <PencilLine className="size-4 text-orange-600" />
-                    <p className="font-medium text-foreground">Period {periodNumber}</p>
+            <div key={periodNumber} className="flex items-center gap-4 px-4 py-1.5 hover:bg-muted/30 transition-colors">
+              {/* Period Number */}
+              <div className="w-8 shrink-0 text-center font-semibold text-foreground">
+                {periodNumber}
+              </div>
+
+              {/* Course Selector / Link */}
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                {entry?.course ? (
+                  <>
+                    <Link
+                      href={`/courses/${entry.course.slug}`}
+                      className="text-sm font-medium text-foreground hover:underline transition-colors truncate"
+                    >
+                      {entry.course.title}
+                    </Link>
+                    <CoursePicker
+                      courses={courses}
+                      selectedCourseId={entry.courseId}
+                      preferredGradeLevel={preferredGradeLevel}
+                      onChange={(course) => onChange(weekday, periodNumber, course)}
+                      placeholder=""
+                      iconOnly
+                    />
+                  </>
+                ) : (
+                  <div className="w-full max-w-[320px]">
+                    <CoursePicker
+                      courses={courses}
+                      selectedCourseId={entry?.courseId}
+                      preferredGradeLevel={preferredGradeLevel}
+                      onChange={(course) => onChange(weekday, periodNumber, course)}
+                      placeholder="Select class..."
+                      className="h-8 min-h-0 bg-transparent border-transparent hover:bg-muted/50 px-2 py-0 rounded-md shadow-none text-muted-foreground"
+                    />
                   </div>
-                  {matchingBlock ? (
-                    <Badge variant="outline" className="rounded-full">
-                      {matchingBlock.startTime} - {matchingBlock.endTime}
-                    </Badge>
-                  ) : null}
-                </div>
-                <Input
-                  value={entry?.className ?? ''}
-                  onChange={(event) => onChange(weekday, periodNumber, event.target.value)}
-                  className="rounded-2xl"
-                  placeholder={`Enter your Period ${periodNumber} class`}
-                />
-              </CardContent>
-            </Card>
+                )}
+              </div>
+
+              {/* Time block */}
+              <div className="w-24 shrink-0 text-right hidden sm:block text-[11px] text-muted-foreground font-mono">
+                {matchingBlock ? `${matchingBlock.startTime} - ${matchingBlock.endTime}` : '—'}
+              </div>
+            </div>
           );
         })}
       </div>

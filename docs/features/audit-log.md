@@ -23,15 +23,13 @@ The audit log is an immutable record of every significant action taken in the sy
 
 ```prisma
 model AuditEvent {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   actorId    String?  // who did it (null = system action)
   action     String   // what happened
-  entityType String   // what kind of thing was affected
-  entityId   String?  // the specific record's ID
-  meta       Json?    // any extra context
+  entityType String   // e.g. "User", "Club", "Announcement"
+  entityId   String?  // affected record's ID
+  meta       Json?    // extra context (e.g. { role: "ADMIN" })
   createdAt  DateTime @default(now())
-
-  actor User? @relation(...)
 }
 ```
 
@@ -39,19 +37,19 @@ model AuditEvent {
 
 ## Example Actions Logged
 
-| action | entityType | When |
-|--------|-----------|------|
-| `USER_DEACTIVATED` | `User` | Admin deactivates a user account |
-| `USER_ACTIVATED` | `User` | Admin reactivates a user |
-| `USER_ROLES_UPDATED` | `User` | Admin changes a user's roles |
-| `USER_CSV_IMPORT` | `User` | Super admin imports student roster CSV |
-| `CLUB_INVITES_BULK_IMPORTED` | `Club` | Leader/sponsor imports club invite CSV |
-| `REPORT_RESOLVED` | `Report` | Moderation report resolved |
-| `REPORT_DISMISSED` | `Report` | Moderation report dismissed |
-| `KEYWORD_ADDED` | `KeywordRule` | New keyword rule added |
-| `KEYWORD_REMOVED` | `KeywordRule` | Keyword rule deleted |
-| `EVENT_PUBLISHED` | `Event` | Event published to calendar |
-| `CLUB_MEMBER_REMOVED` | `Club` | Member removed from club |
+| Action | Entity Type | Context |
+|--------|-------------|---------|
+| `USER_DEACTIVATED` | `User` | Account soft-deletion |
+| `USER_ROLES_UPDATED` | `User` | Manual role assignment |
+| `SCHEDULE_UPDATED` | `StudentSchedule` | Every time a student saves their classes |
+| `SCHEDULE_FRIEND_REQUESTED` | `User` | Friend request sent to another user |
+| `CLUB_CREATED` | `Club` | Manual or bulk club creation |
+| `CLUB_INVITE_SENT` | `ClubInvite` | Direct invitation issued |
+| `CLUB_JOIN_REQUEST_APPROVED`| `Club` | Leader/Sponsor approving a request |
+| `KEYWORD_ADDED` | `KeywordRule` | New moderation rule added |
+| `REPORT_RESOLVED` | `Report` | Closing a moderation case |
+| `EVENT_PUBLISHED` | `Event` | Making an event visible on the calendar |
+
 
 ---
 

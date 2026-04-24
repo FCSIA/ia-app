@@ -35,10 +35,10 @@ export class StudentScheduleEntryDto {
   @Max(8)
   periodNumber: number;
 
-  @ApiProperty({ example: 'AP Calculus AB' })
+  @ApiProperty({ example: 'cmabc123course' })
   @IsString()
   @MinLength(1)
-  className: string;
+  courseId: string;
 }
 
 export class UpsertStudentScheduleDto {

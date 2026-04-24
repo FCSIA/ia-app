@@ -17,11 +17,13 @@ The schedule workspace gives students a Saturn-style class grid and lets admins 
 ## Student Flow
 
 - Students open `/schedule` from the left navigation.
-- They enter classes by weekday and period.
+- They build their 5-day schedule by selecting official **Courses** for each period.
 - They choose whether their schedule is public or private.
 - They can search classmates by first name, last name, or `uniqueId`.
-- They can pin classmates as friends.
-- If a friend has a public schedule, that schedule becomes viewable in the friend panel.
+- **Friend Requests**:
+    - Students send a friend request to a classmate.
+    - The classmate must **Accept** the request before schedules can be compared.
+    - Once accepted, if a friend has a public schedule, it becomes viewable in the comparison panel.
 
 Private schedules stay hidden from friends, but the owner still sees their own live class state.
 
@@ -30,49 +32,42 @@ Private schedules stay hidden from friends, but the owner still sees their own l
 ## Admin Flow
 
 - Admins use the `Admin Blocks` tab inside `/schedule`.
-- They can add blocks for each weekday.
+- They define the **Bell Schedule** by adding blocks for each weekday.
 - A block can be:
   - a period block (`Period 1` through `Period 8`)
   - a custom block such as Lunch, Advisory, Assembly, or Dismissal
 - Blocks cannot overlap on the same day.
-- Each weekday can only have one block for a given period number.
-
-When a period block is active, students see their saved class for that period. When a custom block is active, students see the custom label instead.
+- When a period block is active, students see their saved course for that period. When a custom block is active, students see the custom label instead.
 
 ---
 
 ## Data Model
 
-This feature uses four main tables:
-- `student_schedules`
-- `student_schedule_entries`
-- `student_schedule_friends`
-- `school_day_blocks`
-
-See [[schema]] for the exact Prisma models.
+- `student_schedules` (The container)
+- `student_schedule_entries` (Links to `courses`)
+- `student_schedule_friends` (Request/Accept workflow)
+- `school_day_blocks` (The bell schedule)
+- `courses` (The source of truth for class names)
 
 ---
 
 ## API Surface
 
-- `GET /schedule`
-- `PUT /schedule/me`
-- `GET /schedule/search?q=...`
-- `POST /schedule/friends`
-- `DELETE /schedule/friends/:friendId`
-- `POST /schedule/blocks`
-- `PATCH /schedule/blocks/:blockId`
-- `DELETE /schedule/blocks/:blockId`
-
-Only admins can manage school-day blocks. Only student-role accounts can manage a personal schedule or friend list.
+- `GET /schedule` (Dashboard with entries, blocks, and friends)
+- `PUT /schedule/me` (Update my schedule)
+- `GET /schedule/search?q=...` (Search students)
+- `POST /schedule/friends` (Send friend request)
+- `POST /schedule/friends/:id/respond` (Accept/Decline)
+- `DELETE /schedule/friends/:id` (Remove friend)
+- `POST /schedule/blocks` (Admin: create block)
+- `PATCH /schedule/blocks/:id` (Admin: update block)
 
 ---
 
 ## Seed Data
 
 The seed script creates:
-- a default Monday-Friday bell schedule
-- sample public schedules for `STU001` and `STU003`
-- a pair of sample friend links between those students
+- A default Monday-Friday bell schedule.
+- 1,500 student schedules (every student gets one).
+- ~180 pre-accepted friend pairs for testing.
 
-That makes the feature usable immediately in local development after seeding.

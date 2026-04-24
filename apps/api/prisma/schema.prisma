@@ -22,6 +22,7 @@ model User {
   createdAt                  DateTime                     @default(now()) @map("created_at")
   updatedAt                  DateTime                     @updatedAt @map("updated_at")
   authoredAnnouncements      Announcement[]               @relation("AnnouncementAuthor")
+  announcementReads          AnnouncementRead[]
   auditEvents                AuditEvent[]
   sessions                   AuthSession[]
   channelMemberships         ClubChannelMembership[]
@@ -31,6 +32,7 @@ model User {
   createdChannels            ClubChannel[]                @relation("ClubChannelCreator")
   receivedInvites            ClubInvite[]                 @relation("InviteRecipient")
   sentInvites                ClubInvite[]                 @relation("InviteSender")
+  clubJoinRequests           ClubJoinRequest[]
   clubMemberships            ClubMember[]
   clubsSponsored             ClubSponsor[]
   clubTagMemberships         ClubTagMember[]
@@ -40,6 +42,8 @@ model User {
   authoredEvents             Event[]                      @relation("EventAuthor")
   flexAssignments            FlexAssignment[]
   flexRegistrations          FlexRegistration[]
+  flexAttendances            FlexAttendance[]             @relation("FlexAttendanceStudent")
+  markedFlexAttendances      FlexAttendance[]             @relation("FlexAttendanceMarker")
   notificationDeliveries     NotificationDelivery[]
   notificationPrefs          NotificationPreference[]
   reportedContent            Report[]                     @relation("ReportedContent")
@@ -48,6 +52,7 @@ model User {
   friendshipRequestsReceived StudentScheduleFriend[]      @relation("StudentScheduleFriendAddressee")
   friendshipRequestsSent     StudentScheduleFriend[]      @relation("StudentScheduleFriendRequester")
   studentSchedule            StudentSchedule?
+  calendarEntries            CalendarEntry[]
 
   @@map("users")
 }
@@ -61,6 +66,33 @@ model AuthSession {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("auth_sessions")
+}
+
+model Course {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  title             String
+  courseNumbers     String[]            @default([]) @map("course_numbers")
+  department        String
+  pathway           Pathway?
+  catalogSource     CourseCatalogSource @default(COURSE_CATALOG) @map("catalog_source")
+  term              String?
+  gradeText         String?             @map("grade_text")
+  minGrade          Int?                @map("min_grade")
+  maxGrade          Int?                @map("max_grade")
+  prerequisitesText String?             @map("prerequisites_text") @db.Text
+  summary           String?             @db.Text
+  majorTopics       String?             @map("major_topics") @db.Text
+  essentialSkills   String?             @map("essential_skills") @db.Text
+  studentWorkload   String?             @map("student_workload")
+  teacherWorkload   String?             @map("teacher_workload")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  scheduleEntries   StudentScheduleEntry[]
+
+  @@index([department, title])
+  @@index([pathway, minGrade, maxGrade])
+  @@map("courses")
 }
 
 model StudentSchedule {
@@ -78,14 +110,17 @@ model StudentSchedule {
 model StudentScheduleEntry {
   id           String          @id @default(cuid())
   scheduleId   String          @map("schedule_id")
+  courseId     String?         @map("course_id")
   weekday      ScheduleWeekday
   periodNumber Int             @map("period_number")
   className    String          @map("class_name")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
+  course       Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
   schedule     StudentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@unique([scheduleId, weekday, periodNumber])
+  @@index([courseId])
   @@map("student_schedule_entries")
 }
 
@@ -145,6 +180,7 @@ model Announcement {
   author         User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
   club           Club?                  @relation(fields: [clubId], references: [id])
   comments       Comment[]
+  reads          AnnouncementRead[]
   keywordMatches KeywordMatch[]
   notifications  NotificationDelivery[]
 
@@ -164,18 +200,40 @@ model Comment {
   @@map("comments")
 }
 
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  userId         String       @map("user_id")
+  readAt         DateTime     @default(now()) @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, readAt])
+  @@map("announcement_reads")
+}
+
 // ─── Clubs ────────────────────────────────────────────────────────────────────
 
 model Club {
   id            String                 @id @default(cuid())
   name          String                 @unique
   description   String?
+  logoUrl       String?                @map("logo_url")
+  bannerUrl     String?                @map("banner_url")
+  accentColor   String?                @map("accent_color")
+  overview      String?                @db.Text
+  joinPolicy    ClubJoinPolicy         @default(OPEN) @map("join_policy")
+  joinCode      String?                @map("join_code")
+  joinCodeUpdatedAt DateTime?          @map("join_code_updated_at")
   isActive      Boolean                @default(true) @map("is_active")
   createdAt     DateTime               @default(now()) @map("created_at")
   updatedAt     DateTime               @updatedAt @map("updated_at")
   announcements Announcement[]
   channels      ClubChannel[]
   invites       ClubInvite[]
+  joinRequests  ClubJoinRequest[]
   members       ClubMember[]
   sponsors      ClubSponsor[]
   tags          ClubTag[]
@@ -227,12 +285,27 @@ model ClubInvite {
   @@map("club_invites")
 }
 
+model ClubJoinRequest {
+  id          String                @id @default(cuid())
+  clubId      String                @map("club_id")
+  requesterId String                @map("requester_id")
+  status      ClubJoinRequestStatus @default(PENDING)
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+  club        Club                  @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  requester   User                  @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, requesterId])
+  @@index([clubId, status])
+  @@map("club_join_requests")
+}
+
 model ClubChannel {
   id            String                  @id @default(cuid())
   clubId        String                  @map("club_id")
   name          String
   description   String?
-  isPrivate     Boolean                 @default(false) @map("is_private")
+  visibility    ClubChannelVisibility   @default(PUBLIC)
   createdById   String                  @map("created_by_id")
   createdAt     DateTime                @default(now()) @map("created_at")
   updatedAt     DateTime                @updatedAt @map("updated_at")
@@ -243,6 +316,7 @@ model ClubChannel {
   notifications NotificationDelivery[]
 
   @@unique([clubId, name])
+  @@index([clubId, visibility])
   @@map("club_channels")
 }
 
@@ -292,6 +366,7 @@ model ClubChannelMessage {
   authorId        String                         @map("author_id")
   parentMessageId String?                        @map("parent_message_id")
   body            String
+  bodyRich        Json?                          @map("body_rich")
   createdAt       DateTime                       @default(now()) @map("created_at")
   updatedAt       DateTime                       @updatedAt @map("updated_at")
   attachments     ClubChannelMessageAttachment[]
@@ -430,76 +505,136 @@ model EventApproval {
 }
 
 model CalendarEntry {
-  id          String    @id @default(cuid())
-  eventId     String?   @unique @map("event_id")
-  title       String
-  description String?
-  location    String?
-  startAt     DateTime  @map("start_at")
-  endAt       DateTime? @map("end_at")
-  tags        String[]  @default([])
-  createdAt   DateTime  @default(now()) @map("created_at")
-  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id           String         @id @default(cuid())
+  eventId      String?        @unique @map("event_id")
+  flexFridayId String?        @unique @map("flex_friday_id")
+  title        String
+  description  String?
+  location     String?
+  startAt      DateTime       @map("start_at")
+  endAt        DateTime?      @map("end_at")
+  tags         String[]       @default([])
+  source       CalendarSource @default(SCHOOL) @map("source")
+  createdById  String?        @map("created_by_id")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  event        Event?         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  flexFriday   FlexFriday?    @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
+  createdBy    User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@map("calendar_entries")
 }
 
 model FlexFriday {
-  id          String         @id @default(cuid())
-  date        DateTime       @unique @db.Date
-  type        FlexFridayType @default(ALL_STUDENT)
-  gradeLevel  Int?           @map("grade_level")
-  pathway     Pathway?
-  isSchoolDay Boolean        @default(true) @map("is_school_day")
-  notes       String?
-  createdAt   DateTime       @default(now()) @map("created_at")
-  sessions    FlexSession[]
+  id             String           @id @default(cuid())
+  date           DateTime         @unique @db.Date
+  type           FlexFridayType   @default(ALL_STUDENT)
+  gradeLevel     Int?             @map("grade_level")
+  pathway        Pathway?
+  isSchoolDay    Boolean          @default(true) @map("is_school_day")
+  notes          String?
+  createdAt      DateTime         @default(now()) @map("created_at")
+  sessions       FlexSession[]
+  attendances    FlexAttendance[]
+  calendarEntry  CalendarEntry?
 
   @@map("flex_fridays")
 }
 
 model FlexSession {
-  id            String             @id @default(cuid())
-  flexFridayId  String             @map("flex_friday_id")
-  teacherId     String?            @map("teacher_id")
-  title         String
-  description   String?
-  location      String?
-  capacity      Int?
-  sessionType   FlexSessionType    @default(STUDENT_CHOICE) @map("session_type")
-  targetPathway Pathway?           @map("target_pathway")
-  targetGrade   Int?               @map("target_grade")
-  createdAt     DateTime           @default(now()) @map("created_at")
-  assignments   FlexAssignment[]
-  registrations FlexRegistration[]
-  flexFriday    FlexFriday         @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
+  id           String                @id @default(cuid())
+  flexFridayId String                @map("flex_friday_id")
+  title        String
+  description  String?
+  startTime    String                @default("13:00") @map("start_time")
+  endTime      String                @default("14:30") @map("end_time")
+  sessionType  FlexSessionType       @default(STUDENT_CHOICE) @map("session_type")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @default(now()) @updatedAt @map("updated_at")
+  flexFriday   FlexFriday            @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
+  workshops    FlexWorkshopSession[]
 
   @@map("flex_sessions")
 }
 
-model FlexRegistration {
-  id        String      @id @default(cuid())
-  sessionId String      @map("session_id")
-  studentId String      @map("student_id")
-  createdAt DateTime    @default(now()) @map("created_at")
-  session   FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student   User        @relation(fields: [studentId], references: [id])
+model FlexWorkshop {
+  id                  String                @id @default(cuid())
+  teacherId           String?               @map("teacher_id")
+  title               String
+  description         String?
+  location            String?
+  capacity            Int?
+  targetGrades        Int[]                 @default([]) @map("target_grades")
+  targetMajorPathways Pathway[]             @default([]) @map("target_major_pathways")
+  targetMinorPathways Pathway[]             @default([]) @map("target_minor_pathways")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @default(now()) @updatedAt @map("updated_at")
+  sessions            FlexWorkshopSession[]
+  registrations       FlexRegistration[]
+  assignments         FlexAssignment[]
+  attendances         FlexAttendance[]
 
-  @@unique([sessionId, studentId])
+  @@map("flex_workshops")
+}
+
+model FlexWorkshopSession {
+  id         String       @id @default(cuid())
+  workshopId String       @map("workshop_id")
+  sessionId  String       @map("session_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  workshop   FlexWorkshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  session    FlexSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([workshopId, sessionId])
+  @@index([sessionId])
+  @@map("flex_workshop_sessions")
+}
+
+model FlexRegistration {
+  id         String       @id @default(cuid())
+  workshopId String       @map("workshop_id")
+  studentId  String       @map("student_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  workshop   FlexWorkshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  student    User         @relation(fields: [studentId], references: [id])
+
+  @@unique([workshopId, studentId])
   @@map("flex_registrations")
 }
 
 model FlexAssignment {
-  id         String      @id @default(cuid())
-  sessionId  String      @map("session_id")
-  studentId  String      @map("student_id")
-  assignedBy String      @map("assigned_by")
-  createdAt  DateTime    @default(now()) @map("created_at")
-  session    FlexSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student    User        @relation(fields: [studentId], references: [id])
+  id         String       @id @default(cuid())
+  workshopId String       @map("workshop_id")
+  studentId  String       @map("student_id")
+  assignedBy String       @map("assigned_by")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  workshop   FlexWorkshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  student    User         @relation(fields: [studentId], references: [id])
 
-  @@unique([sessionId, studentId])
+  @@unique([workshopId, studentId])
   @@map("flex_assignments")
+}
+
+/// Per-workshop attendance record for a student. Each PRESENT row awards one
+/// Flex Friday credit. A denormalised `flexFridayId` lets us count credits by
+/// school year without walking the workshop→session→friday join.
+model FlexAttendance {
+  id           String               @id @default(cuid())
+  workshopId   String               @map("workshop_id")
+  studentId    String               @map("student_id")
+  flexFridayId String               @map("flex_friday_id")
+  status       FlexAttendanceStatus @default(PRESENT)
+  markedById   String               @map("marked_by_id")
+  markedAt     DateTime             @default(now()) @map("marked_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  workshop     FlexWorkshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  student      User                 @relation("FlexAttendanceStudent", fields: [studentId], references: [id])
+  flexFriday   FlexFriday           @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
+  markedBy     User                 @relation("FlexAttendanceMarker", fields: [markedById], references: [id])
+
+  @@unique([workshopId, studentId])
+  @@index([studentId, flexFridayId])
+  @@index([flexFridayId])
+  @@map("flex_attendances")
 }
 
 model Report {
@@ -607,6 +742,12 @@ enum Pathway {
   ENGINEERING
 }
 
+enum CourseCatalogSource {
+  COURSE_CATALOG
+  AP_CATALOG
+  MERGED
+}
+
 enum ScheduleWeekday {
   MONDAY
   TUESDAY
@@ -631,6 +772,23 @@ enum AnnouncementStatus {
 enum InviteStatus {
   PENDING
   ACCEPTED
+  DECLINED
+}
+
+enum ClubChannelVisibility {
+  PUBLIC
+  PRIVATE
+  MEMBER_READONLY
+}
+
+enum ClubJoinPolicy {
+  OPEN
+  REQUEST
+}
+
+enum ClubJoinRequestStatus {
+  PENDING
+  APPROVED
   DECLINED
 }
 
@@ -663,6 +821,12 @@ enum FlexSessionType {
   TEACHER_ASSIGNED
 }
 
+enum FlexAttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
 enum ReportStatus {
   PENDING
   REVIEWED
@@ -674,13 +838,26 @@ enum ContentType {
   ANNOUNCEMENT
   COMMENT
   EVENT
+  CLUB_CHANNEL_MESSAGE
+  FLEX_FRIDAY
+  FLEX_SESSION
+  FLEX_WORKSHOP
 }
 
 enum NotificationCategory {
   SCHOOL_ANNOUNCEMENT
   CLUB_ANNOUNCEMENT
+  CLUB_JOIN_REQUEST
   EVENT
   FLEX_FRIDAY
   CLUB_CHANNEL_MENTION
   FRIEND_REQUEST
+  CONTENT_MODERATED
+}
+
+enum CalendarSource {
+  DISTRICT
+  SCHOOL
+  CLUB
+  PERSONAL
 }

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Plus, Clock, MapPin, AlignLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -39,7 +40,8 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => calendarApi.createEntry(data),
+    mutationFn: (data: Parameters<typeof calendarApi.createEntry>[0]) =>
+      calendarApi.createEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar'] });
       setOpen(false);
@@ -50,11 +52,11 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
         date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         time: '08:00',
       });
-      toast({ title: 'Event added to calendar' });
+      toast({ title: 'Reminder added to your calendar' });
     },
     onError: (error: any) => {
       toast({
-        title: error.response?.data?.message || 'Failed to add event',
+        title: error.response?.data?.message || 'Failed to add reminder',
         variant: 'destructive',
       });
     },
@@ -65,7 +67,7 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
     if (!form.title || !form.date || !form.time) return;
 
     const startAt = new Date(`${form.date}T${form.time}:00`);
-    
+
     createMutation.mutate({
       title: form.title,
       description: form.description || undefined,
@@ -79,29 +81,29 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
       <DialogTrigger asChild>
         {trigger || (
           <Button size="sm" className="flex items-center gap-2 rounded-xl">
-            <Plus size={16} /> Add Event
+            <Plus size={16} /> Add Reminder
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-foreground/10 bg-background/95 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            <Plus className="text-accent-500" size={20} />
-            Add Calendar Event
+            <Plus className="text-primary" size={20} />
+            Add Personal Reminder
           </DialogTitle>
           <DialogDescription>
-            Create a custom entry on the school calendar for everyone to see.
+            Add a private reminder or due date — only visible to you.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 py-4">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
-              Event Title
+              Title
             </Label>
             <div className="relative">
               <Input
                 id="title"
-                placeholder="e.g., Study Group, Practice Game..."
+                placeholder="e.g., Assignment due, Study session..."
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
@@ -113,16 +115,13 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Date
               </Label>
-              <Input
-                id="date"
-                type="date"
+              <DatePicker
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
-                required
+                onChange={(date) => setForm({ ...form, date })}
+                buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
               />
             </div>
             <div className="space-y-2">
@@ -165,16 +164,20 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
             </Label>
             <Textarea
               id="description"
-              placeholder="Tell us more about this event..."
+              placeholder="Any extra notes..."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="rounded-2xl min-h-[100px] border-foreground/5 bg-foreground/[0.02] resize-none"
+              className="rounded-2xl min-h-[90px] border-foreground/5 bg-foreground/[0.02] resize-none"
             />
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="submit" disabled={createMutation.isPending} className="w-full rounded-2xl h-12 text-base font-semibold shadow-lg shadow-accent-500/20">
-              {createMutation.isPending ? 'Adding Event...' : 'Add to Calendar'}
+            <Button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="w-full rounded-2xl h-12 text-base font-semibold"
+            >
+              {createMutation.isPending ? 'Saving...' : 'Add to My Calendar'}
             </Button>
           </DialogFooter>
         </form>

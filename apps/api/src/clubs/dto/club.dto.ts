@@ -3,8 +3,10 @@ import {
   ArrayUnique,
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
+  IsObject,
   IsString,
   Max,
   MaxLength,
@@ -14,6 +16,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ClubChannelVisibility, ClubJoinPolicy } from '@prisma/client';
 
 export class CreateClubDto {
   @ApiProperty({ example: 'Robotics Club' })
@@ -25,6 +28,10 @@ export class CreateClubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ enum: ClubJoinPolicy, default: ClubJoinPolicy.OPEN })
+  @IsOptional()
+  joinPolicy?: ClubJoinPolicy;
 
   @ApiProperty({ type: [String], description: 'At least one sponsor is required' })
   @IsArray()
@@ -45,6 +52,31 @@ export class UpdateClubDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ enum: ClubJoinPolicy })
+  @IsOptional()
+  joinPolicy?: ClubJoinPolicy;
+
+  @ApiPropertyOptional({ description: 'Public URL to the club logo image' })
+  @IsOptional()
+  @IsString()
+  logoUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Public URL to the club banner image' })
+  @IsOptional()
+  @IsString()
+  bannerUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Accent color (hex) used on the club hero' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  accentColor?: string | null;
+
+  @ApiPropertyOptional({ description: 'Long-form club overview / description for the home tab' })
+  @IsOptional()
+  @IsString()
+  overview?: string | null;
 }
 
 export class AddClubSponsorDto {
@@ -80,10 +112,28 @@ export class CreateClubChannelDto extends ClubPeopleSelectionDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({ enum: ClubChannelVisibility, default: ClubChannelVisibility.PUBLIC })
+  @IsOptional()
+  @IsEnum(ClubChannelVisibility)
+  visibility?: ClubChannelVisibility;
+}
+
+export class UpdateClubChannelDto extends ClubPeopleSelectionDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsBoolean()
-  isPrivate?: boolean;
+  @IsString()
+  @MinLength(1)
+  name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ enum: ClubChannelVisibility })
+  @IsOptional()
+  @IsEnum(ClubChannelVisibility)
+  visibility?: ClubChannelVisibility;
 }
 
 export class CreateClubTagDto extends ClubPeopleSelectionDto {
@@ -125,6 +175,12 @@ export class CreateClubChannelMessageDto {
   @MinLength(1)
   body?: string;
 
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  bodyRich?: Record<string, unknown>[];
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -163,5 +219,19 @@ export class SetClubMemberRoleDto {
 
 export class RespondToClubInviteDto {
   @ApiProperty()
+  @IsBoolean()
+  accept: boolean;
+}
+
+export class RedeemClubJoinCodeDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(4)
+  code: string;
+}
+
+export class RespondToClubJoinRequestDto {
+  @ApiProperty()
+  @IsBoolean()
   accept: boolean;
 }

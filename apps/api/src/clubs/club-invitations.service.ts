@@ -1,12 +1,19 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import * as csv from 'csv-parser';
 import { Readable } from 'stream';
-import { InviteStatus, NotificationCategory } from '@prisma/client';
+import {
+  ClubJoinRequestStatus,
+  InviteStatus,
+  NotificationCategory,
+} from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
 
@@ -16,7 +23,74 @@ export class ClubInvitationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly accessPolicy: ClubAccessPolicy,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  private generateCode(length = 8) {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({ length }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+  }
+
+  private async ensureJoinable(clubId: string, userId: string) {
+    const [club, membership, sponsor] = await Promise.all([
+      this.prisma.club.findUnique({
+        where: { id: clubId },
+        select: {
+          id: true,
+          name: true,
+          joinPolicy: true,
+          joinCode: true,
+        },
+      }),
+      this.prisma.clubMember.findFirst({
+        where: { clubId, userId },
+        select: { userId: true },
+      }),
+      this.prisma.clubSponsor.findFirst({
+        where: { clubId, userId },
+        select: { userId: true },
+      }),
+    ]);
+
+    if (!club) throw new NotFoundException('Club not found');
+    if (membership || sponsor) throw new ConflictException('Already part of this club');
+    return club;
+  }
+
+  private async addMemberToClub(clubId: string, userId: string) {
+    await this.prisma.clubMember.create({
+      data: { clubId, userId, role: null },
+    });
+
+    await this.prisma.notificationPreference.upsert({
+      where: {
+        userId_category_clubId: {
+          userId,
+          category: NotificationCategory.CLUB_ANNOUNCEMENT,
+          clubId,
+        },
+      },
+      update: { enabled: true },
+      create: {
+        userId,
+        category: NotificationCategory.CLUB_ANNOUNCEMENT,
+        clubId,
+        enabled: true,
+      },
+    });
+  }
+
+  private async getJoinRequestRecipients(clubId: string) {
+    // Only notify the teacher(s) in charge — sponsors are the sole approvers
+    // of student join requests. Student leaders are intentionally excluded
+    // since they cannot act on the request.
+    const sponsors = await this.prisma.clubSponsor.findMany({
+      where: { clubId },
+      select: { userId: true },
+    });
+
+    return Array.from(new Set(sponsors.map((entry) => entry.userId)));
+  }
 
   private normalizeHeader(key: string) {
     return key.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -196,5 +270,175 @@ export class ClubInvitationsService {
         sender: { select: { id: true, firstName: true, lastName: true } },
       },
     });
+  }
+
+  async joinOpenClub(clubId: string, userId: string) {
+    const club = await this.ensureJoinable(clubId, userId);
+    if (club.joinPolicy !== 'OPEN') {
+      throw new ForbiddenException('This club requires approval to join');
+    }
+
+    await this.addMemberToClub(clubId, userId);
+    await this.audit.log({
+      actorId: userId,
+      action: 'CLUB_JOINED_OPEN',
+      entityType: 'Club',
+      entityId: clubId,
+    });
+    return { success: true };
+  }
+
+  async requestToJoin(clubId: string, userId: string) {
+    const club = await this.ensureJoinable(clubId, userId);
+    if (club.joinPolicy !== 'REQUEST') {
+      throw new BadRequestException('This club can be joined directly');
+    }
+
+    const request = await this.prisma.clubJoinRequest.upsert({
+      where: { clubId_requesterId: { clubId, requesterId: userId } },
+      update: { status: ClubJoinRequestStatus.PENDING },
+      create: { clubId, requesterId: userId, status: ClubJoinRequestStatus.PENDING },
+    });
+
+    const recipients = await this.getJoinRequestRecipients(clubId);
+    await this.notifications.deliver({
+      userIds: recipients,
+      category: NotificationCategory.CLUB_JOIN_REQUEST,
+      title: `Join request for ${club.name}`,
+      body: 'A student requested to join this club.',
+      clubId,
+    });
+
+    await this.audit.log({
+      actorId: userId,
+      action: 'CLUB_JOIN_REQUESTED',
+      entityType: 'ClubJoinRequest',
+      entityId: request.id,
+      meta: { clubId },
+    });
+
+    return { success: true };
+  }
+
+  async generateJoinCode(clubId: string, actorId: string, actorRole: string) {
+    const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
+    if (!context.canManageMembership) {
+      throw new ForbiddenException('Only sponsors or club leaders can generate join codes');
+    }
+
+    const code = this.generateCode();
+    const club = await this.prisma.club.update({
+      where: { id: clubId },
+      data: {
+        joinCode: code,
+        joinCodeUpdatedAt: new Date(),
+      },
+      select: { joinCode: true, joinCodeUpdatedAt: true },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'CLUB_JOIN_CODE_GENERATED',
+      entityType: 'Club',
+      entityId: clubId,
+    });
+
+    return {
+      code: club.joinCode,
+      updatedAt: club.joinCodeUpdatedAt?.toISOString() ?? null,
+    };
+  }
+
+  async redeemJoinCode(clubId: string, userId: string, code: string) {
+    const club = await this.ensureJoinable(clubId, userId);
+    if (!club.joinCode || club.joinCode !== code.trim().toUpperCase()) {
+      throw new BadRequestException('Invalid join code');
+    }
+
+    await this.addMemberToClub(clubId, userId);
+    await this.audit.log({
+      actorId: userId,
+      action: 'CLUB_JOINED_WITH_CODE',
+      entityType: 'Club',
+      entityId: clubId,
+    });
+
+    return { success: true };
+  }
+
+  async respondToJoinRequest(
+    clubId: string,
+    requestId: string,
+    accept: boolean,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
+    if (!context.canApproveJoinRequests) {
+      throw new ForbiddenException('Only the teacher in charge can approve join requests');
+    }
+
+    const request = await this.prisma.clubJoinRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        club: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!request || request.clubId !== clubId) {
+      throw new NotFoundException('Join request not found');
+    }
+    if (request.status !== ClubJoinRequestStatus.PENDING) {
+      throw new ConflictException('Join request already handled');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (accept) {
+        await tx.clubMember.create({
+          data: { clubId, userId: request.requesterId, role: null },
+        });
+        await tx.notificationPreference.upsert({
+          where: {
+            userId_category_clubId: {
+              userId: request.requesterId,
+              category: NotificationCategory.CLUB_ANNOUNCEMENT,
+              clubId,
+            },
+          },
+          update: { enabled: true },
+          create: {
+            userId: request.requesterId,
+            category: NotificationCategory.CLUB_ANNOUNCEMENT,
+            clubId,
+            enabled: true,
+          },
+        });
+      }
+
+      await tx.clubJoinRequest.update({
+        where: { id: requestId },
+        data: { status: accept ? 'APPROVED' : 'DECLINED' },
+      });
+    });
+
+    await this.notifications.deliver({
+      userIds: [request.requesterId],
+      category: NotificationCategory.CLUB_JOIN_REQUEST,
+      title: accept ? `Joined ${request.club.name}` : `Request declined for ${request.club.name}`,
+      body: accept
+        ? 'Your request was approved. You now have access to the club.'
+        : 'The teacher in charge declined your request.',
+      clubId,
+    });
+
+    await this.audit.log({
+      actorId,
+      action: accept ? 'CLUB_JOIN_REQUEST_APPROVED' : 'CLUB_JOIN_REQUEST_DECLINED',
+      entityType: 'ClubJoinRequest',
+      entityId: requestId,
+      meta: { clubId, requesterId: request.requesterId },
+    });
+
+    return { success: true };
   }
 }

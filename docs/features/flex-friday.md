@@ -23,109 +23,61 @@ Flex Friday is a school scheduling system where students choose (or are assigned
 
 ```
 FlexFriday (a specific Friday date)
-    └── FlexSession (a session offered that day — e.g., "Coding Workshop")
-            ├── FlexRegistration (student signs up — STUDENT_CHOICE)
-            └── FlexAssignment (teacher assigns a student — TEACHER_ASSIGNED)
+    └── FlexSession (a thematic group, e.g. "Coding Workshops")
+            └── FlexWorkshop (a specific instance, e.g. "AI with Mr. Smith")
+                    ├── FlexRegistration (student signs up — STUDENT_CHOICE)
+                    └── FlexAssignment (teacher assigns student — TEACHER_ASSIGNED)
 ```
 
 ---
 
-## FlexFriday Types
+## FlexFriday & Session Types
 
-| Type | Description |
-|------|-------------|
-| `ALL_STUDENT` | All students participate |
-| `FRESHMAN_WORKSHOP` | Only 9th graders |
-| `PATHWAY_SPECIFIC` | A specific academic pathway |
-| `TEACHER_PD` | Teacher professional development (no students) |
+**FlexFriday Types:** `ALL_STUDENT`, `GRADE_SPECIFIC`, `PATHWAY_SPECIFIC`, `TEACHER_PD`.
 
----
+**FlexSession Types:**
+- `STUDENT_CHOICE`: Students register for their preferred workshop.
+- `TEACHER_ASSIGNED`: Teachers manually place students into workshops.
 
-## FlexSession Types
-
-| Type | How students get placed |
-|------|------------------------|
-| `STUDENT_CHOICE` | Students register themselves (up to `capacity`) |
-| `TEACHER_ASSIGNED` | Teacher assigns specific students via `FlexAssignment` |
-
-Sessions can optionally restrict by:
-- `targetPathway` — a `Pathway` enum value (`INFORMATION_TECHNOLOGY`, `HEALTH_SCIENCE`, `ENGINEERING`)
-- `targetGrade` — an integer representing the grade year (9, 10, 11, or 12)
+Sessions can optionally restrict by `targetPathway` or `targetGrade`.
 
 ---
 
 ## Workflows
 
-### Student Choice Flow
-```
-Admin creates FlexFriday
-      ↓
-Teachers create FlexSessions (type: STUDENT_CHOICE, set capacity)
-      ↓
-Students see available sessions and register
-      ↓ (if session is full, can't register)
-Student can unregister and choose another session
-```
+### Setup
+1. Admin creates a **FlexFriday**.
+2. Staff create **FlexSessions** for that day.
+3. Teachers create one or more **FlexWorkshops** within those sessions.
 
-### Teacher Assigned Flow
-```
-Admin creates FlexFriday
-      ↓
-Teacher creates FlexSession (type: TEACHER_ASSIGNED)
-      ↓
-Teacher assigns specific students → FlexAssignment records created
-      ↓
-Students see their assignment on the flex-friday page
-```
+### Registration (Student Choice)
+- Students browse sessions and workshops matching their grade/pathway.
+- They register for a workshop if capacity is available.
+- They can unregister and swap as long as slots are open.
+
+### Assignment (Teacher Assigned)
+- Teachers creation a session of type `TEACHER_ASSIGNED`.
+- They assign students to specific workshops via the roster management tools.
+- Students see these mandatory assignments on their Flex Friday dashboard.
 
 ---
 
-## API Endpoints
+## API Surface
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/flex-friday` | All Flex Fridays |
-| GET | `/flex-friday/:id` | One Flex Friday |
-| POST | `/flex-friday` | Create a Flex Friday (admin) |
-| GET | `/flex-friday/:id/sessions` | Sessions for a Friday |
-| POST | `/flex-friday/:id/sessions` | Create a session (teacher) |
-| POST | `/flex-friday/:fid/sessions/:sid/register` | Register for a session |
-| DELETE | `/flex-friday/:fid/sessions/:sid/register` | Unregister |
-| POST | `/flex-friday/:fid/sessions/:sid/assign` | Assign a student (teacher) |
-| GET | `/flex-friday/:fid/sessions/:sid/roster` | Get full roster |
-| GET | `/flex-friday/my-registrations` | My registered sessions |
-| GET | `/flex-friday/my-assignments` | Sessions I've been assigned to |
-
----
-
-## Permissions
-
-| Action | Who can |
-|--------|---------|
-| Create FlexFriday | ADMIN, SUPER_ADMIN |
-| Create sessions | TEACHER, ADMIN |
-| Register for session | STUDENT (STUDENT_CHOICE only) |
-| Assign students | Session's teacher, ADMIN |
-| View roster | Session's teacher, ADMIN |
-
----
-
-## Capacity Check
-
-When a student tries to register for a `STUDENT_CHOICE` session:
-
-```typescript
-const count = await prisma.flexRegistration.count({
-  where: { sessionId },
-});
-if (session.capacity && count >= session.capacity) {
-  throw new BadRequestException('Session is full');
-}
-```
+| GET | `/flex-friday` | All upcoming Flex Fridays |
+| GET | `/flex-friday/:id` | Detailed view with session/workshop tree |
+| POST | `/flex-friday/:fid/sessions` | Create a session (Staff/Admin) |
+| POST | `/flex-friday/:fid/sessions/:sid/workshops` | Create a workshop (Teacher) |
+| POST | `/flex-friday/workshops/:wid/register` | Student sign-up |
+| POST | `/flex-friday/workshops/:wid/assign` | Teacher assignment |
+| GET | `/flex-friday/workshops/:wid/roster` | Fetch full workshop roster |
 
 ---
 
 ## Related
 
 - [[calendar]] — Flex Fridays appear on the calendar
-- [[notifications]] — Notifications when a Friday is published
+- [[notifications]] — Notifications when a Friday is published or an assignment is made
+

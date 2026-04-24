@@ -9,6 +9,9 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
+import { ModerationService } from '../moderation/moderation.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationCategory } from '@prisma/client';
 
 const SPONSOR_ELIGIBLE_ROLES: Role[] = [
   Role.TEACHER,
@@ -23,6 +26,8 @@ export class ClubManagementService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly accessPolicy: ClubAccessPolicy,
+    private readonly moderation: ModerationService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private buildDirectory(club: {
@@ -128,12 +133,79 @@ export class ClubManagementService {
   }
 
   async getOne(id: string, userId: string, userRole: string) {
-    await this.accessPolicy.getClubContext(id, userId, userRole);
+    const viewer = await this.accessPolicy.getViewerContext(id, userId, userRole);
+
+    if (viewer.canAccessWorkspace) {
+      const club = await this.prisma.club.findUnique({
+        where: { id },
+        include: {
+          members: {
+            include: {
+              user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+            },
+            orderBy: { user: { firstName: 'asc' } },
+          },
+          sponsors: {
+            include: {
+              user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+            },
+            orderBy: { user: { firstName: 'asc' } },
+          },
+          tags: {
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
+                },
+              },
+            },
+            orderBy: { name: 'asc' },
+          },
+          joinRequests: viewer.canApproveJoinRequests
+            ? {
+                where: { status: 'PENDING' },
+                include: {
+                  requester: {
+                    select: { id: true, uniqueId: true, firstName: true, lastName: true },
+                  },
+                },
+                orderBy: { createdAt: 'asc' },
+              }
+            : false,
+          _count: { select: { members: true, channels: true, tags: true } },
+        },
+      });
+      if (!club) throw new NotFoundException('Club not found');
+
+      const channels = await this.accessPolicy.getVisibleChannels(id, userId, userRole);
+      const pendingJoinRequests = ((club as any).joinRequests ?? []).map((request: any) => ({
+        id: request.id,
+        status: request.status,
+        createdAt: request.createdAt.toISOString(),
+        requester: request.requester,
+      }));
+      return {
+        ...club,
+        joinCode: undefined,
+        viewer,
+        channels,
+        directory: this.buildDirectory(club),
+        leaders: club.members.filter((member) => !!member.role?.trim()),
+        activeJoinCode: viewer.canManageMembership && club.joinCode
+          ? {
+              code: club.joinCode,
+              updatedAt: club.joinCodeUpdatedAt?.toISOString() ?? null,
+            }
+          : null,
+        pendingJoinRequests,
+      };
+    }
 
     const club = await this.prisma.club.findUnique({
       where: { id },
       include: {
         members: {
+          where: { role: { not: null } },
           include: {
             user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
           },
@@ -145,40 +217,51 @@ export class ClubManagementService {
           },
           orderBy: { user: { firstName: 'asc' } },
         },
-        tags: {
-          include: {
-            members: {
-              include: {
-                user: { select: { id: true, uniqueId: true, firstName: true, lastName: true } },
-              },
-            },
-          },
-          orderBy: { name: 'asc' },
-        },
+        _count: { select: { members: true, channels: true, tags: true } },
       },
     });
     if (!club) throw new NotFoundException('Club not found');
 
-    const channels = await this.accessPolicy.getVisibleChannels(id, userId, userRole);
     return {
       ...club,
-      channels,
-      directory: this.buildDirectory(club),
+      viewer,
+      members: [],
+      channels: [],
+      tags: [],
+      directory: [],
+      leaders: club.members.filter((member) => !!member.role?.trim()),
+      activeJoinCode: null,
+      pendingJoinRequests: [],
     };
   }
 
   async create(dto: CreateClubDto, actorId: string) {
     const sponsorIds = await this.validateSponsorSelection(dto.sponsorIds);
+    const [nameModeration, descriptionModeration] = await Promise.all([
+      this.moderation.maskProfanity(dto.name.trim()),
+      this.moderation.maskProfanity(dto.description?.trim() ?? ''),
+    ]);
 
     const club = await this.prisma.club.create({
       data: {
-        name: dto.name.trim(),
-        description: dto.description?.trim() || undefined,
+        name: nameModeration.masked,
+        description: descriptionModeration.masked || undefined,
+        joinPolicy: dto.joinPolicy ?? 'OPEN',
         sponsors: {
           create: sponsorIds.map((sponsorId) => ({ userId: sponsorId })),
         },
       },
     });
+
+    if (nameModeration.wasFiltered || descriptionModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Club details filtered for language',
+        body: 'We replaced flagged words in your club name or description.',
+        clubId: club.id,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -192,13 +275,45 @@ export class ClubManagementService {
   }
 
   async update(id: string, dto: UpdateClubDto, actorId: string) {
+    const normalizeNullable = (value: string | null | undefined) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    };
+
+    const moderatedName = dto.name === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(dto.name.trim());
+    const moderatedDescription = dto.description === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(dto.description.trim());
+    const moderatedOverview = dto.overview === undefined || dto.overview === null
+      ? dto.overview
+      : (await this.moderation.maskProfanity(dto.overview.trim())).masked;
+
     const club = await this.prisma.club.update({
       where: { id },
       data: {
-        name: dto.name?.trim(),
-        description: dto.description?.trim(),
+        name: moderatedName?.masked,
+        description: moderatedDescription?.masked,
+        joinPolicy: dto.joinPolicy,
+        logoUrl: normalizeNullable(dto.logoUrl),
+        bannerUrl: normalizeNullable(dto.bannerUrl),
+        accentColor: normalizeNullable(dto.accentColor),
+        overview: normalizeNullable(moderatedOverview),
       },
     });
+
+    if (moderatedName?.wasFiltered || moderatedDescription?.wasFiltered || moderatedOverview !== dto.overview) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Club update filtered for language',
+        body: 'We replaced flagged words in your club updates.',
+        clubId: id,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -253,23 +368,34 @@ export class ClubManagementService {
     actorRole: string,
   ) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
-    if (!context.isSponsor && !context.isAdmin) {
-      throw new ForbiddenException('Only sponsors or admins can assign club roles');
+    if (!context.canManageMembership) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can assign club roles');
     }
 
     const normalizedRole = this.normalizeClubRole(role);
+    const moderatedRole = normalizedRole ? await this.moderation.maskProfanity(normalizedRole) : null;
 
     await this.prisma.clubMember.update({
       where: { clubId_userId: { clubId, userId: memberId } },
-      data: { role: normalizedRole },
+      data: { role: moderatedRole?.masked ?? null },
     });
+
+    if (moderatedRole?.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Role title filtered for language',
+        body: 'We replaced flagged words in the member role title.',
+        clubId,
+      });
+    }
 
     await this.audit.log({
       actorId,
       action: 'CLUB_MEMBER_ROLE_SET',
       entityType: 'Club',
       entityId: clubId,
-      meta: { memberId, role: normalizedRole },
+      meta: { memberId, role: moderatedRole?.masked ?? null },
     });
 
     return { success: true };
@@ -277,8 +403,8 @@ export class ClubManagementService {
 
   async removeMember(clubId: string, memberId: string, actorId: string, actorRole: string) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
-    if (!context.isSponsor && !context.isAdmin) {
-      throw new ForbiddenException('Only sponsors or admins can remove members');
+    if (!context.canManageMembership) {
+      throw new ForbiddenException('Only club role holders, sponsors, or admins can remove members');
     }
 
     await this.prisma.clubMember.delete({

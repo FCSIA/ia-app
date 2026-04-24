@@ -17,9 +17,10 @@ This page explains the *why* behind each step.
 | Tool | Why |
 |------|-----|
 | **Homebrew** | Package manager for macOS — installs everything else |
-| **Node.js 20+** | JavaScript runtime — required to run the backend and build the frontend |
-| **pnpm** | Package manager — faster than npm, required for this monorepo |
+| **Node.js 20+** | JavaScript runtime — required for backend and frontend |
+| **pnpm** | Package manager — required for monorepo efficiency |
 | **PostgreSQL 16** | The database — stores all app data |
+| **PowerShell** | Window's shell — required for the automated setup script |
 
 ---
 
@@ -51,17 +52,18 @@ echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc && so
 ```
 
 ### 5. Start PostgreSQL
-```bash
-brew services start postgresql@16
+- **macOS**: `brew services start postgresql@16`
+- **Windows**: `pnpm infra:up:win` (or run `.\setup_pg.ps1`)
 ```
 
 ### 6. Create Database and User
-Sets up the `ia_db` database and `ia_user` account that the app connects as.
-```bash
-psql postgres -c "CREATE USER ia_user WITH PASSWORD 'ia_password';"
-psql postgres -c "CREATE DATABASE ia_db OWNER ia_user;"
-psql postgres -c "ALTER USER ia_user CREATEDB;"
-```
+- **macOS**: Use the commands below:
+    ```bash
+    psql postgres -c "CREATE USER ia_user WITH PASSWORD 'ia_password';"
+    psql postgres -c "CREATE DATABASE ia_db OWNER ia_user;"
+    psql postgres -c "ALTER USER ia_user CREATEDB;"
+    ```
+- **Windows**: This is handled automatically by `pnpm setup:win`.
 The `CREATEDB` privilege is needed by Prisma's migration system (shadow database).
 
 ### 7. Clone the Repository

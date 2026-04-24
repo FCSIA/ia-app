@@ -1,6 +1,13 @@
 # Complete Setup Guide — IA App
 
-Follow every step in order on a brand new Mac. Copy and paste each block exactly.
+Follow every step in order.
+
+---
+
+## 💻 Choose your Platform
+
+- **macOS (Homebrew)**: Follow steps 1-13 below.
+- **Windows**: [Skip to Windows Setup](#windows-setup)
 
 ---
 
@@ -132,6 +139,28 @@ pnpm dev
 
 - **Web app**: http://localhost:3000
 - **API**: http://localhost:3001
+
+---
+
+## Windows Setup
+
+If you are on Windows, use the automated PowerShell script.
+
+### 1. Prerequisites
+- **Node.js**: [Download and install](https://nodejs.org/en/download) (v20+)
+- **pnpm**: `npm install -g pnpm`
+
+### 2. Setup Database and App
+Run this from the project root:
+```powershell
+pnpm setup:win
+```
+*This command downloads PostgreSQL, starts the server, installs dependencies, initializes the database, and opens **Prisma Studio** in a new window.*
+
+### 3. Start Developing
+```powershell
+pnpm dev
+```
 
 ---
 

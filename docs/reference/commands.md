@@ -12,12 +12,21 @@ tags: [reference, commands, dev]
 
 ### Start (after first-time setup)
 ```bash
+# macOS/Linux
 brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
+
+# Windows
+pnpm infra:up:win && pnpm dev
 ```
 
 ### Stop
 ```bash
+# macOS/Linux
 lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
+
+# Windows
+# Stop the pnpm dev process (Ctrl+C)
+.\pgsql\bin\pg_ctl.exe -D .\pgsql\data stop
 ```
 
 ---
@@ -36,8 +45,10 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 | Command | What it does |
 |---------|-------------|
-| `pnpm infra:up` | Start PostgreSQL via Homebrew |
-| `pnpm infra:down` | Stop PostgreSQL via Homebrew |
+| `pnpm infra:up` | Start PostgreSQL via Homebrew (macOS) |
+| `pnpm infra:up:win` | Start PostgreSQL via local binaries (Windows) |
+| `pnpm infra:down` | Stop PostgreSQL via Homebrew (macOS) |
+| `pnpm setup:win` | Full automated setup (Windows only) |
 
 ---
 

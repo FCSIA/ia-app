@@ -4,36 +4,112 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Role } from '@prisma/client';
+import { ClubChannelVisibility, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ClubContext {
-  club: { id: string; name: string; description: string | null; isActive: boolean };
+  club: {
+    id: string;
+    name: string;
+    description: string | null;
+    isActive: boolean;
+    joinPolicy: 'OPEN' | 'REQUEST';
+    joinCode: string | null;
+    joinCodeUpdatedAt: Date | null;
+  };
   membership: { role: string | null } | null;
   isMember: boolean;
   hasClubRole: boolean;
   isSponsor: boolean;
   isAdmin: boolean;
+  canAccessWorkspace: boolean;
   canManageChannels: boolean;
+  canManageMembership: boolean;
+  canApproveJoinRequests: boolean;
   canSeePrivateChannels: boolean;
+  hasPendingJoinRequest: boolean;
 }
 
 @Injectable()
 export class ClubAccessPolicy {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
+
+  private readonly channelOrder: Record<ClubChannelVisibility, number> = {
+    PUBLIC: 0,
+    MEMBER_READONLY: 1,
+    PRIVATE: 2,
+  };
+
+  private canReadChannel(
+    channel: {
+      visibility: ClubChannelVisibility;
+      memberships: Array<{ userId: string }>;
+    },
+    context: ClubContext,
+    userId: string,
+  ) {
+    if (channel.visibility === ClubChannelVisibility.PRIVATE) {
+      return (
+        context.canSeePrivateChannels ||
+        channel.memberships.some((membership) => membership.userId === userId)
+      );
+    }
+
+    return context.canAccessWorkspace;
+  }
+
+  private canPostInChannel(
+    channel: {
+      visibility: ClubChannelVisibility;
+      memberships: Array<{ userId: string }>;
+    },
+    context: ClubContext,
+    userId: string,
+  ) {
+    if (channel.visibility === ClubChannelVisibility.MEMBER_READONLY) {
+      return context.hasClubRole || context.isSponsor || context.isAdmin;
+    }
+
+    return this.canReadChannel(channel, context, userId);
+  }
+
+  private decorateChannelForViewer(
+    channel: Prisma.ClubChannelGetPayload<{
+      include: {
+        memberships: { select: { userId: true } };
+        _count: { select: { messages: true } };
+      };
+    }>,
+    context: ClubContext,
+    userId: string,
+  ) {
+    return {
+      ...channel,
+      viewerCanRead: this.canReadChannel(channel, context, userId),
+      viewerCanPost: this.canPostInChannel(channel, context, userId),
+    };
+  }
 
   isAdmin(role: string) {
     return role === Role.ADMIN || role === Role.SUPER_ADMIN;
   }
 
-  async getClubContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
+  async getViewerContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
     const club = await this.prisma.club.findUnique({
       where: { id: clubId },
-      select: { id: true, name: true, description: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isActive: true,
+        joinPolicy: true,
+        joinCode: true,
+        joinCodeUpdatedAt: true,
+      },
     });
     if (!club) throw new NotFoundException('Club not found');
 
-    const [membership, sponsor] = await Promise.all([
+    const [membership, sponsor, pendingJoinRequest] = await Promise.all([
       this.prisma.clubMember.findFirst({
         where: { clubId, userId },
         select: { role: true },
@@ -42,18 +118,24 @@ export class ClubAccessPolicy {
         where: { clubId, userId },
         select: { userId: true },
       }),
+      this.prisma.clubJoinRequest.findFirst({
+        where: { clubId, requesterId: userId, status: 'PENDING' },
+        select: { id: true },
+      }),
     ]);
 
     const isAdmin = this.isAdmin(userRole);
     const isMember = !!membership;
     const hasClubRole = !!membership?.role?.trim();
     const isSponsor = !!sponsor;
+    const canAccessWorkspace = isMember || isSponsor || isAdmin;
     const canManageChannels = isSponsor || hasClubRole || isAdmin;
+    const canManageMembership = canManageChannels;
+    // Only the teacher in charge (sponsor) — or a school admin — can approve
+    // student join requests. Student leaders cannot, even though they can
+    // otherwise manage membership (assigning roles, removing members, etc.).
+    const canApproveJoinRequests = isSponsor || isAdmin;
     const canSeePrivateChannels = isSponsor || isAdmin;
-
-    if (!isMember && !isSponsor && !isAdmin) {
-      throw new ForbiddenException('Not a club member');
-    }
 
     return {
       club,
@@ -62,9 +144,21 @@ export class ClubAccessPolicy {
       hasClubRole,
       isSponsor,
       isAdmin,
+      canAccessWorkspace,
       canManageChannels,
+      canManageMembership,
+      canApproveJoinRequests,
       canSeePrivateChannels,
+      hasPendingJoinRequest: !!pendingJoinRequest,
     };
+  }
+
+  async getClubContext(clubId: string, userId: string, userRole: string): Promise<ClubContext> {
+    const context = await this.getViewerContext(clubId, userId, userRole);
+    if (!context.canAccessWorkspace) {
+      throw new ForbiddenException('Not a club member');
+    }
+    return context;
   }
 
   async getVisibleChannels(clubId: string, userId: string, userRole: string) {
@@ -75,15 +169,17 @@ export class ClubAccessPolicy {
         memberships: { select: { userId: true } },
         _count: { select: { messages: true } },
       },
-      orderBy: [{ isPrivate: 'asc' }, { name: 'asc' }],
+      orderBy: { name: 'asc' },
     });
 
-    return channels.filter(
-      (channel) =>
-        !channel.isPrivate ||
-        context.canSeePrivateChannels ||
-        channel.memberships.some((entry) => entry.userId === userId),
-    );
+    return channels
+      .filter((channel) => this.canReadChannel(channel, context, userId))
+      .sort(
+        (left, right) =>
+          this.channelOrder[left.visibility] - this.channelOrder[right.visibility] ||
+          left.name.localeCompare(right.name),
+      )
+      .map((channel) => this.decorateChannelForViewer(channel, context, userId));
   }
 
   async resolveClubPeople(
@@ -153,11 +249,23 @@ export class ClubAccessPolicy {
     ]);
 
     const isChannelMember = channel.memberships.some((membership) => membership.userId === userId);
-    if (channel.isPrivate && !isChannelMember && !context.canSeePrivateChannels) {
-      throw new ForbiddenException('Not allowed to access this private channel');
+    if (!this.canReadChannel(channel, context, userId)) {
+      throw new ForbiddenException('Not allowed to access this channel');
     }
 
-    return { context, channel, isChannelMember };
+    return {
+      context,
+      channel: this.decorateChannelForViewer(
+        {
+          ...channel,
+          _count: { messages: 0 },
+        },
+        context,
+        userId,
+      ),
+      isChannelMember,
+      canPost: this.canPostInChannel(channel, context, userId),
+    };
   }
 
   async getChannelAudienceUserIds(clubId: string, channelId: string) {
@@ -174,7 +282,7 @@ export class ClubAccessPolicy {
       }),
     ]);
 
-    if (!channel.isPrivate) {
+    if (channel.visibility !== ClubChannelVisibility.PRIVATE) {
       return Array.from(new Set([...memberIds.map((entry) => entry.userId), ...sponsorIds.map((entry) => entry.userId)]));
     }
 
@@ -186,10 +294,31 @@ export class ClubAccessPolicy {
     );
   }
 
+  isStaff(role: string) {
+    return (
+      role === Role.TEACHER ||
+      role === Role.SPONSOR ||
+      role === Role.SUPPORT_STAFF ||
+      role === Role.ADMIN ||
+      role === Role.SUPER_ADMIN
+    );
+  }
+
   async requireInvitePermissions(clubId: string, senderId: string, senderRole: string) {
+    if (this.isStaff(senderRole)) {
+      const club = await this.prisma.club.findUnique({
+        where: { id: clubId },
+        select: { id: true, name: true, description: true, isActive: true },
+      });
+      if (!club) throw new NotFoundException('Club not found');
+      return club;
+    }
+
     const context = await this.getClubContext(clubId, senderId, senderRole);
-    if (!context.isSponsor && !context.hasClubRole && !context.isAdmin) {
-      throw new ForbiddenException('Only club role holders, sponsors, or admins can invite members');
+    if (!context.hasClubRole) {
+      throw new ForbiddenException(
+        'Only club leaders, sponsors, teachers, or admins can invite members',
+      );
     }
     return context.club;
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { AppRole, AppUser } from '@ia/contracts/auth';
 
 export function getToken(): string | null {
@@ -39,4 +40,12 @@ export function isAdmin(user: AppUser | null): boolean {
 
 export function isSuperAdmin(user: AppUser | null): boolean {
   return hasRole(user, 'SUPER_ADMIN');
+}
+
+export function useCurrentUser(): AppUser | null {
+  const [user, setUser] = useState<AppUser | null>(null);
+  useEffect(() => {
+    setUser(getUser());
+  }, []);
+  return user;
 }

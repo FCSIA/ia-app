@@ -91,7 +91,7 @@ export function HeroStat({ label, value, description, icon: Icon, className }: H
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-3 rounded-2xl border bg-card p-5',
+        'flex items-center justify-between gap-3',
         className,
       )}
     >

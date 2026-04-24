@@ -97,7 +97,12 @@ pnpm db:seed       # Seed with test data
 ### 5. Start the app
 
 ```bash
+# macOS/Linux
 pnpm dev
+
+# Windows
+pnpm infra:up:win  # Start PostgreSQL
+pnpm dev           # Start the app
 ```
 
 | Service | URL |
@@ -136,6 +141,9 @@ pnpm db:generate
 pnpm db:migrate
 pnpm db:reset
 pnpm db:seed
+pnpm db:studio   # Open database in Prisma Studio
+pnpm setup:win   # Windows: Full automated setup
+pnpm infra:up:win # Windows: Start database
 ```
 
 ## Local URLs
@@ -152,11 +160,17 @@ All demo accounts use their ID as the password.
 |----|------|
 | `SUPER001` | Super Admin |
 | `ADMIN001` | Admin |
-| `TCH001` | Teacher |
+| `TCH001` | Teacher / Sponsor |
 | `STU001` | Student |
 | `STU002` | Student |
-| `STU003` | Student Leader |
-| `STU004` | Student Admin |
+| `STU003` | Student |
+| `STU004` | Student |
+| `STU005` | Student |
+| `STU006` | Student |
+| `STU007` | Student |
+| `STU008` | Student |
+| `STU009` | Student |
+| `STU010` | Student |
 
 ---
 

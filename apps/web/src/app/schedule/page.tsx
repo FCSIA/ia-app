@@ -1,23 +1,23 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { CourseSummary } from '@ia/contracts/courses';
 import {
+  BookOpen,
   Clock3,
   Copy,
-  Eye,
-  EyeOff,
   Loader2,
   Plus,
   Search,
-  Shield,
   Sparkles,
   UserPlus,
-  Users2,
   X,
 } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
-import { HeroStat, PageFrame } from '@/components/layout/page-frame';
+import { PageFrame } from '@/components/layout/page-frame';
 import { FriendScheduleCard } from '@/components/schedule/friend-schedule-card';
 import { ScheduleDayEditor } from '@/components/schedule/schedule-day-editor';
 import { SchoolDayBlockFormCard } from '@/components/schedule/school-day-block-form-card';
@@ -36,21 +36,13 @@ import {
   getBlocksForDay,
   getCurrentScheduleStatus,
 } from '@/components/schedule/schedule-utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getUser, hasRole } from '@/lib/auth';
-import { scheduleApi } from '@/lib/api';
+import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
@@ -62,9 +54,27 @@ function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean)
 }
 
 export default function SchedulePage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <PageFrame title="Schedule" description="Manage your schedule and friend requests.">
+            <div className="h-48 animate-pulse rounded-lg bg-muted" />
+          </PageFrame>
+        </AppShell>
+      }
+    >
+      <SchedulePageContent />
+    </Suspense>
+  );
+}
+
+function SchedulePageContent() {
   const user = getUser();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
   const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
@@ -82,16 +92,43 @@ export default function SchedulePage() {
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const requestedTab = searchParams?.get('tab') ?? null;
+  const requestedSection = searchParams?.get('section') ?? null;
 
   const { data, isLoading } = useQuery<ScheduleDashboardResponse>({
     queryKey: ['schedule-dashboard'],
     queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
+  });
+  const { data: courses = [] } = useQuery<CourseSummary[]>({
+    queryKey: ['courses', 'all'],
+    queryFn: () => coursesApi.list({ limit: 200 }).then((response) => response.data),
+    staleTime: 60_000,
   });
 
   useEffect(() => {
     setScheduleEntries(data?.mySchedule?.entries ?? []);
     setIsPublic(data?.mySchedule?.isPublic ?? false);
   }, [data?.mySchedule]);
+
+  useEffect(() => {
+    if (!requestedTab) return;
+    if (requestedTab === 'friends' && canEditOwnSchedule) {
+      setActiveTab('friends');
+      return;
+    }
+    if (requestedTab === 'admin' && canManageBlocks) {
+      setActiveTab('admin');
+      return;
+    }
+    if (requestedTab === 'my' && canEditOwnSchedule) {
+      setActiveTab('my');
+    }
+  }, [canEditOwnSchedule, canManageBlocks, requestedTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'friends' || requestedSection !== 'requests') return;
+    incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [activeTab, requestedSection, data?.incomingRequests?.length]);
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery<ScheduleSearchResult[]>({
     queryKey: ['schedule-search', normalizedDeferredSearch],
@@ -110,8 +147,8 @@ export default function SchedulePage() {
       scheduleApi.saveMine({
         isPublic,
         entries: scheduleEntries
-          .map(({ weekday, periodNumber, className }) => ({ weekday, periodNumber, className: className.trim() }))
-          .filter((entry) => entry.className.length > 0),
+          .map(({ weekday, periodNumber, courseId }) => ({ weekday, periodNumber, courseId: courseId?.trim() ?? '' }))
+          .filter((entry) => entry.courseId.length > 0),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
@@ -229,26 +266,45 @@ export default function SchedulePage() {
     () => getCurrentScheduleStatus(canEditOwnSchedule ? draftSchedule : null, blocks),
     [blocks, canEditOwnSchedule, draftSchedule],
   );
-  const activeWeekdayLabel = currentStatus.weekday
-    ? WEEKDAYS.find((day) => day.value === currentStatus.weekday)?.label
-    : null;
+  const nextEntry =
+    currentStatus.nextBlock?.periodNumber != null
+      ? findScheduleEntry(
+        draftSchedule,
+        currentStatus.nextBlock.weekday,
+        currentStatus.nextBlock.periodNumber,
+      )
+      : null;
 
   const updateScheduleEntry = (
     weekday: ScheduleWeekday,
     periodNumber: number,
-    className: string,
+    course: CourseSummary | null,
   ) => {
     setScheduleEntries((current) => {
       const existingIndex = current.findIndex(
         (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
       );
 
+      if (!course) {
+        return current.filter(
+          (entry) => !(entry.weekday === weekday && entry.periodNumber === periodNumber),
+        );
+      }
+
+      const nextEntry = {
+        weekday,
+        periodNumber,
+        courseId: course.id,
+        course,
+        className: course.title,
+      };
+
       if (existingIndex === -1) {
-        return [...current, { weekday, periodNumber, className }];
+        return [...current, nextEntry];
       }
 
       const next = [...current];
-      next[existingIndex] = { ...next[existingIndex], className };
+      next[existingIndex] = { ...next[existingIndex], ...nextEntry };
       return next;
     });
   };
@@ -273,361 +329,264 @@ export default function SchedulePage() {
   return (
     <AppShell>
       <PageFrame>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <HeroStat
-            label="Right now"
-            value={
-              currentStatus.currentBlock
-                ? currentStatus.currentBlock.periodNumber
-                  ? currentStatus.currentEntry?.className ||
-                  `${currentStatus.currentBlock.label} (not filled in)`
-                  : currentStatus.currentBlock.label
-                : 'No active block'
-            }
-            icon={Clock3}
-          />
-          <HeroStat
-            label="Next up"
-            value={
-              currentStatus.nextBlock
-                ? currentStatus.nextBlock.periodNumber
-                  ? findScheduleEntry(
-                    draftSchedule,
-                    currentStatus.nextBlock.weekday,
-                    currentStatus.nextBlock.periodNumber,
-                  )?.className || currentStatus.nextBlock.label
-                  : currentStatus.nextBlock.label
-                : 'Nothing else today'
-            }
-            icon={Sparkles}
-          />
-          <HeroStat
-            label="Visibility"
-            value={isPublic ? 'Public' : 'Private'}
-            icon={isPublic ? Eye : EyeOff}
-          />
-        </div>
+        {/* Compact status bar — the only thing you really check */}
+        {canEditOwnSchedule && (
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <Clock3 className="size-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Now:</span>
+              {currentStatus.currentBlock ? (
+                currentStatus.currentEntry?.course ? (
+                  <Link
+                    href={`/courses/${currentStatus.currentEntry.course.slug}`}
+                    className="font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {currentStatus.currentEntry.course.title}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground">
+                    {currentStatus.currentEntry?.className || currentStatus.currentBlock.label}
+                  </span>
+                )
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <Sparkles className="size-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Next:</span>
+              {currentStatus.nextBlock ? (
+                nextEntry?.course ? (
+                  <Link
+                    href={`/courses/${nextEntry.course.slug}`}
+                    className="font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {nextEntry.course.title}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-foreground">
+                    {nextEntry?.className || currentStatus.nextBlock.label}
+                  </span>
+                )
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )}
+            </div>
+          </div>
+        )}
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my' | 'friends' | 'admin')} className="space-y-6">
-          <TabsList className="h-auto w-full justify-start gap-2 rounded-3xl border border-border/70 bg-background/80 p-2">
-            {canEditOwnSchedule ? (
-              <TabsTrigger value="my" className="rounded-2xl px-4 py-2.5">
-                My Schedule
-              </TabsTrigger>
-            ) : null}
-            {canEditOwnSchedule ? (
-              <TabsTrigger value="friends" className="rounded-2xl px-4 py-2.5">
-                Friends
-              </TabsTrigger>
-            ) : null}
-            {canManageBlocks ? (
-              <TabsTrigger value="admin" className="rounded-2xl px-4 py-2.5">
-                School Day Blocks
-              </TabsTrigger>
-            ) : null}
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my' | 'friends' | 'admin')}>
+          {/* Tab bar + controls in one row */}
+          <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-px">
+            <TabsList className="h-auto gap-0 rounded-none border-0 bg-transparent p-0">
+              {canEditOwnSchedule ? (
+                <TabsTrigger
+                  value="my"
+                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  Schedule
+                </TabsTrigger>
+              ) : null}
+              {canEditOwnSchedule ? (
+                <TabsTrigger
+                  value="friends"
+                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  Friends
+                </TabsTrigger>
+              ) : null}
+              {canManageBlocks ? (
+                <TabsTrigger
+                  value="admin"
+                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  Blocks
+                </TabsTrigger>
+              ) : null}
+            </TabsList>
+            {activeTab === 'my' && canEditOwnSchedule && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Public</span>
+                  <Switch checked={isPublic} onCheckedChange={setIsPublic} className="scale-[0.85]" />
+                </div>
+                <span className="text-border">|</span>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyMondayToWeek}>
+                  <Copy className="mr-1.5 size-3" />
+                  Copy Mon
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => saveScheduleMutation.mutate()}
+                  disabled={saveScheduleMutation.isPending}
+                >
+                  {saveScheduleMutation.isPending ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
+            )}
+          </div>
 
+          {/* My Schedule */}
           {canEditOwnSchedule ? (
-            <TabsContent value="my" className="space-y-6">
-              <Card className="rounded-[28px] border-border/70">
-                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">Your class grid</CardTitle>
-                    <CardDescription>
-                      Enter your classes by period. Custom blocks like lunch or assemblies are controlled by admins and do not need class names.
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Public schedule</p>
-                      <p className="text-xs text-muted-foreground">Friends can view it if enabled</p>
-                    </div>
-                    <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" className="rounded-2xl" onClick={copyMondayToWeek}>
-                      <Copy className="mr-2 size-4" />
-                      Copy Monday to Tue-Thu
-                    </Button>
-                    <Button
-                      className="rounded-2xl"
-                      onClick={() => saveScheduleMutation.mutate()}
-                      disabled={saveScheduleMutation.isPending}
-                    >
-                      {saveScheduleMutation.isPending ? 'Saving…' : 'Save schedule'}
-                    </Button>
-                  </div>
+            <TabsContent value="my" className="mt-6">
+              {/* Weekday selector — simple underline style */}
+              <div className="flex items-center gap-1 border-b border-border/30">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => setSelectedWeekday(day.value)}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      selectedWeekday === day.value
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {day.shortLabel}
+                  </button>
+                ))}
+                <Link href="/courses" className="ml-auto mb-1">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+                    <BookOpen className="mr-1.5 size-3" />
+                    Catalog
+                  </Button>
+                </Link>
+              </div>
 
-                  <Tabs value={selectedWeekday} onValueChange={(value) => setSelectedWeekday(value as ScheduleWeekday)} className="space-y-6">
-                    <TabsList className="h-auto w-full justify-start gap-2 rounded-3xl border border-border/70 bg-background/80 p-2">
-                      {WEEKDAYS.map((day) => (
-                        <TabsTrigger key={day.value} value={day.value} className="rounded-2xl px-4 py-2.5">
-                          {day.shortLabel}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {WEEKDAYS.map((day) => (
-                      <TabsContent key={day.value} value={day.value} className="space-y-6">
-                        <ScheduleDayEditor
-                          weekday={day.value}
-                          blocks={blocks}
-                          entries={scheduleEntries}
-                          onChange={updateScheduleEntry}
-                        />
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                </CardContent>
-              </Card>
+              <div className="mt-4">
+                <ScheduleDayEditor
+                  weekday={selectedWeekday}
+                  blocks={blocks}
+                  entries={scheduleEntries}
+                  courses={courses}
+                  preferredGradeLevel={user?.gradeLevel ?? undefined}
+                  onChange={updateScheduleEntry}
+                />
+              </div>
             </TabsContent>
           ) : null}
 
           {canEditOwnSchedule ? (
-            <TabsContent value="friends" className="space-y-6">
-              <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-                <Card className="rounded-[28px] border-border/70">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">Find friends</CardTitle>
-                    <CardDescription>
-                      Search by first name, last name, or unique ID, then pin people whose public schedules you want to compare.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        className="rounded-2xl pl-11 pr-11"
-                        placeholder="Search by name or ID"
-                      />
-                      {isSearching || searchIsDeferred ? (
-                        <Loader2 className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                      ) : search ? (
-                        <button
-                          type="button"
-                          onClick={() => setSearch('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          aria-label="Clear search"
-                        >
-                          <X className="size-4" />
-                        </button>
-                      ) : null}
-                    </div>
+            <TabsContent value="friends" className="mt-6">
+              <div className="grid gap-8 xl:grid-cols-[340px_minmax(0,1fr)]">
+                {/* Search sidebar */}
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      className="h-9 rounded-lg bg-muted/30 border-0 pl-9 pr-9 text-sm shadow-none focus-visible:ring-1"
+                      placeholder="Search students..."
+                    />
+                    {isSearching || searchIsDeferred ? (
+                      <Loader2 className="pointer-events-none absolute right-4 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+                    ) : search ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+                        aria-label="Clear search"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    ) : null}
+                  </div>
 
-                    <div className="space-y-3">
-                      {deferredSearch.trim().length < 2 ? (
-                        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          Type at least two characters to search the student directory. Fuzzy matching handles typos.
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        <>
-                          <p className="px-1 text-xs text-muted-foreground">
-                            {searchResults.length} result{searchResults.length === 1 ? '' : 's'}
-                          </p>
-                          {searchResults.map((person) => {
-                            const isSending =
-                              sendFriendRequestMutation.isPending &&
-                              sendFriendRequestMutation.variables === person.id;
-                            const isAccepting =
-                              acceptFriendRequestMutation.isPending &&
-                              acceptFriendRequestMutation.variables === person.id;
-                            const status = person.friendshipStatus;
-                            return (
-                              <Card key={person.id} className="rounded-3xl border-border/70 bg-background/90">
-                                <CardContent className="flex items-center justify-between gap-4 p-4">
-                                  <div>
-                                    <p className="font-medium text-foreground">
-                                      {person.firstName} {person.lastName}
-                                    </p>
-                                    <p className="mt-1 font-mono text-xs text-muted-foreground">
-                                      {person.uniqueId}
-                                    </p>
-                                    <Badge
-                                      className={`mt-3 rounded-full ${
-                                        person.visibility === 'PUBLIC'
-                                          ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
-                                          : person.visibility === 'PRIVATE'
-                                            ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
-                                            : 'bg-muted text-muted-foreground'
-                                      }`}
-                                    >
-                                      {person.visibility === 'PUBLIC'
-                                        ? 'Public schedule'
-                                        : person.visibility === 'PRIVATE'
-                                          ? 'Private schedule'
-                                          : 'No schedule yet'}
-                                    </Badge>
-                                  </div>
-                                  {status === 'FRIENDS' ? (
-                                    <Button className="rounded-2xl" size="sm" disabled>
-                                      <UserPlus className="mr-2 size-4" />
-                                      Friends
-                                    </Button>
-                                  ) : status === 'REQUEST_SENT' ? (
-                                    <Button className="rounded-2xl" size="sm" variant="secondary" disabled>
-                                      Requested
-                                    </Button>
-                                  ) : status === 'REQUEST_RECEIVED' ? (
-                                    <Button
-                                      className="rounded-2xl"
-                                      size="sm"
-                                      disabled={isAccepting}
-                                      onClick={() => acceptFriendRequestMutation.mutate(person.id)}
-                                    >
-                                      {isAccepting ? (
-                                        <Loader2 className="mr-2 size-4 animate-spin" />
-                                      ) : (
-                                        <UserPlus className="mr-2 size-4" />
-                                      )}
-                                      {isAccepting ? 'Accepting…' : 'Accept'}
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      className="rounded-2xl"
-                                      size="sm"
-                                      disabled={isSending}
-                                      onClick={() => sendFriendRequestMutation.mutate(person.id)}
-                                    >
-                                      {isSending ? (
-                                        <Loader2 className="mr-2 size-4 animate-spin" />
-                                      ) : (
-                                        <UserPlus className="mr-2 size-4" />
-                                      )}
-                                      {isSending ? 'Sending…' : 'Add friend'}
-                                    </Button>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </>
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                          No students matched &ldquo;{normalizedDeferredSearch}&rdquo;.
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-6">
-                  <Card className="rounded-[28px] border-border/70">
-                    <CardHeader>
-                      <CardTitle className="text-2xl">Friend schedules</CardTitle>
-                      <CardDescription>
-                        Public schedules show current class and today&apos;s block map. Private schedules stay hidden even if you added the person.
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-
-                  {data?.incomingRequests?.length ? (
-                    <Card className="rounded-[28px] border-border/70">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Friend requests</CardTitle>
-                        <CardDescription>
-                          {data.incomingRequests.length} pending
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {data.incomingRequests.map((req) => {
-                          const isAccepting =
-                            acceptFriendRequestMutation.isPending &&
-                            acceptFriendRequestMutation.variables === req.user.id;
-                          const isDeclining =
-                            removeFriendMutation.isPending &&
-                            removeFriendMutation.variables === req.user.id;
-                          return (
-                            <div
-                              key={req.id}
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/90 p-3"
-                            >
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {req.user.firstName} {req.user.lastName}
-                                </p>
-                                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                                  {req.user.uniqueId}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={isDeclining || isAccepting}
-                                  onClick={() => removeFriendMutation.mutate(req.user.id)}
-                                >
-                                  {isDeclining ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                  ) : (
-                                    <X className="size-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="rounded-2xl"
-                                  disabled={isAccepting || isDeclining}
-                                  onClick={() => acceptFriendRequestMutation.mutate(req.user.id)}
-                                >
-                                  {isAccepting ? (
-                                    <Loader2 className="mr-2 size-4 animate-spin" />
-                                  ) : null}
-                                  {isAccepting ? 'Accepting…' : 'Accept'}
-                                </Button>
-                              </div>
+                  {deferredSearch.trim().length < 2 ? null : searchResults.length > 0 ? (
+                    <div className="divide-y divide-border/40 overflow-hidden">
+                      {searchResults.map((person) => {
+                        const isSending =
+                          sendFriendRequestMutation.isPending &&
+                          sendFriendRequestMutation.variables === person.id;
+                        const isAccepting =
+                          acceptFriendRequestMutation.isPending &&
+                          acceptFriendRequestMutation.variables === person.id;
+                        const status = person.friendshipStatus;
+                        return (
+                          <div key={person.id} className="flex items-center justify-between gap-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {person.firstName} {person.lastName}
+                              </p>
+                              <span className="font-mono text-[10px] text-muted-foreground">
+                                {person.uniqueId}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </CardContent>
-                    </Card>
-                  ) : null}
-
-                  {data?.outgoingRequests?.length ? (
-                    <Card className="rounded-[28px] border-border/70">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Sent requests</CardTitle>
-                        <CardDescription>Waiting for them to accept</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        {data.outgoingRequests.map((req) => {
-                          const isCancelling =
-                            removeFriendMutation.isPending &&
-                            removeFriendMutation.variables === req.user.id;
-                          return (
-                            <div
-                              key={req.id}
-                              className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/90 p-3"
-                            >
-                              <div>
-                                <p className="text-sm font-medium">
-                                  {req.user.firstName} {req.user.lastName}
-                                </p>
-                                <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                                  {req.user.uniqueId}
-                                </p>
-                              </div>
+                            {status === 'FRIENDS' ? (
+                              <span className="text-[10px] text-muted-foreground">Added</span>
+                            ) : status === 'REQUEST_SENT' ? (
+                              <span className="text-[10px] text-muted-foreground">Pending</span>
+                            ) : status === 'REQUEST_RECEIVED' ? (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-6 text-[10px] px-2"
+                                disabled={isAccepting}
+                                onClick={() => acceptFriendRequestMutation.mutate(person.id)}
+                              >
+                                Accept
+                              </Button>
+                            ) : (
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                disabled={isCancelling}
-                                onClick={() => removeFriendMutation.mutate(req.user.id)}
+                                className="h-6 text-[10px] px-2"
+                                disabled={isSending}
+                                onClick={() => sendFriendRequestMutation.mutate(person.id)}
                               >
-                                {isCancelling ? (
-                                  <Loader2 className="mr-2 size-4 animate-spin" />
-                                ) : null}
-                                {isCancelling ? 'Cancelling…' : 'Cancel'}
+                                <UserPlus className="mr-1 size-2.5" />
+                                Add
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="py-3 text-xs text-muted-foreground">
+                      No results for &ldquo;{normalizedDeferredSearch}&rdquo;
+                    </p>
+                  )}
+
+                  {/* Inline request notifications */}
+                  {data?.incomingRequests?.length ? (
+                    <div ref={incomingRequestsRef} className="border-t border-border/30 pt-3 space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+                        Requests · {data.incomingRequests.length}
+                      </p>
+                      {data.incomingRequests.map((req) => {
+                        const isAccepting =
+                          acceptFriendRequestMutation.isPending &&
+                          acceptFriendRequestMutation.variables === req.user.id;
+                        const isDeclining =
+                          removeFriendMutation.isPending &&
+                          removeFriendMutation.variables === req.user.id;
+                        return (
+                          <div key={req.id} className="flex items-center justify-between gap-2 py-1.5">
+                            <span className="text-sm text-foreground truncate">
+                              {req.user.firstName} {req.user.lastName}
+                            </span>
+                            <div className="flex gap-1 shrink-0">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" disabled={isDeclining || isAccepting} onClick={() => removeFriendMutation.mutate(req.user.id)}>
+                                <X className="size-3" />
+                              </Button>
+                              <Button size="sm" className="h-6 text-[10px] px-2" disabled={isAccepting || isDeclining} onClick={() => acceptFriendRequestMutation.mutate(req.user.id)}>
+                                Accept
                               </Button>
                             </div>
-                          );
-                        })}
-                      </CardContent>
-                    </Card>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : null}
+                </div>
 
+                {/* Friend list */}
+                <div className="space-y-3">
                   {data?.friends.length ? (
-                    <div className="grid gap-4">
+                    <div className="space-y-2">
                       {data.friends.map((friend) => (
                         <FriendScheduleCard
                           key={friend.id}
@@ -642,17 +601,9 @@ export default function SchedulePage() {
                       ))}
                     </div>
                   ) : (
-                    <Empty className="rounded-[28px] border-border/70 bg-muted/20">
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <Users2 />
-                        </EmptyMedia>
-                        <EmptyTitle>No friends pinned yet</EmptyTitle>
-                        <EmptyDescription>
-                          Search for classmates on the left and add the ones whose public schedules you want to compare.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      Search and add friends to compare schedules.
+                    </p>
                   )}
                 </div>
               </div>
@@ -660,134 +611,106 @@ export default function SchedulePage() {
           ) : null}
 
           {canManageBlocks ? (
-            <TabsContent value="admin" className="space-y-6">
-              <Card className="rounded-[28px] border-border/70">
-                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">School day block timing</CardTitle>
-                    <CardDescription>
-                      Configure the timing for periods and other school day segments.
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <Tabs value={adminWeekday} onValueChange={(value) => setAdminWeekday(value as ScheduleWeekday)} className="space-y-6">
-                    <TabsList className="h-auto w-full justify-start gap-2 rounded-3xl border border-border/70 bg-background/80 p-2">
-                      {WEEKDAYS.map((day) => (
-                        <TabsTrigger key={day.value} value={day.value} className="rounded-2xl px-4 py-2.5">
-                          {day.shortLabel}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                    {WEEKDAYS.map((day) => (
-                      <TabsContent key={day.value} value={day.value} className="space-y-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-lg font-semibold text-foreground">{day.label}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Add periods 1-8 or custom blocks like lunch, advisory, assembly, or dismissal.
-                            </p>
+            <TabsContent value="admin" className="mt-6">
+              {/* Weekday selector — underline style same as schedule tab */}
+              <div className="flex items-center gap-1 border-b border-border/30">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => setAdminWeekday(day.value)}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      adminWeekday === day.value
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {day.shortLabel}
+                  </button>
+                ))}
+                <Button
+                  size="sm"
+                  className="ml-auto mb-1 h-7 text-xs"
+                  onClick={() => {
+                    setCreatingDay(adminWeekday);
+                    setEditingBlockId(null);
+                  }}
+                >
+                  <Plus className="mr-1.5 size-3" />
+                  Add block
+                </Button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {creatingDay === adminWeekday ? (
+                  <SchoolDayBlockFormCard
+                    weekday={adminWeekday}
+                    title="New block"
+                    submitLabel={createBlockMutation.isPending ? 'Creating…' : 'Create'}
+                    submitIcon="plus"
+                    onSubmit={(payload) => createBlockMutation.mutate(payload)}
+                    onCancel={() => setCreatingDay(null)}
+                    isPending={createBlockMutation.isPending}
+                  />
+                ) : null}
+
+                {getBlocksForDay(blocks, adminWeekday).length > 0 ? (
+                  <div className="divide-y divide-border/30">
+                    {getBlocksForDay(blocks, adminWeekday).map((block) =>
+                      editingBlockId === block.id ? (
+                        <SchoolDayBlockFormCard
+                          key={block.id}
+                          weekday={adminWeekday}
+                          block={block}
+                          title={`Edit ${block.label}`}
+                          submitLabel={updateBlockMutation.isPending ? 'Saving…' : 'Save'}
+                          onSubmit={(payload) =>
+                            updateBlockMutation.mutate({ blockId: block.id, payload })
+                          }
+                          onDelete={() => deleteBlockMutation.mutate(block.id)}
+                          onCancel={() => setEditingBlockId(null)}
+                          isPending={updateBlockMutation.isPending}
+                          isDeleting={deleteBlockMutation.isPending}
+                        />
+                      ) : (
+                        <div
+                          key={block.id}
+                          className="group flex items-center justify-between gap-4 py-3 cursor-pointer"
+                          onClick={() => {
+                            setEditingBlockId(block.id);
+                            setCreatingDay(null);
+                          }}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-sm font-medium text-foreground">{block.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {block.startTime} – {block.endTime}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatDuration(block.durationMinutes)}
+                            </span>
                           </div>
                           <Button
-                            className="rounded-2xl"
-                            onClick={() => {
-                              setCreatingDay(day.value);
-                              setEditingBlockId(null);
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-[10px] px-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteBlockMutation.mutate(block.id);
                             }}
                           >
-                            <Plus className="mr-2 size-4" />
-                            Add block
+                            Delete
                           </Button>
                         </div>
-
-                        {creatingDay === day.value ? (
-                          <SchoolDayBlockFormCard
-                            weekday={day.value}
-                            title={`Add ${day.label} block`}
-                            description="Choose a period block if this should map to student schedules, or use a custom label for assemblies and other non-class blocks."
-                            submitLabel={createBlockMutation.isPending ? 'Creating…' : 'Create block'}
-                            submitIcon="plus"
-                            onSubmit={(payload) => createBlockMutation.mutate(payload)}
-                            onCancel={() => setCreatingDay(null)}
-                            isPending={createBlockMutation.isPending}
-                          />
-                        ) : null}
-
-                        {getBlocksForDay(blocks, day.value).length > 0 ? (
-                          <div className="space-y-4">
-                            {getBlocksForDay(blocks, day.value).map((block) =>
-                              editingBlockId === block.id ? (
-                                <SchoolDayBlockFormCard
-                                  key={block.id}
-                                  weekday={day.value}
-                                  block={block}
-                                  title={`Edit ${block.label}`}
-                                  description={`${block.startTime} - ${block.endTime} · ${formatDuration(block.durationMinutes)}`}
-                                  submitLabel={updateBlockMutation.isPending ? 'Saving…' : 'Save changes'}
-                                  onSubmit={(payload) =>
-                                    updateBlockMutation.mutate({ blockId: block.id, payload })
-                                  }
-                                  onDelete={() => deleteBlockMutation.mutate(block.id)}
-                                  onCancel={() => setEditingBlockId(null)}
-                                  isPending={updateBlockMutation.isPending}
-                                  isDeleting={deleteBlockMutation.isPending}
-                                />
-                              ) : (
-                                <Card key={block.id} className="rounded-3xl border-border/70 bg-background/90">
-                                  <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
-                                    <div className="space-y-2">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <p className="font-semibold text-foreground">{block.label}</p>
-                                        <Badge variant="outline" className="rounded-full">
-                                          {block.startTime} - {block.endTime}
-                                        </Badge>
-                                        <Badge variant="secondary" className="rounded-full">
-                                          {formatDuration(block.durationMinutes)}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button
-                                        variant="outline"
-                                        className="rounded-2xl"
-                                        onClick={() => {
-                                          setEditingBlockId(block.id);
-                                          setCreatingDay(null);
-                                        }}
-                                      >
-                                        Edit
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        className="rounded-2xl text-destructive hover:text-destructive"
-                                        onClick={() => deleteBlockMutation.mutate(block.id)}
-                                      >
-                                        Delete
-                                      </Button>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ),
-                            )}
-                          </div>
-                        ) : (
-                          <Empty className="rounded-[28px] border-border/70 bg-muted/20">
-                            <EmptyHeader>
-                              <EmptyMedia variant="icon">
-                                <Clock3 />
-                              </EmptyMedia>
-                              <EmptyTitle>No blocks configured for {day.label}</EmptyTitle>
-                              <EmptyDescription>
-                                Add the day&apos;s periods and any custom blocks from the button above.
-                              </EmptyDescription>
-                            </EmptyHeader>
-                          </Empty>
-                        )}
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                </CardContent>
-              </Card>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No blocks for this day yet.
+                  </p>
+                )}
+              </div>
             </TabsContent>
           ) : null}
         </Tabs>

@@ -122,6 +122,8 @@ export function copyDayEntries(
       sourceEntries.map((entry) => ({
         weekday,
         periodNumber: entry.periodNumber,
+        courseId: entry.courseId,
+        course: entry.course,
         className: entry.className,
       })),
     ),

@@ -1,3 +1,4 @@
+import 'client-only';
 import axios from 'axios';
 import type { AppUser, AuthLoginResponse } from '@ia/contracts/auth';
 import type {
@@ -8,12 +9,15 @@ import type {
   CreateClubTagPayload,
   ToggleClubChannelReactionPayload,
 } from '@ia/contracts/clubs';
+import type { CourseDetail, CourseSummary } from '@ia/contracts/courses';
 import type {
   SchoolDayBlockPayload,
   UpsertStudentSchedulePayload,
 } from '@ia/contracts/schedule';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export function toApiUrl(path: string) {
   if (!path) return path;
@@ -62,8 +66,8 @@ export const authApi = {
 
 // Users
 export const usersApi = {
-  getAll: (page = 1, limit = 50, search?: string) =>
-    api.get('/users', { params: { page, limit, search } }),
+  getAll: (page = 1, limit = 50, search?: string, roleGroup?: string) =>
+    api.get('/users', { params: { page, limit, search, roleGroup } }),
   getOne: (id: string) => api.get(`/users/${id}`),
   create: (data: any) => api.post('/users', data),
   update: (id: string, data: any) => api.patch(`/users/${id}`, data),
@@ -89,11 +93,13 @@ export const usersApi = {
 
 // Announcements
 export const announcementsApi = {
-  getAll: (archived = false, clubId?: string) =>
-    api.get('/announcements', { params: { archived, clubId } }),
+  getAll: (archived = false, clubId?: string, unreadOnly = false) =>
+    api.get('/announcements', { params: { archived, clubId, unreadOnly } }),
   getOne: (id: string) => api.get(`/announcements/${id}`),
   create: (data: any) => api.post('/announcements', data),
   archive: (id: string) => api.patch(`/announcements/${id}/archive`),
+  markRead: (id: string) => api.post(`/announcements/${id}/read`),
+  markUnread: (id: string) => api.delete(`/announcements/${id}/read`),
   addComment: (id: string, body: string) =>
     api.post(`/announcements/${id}/comments`, { body }),
   deleteComment: (commentId: string) => api.delete(`/announcements/comments/${commentId}`),
@@ -105,6 +111,13 @@ export const clubsApi = {
   getMyClubs: () => api.get('/clubs/my'),
   getMyInvites: () => api.get('/clubs/my/invites'),
   getOne: (id: string) => api.get(`/clubs/${id}`),
+  join: (id: string) => api.post(`/clubs/${id}/join`),
+  requestToJoin: (id: string) => api.post(`/clubs/${id}/request-join`),
+  redeemJoinCode: (id: string, code: string) =>
+    api.post(`/clubs/${id}/join-code/redeem`, { code }),
+  generateJoinCode: (id: string) => api.post(`/clubs/${id}/join-code`),
+  respondToJoinRequest: (id: string, requestId: string, accept: boolean) =>
+    api.post(`/clubs/${id}/join-requests/${requestId}/respond`, { accept }),
   getChannels: (clubId: string) => api.get(`/clubs/${clubId}/channels`),
   getChannelMessages: (clubId: string, channelId: string) =>
     api.get(`/clubs/${clubId}/channels/${channelId}/messages`),
@@ -112,6 +125,10 @@ export const clubsApi = {
   update: (id: string, data: any) => api.patch(`/clubs/${id}`, data),
   createChannel: (clubId: string, data: CreateClubChannelPayload) =>
     api.post(`/clubs/${clubId}/channels`, data),
+  deleteChannel: (clubId: string, channelId: string) =>
+    api.delete(`/clubs/${clubId}/channels/${channelId}`),
+  updateChannel: (clubId: string, channelId: string, data: UpdateClubChannelPayload) =>
+    api.patch(`/clubs/${clubId}/channels/${channelId}`, data),
   createTag: (clubId: string, data: CreateClubTagPayload) =>
     api.post(`/clubs/${clubId}/tags`, data),
   postChannelMessage: (
@@ -158,9 +175,18 @@ export const eventsApi = {
 };
 
 // Calendar
+export type CalendarSource = 'DISTRICT' | 'SCHOOL' | 'CLUB' | 'PERSONAL';
+
 export const calendarApi = {
-  getEntries: (startDate?: string, endDate?: string, tags?: string) =>
-    api.get('/calendar', { params: { startDate, endDate, tags } }),
+  getEntries: (startDate?: string, endDate?: string, tags?: string, sources?: CalendarSource[]) =>
+    api.get('/calendar', {
+      params: {
+        startDate,
+        endDate,
+        tags,
+        sources: sources && sources.length > 0 ? sources.join(',') : undefined,
+      },
+    }),
   createEntry: (data: {
     title: string;
     description?: string;
@@ -169,6 +195,7 @@ export const calendarApi = {
     endAt?: string;
     tags?: string[];
   }) => api.post('/calendar', data),
+  deleteEntry: (id: string) => api.delete(`/calendar/${id}`),
 };
 
 // Schedule
@@ -186,6 +213,17 @@ export const scheduleApi = {
   deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
 };
 
+export const coursesApi = {
+  list: (params?: {
+    q?: string;
+    department?: string;
+    pathway?: string;
+    gradeLevel?: number;
+    limit?: number;
+  }) => api.get<CourseSummary[]>('/courses', { params }),
+  getOne: (slug: string) => api.get<CourseDetail>(`/courses/${slug}`),
+};
+
 export const uploadsApi = {
   uploadChatAttachment: (file: File) => {
     const fd = new FormData();
@@ -193,6 +231,15 @@ export const uploadsApi = {
     return api.post<ChatAttachmentUploadResponse>('/uploads/chat-attachment', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+  },
+  uploadClubImage: (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api.post<{ url: string; filename: string; originalName: string; mimeType: string; size: number }>(
+      '/uploads/club-image',
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
   },
 };
 
@@ -204,15 +251,110 @@ export const flexFridayApi = {
   getSessions: (fridayId: string) => api.get(`/flex-friday/${fridayId}/sessions`),
   createSession: (fridayId: string, data: any) =>
     api.post(`/flex-friday/${fridayId}/sessions`, data),
-  register: (sessionId: string) =>
-    api.post(`/flex-friday/sessions/${sessionId}/register`),
-  unregister: (sessionId: string) =>
-    api.delete(`/flex-friday/sessions/${sessionId}/register`),
-  assign: (sessionId: string, studentId: string) =>
-    api.post(`/flex-friday/sessions/${sessionId}/assign`, { studentId }),
+  updateSession: (sessionId: string, data: any) =>
+    api.patch(`/flex-friday/sessions/${sessionId}`, data),
+  deleteSession: (sessionId: string) =>
+    api.delete(`/flex-friday/sessions/${sessionId}`),
+  getWorkshops: (fridayId: string, sessionId: string) =>
+    api.get(`/flex-friday/${fridayId}/sessions/${sessionId}/workshops`),
+  createWorkshop: (fridayId: string, data: any) =>
+    api.post(`/flex-friday/${fridayId}/workshops`, data),
+  updateWorkshop: (workshopId: string, data: any) =>
+    api.patch(`/flex-friday/workshops/${workshopId}`, data),
+  deleteWorkshop: (workshopId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}`),
+  register: (workshopId: string) =>
+    api.post(`/flex-friday/workshops/${workshopId}/register`),
+  unregister: (workshopId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}/register`),
+  assign: (workshopId: string, studentId: string) =>
+    api.post(`/flex-friday/workshops/${workshopId}/assign`, { studentId }),
   getMyRegistrations: () => api.get('/flex-friday/my/registrations'),
   getMyAssignments: () => api.get('/flex-friday/my/assignments'),
-  getRoster: (sessionId: string) => api.get(`/flex-friday/sessions/${sessionId}/roster`),
+  getMyCredits: () => api.get('/flex-friday/my/credits'),
+  getStudentCredits: (studentId: string, schoolYear?: number) =>
+    api.get(`/flex-friday/students/${studentId}/credits`, {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
+  getRoster: (workshopId: string) => api.get(`/flex-friday/workshops/${workshopId}/roster`),
+  markAttendance: (
+    workshopId: string,
+    studentId: string,
+    status: 'PRESENT' | 'ABSENT' | 'EXCUSED' = 'PRESENT',
+  ) =>
+    api.post(`/flex-friday/workshops/${workshopId}/attendance`, { studentId, status }),
+  clearAttendance: (workshopId: string, studentId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}/attendance/${studentId}`),
+  bulkMarkAttendance: (
+    workshopId: string,
+    entries: Array<{ studentId: string; status: 'PRESENT' | 'ABSENT' | 'EXCUSED' }>,
+  ) => api.post(`/flex-friday/workshops/${workshopId}/attendance/bulk`, { entries }),
+};
+
+// Wrapped (year-in-review)
+export type WrappedPathway = 'HEALTH_SCIENCE' | 'INFORMATION_TECHNOLOGY' | 'ENGINEERING';
+
+export interface WrappedSummary {
+  userId: string;
+  schoolYearStart: number;
+  schoolYearLabel: string;
+  rangeStart: string;
+  rangeEnd: string;
+
+  messagesSent: number;
+  channelsEngaged: number;
+  friends: number;
+  clubs: number;
+
+  flexCredits: number;
+  flexCreditsRequired: number;
+  pathwayFlexCredits: number;
+
+  topChannel: {
+    channelId: string;
+    channelName: string;
+    clubId: string;
+    clubName: string;
+    messages: number;
+  } | null;
+  topMentioned: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    mentions: number;
+  } | null;
+
+  pathway: {
+    major: WrappedPathway | null;
+    minor: WrappedPathway | null;
+    lanyardColor: string | null;
+    label: string | null;
+    peers: number;
+  };
+  mostUsedWord: { word: string; count: number } | null;
+  peakHour: { hour: number; messages: number } | null;
+  longestStreak: number;
+  mostActiveDay: { date: string; messages: number } | null;
+  reactionsReceived: number;
+  topEmoji: { emoji: string; count: number } | null;
+  longestMessageChars: number;
+}
+
+export interface WrappedAvailability {
+  open: boolean;
+  schoolYear: number;
+  schoolYearLabel: string;
+  opensAt: string;
+  closesAt: string;
+  secondsUntilOpen: number;
+}
+
+export const wrappedApi = {
+  getAvailability: () => api.get<WrappedAvailability>('/wrapped/availability'),
+  getMine: (schoolYear?: number) =>
+    api.get<WrappedSummary>('/wrapped/me', {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
 };
 
 // Notifications
@@ -239,6 +381,17 @@ export const moderationApi = {
 
 // Audit
 export const auditApi = {
-  getAll: (limit = 100, offset = 0) =>
-    api.get('/audit', { params: { limit, offset } }),
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    query?: string;
+    actor?: string;
+    entityId?: string;
+    action?: string;
+    entityType?: string;
+    actorScope?: 'USER' | 'SYSTEM';
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/audit', { params }),
+  getOne: (id: string) => api.get(`/audit/entries/${id}`),
 };
