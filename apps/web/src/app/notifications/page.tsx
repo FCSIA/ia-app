@@ -60,6 +60,7 @@ export default function NotificationsPage() {
     EVENT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     FLEX_FRIDAY: 'bg-foreground/10 text-foreground border-foreground/20',
     CLUB_CHANNEL_MENTION: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',
+    CONTENT_MODERATED: 'bg-red-500/15 text-red-400 border-red-500/25',
   };
 
   function openNotification(notification: any) {
@@ -79,6 +80,11 @@ export default function NotificationsPage() {
 
     if (notification.eventId) {
       router.push('/events');
+      return;
+    }
+
+    if (notification.category === 'CONTENT_MODERATED') {
+      router.push('/profile');
     }
   }
 

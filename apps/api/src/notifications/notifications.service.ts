@@ -56,6 +56,7 @@ export class NotificationsService {
       NotificationCategory.EVENT,
       NotificationCategory.FLEX_FRIDAY,
       NotificationCategory.CLUB_CHANNEL_MENTION,
+      NotificationCategory.CONTENT_MODERATED,
     ];
     for (const category of categories) {
       await this.prisma.notificationPreference.upsert({

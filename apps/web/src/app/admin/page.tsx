@@ -56,6 +56,7 @@ export default function AdminPage() {
   const user = getUser();
   const router = useRouter();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -84,6 +85,7 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
     if (user && !hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF')) {
       router.replace('/dashboard');
     }
@@ -227,6 +229,8 @@ export default function AdminPage() {
   };
 
   const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
+
+  if (!mounted) return null;
 
   return (
     <AppShell>

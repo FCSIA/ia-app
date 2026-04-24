@@ -9,6 +9,9 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
+import { ModerationService } from '../moderation/moderation.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationCategory } from '@prisma/client';
 
 const SPONSOR_ELIGIBLE_ROLES: Role[] = [
   Role.TEACHER,
@@ -23,6 +26,8 @@ export class ClubManagementService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly accessPolicy: ClubAccessPolicy,
+    private readonly moderation: ModerationService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private buildDirectory(club: {
@@ -232,17 +237,31 @@ export class ClubManagementService {
 
   async create(dto: CreateClubDto, actorId: string) {
     const sponsorIds = await this.validateSponsorSelection(dto.sponsorIds);
+    const [nameModeration, descriptionModeration] = await Promise.all([
+      this.moderation.maskProfanity(dto.name.trim()),
+      this.moderation.maskProfanity(dto.description?.trim() ?? ''),
+    ]);
 
     const club = await this.prisma.club.create({
       data: {
-        name: dto.name.trim(),
-        description: dto.description?.trim() || undefined,
+        name: nameModeration.masked,
+        description: descriptionModeration.masked || undefined,
         joinPolicy: dto.joinPolicy ?? 'OPEN',
         sponsors: {
           create: sponsorIds.map((sponsorId) => ({ userId: sponsorId })),
         },
       },
     });
+
+    if (nameModeration.wasFiltered || descriptionModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Club details filtered for language',
+        body: 'We replaced flagged words in your club name or description.',
+        clubId: club.id,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -263,18 +282,38 @@ export class ClubManagementService {
       return trimmed.length === 0 ? null : trimmed;
     };
 
+    const moderatedName = dto.name === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(dto.name.trim());
+    const moderatedDescription = dto.description === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(dto.description.trim());
+    const moderatedOverview = dto.overview === undefined || dto.overview === null
+      ? dto.overview
+      : (await this.moderation.maskProfanity(dto.overview.trim())).masked;
+
     const club = await this.prisma.club.update({
       where: { id },
       data: {
-        name: dto.name?.trim(),
-        description: dto.description?.trim(),
+        name: moderatedName?.masked,
+        description: moderatedDescription?.masked,
         joinPolicy: dto.joinPolicy,
         logoUrl: normalizeNullable(dto.logoUrl),
         bannerUrl: normalizeNullable(dto.bannerUrl),
         accentColor: normalizeNullable(dto.accentColor),
-        overview: normalizeNullable(dto.overview),
+        overview: normalizeNullable(moderatedOverview),
       },
     });
+
+    if (moderatedName?.wasFiltered || moderatedDescription?.wasFiltered || moderatedOverview !== dto.overview) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Club update filtered for language',
+        body: 'We replaced flagged words in your club updates.',
+        clubId: id,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -334,18 +373,29 @@ export class ClubManagementService {
     }
 
     const normalizedRole = this.normalizeClubRole(role);
+    const moderatedRole = normalizedRole ? await this.moderation.maskProfanity(normalizedRole) : null;
 
     await this.prisma.clubMember.update({
       where: { clubId_userId: { clubId, userId: memberId } },
-      data: { role: normalizedRole },
+      data: { role: moderatedRole?.masked ?? null },
     });
+
+    if (moderatedRole?.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Role title filtered for language',
+        body: 'We replaced flagged words in the member role title.',
+        clubId,
+      });
+    }
 
     await this.audit.log({
       actorId,
       action: 'CLUB_MEMBER_ROLE_SET',
       entityType: 'Club',
       entityId: clubId,
-      meta: { memberId, role: normalizedRole },
+      meta: { memberId, role: moderatedRole?.masked ?? null },
     });
 
     return { success: true };

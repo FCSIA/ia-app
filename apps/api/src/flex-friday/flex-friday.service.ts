@@ -8,10 +8,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModerationService } from '../moderation/moderation.service';
 import {
   FlexFridayType,
   FlexSessionType,
   NotificationCategory,
+  ContentType,
   Role,
   Pathway,
   CalendarSource,
@@ -53,6 +55,7 @@ export class FlexFridayService {
     private prisma: PrismaService,
     private audit: AuditService,
     private notifications: NotificationsService,
+    private moderation: ModerationService,
   ) {}
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -103,6 +106,7 @@ export class FlexFridayService {
     actorId: string,
   ) {
     const fridayDate = new Date(data.date);
+    const notesModeration = await this.moderation.maskProfanity(data.notes?.trim() ?? '');
 
     const friday = await this.prisma.flexFriday.create({
       data: {
@@ -111,7 +115,7 @@ export class FlexFridayService {
         gradeLevel: data.gradeLevel,
         pathway: data.pathway,
         isSchoolDay: data.isSchoolDay ?? true,
-        notes: data.notes,
+        notes: notesModeration.masked || undefined,
       },
     });
 
@@ -140,8 +144,24 @@ export class FlexFridayService {
       userIds: users.map((u) => u.id),
       category: NotificationCategory.FLEX_FRIDAY,
       title: `Flex Friday: ${data.date}`,
-      body: data.notes || `New Flex Friday scheduled for ${data.date}`,
+      body: notesModeration.masked || `New Flex Friday scheduled for ${data.date}`,
     });
+
+    if (notesModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Flex Friday notes filtered for language',
+        body: 'We replaced flagged words in your Flex Friday notes.',
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).FLEX_FRIDAY,
+        friday.id,
+        actorId,
+        notesModeration.matchedWords,
+      );
+    }
 
     return friday;
   }
@@ -221,16 +241,42 @@ export class FlexFridayService {
       throw new BadRequestException('startTime must be before endTime');
     }
 
+    const [titleModeration, descriptionModeration] = await Promise.all([
+      this.moderation.maskProfanity(data.title.trim()),
+      this.moderation.maskProfanity(data.description?.trim() ?? ''),
+    ]);
+
     const session = await this.prisma.flexSession.create({
       data: {
-        title: data.title,
-        description: data.description,
+        title: titleModeration.masked,
+        description: descriptionModeration.masked || undefined,
         sessionType: data.sessionType,
         startTime: data.startTime,
         endTime: data.endTime,
         flexFriday: { connect: { id: fridayId } },
       },
     });
+
+    if (titleModeration.wasFiltered || descriptionModeration.wasFiltered) {
+      const matchedWords = Array.from(new Set([
+        ...titleModeration.matchedWords,
+        ...descriptionModeration.matchedWords,
+      ]));
+
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Session content filtered for language',
+        body: 'We replaced flagged words in your session title or description.',
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).FLEX_SESSION,
+        session.id,
+        actorId,
+        matchedWords,
+      );
+    }
 
     await this.syncCalendarEntry(fridayId);
 
@@ -272,16 +318,44 @@ export class FlexFridayService {
       throw new BadRequestException('startTime must be before endTime');
     }
 
+    const titleMod = data.title === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(data.title.trim());
+    const descMod = data.description === undefined || data.description === null
+      ? undefined
+      : await this.moderation.maskProfanity(data.description.trim());
+
     const updated = await this.prisma.flexSession.update({
       where: { id: sessionId },
       data: {
-        title: data.title,
-        description: data.description === null ? null : data.description,
+        title: titleMod?.masked,
+        description: data.description === null ? null : descMod?.masked,
         sessionType: data.sessionType,
         startTime: data.startTime,
         endTime: data.endTime,
       },
     });
+
+    if (titleMod?.wasFiltered || descMod?.wasFiltered) {
+      const matchedWords = Array.from(new Set([
+        ...(titleMod?.matchedWords || []),
+        ...(descMod?.matchedWords || []),
+      ]));
+
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Session update filtered for language',
+        body: 'We replaced flagged words in your session update.',
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).FLEX_SESSION,
+        sessionId,
+        actorId,
+        matchedWords,
+      );
+    }
 
     await this.syncCalendarEntry(session.flexFridayId);
 
@@ -381,11 +455,17 @@ export class FlexFridayService {
       throw new BadRequestException('All sessions must belong to the same Flex Friday');
     }
 
+    const [titleModeration, descriptionModeration, locationModeration] = await Promise.all([
+      this.moderation.maskProfanity(data.title.trim()),
+      this.moderation.maskProfanity(data.description?.trim() ?? ''),
+      this.moderation.maskProfanity(data.location?.trim() ?? ''),
+    ]);
+
     const workshop = await this.prisma.flexWorkshop.create({
       data: {
-        title: data.title,
-        description: data.description,
-        location: data.location,
+        title: titleModeration.masked,
+        description: descriptionModeration.masked || undefined,
+        location: locationModeration.masked || undefined,
         capacity: data.capacity,
         teacherId: actorId,
         targetGrades: data.targetGrades ?? [],
@@ -399,6 +479,28 @@ export class FlexFridayService {
         sessions: { include: { session: true } },
       },
     });
+
+    if (titleModeration.wasFiltered || descriptionModeration.wasFiltered || locationModeration.wasFiltered) {
+      const matchedWords = Array.from(new Set([
+        ...titleModeration.matchedWords,
+        ...descriptionModeration.matchedWords,
+        ...locationModeration.matchedWords,
+      ]));
+
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Workshop content filtered for language',
+        body: 'We replaced flagged words in your workshop details.',
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).FLEX_WORKSHOP,
+        workshop.id,
+        actorId,
+        matchedWords,
+      );
+    }
 
     await this.audit.log({
       actorId,
@@ -448,6 +550,16 @@ export class FlexFridayService {
       }
     }
 
+    const titleMod = data.title === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(data.title.trim());
+    const descMod = data.description === undefined || data.description === null
+      ? undefined
+      : await this.moderation.maskProfanity(data.description.trim());
+    const locMod = data.location === undefined || data.location === null
+      ? undefined
+      : await this.moderation.maskProfanity(data.location.trim());
+
     const updated = await this.prisma.$transaction(async (tx) => {
       if (data.sessionIds) {
         await tx.flexWorkshopSession.deleteMany({ where: { workshopId } });
@@ -458,9 +570,9 @@ export class FlexFridayService {
       return tx.flexWorkshop.update({
         where: { id: workshopId },
         data: {
-          title: data.title,
-          description: data.description === null ? null : data.description,
-          location: data.location === null ? null : data.location,
+          title: titleMod?.masked,
+          description: data.description === null ? null : descMod?.masked,
+          location: data.location === null ? null : locMod?.masked,
           capacity: data.capacity === null ? null : data.capacity,
           targetGrades: data.targetGrades,
           targetMajorPathways: data.targetMajorPathways,
@@ -469,6 +581,28 @@ export class FlexFridayService {
         include: { sessions: { include: { session: true } } },
       });
     });
+
+    if (titleMod?.wasFiltered || descMod?.wasFiltered || locMod?.wasFiltered) {
+      const matchedWords = Array.from(new Set([
+        ...(titleMod?.matchedWords || []),
+        ...(descMod?.matchedWords || []),
+        ...(locMod?.matchedWords || []),
+      ]));
+
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Workshop update filtered for language',
+        body: 'We replaced flagged words in your workshop update.',
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).FLEX_WORKSHOP,
+        workshopId,
+        actorId,
+        matchedWords,
+      );
+    }
 
     await this.audit.log({
       actorId,

@@ -805,6 +805,10 @@ enum ContentType {
   ANNOUNCEMENT
   COMMENT
   EVENT
+  CLUB_CHANNEL_MESSAGE
+  FLEX_FRIDAY
+  FLEX_SESSION
+  FLEX_WORKSHOP
 }
 
 enum NotificationCategory {
@@ -815,6 +819,7 @@ enum NotificationCategory {
   FLEX_FRIDAY
   CLUB_CHANNEL_MENTION
   FRIEND_REQUEST
+  CONTENT_MODERATED
 }
 
 enum CalendarSource {

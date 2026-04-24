@@ -25,6 +25,14 @@ export default function ProfilePage() {
     queryKey: ['notification-prefs'],
     queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
   });
+  const { data: moderationAlerts = [] } = useQuery({
+    queryKey: ['profile-moderation-alerts'],
+    queryFn: () =>
+      notificationsApi
+        .getAll(true)
+        .then((r) => r.data)
+        .then((rows: any[]) => rows.filter((row) => row.category === 'CONTENT_MODERATED').slice(0, 5)),
+  });
 
   const changePwMutation = useMutation({
     mutationFn: (d: any) => authApi.changePassword(d.currentPassword, d.newPassword),
@@ -51,6 +59,7 @@ export default function ProfilePage() {
     { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
     { key: 'EVENT', label: 'Events' },
     { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
+    { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
   ];
 
   const initials = user
@@ -228,6 +237,25 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground pt-3 mt-1 border-t border-foreground/[0.06]">
               Admin-general announcements always notify you regardless of preferences.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Content moderation alerts */}
+        <Card>
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+            <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            {(moderationAlerts as any[]).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
+            ) : (
+              (moderationAlerts as any[]).map((alert) => (
+                <div key={alert.id} className="rounded-md border p-3">
+                  <p className="text-sm font-medium">{alert.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{alert.body}</p>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
