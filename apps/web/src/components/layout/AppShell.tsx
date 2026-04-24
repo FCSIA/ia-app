@@ -166,10 +166,10 @@ export function AppShell({
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const showSchedule =
     user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN');
-  // Wrapped only appears in the nav during its May window. Admins always see
-  // it so they can preview without waiting for the calendar.
-  const showWrapped =
-    computeWrappedAvailability().open || (user && hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
+  // Wrapped only appears in the nav during its May window — hidden for
+  // everyone (including admins) outside that window. Admins who need to
+  // preview can still navigate to /wrapped directly.
+  const showWrapped = computeWrappedAvailability().open;
 
   const primary = useMemo(
     () =>
