@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  Star,
   Ticket,
   type LucideIcon,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ const primaryNav: NavItem[] = [
   { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
   { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
+  { href: '/wrapped', label: 'Wrapped', icon: Star },
 ];
 
 const accountNav: NavItem[] = [
@@ -66,6 +68,7 @@ const pageMeta: Record<string, { label: string; detail: string }> = {
   '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
   '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
   '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
+  '/wrapped': { label: 'Wrapped', detail: 'Your year at a glance.' },
   '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
   '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
   '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },

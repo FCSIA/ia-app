@@ -291,6 +291,41 @@ export const flexFridayApi = {
   ) => api.post(`/flex-friday/workshops/${workshopId}/attendance/bulk`, { entries }),
 };
 
+// Wrapped (year-in-review)
+export interface WrappedSummary {
+  userId: string;
+  schoolYearStart: number;
+  schoolYearLabel: string;
+  rangeStart: string;
+  rangeEnd: string;
+  messagesSent: number;
+  flexCredits: number;
+  flexCreditsRequired: number;
+  channelsEngaged: number;
+  friends: number;
+  clubs: number;
+  topChannel: {
+    channelId: string;
+    channelName: string;
+    clubId: string;
+    clubName: string;
+    messages: number;
+  } | null;
+  topMentioned: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    mentions: number;
+  } | null;
+}
+
+export const wrappedApi = {
+  getMine: (schoolYear?: number) =>
+    api.get<WrappedSummary>('/wrapped/me', {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
+};
+
 // Notifications
 export const notificationsApi = {
   getAll: (unreadOnly = false) =>
