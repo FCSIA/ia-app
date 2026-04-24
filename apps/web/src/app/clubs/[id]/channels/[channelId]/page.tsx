@@ -9,7 +9,6 @@ import {
   ImageIcon,
   MessageSquareText,
   Reply,
-  Search,
   X,
 } from 'lucide-react';
 import type {
@@ -41,8 +40,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
+import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -382,12 +382,12 @@ export default function ClubChannelPage({
   );
 
   const matchingIds = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
+    const query = normalizeSearchQuery(deferredSearch);
     if (!query) return new Set<string>();
     return new Set(
-      flattenedMessages
-        .filter((m) => getSearchableText(m).includes(query))
-        .map((m) => m.id),
+      filterBySearchQuery(flattenedMessages, query, (message) => [
+        getSearchableText(message),
+      ]).map((message) => message.id),
     );
   }, [deferredSearch, flattenedMessages]);
 
@@ -429,13 +429,14 @@ export default function ClubChannelPage({
   );
 
   const actions: ReactNode = (
-    <div className="relative w-56">
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input
+    <div className="w-56">
+      <SearchInput
         value={search}
-        onChange={(event) => setSearch(event.target.value)}
+        onValueChange={setSearch}
         placeholder="Search messages"
-        className="h-8 pl-8 text-sm"
+        size="sm"
+        className="h-8 rounded-lg"
+        inputClassName="text-sm"
       />
     </div>
   );

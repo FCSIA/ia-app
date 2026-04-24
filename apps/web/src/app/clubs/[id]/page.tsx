@@ -9,11 +9,8 @@ import {
   Megaphone,
   MessageSquareText,
   Search,
-  Shield,
   Sparkles,
   UserPlus,
-  Users2,
-  X,
 } from 'lucide-react';
 import type { ClubDetail } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
@@ -26,11 +23,13 @@ import { formatClubRole, fullName, type AnnouncementSummary } from '@/components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { announcementsApi, clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { filterBySearchQuery } from '@/lib/search';
 
 function RequestsPanel({
   club,
@@ -352,11 +351,10 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   });
 
   const filteredAnnouncements = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return announcements;
-    return announcements.filter((a) =>
-      [a.title, a.body].filter(Boolean).some((text) => text.toLowerCase().includes(query))
-    );
+    return filterBySearchQuery(announcements, deferredSearch, (announcement) => [
+      announcement.title,
+      announcement.body,
+    ]);
   }, [announcements, deferredSearch]);
 
   if (!club) return null;
@@ -482,25 +480,11 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             <span className="text-xs text-muted-foreground">{announcements.length} total</span>
           </div>
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-10"
-              placeholder="Search announcements..."
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+          <SearchInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search announcements..."
+          />
 
           {filteredAnnouncements.length > 0 ? (
             <div className="space-y-3">

@@ -5,30 +5,20 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
-import { format, parseISO } from 'date-fns';
-import {
-  Plus,
-  Users,
-  MapPin,
-  CheckCircle,
-  CalendarIcon,
-  Ticket,
-  ChevronRight,
-  Search,
-  X,
-  Clock,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { format } from 'date-fns';
+import { Plus, Users, MapPin, CheckCircle, Ticket, ChevronRight, Clock, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import Link from 'next/link';
+import { filterBySearchQuery } from '@/lib/search';
+import { cn } from '@/lib/utils';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -135,21 +125,18 @@ export default function FlexFridayPage() {
   });
 
   const filteredSessions = useMemo(() => {
-    const query = deferredSessionSearch.trim().toLowerCase();
-    if (!query) return sessions;
-    return (sessions as any[]).filter((s) => {
-      const searchable = [s.title, s.description].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(sessions as any[], deferredSessionSearch, (session) => [
+      session.title,
+      session.description,
+    ]);
   }, [sessions, deferredSessionSearch]);
 
   const filteredWorkshops = useMemo(() => {
-    const query = deferredWorkshopSearch.trim().toLowerCase();
-    if (!query) return workshops;
-    return (workshops as any[]).filter((w) => {
-      const searchable = [w.title, w.description, w.location].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(workshops as any[], deferredWorkshopSearch, (workshop) => [
+      workshop.title,
+      workshop.description,
+      workshop.location,
+    ]);
   }, [workshops, deferredWorkshopSearch]);
 
   const myRegWorkshopIds = new Set((myRegs as any[]).map((r: any) => r.workshopId));
@@ -561,26 +548,12 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
-                <div className="mb-4 border-b pb-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={sessionSearch}
-                      onChange={(e) => setSessionSearch(e.target.value)}
-                      className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                      placeholder="Search sessions..."
-                    />
-                    {sessionSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setSessionSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                <SearchInput
+                  value={sessionSearch}
+                  onValueChange={setSessionSearch}
+                  className="mb-4 rounded-xl border-foreground/10"
+                  placeholder="Search sessions..."
+                />
 
                 {sessionFormOpen && canCreateSession && (
                   <Card className="mb-4">
@@ -735,26 +708,12 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
-                <div className="mb-4 border-b pb-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={workshopSearch}
-                      onChange={(e) => setWorkshopSearch(e.target.value)}
-                      className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                      placeholder="Search workshops..."
-                    />
-                    {workshopSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setWorkshopSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                <SearchInput
+                  value={workshopSearch}
+                  onValueChange={setWorkshopSearch}
+                  className="mb-4 rounded-xl border-foreground/10"
+                  placeholder="Search workshops..."
+                />
 
                 {workshopFormOpen && canCreateSession && (
                   <Card className="mb-4">

@@ -2,7 +2,7 @@
 
 import { use, useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crown, Search, UserMinus, UserPlus } from 'lucide-react';
+import { Crown, UserMinus, UserPlus } from 'lucide-react';
 import type { ClubDetail, ClubDirectoryEntry } from '@ia/contracts/clubs';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
@@ -11,10 +11,11 @@ import { SetRoleDialog } from '@/components/clubs/dialogs/set-role-dialog';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { filterBySearchQuery } from '@/lib/search';
 
 export default function ClubPeoplePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -51,13 +52,12 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
 
   const directory = club?.directory ?? [];
   const filtered = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return directory;
-    return directory.filter((person) =>
-      [fullName(person), person.uniqueId, person.kind, person.clubRole]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query)),
-    );
+    return filterBySearchQuery(directory, deferredSearch, (person) => [
+      fullName(person),
+      person.uniqueId,
+      person.kind,
+      person.clubRole,
+    ]);
   }, [deferredSearch, directory]);
 
   const sponsors = filtered.filter((p) => p.kind === 'SPONSOR');
@@ -82,15 +82,12 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
   return (
     <ClubWorkspace clubId={id} title={title} actions={actions}>
       <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search roster"
-            className="h-9 pl-8"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search roster"
+          className="rounded-lg"
+        />
 
         {sponsors.length > 0 ? (
           <section className="space-y-2">

@@ -55,7 +55,7 @@ export function AdminStatsWidget() {
 
   const { data: audit = [] } = useQuery({
     queryKey: ['audit', 'recent'],
-    queryFn: () => auditApi.getAll(10, 0).then((r) => r.data),
+    queryFn: () => auditApi.getAll({ limit: 10, offset: 0 }).then((r) => r.data),
   });
 
   const pendingReports = (reports as any[]).filter((r) => r.status === 'PENDING').length;

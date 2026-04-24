@@ -66,8 +66,8 @@ export const authApi = {
 
 // Users
 export const usersApi = {
-  getAll: (page = 1, limit = 50, search?: string) =>
-    api.get('/users', { params: { page, limit, search } }),
+  getAll: (page = 1, limit = 50, search?: string, roleGroup?: string) =>
+    api.get('/users', { params: { page, limit, search, roleGroup } }),
   getOne: (id: string) => api.get(`/users/${id}`),
   create: (data: any) => api.post('/users', data),
   update: (id: string, data: any) => api.patch(`/users/${id}`, data),

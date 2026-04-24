@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useDeferredValue, useMemo } from 'react';
+import { useState, useEffect, useDeferredValue, useMemo, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +18,6 @@ import {
   Trash2,
   CalendarDays,
   Download,
-  Search,
   X,
   Eye,
 } from 'lucide-react';
@@ -27,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
+import { SearchInput } from '@/components/ui/search';
 import {
   Select,
   SelectContent,
@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 type StudentImportResult = {
   created: number;
@@ -100,63 +101,126 @@ type AdminUserRecord = {
   isActive?: boolean;
 };
 
-const STUDENT_ROLES = new Set(['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN']);
-const TEACHER_ROLES = new Set(['TEACHER', 'SPONSOR']);
+type AdminUserRoleGroup = 'students' | 'teachers' | 'other';
+
 const AUDIT_FETCH_LIMIT = 250;
+const MIN_USERS_PAGE_SIZE = 6;
+const MAX_USERS_PAGE_SIZE = 20;
+const USER_TABLE_CHROME_HEIGHT = 112;
+const USER_TABLE_ROW_HEIGHT = 29;
+const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; emptyMessage: string; showGrade: boolean }> = {
+  students: {
+    label: 'Students',
+    emptyMessage: 'No students found.',
+    showGrade: true,
+  },
+  teachers: {
+    label: 'Teachers',
+    emptyMessage: 'No teachers found.',
+    showGrade: false,
+  },
+  other: {
+    label: 'Other Roles',
+    emptyMessage: 'No admin or staff accounts found.',
+    showGrade: false,
+  },
+};
 
 function getUserRoles(user: AdminUserRecord) {
   if (user.roles?.length) return user.roles;
   return user.role ? [user.role] : [];
 }
 
-function getUserBucket(user: AdminUserRecord) {
-  const roles = getUserRoles(user);
-  if (roles.some((role) => STUDENT_ROLES.has(role))) return 'students' as const;
-  if (roles.some((role) => TEACHER_ROLES.has(role))) return 'teachers' as const;
-  return 'other' as const;
-}
-
 function formatRoleLabel(role: string) {
   return role.replace(/_/g, ' ');
+}
+
+function getDynamicUsersPageSize(availableHeight: number) {
+  const computedPageSize = Math.floor((availableHeight - USER_TABLE_CHROME_HEIGHT) / USER_TABLE_ROW_HEIGHT);
+  return Math.max(MIN_USERS_PAGE_SIZE, Math.min(MAX_USERS_PAGE_SIZE, computedPageSize));
+}
+
+function UsersPaginationControls({
+  page,
+  total,
+  pageSize,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  total: number;
+  pageSize: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const totalPages = Math.ceil(total / pageSize);
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 border-t px-4 py-2.5">
+      <Button variant="outline" size="sm" className="h-7 px-2.5 text-[11px]" disabled={page === 1} onClick={onPrev}>
+        Prev
+      </Button>
+      <span className="text-[11px] text-muted-foreground">
+        Page {page} of {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 px-2.5 text-[11px]"
+        disabled={page >= totalPages}
+        onClick={onNext}
+      >
+        Next
+      </Button>
+    </div>
+  );
 }
 
 function UserTableSection({
   title,
   emptyMessage,
   users,
+  totalCount,
   showGrade = false,
   currentUserId,
   canDeactivate,
   onDeactivate,
   onActivate,
+  pagination,
 }: {
   title: string;
   emptyMessage: string;
   users: AdminUserRecord[];
+  totalCount?: number;
   showGrade?: boolean;
   currentUserId?: string;
   canDeactivate: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  pagination?: ReactNode;
 }) {
   const headers = showGrade
     ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
     : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
 
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <CardHeader className="border-b px-4 py-2.5">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <Badge variant="secondary">{users.length}</Badge>
+          <CardTitle className="text-sm">{title}</CardTitle>
+          <Badge variant="secondary" className="px-2 py-0 text-[10px]">
+            {totalCount ?? users.length}
+          </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <Table>
+      <CardContent className="flex-1 p-0">
+        <Table className="text-[11px]">
           <TableHeader className="bg-muted/50">
             <TableRow>
               {headers.map((header) => (
-                <TableHead key={header} className="px-4 py-3 text-xs uppercase tracking-wide">
+                <TableHead key={header} className="h-8 px-3 py-1 text-[10px] uppercase tracking-wide">
                   {header}
                 </TableHead>
               ))}
@@ -165,65 +229,65 @@ function UserTableSection({
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={headers.length} className="px-4 py-10 text-center text-muted-foreground">
+                <TableCell colSpan={headers.length} className="px-3 py-8 text-center text-[11px] text-muted-foreground">
                   {emptyMessage}
                 </TableCell>
               </TableRow>
             ) : (
               users.map((user) => (
                 <TableRow key={user.id} className="hover:bg-muted/30">
-                  <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  <TableCell className="px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
                     {user.uniqueId}
                   </TableCell>
-                  <TableCell className="px-4 py-3 font-medium">
+                  <TableCell className="px-3 py-1.5 text-[11px] font-medium leading-tight">
                     {user.firstName} {user.lastName}
                   </TableCell>
                   {showGrade ? (
-                    <TableCell className="px-4 py-3 text-muted-foreground">
+                    <TableCell className="px-3 py-1.5 text-[11px] text-muted-foreground">
                       {user.gradeLevel || '—'}
                     </TableCell>
                   ) : null}
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-3 py-1.5">
                     <div className="flex flex-wrap gap-1">
                       {getUserRoles(user).map((role) => (
-                        <Badge key={role} variant="outline" className="text-[10px]">
+                        <Badge key={role} variant="outline" className="px-1.5 py-0 text-[9px]">
                           {formatRoleLabel(role)}
                         </Badge>
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-3 py-1.5">
                     <Badge
                       variant={user.isActive ? 'default' : 'secondary'}
                       className={
                         user.isActive
-                          ? 'bg-emerald-500/15 text-emerald-500 border-none'
-                          : 'bg-red-500/15 text-red-500 border-none'
+                          ? 'border-none bg-emerald-500/15 px-1.5 py-0 text-[9px] text-emerald-500'
+                          : 'border-none bg-red-500/15 px-1.5 py-0 text-[9px] text-red-500'
                       }
                     >
                       {user.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
+                  <TableCell className="px-3 py-1.5">
                     {user.isActive ? (
                       canDeactivate(user) && user.id !== currentUserId ? (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => onDeactivate(user.id)}
-                          className="h-8 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                          className="h-6 px-2 text-[10px] text-red-500 hover:bg-red-500/10 hover:text-red-400"
                         >
                           Deactivate
                         </Button>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-[10px] text-muted-foreground">—</span>
                       )
                     ) : (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onActivate(user.id)}
-                        className="h-8 text-xs text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+                        className="h-6 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
                       >
                         Activate
                       </Button>
@@ -235,6 +299,7 @@ function UserTableSection({
           </TableBody>
         </Table>
       </CardContent>
+      {pagination}
     </Card>
   );
 }
@@ -266,9 +331,12 @@ export default function AdminPage() {
   const user = useCurrentUser();
   const router = useRouter();
   const { toast } = useToast();
+  const usersViewportRef = useRef<HTMLDivElement | null>(null);
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
+  const [usersPageSize, setUsersPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [activeTab, setActiveTab] = useState('users');
   const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
@@ -309,6 +377,37 @@ export default function AdminPage() {
     }
   }, [user, router]);
 
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+
+    const updateUsersPageSize = () => {
+      const availableHeight = usersViewportRef.current?.clientHeight ?? 0;
+      if (availableHeight <= 0) return;
+
+      const nextPageSize = getDynamicUsersPageSize(availableHeight);
+      setUsersPageSize((currentPageSize) => (
+        currentPageSize === nextPageSize ? currentPageSize : nextPageSize
+      ));
+    };
+
+    const frameId = window.requestAnimationFrame(updateUsersPageSize);
+    const resizeObserver = typeof ResizeObserver !== 'undefined' && usersViewportRef.current
+      ? new ResizeObserver(updateUsersPageSize)
+      : null;
+
+    if (resizeObserver && usersViewportRef.current) {
+      resizeObserver.observe(usersViewportRef.current);
+    }
+
+    window.addEventListener('resize', updateUsersPageSize);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateUsersPageSize);
+      resizeObserver?.disconnect();
+    };
+  }, [activeTab]);
+
   const {
     data: usersData,
     isLoading: isUsersLoading,
@@ -316,8 +415,8 @@ export default function AdminPage() {
     error: usersError,
     refetch: refetchUsers,
   } = useQuery({
-    queryKey: ['admin-users', page, search],
-    queryFn: () => usersApi.getAll(page, 20, search || undefined).then((r) => r.data),
+    queryKey: ['admin-users', page, search, userRoleGroup, usersPageSize],
+    queryFn: () => usersApi.getAll(page, usersPageSize, search || undefined, userRoleGroup).then((r) => r.data),
     enabled: activeTab === 'users',
   });
 
@@ -332,6 +431,13 @@ export default function AdminPage() {
     queryFn: () => moderationApi.getReports().then((r) => r.data),
     enabled: activeTab === 'moderation',
   });
+
+  useEffect(() => {
+    const totalPages = usersData?.total ? Math.max(1, Math.ceil(usersData.total / usersPageSize)) : 1;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, usersData?.total, usersPageSize]);
 
   const auditQueryParams = useMemo(
     () => ({
@@ -435,20 +541,6 @@ export default function AdminPage() {
     }
   };
 
-  const groupedUsers = useMemo(() => {
-    const buckets = {
-      students: [] as AdminUserRecord[],
-      teachers: [] as AdminUserRecord[],
-      other: [] as AdminUserRecord[],
-    };
-
-    for (const account of ((usersData?.users || []) as AdminUserRecord[])) {
-      buckets[getUserBucket(account)].push(account);
-    }
-
-    return buckets;
-  }, [usersData?.users]);
-
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => usersApi.deactivate(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-users'] }); toast({ title: 'Deactivated' }); },
@@ -533,6 +625,16 @@ export default function AdminPage() {
   };
 
   const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
+  const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
+  const usersPagination = usersData?.total ? (
+    <UsersPaginationControls
+      page={page}
+      total={usersData.total}
+      pageSize={usersPageSize}
+      onPrev={() => setPage((p) => p - 1)}
+      onNext={() => setPage((p) => p + 1)}
+    />
+  ) : null;
 
   const auditFilterChips = [
     auditSearch.trim() ? `Search: ${auditSearch.trim()}` : null,
@@ -550,25 +652,35 @@ export default function AdminPage() {
   ].filter((value): value is string => !!value);
 
   return (
-    <AppShell>
-      <div className="max-w-5xl mx-auto">
+    <AppShell
+      mainClassName={
+        activeTab === 'users'
+          ? 'flex-1 overflow-hidden px-4 pb-3 pt-3 md:px-5 md:pb-4 md:pt-4 lg:px-6'
+          : undefined
+      }
+    >
+      <div className={cn('w-full', activeTab === 'users' && 'flex h-full flex-col overflow-hidden')}>
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage users, moderation, and activity logs</p>
+        <div className={cn('mb-6', activeTab === 'users' && 'mb-3 shrink-0')}>
+          <h1 className={cn('text-2xl font-bold text-foreground', activeTab === 'users' && 'text-xl')}>Admin Panel</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage users, moderation, and activity logs</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6 bg-secondary/50 p-1">
-            <TabsTrigger value="users" className="flex items-center gap-2">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className={cn('w-full', activeTab === 'users' && 'flex min-h-0 flex-1 flex-col')}
+        >
+          <TabsList className={cn('mb-6 bg-secondary/50 p-1', activeTab === 'users' && 'mb-3 h-8 shrink-0')}>
+            <TabsTrigger value="users" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
               <Users size={16} /> Users
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="schedule" className="flex items-center gap-2">
+              <TabsTrigger value="schedule" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
                 <CalendarDays size={16} /> Schedule
               </TabsTrigger>
             )}
-            <TabsTrigger value="moderation" className="flex items-center gap-2">
+            <TabsTrigger value="moderation" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
               <Shield size={16} /> Moderation
               {pendingReports > 0 && (
                 <Badge variant="destructive" className="ml-1 px-1.5 py-0.5 text-[10px] h-auto">
@@ -576,113 +688,91 @@ export default function AdminPage() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-2">
+            <TabsTrigger value="audit" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
               <FileText size={16} /> Audit Log
             </TabsTrigger>
           </TabsList>
 
           {/* ── Users Tab ── */}
-          <TabsContent value="users">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="max-w-xs flex-1 border-b pb-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      className="h-10 border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
-                      placeholder="Search users…"
-                      value={search}
-                      onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                    />
-                  </div>
-                </div>
+          <TabsContent value="users" className="mt-0 flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              <div className="flex shrink-0 items-center gap-2.5 flex-wrap">
+                <SearchInput
+                  className="h-8 max-w-xs text-xs"
+                  placeholder="Search users…"
+                  value={search}
+                  onValueChange={(value) => {
+                    setSearch(value);
+                    setPage(1);
+                  }}
+                  size="sm"
+                  inputClassName="text-xs"
+                />
+                <Select
+                  value={userRoleGroup}
+                  onValueChange={(value) => {
+                    setUserRoleGroup(value as AdminUserRoleGroup);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder="Select role view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="students">Students</SelectItem>
+                    <SelectItem value="teachers">Teachers</SelectItem>
+                    <SelectItem value="other">Other Roles</SelectItem>
+                  </SelectContent>
+                </Select>
                 {isSuperAdmin && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Student roster import/export lives in the Schedule tab.
                   </p>
                 )}
               </div>
 
-              {isUsersLoading && !usersData ? (
-                <Card>
-                  <CardContent className="py-10 text-center text-muted-foreground">
-                    Loading users...
-                  </CardContent>
-                </Card>
-              ) : isUsersError ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-                    <div>
-                      <p className="font-medium text-foreground">Could not load users.</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
-                      </p>
-                    </div>
-                    <Button type="button" variant="outline" onClick={() => refetchUsers()}>
-                      Try again
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (usersData?.users || []).length === 0 ? (
-                <Card>
-                  <CardContent className="py-10 text-center text-muted-foreground">
-                    No users found.
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
+              <div ref={usersViewportRef} className="flex min-h-0 flex-1 flex-col">
+                {isUsersLoading && !usersData ? (
+                  <Card className="flex min-h-0 flex-1">
+                    <CardContent className="flex flex-1 items-center justify-center py-8 text-center text-[11px] text-muted-foreground">
+                      Loading users...
+                    </CardContent>
+                  </Card>
+                ) : isUsersError ? (
+                  <Card className="flex min-h-0 flex-1">
+                    <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
+                      <div>
+                        <p className="font-medium text-foreground">Could not load users.</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
+                        </p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => refetchUsers()}>
+                        Try again
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (usersData?.users || []).length === 0 ? (
+                  <Card className="flex min-h-0 flex-1">
+                    <CardContent className="flex flex-1 items-center justify-center py-8 text-center text-[11px] text-muted-foreground">
+                      {selectedUserRoleMeta.emptyMessage}
+                    </CardContent>
+                  </Card>
+                ) : (
                   <UserTableSection
-                    title="Students"
-                    emptyMessage="No students found."
-                    users={groupedUsers.students}
-                    showGrade
+                    title={selectedUserRoleMeta.label}
+                    emptyMessage={selectedUserRoleMeta.emptyMessage}
+                    users={(usersData?.users || []) as AdminUserRecord[]}
+                    totalCount={usersData?.total}
+                    showGrade={selectedUserRoleMeta.showGrade}
                     currentUserId={user?.id}
                     canDeactivate={canDeactivate}
                     onDeactivate={(userId) => deactivateMutation.mutate(userId)}
                     onActivate={(userId) => activateMutation.mutate(userId)}
+                    pagination={usersPagination}
                   />
-                  <UserTableSection
-                    title="Teachers"
-                    emptyMessage="No teachers found."
-                    users={groupedUsers.teachers}
-                    currentUserId={user?.id}
-                    canDeactivate={canDeactivate}
-                    onDeactivate={(userId) => deactivateMutation.mutate(userId)}
-                    onActivate={(userId) => activateMutation.mutate(userId)}
-                  />
-                  <UserTableSection
-                    title="Other Roles"
-                    emptyMessage="No admin or staff accounts found."
-                    users={groupedUsers.other}
-                    currentUserId={user?.id}
-                    canDeactivate={canDeactivate}
-                    onDeactivate={(userId) => deactivateMutation.mutate(userId)}
-                    onActivate={(userId) => activateMutation.mutate(userId)}
-                  />
-                </div>
-              )}
-
-              {usersData?.total > 20 && (
-                <div className="flex justify-center items-center gap-4 mt-2">
-                  <Button
-                    variant="outline"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    Prev
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {page} of {Math.ceil(usersData.total / 20)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    disabled={page >= Math.ceil(usersData.total / 20)}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -870,25 +960,15 @@ export default function AdminPage() {
                       <Badge variant="destructive">{pendingReports} pending</Badge>
                     )}
                   </div>
-                  <div className="w-full max-w-xs border-b pb-1">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={moderationSearch}
-                        onChange={(e) => setModerationSearch(e.target.value)}
-                        className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                        placeholder="Search reports..."
-                      />
-                      {moderationSearch ? (
-                        <button
-                          type="button"
-                          onClick={() => setModerationSearch('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      ) : null}
-                    </div>
+                  <div className="w-full max-w-xs">
+                    <SearchInput
+                      value={moderationSearch}
+                      onValueChange={setModerationSearch}
+                      className="h-8 rounded-lg text-xs"
+                      inputClassName="text-xs"
+                      placeholder="Search reports..."
+                      size="sm"
+                    />
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
@@ -979,24 +1059,11 @@ export default function AdminPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">Search</label>
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={auditSearch}
-                        onChange={(e) => setAuditSearch(e.target.value)}
-                        className="pl-10 pr-10"
-                        placeholder="Action, actor, entity…"
-                      />
-                      {auditSearch ? (
-                        <button
-                          type="button"
-                          onClick={() => setAuditSearch('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      ) : null}
-                    </div>
+                    <SearchInput
+                      value={auditSearch}
+                      onValueChange={setAuditSearch}
+                      placeholder="Action, actor, entity…"
+                    />
                   </div>
 
                   <div className="space-y-2">

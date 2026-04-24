@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, CheckCheck, Search, X } from 'lucide-react';
+import { CheckCheck, Search, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,14 +43,18 @@ export default function NotificationsPage() {
   const markAllMutation = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['unread-count'] });
       toast({ title: 'All marked as read' });
     },
   });
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markRead([id]),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['unread-count'] });
+    },
   });
 
   const categoryColors: Record<string, string> = {
@@ -60,25 +64,46 @@ export default function NotificationsPage() {
     EVENT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     FLEX_FRIDAY: 'bg-foreground/10 text-foreground border-foreground/20',
     CLUB_CHANNEL_MENTION: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',
+    FRIEND_REQUEST: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
   };
 
+  function getNotificationHref(notification: any) {
+    if (notification.channelId && notification.clubId) {
+      return `/clubs/${notification.clubId}/channels/${notification.channelId}`;
+    }
+
+    if (notification.announcementId) {
+      return `/announcements/${notification.announcementId}`;
+    }
+
+    if (notification.eventId) {
+      return '/events';
+    }
+
+    if (notification.category === 'FRIEND_REQUEST') {
+      return '/schedule?tab=friends&section=requests';
+    }
+
+    if (notification.category === 'FLEX_FRIDAY') {
+      return '/flex-friday';
+    }
+
+    if (notification.clubId) {
+      return `/clubs/${notification.clubId}`;
+    }
+
+    return null;
+  }
+
   function openNotification(notification: any) {
+    const href = getNotificationHref(notification);
+
     if (!notification.isRead) {
       markReadMutation.mutate(notification.id);
     }
 
-    if (notification.channelId && notification.clubId) {
-      router.push(`/clubs/${notification.clubId}/channels/${notification.channelId}`);
-      return;
-    }
-
-    if (notification.announcementId) {
-      router.push(`/announcements/${notification.announcementId}`);
-      return;
-    }
-
-    if (notification.eventId) {
-      router.push('/events');
+    if (href) {
+      router.push(href);
     }
   }
 
@@ -139,14 +164,29 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {filteredNotifications.map((n: any) => (
-              <Card
-                key={n.id}
-                onClick={() => openNotification(n)}
-                className={`cursor-pointer transition-all duration-200 ${n.isRead
-                  ? 'opacity-60 bg-transparent shadow-none border-border/50'
-                  : 'bg-accent/30 hover:bg-accent/50 hover:-translate-y-0.5 border-accent-500/20'
-                  }`}
-              >
+              (() => {
+                const href = getNotificationHref(n);
+                const isClickable = !!href;
+
+                return (
+                  <Card
+                    key={n.id}
+                    onClick={() => openNotification(n)}
+                    onKeyDown={(event) => {
+                      if (!isClickable) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openNotification(n);
+                      }
+                    }}
+                    role={isClickable ? 'link' : undefined}
+                    tabIndex={isClickable ? 0 : undefined}
+                    aria-label={isClickable ? `Open notification: ${n.title}` : undefined}
+                    className={`${isClickable ? 'cursor-pointer' : 'cursor-default'} transition-all duration-200 ${n.isRead
+                      ? 'opacity-60 bg-transparent shadow-none border-border/50'
+                      : 'bg-accent/30 hover:bg-accent/50 hover:-translate-y-0.5 border-accent-500/20'
+                      }`}
+                  >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Read indicator dot */}
@@ -170,10 +210,17 @@ export default function NotificationsPage() {
                       <p className="text-[11px] text-muted-foreground/60 mt-2">
                         {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                       </p>
+                      {href ? (
+                        <p className="mt-2 text-[11px] font-medium text-accent-500">
+                          Open
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+                  </Card>
+                );
+              })()
             ))}
           </div>
         )}

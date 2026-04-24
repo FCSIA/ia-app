@@ -3,17 +3,18 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Hash, Plus, Search, Shield, Users2, X } from 'lucide-react';
+import { Check, Hash, Plus, Shield, Users2, X } from 'lucide-react';
 import type { ClubInvite, ClubSummary } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 
 type MyClubsResponse = {
@@ -69,13 +70,10 @@ export default function ClubsLandingPage() {
   const myClubIds = useMemo(() => new Set(myClubs.map((c) => c.id)), [myClubs]);
 
   const filteredClubs = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return allClubs;
-    return allClubs.filter((club) =>
-      [club.name, club.description]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query)),
-    );
+    return filterBySearchQuery(allClubs, deferredSearch, (club) => [
+      club.name,
+      club.description,
+    ]);
   }, [allClubs, deferredSearch]);
 
   const headerSlot = (
@@ -157,15 +155,14 @@ export default function ClubsLandingPage() {
         <section className="space-y-4">
           <div className="space-y-1 border-b pb-3">
             <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Find a club"
-                className="h-11 border-0 bg-transparent pl-9 text-base shadow-none focus-visible:ring-0"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Find a club"
+              size="lg"
+              className="h-11 rounded-none border-0 bg-transparent shadow-none"
+              inputClassName="text-base"
+            />
           </div>
 
           {isLoading ? (

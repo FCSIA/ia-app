@@ -11,10 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, MapPin, Clock, Check, X, AlertCircle, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { filterBySearchQuery } from '@/lib/search';
 
 type ClubSummary = {
   id: string;
@@ -149,17 +151,12 @@ export default function EventsPage() {
   const past = (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) < new Date());
 
   const filterEvents = (list: any[]) => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return list;
-    return list.filter((e) => {
-      const searchable = [
-        e.title,
-        e.description,
-        e.location,
-        e.club?.name,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(list, deferredSearch, (event) => [
+      event.title,
+      event.description,
+      event.location,
+      event.club?.name,
+    ]);
   };
 
   const filteredUpcoming = useMemo(() => filterEvents(upcoming), [upcoming, deferredSearch]);
@@ -183,26 +180,12 @@ export default function EventsPage() {
           )}
         </div>
 
-        <div className="mb-6 border-b pb-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 border-0 bg-transparent pl-9 pr-9 text-base shadow-none focus-visible:ring-0"
-              placeholder="Search events by title, location, or club..."
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+        <div className="mb-6">
+          <SearchInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search events by title, location, or club..."
+          />
         </div>
 
         {showNew && canCreate && (

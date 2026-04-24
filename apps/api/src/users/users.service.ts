@@ -15,6 +15,8 @@ import { AuditService } from '../audit/audit.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
 import { Pathway, Role, User } from '@prisma/client';
 
+type AdminUserRoleGroup = 'students' | 'teachers' | 'other';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -120,22 +122,65 @@ export class UsersService {
     ].join('\n');
   }
 
-  async findAll(page = 1, limit = 50, search?: string) {
-    const where: Prisma.UserWhereInput = search
-      ? {
+  private buildRoleGroupWhere(roleGroup?: string): Prisma.UserWhereInput | undefined {
+    const normalizedRoleGroup = roleGroup as AdminUserRoleGroup | undefined;
+    const studentRoles = [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN];
+    const teacherRoles = [Role.TEACHER, Role.SPONSOR];
+
+    if (normalizedRoleGroup === 'students') {
+      return { roles: { hasSome: studentRoles } };
+    }
+
+    if (normalizedRoleGroup === 'teachers') {
+      return {
+        AND: [
+          { roles: { hasSome: teacherRoles } },
+          { NOT: { roles: { hasSome: studentRoles } } },
+        ],
+      };
+    }
+
+    if (normalizedRoleGroup === 'other') {
+      return {
+        AND: [
+          { NOT: { roles: { hasSome: studentRoles } } },
+          { NOT: { roles: { hasSome: teacherRoles } } },
+        ],
+      };
+    }
+
+    return undefined;
+  }
+
+  async findAll(page = 1, limit = 50, search?: string, roleGroup?: string) {
+    const filters: Prisma.UserWhereInput[] = [];
+
+    if (search) {
+      filters.push({
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
           { lastName: { contains: search, mode: 'insensitive' } },
           { uniqueId: { contains: search, mode: 'insensitive' } },
         ],
-      }
-      : {};
+      });
+    }
+
+    const roleFilter = this.buildRoleGroupWhere(roleGroup);
+    if (roleFilter) {
+      filters.push(roleFilter);
+    }
+
+    const where: Prisma.UserWhereInput = filters.length > 0 ? { AND: filters } : {};
+
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { lastName: 'asc' },
+        orderBy: [
+          { lastName: 'asc' },
+          { firstName: 'asc' },
+        ],
       }),
       this.prisma.user.count({ where }),
     ]);

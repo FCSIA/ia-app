@@ -1,7 +1,8 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CourseSummary } from '@ia/contracts/courses';
 import {
@@ -13,7 +14,6 @@ import {
   Loader2,
   Plus,
   Search,
-  Shield,
   Sparkles,
   UserPlus,
   Users2,
@@ -66,8 +66,10 @@ function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean)
 
 export default function SchedulePage() {
   const user = getUser();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
   const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
@@ -85,6 +87,8 @@ export default function SchedulePage() {
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const requestedTab = searchParams?.get('tab') ?? null;
+  const requestedSection = searchParams?.get('section') ?? null;
 
   const { data, isLoading } = useQuery<ScheduleDashboardResponse>({
     queryKey: ['schedule-dashboard'],
@@ -100,6 +104,26 @@ export default function SchedulePage() {
     setScheduleEntries(data?.mySchedule?.entries ?? []);
     setIsPublic(data?.mySchedule?.isPublic ?? false);
   }, [data?.mySchedule]);
+
+  useEffect(() => {
+    if (!requestedTab) return;
+    if (requestedTab === 'friends' && canEditOwnSchedule) {
+      setActiveTab('friends');
+      return;
+    }
+    if (requestedTab === 'admin' && canManageBlocks) {
+      setActiveTab('admin');
+      return;
+    }
+    if (requestedTab === 'my' && canEditOwnSchedule) {
+      setActiveTab('my');
+    }
+  }, [canEditOwnSchedule, canManageBlocks, requestedTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'friends' || requestedSection !== 'requests') return;
+    incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [activeTab, requestedSection, data?.incomingRequests?.length]);
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery<ScheduleSearchResult[]>({
     queryKey: ['schedule-search', normalizedDeferredSearch],
@@ -237,9 +261,6 @@ export default function SchedulePage() {
     () => getCurrentScheduleStatus(canEditOwnSchedule ? draftSchedule : null, blocks),
     [blocks, canEditOwnSchedule, draftSchedule],
   );
-  const activeWeekdayLabel = currentStatus.weekday
-    ? WEEKDAYS.find((day) => day.value === currentStatus.weekday)?.label
-    : null;
   const nextEntry =
     currentStatus.nextBlock?.periodNumber != null
       ? findScheduleEntry(
@@ -576,7 +597,7 @@ export default function SchedulePage() {
                   </Card>
 
                   {data?.incomingRequests?.length ? (
-                    <Card className="rounded-[28px] border-border/70">
+                    <Card ref={incomingRequestsRef} className="rounded-[28px] border-border/70">
                       <CardHeader>
                         <CardTitle className="text-lg">Friend requests</CardTitle>
                         <CardDescription>
