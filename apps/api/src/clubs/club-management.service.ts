@@ -161,7 +161,7 @@ export class ClubManagementService {
             },
             orderBy: { name: 'asc' },
           },
-          joinRequests: viewer.canManageMembership
+          joinRequests: viewer.canApproveJoinRequests
             ? {
                 where: { status: 'PENDING' },
                 include: {

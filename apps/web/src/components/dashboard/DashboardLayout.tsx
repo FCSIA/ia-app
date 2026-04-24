@@ -126,7 +126,7 @@ export function DashboardLayout() {
 
   if (!layout) {
     return (
-      <PageFrame>
+      <PageFrame className="pt-0">
         <div className="h-64 animate-pulse rounded-[2rem] bg-muted/30" />
       </PageFrame>
     );
@@ -135,9 +135,17 @@ export function DashboardLayout() {
   const missingWidgets = availableWidgets.filter((w) => !layout.includes(w.id));
 
   return (
-    <PageFrame>
+    <PageFrame className="pt-0">
       {/* Header toolbar */}
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Your day at a glance — rearrange widgets to make it your own.
+          </p>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {editing ? (

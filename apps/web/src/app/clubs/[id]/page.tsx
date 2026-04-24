@@ -458,7 +458,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
           club={club}
           canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
         />
-        {club.viewer.canManageMembership ? <RequestsPanel club={club} /> : null}
+        {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

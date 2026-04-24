@@ -161,15 +161,12 @@ export default function ClubsLandingPage() {
         ) : null}
 
         <section className="space-y-4">
-          <div className="space-y-1 border-b pb-3">
+          <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
             <SearchInput
               value={search}
               onValueChange={setSearch}
-              placeholder="Find a club"
-              size="lg"
-              className="h-11 rounded-none border-0 bg-transparent shadow-none"
-              inputClassName="text-base"
+              placeholder="Search clubs..."
             />
           </div>
 

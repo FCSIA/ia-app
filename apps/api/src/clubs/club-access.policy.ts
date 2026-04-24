@@ -25,6 +25,7 @@ export interface ClubContext {
   canAccessWorkspace: boolean;
   canManageChannels: boolean;
   canManageMembership: boolean;
+  canApproveJoinRequests: boolean;
   canSeePrivateChannels: boolean;
   hasPendingJoinRequest: boolean;
 }
@@ -130,6 +131,10 @@ export class ClubAccessPolicy {
     const canAccessWorkspace = isMember || isSponsor || isAdmin;
     const canManageChannels = isSponsor || hasClubRole || isAdmin;
     const canManageMembership = canManageChannels;
+    // Only the teacher in charge (sponsor) — or a school admin — can approve
+    // student join requests. Student leaders cannot, even though they can
+    // otherwise manage membership (assigning roles, removing members, etc.).
+    const canApproveJoinRequests = isSponsor || isAdmin;
     const canSeePrivateChannels = isSponsor || isAdmin;
 
     return {
@@ -142,6 +147,7 @@ export class ClubAccessPolicy {
       canAccessWorkspace,
       canManageChannels,
       canManageMembership,
+      canApproveJoinRequests,
       canSeePrivateChannels,
       hasPendingJoinRequest: !!pendingJoinRequest,
     };

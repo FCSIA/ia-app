@@ -81,18 +81,15 @@ export class ClubInvitationsService {
   }
 
   private async getJoinRequestRecipients(clubId: string) {
-    const [leaders, sponsors] = await Promise.all([
-      this.prisma.clubMember.findMany({
-        where: { clubId, role: { not: null } },
-        select: { userId: true },
-      }),
-      this.prisma.clubSponsor.findMany({
-        where: { clubId },
-        select: { userId: true },
-      }),
-    ]);
+    // Only notify the teacher(s) in charge — sponsors are the sole approvers
+    // of student join requests. Student leaders are intentionally excluded
+    // since they cannot act on the request.
+    const sponsors = await this.prisma.clubSponsor.findMany({
+      where: { clubId },
+      select: { userId: true },
+    });
 
-    return Array.from(new Set([...leaders.map((entry) => entry.userId), ...sponsors.map((entry) => entry.userId)]));
+    return Array.from(new Set(sponsors.map((entry) => entry.userId)));
   }
 
   private normalizeHeader(key: string) {
@@ -377,8 +374,8 @@ export class ClubInvitationsService {
     actorRole: string,
   ) {
     const context = await this.accessPolicy.getClubContext(clubId, actorId, actorRole);
-    if (!context.canManageMembership) {
-      throw new ForbiddenException('Only sponsors or club leaders can manage join requests');
+    if (!context.canApproveJoinRequests) {
+      throw new ForbiddenException('Only the teacher in charge can approve join requests');
     }
 
     const request = await this.prisma.clubJoinRequest.findUnique({
@@ -430,7 +427,7 @@ export class ClubInvitationsService {
       title: accept ? `Joined ${request.club.name}` : `Request declined for ${request.club.name}`,
       body: accept
         ? 'Your request was approved. You now have access to the club.'
-        : 'A sponsor or club leader declined your request.',
+        : 'The teacher in charge declined your request.',
       clubId,
     });
 
