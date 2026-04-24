@@ -292,18 +292,24 @@ export const flexFridayApi = {
 };
 
 // Wrapped (year-in-review)
+export type WrappedPathway = 'HEALTH_SCIENCE' | 'INFORMATION_TECHNOLOGY' | 'ENGINEERING';
+
 export interface WrappedSummary {
   userId: string;
   schoolYearStart: number;
   schoolYearLabel: string;
   rangeStart: string;
   rangeEnd: string;
+
   messagesSent: number;
-  flexCredits: number;
-  flexCreditsRequired: number;
   channelsEngaged: number;
   friends: number;
   clubs: number;
+
+  flexCredits: number;
+  flexCreditsRequired: number;
+  pathwayFlexCredits: number;
+
   topChannel: {
     channelId: string;
     channelName: string;
@@ -317,6 +323,21 @@ export interface WrappedSummary {
     lastName: string;
     mentions: number;
   } | null;
+
+  pathway: {
+    major: WrappedPathway | null;
+    minor: WrappedPathway | null;
+    lanyardColor: string | null;
+    label: string | null;
+    peers: number;
+  };
+  mostUsedWord: { word: string; count: number } | null;
+  peakHour: { hour: number; messages: number } | null;
+  longestStreak: number;
+  mostActiveDay: { date: string; messages: number } | null;
+  reactionsReceived: number;
+  topEmoji: { emoji: string; count: number } | null;
+  longestMessageChars: number;
 }
 
 export const wrappedApi = {
