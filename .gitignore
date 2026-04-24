@@ -57,6 +57,7 @@ prisma/dev.db
 *.db
 *.db-journal
 pgsql/
+.pgdata/
 pw.txt
 logfile
 qr-test.html
