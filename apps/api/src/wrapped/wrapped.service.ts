@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { FlexAttendanceStatus, FriendshipStatus, Pathway } from '@prisma/client';
+import { FlexAttendanceStatus, FriendshipStatus, Pathway, Role } from '@prisma/client';
 
 /**
  * School year runs Aug 1 → Jul 31. Aug 2025 belongs to the 2025-26 school
@@ -14,6 +14,57 @@ function schoolYearRange(startYear: number): { start: Date; end: Date } {
   const start = new Date(startYear, 7, 1);
   const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999);
   return { start, end };
+}
+
+/**
+ * Wrapped is only available during May of each school year. June and July
+ * close the door on the just-finished year; August kicks off a new tracking
+ * period that stays hidden until the following May. This mirrors how the
+ * user-facing "Spotify Wrapped" style moment should only unlock once, at the
+ * end of the year it's summarising.
+ */
+export function wrappedAvailability(now: Date = new Date()): {
+  open: boolean;
+  /** The school year startYear this window covers (when open). */
+  schoolYear: number;
+  /** When this May window opens. */
+  opensAt: Date;
+  /** When this May window closes (end of May 31). */
+  closesAt: Date;
+} {
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+
+  // The May window of calendar year Y summarises the school year that started
+  // in August Y-1. Outside May we surface the *next* upcoming window.
+  if (month === 4) {
+    return {
+      open: true,
+      schoolYear: year - 1,
+      opensAt: new Date(year, 4, 1),
+      closesAt: new Date(year, 4, 31, 23, 59, 59, 999),
+    };
+  }
+
+  // Before May (Jan–Apr): next window is May of this calendar year.
+  // From June onward: next window is May of next calendar year.
+  const nextOpensYear = month < 4 ? year : year + 1;
+  return {
+    open: false,
+    schoolYear: nextOpensYear - 1,
+    opensAt: new Date(nextOpensYear, 4, 1),
+    closesAt: new Date(nextOpensYear, 4, 31, 23, 59, 59, 999),
+  };
+}
+
+export interface WrappedAvailability {
+  open: boolean;
+  schoolYear: number;
+  schoolYearLabel: string;
+  opensAt: string;
+  closesAt: string;
+  /** Seconds from now until `opensAt`. Negative when open. */
+  secondsUntilOpen: number;
 }
 
 // ─── Stopwords for "most used word" ────────────────────────────────────────
@@ -175,9 +226,41 @@ const PATHWAY_META: Record<Pathway, { label: string; lanyard: string }> = {
 export class WrappedService {
   constructor(private prisma: PrismaService) {}
 
-  async getWrapped(userId: string, requestedSchoolYear?: number): Promise<WrappedSummary> {
+  getAvailability(): WrappedAvailability {
     const now = new Date();
-    const startYear = requestedSchoolYear ?? schoolYearStart(now);
+    const a = wrappedAvailability(now);
+    return {
+      open: a.open,
+      schoolYear: a.schoolYear,
+      schoolYearLabel: `${a.schoolYear}-${String((a.schoolYear + 1) % 100).padStart(2, '0')}`,
+      opensAt: a.opensAt.toISOString(),
+      closesAt: a.closesAt.toISOString(),
+      secondsUntilOpen: Math.round((a.opensAt.getTime() - now.getTime()) / 1000),
+    };
+  }
+
+  async getWrapped(
+    userId: string,
+    opts: { requestedSchoolYear?: number; userRoles?: Role[] } = {},
+  ): Promise<WrappedSummary> {
+    const now = new Date();
+    const availability = wrappedAvailability(now);
+    const isAdmin =
+      opts.userRoles?.includes(Role.ADMIN) || opts.userRoles?.includes(Role.SUPER_ADMIN);
+
+    if (!availability.open && !isAdmin) {
+      throw new ForbiddenException({
+        message: 'Wrapped opens in May.',
+        code: 'WRAPPED_CLOSED',
+        opensAt: availability.opensAt.toISOString(),
+        closesAt: availability.closesAt.toISOString(),
+        schoolYear: availability.schoolYear,
+      });
+    }
+
+    // Default to the school year this Wrapped window is summarising — the one
+    // that started the prior August. Lets admins still target any year.
+    const startYear = opts.requestedSchoolYear ?? availability.schoolYear;
     const { start, end } = schoolYearRange(startYear);
     const label = `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 

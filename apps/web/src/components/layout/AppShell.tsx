@@ -25,6 +25,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
+import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -165,10 +166,19 @@ export function AppShell({
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const showSchedule =
     user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN');
+  // Wrapped only appears in the nav during its May window. Admins always see
+  // it so they can preview without waiting for the calendar.
+  const showWrapped =
+    computeWrappedAvailability().open || (user && hasRole(user, 'ADMIN', 'SUPER_ADMIN'));
 
   const primary = useMemo(
-    () => primaryNav.filter((i) => i.href !== '/schedule' || showSchedule),
-    [showSchedule],
+    () =>
+      primaryNav.filter((i) => {
+        if (i.href === '/schedule' && !showSchedule) return false;
+        if (i.href === '/wrapped' && !showWrapped) return false;
+        return true;
+      }),
+    [showSchedule, showWrapped],
   );
 
   const currentMeta = useMemo(

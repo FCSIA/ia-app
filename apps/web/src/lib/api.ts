@@ -340,7 +340,17 @@ export interface WrappedSummary {
   longestMessageChars: number;
 }
 
+export interface WrappedAvailability {
+  open: boolean;
+  schoolYear: number;
+  schoolYearLabel: string;
+  opensAt: string;
+  closesAt: string;
+  secondsUntilOpen: number;
+}
+
 export const wrappedApi = {
+  getAvailability: () => api.get<WrappedAvailability>('/wrapped/availability'),
   getMine: (schoolYear?: number) =>
     api.get<WrappedSummary>('/wrapped/me', {
       params: schoolYear != null ? { schoolYear } : undefined,
