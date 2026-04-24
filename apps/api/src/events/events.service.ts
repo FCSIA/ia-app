@@ -90,7 +90,8 @@ export class EventsService {
     const isAdmin =
       userRole === Role.ADMIN ||
       userRole === Role.SUPER_ADMIN ||
-      userRole === Role.SUPPORT_STAFF;
+      userRole === Role.SUPPORT_STAFF ||
+      userRole === Role.STUDENT_ADMIN;
     let canCreate = isAdmin;
     let isSponsor = false;
     let hasClubRole = false;
@@ -283,7 +284,7 @@ export class EventsService {
     const event = await this.prisma.event.findUnique({ where: { id } });
     if (!event) throw new NotFoundException('Event not found');
 
-    const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
+    const isAdmin = userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN || userRole === Role.STUDENT_ADMIN;
     if (event.authorId !== actorId && !isAdmin) {
       throw new ForbiddenException('Cannot cancel this event');
     }

@@ -15,6 +15,8 @@ import { AuditService } from '../audit/audit.service';
 import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
 import { Pathway, Role, User } from '@prisma/client';
 
+type AdminUserRoleGroup = 'students' | 'teachers' | 'other' | 'student-admin';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -120,22 +122,69 @@ export class UsersService {
     ].join('\n');
   }
 
-  async findAll(page = 1, limit = 50, search?: string) {
-    const where: Prisma.UserWhereInput = search
-      ? {
+  private buildRoleGroupWhere(roleGroup?: string): Prisma.UserWhereInput | undefined {
+    const normalizedRoleGroup = roleGroup as AdminUserRoleGroup | undefined;
+    const studentRoles = [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN];
+    const teacherRoles = [Role.TEACHER, Role.SPONSOR];
+
+    if (normalizedRoleGroup === 'students') {
+      return { roles: { hasSome: studentRoles } };
+    }
+
+    if (normalizedRoleGroup === 'teachers') {
+      return {
+        AND: [
+          { roles: { hasSome: teacherRoles } },
+          { NOT: { roles: { hasSome: studentRoles } } },
+        ],
+      };
+    }
+
+    if (normalizedRoleGroup === 'other') {
+      return {
+        AND: [
+          { NOT: { roles: { hasSome: studentRoles } } },
+          { NOT: { roles: { hasSome: teacherRoles } } },
+        ],
+      };
+    }
+
+    if (normalizedRoleGroup === 'student-admin') {
+      return { roles: { has: Role.STUDENT_ADMIN } };
+    }
+
+    return undefined;
+  }
+
+  async findAll(page = 1, limit = 50, search?: string, roleGroup?: string) {
+    const filters: Prisma.UserWhereInput[] = [];
+
+    if (search) {
+      filters.push({
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
           { lastName: { contains: search, mode: 'insensitive' } },
           { uniqueId: { contains: search, mode: 'insensitive' } },
         ],
-      }
-      : {};
+      });
+    }
+
+    const roleFilter = this.buildRoleGroupWhere(roleGroup);
+    if (roleFilter) {
+      filters.push(roleFilter);
+    }
+
+    const where: Prisma.UserWhereInput = filters.length > 0 ? { AND: filters } : {};
+
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { lastName: 'asc' },
+        orderBy: [
+          { lastName: 'asc' },
+          { firstName: 'asc' },
+        ],
       }),
       this.prisma.user.count({ where }),
     ]);
@@ -191,8 +240,34 @@ export class UsersService {
     return this.safeUser(user);
   }
 
-  async assignRoles(id: string, dto: AssignRolesDto, actorId?: string) {
-    await this.findOne(id);
+  async assignRoles(id: string, dto: AssignRolesDto, actorId?: string, actorRole?: string) {
+    const target = await this.findOne(id);
+
+    const privilegedRoles: Role[] = [Role.ADMIN, Role.SUPER_ADMIN];
+    if (actorRole === Role.ADMIN) {
+      const targetIsPrivileged = (target.roles ?? []).some((r) => privilegedRoles.includes(r as Role));
+      const requestingPrivileged = dto.roles.some((r) => privilegedRoles.includes(r as Role));
+      if (targetIsPrivileged) {
+        throw new ForbiddenException('Admins cannot modify accounts with admin privileges');
+      }
+      if (requestingPrivileged) {
+        throw new ForbiddenException('Admins cannot grant admin privileges');
+      }
+    }
+
+    // Check for STUDENT_ADMIN limit (max 5)
+    const isAddingStudentAdmin = dto.roles.includes(Role.STUDENT_ADMIN);
+    const alreadyIsStudentAdmin = (target.roles ?? []).includes(Role.STUDENT_ADMIN);
+
+    if (isAddingStudentAdmin && !alreadyIsStudentAdmin) {
+      const currentCount = await this.prisma.user.count({
+        where: { roles: { has: Role.STUDENT_ADMIN } },
+      });
+      if (currentCount >= 5) {
+        throw new ConflictException('Maximum of 5 students can have the Student Admin role.');
+      }
+    }
+
     const user = await this.prisma.user.update({
       where: { id },
       data: { roles: dto.roles },
@@ -206,6 +281,7 @@ export class UsersService {
     });
     return this.safeUser(user);
   }
+
 
   async deactivate(id: string, actorId?: string, actorRole?: string) {
     const target = await this.findOne(id);
