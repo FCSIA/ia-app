@@ -6,10 +6,17 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
-import { FlexFridayType, FlexSessionType, Role, Pathway } from '@prisma/client';
+import {
+  FlexAttendanceStatus,
+  FlexFridayType,
+  FlexSessionType,
+  Pathway,
+  Role,
+} from '@prisma/client';
 import { FlexFridayService } from './flex-friday.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -33,6 +40,21 @@ export class FlexFridayController {
   @Get('my/assignments')
   getMyAssignments(@CurrentUser() user: AuthenticatedUser) {
     return this.flexFridayService.getMyAssignments(user.id);
+  }
+
+  @Get('my/credits')
+  getMyCredits(@CurrentUser() user: AuthenticatedUser) {
+    return this.flexFridayService.getStudentCredits(user.id);
+  }
+
+  @Get('students/:studentId/credits')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  getStudentCredits(
+    @Param('studentId') studentId: string,
+    @Query('schoolYear') schoolYear?: string,
+  ) {
+    const year = schoolYear ? parseInt(schoolYear, 10) : undefined;
+    return this.flexFridayService.getStudentCredits(studentId, year);
   }
 
   @Get(':id')
@@ -196,6 +218,57 @@ export class FlexFridayController {
 
   @Get('workshops/:workshopId/roster')
   getRoster(@Param('workshopId') workshopId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.flexFridayService.getWorkshopRoster(workshopId, user.id, user.role);
+    return this.flexFridayService.getWorkshopRoster(workshopId, user.id, user.role ?? '');
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Attendance
+  // ────────────────────────────────────────────────────────────────────────
+
+  @Post('workshops/:workshopId/attendance')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  markAttendance(
+    @Param('workshopId') workshopId: string,
+    @Body() body: { studentId: string; status?: FlexAttendanceStatus },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.setAttendance(
+      workshopId,
+      body.studentId,
+      body.status ?? FlexAttendanceStatus.PRESENT,
+      user.id,
+      user.role ?? '',
+    );
+  }
+
+  @Post('workshops/:workshopId/attendance/bulk')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  bulkMarkAttendance(
+    @Param('workshopId') workshopId: string,
+    @Body()
+    body: { entries: Array<{ studentId: string; status: FlexAttendanceStatus }> },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.bulkSetAttendance(
+      workshopId,
+      body.entries ?? [],
+      user.id,
+      user.role ?? '',
+    );
+  }
+
+  @Delete('workshops/:workshopId/attendance/:studentId')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  clearAttendance(
+    @Param('workshopId') workshopId: string,
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.flexFridayService.clearAttendance(
+      workshopId,
+      studentId,
+      user.id,
+      user.role ?? '',
+    );
   }
 }

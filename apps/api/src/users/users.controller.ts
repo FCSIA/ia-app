@@ -32,11 +32,13 @@ export class UsersController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('roleGroup') roleGroup?: string,
   ) {
     return this.usersService.findAll(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 50,
       search,
+      roleGroup,
     );
   }
 

@@ -12,7 +12,7 @@
     "test": "jest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "ts-node --transpile-only prisma/seed.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.4.0",
@@ -55,8 +55,5 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }

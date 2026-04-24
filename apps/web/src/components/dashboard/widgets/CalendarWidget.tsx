@@ -44,7 +44,6 @@ export function CalendarWidget() {
   return (
     <Panel
       title="Calendar"
-      description="See this month at a glance and jump into the day that matters."
       action={
         <div className="flex items-center gap-2">
           <div className="flex items-center rounded-full border border-border/70 bg-background/80 p-1">

@@ -14,13 +14,13 @@ import {
   endOfWeek,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Search, X, Trash2, User, School, Building2, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Plus, Search, X, Trash2, User, School, Building2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
-import { Plus } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
+import { filterBySearchQuery } from '@/lib/search';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -78,20 +78,15 @@ export default function CalendarPage() {
     },
   });
 
-  const filteredEntries = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return [];
-
-    return (entries as any[]).filter((e) => {
-      const searchable = [e.title, e.description, e.location]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return searchable.includes(query);
-    });
-  }, [entries, deferredSearch]);
-
   const isSearching = deferredSearch.trim() !== '';
+  const filteredEntries = useMemo(() => {
+    if (!isSearching) return [];
+    return filterBySearchQuery(entries as any[], deferredSearch, (entry) => [
+      entry.title,
+      entry.description,
+      entry.location,
+    ]);
+  }, [entries, deferredSearch, isSearching]);
 
   const getEventsForDay = (day: Date) =>
     (entries as any[]).filter((e) => isSameDay(new Date(e.startAt), day));
@@ -119,25 +114,13 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
-          <div className="ml-8 mr-6 flex flex-1 max-w-md items-center border-b pb-1">
-            <div className="relative w-full">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-10 border-0 bg-transparent pl-9 pr-9 text-sm shadow-none focus-visible:ring-0"
-                placeholder="Search events..."
-              />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
+          <div className="flex items-center gap-4 flex-1 max-w-md ml-8 mr-6">
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              className="w-full rounded-xl border-foreground/10"
+              placeholder="Search events..."
+            />
           </div>
           <div className="flex items-center gap-4">
             <AddCalendarEntryDialog />

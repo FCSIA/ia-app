@@ -10,6 +10,7 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ModerationService } from '../moderation/moderation.service';
 import {
+  FlexAttendanceStatus,
   FlexFridayType,
   FlexSessionType,
   NotificationCategory,
@@ -18,6 +19,54 @@ import {
   Pathway,
   CalendarSource,
 } from '@prisma/client';
+
+/**
+ * School year starts in August. For a given date, returns the starting
+ * calendar year of that school year. Aug 2025 → 2025 (i.e. the 2025-26 year).
+ */
+function schoolYearStart(date: Date): number {
+  // Month is 0-indexed; August = 7.
+  return date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
+function schoolYearRange(startYear: number): { start: Date; end: Date } {
+  // Runs Aug 1 of startYear through Jul 31 of startYear + 1 inclusive.
+  const start = new Date(startYear, 7, 1);
+  const end = new Date(startYear + 1, 6, 31, 23, 59, 59, 999);
+  return { start, end };
+}
+
+type SemesterKey = 'FALL' | 'SPRING';
+
+/**
+ * Splits a school year into Fall (Aug–Dec of startYear) and Spring (Jan–May of
+ * startYear+1). Summer months have no Flex Fridays in practice so they are
+ * excluded from the semester buckets.
+ */
+function semesterRanges(startYear: number): Array<{
+  key: SemesterKey;
+  label: string;
+  start: Date;
+  end: Date;
+}> {
+  return [
+    {
+      key: 'FALL',
+      label: `Fall ${startYear}`,
+      start: new Date(startYear, 7, 1),
+      end: new Date(startYear, 11, 31, 23, 59, 59, 999),
+    },
+    {
+      key: 'SPRING',
+      label: `Spring ${startYear + 1}`,
+      start: new Date(startYear + 1, 0, 1),
+      end: new Date(startYear + 1, 4, 31, 23, 59, 59, 999),
+    },
+  ];
+}
+
+export const FLEX_CREDITS_REQUIRED_PER_YEAR = 12;
+export const FLEX_CREDITS_REQUIRED_PER_SEMESTER = 6;
 
 /**
  * Helper: compute start/end DateTimes for a Flex Friday's calendar entry by
@@ -792,10 +841,13 @@ export class FlexFridayService {
     if (!workshop) throw new NotFoundException('Workshop not found');
 
     const isTeacher = workshop.teacherId === actorId;
-    const isAdmin = actorRole === Role.ADMIN || actorRole === Role.SUPER_ADMIN;
-    if (!isTeacher && !isAdmin) throw new ForbiddenException('Cannot view this roster');
+    const isStaff =
+      actorRole === Role.TEACHER ||
+      actorRole === Role.ADMIN ||
+      actorRole === Role.SUPER_ADMIN;
+    if (!isTeacher && !isStaff) throw new ForbiddenException('Cannot view this roster');
 
-    const [registrations, assignments] = await Promise.all([
+    const [registrations, assignments, attendances] = await Promise.all([
       this.prisma.flexRegistration.findMany({
         where: { workshopId },
         include: {
@@ -824,8 +876,192 @@ export class FlexFridayService {
           },
         },
       }),
+      this.prisma.flexAttendance.findMany({
+        where: { workshopId },
+        select: { studentId: true, status: true, markedAt: true, markedById: true },
+      }),
     ]);
 
-    return { workshop, registrations, assignments };
+    return { workshop, registrations, assignments, attendances };
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Attendance & Credits
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Only the workshop's teacher, TEACHER/ADMIN/SUPER_ADMIN, may mark
+   * attendance. Marking PRESENT awards the student a Flex Friday credit for
+   * the school year of the workshop's Flex Friday.
+   */
+  async setAttendance(
+    workshopId: string,
+    studentId: string,
+    status: FlexAttendanceStatus,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const workshop = await this.prisma.flexWorkshop.findUnique({
+      where: { id: workshopId },
+      include: {
+        sessions: {
+          take: 1,
+          include: { session: { select: { flexFridayId: true } } },
+        },
+      },
+    });
+    if (!workshop) throw new NotFoundException('Workshop not found');
+
+    const isStaff =
+      actorRole === Role.TEACHER ||
+      actorRole === Role.ADMIN ||
+      actorRole === Role.SUPER_ADMIN;
+    const isWorkshopTeacher = workshop.teacherId === actorId;
+    if (!isStaff && !isWorkshopTeacher) {
+      throw new ForbiddenException('Only teachers or admins may mark attendance');
+    }
+
+    const flexFridayId = workshop.sessions[0]?.session.flexFridayId;
+    if (!flexFridayId) {
+      throw new BadRequestException('Workshop is not attached to any Flex Friday');
+    }
+
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+
+    const record = await this.prisma.flexAttendance.upsert({
+      where: { workshopId_studentId: { workshopId, studentId } },
+      update: { status, markedById: actorId },
+      create: {
+        workshopId,
+        studentId,
+        flexFridayId,
+        status,
+        markedById: actorId,
+      },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'FLEX_ATTENDANCE_MARKED',
+      entityType: 'FlexAttendance',
+      entityId: record.id,
+      meta: { workshopId, studentId, status },
+    });
+
+    return record;
+  }
+
+  async bulkSetAttendance(
+    workshopId: string,
+    entries: Array<{ studentId: string; status: FlexAttendanceStatus }>,
+    actorId: string,
+    actorRole: string,
+  ) {
+    if (!entries || entries.length === 0) {
+      return { updated: 0 };
+    }
+    // Sequential keeps audit log consistent; small N (class roster size) so this is fine.
+    for (const entry of entries) {
+      await this.setAttendance(workshopId, entry.studentId, entry.status, actorId, actorRole);
+    }
+    return { updated: entries.length };
+  }
+
+  async clearAttendance(
+    workshopId: string,
+    studentId: string,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const workshop = await this.prisma.flexWorkshop.findUnique({
+      where: { id: workshopId },
+      select: { teacherId: true },
+    });
+    if (!workshop) throw new NotFoundException('Workshop not found');
+
+    const isStaff =
+      actorRole === Role.TEACHER ||
+      actorRole === Role.ADMIN ||
+      actorRole === Role.SUPER_ADMIN;
+    const isWorkshopTeacher = workshop.teacherId === actorId;
+    if (!isStaff && !isWorkshopTeacher) {
+      throw new ForbiddenException('Only teachers or admins may clear attendance');
+    }
+
+    const existing = await this.prisma.flexAttendance.findUnique({
+      where: { workshopId_studentId: { workshopId, studentId } },
+    });
+    if (!existing) return { success: true };
+
+    await this.prisma.flexAttendance.delete({ where: { id: existing.id } });
+    await this.audit.log({
+      actorId,
+      action: 'FLEX_ATTENDANCE_CLEARED',
+      entityType: 'FlexAttendance',
+      entityId: existing.id,
+      meta: { workshopId, studentId },
+    });
+    return { success: true };
+  }
+
+  /**
+   * Credits for a student in a given school year (default: school year of
+   * today). Returns the earned count alongside the requirement (12) and the
+   * underlying attendance records so the UI can list which workshops counted.
+   */
+  async getStudentCredits(studentId: string, schoolYearStartOpt?: number) {
+    const start = schoolYearStartOpt ?? schoolYearStart(new Date());
+    const { start: rangeStart, end: rangeEnd } = schoolYearRange(start);
+
+    const attendances = await this.prisma.flexAttendance.findMany({
+      where: {
+        studentId,
+        flexFriday: { date: { gte: rangeStart, lte: rangeEnd } },
+      },
+      include: {
+        workshop: {
+          select: { id: true, title: true },
+        },
+        flexFriday: {
+          select: { id: true, date: true, type: true },
+        },
+      },
+      orderBy: { markedAt: 'desc' },
+    });
+
+    const presentAttendances = attendances.filter(
+      (a) => a.status === FlexAttendanceStatus.PRESENT,
+    );
+    const earned = presentAttendances.length;
+
+    // Bucket earned credits by semester based on the flex friday's date.
+    const semesters = semesterRanges(start).map((sem) => {
+      const semEarned = presentAttendances.filter((a) => {
+        const date = new Date(a.flexFriday.date);
+        return date >= sem.start && date <= sem.end;
+      }).length;
+      return {
+        key: sem.key,
+        label: sem.label,
+        required: FLEX_CREDITS_REQUIRED_PER_SEMESTER,
+        earned: semEarned,
+        remaining: Math.max(FLEX_CREDITS_REQUIRED_PER_SEMESTER - semEarned, 0),
+      };
+    });
+
+    return {
+      studentId,
+      schoolYearStart: start,
+      schoolYearLabel: `${start}-${String(start + 1).slice(-2)}`,
+      required: FLEX_CREDITS_REQUIRED_PER_YEAR,
+      earned,
+      remaining: Math.max(FLEX_CREDITS_REQUIRED_PER_YEAR - earned, 0),
+      semesters,
+      attendances,
+    };
   }
 }

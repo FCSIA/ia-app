@@ -5,32 +5,20 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
-import { format, parseISO } from 'date-fns';
-import {
-  Plus,
-  Users,
-  MapPin,
-  CheckCircle,
-  CalendarIcon,
-  Ticket,
-  ChevronRight,
-  Search,
-  X,
-  Clock,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { format } from 'date-fns';
+import { Plus, Users, MapPin, CheckCircle, Ticket, ChevronRight, Clock, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/date-picker';
 import Link from 'next/link';
+import { filterBySearchQuery } from '@/lib/search';
+import { cn } from '@/lib/utils';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -106,9 +94,19 @@ export default function FlexFridayPage() {
   const [workshopSearch, setWorkshopSearch] = useState('');
   const deferredWorkshopSearch = useDeferredValue(workshopSearch);
 
-  const canManage = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canCreateSession = user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const isStudent = user && hasRole(user, 'STUDENT');
+  // `getUser()` reads localStorage, so it's null during SSR and populated on
+  // the client. Gating role-dependent UI behind `mounted` ensures the first
+  // client render matches the server (both treat the user as anonymous),
+  // avoiding hydration mismatches. The real role flags take effect after the
+  // initial mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const canManage = mounted && !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canCreateSession =
+    mounted && !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const isStudent = mounted && !!user && hasRole(user, 'STUDENT');
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: fridays = [], isLoading } = useQuery({
@@ -136,26 +134,42 @@ export default function FlexFridayPage() {
     queryFn: () => flexFridayApi.getMyRegistrations().then((r) => r.data),
   });
 
+  const { data: credits } = useQuery({
+    queryKey: ['my-flex-credits'],
+    queryFn: () => flexFridayApi.getMyCredits().then((r) => r.data),
+    enabled: !!user,
+  });
+
+  // Which workshop's attendance panel is currently expanded (teacher/admin only).
+  const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<string | null>(null);
+  const {
+    data: rosterData,
+    isLoading: rosterLoading,
+    error: rosterError,
+  } = useQuery({
+    queryKey: ['flex-workshop-roster', attendanceWorkshopId],
+    queryFn: () =>
+      flexFridayApi.getRoster(attendanceWorkshopId as string).then((r) => r.data),
+    enabled: !!attendanceWorkshopId && !!canCreateSession,
+    retry: false,
+  });
+
   const filteredSessions = useMemo(() => {
-    const query = deferredSessionSearch.trim().toLowerCase();
-    if (!query) return sessions;
-    return (sessions as any[]).filter((s) => {
-      const searchable = [s.title, s.description].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(sessions as any[], deferredSessionSearch, (session) => [
+      session.title,
+      session.description,
+    ]);
   }, [sessions, deferredSessionSearch]);
 
   const filteredWorkshops = useMemo(() => {
-    const query = deferredWorkshopSearch.trim().toLowerCase();
-    if (!query) return workshops;
-    return (workshops as any[]).filter((w) => {
-      const searchable = [w.title, w.description, w.location].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(workshops as any[], deferredWorkshopSearch, (workshop) => [
+      workshop.title,
+      workshop.description,
+      workshop.location,
+    ]);
   }, [workshops, deferredWorkshopSearch]);
 
   const myRegWorkshopIds = new Set((myRegs as any[]).map((r: any) => r.workshopId));
-  const selectedCreateDate = fridayForm.date ? parseISO(fridayForm.date) : undefined;
 
   // ── Mutations ─────────────────────────────────────────────────────────────
   const createFridayMutation = useMutation({
@@ -295,6 +309,36 @@ export default function FlexFridayPage() {
     },
   });
 
+  const markAttendanceMutation = useMutation({
+    mutationFn: ({
+      workshopId,
+      studentId,
+      status,
+    }: {
+      workshopId: string;
+      studentId: string;
+      status: 'PRESENT' | 'ABSENT' | 'EXCUSED';
+    }) => flexFridayApi.markAttendance(workshopId, studentId, status),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['flex-workshop-roster', vars.workshopId] });
+      qc.invalidateQueries({ queryKey: ['my-flex-credits'] });
+    },
+    onError: (e: any) =>
+      toast({
+        title: e.response?.data?.message || 'Could not mark attendance',
+        variant: 'destructive',
+      }),
+  });
+
+  const clearAttendanceMutation = useMutation({
+    mutationFn: ({ workshopId, studentId }: { workshopId: string; studentId: string }) =>
+      flexFridayApi.clearAttendance(workshopId, studentId),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['flex-workshop-roster', vars.workshopId] });
+      qc.invalidateQueries({ queryKey: ['my-flex-credits'] });
+    },
+  });
+
   // ── Form helpers ──────────────────────────────────────────────────────────
   const openNewSessionForm = () => {
     setEditingSessionId(null);
@@ -420,13 +464,20 @@ export default function FlexFridayPage() {
             <p className="text-muted-foreground text-sm">Sessions, workshops, and registration</p>
           </div>
           <div className="flex items-center gap-2">
+            {isStudent && credits && <CreditsSummary credits={credits} />}
             {canManage && (
               <Button onClick={() => setShowNewFriday(true)} className="flex items-center gap-2">
                 <Plus size={16} /> Schedule Friday
               </Button>
             )}
             {isStudent && (
-              <Link href="/flex-friday/pass">
+              <Link
+                href={
+                  selectedFriday?.id
+                    ? `/flex-friday/pass?fridayId=${selectedFriday.id}`
+                    : '/flex-friday/pass'
+                }
+              >
                 <Button className="flex items-center gap-2 border-transparent bg-orange-500 text-white shadow-sm hover:bg-orange-600">
                   <Ticket size={15} /> My Pass
                 </Button>
@@ -458,27 +509,11 @@ export default function FlexFridayPage() {
               >
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Date *</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={cn('w-full justify-start text-left font-normal', !fridayForm.date && 'text-muted-foreground')}
-                      >
-                        <CalendarIcon className="mr-2 size-4" />
-                        {fridayForm.date ? format(selectedCreateDate!, 'PPP') : 'Pick a Friday'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[19rem] p-0" align="start">
-                      <Calendar
-                        className="w-full"
-                        mode="single"
-                        selected={selectedCreateDate}
-                        onSelect={(date) => setFridayForm({ ...fridayForm, date: date ? format(date, 'yyyy-MM-dd') : '' })}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    value={fridayForm.date}
+                    onChange={(date) => setFridayForm({ ...fridayForm, date })}
+                    buttonClassName="w-full"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Type</label>
@@ -539,8 +574,8 @@ export default function FlexFridayPage() {
                   {(fridays as any[]).map((f) => (
                     <button key={f.id} onClick={() => handleSelectFriday(f)}
                       className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${selectedFriday?.id === f.id
-                        ? 'border-accent-500/40 bg-accent-500/10 text-foreground dark:text-white ring-1 ring-accent-500/20'
-                        : 'border-border hover:border-accent-500/20 bg-background hover:bg-accent-500/5 text-foreground/80 hover:text-foreground'
+                        ? 'border-border bg-muted/60 text-foreground'
+                        : 'border-border hover:bg-muted/40 bg-background text-foreground/80 hover:text-foreground'
                         }`}>
                       <p className="font-semibold text-sm">{format(new Date(f.date), 'EEE, MMM d, yyyy')}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 font-medium">{f.type.replace(/_/g, ' ')}</p>
@@ -580,26 +615,12 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
-                <div className="mb-4 border-b pb-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={sessionSearch}
-                      onChange={(e) => setSessionSearch(e.target.value)}
-                      className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                      placeholder="Search sessions..."
-                    />
-                    {sessionSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setSessionSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                <SearchInput
+                  value={sessionSearch}
+                  onValueChange={setSessionSearch}
+                  className="mb-4 rounded-xl border-foreground/10"
+                  placeholder="Search sessions..."
+                />
 
                 {sessionFormOpen && canCreateSession && (
                   <Card className="mb-4">
@@ -673,8 +694,8 @@ export default function FlexFridayPage() {
                       <div
                         key={s.id}
                         className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${selectedSession?.id === s.id
-                          ? 'border-accent-500/40 bg-accent-500/10 ring-1 ring-accent-500/20'
-                          : 'border-border hover:border-accent-500/20 bg-background hover:bg-accent-500/5'
+                          ? 'border-border bg-muted/60'
+                          : 'border-border hover:bg-muted/40 bg-background'
                           }`}
                       >
                         <button
@@ -754,26 +775,12 @@ export default function FlexFridayPage() {
                   )}
                 </div>
 
-                <div className="mb-4 border-b pb-2">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={workshopSearch}
-                      onChange={(e) => setWorkshopSearch(e.target.value)}
-                      className="h-9 border-0 bg-transparent pl-9 pr-8 text-sm shadow-none focus-visible:ring-0"
-                      placeholder="Search workshops..."
-                    />
-                    {workshopSearch ? (
-                      <button
-                        type="button"
-                        onClick={() => setWorkshopSearch('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                <SearchInput
+                  value={workshopSearch}
+                  onValueChange={setWorkshopSearch}
+                  className="mb-4 rounded-xl border-foreground/10"
+                  placeholder="Search workshops..."
+                />
 
                 {workshopFormOpen && canCreateSession && (
                   <Card className="mb-4">
@@ -964,7 +971,7 @@ export default function FlexFridayPage() {
                         Array.isArray(w.linkedSessions) ? w.linkedSessions : [];
                       const spansMultiple = linkedSessions.length > 1;
                       return (
-                        <Card key={w.id} className={`transition-all duration-200 ${isRegistered ? 'border-accent-500/30 ring-1 ring-accent-500/10' : 'hover:-translate-y-0.5'}`}>
+                        <Card key={w.id} className={`transition-all duration-200 ${isRegistered ? 'bg-muted/40' : 'hover:-translate-y-0.5'}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
@@ -1021,7 +1028,13 @@ export default function FlexFridayPage() {
                                     <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(w.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
                                       {isUnregistering ? 'Updating…' : 'Unregister'}
                                     </Button>
-                                    <Link href="/flex-friday/pass">
+                                    <Link
+                                      href={
+                                        selectedFriday?.id
+                                          ? `/flex-friday/pass?fridayId=${selectedFriday.id}`
+                                          : '/flex-friday/pass'
+                                      }
+                                    >
                                       <Button size="sm" variant="outline" className="h-8 w-full flex items-center gap-1 border-orange-500/30 text-orange-500 hover:bg-orange-500/10">
                                         <Ticket size={12} /> Pass
                                       </Button>
@@ -1035,7 +1048,7 @@ export default function FlexFridayPage() {
                               )}
                             </div>
                             {canCreateSession && (
-                              <div className="mt-3 pt-3 border-t border-border/60 flex gap-1">
+                              <div className="mt-3 pt-3 border-t border-border/60 flex flex-wrap gap-1">
                                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1"
                                   onClick={() => openEditWorkshopForm(w)}>
                                   <Pencil size={12} /> Edit
@@ -1049,7 +1062,40 @@ export default function FlexFridayPage() {
                                   }}>
                                   <Trash2 size={12} /> Delete
                                 </Button>
+                                <Button
+                                  variant={attendanceWorkshopId === w.id ? 'secondary' : 'ghost'}
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  onClick={() =>
+                                    setAttendanceWorkshopId((id) => (id === w.id ? null : w.id))
+                                  }
+                                >
+                                  <CheckCircle size={12} />
+                                  {attendanceWorkshopId === w.id ? 'Hide attendance' : 'Take attendance'}
+                                </Button>
                               </div>
+                            )}
+                            {canCreateSession && attendanceWorkshopId === w.id && (
+                              <AttendancePanel
+                                roster={rosterData}
+                                isLoading={rosterLoading}
+                                error={rosterError as Error | null}
+                                workshopId={w.id}
+                                onMark={(studentId, status) =>
+                                  markAttendanceMutation.mutate({
+                                    workshopId: w.id,
+                                    studentId,
+                                    status,
+                                  })
+                                }
+                                onClear={(studentId) =>
+                                  clearAttendanceMutation.mutate({
+                                    workshopId: w.id,
+                                    studentId,
+                                  })
+                                }
+                                isMarking={markAttendanceMutation.isPending}
+                              />
                             )}
                           </CardContent>
                         </Card>
@@ -1063,5 +1109,222 @@ export default function FlexFridayPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+type CreditsSemester = {
+  key: 'FALL' | 'SPRING';
+  label: string;
+  earned: number;
+  required: number;
+  remaining: number;
+};
+
+type CreditsSummaryData = {
+  earned: number;
+  required: number;
+  schoolYearLabel: string;
+  semesters?: CreditsSemester[];
+};
+
+function CreditsSummary({ credits }: { credits: CreditsSummaryData }) {
+  const yearMet = credits.earned >= credits.required;
+  return (
+    <div
+      className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/80 px-3 py-1.5 text-sm"
+      title={`Flex Friday credits earned during the ${credits.schoolYearLabel} school year`}
+    >
+      <div className="flex items-center gap-1.5">
+        <CheckCircle
+          size={14}
+          className={yearMet ? 'text-emerald-500' : 'text-muted-foreground'}
+        />
+        <span className="tabular-nums font-medium">
+          {credits.earned}
+          <span className="text-muted-foreground"> / {credits.required}</span>
+        </span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">
+          · {credits.schoolYearLabel}
+        </span>
+      </div>
+      {credits.semesters && credits.semesters.length > 0 ? (
+        <div className="hidden items-center gap-2 border-l border-border/70 pl-3 text-xs md:flex">
+          {credits.semesters.map((sem) => {
+            const met = sem.earned >= sem.required;
+            return (
+              <span
+                key={sem.key}
+                className={cn(
+                  'flex items-center gap-1 tabular-nums',
+                  met ? 'text-emerald-500' : 'text-muted-foreground',
+                )}
+                title={`${sem.label}: ${sem.earned} of ${sem.required} credits`}
+              >
+                <span className="font-medium">{sem.label.split(' ')[0]}</span>
+                <span>
+                  {sem.earned}/{sem.required}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'EXCUSED';
+
+type RosterStudent = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  gradeLevel?: number | null;
+  uniqueId: string;
+};
+
+type RosterResponse = {
+  registrations: Array<{ student: RosterStudent }>;
+  assignments: Array<{ student: RosterStudent }>;
+  attendances: Array<{ studentId: string; status: AttendanceStatus }>;
+};
+
+function AttendancePanel({
+  roster,
+  isLoading,
+  error,
+  workshopId,
+  onMark,
+  onClear,
+  isMarking,
+}: {
+  roster: RosterResponse | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  workshopId: string;
+  onMark: (studentId: string, status: AttendanceStatus) => void;
+  onClear: (studentId: string) => void;
+  isMarking: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="mt-3 rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-xs text-muted-foreground">
+        Loading roster…
+      </div>
+    );
+  }
+
+  if (error) {
+    const message =
+      (error as any)?.response?.data?.message ||
+      error.message ||
+      'Could not load roster';
+    return (
+      <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3 text-xs text-destructive">
+        <p className="font-medium">Could not load roster</p>
+        <p className="mt-0.5 opacity-80">{message}</p>
+        <p className="mt-1 opacity-60">
+          If this is your first time using attendance, make sure the latest
+          migration has been applied (<code>pnpm --filter api prisma:migrate</code>).
+        </p>
+      </div>
+    );
+  }
+
+  if (!roster) {
+    return (
+      <div className="mt-3 rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-xs text-muted-foreground">
+        No roster data.
+      </div>
+    );
+  }
+
+  // Dedupe students (a student can appear in both assignments and registrations)
+  const studentMap = new Map<string, RosterStudent>();
+  roster.registrations.forEach((r) => studentMap.set(r.student.id, r.student));
+  roster.assignments.forEach((a) => studentMap.set(a.student.id, a.student));
+  const students = Array.from(studentMap.values()).sort((a, b) =>
+    `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`),
+  );
+
+  const statusByStudent = new Map<string, AttendanceStatus>();
+  roster.attendances.forEach((a) => statusByStudent.set(a.studentId, a.status));
+
+  if (students.length === 0) {
+    return (
+      <div className="mt-3 rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-4 text-center text-xs text-muted-foreground">
+        No students have registered or been assigned yet.
+      </div>
+    );
+  }
+
+  const statusStyles: Record<AttendanceStatus, string> = {
+    PRESENT: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    ABSENT: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+    EXCUSED: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+  };
+
+  const presentCount = roster.attendances.filter((a) => a.status === 'PRESENT').length;
+
+  return (
+    <div className="mt-3 rounded-md border border-border/60 bg-muted/10 p-3 space-y-2">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span className="font-medium text-foreground/80">
+          Attendance ({students.length} student{students.length === 1 ? '' : 's'})
+        </span>
+        <span className="tabular-nums">{presentCount} present</span>
+      </div>
+      <ul className="space-y-1">
+        {students.map((student) => {
+          const status = statusByStudent.get(student.id) ?? null;
+          return (
+            <li
+              key={student.id}
+              className="flex items-center justify-between gap-2 rounded border border-transparent px-2 py-1 text-xs hover:bg-background"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-foreground/90">
+                  {student.firstName} {student.lastName}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {student.uniqueId}
+                  {student.gradeLevel ? ` · Grade ${student.gradeLevel}` : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {(['PRESENT', 'ABSENT', 'EXCUSED'] as AttendanceStatus[]).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={isMarking}
+                    onClick={() => onMark(student.id, s)}
+                    className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                      status === s
+                        ? statusStyles[s]
+                        : 'border-border/50 text-muted-foreground hover:bg-background'
+                    }`}
+                  >
+                    {s === 'PRESENT' ? 'Present' : s === 'ABSENT' ? 'Absent' : 'Excused'}
+                  </button>
+                ))}
+                {status ? (
+                  <button
+                    type="button"
+                    onClick={() => onClear(student.id)}
+                    className="text-[10px] text-muted-foreground hover:text-destructive"
+                    title="Clear attendance"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-[10px] text-muted-foreground">
+        Marking a student Present awards 1 Flex Friday credit.
+      </p>
+    </div>
   );
 }

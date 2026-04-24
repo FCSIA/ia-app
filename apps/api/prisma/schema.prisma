@@ -42,6 +42,8 @@ model User {
   authoredEvents             Event[]                      @relation("EventAuthor")
   flexAssignments            FlexAssignment[]
   flexRegistrations          FlexRegistration[]
+  flexAttendances            FlexAttendance[]             @relation("FlexAttendanceStudent")
+  markedFlexAttendances      FlexAttendance[]             @relation("FlexAttendanceMarker")
   notificationDeliveries     NotificationDelivery[]
   notificationPrefs          NotificationPreference[]
   reportedContent            Report[]                     @relation("ReportedContent")
@@ -523,15 +525,16 @@ model CalendarEntry {
 }
 
 model FlexFriday {
-  id             String          @id @default(cuid())
-  date           DateTime        @unique @db.Date
-  type           FlexFridayType  @default(ALL_STUDENT)
-  gradeLevel     Int?            @map("grade_level")
+  id             String           @id @default(cuid())
+  date           DateTime         @unique @db.Date
+  type           FlexFridayType   @default(ALL_STUDENT)
+  gradeLevel     Int?             @map("grade_level")
   pathway        Pathway?
-  isSchoolDay    Boolean         @default(true) @map("is_school_day")
+  isSchoolDay    Boolean          @default(true) @map("is_school_day")
   notes          String?
-  createdAt      DateTime        @default(now()) @map("created_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
   sessions       FlexSession[]
+  attendances    FlexAttendance[]
   calendarEntry  CalendarEntry?
 
   @@map("flex_fridays")
@@ -568,6 +571,7 @@ model FlexWorkshop {
   sessions            FlexWorkshopSession[]
   registrations       FlexRegistration[]
   assignments         FlexAssignment[]
+  attendances         FlexAttendance[]
 
   @@map("flex_workshops")
 }
@@ -608,6 +612,29 @@ model FlexAssignment {
 
   @@unique([workshopId, studentId])
   @@map("flex_assignments")
+}
+
+/// Per-workshop attendance record for a student. Each PRESENT row awards one
+/// Flex Friday credit. A denormalised `flexFridayId` lets us count credits by
+/// school year without walking the workshop→session→friday join.
+model FlexAttendance {
+  id           String               @id @default(cuid())
+  workshopId   String               @map("workshop_id")
+  studentId    String               @map("student_id")
+  flexFridayId String               @map("flex_friday_id")
+  status       FlexAttendanceStatus @default(PRESENT)
+  markedById   String               @map("marked_by_id")
+  markedAt     DateTime             @default(now()) @map("marked_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+  workshop     FlexWorkshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  student      User                 @relation("FlexAttendanceStudent", fields: [studentId], references: [id])
+  flexFriday   FlexFriday           @relation(fields: [flexFridayId], references: [id], onDelete: Cascade)
+  markedBy     User                 @relation("FlexAttendanceMarker", fields: [markedById], references: [id])
+
+  @@unique([workshopId, studentId])
+  @@index([studentId, flexFridayId])
+  @@index([flexFridayId])
+  @@map("flex_attendances")
 }
 
 model Report {
@@ -792,6 +819,12 @@ enum FlexFridayType {
 enum FlexSessionType {
   STUDENT_CHOICE
   TEACHER_ASSIGNED
+}
+
+enum FlexAttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
 }
 
 enum ReportStatus {

@@ -9,11 +9,8 @@ import {
   Megaphone,
   MessageSquareText,
   Search,
-  Shield,
   Sparkles,
   UserPlus,
-  Users2,
-  X,
 } from 'lucide-react';
 import type { ClubDetail } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
@@ -23,14 +20,17 @@ import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
 import { formatClubRole, fullName, type AnnouncementSummary } from '@/components/clubs/types';
+import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { announcementsApi, clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { filterBySearchQuery } from '@/lib/search';
 
 function RequestsPanel({
   club,
@@ -58,33 +58,47 @@ function RequestsPanel({
   if (!club.pendingJoinRequests?.length) return null;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Pending join requests</CardTitle>
+    <Card className="border-amber-500/20 bg-amber-500/5 shadow-sm overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/10 bg-background/50 backdrop-blur-sm px-5 py-4">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400">
+          <UserPlus className="size-4" />
+          Pending join requests ({club.pendingJoinRequests.length})
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4 p-5">
         {club.pendingJoinRequests.map((request) => (
           <div
             key={request.id}
-            className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-4 rounded-xl border border-border/50 bg-background/80 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm transition-all hover:border-amber-500/30"
           >
-            <div className="min-w-0">
-              <p className="font-medium text-foreground">{fullName(request.requester)}</p>
-              <p className="text-sm text-muted-foreground">
-                {request.requester.uniqueId || 'Student'} · requested{' '}
-                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-semibold text-sm">
+                {request.requester.firstName?.[0]}{request.requester.lastName?.[0]}
+              </div>
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
+                  <Badge variant="outline" className="px-1.5 py-0 font-mono text-[10px] tracking-wider bg-transparent">
+                    {request.requester.uniqueId || 'Student'}
+                  </Badge>
+                  <span>
+                    requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 size="sm"
                 variant="outline"
+                className="flex-1 sm:flex-none border-border/50"
                 onClick={() => respondMutation.mutate({ requestId: request.id, accept: false })}
               >
                 Decline
               </Button>
               <Button
                 size="sm"
+                className="flex-1 sm:flex-none bg-amber-600 hover:bg-amber-700 text-white"
                 onClick={() => respondMutation.mutate({ requestId: request.id, accept: true })}
               >
                 Approve
@@ -97,24 +111,11 @@ function RequestsPanel({
   );
 }
 
-function JoinCodePanel({ club }: { club: ClubDetail }) {
+function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [code, setCode] = useState('');
-
-  const generateMutation = useMutation({
-    mutationFn: () => clubsApi.generateJoinCode(club.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      toast({ title: 'Join code generated' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to generate code',
-        variant: 'destructive',
-      }),
-  });
 
   const redeemMutation = useMutation({
     mutationFn: () => clubsApi.redeemJoinCode(club.id, code.trim().toUpperCase()),
@@ -130,41 +131,6 @@ function JoinCodePanel({ club }: { club: ClubDetail }) {
         variant: 'destructive',
       }),
   });
-
-  if (club.viewer.canManageMembership) {
-    return (
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Join code</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Generate a reusable join code for students who should be able to enter directly.
-          </p>
-          {club.activeJoinCode?.code ? (
-            <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Active code
-              </p>
-              <p className="mt-2 text-2xl font-semibold tracking-[0.32em] text-foreground">
-                {club.activeJoinCode.code}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Generated{' '}
-                {club.activeJoinCode.updatedAt
-                  ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
-                  : 'recently'}
-              </p>
-            </div>
-          ) : null}
-          <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
-            <Sparkles className="mr-2 size-4" />
-            {club.activeJoinCode?.code ? 'Regenerate join code' : 'Generate join code'}
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (club.joinPolicy !== 'REQUEST') return null;
 
@@ -252,14 +218,16 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
-            {club.viewer.hasPendingJoinRequest ? (
-              <Badge variant="outline">Request pending</Badge>
-            ) : null}
-          </div>
           <div className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
+              <div className="flex items-center gap-2 pt-1">
+                <Badge variant="secondary">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+                {club.viewer.hasPendingJoinRequest ? (
+                  <Badge variant="outline">Request pending</Badge>
+                ) : null}
+              </div>
+            </div>
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
               {club.overview || club.description || 'No club description yet.'}
             </p>
@@ -279,51 +247,69 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 {club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
               </Button>
             )}
-            <JoinCodePanel club={club} />
+            <RedeemJoinCodePanel club={club} />
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Student leaders</CardTitle>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="bg-muted/30 border-b border-border/50 pb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="size-4 text-primary" />
+              Student leaders
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-5">
             {club.leaders.length > 0 ? (
-              club.leaders.map((leader) => (
-                <div key={leader.userId} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3">
-                  <ClubAvatar person={leader.user} className="size-10" fallbackClassName="text-xs" />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">{fullName(leader.user)}</p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {formatClubRole(leader.role) || 'Club leader'}
-                    </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {club.leaders.map((leader) => (
+                  <div key={leader.userId} className="flex items-center gap-3 rounded-xl border border-border/40 bg-card p-3 shadow-sm transition-colors hover:bg-muted/20">
+                    <ClubAvatar person={leader.user} className="size-10 shadow-sm ring-1 ring-border/20" fallbackClassName="text-xs" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
+                      <p className="truncate text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
+                        {formatClubRole(leader.role) || 'Leader'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No club leaders listed yet.</p>
+              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
+                <p className="text-sm text-muted-foreground">No club leaders listed yet.</p>
+              </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Sponsors</CardTitle>
+        <Card className="border-border/50 shadow-sm overflow-hidden">
+          <CardHeader className="bg-muted/30 border-b border-border/50 pb-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <KeyRound className="size-4 text-primary" />
+              Sponsors
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {club.sponsors.map((sponsor) => (
-              <div key={sponsor.userId} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3">
-                <ClubAvatar person={sponsor.user} className="size-10" fallbackClassName="text-xs" />
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{fullName(sponsor.user)}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {sponsor.user.uniqueId || 'Sponsor'}
-                  </p>
-                </div>
+          <CardContent className="p-5">
+            {club.sponsors.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {club.sponsors.map((sponsor) => (
+                  <div key={sponsor.userId} className="flex items-center gap-3 rounded-xl border border-border/40 bg-card p-3 shadow-sm transition-colors hover:bg-muted/20">
+                    <ClubAvatar person={sponsor.user} className="size-10 shadow-sm ring-1 ring-border/20" fallbackClassName="text-xs" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
+                      <p className="truncate font-mono text-[10px] text-muted-foreground mt-0.5 bg-muted/50 inline-block px-1.5 py-0.5 rounded">
+                        {sponsor.user.uniqueId || 'Sponsor'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
+                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -352,11 +338,10 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   });
 
   const filteredAnnouncements = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return announcements;
-    return announcements.filter((a) =>
-      [a.title, a.body].filter(Boolean).some((text) => text.toLowerCase().includes(query))
-    );
+    return filterBySearchQuery(announcements, deferredSearch, (announcement) => [
+      announcement.title,
+      announcement.body,
+    ]);
   }, [announcements, deferredSearch]);
 
   if (!club) return null;
@@ -380,7 +365,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     <div className="min-w-0">
       <h1 className="truncate text-base font-semibold text-foreground">{club.name}</h1>
       {club.description ? (
-        <p className="truncate text-xs text-muted-foreground">{club.description}</p>
+        <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{club.description}</p>
       ) : null}
     </div>
   );
@@ -473,59 +458,42 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
           club={club}
           canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
         />
-        {club.viewer.canManageMembership ? <JoinCodePanel club={club} /> : null}
         {club.viewer.canManageMembership ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Announcements</h2>
-            <span className="text-xs text-muted-foreground">{announcements.length} total</span>
-          </div>
-
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-10"
-              placeholder="Search announcements..."
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Megaphone className="size-4 text-primary" />
+              <h2 className="text-base font-semibold">Announcements</h2>
+            </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                {deferredSearch
+                  ? `${filteredAnnouncements.length} of ${announcements.length}`
+                  : `${announcements.length} total`}
+              </span>
+              <SearchInput
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search..."
+                className="w-full sm:w-[240px] rounded-xl bg-muted/30"
+              />
+            </div>
           </div>
 
           {filteredAnnouncements.length > 0 ? (
-            <div className="space-y-3">
+            <div className="grid gap-4">
               {filteredAnnouncements.map((announcement) => (
-                <Link
+                <AnnouncementCard
                   key={announcement.id}
-                  href={`/announcements/${announcement.id}`}
-                  className="block rounded-lg border bg-card p-4 transition-colors hover:border-border hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-foreground">{announcement.title}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                    {announcement.body}
-                  </p>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {announcement.author
-                      ? `${announcement.author.firstName} ${announcement.author.lastName}`
-                      : 'Unknown author'}
-                    {announcement._count?.comments ? ` · ${announcement._count.comments} comments` : ''}
-                  </p>
-                </Link>
+                  announcement={{
+                    ...(announcement as any),
+                    isRead: (announcement as any).isRead ?? true,
+                    targetType: (announcement as any).targetType ?? 'CLUB',
+                    status: (announcement as any).status ?? 'ACTIVE',
+                    isAdminGeneral: (announcement as any).isAdminGeneral ?? false,
+                  }}
+                />
               ))}
             </div>
           ) : (

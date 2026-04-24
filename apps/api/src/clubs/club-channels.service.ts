@@ -694,7 +694,10 @@ export class ClubChannelsService {
       entityId: message.id,
       meta: {
         clubId,
+        clubName: context.club.name,
         channelId,
+        channelName: channel.name,
+        bodyPreview: trimmedBody.slice(0, 280),
         mentionCount: mentionRows.length,
         attachmentCount: attachments.length,
         parentMessageId: threadParent?.id ?? null,

@@ -5,25 +5,25 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
-import { formatDistanceToNow } from 'date-fns';
-import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Archive,
-  CheckCheck,
   ChevronDown,
-  Clock,
   Filter,
-  MessageCircle,
   Plus,
-  Search,
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  SearchInput,
+  SearchToolbar,
+  SearchToolbarFilters,
+  SearchToolbarRow,
+} from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -36,27 +36,13 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
-
-const TAG_COLORS: Record<string, string> = {
-  SCHOOL_WIDE:
-    'bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 border-transparent',
-  GRADE:
-    'bg-violet-500/15 text-violet-600 dark:text-violet-400 hover:bg-violet-500/25 border-transparent',
-  PATHWAY:
-    'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border-transparent',
-  CLUB:
-    'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border-transparent',
-};
-
-const TAG_LABELS: Record<string, string> = {
-  SCHOOL_WIDE: 'School Wide',
-  GRADE: 'Grade',
-  PATHWAY: 'Pathway',
-  CLUB: 'Club',
-};
-
-const BADGE_TEXT_CLASS = 'text-[11px]';
+import {
+  ANNOUNCEMENT_BADGE_TEXT_CLASS,
+  ANNOUNCEMENT_TAG_COLORS,
+  ANNOUNCEMENT_TAG_LABELS,
+  AnnouncementCard,
+} from '@/components/announcements/announcement-card';
+import { matchesSearchQuery } from '@/lib/search';
 
 type ClubFilterOption = {
   id: string;
@@ -135,116 +121,6 @@ function ClubMultiSelect({
   );
 }
 
-function AnnouncementCard({
-  ann,
-  onArchive,
-  canArchive,
-  onTagClick,
-  onClubClick,
-}: {
-  ann: any;
-  onArchive: (id: string) => void;
-  canArchive: boolean;
-  onTagClick: (tag: string) => void;
-  onClubClick: (clubId: string) => void;
-}) {
-  return (
-    <div
-      className="relative rounded-[1.4rem] border border-border/70 bg-background/85 px-5 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
-    >
-      {!ann.isRead ? (
-        <span className="absolute right-4 top-4 size-2 rounded-full bg-primary" />
-      ) : null}
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              {ann.isAdminGeneral ? (
-                <Badge variant="destructive" className={BADGE_TEXT_CLASS}>
-                  Admin
-                </Badge>
-              ) : null}
-              {ann.status === 'EXPIRED' ? (
-                <Badge variant="secondary" className={BADGE_TEXT_CLASS}>
-                  Expired
-                </Badge>
-              ) : null}
-              {ann.status === 'ARCHIVED' ? (
-                <Badge variant="outline" className={BADGE_TEXT_CLASS}>
-                  Archived
-                </Badge>
-              ) : null}
-              <button
-                type="button"
-                className="cursor-pointer"
-                onClick={() => onTagClick(ann.targetType)}
-              >
-                <Badge
-                  className={`${BADGE_TEXT_CLASS} transition-colors ${TAG_COLORS[ann.targetType] || 'bg-muted text-muted-foreground'}`}
-                >
-                  {TAG_LABELS[ann.targetType] || ann.targetType.replace(/_/g, ' ')}
-                </Badge>
-              </button>
-              {ann.club?.name ? (
-                <button
-                  type="button"
-                  className="cursor-pointer"
-                  onClick={() => onClubClick(ann.club.id)}
-                >
-                  <Badge variant="outline" className={BADGE_TEXT_CLASS}>
-                    {ann.club.name}
-                  </Badge>
-                </button>
-              ) : null}
-            </div>
-
-            <Link href={`/announcements/${ann.id}`}>
-              <h3 className="font-semibold text-foreground/90 transition-colors hover:text-accent-500">
-                {ann.title}
-              </h3>
-            </Link>
-
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-              {ann.body}
-            </p>
-
-            <p className="mt-3 text-sm text-muted-foreground">
-              {ann.author?.firstName} {ann.author?.lastName} ·{' '}
-              {formatDistanceToNow(new Date(ann.createdAt), { addSuffix: true })}
-              {ann.expiresAt ? (
-                <span className="ml-2 text-amber-500 dark:text-amber-400">
-                  <Clock size={12} className="mr-1 inline" />
-                  expires {formatDistanceToNow(new Date(ann.expiresAt), { addSuffix: true })}
-                </span>
-              ) : null}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            {ann.allowComments ? (
-              <span className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-sm text-muted-foreground">
-                <MessageCircle size={14} /> {ann._count?.comments || 0}
-              </span>
-            ) : null}
-            <AnnouncementReadToggle announcementId={ann.id} isRead={ann.isRead} />
-            {canArchive && ann.status === 'ACTIVE' ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onArchive(ann.id)}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                title="Archive"
-              >
-                <Archive size={16} />
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function AnnouncementsPage() {
   const user = getUser();
   const qc = useQueryClient();
@@ -317,22 +193,13 @@ export default function AnnouncementsPage() {
         return false;
       }
 
-      if (normalizedSearch) {
-        const searchable = [
-          announcement.title,
-          announcement.body,
-          announcement.author?.firstName,
-          announcement.author?.lastName,
-          announcement.club?.name,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-
-        return searchable.includes(normalizedSearch);
-      }
-
-      return true;
+      return matchesSearchQuery(normalizedSearch, [
+        announcement.title,
+        announcement.body,
+        announcement.author?.firstName,
+        announcement.author?.lastName,
+        announcement.club?.name,
+      ]);
     });
   }, [activeTag, data, deferredSearch, readFilter, selectedClubIds]);
 
@@ -385,54 +252,69 @@ export default function AnnouncementsPage() {
   const hasActiveFilters =
     !!activeTag || !!deferredSearch.trim() || selectedClubIds.length > 0 || readFilter !== 'all';
 
-  const headerSlot = (
-    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-      <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Announcements</h1>
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          variant={showArchived ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={() => setShowArchived(!showArchived)}
-        >
-          {showArchived ? 'Active' : 'Archived'}
-        </Button>
-        {canPost ? (
-          <Button size="sm" onClick={() => setShowNew(true)}>
-            <Plus className="mr-1.5 size-4" /> New
-          </Button>
-        ) : null}
-      </div>
-    </div>
-  );
-
   return (
-    <AppShell headerSlot={headerSlot}>
+    <AppShell>
       <div className="mx-auto max-w-4xl">
-
-        <div className="mb-5 space-y-3">
-          <div className="border-b pb-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="h-11 border-0 bg-transparent pl-9 pr-9 text-base shadow-none focus-visible:ring-0"
-                placeholder="Search announcements..."
-              />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="size-4" />
-                </button>
-              ) : null}
-            </div>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showArchived ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowArchived(!showArchived)}
+              className={
+                showArchived ? 'border-accent-500/50 text-accent-600 dark:text-accent-400' : ''
+              }
+            >
+              {showArchived ? 'Active' : 'Archived'}
+            </Button>
+            {canPost ? (
+              <Button size="sm" onClick={() => setShowNew(true)} className="flex items-center gap-2">
+                <Plus size={16} /> New
+              </Button>
+            ) : null}
+          </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+        <SearchToolbar className="mb-5">
+          <SearchToolbarRow>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              className="flex-1"
+              placeholder="Search announcements..."
+            />
+
+            {availableClubs.length > 0 ? (
+              <ClubMultiSelect
+                clubs={availableClubs}
+                selectedClubIds={selectedClubIds}
+                onChange={setSelectedClubIds}
+              />
+            ) : null}
+
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => {
+                  setActiveTag(null);
+                  setSearch('');
+                  setSelectedClubIds([]);
+                  setReadFilter('all');
+                }}
+              >
+                <X className="mr-1 size-4" />
+                Clear filters
+              </Button>
+            ) : null}
+          </SearchToolbarRow>
+
+          <SearchToolbarFilters>
             <ToggleGroup
               type="single"
               value={readFilter}
@@ -463,55 +345,33 @@ export default function AnnouncementsPage() {
                   {availableTags.map((tag) => (
                     <button key={tag} type="button" onClick={() => handleTagClick(tag)}>
                       <Badge
-                        className={`${BADGE_TEXT_CLASS} cursor-pointer transition-all ${
+                        className={`${ANNOUNCEMENT_BADGE_TEXT_CLASS} cursor-pointer transition-all ${
                           activeTag === tag
-                            ? `${TAG_COLORS[tag] || 'bg-muted text-muted-foreground'} ring-2 ring-offset-1 ring-offset-background ring-current`
+                            ? `${ANNOUNCEMENT_TAG_COLORS[tag] || 'bg-muted text-muted-foreground'} ring-2 ring-offset-1 ring-offset-background ring-current`
                             : activeTag
                               ? 'bg-muted/50 text-muted-foreground/60 hover:bg-muted'
-                              : `${TAG_COLORS[tag] || 'bg-muted text-muted-foreground'}`
+                              : `${ANNOUNCEMENT_TAG_COLORS[tag] || 'bg-muted text-muted-foreground'}`
                         }`}
                       >
-                        {TAG_LABELS[tag] || tag.replace(/_/g, ' ')}
+                        {ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' ')}
                       </Badge>
                     </button>
                   ))}
                 </div>
               </div>
             ) : null}
-
-            {availableClubs.length > 0 ? (
-              <ClubMultiSelect
-                clubs={availableClubs}
-                selectedClubIds={selectedClubIds}
-                onChange={setSelectedClubIds}
-              />
-            ) : null}
-
-            {hasActiveFilters ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="rounded-xl"
-                onClick={() => {
-                  setActiveTag(null);
-                  setSearch('');
-                  setSelectedClubIds([]);
-                  setReadFilter('all');
-                }}
-              >
-                <X className="mr-1 size-4" />
-                Clear filters
-              </Button>
-            ) : null}
-          </div>
+          </SearchToolbarFilters>
 
           {selectedClubIds.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <SearchToolbarFilters>
               {availableClubs
                 .filter((club) => selectedClubIds.includes(club.id))
                 .map((club) => (
-                  <Badge key={club.id} variant="secondary" className={`gap-1 ${BADGE_TEXT_CLASS}`}>
+                  <Badge
+                    key={club.id}
+                    variant="secondary"
+                    className={`gap-1 ${ANNOUNCEMENT_BADGE_TEXT_CLASS}`}
+                  >
                     {club.name}
                     <button
                       type="button"
@@ -526,9 +386,9 @@ export default function AnnouncementsPage() {
                     </button>
                   </Badge>
                 ))}
-            </div>
+            </SearchToolbarFilters>
           ) : null}
-        </div>
+        </SearchToolbar>
 
         {showNew && canPost ? (
           <Card className="mb-6">
@@ -615,10 +475,10 @@ export default function AnnouncementsPage() {
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Expires (optional)
                   </label>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={form.expiresAt}
-                    onChange={(event) => setForm({ ...form, expiresAt: event.target.value })}
+                    onChange={(expiresAt) => setForm({ ...form, expiresAt })}
+                    allowClear
                   />
                 </div>
                 <div className="flex items-center gap-6 pt-2">
@@ -699,7 +559,7 @@ export default function AnnouncementsPage() {
               {(filtered as any[]).map((announcement) => (
                 <AnnouncementCard
                   key={announcement.id}
-                  ann={announcement}
+                  announcement={announcement}
                   canArchive={canArchive}
                   onArchive={(id: string) => archiveMutation.mutate(id)}
                   onTagClick={handleTagClick}

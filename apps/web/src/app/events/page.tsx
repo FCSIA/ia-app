@@ -11,9 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, MapPin, Clock, Check, X, AlertCircle, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { filterBySearchQuery } from '@/lib/search';
 
 type ClubSummary = {
   id: string;
@@ -158,17 +161,12 @@ export default function EventsPage() {
     : [];
 
   const filterEvents = (list: any[]) => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return list;
-    return list.filter((e) => {
-      const searchable = [
-        e.title,
-        e.description,
-        e.location,
-        e.club?.name,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return searchable.includes(query);
-    });
+    return filterBySearchQuery(list, deferredSearch, (event) => [
+      event.title,
+      event.description,
+      event.location,
+      event.club?.name,
+    ]);
   };
 
   const filteredUpcoming = useMemo(() => filterEvents(upcoming), [upcoming, deferredSearch]);
@@ -192,26 +190,12 @@ export default function EventsPage() {
           )}
         </div>
 
-        <div className="mb-6 border-b pb-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 border-0 bg-transparent pl-9 pr-9 text-base shadow-none focus-visible:ring-0"
-              placeholder="Search events by title, location, or club..."
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+        <div className="mb-6">
+          <SearchInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search events by title, location, or club..."
+          />
         </div>
 
         {showNew && canCreate && (
@@ -220,18 +204,51 @@ export default function EventsPage() {
               <CardTitle className="text-lg">Create Event</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ ...form, clubId: form.clubId || undefined, endAt: form.endAt || undefined }); }} className="space-y-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!form.startAt) {
+                    toast({ title: 'Start date is required', variant: 'destructive' });
+                    return;
+                  }
+                  createMutation.mutate({
+                    ...form,
+                    clubId: form.clubId || undefined,
+                    endAt: form.endAt || undefined,
+                  });
+                }}
+                className="space-y-4"
+              >
                 <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
                 <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
                 <Input placeholder="Location (optional)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Start *</label>
-                    <Input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} required />
+                    <DateTimePicker
+                      value={form.startAt}
+                      onChange={(startAt) => setForm({ ...form, startAt })}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        form.endAt
+                          ? (date) => format(date, 'yyyy-MM-dd') > form.endAt.slice(0, 10)
+                          : undefined
+                      }
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">End (optional)</label>
-                    <Input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} />
+                    <DateTimePicker
+                      value={form.endAt}
+                      onChange={(endAt) => setForm({ ...form, endAt })}
+                      buttonClassName="w-full"
+                      disabledDays={
+                        form.startAt
+                          ? (date) => format(date, 'yyyy-MM-dd') < form.startAt.slice(0, 10)
+                          : undefined
+                      }
+                      allowClear
+                    />
                   </div>
                 </div>
                 {availableClubs.length > 0 ? (

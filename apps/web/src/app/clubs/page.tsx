@@ -3,18 +3,27 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Hash, Plus, Search, Shield, Users2, X } from 'lucide-react';
+import { Check, Hash, Plus, Shield, Users2, X } from 'lucide-react';
 import type { ClubInvite, ClubSummary } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+
+function resolveMediaUrl(url?: string | null) {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 type MyClubsResponse = {
   memberOf: ClubSummary[];
@@ -69,13 +78,10 @@ export default function ClubsLandingPage() {
   const myClubIds = useMemo(() => new Set(myClubs.map((c) => c.id)), [myClubs]);
 
   const filteredClubs = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return allClubs;
-    return allClubs.filter((club) =>
-      [club.name, club.description]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query)),
-    );
+    return filterBySearchQuery(allClubs, deferredSearch, (club) => [
+      club.name,
+      club.description,
+    ]);
   }, [allClubs, deferredSearch]);
 
   const headerSlot = (
@@ -157,15 +163,14 @@ export default function ClubsLandingPage() {
         <section className="space-y-4">
           <div className="space-y-1 border-b pb-3">
             <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Find a club"
-                className="h-11 border-0 bg-transparent pl-9 text-base shadow-none focus-visible:ring-0"
-              />
-            </div>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Find a club"
+              size="lg"
+              className="h-11 rounded-none border-0 bg-transparent shadow-none"
+              inputClassName="text-base"
+            />
           </div>
 
           {isLoading ? (
@@ -207,11 +212,16 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
               Joined
             </Badge>
           ) : null}
-          <div className="flex size-12 items-center justify-center rounded-lg bg-primary/10 text-base font-semibold text-primary">
-            {club.name.charAt(0).toUpperCase()}
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-base font-semibold text-primary border border-border/40">
+            {club.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
+            ) : (
+              club.name.charAt(0).toUpperCase()
+            )}
           </div>
           <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
-          <p className="line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-muted-foreground">
+          <p className="line-clamp-4 min-h-[5rem] text-xs leading-5 text-muted-foreground">
             {club.description || 'No description.'}
           </p>
           <div className="mt-auto flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
@@ -236,14 +246,19 @@ function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode 
       <Card className={cn('h-full transition-colors hover:border-border hover:bg-muted/50')}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-sm font-semibold text-primary">
-              {club.name.charAt(0).toUpperCase()}
+            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/40">
+              {club.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
+              ) : (
+                club.name.charAt(0).toUpperCase()
+              )}
             </div>
             {badge}
           </div>
           <div>
             <p className="font-medium text-foreground">{club.name}</p>
-            <p className="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground">
+            <p className="mt-1 line-clamp-4 text-sm leading-6 text-muted-foreground">
               {club.description || 'No description.'}
             </p>
           </div>

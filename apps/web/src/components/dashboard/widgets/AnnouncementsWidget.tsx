@@ -20,8 +20,7 @@ export function AnnouncementsWidget() {
 
   return (
     <Panel
-      title="Recent announcements"
-      description="Only unread announcements stay here."
+      title="Announcements"
       action={
         <Button asChild variant="ghost" className="rounded-2xl">
           <Link href="/announcements">

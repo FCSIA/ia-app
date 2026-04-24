@@ -20,7 +20,6 @@ export function PendingApprovalsWidget() {
   return (
     <Panel
       title="Pending approvals"
-      description="Events awaiting your review."
       action={
         <Button asChild variant="ghost" className="rounded-2xl">
           <Link href="/events">

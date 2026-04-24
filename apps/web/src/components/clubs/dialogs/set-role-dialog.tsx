@@ -19,7 +19,7 @@ import { clubsApi } from '@/lib/api';
 import { fullName } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Shield } from 'lucide-react';
+import { Shield, Settings } from 'lucide-react';
 
 type Props = {
   clubId: string;
@@ -29,8 +29,7 @@ type Props = {
 
 const OPTIONS = [
   { value: 'NONE', label: 'Regular Member', detail: 'No administrative permissions' },
-  { value: 'LEADER', label: 'Standard Leader', detail: 'Can invite members, manage channels, and post announcements' },
-  { value: 'CUSTOM', label: 'Custom Leadership Title...', detail: 'Enter a specific title (e.g. Captain, President, Secretary)' },
+  { value: 'LEADER', label: 'Leader', detail: 'Can invite members, manage channels, and post announcements' },
 ];
 
 export function SetRoleDialog({ clubId, person, onOpenChange }: Props) {
@@ -38,6 +37,7 @@ export function SetRoleDialog({ clubId, person, onOpenChange }: Props) {
   const { toast } = useToast();
   const [role, setRole] = useState<string>('NONE');
   const [customRole, setCustomRole] = useState('');
+  const [isCustomizing, setIsCustomizing] = useState(false);
 
   useEffect(() => {
     if (!person) return;
@@ -45,17 +45,24 @@ export function SetRoleDialog({ clubId, person, onOpenChange }: Props) {
     if (current === 'NONE' || current === 'LEADER') {
       setRole(current);
       setCustomRole('');
+      setIsCustomizing(false);
     } else {
-      setRole('CUSTOM');
+      setRole('LEADER');
       setCustomRole(person.clubRole || '');
+      setIsCustomizing(true);
     }
   }, [person]);
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!person) throw new Error('No person');
-      const finalRole = role === 'CUSTOM' ? customRole.trim() : (role === 'NONE' ? undefined : role);
-      return clubsApi.setMemberRole(clubId, person.id, finalRole || undefined);
+      let finalRole: string | undefined;
+      if (role === 'NONE') {
+        finalRole = undefined;
+      } else {
+        finalRole = isCustomizing && customRole.trim() ? customRole.trim() : 'LEADER';
+      }
+      return clubsApi.setMemberRole(clubId, person.id, finalRole);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club', clubId] });
@@ -93,24 +100,41 @@ export function SetRoleDialog({ clubId, person, onOpenChange }: Props) {
             <div key={option.value} className="space-y-2">
               <Label
                 htmlFor={`role-${option.value}`}
-                className="flex cursor-pointer items-start gap-3 rounded-md border px-3 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/[0.04]"
+                className="flex cursor-pointer items-start gap-3 rounded-md border px-3 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/[0.04] relative items-center"
               >
-                <RadioGroupItem id={`role-${option.value}`} value={option.value} className="mt-0.5" />
-                <div className="space-y-0.5">
+                <RadioGroupItem id={`role-${option.value}`} value={option.value} />
+                <div className="space-y-0.5 flex-1">
                   <p className="text-sm font-medium">{option.label}</p>
                   <p className="text-xs text-muted-foreground">{option.detail}</p>
                 </div>
+                {option.value === 'LEADER' && role === 'LEADER' && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="size-8 text-muted-foreground hover:text-foreground shrink-0"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsCustomizing((current) => !current);
+                    }}
+                  >
+                    <Settings className="size-4" />
+                  </Button>
+                )}
               </Label>
-              {option.value === 'CUSTOM' && role === 'CUSTOM' && (
-                <div className="px-1 pb-2">
+              {option.value === 'LEADER' && role === 'LEADER' && isCustomizing && (
+                <div className="px-1 pb-2 pt-1 animate-in slide-in-from-top-2 fade-in">
                   <Input
                     autoFocus
-                    placeholder="Enter role title (e.g. President)"
+                    placeholder="Enter custom title (e.g. President, Captain)"
                     value={customRole}
                     onChange={(e) => setCustomRole(e.target.value)}
                     className="h-9"
                     maxLength={64}
                   />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground ml-1">
+                    Leaving this blank will use the standard &quot;Leader&quot; title.
+                  </p>
                 </div>
               )}
             </div>
@@ -123,7 +147,7 @@ export function SetRoleDialog({ clubId, person, onOpenChange }: Props) {
           </Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || (role === 'CUSTOM' && !customRole.trim())}
+            disabled={mutation.isPending}
           >
             {mutation.isPending ? 'Saving…' : 'Save'}
           </Button>

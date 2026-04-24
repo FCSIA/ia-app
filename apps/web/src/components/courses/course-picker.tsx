@@ -23,6 +23,8 @@ type CoursePickerProps = {
   placeholder: string;
   preferredGradeLevel?: number;
   disabled?: boolean;
+  className?: string;
+  iconOnly?: boolean;
 };
 
 export function CoursePicker({
@@ -32,6 +34,8 @@ export function CoursePicker({
   placeholder,
   preferredGradeLevel,
   disabled,
+  className,
+  iconOnly,
 }: CoursePickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -75,25 +79,34 @@ export function CoursePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          type="button"
-          disabled={disabled}
-          className="h-auto min-h-11 w-full justify-between rounded-2xl border-border/70 bg-background/80 px-4 py-3 text-left shadow-sm"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
-              {selectedCourse ? selectedCourse.title : placeholder}
-            </p>
-            {selectedCourse ? (
-              <p className="truncate text-xs text-muted-foreground">
-                {selectedCourse.department}
-                {selectedCourse.gradeText ? ` · Grades ${selectedCourse.gradeText}` : ''}
-              </p>
-            ) : null}
-          </div>
-          <ChevronsUpDown className="ml-3 size-4 shrink-0 text-muted-foreground" />
-        </Button>
+        {iconOnly ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            disabled={disabled}
+            className={cn("h-6 w-6 p-0 rounded bg-muted/50 hover:bg-muted font-normal text-muted-foreground", className)}
+          >
+            <ChevronsUpDown className="size-3.5" />
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            type="button"
+            disabled={disabled}
+            className={cn(
+              "w-full justify-between text-left",
+              className || "h-auto min-h-11 rounded-2xl border-border/70 bg-background/80 px-4 py-3 shadow-sm"
+            )}
+          >
+            <div className="min-w-0 flex-1 truncate">
+              <span className="truncate text-sm font-medium text-foreground">
+                {selectedCourse ? selectedCourse.title : placeholder}
+              </span>
+            </div>
+            <ChevronsUpDown className="ml-2 size-3.5 shrink-0 text-muted-foreground" />
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(32rem,calc(100vw-2rem))] rounded-2xl border-border/70 p-0">
         <Command shouldFilter={false}>

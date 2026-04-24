@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   Sparkles,
+  Star,
   Ticket,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi } from '@/lib/api';
+import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,7 @@ const primaryNav: NavItem[] = [
   { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },
   { href: '/flex-friday', label: 'Flex Friday', icon: Sparkles },
+  { href: '/wrapped', label: 'Wrapped', icon: Star },
 ];
 
 const accountNav: NavItem[] = [
@@ -66,6 +69,7 @@ const pageMeta: Record<string, { label: string; detail: string }> = {
   '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
   '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
   '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
+  '/wrapped': { label: 'Wrapped', detail: 'Your year at a glance.' },
   '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
   '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
   '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },
@@ -162,10 +166,19 @@ export function AppShell({
   const showAdmin = user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
   const showSchedule =
     user && hasRole(user, 'STUDENT', 'ADMIN', 'SUPER_ADMIN');
+  // Wrapped only appears in the nav during its May window — hidden for
+  // everyone (including admins) outside that window. Admins who need to
+  // preview can still navigate to /wrapped directly.
+  const showWrapped = computeWrappedAvailability().open;
 
   const primary = useMemo(
-    () => primaryNav.filter((i) => i.href !== '/schedule' || showSchedule),
-    [showSchedule],
+    () =>
+      primaryNav.filter((i) => {
+        if (i.href === '/schedule' && !showSchedule) return false;
+        if (i.href === '/wrapped' && !showWrapped) return false;
+        return true;
+      }),
+    [showSchedule, showWrapped],
   );
 
   const currentMeta = useMemo(

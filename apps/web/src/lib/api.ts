@@ -1,3 +1,4 @@
+import 'client-only';
 import axios from 'axios';
 import type { AppUser, AuthLoginResponse } from '@ia/contracts/auth';
 import type {
@@ -16,7 +17,7 @@ import type {
 
 export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export function toApiUrl(path: string) {
   if (!path) return path;
@@ -65,8 +66,8 @@ export const authApi = {
 
 // Users
 export const usersApi = {
-  getAll: (page = 1, limit = 50, search?: string) =>
-    api.get('/users', { params: { page, limit, search } }),
+  getAll: (page = 1, limit = 50, search?: string, roleGroup?: string) =>
+    api.get('/users', { params: { page, limit, search, roleGroup } }),
   getOne: (id: string) => api.get(`/users/${id}`),
   create: (data: any) => api.post('/users', data),
   update: (id: string, data: any) => api.patch(`/users/${id}`, data),
@@ -270,7 +271,90 @@ export const flexFridayApi = {
     api.post(`/flex-friday/workshops/${workshopId}/assign`, { studentId }),
   getMyRegistrations: () => api.get('/flex-friday/my/registrations'),
   getMyAssignments: () => api.get('/flex-friday/my/assignments'),
+  getMyCredits: () => api.get('/flex-friday/my/credits'),
+  getStudentCredits: (studentId: string, schoolYear?: number) =>
+    api.get(`/flex-friday/students/${studentId}/credits`, {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
   getRoster: (workshopId: string) => api.get(`/flex-friday/workshops/${workshopId}/roster`),
+  markAttendance: (
+    workshopId: string,
+    studentId: string,
+    status: 'PRESENT' | 'ABSENT' | 'EXCUSED' = 'PRESENT',
+  ) =>
+    api.post(`/flex-friday/workshops/${workshopId}/attendance`, { studentId, status }),
+  clearAttendance: (workshopId: string, studentId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}/attendance/${studentId}`),
+  bulkMarkAttendance: (
+    workshopId: string,
+    entries: Array<{ studentId: string; status: 'PRESENT' | 'ABSENT' | 'EXCUSED' }>,
+  ) => api.post(`/flex-friday/workshops/${workshopId}/attendance/bulk`, { entries }),
+};
+
+// Wrapped (year-in-review)
+export type WrappedPathway = 'HEALTH_SCIENCE' | 'INFORMATION_TECHNOLOGY' | 'ENGINEERING';
+
+export interface WrappedSummary {
+  userId: string;
+  schoolYearStart: number;
+  schoolYearLabel: string;
+  rangeStart: string;
+  rangeEnd: string;
+
+  messagesSent: number;
+  channelsEngaged: number;
+  friends: number;
+  clubs: number;
+
+  flexCredits: number;
+  flexCreditsRequired: number;
+  pathwayFlexCredits: number;
+
+  topChannel: {
+    channelId: string;
+    channelName: string;
+    clubId: string;
+    clubName: string;
+    messages: number;
+  } | null;
+  topMentioned: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    mentions: number;
+  } | null;
+
+  pathway: {
+    major: WrappedPathway | null;
+    minor: WrappedPathway | null;
+    lanyardColor: string | null;
+    label: string | null;
+    peers: number;
+  };
+  mostUsedWord: { word: string; count: number } | null;
+  peakHour: { hour: number; messages: number } | null;
+  longestStreak: number;
+  mostActiveDay: { date: string; messages: number } | null;
+  reactionsReceived: number;
+  topEmoji: { emoji: string; count: number } | null;
+  longestMessageChars: number;
+}
+
+export interface WrappedAvailability {
+  open: boolean;
+  schoolYear: number;
+  schoolYearLabel: string;
+  opensAt: string;
+  closesAt: string;
+  secondsUntilOpen: number;
+}
+
+export const wrappedApi = {
+  getAvailability: () => api.get<WrappedAvailability>('/wrapped/availability'),
+  getMine: (schoolYear?: number) =>
+    api.get<WrappedSummary>('/wrapped/me', {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
 };
 
 // Notifications
@@ -297,6 +381,17 @@ export const moderationApi = {
 
 // Audit
 export const auditApi = {
-  getAll: (limit = 100, offset = 0) =>
-    api.get('/audit', { params: { limit, offset } }),
+  getAll: (params?: {
+    limit?: number;
+    offset?: number;
+    query?: string;
+    actor?: string;
+    entityId?: string;
+    action?: string;
+    entityType?: string;
+    actorScope?: 'USER' | 'SYSTEM';
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/audit', { params }),
+  getOne: (id: string) => api.get(`/audit/entries/${id}`),
 };
