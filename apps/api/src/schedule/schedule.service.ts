@@ -8,6 +8,7 @@ import { NotificationCategory, Prisma, Role, ScheduleWeekday } from '@prisma/cli
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ModerationService } from '../moderation/moderation.service';
 import {
   CreateSchoolDayBlockDto,
   SchoolDayBlockKind,
@@ -52,6 +53,7 @@ export class ScheduleService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly moderation: ModerationService,
   ) {}
 
   private readonly userSelect = {
@@ -665,6 +667,8 @@ export class ScheduleService {
 
   async createBlock(userId: string, dto: CreateSchoolDayBlockDto) {
     const normalized = await this.normalizeBlockInput(dto);
+    const labelModeration = await this.moderation.maskProfanity(normalized.label);
+    normalized.label = labelModeration.masked;
     await this.validateBlockConflicts(normalized);
 
     const block = await this.prisma.schoolDayBlock.create({
@@ -686,6 +690,15 @@ export class ScheduleService {
       meta: { weekday: block.weekday, label: block.label },
     });
 
+    if (labelModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [userId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Schedule block label filtered',
+        body: 'We replaced flagged words in your schedule block label.',
+      });
+    }
+
     return this.serializeBlock(block);
   }
 
@@ -696,6 +709,8 @@ export class ScheduleService {
     if (!existing) throw new NotFoundException('Block not found');
 
     const normalized = await this.normalizeBlockInput(dto, existing);
+    const labelModeration = await this.moderation.maskProfanity(normalized.label);
+    normalized.label = labelModeration.masked;
     await this.validateBlockConflicts(normalized, blockId);
 
     const block = await this.prisma.schoolDayBlock.update({
@@ -716,6 +731,15 @@ export class ScheduleService {
       entityId: block.id,
       meta: { weekday: block.weekday, label: block.label },
     });
+
+    if (labelModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [userId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Schedule block label filtered',
+        body: 'We replaced flagged words in your updated schedule block label.',
+      });
+    }
 
     return this.serializeBlock(block);
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +54,22 @@ function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean)
 }
 
 export default function SchedulePage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <PageFrame title="Schedule" description="Manage your schedule and friend requests.">
+            <div className="h-48 animate-pulse rounded-lg bg-muted" />
+          </PageFrame>
+        </AppShell>
+      }
+    >
+      <SchedulePageContent />
+    </Suspense>
+  );
+}
+
+function SchedulePageContent() {
   const user = getUser();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();

@@ -43,12 +43,12 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
     try {
       const { data } = await uploadsApi.uploadClubImage(file);
       await clubsApi.update(club.id, { logoUrl: data.url });
-      
+
       qc.invalidateQueries({ queryKey: ['club', club.id] });
       qc.invalidateQueries({ queryKey: ['clubs'] });
       qc.invalidateQueries({ queryKey: ['my-clubs'] });
       toast({ title: 'Club logo updated' });
-      
+
       setForm((c) => ({ ...c, logoUrl: data.url }));
     } catch (e: any) {
       toast({
@@ -162,7 +162,7 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
             )}
             {canEdit && (
               <>
-                <div 
+                <div
                   className={cn(
                     "absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity cursor-pointer",
                     uploadingLogo ? "opacity-100" : "group-hover:opacity-100"

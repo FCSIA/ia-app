@@ -7,12 +7,14 @@ import {
 import {
   ClubChannelVisibility,
   NotificationCategory,
+  ContentType,
   Prisma,
 } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClubAccessPolicy } from './club-access.policy';
+import { ModerationService } from '../moderation/moderation.service';
 import {
   CreateClubChannelDto,
   CreateClubChannelMessageDto,
@@ -79,6 +81,7 @@ export class ClubChannelsService {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly accessPolicy: ClubAccessPolicy,
+    private readonly moderation: ModerationService,
   ) {}
 
   private slugifyTag(name: string) {
@@ -365,6 +368,8 @@ export class ClubChannelsService {
 
     const name = dto.name.trim();
     if (!name) throw new BadRequestException('Channel name is required');
+    const nameModeration = await this.moderation.maskProfanity(name);
+    const descriptionModeration = await this.moderation.maskProfanity(dto.description?.trim() ?? '');
 
     const visibility = dto.visibility ?? ClubChannelVisibility.PUBLIC;
     const selectedPeople = visibility === ClubChannelVisibility.PRIVATE
@@ -378,8 +383,8 @@ export class ClubChannelsService {
     const channel = await this.prisma.clubChannel.create({
       data: {
         clubId,
-        name,
-        description: dto.description?.trim() || undefined,
+        name: nameModeration.masked,
+        description: descriptionModeration.masked || undefined,
         visibility,
         createdById: actorId,
         memberships: visibility === ClubChannelVisibility.PRIVATE
@@ -391,6 +396,17 @@ export class ClubChannelsService {
         _count: { select: { messages: true } },
       },
     });
+
+    if (nameModeration.wasFiltered || descriptionModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Channel details filtered for language',
+        body: 'We replaced flagged words in your channel details.',
+        clubId,
+        channelId: channel.id,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -424,6 +440,10 @@ export class ClubChannelsService {
     const channel = await this.accessPolicy.getChannelOrThrow(clubId, channelId);
 
     const name = dto.name?.trim();
+    const moderatedName = name ? await this.moderation.maskProfanity(name) : null;
+    const moderatedDescription = dto.description === undefined
+      ? undefined
+      : await this.moderation.maskProfanity(dto.description.trim());
     const visibility = dto.visibility;
     const membershipUserIds = (await this.accessPolicy.resolveClubPeople(clubId, dto)).map(
       (p) => p.id,
@@ -433,8 +453,8 @@ export class ClubChannelsService {
       const up = await tx.clubChannel.update({
         where: { id: channelId },
         data: {
-          name: name || undefined,
-          description: dto.description?.trim() || undefined,
+          name: moderatedName?.masked || undefined,
+          description: moderatedDescription ? (moderatedDescription.masked || undefined) : undefined,
           visibility: visibility || undefined,
         },
       });
@@ -453,6 +473,17 @@ export class ClubChannelsService {
 
       return up;
     });
+
+    if (moderatedName?.wasFiltered || moderatedDescription?.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Channel update filtered for language',
+        body: 'We replaced flagged words in your channel update.',
+        clubId,
+        channelId,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -478,6 +509,7 @@ export class ClubChannelsService {
     }
 
     const name = dto.name.trim();
+    const nameModeration = await this.moderation.maskProfanity(name);
     const slug = this.slugifyTag(name);
     if (!name || !slug) throw new BadRequestException('Tag name is required');
 
@@ -486,7 +518,7 @@ export class ClubChannelsService {
     const tag = await this.prisma.clubTag.create({
       data: {
         clubId,
-        name,
+        name: nameModeration.masked,
         slug,
         createdById: actorId,
         members: { create: selectedPeople.map((person) => ({ userId: person.id })) },
@@ -499,6 +531,16 @@ export class ClubChannelsService {
         },
       },
     });
+
+    if (nameModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Tag filtered for language',
+        body: 'We replaced flagged words in your tag name.',
+        clubId,
+      });
+    }
 
     await this.audit.log({
       actorId,
@@ -579,7 +621,9 @@ export class ClubChannelsService {
     }
 
     const trimmedBody = dto.body?.trim() ?? '';
-    const richBody = this.normalizeRichBody(dto.bodyRich);
+    const bodyModeration = await this.moderation.maskProfanity(trimmedBody);
+    const richBodyRaw = this.normalizeRichBody(dto.bodyRich);
+    const richBody = await this.moderation.maskRichBody(richBodyRaw);
     const attachments = this.normalizeAttachments(dto.attachments);
     if (!trimmedBody && attachments.length === 0) {
       throw new BadRequestException('Message body or attachment is required');
@@ -596,7 +640,7 @@ export class ClubChannelsService {
     const { mentionRows, notifyUserIds } = await this.resolveMentions(
       clubId,
       actorId,
-      trimmedBody,
+      bodyModeration.masked,
       audienceIds,
     );
 
@@ -609,8 +653,8 @@ export class ClubChannelsService {
         channelId,
         authorId: actorId,
         parentMessageId: threadParent?.id,
-        body: trimmedBody,
-        bodyRich: richBody ?? undefined,
+        body: bodyModeration.masked,
+        bodyRich: (richBody as any) ?? undefined,
         mentions: {
           create: mentionRows.map((mention) => ({
             kind: mention.kind,
@@ -636,7 +680,7 @@ export class ClubChannelsService {
         userIds: Array.from(notifyUserIds),
         category: NotificationCategory.CLUB_CHANNEL_MENTION,
         title: `${context.club.name} · #${channel.name}`,
-        body: `${author.firstName} ${author.lastName}: ${trimmedBody.slice(0, 140) || 'sent an attachment'}`,
+        body: `${author.firstName} ${author.lastName}: ${bodyModeration.masked.slice(0, 140) || 'sent an attachment'}`,
         clubId,
         channelId,
         messageId: message.id,
@@ -659,6 +703,25 @@ export class ClubChannelsService {
         parentMessageId: threadParent?.id ?? null,
       },
     });
+
+    if (bodyModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [actorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Message filtered for language',
+        body: `We replaced flagged words in your message${bodyModeration.matchedWords.length ? ` (${bodyModeration.matchedWords.join(', ')})` : ''}.`,
+        clubId,
+        channelId,
+        messageId: message.id,
+      });
+
+      await this.moderation.createAutomatedReport(
+        (ContentType as any).CLUB_CHANNEL_MESSAGE,
+        message.id,
+        actorId,
+        bodyModeration.matchedWords,
+      );
+    }
 
     return this.serializeReplyMessage(message, actorId);
   }

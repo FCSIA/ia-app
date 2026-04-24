@@ -1,10 +1,10 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clubsApi, eventsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ type ClubCollection = {
   sponsoring?: ClubSummary[];
 };
 
-function EventCard({ event, onApprove, onReject, onCancel, user }: any) {
+function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   return (
@@ -55,7 +55,9 @@ function EventCard({ event, onApprove, onReject, onCancel, user }: any) {
               <h3 className="font-semibold text-foreground/90 hover:text-accent-500 transition-colors">{event.title}</h3>
             </Link>
             <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(event.startAt), 'EEE, MMM d · h:mm a')}</span>
+              <span className="flex items-center gap-1">
+                <Clock size={12} /> {hydrated ? format(new Date(event.startAt), 'EEE, MMM d · h:mm a') : '—'}
+              </span>
               {event.location && <span className="flex items-center gap-1"><MapPin size={12} /> {event.location}</span>}
             </div>
           </div>
@@ -75,7 +77,8 @@ function EventCard({ event, onApprove, onReject, onCancel, user }: any) {
 }
 
 export default function EventsPage() {
-  const user = getUser();
+  const user = useCurrentUser();
+  const [hydrated, setHydrated] = useState(false);
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
@@ -83,6 +86,10 @@ export default function EventsPage() {
   const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const { data: events, isLoading } = useQuery({
     queryKey: ['events'],
@@ -92,13 +99,13 @@ export default function EventsPage() {
   const { data: myClubs } = useQuery<ClubCollection>({
     queryKey: ['my-clubs'],
     queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
-    enabled: !!user,
+    enabled: hydrated && !!user,
   });
 
   const { data: pendingApprovals = [] } = useQuery({
     queryKey: ['pending-approvals'],
     queryFn: () => eventsApi.getPendingApprovals().then((response) => response.data.map((approval: any) => approval.event)),
-    enabled: !!user,
+    enabled: hydrated && !!user,
   });
 
   const availableClubs = [
@@ -106,7 +113,7 @@ export default function EventsPage() {
     ...(myClubs?.sponsoring || []),
   ].filter((club, index, list) => list.findIndex((item) => item.id === club.id) === index);
 
-  const canCreate = !!user && (canCreateGeneral || availableClubs.length > 0);
+  const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
 
   const createMutation = useMutation({
     mutationFn: (d: any) => eventsApi.create(d),
@@ -146,9 +153,12 @@ export default function EventsPage() {
     },
   });
 
-  const upcoming = (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) >= new Date());
+  const now = hydrated ? new Date() : null;
+  const upcoming = (events || []).filter((e: any) => e.status === 'PUBLISHED' && (!now || new Date(e.startAt) >= now));
   const pending = pendingApprovals;
-  const past = (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) < new Date());
+  const past = now
+    ? (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) < now)
+    : [];
 
   const filterEvents = (list: any[]) => {
     return filterBySearchQuery(list, deferredSearch, (event) => [
@@ -297,7 +307,7 @@ export default function EventsPage() {
                   <AlertCircle size={16} className="text-amber-500" /> Pending Approval ({filteredPending.length})
                 </h2>
                 <div className="space-y-4">
-                  {filteredPending.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}
+                  {filteredPending.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}
                 </div>
               </div>
             )}
@@ -312,14 +322,14 @@ export default function EventsPage() {
                     </CardContent>
                   </Card>
                 ) :
-                  <div className="space-y-4">{filteredUpcoming.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}</div>}
+                  <div className="space-y-4">{filteredUpcoming.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}</div>}
             </div>
 
             {filteredPast.length > 0 && (
               <div>
                 <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Past Events</h2>
                 <div className="space-y-4">
-                  {filteredPast.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
+                  {filteredPast.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
                 </div>
               </div>
             )}

@@ -352,11 +352,16 @@ export class AnnouncementsService {
       throw new ForbiddenException('Insufficient permissions to post announcements');
     }
 
+    const [titleModeration, bodyModeration] = await Promise.all([
+      this.moderation.maskProfanity(dto.title.trim()),
+      this.moderation.maskProfanity(dto.body.trim()),
+    ]);
+
     const ann = await this.prisma.announcement.create({
       data: {
         authorId,
-        title: dto.title,
-        body: dto.body,
+        title: titleModeration.masked,
+        body: bodyModeration.masked,
         targetType: dto.targetType,
         targetGrade: dto.targetGrade,
         targetPathway: dto.targetPathway,
@@ -368,8 +373,28 @@ export class AnnouncementsService {
     });
 
     // Keyword scan
-    const fullText = `${dto.title} ${dto.body}`;
+    const fullText = `${titleModeration.masked} ${bodyModeration.masked}`;
     await this.moderation.scanContent(fullText, ContentType.ANNOUNCEMENT, ann.id, 'announcementId');
+
+    if (titleModeration.wasFiltered || bodyModeration.wasFiltered) {
+      const matchedWords = Array.from(
+        new Set([...titleModeration.matchedWords, ...bodyModeration.matchedWords]),
+      );
+      await this.notifications.deliver({
+        userIds: [authorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Post filtered for language',
+        body: `We replaced flagged words in your announcement${matchedWords.length ? ` (${matchedWords.join(', ')})` : ''}.`,
+        announcementId: ann.id,
+      });
+
+      await this.moderation.createAutomatedReport(
+        ContentType.ANNOUNCEMENT,
+        ann.id,
+        authorId,
+        matchedWords,
+      );
+    }
 
     // Notify users
     await this.deliverNotifications(ann);
@@ -379,7 +404,7 @@ export class AnnouncementsService {
       action: 'ANNOUNCEMENT_CREATED',
       entityType: 'Announcement',
       entityId: ann.id,
-      meta: { title: dto.title, targetType: dto.targetType },
+      meta: { title: titleModeration.masked, targetType: dto.targetType },
     });
 
     return ann;
@@ -452,10 +477,28 @@ export class AnnouncementsService {
     if (!ann) throw new NotFoundException('Announcement not found');
     if (!ann.allowComments) throw new ForbiddenException('Comments not allowed on this announcement');
 
+    const commentModeration = await this.moderation.maskProfanity(dto.body.trim());
     const comment = await this.prisma.comment.create({
-      data: { announcementId, authorId, body: dto.body },
+      data: { announcementId, authorId, body: commentModeration.masked },
       include: { author: { select: { id: true, firstName: true, lastName: true } } },
     });
+
+    if (commentModeration.wasFiltered) {
+      await this.notifications.deliver({
+        userIds: [authorId],
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: 'Comment filtered for language',
+        body: `We replaced flagged words in your comment${commentModeration.matchedWords.length ? ` (${commentModeration.matchedWords.join(', ')})` : ''}.`,
+        announcementId,
+      });
+
+      await this.moderation.createAutomatedReport(
+        ContentType.COMMENT,
+        comment.id,
+        authorId,
+        commentModeration.matchedWords,
+      );
+    }
 
     await this.audit.log({
       actorId: authorId,

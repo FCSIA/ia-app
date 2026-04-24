@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type LinkedSession = {
@@ -70,6 +70,24 @@ function fridayForPass(pass: PassRecord): LinkedSession['flexFriday'] | null {
 }
 
 export default function FlexFridayPassPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="mx-auto max-w-2xl">
+            <Card>
+              <CardContent className="h-48 animate-pulse p-0" />
+            </Card>
+          </div>
+        </AppShell>
+      }
+    >
+      <FlexFridayPassContent />
+    </Suspense>
+  );
+}
+
+function FlexFridayPassContent() {
   // `getUser()` reads localStorage → null on the server. Defer user-derived
   // render output until after mount so SSR and the first client render match.
   const [mounted, setMounted] = useState(false);

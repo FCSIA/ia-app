@@ -116,7 +116,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
   const canInvite = canManage || isStaff;
 
   const directory = club?.directory ?? [];
-  
+
   const stats = useMemo(() => {
     return {
       all: directory.length,
@@ -165,7 +165,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
   return (
     <ClubWorkspace clubId={id} title={title} actions={actions}>
       <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
-        
+
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <Tabs value={filter} onValueChange={setFilter} className="w-full sm:w-auto">
@@ -214,8 +214,8 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
                 </div>
                 <h3 className="text-base font-semibold text-foreground">No people found</h3>
                 <p className="text-sm text-muted-foreground mt-1.5 max-w-[250px]">
-                  {deferredSearch 
-                    ? "We couldn't find anyone matching your search." 
+                  {deferredSearch
+                    ? "We couldn't find anyone matching your search."
                     : "There are no members in this category yet."}
                 </p>
                 {deferredSearch && (

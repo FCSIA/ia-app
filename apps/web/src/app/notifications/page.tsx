@@ -64,6 +64,7 @@ export default function NotificationsPage() {
     EVENT: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     FLEX_FRIDAY: 'bg-foreground/10 text-foreground border-foreground/20',
     CLUB_CHANNEL_MENTION: 'bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/25',
+    CONTENT_MODERATED: 'bg-red-500/15 text-red-400 border-red-500/25',
     FRIEND_REQUEST: 'bg-sky-500/15 text-sky-400 border-sky-500/25',
   };
 
@@ -82,6 +83,10 @@ export default function NotificationsPage() {
 
     if (notification.category === 'FRIEND_REQUEST') {
       return '/schedule?tab=friends&section=requests';
+    }
+
+    if (notification.category === 'CONTENT_MODERATED') {
+      return '/profile';
     }
 
     if (notification.category === 'FLEX_FRIDAY') {

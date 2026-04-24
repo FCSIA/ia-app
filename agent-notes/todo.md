@@ -10,3 +10,5 @@
 
 1. Allow string values for club roles, clubs may have different types of leaders so they should be able create new ones.
 2.
+
+spotify-wrapped thing
