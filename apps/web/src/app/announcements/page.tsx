@@ -557,18 +557,17 @@ export default function AnnouncementsPage() {
             ) : null}
             <div className="space-y-4">
               {(filtered as any[]).map((announcement) => (
-                <div key={announcement.id} className="mx-auto w-full max-w-3xl">
-                  <AnnouncementCard
-                    announcement={announcement}
-                    canArchive={canArchive}
-                    onArchive={(id: string) => archiveMutation.mutate(id)}
-                    onTagClick={handleTagClick}
-                    onClubClick={(clubId: string) => {
-                      setActiveTag('CLUB');
-                      setSelectedClubIds([clubId]);
-                    }}
-                  />
-                </div>
+                <AnnouncementCard
+                  key={announcement.id}
+                  announcement={announcement}
+                  canArchive={canArchive}
+                  onArchive={(id: string) => archiveMutation.mutate(id)}
+                  onTagClick={handleTagClick}
+                  onClubClick={(clubId: string) => {
+                    setActiveTag('CLUB');
+                    setSelectedClubIds([clubId]);
+                  }}
+                />
               ))}
             </div>
           </div>

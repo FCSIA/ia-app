@@ -20,6 +20,7 @@ import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
 import { formatClubRole, fullName, type AnnouncementSummary } from '@/components/clubs/types';
+import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -475,9 +476,13 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
         {club.viewer.canManageMembership ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">Announcements</h2>
-            <span className="text-xs text-muted-foreground">{announcements.length} total</span>
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+              {deferredSearch
+                ? `${filteredAnnouncements.length} of ${announcements.length}`
+                : `${announcements.length} total`}
+            </span>
           </div>
 
           <SearchInput
@@ -489,27 +494,16 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
           {filteredAnnouncements.length > 0 ? (
             <div className="space-y-3">
               {filteredAnnouncements.map((announcement) => (
-                <Link
+                <AnnouncementCard
                   key={announcement.id}
-                  href={`/announcements/${announcement.id}`}
-                  className="block rounded-lg border bg-card p-4 transition-colors hover:border-border hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-foreground">{announcement.title}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                    {announcement.body}
-                  </p>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {announcement.author
-                      ? `${announcement.author.firstName} ${announcement.author.lastName}`
-                      : 'Unknown author'}
-                    {announcement._count?.comments ? ` · ${announcement._count.comments} comments` : ''}
-                  </p>
-                </Link>
+                  announcement={{
+                    ...(announcement as any),
+                    isRead: (announcement as any).isRead ?? true,
+                    targetType: (announcement as any).targetType ?? 'CLUB',
+                    status: (announcement as any).status ?? 'ACTIVE',
+                    isAdminGeneral: (announcement as any).isAdminGeneral ?? false,
+                  }}
+                />
               ))}
             </div>
           ) : (

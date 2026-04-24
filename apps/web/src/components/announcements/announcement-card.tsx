@@ -99,9 +99,6 @@ export function AnnouncementCard({
     <Card
       className={cn(
         'relative transition-all duration-200 hover:-translate-y-0.5',
-        announcement.isRead
-          ? ''
-          : 'border-sky-500/25 bg-slate-100/95 dark:border-sky-300/20 dark:bg-slate-800/75',
         className,
       )}
     >
