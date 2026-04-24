@@ -271,7 +271,24 @@ export const flexFridayApi = {
     api.post(`/flex-friday/workshops/${workshopId}/assign`, { studentId }),
   getMyRegistrations: () => api.get('/flex-friday/my/registrations'),
   getMyAssignments: () => api.get('/flex-friday/my/assignments'),
+  getMyCredits: () => api.get('/flex-friday/my/credits'),
+  getStudentCredits: (studentId: string, schoolYear?: number) =>
+    api.get(`/flex-friday/students/${studentId}/credits`, {
+      params: schoolYear != null ? { schoolYear } : undefined,
+    }),
   getRoster: (workshopId: string) => api.get(`/flex-friday/workshops/${workshopId}/roster`),
+  markAttendance: (
+    workshopId: string,
+    studentId: string,
+    status: 'PRESENT' | 'ABSENT' | 'EXCUSED' = 'PRESENT',
+  ) =>
+    api.post(`/flex-friday/workshops/${workshopId}/attendance`, { studentId, status }),
+  clearAttendance: (workshopId: string, studentId: string) =>
+    api.delete(`/flex-friday/workshops/${workshopId}/attendance/${studentId}`),
+  bulkMarkAttendance: (
+    workshopId: string,
+    entries: Array<{ studentId: string; status: 'PRESENT' | 'ABSENT' | 'EXCUSED' }>,
+  ) => api.post(`/flex-friday/workshops/${workshopId}/attendance/bulk`, { entries }),
 };
 
 // Notifications
