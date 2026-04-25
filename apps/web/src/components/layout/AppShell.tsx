@@ -24,7 +24,7 @@ import type { AppUser } from '@ia/contracts/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ThemeToggle } from '../ThemeToggle';
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
-import { authApi, notificationsApi } from '@/lib/api';
+import { authApi, notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -79,15 +79,19 @@ function NavIcon({
   item,
   active,
   badge,
+  onHover,
 }: {
   item: NavItem;
   active: boolean;
   badge?: ReactNode;
+  onHover?: () => void;
 }) {
   const { icon: Icon, label, href } = item;
   return (
     <Link
       href={href}
+      prefetch={true}
+      onMouseEnter={onHover}
       aria-label={label}
       className="group relative flex size-11 shrink-0 items-center justify-center"
     >
@@ -149,6 +153,30 @@ export function AppShell({
     refetchInterval: 60_000,
     staleTime: 30_000,
   });
+
+  const handlePrefetch = (href: string) => {
+    switch (href) {
+      case '/announcements':
+        queryClient.prefetchQuery({ queryKey: ['announcements'], queryFn: () => announcementsApi.getAll().then((r) => r.data) });
+        break;
+      case '/clubs':
+        queryClient.prefetchQuery({ queryKey: ['my-clubs'], queryFn: () => clubsApi.getMyClubs().then((r) => r.data) });
+        queryClient.prefetchQuery({ queryKey: ['clubs'], queryFn: () => clubsApi.getAll().then((r) => r.data) });
+        break;
+      case '/events':
+        queryClient.prefetchQuery({ queryKey: ['events'], queryFn: () => eventsApi.getAll().then((r) => r.data) });
+        break;
+      case '/schedule':
+        queryClient.prefetchQuery({ queryKey: ['schedule-dashboard'], queryFn: () => scheduleApi.getDashboard().then((r) => r.data) });
+        break;
+      case '/flex-friday':
+        queryClient.prefetchQuery({ queryKey: ['flex-friday'], queryFn: () => flexFridayApi.getAll().then((r) => r.data) });
+        break;
+      case '/notifications':
+        queryClient.prefetchQuery({ queryKey: ['notifications'], queryFn: () => notificationsApi.getAll().then((r) => r.data) });
+        break;
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -223,6 +251,7 @@ export function AppShell({
                 item={item}
                 active={isActive(item.href)}
                 badge={item.href === '/notifications' ? unreadBadge : undefined}
+                onHover={() => handlePrefetch(item.href)}
               />
             ))}
           </div>
@@ -234,11 +263,12 @@ export function AppShell({
                 item={item}
                 active={isActive(item.href)}
                 badge={item.href === '/notifications' ? unreadBadge : undefined}
+                onHover={() => handlePrefetch(item.href)}
               />
             ))}
             {showAdmin
               ? adminNav.map((item) => (
-                <NavIcon key={item.href} item={item} active={isActive(item.href)} />
+                <NavIcon key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
               ))
               : null}
             <div className="my-2 h-px w-8 bg-white/10" />
@@ -268,6 +298,7 @@ export function AppShell({
                     item={item}
                     active={isActive(item.href)}
                     badge={item.href === '/notifications' ? unreadBadge : undefined}
+                    onHover={() => handlePrefetch(item.href)}
                   />
                 ))}
                 <div className="my-3 h-px bg-sidebar-border" />
@@ -277,11 +308,12 @@ export function AppShell({
                     item={item}
                     active={isActive(item.href)}
                     badge={item.href === '/notifications' ? unreadBadge : undefined}
+                    onHover={() => handlePrefetch(item.href)}
                   />
                 ))}
                 {showAdmin
                   ? adminNav.map((item) => (
-                      <MobileNavLink key={item.href} item={item} active={isActive(item.href)} />
+                      <MobileNavLink key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
                     ))
                   : null}
               </nav>
@@ -381,15 +413,19 @@ function MobileNavLink({
   item,
   active,
   badge,
+  onHover,
 }: {
   item: NavItem;
   active: boolean;
   badge?: ReactNode;
+  onHover?: () => void;
 }) {
   const { icon: Icon, label, href } = item;
   return (
     <Link
       href={href}
+      prefetch={true}
+      onMouseEnter={onHover}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
         active
