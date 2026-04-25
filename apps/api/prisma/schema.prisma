@@ -53,6 +53,7 @@ model User {
   friendshipRequestsSent     StudentScheduleFriend[]      @relation("StudentScheduleFriendRequester")
   studentSchedule            StudentSchedule?
   calendarEntries            CalendarEntry[]
+  dashboardLayout            String[]                     @default([]) @map("dashboard_layout")
 
   @@map("users")
 }

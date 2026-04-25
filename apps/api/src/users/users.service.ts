@@ -474,4 +474,21 @@ export class UsersService {
 
     return results;
   }
+
+  async getDashboardLayout(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { dashboardLayout: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user.dashboardLayout;
+  }
+
+  async updateDashboardLayout(id: string, layout: string[]) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { dashboardLayout: layout },
+    });
+    return { success: true };
+  }
 }

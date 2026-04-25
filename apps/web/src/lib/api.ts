@@ -89,6 +89,10 @@ export const usersApi = {
     api.get('/users/export/csv', {
       responseType: 'blob',
     }),
+  getDashboardLayout: () =>
+    api.get<string[]>('/users/me/dashboard-layout').then((res) => res.data),
+  updateDashboardLayout: (layout: string[]) =>
+    api.patch('/users/me/dashboard-layout', { layout }),
 };
 
 // Announcements

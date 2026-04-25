@@ -110,7 +110,7 @@ export function CalendarWidget() {
                 type="button"
                 onClick={() => setSelectedDay(day)}
                 className={[
-                  'flex flex-col items-start relative min-h-[7.25rem] p-2 transition-colors',
+                  'flex flex-col items-center justify-center relative aspect-square p-1 transition-colors',
                   !isLastRow ? 'border-b border-border/70' : '',
                   index % 7 !== 6 ? 'border-r border-border/70' : '',
                   inMonth ? 'hover:bg-muted/40' : 'bg-muted/10 text-muted-foreground/40',
@@ -119,27 +119,20 @@ export function CalendarWidget() {
               >
                 <div
                   className={[
-                    'mb-2 flex size-8 items-center justify-center rounded-full text-sm font-medium',
+                    'flex size-7 items-center justify-center rounded-full text-sm font-medium',
                     today ? 'bg-primary text-primary-foreground' : '',
                     selected && !today ? 'bg-primary/10 text-primary' : '',
                   ].join(' ')}
                 >
                   {format(day, 'd')}
                 </div>
-                <div className="w-full space-y-1">
-                  {dayEvents.slice(0, 2).map((entry: any) => (
+                <div className="mt-1 flex h-1.5 w-full items-center justify-center gap-0.5">
+                  {dayEvents.slice(0, 3).map((entry: any) => (
                     <div
                       key={entry.id}
-                      className="truncate rounded-full bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary"
-                    >
-                      {entry.title}
-                    </div>
+                      className="size-1 rounded-full bg-primary/60"
+                    />
                   ))}
-                  {dayEvents.length > 2 ? (
-                    <div className="px-1 text-[10px] font-medium text-muted-foreground">
-                      +{dayEvents.length - 2} more
-                    </div>
-                  ) : null}
                 </div>
               </button>
             );

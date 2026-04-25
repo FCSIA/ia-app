@@ -111,4 +111,18 @@ export class UsersController {
       generatePasswords: generatePasswords === 'true',
     });
   }
+
+  @Get('me/dashboard-layout')
+  getDashboardLayout(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.getDashboardLayout(user.id);
+  }
+
+  @Patch('me/dashboard-layout')
+  updateDashboardLayout(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body('layout') layout: string[],
+  ) {
+    if (!Array.isArray(layout)) throw new BadRequestException('Layout must be an array of widget IDs');
+    return this.usersService.updateDashboardLayout(user.id, layout);
+  }
 }

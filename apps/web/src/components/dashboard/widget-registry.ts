@@ -1,5 +1,4 @@
 import type { AppRole } from '@ia/contracts/auth';
-import { CurrentClassWidget } from './widgets/CurrentClassWidget';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { UpcomingEventsWidget } from './widgets/UpcomingEventsWidget';
@@ -7,6 +6,9 @@ import { AnnouncementsWidget } from './widgets/AnnouncementsWidget';
 import { PendingApprovalsWidget } from './widgets/PendingApprovalsWidget';
 import { AdminStatsWidget } from './widgets/AdminStatsWidget';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
+import { DayProgressWidget } from './widgets/DayProgressWidget';
+import { FlexFridaySnapshotWidget } from './widgets/FlexFridaySnapshotWidget';
+import { MyClubsWidget } from './widgets/MyClubsWidget';
 
 export type WidgetSize = 'full' | 'half';
 
@@ -21,18 +23,10 @@ export type WidgetDefinition = {
 };
 
 export const WIDGETS: Record<string, WidgetDefinition> = {
-  'current-class': {
-    id: 'current-class',
-    label: 'Current Class',
-    description: 'Live snapshot of your current class block and schedule.',
-    size: 'full',
-    Component: CurrentClassWidget,
-    allowedRoles: ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'],
-  },
   welcome: {
     id: 'welcome',
-    label: 'Welcome',
-    description: 'Greeting with the current time and date.',
+    label: 'Overview',
+    description: 'Unified dashboard header with greeting, time, and class info.',
     size: 'full',
     Component: WelcomeWidget,
   },
@@ -80,6 +74,27 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     size: 'half',
     Component: QuickActionsWidget,
   },
+  'day-progress': {
+    id: 'day-progress',
+    label: 'Day Progress',
+    description: 'Live timeline tracker of the school day.',
+    size: 'half',
+    Component: DayProgressWidget,
+  },
+  'flex-friday': {
+    id: 'flex-friday',
+    label: 'Flex Friday Snapshot',
+    description: 'Upcoming workshop details and check-in.',
+    size: 'half',
+    Component: FlexFridaySnapshotWidget,
+  },
+  'my-clubs': {
+    id: 'my-clubs',
+    label: 'My Clubs',
+    description: 'Quick access to your active clubs.',
+    size: 'half',
+    Component: MyClubsWidget,
+  },
 };
 
 /** Default layouts per role. The first matching role wins. */
@@ -90,7 +105,7 @@ export const DEFAULT_LAYOUTS: Array<{ roles: AppRole[]; layout: string[] }> = [
   },
   {
     roles: ['SPONSOR', 'TEACHER'],
-    layout: ['welcome', 'pending-approvals', 'calendar', 'upcoming-events', 'announcements'],
+    layout: ['welcome', 'pending-approvals', 'calendar', 'upcoming-events', 'my-clubs', 'announcements'],
   },
   {
     roles: ['SUPPORT_STAFF'],
@@ -98,7 +113,7 @@ export const DEFAULT_LAYOUTS: Array<{ roles: AppRole[]; layout: string[] }> = [
   },
   {
     roles: ['STUDENT_ADMIN', 'STUDENT_LEADER', 'STUDENT'],
-    layout: ['current-class', 'calendar', 'upcoming-events', 'announcements'],
+    layout: ['welcome', 'day-progress', 'my-clubs', 'flex-friday', 'calendar', 'upcoming-events', 'announcements'],
   },
 ];
 

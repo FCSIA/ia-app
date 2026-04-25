@@ -125,7 +125,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        'rounded-3xl border',
+        'flex flex-col rounded-3xl border',
         tone === 'accent' ? 'border-transparent bg-accent' : 'bg-card',
         className,
       )}
@@ -143,7 +143,7 @@ export function Panel({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className={cn('p-6', contentClassName)}>{children}</div>
+      <div className={cn('flex-1 p-6', contentClassName)}>{children}</div>
     </section>
   );
 }
