@@ -244,6 +244,23 @@ export function DashboardLayout() {
     });
   }, []);
 
+  const { fixedIds, fullIds, columnIds } = useMemo(() => {
+    if (!layout) return { fixedIds: [], fullIds: [], columnIds: [] };
+
+    // Find fixed widgets based on registry definition
+    const fixed = Object.values(WIDGETS)
+      .filter((w) => w.isFixed && isWidgetAllowed(w, user?.roles))
+      .map((w) => w.id);
+
+    // Dynamic IDs are those in the state that are not fixed
+    const dynamic = layout.filter((id) => !WIDGETS[id]?.isFixed);
+
+    const full = dynamic.filter((id) => WIDGETS[id]?.size === 'full');
+    const cols = dynamic.filter((id) => WIDGETS[id]?.size === 'half');
+
+    return { fixedIds: fixed, fullIds: full, columnIds: cols };
+  }, [layout, user?.roles]);
+
   if (!layout) {
     return (
       <PageFrame className="pt-0">
@@ -255,154 +272,181 @@ export function DashboardLayout() {
   const missingWidgets = availableWidgets.filter((w) => !layout.includes(w.id));
   const activeWidget = activeId ? WIDGETS[activeId] : null;
 
-  // Split layout into "full-width" (top) and the rest which go into columns
-  // Full widgets always span all columns; others go into the masonry columns.
-  const fullIds = layout.filter((id) => WIDGETS[id]?.size === 'full');
-  const columnIds = layout.filter((id) => WIDGETS[id]?.size !== 'full');
-
   return (
-    <PageFrame className="pt-0">
-      <div className="flex justify-end mb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          {editing ? (
-            <>
-              <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="rounded-2xl"
-                    disabled={missingWidgets.length === 0}
-                  >
-                    <Plus className="size-4" />
-                    Add widget
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-lg rounded-[2rem]">
-                  <DialogHeader>
-                    <DialogTitle>Add a widget</DialogTitle>
-                    <DialogDescription>
-                      Choose a widget to add to your dashboard.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="mt-4 grid gap-2">
-                    {missingWidgets.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">
-                        All available widgets are already on your dashboard.
-                      </p>
-                    ) : (
-                      missingWidgets.map((widget) => (
-                        <button
-                          key={widget.id}
-                          type="button"
-                          onClick={() => handleAdd(widget.id)}
-                          className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
-                        >
-                          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <LayoutGrid className="size-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-foreground">
-                              {widget.label}
-                            </p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {widget.description}
-                            </p>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+    <PageFrame className="pb-24 pt-0">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+            <div className="flex items-center gap-3">
+              {editing ? (
+                <>
+                  <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-2 rounded-full px-4"
+                        disabled={missingWidgets.length === 0}
+                      >
+                        <Plus className="size-4" />
+                        Add widget
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg rounded-[2rem]">
+                      <DialogHeader>
+                        <DialogTitle>Add a widget</DialogTitle>
+                        <DialogDescription>
+                          Choose a widget to add to your dashboard.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="mt-4 grid gap-2">
+                        {missingWidgets.length === 0 ? (
+                          <p className="py-6 text-center text-sm text-muted-foreground">
+                            All available widgets are already on your dashboard.
+                          </p>
+                        ) : (
+                          missingWidgets.map((widget) => (
+                            <button
+                              key={widget.id}
+                              type="button"
+                              onClick={() => handleAdd(widget.id)}
+                              className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
+                            >
+                              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <LayoutGrid className="size-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {widget.label}
+                                </p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {widget.description}
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
-              <Button variant="ghost" className="rounded-2xl" onClick={handleReset}>
-                <RotateCcw className="size-4" />
-                Reset
-              </Button>
-              <Button className="rounded-2xl" onClick={handleSave}>
-                <Save className="size-4" />
-                Done
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="outline"
-              className="rounded-2xl"
-              onClick={() => setEditing(true)}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReset}
+                    className="h-9 gap-2 rounded-full px-4"
+                  >
+                    <RotateCcw className="size-4" />
+                    Reset
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    size="sm"
+                    className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
+                  >
+                    <Save className="size-4" />
+                    Done
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditing(true)}
+                  className="h-9 gap-2 rounded-full bg-background px-4 font-medium shadow-sm transition hover:bg-muted"
+                >
+                  <LayoutGrid className="size-4" />
+                  Customize
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Static / Fixed widgets (cannot be moved or removed) */}
+          {fixedIds.map((id) => {
+            const widget = WIDGETS[id];
+            if (!widget) return null;
+            const Component = widget.Component;
+            return (
+              <div key={id} className={cn(editing ? 'opacity-80' : '')}>
+                <Component />
+              </div>
+            );
+          })}
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={[...fullIds, ...columnIds]}
+              strategy={rectSortingStrategy}
             >
-              <LayoutGrid className="size-4" />
-              Customize
-            </Button>
-          )}
+              <div className="space-y-6">
+                {/* Full-width dynamic widgets */}
+                {fullIds.map((id) => {
+                  const widget = WIDGETS[id];
+                  if (!widget) return null;
+                  return (
+                    <SortableWidget
+                      key={id}
+                      id={id}
+                      widget={widget}
+                      editing={editing}
+                      onRemove={handleRemove}
+                    />
+                  );
+                })}
+
+                {/* Columnar widgets distributed for horizontal priority */}
+                {columnIds.length > 0 && (
+                  <div className="flex flex-col gap-6 md:flex-row">
+                    {[0, 1, 2].map((colIndex) => (
+                      <div key={colIndex} className="flex flex-1 flex-col gap-6">
+                        {columnIds
+                          .filter((_, i) => i % 3 === colIndex)
+                          .map((id) => {
+                            const widget = WIDGETS[id];
+                            if (!widget) return null;
+                            return (
+                              <SortableWidget
+                                key={id}
+                                id={id}
+                                widget={widget}
+                                editing={editing}
+                                onRemove={handleRemove}
+                              />
+                            );
+                          })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {layout.length === 0 && (
+                  <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
+                    <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
+                    <p className="text-sm font-medium text-foreground">Your dashboard is empty.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Click <span className="font-semibold">Customize</span> then{' '}
+                      <span className="font-semibold">Add widget</span> to build it up.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </SortableContext>
+
+            <DragOverlay>
+              {activeId && activeWidget ? (
+                <DragGhost widget={activeWidget} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
       </div>
-      {/* DnD context wraps everything */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={layout} strategy={rectSortingStrategy}>
-          <div className="space-y-6">
-            {/* Full-width widgets (welcome, current-class, admin-stats) */}
-            {fullIds.map((id) => {
-              const widget = WIDGETS[id];
-              if (!widget) return null;
-              return (
-                <SortableWidget
-                  key={id}
-                  id={id}
-                  widget={widget}
-                  editing={editing}
-                  onRemove={handleRemove}
-                />
-              );
-            })}
-
-            {/* Columnar widgets distributed for horizontal priority */}
-            {columnIds.length > 0 && (
-              <div className="flex flex-col gap-6 md:flex-row">
-                {[0, 1, 2].map((colIndex) => (
-                  <div key={colIndex} className="flex flex-1 flex-col gap-6">
-                    {columnIds
-                      .filter((_, i) => i % 3 === colIndex)
-                      .map((id) => {
-                        const widget = WIDGETS[id];
-                        if (!widget) return null;
-                        return (
-                          <SortableWidget
-                            key={id}
-                            id={id}
-                            widget={widget}
-                            editing={editing}
-                            onRemove={handleRemove}
-                          />
-                        );
-                      })}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {layout.length === 0 && (
-              <div className="rounded-[2rem] border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-                <LayoutGrid className="mx-auto mb-3 size-8 text-muted-foreground/60" />
-                <p className="text-sm font-medium text-foreground">Your dashboard is empty.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Click <span className="font-semibold">Customize</span> then{' '}
-                  <span className="font-semibold">Add widget</span> to build it up.
-                </p>
-              </div>
-            )}
-          </div>
-        </SortableContext>
-
-        {/* Drag overlay — shown while dragging */}
-        <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18,0.67,0.6,1.22)' }}>
-          {activeWidget ? <DragGhost widget={activeWidget} /> : null}
-        </DragOverlay>
-      </DndContext>
     </PageFrame>
   );
 }

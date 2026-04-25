@@ -20,6 +20,8 @@ export type WidgetDefinition = {
   Component: React.ComponentType;
   /** If set, widget is only available to users with at least one of these roles. */
   allowedRoles?: AppRole[];
+  /** If set, widget cannot be removed or rearranged. */
+  isFixed?: boolean;
 };
 
 export const WIDGETS: Record<string, WidgetDefinition> = {
@@ -29,6 +31,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     description: 'Unified dashboard header with greeting, time, and class info.',
     size: 'full',
     Component: WelcomeWidget,
+    isFixed: true,
   },
   calendar: {
     id: 'calendar',
@@ -136,5 +139,5 @@ export function isWidgetAllowed(widget: WidgetDefinition, roles: AppRole[] | und
 }
 
 export function getAvailableWidgets(roles: AppRole[] | undefined): WidgetDefinition[] {
-  return Object.values(WIDGETS).filter((w) => isWidgetAllowed(w, roles));
+  return Object.values(WIDGETS).filter((w) => !w.isFixed && isWidgetAllowed(w, roles));
 }
