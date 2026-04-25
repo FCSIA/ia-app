@@ -578,6 +578,14 @@ export class ScheduleService {
           entityType: 'User',
           entityId: target.id,
         });
+
+        await this.notifications.deliver({
+          userIds: [target.id],
+          category: NotificationCategory.FRIEND_REQUEST,
+          title: 'Friend request accepted',
+          body: `${user.firstName} ${user.lastName} accepted your friend request.`,
+        });
+
         return { success: true, status: accepted.status, id: accepted.id };
       }
       // Outgoing pending already exists
@@ -609,7 +617,7 @@ export class ScheduleService {
     return { success: true, status: created.status, id: created.id };
   }
 
-  async acceptFriendRequest(user: { id: string; roles: Role[] }, requesterId: string) {
+  async acceptFriendRequest(user: { id: string; roles: Role[]; firstName: string; lastName: string }, requesterId: string) {
     this.ensureStudentAccess(user);
 
     const request = await this.prisma.studentScheduleFriend.findFirst({
@@ -634,6 +642,13 @@ export class ScheduleService {
       action: 'SCHEDULE_FRIEND_ACCEPTED',
       entityType: 'User',
       entityId: requesterId,
+    });
+
+    await this.notifications.deliver({
+      userIds: [requesterId],
+      category: NotificationCategory.FRIEND_REQUEST,
+      title: 'Friend request accepted',
+      body: `${user.firstName} ${user.lastName} accepted your friend request.`,
     });
 
     return { success: true };
