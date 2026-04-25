@@ -16,7 +16,8 @@
     "infra:up": "brew services start postgresql@16 && echo 'PostgreSQL started'",
     "infra:up:win": "powershell -ExecutionPolicy Bypass -File setup_pg.ps1",
     "infra:down": "brew services stop postgresql@16 && echo 'PostgreSQL stopped'",
-    "setup:win": "pnpm infra:up:win && pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed && start pnpm db:studio"
+    "setup:win": "pnpm infra:up:win && pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed && start pnpm db:studio",
+    "up:win": "pnpm infra:up:win && pnpm install && pnpm db:migrate && pnpm dev"
   },
   "devDependencies": {
     "turbo": "^2.8.14",

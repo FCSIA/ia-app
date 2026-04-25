@@ -24,6 +24,10 @@
       "@ia/contracts/*": ["../../packages/contracts/dist/*"]
     }
   },
+  "ts-node": {
+    "transpileOnly": true,
+    "require": ["tsconfig-paths/register"]
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]
 }
