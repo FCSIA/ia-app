@@ -447,7 +447,7 @@ function SchedulePageContent() {
                   </button>
                 ))}
                 <Link href="/courses" className="ml-auto mb-1">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+                  <Button variant="secondary" size="sm" className="h-7 text-xs">
                     <BookOpen className="mr-1.5 size-3" />
                     Catalog
                   </Button>
