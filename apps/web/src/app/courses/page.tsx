@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { coursesApi } from '@/lib/api';
 
 function pathwayLabel(pathway?: CourseSummary['pathway']) {
@@ -36,7 +36,7 @@ function pathwayLabel(pathway?: CourseSummary['pathway']) {
 }
 
 export default function CoursesPage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('ALL');
   const [pathway, setPathway] = useState('ALL');

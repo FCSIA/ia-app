@@ -45,7 +45,7 @@ export function WelcomeWidget() {
   const nextBlock = currentStatus.nextBlock;
 
   return (
-    <section className="rounded-[2rem] border border-border/70 bg-card/95 px-6 py-8 shadow-sm sm:px-8">
+    <section className="rounded-[2rem] border border-border/70 bg-card/95 px-6 py-8 sm:px-8">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-6">
           <div className="space-y-2">
@@ -59,7 +59,7 @@ export function WelcomeWidget() {
           </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="space-y-1.5 border-l-2 border-primary/30 pl-4">
+            <div className="space-y-1.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
                 Current Class
               </p>

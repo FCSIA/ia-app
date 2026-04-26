@@ -39,25 +39,25 @@ export function FlexFridaySnapshotWidget() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-5 dark:from-indigo-900/20 dark:to-purple-900/20">
+        <div className="flex flex-col rounded-[1.5rem] border border-border/70 bg-muted/30 p-5">
           <div className="flex items-start justify-between">
-            <Badge variant="secondary" className="bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-0 hover:bg-indigo-500/30">
+            <Badge variant="secondary" className="rounded-full">
               {activeRegistration.workshop?.pathway || 'General'}
             </Badge>
-            <Sparkles className="size-4 text-indigo-500/70" />
+            <Sparkles className="size-4 text-muted-foreground" />
           </div>
-          
+
           <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground line-clamp-2">
             {activeRegistration.workshop?.title ?? 'Unknown Workshop'}
           </h3>
-          
+
           <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
-            <div className="flex items-center gap-1.5 rounded-full bg-background/60 px-2.5 py-1 backdrop-blur-sm border border-border/50">
-              <MapPin className="size-3.5 text-primary" />
+            <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/80 px-2.5 py-1">
+              <MapPin className="size-3.5 text-muted-foreground" />
               {activeRegistration.workshop?.location ?? 'TBD'}
             </div>
             {activeRegistration.workshop?.session?.friday?.date && (
-              <span className="opacity-80">
+              <span>
                 {format(new Date(activeRegistration.workshop.session.friday.date), 'MMM d, yyyy')}
               </span>
             )}

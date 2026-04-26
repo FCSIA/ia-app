@@ -38,7 +38,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -279,6 +280,9 @@ export function AppShell({
         {/* Mobile nav (Sheet) */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="w-72 border-r bg-sidebar p-0 text-sidebar-foreground">
+            <VisuallyHidden>
+              <SheetTitle>Navigation</SheetTitle>
+            </VisuallyHidden>
             <div className="flex h-full flex-col">
               <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
                 <Link

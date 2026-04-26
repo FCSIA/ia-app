@@ -12,6 +12,7 @@ export interface AppUser {
     minor?: Pathway | null;
     email?: string | null;
     isActive?: boolean;
+    dashboardLayout?: string[];
 }
 export interface AuthenticatedUser extends AppUser {
     role: AppRole | null;

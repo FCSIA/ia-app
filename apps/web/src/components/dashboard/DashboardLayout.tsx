@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -79,11 +79,13 @@ function SortableWidget({
   widget,
   editing,
   onRemove,
+  onMeasure,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
   onRemove: (id: string) => void;
+  onMeasure: (id: string, height: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -97,49 +99,64 @@ function SortableWidget({
 
   const Component = widget.Component;
 
+  // Measure height so the parent can balance columns.
+  const innerRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (!innerRef.current) return;
+    const el = innerRef.current;
+    const update = () => onMeasure(id, el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [id, onMeasure]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
         'relative',
-        isDragging ? 'opacity-40 scale-[0.98]' : '',
-        editing ? 'cursor-default' : '',
+        editing ? 'rounded-3xl ring-1 ring-dashed ring-border/70' : '',
+        isDragging ? 'opacity-40' : '',
       )}
     >
-      {editing && (
-        <div className="absolute -top-2 left-4 right-4 z-20 flex items-center justify-between gap-2">
-          <div
-            {...attributes}
-            {...listeners}
-            className="flex cursor-grab items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-primary/40 hover:text-primary active:cursor-grabbing"
-          >
-            <GripVertical className="size-3" />
-            {widget.label}
+      <div ref={innerRef}>
+        {editing && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="flex size-6 cursor-grab items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+              aria-label={`Drag ${widget.label}`}
+            >
+              <GripVertical className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(id)}
+              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`Remove ${widget.label}`}
+            >
+              <X className="size-3.5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onRemove(id)}
-            className="rounded-full border border-border bg-background p-1 text-destructive shadow-sm transition hover:bg-destructive/10"
-            aria-label="Remove widget"
-          >
-            <X className="size-3" />
-          </button>
+        )}
+        <div className={editing ? 'opacity-95' : ''}>
+          <Component />
         </div>
-      )}
-      <div className={editing ? 'mt-4 opacity-90' : ''}>
-        <Component />
       </div>
     </div>
   );
 }
 
-// ─── Overlay (ghost while dragging) ──────────────────────────────────────────
+// ─── Drag overlay (ghost while dragging) ─────────────────────────────────────
 
 function DragGhost({ widget }: { widget: WidgetDefinition }) {
   const Component = widget.Component;
   return (
-    <div className="pointer-events-none opacity-95 shadow-2xl ring-2 ring-primary/30 rounded-3xl scale-[1.02] rotate-[0.8deg]">
+    <div className="pointer-events-none rounded-3xl ring-2 ring-primary/30 scale-[1.02] rotate-[0.5deg]">
       <Component />
     </div>
   );
@@ -154,12 +171,32 @@ export function DashboardLayout() {
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [heights, setHeights] = useState<Record<string, number>>({});
+  const [columnCount, setColumnCount] = useState(2);
 
-  // Sensor config — require a small drag distance to avoid accidentally triggering
+  // Sensor config — small drag distance to avoid accidental triggers
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
   );
+
+  // Track viewport breakpoint to choose 1 vs 2 columns (matches md:1280 ish for masonry).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setColumnCount(mq.matches ? 2 : 1);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const handleMeasure = useCallback((id: string, height: number) => {
+    setHeights((prev) => {
+      const cur = prev[id];
+      if (cur != null && Math.abs(cur - height) < 1) return prev;
+      return { ...prev, [id]: height };
+    });
+  }, []);
 
   // Load persisted layout once user is known
   useEffect(() => {
@@ -168,7 +205,6 @@ export function DashboardLayout() {
       return;
     }
 
-    // Attempt to load from server first
     usersApi
       .getDashboardLayout()
       .then((serverLayout) => {
@@ -179,13 +215,11 @@ export function DashboardLayout() {
           });
           setLayout(cleaned);
         } else {
-          // No server layout yet, check local storage or use default
           const persisted = loadLayout(user.id);
           setLayout(persisted ?? getDefaultLayout(user.roles));
         }
       })
       .catch(() => {
-        // Fallback to local storage if API fails
         const persisted = loadLayout(user.id);
         setLayout(persisted ?? getDefaultLayout(user.roles));
       });
@@ -198,9 +232,7 @@ export function DashboardLayout() {
 
   const handleSave = useCallback(() => {
     if (user && layout) {
-      // Sync to cloud
       usersApi.updateDashboardLayout(layout);
-      // Also cache locally
       saveLayout(user.id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
@@ -240,26 +272,41 @@ export function DashboardLayout() {
       if (!prev) return prev;
       const oldIndex = prev.indexOf(active.id as string);
       const newIndex = prev.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return prev;
       return arrayMove(prev, oldIndex, newIndex);
     });
   }, []);
 
   const { fixedIds, fullIds, columnIds } = useMemo(() => {
     if (!layout) return { fixedIds: [], fullIds: [], columnIds: [] };
-
-    // Find fixed widgets based on registry definition
     const fixed = Object.values(WIDGETS)
       .filter((w) => w.isFixed && isWidgetAllowed(w, user?.roles))
       .map((w) => w.id);
-
-    // Dynamic IDs are those in the state that are not fixed
     const dynamic = layout.filter((id) => !WIDGETS[id]?.isFixed);
-
     const full = dynamic.filter((id) => WIDGETS[id]?.size === 'full');
     const cols = dynamic.filter((id) => WIDGETS[id]?.size === 'half');
-
     return { fixedIds: fixed, fullIds: full, columnIds: cols };
   }, [layout, user?.roles]);
+
+  // Distribute half-width widgets into N columns, always pushing to the
+  // currently shortest column. This produces dense, gap-free masonry packing
+  // without splitting items mid-card.
+  const columns = useMemo<string[][]>(() => {
+    if (columnIds.length === 0) return [];
+    const cols: string[][] = Array.from({ length: columnCount }, () => []);
+    const colHeights = new Array(columnCount).fill(0);
+    for (const id of columnIds) {
+      // Default unmeasured widgets to a tall-ish height so first paint roughly balances.
+      const h = heights[id] ?? 320;
+      let target = 0;
+      for (let i = 1; i < columnCount; i++) {
+        if (colHeights[i] < colHeights[target]) target = i;
+      }
+      cols[target].push(id);
+      colHeights[target] += h;
+    }
+    return cols;
+  }, [columnIds, columnCount, heights]);
 
   if (!layout) {
     return (
@@ -343,7 +390,7 @@ export function DashboardLayout() {
                   <Button
                     onClick={handleSave}
                     size="sm"
-                    className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
+                    className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
                   >
                     <Save className="size-4" />
                     Done
@@ -354,7 +401,7 @@ export function DashboardLayout() {
                   variant="outline"
                   size="sm"
                   onClick={() => setEditing(true)}
-                  className="h-9 gap-2 rounded-full bg-background px-4 font-medium shadow-sm transition hover:bg-muted"
+                  className="h-9 gap-2 rounded-full bg-background px-4 font-medium transition hover:bg-muted"
                 >
                   <LayoutGrid className="size-4" />
                   Customize
@@ -369,7 +416,7 @@ export function DashboardLayout() {
             if (!widget) return null;
             const Component = widget.Component;
             return (
-              <div key={id} className={cn(editing ? 'opacity-80' : '')}>
+              <div key={id} className={cn(editing ? 'opacity-90' : '')}>
                 <Component />
               </div>
             );
@@ -397,30 +444,31 @@ export function DashboardLayout() {
                       widget={widget}
                       editing={editing}
                       onRemove={handleRemove}
+                      onMeasure={handleMeasure}
                     />
                   );
                 })}
 
-                {/* Columnar widgets distributed for horizontal priority */}
-                {columnIds.length > 0 && (
+                {/* Half-width widgets — distributed into N columns by measured
+                    height so widgets pack densely without large gaps. */}
+                {columns.length > 0 && (
                   <div className="flex flex-col gap-6 md:flex-row">
-                    {[0, 1, 2].map((colIndex) => (
-                      <div key={colIndex} className="flex flex-1 flex-col gap-6">
-                        {columnIds
-                          .filter((_, i) => i % 3 === colIndex)
-                          .map((id) => {
-                            const widget = WIDGETS[id];
-                            if (!widget) return null;
-                            return (
-                              <SortableWidget
-                                key={id}
-                                id={id}
-                                widget={widget}
-                                editing={editing}
-                                onRemove={handleRemove}
-                              />
-                            );
-                          })}
+                    {columns.map((colIds, colIndex) => (
+                      <div key={colIndex} className="flex flex-1 flex-col gap-6 min-w-0">
+                        {colIds.map((id) => {
+                          const widget = WIDGETS[id];
+                          if (!widget) return null;
+                          return (
+                            <SortableWidget
+                              key={id}
+                              id={id}
+                              widget={widget}
+                              editing={editing}
+                              onRemove={handleRemove}
+                              onMeasure={handleMeasure}
+                            />
+                          );
+                        })}
                       </div>
                     ))}
                   </div>

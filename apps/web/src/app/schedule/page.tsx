@@ -41,7 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -70,7 +70,7 @@ export default function SchedulePage() {
 }
 
 function SchedulePageContent() {
-  const user = getUser();
+  const user = useCurrentUser();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();

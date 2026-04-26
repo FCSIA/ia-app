@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { getUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });

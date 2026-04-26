@@ -4,7 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { flexFridayApi, auditApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import { Plus, Users, MapPin, CheckCircle, Ticket, ChevronRight, Clock, Pencil, Trash2, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -62,7 +62,7 @@ function pathwayLabel(value: string) {
 }
 
 export default function FlexFridayPage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const qc = useQueryClient();
   const { toast } = useToast();
 

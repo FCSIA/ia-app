@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { announcementsApi } from '@/lib/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
   ChevronDown,
@@ -122,7 +122,7 @@ function ClubMultiSelect({
 }
 
 export default function AnnouncementsPage() {
-  const user = getUser();
+  const user = useCurrentUser();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [showArchived, setShowArchived] = useState(false);
