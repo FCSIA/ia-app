@@ -1,9 +1,0 @@
-Support and Service
-Standard support hours are Monday through Friday, 9 AM to 6 PM Eastern Time.
-Premium support includes 24/7 coverage with a dedicated account manager.
-Average response time for standard support is one business day.
-
-Roadmap and Limitations
-OHS plans to add pediatric growth chart support to PulseEMR next year.
-Real-time analytics for InsightAI are not currently on the roadmap.
-CareTrack does not support voice call reminders.
