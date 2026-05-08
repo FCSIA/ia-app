@@ -14,6 +14,7 @@ android
 ios
 
 # Environment variables
+.env
 *.env
 .env.*
 !.env.example
@@ -69,3 +70,10 @@ test.prisma
 *.p12
 *.jks
 *.mobileprovision
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local Windows cache
+Microsoft/
