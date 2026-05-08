@@ -1,0 +1,39 @@
+Company Overview
+Orion Health Systems (OHS) is a mid-sized healthcare software provider founded in 2012.
+The company builds clinical workflow tools used by hospitals and outpatient clinics.
+OHS operates primarily in the United States, with secondary customers in Canada.
+
+Core Products
+OHS has three primary products: PulseEMR, CareTrack, and InsightAI.
+PulseEMR is an electronic medical record system designed for small to mid-sized hospitals.
+CareTrack is a patient engagement and appointment scheduling platform.
+InsightAI provides analytics dashboards for hospital administrators.
+
+PulseEMR Details
+PulseEMR supports HL7 and FHIR standards for interoperability.
+The system includes modules for prescriptions, lab results, and clinical notes.
+PulseEMR does not currently support pediatric growth chart visualization.
+
+CareTrack Details
+CareTrack sends automated reminders via SMS and email.
+It integrates with PulseEMR but can also operate as a standalone product.
+CareTrack reduced missed appointments by 18 percent in pilot studies.
+
+InsightAI Details
+InsightAI uses historical hospital data to identify operational bottlenecks.
+The product does not provide real-time clinical decision support.
+InsightAI dashboards are refreshed every 24 hours.
+
+Security and Compliance
+All OHS products are HIPAA compliant.
+Data at rest is encrypted using AES-256.
+Data in transit is protected using TLS 1.2 or higher.
+OHS does not store patient data outside North America.
+
+Pricing and Licensing
+PulseEMR is licensed on a per-bed, per-year pricing model.
+CareTrack pricing is based on the number of active patients.
+InsightAI is sold as an annual enterprise subscription.
+OHS offers discounts for non-profit hospitals.
+
+

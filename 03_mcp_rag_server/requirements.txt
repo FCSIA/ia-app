@@ -1,0 +1,5 @@
+mcp
+openai
+python-dotenv
+sentence-transformers
+faiss-cpu
