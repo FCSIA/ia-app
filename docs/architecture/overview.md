@@ -91,6 +91,7 @@ The frontend stores the token and attaches it to every future request. See [[dat
 
 ## Related
 
+- [[diagram-inventory]] — Detailed list of runtime pieces, features, data domains, flows, and Azure changes
 - [[tech-stack]] — Every library and why it was chosen
 - [[data-flow]] — A request traced through every layer
 - [[backend-overview]] — How the NestJS API is structured

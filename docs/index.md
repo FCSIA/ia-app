@@ -14,6 +14,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[overview]] — What the app is, how the pieces connect
 - [[tech-stack]] — Every technology used and why
 - [[data-flow]] — A request traced end-to-end through every layer
+- [[diagram-inventory]] — Detailed list of runtime pieces, features, data domains, flows, and Azure changes
 
 ### Backend (API)
 - [[backend-overview]] — NestJS, Node.js, and how the server works
@@ -49,6 +50,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[notifications]] — In-app notification delivery and preferences
 - [[moderation]] — Keyword filtering and content reports
 - [[audit-log]] — Admin activity tracking
+- [[wrapped]] — Spotify Wrapped-style school-year activity recap
 
 ### Reference
 - [[roles-and-permissions]] — All 8 user roles and what they can do
