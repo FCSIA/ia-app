@@ -11,7 +11,11 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { AnnouncementsService } from './announcements.service';
-import { CreateAnnouncementDto, CreateCommentDto } from './dto/announcement.dto';
+import {
+  CreateAnnouncementDto,
+  CreateCommentDto,
+  RejectAnnouncementDto,
+} from './dto/announcement.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('announcements')
@@ -46,6 +50,16 @@ export class AnnouncementsController {
     return this.announcementsService.markRead(id, user.id, user.role);
   }
 
+  @Post(':id/bookmark')
+  bookmark(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.announcementsService.bookmark(id, user.id, user.role);
+  }
+
+  @Delete(':id/bookmark')
+  unbookmark(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.announcementsService.unbookmark(id, user.id, user.role);
+  }
+
   @Delete(':id/read')
   markUnread(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.announcementsService.markUnread(id, user.id, user.role);
@@ -59,6 +73,20 @@ export class AnnouncementsController {
   @Patch(':id/archive')
   archive(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.announcementsService.archive(id, user.id, user.role);
+  }
+
+  @Post(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.announcementsService.approve(id, user.id, user.role);
+  }
+
+  @Post(':id/reject')
+  reject(
+    @Param('id') id: string,
+    @Body() body: RejectAnnouncementDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.announcementsService.reject(id, body.note, user.id, user.role);
   }
 
   @Post(':id/comments')

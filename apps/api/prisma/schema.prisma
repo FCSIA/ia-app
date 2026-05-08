@@ -22,7 +22,10 @@ model User {
   createdAt                  DateTime                     @default(now()) @map("created_at")
   updatedAt                  DateTime                     @updatedAt @map("updated_at")
   authoredAnnouncements      Announcement[]               @relation("AnnouncementAuthor")
+  submittedAnnouncements     Announcement[]               @relation("AnnouncementSubmitter")
+  approvedAnnouncements      Announcement[]               @relation("AnnouncementApprover")
   announcementReads          AnnouncementRead[]
+  announcementBookmarks      AnnouncementBookmark[]
   auditEvents                AuditEvent[]
   sessions                   AuthSession[]
   channelMemberships         ClubChannelMembership[]
@@ -165,27 +168,51 @@ model SchoolDayBlock {
 model Announcement {
   id             String                 @id @default(cuid())
   authorId       String                 @map("author_id")
+  submittedById  String?                @map("submitted_by_id")
+  approvedById   String?                @map("approved_by_id")
   title          String
   body           String
   targetType     AnnouncementTarget     @map("target_type")
   targetGrade    Int?                   @map("target_grade")
   targetPathway  Pathway?               @map("target_pathway")
+  targetGrades   Int[]                  @default([]) @map("target_grades")
+  targetMajorPathways Pathway[]         @default([]) @map("target_major_pathways")
+  targetMinorPathways Pathway[]         @default([]) @map("target_minor_pathways")
   targetValue    String?                @map("target_value")
   clubId         String?                @map("club_id")
   allowComments  Boolean                @default(false) @map("allow_comments")
   isAdminGeneral Boolean                @default(false) @map("is_admin_general")
   status         AnnouncementStatus     @default(ACTIVE)
   expiresAt      DateTime?              @map("expires_at")
+  approvedAt     DateTime?              @map("approved_at")
+  rejectionNote  String?                @map("rejection_note") @db.Text
+  promotedUntil  DateTime?              @map("promoted_until")
   createdAt      DateTime               @default(now()) @map("created_at")
   updatedAt      DateTime               @updatedAt @map("updated_at")
   author         User                   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  submittedBy    User?                  @relation("AnnouncementSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  approvedBy     User?                  @relation("AnnouncementApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   club           Club?                  @relation(fields: [clubId], references: [id])
+  bookmarks      AnnouncementBookmark[]
   comments       Comment[]
   reads          AnnouncementRead[]
   keywordMatches KeywordMatch[]
   notifications  NotificationDelivery[]
 
   @@map("announcements")
+}
+
+model AnnouncementBookmark {
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  userId         String       @map("user_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, createdAt])
+  @@map("announcement_bookmarks")
 }
 
 model Comment {
@@ -679,14 +706,21 @@ model KeywordMatch {
 }
 
 model NotificationPreference {
-  id       String               @id @default(cuid())
-  userId   String               @map("user_id")
-  category NotificationCategory
-  clubId   String?              @map("club_id")
-  enabled  Boolean              @default(true)
-  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String               @id @default(cuid())
+  userId         String               @map("user_id")
+  category       NotificationCategory
+  clubId         String?              @map("club_id")
+  channelId      String?              @map("channel_id")
+  announcementId String?              @map("announcement_id")
+  eventId        String?              @map("event_id")
+  scopeKey       String               @default("global") @map("scope_key")
+  enabled        Boolean              @default(true)
+  locked         Boolean              @default(false)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, category, clubId])
+  @@unique([userId, category, scopeKey])
+  @@index([userId, category, clubId])
+  @@index([userId, category, channelId])
   @@map("notification_preferences")
 }
 
@@ -765,7 +799,10 @@ enum AnnouncementTarget {
 }
 
 enum AnnouncementStatus {
+  DRAFT
+  PENDING_APPROVAL
   ACTIVE
+  REJECTED
   ARCHIVED
   EXPIRED
 }

@@ -4,9 +4,11 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { PersistentExceptionFilter } from './common/filters/persistent-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useGlobalFilters(new PersistentExceptionFilter());
 
   app.enableCors({
     origin: process.env.WEB_ORIGIN || 'http://localhost:3000',

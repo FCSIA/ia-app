@@ -1,6 +1,7 @@
 'use client';
 
-import { use, useDeferredValue, useMemo, useState } from 'react';
+import { use, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,6 +28,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
+import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { announcementsApi, clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -319,7 +321,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
 
 export default function ClubOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
   const user = useCurrentUser();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
 
@@ -330,6 +335,27 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     queryKey: ['club', id],
     queryFn: () => clubsApi.getOne(id).then((r) => r.data),
   });
+
+  const redeemMutation = useMutation({
+    mutationFn: (code: string) => clubsApi.redeemJoinCode(id, code.trim().toUpperCase()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club', id] });
+      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
+      toast({ title: 'Joined club with code' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Invalid join code',
+        variant: 'destructive',
+      }),
+  });
+
+  useEffect(() => {
+    const code = searchParams?.get('joinCode');
+    if (code && club && !club.viewer.canAccessWorkspace && !redeemMutation.isPending) {
+      redeemMutation.mutate(code);
+    }
+  }, [club, redeemMutation, searchParams]);
 
   const { data: announcements = [] } = useQuery<AnnouncementSummary[]>({
     queryKey: ['club-announcements', id],
@@ -370,22 +396,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
     </div>
   );
 
-  const actions = (
-    <>
-      {canInvite ? (
-        <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
-          <UserPlus className="mr-1.5 size-4" />
-          Invite
-        </Button>
-      ) : null}
-      {canPost ? (
-        <Button size="sm" onClick={() => setAnnounceOpen(true)}>
-          <Megaphone className="mr-1.5 size-4" />
-          Announce
-        </Button>
-      ) : null}
-    </>
-  );
+  const actions = null;
 
   const rightPane = (
     <div className="space-y-6 p-5">
@@ -458,6 +469,33 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
           club={club}
           canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
         />
+        {(canInvite || canPost || club.viewer.canManageMembership) ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Club management</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {canInvite ? (
+                <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+                  <UserPlus className="mr-1.5 size-4" />
+                  Invite member
+                </Button>
+              ) : null}
+              {canPost ? (
+                <Button size="sm" onClick={() => setAnnounceOpen(true)}>
+                  <Megaphone className="mr-1.5 size-4" />
+                  Propose announcement
+                </Button>
+              ) : null}
+              <NotificationScopeSwitch
+                category="CLUB_ANNOUNCEMENT"
+                label="Club announcements"
+                clubId={club.id}
+                compact
+              />
+            </CardContent>
+          </Card>
+        ) : null}
         {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-3">

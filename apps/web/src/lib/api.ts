@@ -101,9 +101,13 @@ export const announcementsApi = {
     api.get('/announcements', { params: { archived, clubId, unreadOnly } }),
   getOne: (id: string) => api.get(`/announcements/${id}`),
   create: (data: any) => api.post('/announcements', data),
+  approve: (id: string) => api.post(`/announcements/${id}/approve`),
+  reject: (id: string, note?: string) => api.post(`/announcements/${id}/reject`, { note }),
   archive: (id: string) => api.patch(`/announcements/${id}/archive`),
   markRead: (id: string) => api.post(`/announcements/${id}/read`),
   markUnread: (id: string) => api.delete(`/announcements/${id}/read`),
+  bookmark: (id: string) => api.post(`/announcements/${id}/bookmark`),
+  unbookmark: (id: string) => api.delete(`/announcements/${id}/bookmark`),
   addComment: (id: string, body: string) =>
     api.post(`/announcements/${id}/comments`, { body }),
   deleteComment: (commentId: string) => api.delete(`/announcements/comments/${commentId}`),
@@ -369,8 +373,18 @@ export const notificationsApi = {
   markRead: (ids: string[]) => api.post('/notifications/mark-read', { ids }),
   markAllRead: () => api.post('/notifications/mark-all-read'),
   getPreferences: () => api.get('/notifications/preferences'),
-  upsertPreference: (category: string, enabled: boolean, clubId?: string) =>
-    api.post('/notifications/preferences', { category, enabled, clubId }),
+  upsertPreference: (
+    category: string,
+    enabled: boolean,
+    opts?: {
+      clubId?: string;
+      channelId?: string;
+      announcementId?: string;
+      eventId?: string;
+      scopeKey?: string;
+    },
+  ) =>
+    api.post('/notifications/preferences', { category, enabled, ...(opts ?? {}) }),
 };
 
 // Moderation

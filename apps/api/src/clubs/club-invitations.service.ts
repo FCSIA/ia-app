@@ -64,10 +64,10 @@ export class ClubInvitationsService {
 
     await this.prisma.notificationPreference.upsert({
       where: {
-        userId_category_clubId: {
+        userId_category_scopeKey: {
           userId,
           category: NotificationCategory.CLUB_ANNOUNCEMENT,
-          clubId,
+          scopeKey: `club:${clubId}`,
         },
       },
       update: { enabled: true },
@@ -75,6 +75,7 @@ export class ClubInvitationsService {
         userId,
         category: NotificationCategory.CLUB_ANNOUNCEMENT,
         clubId,
+        scopeKey: `club:${clubId}`,
         enabled: true,
       },
     });
@@ -229,10 +230,10 @@ export class ClubInvitationsService {
 
         await tx.notificationPreference.upsert({
           where: {
-            userId_category_clubId: {
+            userId_category_scopeKey: {
               userId,
               category: NotificationCategory.CLUB_ANNOUNCEMENT,
-              clubId: invite.clubId,
+              scopeKey: `club:${invite.clubId}`,
             },
           },
           update: { enabled: true },
@@ -240,6 +241,7 @@ export class ClubInvitationsService {
             userId,
             category: NotificationCategory.CLUB_ANNOUNCEMENT,
             clubId: invite.clubId,
+            scopeKey: `club:${invite.clubId}`,
             enabled: true,
           },
         });
@@ -399,10 +401,10 @@ export class ClubInvitationsService {
         });
         await tx.notificationPreference.upsert({
           where: {
-            userId_category_clubId: {
+            userId_category_scopeKey: {
               userId: request.requesterId,
               category: NotificationCategory.CLUB_ANNOUNCEMENT,
-              clubId,
+              scopeKey: `club:${clubId}`,
             },
           },
           update: { enabled: true },
@@ -410,6 +412,7 @@ export class ClubInvitationsService {
             userId: request.requesterId,
             category: NotificationCategory.CLUB_ANNOUNCEMENT,
             clubId,
+            scopeKey: `club:${clubId}`,
             enabled: true,
           },
         });

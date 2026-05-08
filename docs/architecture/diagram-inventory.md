@@ -430,7 +430,7 @@ Optional keyword match, automated report, notification, and audit records are cr
 ### IA Wrapped
 - End-of-year Wrapped-style experience.
 - Availability window: May only for normal users.
-- Admin override access outside the May window.
+- Administrative access outside the May window.
 - School-year range: August 1 through July 31.
 - Animated slide deck in the web app.
 - Messages sent.

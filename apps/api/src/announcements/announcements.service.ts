@@ -41,14 +41,23 @@ export class AnnouncementsService {
   private serializeAnnouncement<
     T extends {
       reads: Array<{ readAt: Date }>;
+      bookmarks?: Array<{ createdAt: Date }>;
+      promotedUntil?: Date | null;
     },
   >(announcement: T) {
     const readState = announcement.reads[0] ?? null;
+    const bookmarkState = announcement.bookmarks?.[0] ?? null;
+    const isFeatured = !!announcement.promotedUntil && announcement.promotedUntil > new Date();
     return {
       ...announcement,
       reads: undefined,
+      bookmarks: undefined,
       isRead: !!readState,
       readAt: readState?.readAt.toISOString() ?? null,
+      isBookmarked: !!bookmarkState,
+      bookmarkedAt: bookmarkState?.createdAt.toISOString() ?? null,
+      isFeatured,
+      promotedUntil: announcement.promotedUntil?.toISOString?.() ?? announcement.promotedUntil ?? null,
     };
   }
 
@@ -90,7 +99,14 @@ export class AnnouncementsService {
   private async assertAnnouncementAccess(
     announcement: Pick<
       Announcement,
-      'id' | 'clubId' | 'targetType' | 'targetGrade' | 'targetPathway'
+      | 'id'
+      | 'clubId'
+      | 'targetType'
+      | 'targetGrade'
+      | 'targetPathway'
+      | 'targetGrades'
+      | 'targetMajorPathways'
+      | 'targetMinorPathways'
     >,
     userId: string,
     userRole: string,
@@ -109,10 +125,13 @@ export class AnnouncementsService {
       announcement.targetType === AnnouncementTarget.SCHOOL_WIDE ||
       (announcement.targetType === AnnouncementTarget.GRADE &&
         viewer.gradeLevel != null &&
-        announcement.targetGrade === viewer.gradeLevel) ||
+        (announcement.targetGrade === viewer.gradeLevel ||
+          announcement.targetGrades.includes(viewer.gradeLevel))) ||
       (announcement.targetType === AnnouncementTarget.PATHWAY &&
-        announcement.targetPathway != null &&
-        [viewer.major, viewer.minor].filter(Boolean).includes(announcement.targetPathway));
+        ((announcement.targetPathway != null &&
+          [viewer.major, viewer.minor].filter(Boolean).includes(announcement.targetPathway)) ||
+          (viewer.major != null && announcement.targetMajorPathways.includes(viewer.major)) ||
+          (viewer.minor != null && announcement.targetMinorPathways.includes(viewer.minor))));
 
     if (!allowed) {
       throw new ForbiddenException('Announcement not available to this user');
@@ -144,6 +163,24 @@ export class AnnouncementsService {
     });
   }
 
+  private isAdminRole(userRole: string) {
+    return userRole === Role.ADMIN || userRole === Role.SUPER_ADMIN;
+  }
+
+  private addMonths(date: Date, months: number) {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + months);
+    return next;
+  }
+
+  private normalizeGrades(values?: number[], legacy?: number) {
+    return Array.from(new Set([...(values ?? []), legacy].filter((value): value is number => Number.isInteger(value))));
+  }
+
+  private normalizePathways<T extends string>(values?: T[], legacy?: T) {
+    return Array.from(new Set([...(values ?? []), legacy].filter((value): value is T => !!value)));
+  }
+
   async getAll(
     userId: string,
     userRole: string,
@@ -155,14 +192,21 @@ export class AnnouncementsService {
 
     const isElevatedReader = this.isElevatedReader(userRole);
     const statusFilter = archived
-      ? { in: [AnnouncementStatus.EXPIRED, AnnouncementStatus.ARCHIVED] }
-      : AnnouncementStatus.ACTIVE;
+      ? { in: [AnnouncementStatus.EXPIRED, AnnouncementStatus.ARCHIVED, AnnouncementStatus.REJECTED] }
+      : isElevatedReader
+        ? { in: [AnnouncementStatus.ACTIVE, AnnouncementStatus.PENDING_APPROVAL] }
+        : AnnouncementStatus.ACTIVE;
 
     const include = {
       author: { select: { id: true, firstName: true, lastName: true } },
       reads: {
         where: { userId },
         select: { readAt: true },
+        take: 1,
+      },
+      bookmarks: {
+        where: { userId },
+        select: { createdAt: true },
         take: 1,
       },
       _count: { select: { comments: true } },
@@ -183,7 +227,13 @@ export class AnnouncementsService {
       const announcements = await this.prisma.announcement.findMany({
         where: {
           clubId,
-          status: statusFilter,
+          OR: [
+            { status: statusFilter },
+            {
+              authorId: userId,
+              status: { in: [AnnouncementStatus.PENDING_APPROVAL, AnnouncementStatus.REJECTED] },
+            },
+          ],
           ...(unreadOnly ? { reads: { none: { userId } } } : {}),
         },
         orderBy: { createdAt: 'desc' },
@@ -218,7 +268,10 @@ export class AnnouncementsService {
         audienceScopes.push({
           clubId: null,
           targetType: AnnouncementTarget.GRADE,
-          targetGrade: viewer.gradeLevel,
+          OR: [
+            { targetGrade: viewer.gradeLevel },
+            { targetGrades: { has: viewer.gradeLevel } },
+          ],
         });
       }
 
@@ -226,7 +279,11 @@ export class AnnouncementsService {
         audienceScopes.push({
           clubId: null,
           targetType: AnnouncementTarget.PATHWAY,
-          targetPathway: { in: pathwayTargets },
+          OR: [
+            { targetPathway: { in: pathwayTargets } },
+            { targetMajorPathways: { hasSome: pathwayTargets } },
+            { targetMinorPathways: { hasSome: pathwayTargets } },
+          ],
         });
       }
 
@@ -238,8 +295,16 @@ export class AnnouncementsService {
       }
 
       where = {
-        status: statusFilter,
-        OR: audienceScopes,
+        OR: [
+          {
+            status: AnnouncementStatus.ACTIVE,
+            OR: audienceScopes,
+          },
+          {
+            authorId: userId,
+            status: { in: [AnnouncementStatus.PENDING_APPROVAL, AnnouncementStatus.REJECTED] },
+          },
+        ],
         ...(unreadOnly ? { reads: { none: { userId } } } : {}),
       };
     }
@@ -269,6 +334,11 @@ export class AnnouncementsService {
           select: { readAt: true },
           take: 1,
         },
+        bookmarks: {
+          where: { userId },
+          select: { createdAt: true },
+          take: 1,
+        },
       },
     });
     if (!ann) throw new NotFoundException('Announcement not found');
@@ -285,6 +355,9 @@ export class AnnouncementsService {
         targetType: true,
         targetGrade: true,
         targetPathway: true,
+        targetGrades: true,
+        targetMajorPathways: true,
+        targetMinorPathways: true,
       },
     });
     if (!announcement) throw new NotFoundException('Announcement not found');
@@ -326,6 +399,9 @@ export class AnnouncementsService {
         targetType: true,
         targetGrade: true,
         targetPathway: true,
+        targetGrades: true,
+        targetMajorPathways: true,
+        targetMinorPathways: true,
       },
     });
     if (!announcement) throw new NotFoundException('Announcement not found');
@@ -357,18 +433,44 @@ export class AnnouncementsService {
       this.moderation.maskProfanity(dto.body.trim()),
     ]);
 
+    const context = dto.clubId
+      ? await this.clubAccessPolicy.getClubContext(dto.clubId, authorId, userRole)
+      : null;
+    const requiresApproval =
+      !!dto.clubId &&
+      !context?.isSponsor &&
+      !context?.isAdmin &&
+      !this.isAdminRole(userRole);
+    const now = new Date();
+    const targetGrades = this.normalizeGrades(dto.targetGrades, dto.targetGrade);
+    const targetMajorPathways = this.normalizePathways(dto.targetMajorPathways, dto.targetPathway);
+    const targetMinorPathways = this.normalizePathways(dto.targetMinorPathways);
+
     const ann = await this.prisma.announcement.create({
       data: {
         authorId,
+        submittedById: requiresApproval ? authorId : undefined,
+        approvedById: requiresApproval ? undefined : authorId,
         title: titleModeration.masked,
         body: bodyModeration.masked,
         targetType: dto.targetType,
-        targetGrade: dto.targetGrade,
-        targetPathway: dto.targetPathway,
+        targetGrade: targetGrades[0],
+        targetPathway: targetMajorPathways[0] ?? targetMinorPathways[0],
+        targetGrades,
+        targetMajorPathways,
+        targetMinorPathways,
         clubId: dto.clubId,
         allowComments: dto.allowComments ?? false,
         isAdminGeneral: dto.isAdminGeneral ?? false,
+        status: requiresApproval
+          ? AnnouncementStatus.PENDING_APPROVAL
+          : AnnouncementStatus.ACTIVE,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+        approvedAt: requiresApproval ? undefined : now,
+        promotedUntil:
+          dto.promoted && this.isAdminRole(userRole)
+            ? this.addMonths(now, 1)
+            : undefined,
       },
     });
 
@@ -396,18 +498,153 @@ export class AnnouncementsService {
       );
     }
 
-    // Notify users
-    await this.deliverNotifications(ann);
+    if (requiresApproval) {
+      const sponsors = await this.prisma.clubSponsor.findMany({
+        where: { clubId: dto.clubId },
+        select: { userId: true },
+      });
+      await this.notifications.deliver({
+        userIds: sponsors.map((sponsor) => sponsor.userId),
+        category: NotificationCategory.CLUB_ANNOUNCEMENT,
+        title: `Review announcement: ${ann.title}`,
+        body: 'A student leader proposed a club announcement.',
+        announcementId: ann.id,
+        clubId: dto.clubId,
+      });
+    } else {
+      await this.deliverNotifications(ann);
+    }
 
     await this.audit.log({
       actorId: authorId,
-      action: 'ANNOUNCEMENT_CREATED',
+      action: requiresApproval ? 'ANNOUNCEMENT_SUBMITTED_FOR_APPROVAL' : 'ANNOUNCEMENT_CREATED',
       entityType: 'Announcement',
       entityId: ann.id,
       meta: { title: titleModeration.masked, targetType: dto.targetType },
     });
 
     return ann;
+  }
+
+  private async assertCanReview(ann: Announcement, actorId: string, userRole: string) {
+    if (this.isAdminRole(userRole)) return;
+    if (!ann.clubId) throw new ForbiddenException('Only admins can review this announcement');
+    const context = await this.clubAccessPolicy.getClubContext(ann.clubId, actorId, userRole);
+    if (!context.isSponsor && !context.isAdmin) {
+      throw new ForbiddenException('Only sponsors can review club announcements');
+    }
+  }
+
+  async approve(id: string, actorId: string, userRole: string) {
+    const ann = await this.prisma.announcement.findUnique({ where: { id } });
+    if (!ann) throw new NotFoundException('Announcement not found');
+    await this.assertCanReview(ann, actorId, userRole);
+
+    const updated = await this.prisma.announcement.update({
+      where: { id },
+      data: {
+        status: AnnouncementStatus.ACTIVE,
+        approvedById: actorId,
+        approvedAt: new Date(),
+        rejectionNote: null,
+      },
+    });
+
+    await this.deliverNotifications(updated);
+    await this.audit.log({
+      actorId,
+      action: 'ANNOUNCEMENT_APPROVED',
+      entityType: 'Announcement',
+      entityId: id,
+      meta: { clubId: ann.clubId, submittedById: ann.submittedById },
+    });
+
+    return updated;
+  }
+
+  async reject(id: string, note: string | undefined, actorId: string, userRole: string) {
+    const ann = await this.prisma.announcement.findUnique({ where: { id } });
+    if (!ann) throw new NotFoundException('Announcement not found');
+    await this.assertCanReview(ann, actorId, userRole);
+
+    const updated = await this.prisma.announcement.update({
+      where: { id },
+      data: {
+        status: AnnouncementStatus.REJECTED,
+        approvedById: actorId,
+        approvedAt: new Date(),
+        rejectionNote: note?.trim() || null,
+      },
+    });
+
+    if (ann.submittedById) {
+      await this.notifications.deliver({
+        userIds: [ann.submittedById],
+        category: NotificationCategory.CLUB_ANNOUNCEMENT,
+        title: `Announcement needs changes: ${ann.title}`,
+        body: note?.trim() || 'A sponsor rejected this announcement proposal.',
+        announcementId: ann.id,
+        clubId: ann.clubId ?? undefined,
+      });
+    }
+
+    await this.audit.log({
+      actorId,
+      action: 'ANNOUNCEMENT_REJECTED',
+      entityType: 'Announcement',
+      entityId: id,
+      meta: { clubId: ann.clubId, submittedById: ann.submittedById },
+    });
+
+    return updated;
+  }
+
+  async bookmark(id: string, userId: string, userRole: string) {
+    const announcement = await this.prisma.announcement.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        clubId: true,
+        targetType: true,
+        targetGrade: true,
+        targetPathway: true,
+        targetGrades: true,
+        targetMajorPathways: true,
+        targetMinorPathways: true,
+      },
+    });
+    if (!announcement) throw new NotFoundException('Announcement not found');
+    await this.assertAnnouncementAccess(announcement, userId, userRole);
+
+    await this.prisma.announcementBookmark.upsert({
+      where: { announcementId_userId: { announcementId: id, userId } },
+      update: {},
+      create: { announcementId: id, userId },
+    });
+    return { success: true };
+  }
+
+  async unbookmark(id: string, userId: string, userRole: string) {
+    const announcement = await this.prisma.announcement.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        clubId: true,
+        targetType: true,
+        targetGrade: true,
+        targetPathway: true,
+        targetGrades: true,
+        targetMajorPathways: true,
+        targetMinorPathways: true,
+      },
+    });
+    if (!announcement) throw new NotFoundException('Announcement not found');
+    await this.assertAnnouncementAccess(announcement, userId, userRole);
+
+    await this.prisma.announcementBookmark.deleteMany({
+      where: { announcementId: id, userId },
+    });
+    return { success: true };
   }
 
   private async deliverNotifications(ann: Announcement) {

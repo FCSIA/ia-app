@@ -10,7 +10,7 @@ tags: [feature, announcements, comments]
 
 ## Overview
 
-Announcements are messages broadcast to specific audiences. They support comments, expiry, archiving, and content moderation.
+Announcements are messages broadcast to specific audiences. They support comments, expiry, archiving, sponsor approval for club proposals, user bookmarks, featured announcements, and content moderation.
 
 **Files:**
 - Backend: `apps/api/src/announcements/`
@@ -26,8 +26,8 @@ Every announcement targets a specific audience:
 | Target | Description |
 |--------|-------------|
 | `SCHOOL_WIDE` | Every user |
-| `GRADE` | Students in a specific `targetGrade` (9, 10, 11, or 12) |
-| `PATHWAY` | Students in a specific `targetPathway` |
+| `GRADE` | Students in one or more `targetGrades` (9, 10, 11, or 12); legacy `targetGrade` remains readable |
+| `PATHWAY` | Students in one or more major/minor pathway targets; legacy `targetPathway` remains readable |
 | `CLUB` | Members of the specified `clubId` |
 
 ### Flexible Targeting
@@ -45,7 +45,11 @@ The system tracks which users have viewed which announcements using the `Announc
 
 ## Lifecycle
 
-Announcements are born `ACTIVE`. They can transition to `EXPIRED` automatically based on `expiresAt`, or be manually `ARCHIVED` by an author or admin.
+Announcements can be born `ACTIVE` or `PENDING_APPROVAL`. Club student leader proposals require sponsor/admin approval; approval immediately publishes and sends notifications. They can transition to `REJECTED`, `EXPIRED` automatically based on `expiresAt`, or be manually `ARCHIVED` by an author or admin.
+
+## Saved and Featured
+
+Users can bookmark announcements locally. Admin-promoted announcements are surfaced as **Featured** and automatically stop being featured after one month.
 
 ---
 
@@ -56,7 +60,10 @@ Announcements are born `ACTIVE`. They can transition to `EXPIRED` automatically 
 | GET | `/announcements` | List matching the user's grade/pathway/clubs |
 | GET | `/announcements/:id` | Get detail + comments |
 | POST | `/announcements/:id/read` | Mark as read |
+| POST | `/announcements/:id/bookmark` | Save/bookmark an announcement |
 | POST | `/announcements` | Create (scanning for keywords) |
+| POST | `/announcements/:id/approve` | Sponsor/admin publishes a pending proposal |
+| POST | `/announcements/:id/reject` | Sponsor/admin returns a proposal |
 | POST | `/announcements/:id/comments` | Add comment |
 
 ---
@@ -66,4 +73,3 @@ Announcements are born `ACTIVE`. They can transition to `EXPIRED` automatically 
 - [[clubs]] — Club-targeted announcements
 - [[moderation]] — Keyword filter + reports
 - [[notifications]] — Notifications triggered by new announcements
-

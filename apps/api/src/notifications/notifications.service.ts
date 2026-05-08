@@ -6,6 +6,21 @@ import { NotificationCategory, Prisma } from '@prisma/client';
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
+  private scopeKey(opts?: {
+    scopeKey?: string;
+    clubId?: string | null;
+    channelId?: string | null;
+    announcementId?: string | null;
+    eventId?: string | null;
+  }) {
+    if (opts?.scopeKey?.trim()) return opts.scopeKey.trim();
+    if (opts?.channelId) return `channel:${opts.channelId}`;
+    if (opts?.announcementId) return `announcement:${opts.announcementId}`;
+    if (opts?.eventId) return `event:${opts.eventId}`;
+    if (opts?.clubId) return `club:${opts.clubId}`;
+    return 'global';
+  }
+
   async getMyNotifications(userId: string, unreadOnly = false) {
     return this.prisma.notificationDelivery.findMany({
       where: { userId, ...(unreadOnly ? { isRead: false } : {}) },
@@ -40,12 +55,33 @@ export class NotificationsService {
     userId: string,
     category: NotificationCategory,
     enabled: boolean,
-    clubId?: string,
+    opts?: {
+      clubId?: string;
+      channelId?: string;
+      announcementId?: string;
+      eventId?: string;
+      scopeKey?: string;
+    },
   ) {
+    const scopeKey = this.scopeKey(opts);
+    const existing = await this.prisma.notificationPreference.findUnique({
+      where: { userId_category_scopeKey: { userId, category, scopeKey } },
+    });
+    if (existing?.locked) return existing;
+
     return this.prisma.notificationPreference.upsert({
-      where: { userId_category_clubId: { userId, category, clubId: clubId ?? null } },
+      where: { userId_category_scopeKey: { userId, category, scopeKey } },
       update: { enabled },
-      create: { userId, category, enabled, clubId },
+      create: {
+        userId,
+        category,
+        enabled,
+        clubId: opts?.clubId,
+        channelId: opts?.channelId,
+        announcementId: opts?.announcementId,
+        eventId: opts?.eventId,
+        scopeKey,
+      },
     });
   }
 
@@ -60,9 +96,9 @@ export class NotificationsService {
     ];
     for (const category of categories) {
       await this.prisma.notificationPreference.upsert({
-        where: { userId_category_clubId: { userId, category, clubId: null } },
+        where: { userId_category_scopeKey: { userId, category, scopeKey: 'global' } },
         update: {},
-        create: { userId, category, enabled: true },
+        create: { userId, category, enabled: true, scopeKey: 'global' },
       });
     }
   }
@@ -84,14 +120,22 @@ export class NotificationsService {
     for (const userId of opts.userIds) {
       // Check preference unless forceAll (admin-general override)
       if (!opts.forceAll) {
-        const pref = await this.prisma.notificationPreference.findFirst({
+        const scopeKeys = [
+          this.scopeKey({ channelId: opts.channelId }),
+          this.scopeKey({ announcementId: opts.announcementId }),
+          this.scopeKey({ eventId: opts.eventId }),
+          this.scopeKey({ clubId: opts.clubId }),
+          'global',
+        ];
+        const prefs = await this.prisma.notificationPreference.findMany({
           where: {
             userId,
             category: opts.category,
-            clubId: opts.clubId ?? null,
+            scopeKey: { in: Array.from(new Set(scopeKeys)) },
           },
         });
-        // If pref exists and is disabled, skip
+        const byScope = new Map(prefs.map((pref) => [pref.scopeKey, pref]));
+        const pref = scopeKeys.map((key) => byScope.get(key)).find(Boolean);
         if (pref && !pref.enabled) continue;
       }
 

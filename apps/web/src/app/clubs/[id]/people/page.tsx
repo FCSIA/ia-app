@@ -3,7 +3,7 @@
 import { use, useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crown, Sparkles, UserMinus, UserPlus, Users, ShieldCheck, Settings } from 'lucide-react';
+import { Crown, Copy, QrCode, Sparkles, UserMinus, UserPlus, Users, ShieldCheck, Settings } from 'lucide-react';
 import type { ClubDetail, ClubDirectoryEntry } from '@ia/contracts/clubs';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
@@ -39,6 +39,13 @@ function ManageJoinCodePopover({ club }: { club: ClubDetail }) {
   });
 
   if (!club.viewer.canManageMembership) return null;
+  const joinUrl =
+    typeof window === 'undefined'
+      ? ''
+      : `${window.location.origin}/clubs/${club.id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
+  const qrUrl = club.activeJoinCode?.code
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
+    : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,6 +76,32 @@ function ManageJoinCodePopover({ club }: { club: ClubDetail }) {
                 ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
                 : 'recently'}
             </p>
+            {qrUrl ? (
+              <div className="mt-3 flex flex-col items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrUrl} alt="Club join QR code" className="size-40 rounded-md border bg-white p-2" />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigator.clipboard?.writeText(club.activeJoinCode?.code ?? '')}
+                  >
+                    <Copy className="mr-1.5 size-4" />
+                    Code
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigator.clipboard?.writeText(joinUrl)}
+                  >
+                    <QrCode className="mr-1.5 size-4" />
+                    Link
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
         <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="w-full">

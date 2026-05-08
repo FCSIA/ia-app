@@ -15,7 +15,7 @@ Clubs are student organizations with a full workspace model: announcements, chan
 ### Access Control
 Clubs can be joined in three ways:
 1. **Invite**: A sponsor or leader sends a direct invite.
-2. **Join Code**: A club can generate a unique alphanumeric code; students with the code can join instantly.
+2. **Join Code / QR**: A club can generate a unique alphanumeric code and QR/link; students with either can join instantly.
 3. **Request**: If a club's `joinPolicy` is `REQUEST`, students must submit a join request that leaders or sponsors must then approve.
 
 Every club must have **at least one teacher sponsor**. Sponsors automatically retain visibility into **every** channel, including private channels.
@@ -44,13 +44,13 @@ Sponsor or Leader approves/declines in the club management tab
 ```
 
 ### 3. Join Code
-Sponsors can generate or rotate a **Join Code**. Any student who enters this code joins the club immediately, bypassing the request/invite flow.
+Sponsors can generate or rotate a **Join Code**. The people page also exposes a QR/link for the active code. Any student who enters the code or opens the link joins the club immediately, bypassing the request/invite flow.
 
 ---
 
 ## Club Announcements
 
-Club announcements are just `Announcement` records with `targetType: CLUB`. They appear in the club workspace and global feed for members.
+Club announcements are `Announcement` records with `targetType: CLUB`. Student leaders submit proposals that sponsors/admins approve; approval immediately publishes the announcement to the club workspace and global feed for members.
 
 ---
 
@@ -90,4 +90,3 @@ Only admins can create new clubs. Within a club, Sponsors and Leaders manage mem
 - [[announcements]] — Club-targeted announcements
 - [[events]] — Club events go through the event approval flow
 - [[notifications]] — Club announcement and channel-mention notifications
-

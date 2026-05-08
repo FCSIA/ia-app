@@ -7,38 +7,24 @@ import { announcementsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
-  ChevronDown,
-  Filter,
+  Bookmark,
+  Check,
   Plus,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  SearchInput,
-  SearchToolbar,
   SearchToolbarFilters,
-  SearchToolbarRow,
 } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FeatureFilterBar } from '@/components/filters/feature-filter-bar';
 import {
-  ANNOUNCEMENT_BADGE_TEXT_CLASS,
-  ANNOUNCEMENT_TAG_COLORS,
   ANNOUNCEMENT_TAG_LABELS,
   AnnouncementCard,
 } from '@/components/announcements/announcement-card';
@@ -48,78 +34,6 @@ type ClubFilterOption = {
   id: string;
   name: string;
 };
-
-function ClubMultiSelect({
-  clubs,
-  selectedClubIds,
-  onChange,
-}: {
-  clubs: ClubFilterOption[];
-  selectedClubIds: string[];
-  onChange: (value: string[]) => void;
-}) {
-  const selectedNames = clubs
-    .filter((club) => selectedClubIds.includes(club.id))
-    .map((club) => club.name);
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="justify-between rounded-xl">
-          <span className="truncate">
-            {selectedNames.length > 0
-              ? `Clubs: ${selectedNames.join(', ')}`
-              : 'Filter clubs'}
-          </span>
-          <ChevronDown className="ml-2 size-4 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-0">
-        <Command>
-          <CommandInput placeholder="Search clubs..." />
-          <CommandList>
-            <CommandEmpty>No clubs found.</CommandEmpty>
-            <CommandGroup>
-              {clubs.map((club) => {
-                const checked = selectedClubIds.includes(club.id);
-                return (
-                  <CommandItem
-                    key={club.id}
-                    value={club.name}
-                    onSelect={() =>
-                      onChange(
-                        checked
-                          ? selectedClubIds.filter((id) => id !== club.id)
-                          : [...selectedClubIds, club.id],
-                      )
-                    }
-                  >
-                    <Checkbox checked={checked} className="mr-2" />
-                    <span className="flex-1">{club.name}</span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-        <div className="flex items-center justify-between border-t px-3 py-2">
-          <p className="text-xs text-muted-foreground">
-            Non-club announcements stay visible.
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange([])}
-            disabled={selectedClubIds.length === 0}
-          >
-            Clear
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export default function AnnouncementsPage() {
   const user = useCurrentUser();
@@ -132,14 +46,21 @@ export default function AnnouncementsPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
   const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'featured'>('all');
+  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
+  const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
+  const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
     body: '',
     targetType: 'SCHOOL_WIDE',
-    targetGrade: 9,
-    targetPathway: 'INFORMATION_TECHNOLOGY',
+    targetGrades: [] as number[],
+    targetMajorPathways: [] as string[],
+    targetMinorPathways: [] as string[],
     allowComments: false,
     isAdminGeneral: false,
+    promoted: false,
     expiresAt: '',
   });
 
@@ -184,6 +105,33 @@ export default function AnnouncementsPage() {
       if (activeTag && announcement.targetType !== activeTag) return false;
       if (readFilter === 'unread' && announcement.isRead) return false;
       if (readFilter === 'read' && !announcement.isRead) return false;
+      if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
+      if (savedFilter === 'featured' && !announcement.isFeatured) return false;
+      if (
+        selectedGrades.length > 0 &&
+        !selectedGrades.some((grade) =>
+          announcement.targetGrade === grade || announcement.targetGrades?.includes?.(grade),
+        )
+      ) {
+        return false;
+      }
+      if (
+        selectedMajorPathways.length > 0 &&
+        !selectedMajorPathways.some((pathway) =>
+          announcement.targetPathway === pathway ||
+          announcement.targetMajorPathways?.includes?.(pathway),
+        )
+      ) {
+        return false;
+      }
+      if (
+        selectedMinorPathways.length > 0 &&
+        !selectedMinorPathways.some((pathway) =>
+          announcement.targetMinorPathways?.includes?.(pathway),
+        )
+      ) {
+        return false;
+      }
 
       if (
         selectedClubIds.length > 0 &&
@@ -201,7 +149,17 @@ export default function AnnouncementsPage() {
         announcement.club?.name,
       ]);
     });
-  }, [activeTag, data, deferredSearch, readFilter, selectedClubIds]);
+  }, [
+    activeTag,
+    data,
+    deferredSearch,
+    readFilter,
+    savedFilter,
+    selectedClubIds,
+    selectedGrades,
+    selectedMajorPathways,
+    selectedMinorPathways,
+  ]);
 
   const handleTagClick = (tag: string) => {
     setActiveTag((current) => (current === tag ? null : tag));
@@ -216,10 +174,12 @@ export default function AnnouncementsPage() {
         title: '',
         body: '',
         targetType: 'SCHOOL_WIDE',
-        targetGrade: 9,
-        targetPathway: 'INFORMATION_TECHNOLOGY',
+        targetGrades: [],
+        targetMajorPathways: [],
+        targetMinorPathways: [],
         allowComments: false,
         isAdminGeneral: false,
+        promoted: false,
         expiresAt: '',
       });
       toast({ title: 'Announcement created' });
@@ -239,18 +199,87 @@ export default function AnnouncementsPage() {
     },
   });
 
+  const bookmarkMutation = useMutation({
+    mutationFn: (announcement: any) =>
+      announcement.isBookmarked
+        ? announcementsApi.unbookmark(announcement.id)
+        : announcementsApi.bookmark(announcement.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => announcementsApi.approve(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      toast({ title: 'Announcement published' });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => announcementsApi.reject(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['announcements'] });
+      toast({ title: 'Announcement sent back' });
+    },
+  });
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     createMutation.mutate({
       ...form,
       expiresAt: form.expiresAt || undefined,
-      targetGrade: form.targetType === 'GRADE' ? Number(form.targetGrade) : undefined,
-      targetPathway: form.targetType === 'PATHWAY' ? form.targetPathway : undefined,
+      targetGrades: form.targetType === 'GRADE' ? form.targetGrades : [],
+      targetMajorPathways: form.targetType === 'PATHWAY' ? form.targetMajorPathways : [],
+      targetMinorPathways: form.targetType === 'PATHWAY' ? form.targetMinorPathways : [],
     });
   };
 
   const hasActiveFilters =
-    !!activeTag || !!deferredSearch.trim() || selectedClubIds.length > 0 || readFilter !== 'all';
+    !!activeTag ||
+    !!deferredSearch.trim() ||
+    selectedClubIds.length > 0 ||
+    readFilter !== 'all' ||
+    savedFilter !== 'all' ||
+    selectedGrades.length > 0 ||
+    selectedMajorPathways.length > 0 ||
+    selectedMinorPathways.length > 0;
+
+  const clearFilters = () => {
+    setActiveTag(null);
+    setSearch('');
+    setSelectedClubIds([]);
+    setReadFilter('all');
+    setSavedFilter('all');
+    setSelectedGrades([]);
+    setSelectedMajorPathways([]);
+    setSelectedMinorPathways([]);
+  };
+
+  const activeFilterCount = [
+    activeTag,
+    selectedClubIds.length,
+    readFilter !== 'all',
+    savedFilter !== 'all',
+    selectedGrades.length,
+    selectedMajorPathways.length,
+    selectedMinorPathways.length,
+  ].filter(Boolean).length;
+
+  const toggleNumber = (value: number, values: number[], onChange: (values: number[]) => void) => {
+    onChange(values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]);
+  };
+
+  const toggleString = (value: string, values: string[], onChange: (values: string[]) => void) => {
+    onChange(values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]);
+  };
+
+  const pathwayOptions = [
+    { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
+    { value: 'HEALTH_SCIENCE', label: 'Health Science' },
+    { value: 'ENGINEERING', label: 'Engineering' },
+  ];
 
   return (
     <AppShell>
@@ -278,117 +307,130 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
-        <SearchToolbar className="mb-5">
-          <SearchToolbarRow>
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              className="flex-1"
-              placeholder="Search announcements..."
-            />
-
-            {availableClubs.length > 0 ? (
-              <ClubMultiSelect
-                clubs={availableClubs}
-                selectedClubIds={selectedClubIds}
-                onChange={setSelectedClubIds}
-              />
-            ) : null}
-
-            {hasActiveFilters ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="rounded-xl"
-                onClick={() => {
-                  setActiveTag(null);
-                  setSearch('');
-                  setSelectedClubIds([]);
-                  setReadFilter('all');
-                }}
-              >
-                <X className="mr-1 size-4" />
-                Clear filters
-              </Button>
-            ) : null}
-          </SearchToolbarRow>
-
-          <SearchToolbarFilters>
-            <ToggleGroup
-              type="single"
-              value={readFilter}
-              onValueChange={(value) => {
-                if (value === 'all' || value === 'unread' || value === 'read') {
-                  setReadFilter(value);
-                }
-              }}
-              variant="outline"
-              size="sm"
-              className="rounded-xl border border-border/70 bg-background/80 p-1"
-            >
-              <ToggleGroupItem value="all" className="rounded-lg px-3">
-                All
-              </ToggleGroupItem>
-              <ToggleGroupItem value="unread" className="rounded-lg px-3">
-                Unread
-              </ToggleGroupItem>
-              <ToggleGroupItem value="read" className="rounded-lg px-3">
-                Read
-              </ToggleGroupItem>
-            </ToggleGroup>
-
-            {availableTags.length > 1 ? (
-              <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 py-2">
-                <Filter size={14} className="text-muted-foreground" />
-                <div className="flex flex-wrap gap-2">
-                  {availableTags.map((tag) => (
-                    <button key={tag} type="button" onClick={() => handleTagClick(tag)}>
-                      <Badge
-                        className={`${ANNOUNCEMENT_BADGE_TEXT_CLASS} cursor-pointer transition-all ${
-                          activeTag === tag
-                            ? `${ANNOUNCEMENT_TAG_COLORS[tag] || 'bg-muted text-muted-foreground'} ring-2 ring-offset-1 ring-offset-background ring-current`
-                            : activeTag
-                              ? 'bg-muted/50 text-muted-foreground/60 hover:bg-muted'
-                              : `${ANNOUNCEMENT_TAG_COLORS[tag] || 'bg-muted text-muted-foreground'}`
-                        }`}
-                      >
-                        {ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' ')}
-                      </Badge>
-                    </button>
-                  ))}
-                </div>
+        <FeatureFilterBar
+          className="mb-5"
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search announcements..."
+          activeCount={activeFilterCount}
+          onClear={clearFilters}
+          advancedOpen={filtersOpen}
+          onAdvancedOpenChange={setFiltersOpen}
+          chips={[
+            { value: 'unread', label: 'Unread' },
+            { value: 'saved', label: 'Saved', icon: <Bookmark className="size-3" /> },
+            { value: 'featured', label: 'Featured', icon: <Sparkles className="size-3" /> },
+            ...availableTags.map((tag) => ({
+              value: `tag:${tag}`,
+              label: ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' '),
+            })),
+          ]}
+          activeChips={[
+            ...(readFilter === 'unread' ? ['unread'] : []),
+            ...(savedFilter === 'saved' ? ['saved'] : []),
+            ...(savedFilter === 'featured' ? ['featured'] : []),
+            ...(activeTag ? [`tag:${activeTag}`] : []),
+          ]}
+          onChipToggle={(value) => {
+            if (value === 'unread') {
+              setReadFilter((current) => (current === 'unread' ? 'all' : 'unread'));
+            } else if (value === 'saved' || value === 'featured') {
+              setSavedFilter((current) => (current === value ? 'all' : value));
+            } else if (value.startsWith('tag:')) {
+              handleTagClick(value.slice(4));
+            }
+          }}
+          advanced={
+            <div className="flex flex-col gap-4 rounded-md bg-muted/30 p-3">
+              <div className="flex flex-wrap gap-2">
+                <ToggleGroup
+                  type="single"
+                  value={readFilter}
+                  onValueChange={(value) => {
+                    if (value === 'all' || value === 'unread' || value === 'read') setReadFilter(value);
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ToggleGroupItem value="all">All</ToggleGroupItem>
+                  <ToggleGroupItem value="unread">Unread</ToggleGroupItem>
+                  <ToggleGroupItem value="read">Read</ToggleGroupItem>
+                </ToggleGroup>
+                <ToggleGroup
+                  type="single"
+                  value={savedFilter}
+                  onValueChange={(value) => {
+                    if (value === 'all' || value === 'saved' || value === 'featured') setSavedFilter(value);
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  <ToggleGroupItem value="all">Everything</ToggleGroupItem>
+                  <ToggleGroupItem value="saved">Saved</ToggleGroupItem>
+                  <ToggleGroupItem value="featured">Featured</ToggleGroupItem>
+                </ToggleGroup>
               </div>
-            ) : null}
-          </SearchToolbarFilters>
-
-          {selectedClubIds.length > 0 ? (
-            <SearchToolbarFilters>
-              {availableClubs
-                .filter((club) => selectedClubIds.includes(club.id))
-                .map((club) => (
-                  <Badge
-                    key={club.id}
-                    variant="secondary"
-                    className={`gap-1 ${ANNOUNCEMENT_BADGE_TEXT_CLASS}`}
+              <SearchToolbarFilters>
+                {[9, 10, 11, 12].map((grade) => (
+                  <Button
+                    key={grade}
+                    type="button"
+                    variant={selectedGrades.includes(grade) ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() => toggleNumber(grade, selectedGrades, setSelectedGrades)}
                   >
-                    {club.name}
-                    <button
-                      type="button"
-                      className="rounded-full p-0.5 hover:bg-background/70"
-                      onClick={() =>
-                        setSelectedClubIds((current) =>
-                          current.filter((clubId) => clubId !== club.id),
-                        )
-                      }
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Badge>
+                    Grade {grade}
+                  </Button>
                 ))}
-            </SearchToolbarFilters>
-          ) : null}
-        </SearchToolbar>
+              </SearchToolbarFilters>
+              <SearchToolbarFilters>
+                {pathwayOptions.map((pathway) => (
+                  <Button
+                    key={`major-${pathway.value}`}
+                    type="button"
+                    variant={selectedMajorPathways.includes(pathway.value) ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() =>
+                      toggleString(pathway.value, selectedMajorPathways, setSelectedMajorPathways)
+                    }
+                  >
+                    Major: {pathway.label}
+                  </Button>
+                ))}
+              </SearchToolbarFilters>
+              <SearchToolbarFilters>
+                {pathwayOptions.map((pathway) => (
+                  <Button
+                    key={`minor-${pathway.value}`}
+                    type="button"
+                    variant={selectedMinorPathways.includes(pathway.value) ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() =>
+                      toggleString(pathway.value, selectedMinorPathways, setSelectedMinorPathways)
+                    }
+                  >
+                    Minor: {pathway.label}
+                  </Button>
+                ))}
+              </SearchToolbarFilters>
+              {availableClubs.length > 0 ? (
+                <SearchToolbarFilters>
+                  {availableClubs.map((club) => (
+                    <Button
+                      key={club.id}
+                      type="button"
+                      variant={selectedClubIds.includes(club.id) ? 'secondary' : 'outline'}
+                      size="sm"
+                      onClick={() => toggleString(club.id, selectedClubIds, setSelectedClubIds)}
+                    >
+                      {club.name}
+                    </Button>
+                  ))}
+                </SearchToolbarFilters>
+              ) : null}
+            </div>
+          }
+        />
 
         {showNew && canPost ? (
           <Card className="mb-6">
@@ -429,48 +471,84 @@ export default function AnnouncementsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {form.targetType !== 'SCHOOL_WIDE' ? (
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                        {form.targetType === 'GRADE' ? 'Grade level' : 'Pathway'}
-                      </label>
-                      {form.targetType === 'GRADE' ? (
-                        <Select
-                          value={String(form.targetGrade)}
-                          onValueChange={(value) =>
-                            setForm({ ...form, targetGrade: Number(value) })
+                </div>
+                {form.targetType === 'GRADE' ? (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Grade levels
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[9, 10, 11, 12].map((grade) => (
+                        <Button
+                          key={grade}
+                          type="button"
+                          size="sm"
+                          variant={form.targetGrades.includes(grade) ? 'secondary' : 'outline'}
+                          onClick={() =>
+                            toggleNumber(grade, form.targetGrades, (targetGrades) =>
+                              setForm({ ...form, targetGrades }),
+                            )
                           }
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select grade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="9">9th Grade</SelectItem>
-                            <SelectItem value="10">10th Grade</SelectItem>
-                            <SelectItem value="11">11th Grade</SelectItem>
-                            <SelectItem value="12">12th Grade</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select
-                          value={form.targetPathway}
-                          onValueChange={(value) => setForm({ ...form, targetPathway: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select pathway" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="INFORMATION_TECHNOLOGY">
-                              Information Technology
-                            </SelectItem>
-                            <SelectItem value="HEALTH_SCIENCE">Health Science</SelectItem>
-                            <SelectItem value="ENGINEERING">Engineering</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
+                          Grade {grade}
+                        </Button>
+                      ))}
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
+                {form.targetType === 'PATHWAY' ? (
+                  <div className="flex flex-col gap-3">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Pathways
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {pathwayOptions.map((pathway) => (
+                        <Button
+                          key={`form-major-${pathway.value}`}
+                          type="button"
+                          size="sm"
+                          variant={
+                            form.targetMajorPathways.includes(pathway.value)
+                              ? 'secondary'
+                              : 'outline'
+                          }
+                          onClick={() =>
+                            toggleString(
+                              pathway.value,
+                              form.targetMajorPathways,
+                              (targetMajorPathways) => setForm({ ...form, targetMajorPathways }),
+                            )
+                          }
+                        >
+                          Major: {pathway.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {pathwayOptions.map((pathway) => (
+                        <Button
+                          key={`form-minor-${pathway.value}`}
+                          type="button"
+                          size="sm"
+                          variant={
+                            form.targetMinorPathways.includes(pathway.value)
+                              ? 'secondary'
+                              : 'outline'
+                          }
+                          onClick={() =>
+                            toggleString(
+                              pathway.value,
+                              form.targetMinorPathways,
+                              (targetMinorPathways) => setForm({ ...form, targetMinorPathways }),
+                            )
+                          }
+                        >
+                          Minor: {pathway.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Expires (optional)
@@ -503,7 +581,20 @@ export default function AnnouncementsPage() {
                           setForm({ ...form, isAdminGeneral: event.target.checked })
                         }
                       />
-                      Admin override (notify all)
+                      Push notifications to everyone
+                    </label>
+                  ) : null}
+                  {hasRole(user, 'ADMIN', 'SUPER_ADMIN') ? (
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-input accent-accent-500"
+                        checked={form.promoted}
+                        onChange={(event) =>
+                          setForm({ ...form, promoted: event.target.checked })
+                        }
+                      />
+                      Feature for one month
                     </label>
                   ) : null}
                 </div>
@@ -538,11 +629,7 @@ export default function AnnouncementsPage() {
                 variant="link"
                 size="sm"
                 className="mt-2"
-                onClick={() => {
-                  setActiveTag(null);
-                  setSearch('');
-                  setSelectedClubIds([]);
-                }}
+                onClick={clearFilters}
               >
                 Clear filters
               </Button>
@@ -562,11 +649,36 @@ export default function AnnouncementsPage() {
                   announcement={announcement}
                   canArchive={canArchive}
                   onArchive={(id: string) => archiveMutation.mutate(id)}
+                  onBookmarkToggle={(announcement) => bookmarkMutation.mutate(announcement)}
                   onTagClick={handleTagClick}
                   onClubClick={(clubId: string) => {
                     setActiveTag('CLUB');
                     setSelectedClubIds([clubId]);
                   }}
+                  footer={
+                    announcement.status === 'PENDING_APPROVAL' && canArchive ? (
+                      <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
+                        <span className="text-xs text-muted-foreground">
+                          Sponsor review required
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate(announcement.id)}
+                        >
+                          <Check className="mr-1.5 size-4" />
+                          Publish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => rejectMutation.mutate(announcement.id)}
+                        >
+                          <X className="mr-1.5 size-4" />
+                          Send back
+                        </Button>
+                      </div>
+                    ) : null
+                  }
                 />
               ))}
             </div>

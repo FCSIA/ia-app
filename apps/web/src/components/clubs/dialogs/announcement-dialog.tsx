@@ -42,7 +42,7 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-announcements', clubId] });
-      toast({ title: 'Announcement posted' });
+      toast({ title: 'Announcement submitted' });
       setTitle('');
       setBody('');
       setAllowComments(false);
@@ -60,9 +60,9 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Post announcement</DialogTitle>
+          <DialogTitle>Propose announcement</DialogTitle>
           <DialogDescription>
-            Official club-wide update visible to all members and sponsors.
+            Student leader proposals go to sponsors for approval; sponsor posts publish immediately.
           </DialogDescription>
         </DialogHeader>
 
@@ -105,7 +105,7 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !title.trim() || !body.trim()}
           >
-            {mutation.isPending ? 'Posting…' : 'Post'}
+            {mutation.isPending ? 'Submitting…' : 'Submit'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Archive, Clock, MessageCircle } from 'lucide-react';
+import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,8 @@ export type AnnouncementCardRecord = {
   expiresAt?: string | null;
   isRead: boolean;
   isAdminGeneral?: boolean;
+  isBookmarked?: boolean;
+  isFeatured?: boolean;
   allowComments?: boolean;
   status: string;
   targetType: string;
@@ -59,6 +61,7 @@ type AnnouncementCardProps = {
   className?: string;
   footer?: ReactNode;
   onArchive?: (id: string) => void;
+  onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
   onTagClick?: (tag: string) => void;
   onClubClick?: (clubId: string) => void;
 };
@@ -88,6 +91,7 @@ export function AnnouncementCard({
   className,
   footer,
   onArchive,
+  onBookmarkToggle,
   onTagClick,
   onClubClick,
 }: AnnouncementCardProps) {
@@ -99,6 +103,9 @@ export function AnnouncementCard({
     <Card
       className={cn(
         'relative transition-all duration-200 hover:-translate-y-0.5',
+        !announcement.isRead &&
+          'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
+        announcement.isFeatured && 'bg-primary/[0.025]',
         className,
       )}
     >
@@ -111,7 +118,29 @@ export function AnnouncementCard({
             <div className="mb-2 flex flex-wrap items-center gap-2 pr-4">
               {announcement.isAdminGeneral ? (
                 <Badge variant="destructive" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
-                  Admin
+                  Push notification
+                </Badge>
+              ) : null}
+              {announcement.isFeatured ? (
+                <Badge variant="secondary" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                  <Sparkles className="size-3" />
+                  Featured
+                </Badge>
+              ) : null}
+              {announcement.isBookmarked ? (
+                <Badge variant="outline" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                  <BookmarkCheck className="size-3" />
+                  Saved
+                </Badge>
+              ) : null}
+              {announcement.status === 'PENDING_APPROVAL' ? (
+                <Badge variant="secondary" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                  Pending review
+                </Badge>
+              ) : null}
+              {announcement.status === 'REJECTED' ? (
+                <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                  Needs changes
                 </Badge>
               ) : null}
               {announcement.status === 'EXPIRED' ? (
@@ -191,6 +220,17 @@ export function AnnouncementCard({
               </span>
             ) : null}
             <AnnouncementReadToggle announcementId={announcement.id} isRead={announcement.isRead} />
+            {onBookmarkToggle ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onBookmarkToggle(announcement)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+              >
+                {announcement.isBookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+              </Button>
+            ) : null}
             {canArchive && announcement.status === 'ACTIVE' && onArchive ? (
               <Button
                 variant="ghost"

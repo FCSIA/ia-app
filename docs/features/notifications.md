@@ -63,14 +63,16 @@ The frontend uses these fields to construct the correct URL and application stat
 
 ## Notification Preferences
 
-Users can disable any category. For `CLUB_ANNOUNCEMENT` and `CLUB_CHANNEL_MENTION`, users can toggle notifications **per club**.
+Users can disable any category and tune more specific entities where the product exposes them. For club work, preferences can be stored per club and per channel. Forced admin **push notifications to everyone** remain locked on.
 
 ```
-userId + category + clubId → enabled (boolean)
+userId + category + scopeKey → enabled (boolean)
 ```
 
-- `clubId: null`: Global preference for that category.
-- `clubId: "..."`: Override for a specific club's activity.
+- `scopeKey: "global"`: Global preference for that category.
+- `scopeKey: "club:<id>"`: Override for a specific club.
+- `scopeKey: "channel:<id>"`: Override for a specific club channel.
+- Entity ids are also stored when available to support contextual controls.
 
 ---
 
@@ -92,4 +94,3 @@ userId + category + clubId → enabled (boolean)
 - [[clubs]] — Trigger mentions and join requests
 - [[schedule]] — Trigger friend requests
 - [[flex-friday]] — Trigger registration/assignment alerts
-

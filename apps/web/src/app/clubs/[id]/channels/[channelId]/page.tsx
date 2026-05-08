@@ -41,6 +41,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
+import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -429,13 +430,20 @@ export default function ClubChannelPage({
   );
 
   const actions: ReactNode = (
-    <div className="w-56">
+    <div className="flex items-center gap-2">
+      <NotificationScopeSwitch
+        category="CLUB_CHANNEL_MENTION"
+        label="Mentions"
+        clubId={id}
+        channelId={channelId}
+        compact
+      />
       <SearchInput
         value={search}
         onValueChange={setSearch}
         placeholder="Search messages"
         size="sm"
-        className="h-8 rounded-lg"
+        className="h-8 w-56 rounded-lg"
         inputClassName="text-sm"
       />
     </div>

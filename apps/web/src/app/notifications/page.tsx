@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notificationsApi } from '@/lib/api';
+import { clubsApi, notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, CheckCheck } from 'lucide-react';
@@ -12,6 +12,8 @@ import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchInput } from '@/components/ui/search';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { cn } from '@/lib/utils';
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -36,6 +38,26 @@ export default function NotificationsPage() {
     queryKey: ['notifications'],
     queryFn: () => notificationsApi.getAll().then((r) => r.data),
   });
+
+  const { data: preferences = [] } = useQuery<any[]>({
+    queryKey: ['notification-preferences'],
+    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
+  });
+
+  const { data: myClubs } = useQuery<any>({
+    queryKey: ['my-clubs'],
+    queryFn: () => clubsApi.getMyClubs().then((r) => r.data),
+  });
+
+  const involvedClubs = useMemo(() => {
+    const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
+    const seen = new Set<string>();
+    return entries.filter((club: any) => {
+      if (seen.has(club.id)) return false;
+      seen.add(club.id);
+      return true;
+    });
+  }, [myClubs]);
 
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -117,11 +139,17 @@ export default function NotificationsPage() {
             )}
           </div>
 
-          <SearchInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search notifications..."
-          />
+          <Tabs defaultValue="inbox" className="w-full">
+            <TabsList>
+              <TabsTrigger value="inbox">Inbox</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+            <TabsContent value="inbox" className="mt-4">
+              <SearchInput
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search notifications..."
+              />
 
           {isLoading ? (
             <div className="rounded-3xl border bg-card px-6 py-16 text-center text-sm text-muted-foreground">
@@ -206,6 +234,66 @@ export default function NotificationsPage() {
               </ul>
             </Panel>
           )}
+            </TabsContent>
+            <TabsContent value="settings" className="mt-4">
+              <Panel contentClassName="flex flex-col gap-5 p-5">
+                <section className="flex flex-col gap-3">
+                  <h2 className="text-sm font-semibold">Global</h2>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      ['SCHOOL_ANNOUNCEMENT', 'School announcements'],
+                      ['EVENT', 'Events'],
+                      ['FLEX_FRIDAY', 'Flex Friday'],
+                      ['FRIEND_REQUEST', 'Friend schedules'],
+                      ['CONTENT_MODERATED', 'Moderation notices'],
+                    ].map(([category, label]) => (
+                      <NotificationScopeSwitch
+                        key={category}
+                        category={category}
+                        label={label}
+                      />
+                    ))}
+                    <NotificationScopeSwitch
+                      category="SCHOOL_ANNOUNCEMENT"
+                      label="Push notifications to everyone"
+                      scopeKey="admin-push"
+                      locked
+                    />
+                  </div>
+                </section>
+                <section className="flex flex-col gap-3">
+                  <h2 className="text-sm font-semibold">Clubs and channels</h2>
+                  {involvedClubs.length > 0 ? (
+                    <div className="grid gap-3">
+                      {involvedClubs.map((club: any) => (
+                        <div key={club.id} className="rounded-lg border p-3">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <p className="font-medium">{club.name}</p>
+                            <NotificationScopeSwitch
+                              category="CLUB_ANNOUNCEMENT"
+                              label="Announcements"
+                              clubId={club.id}
+                              compact
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Channel mention controls also appear inside each club channel and stay synced here.
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Join or sponsor clubs to configure club-specific notifications.
+                    </p>
+                  )}
+                </section>
+                <p className="text-xs text-muted-foreground">
+                  {preferences.length} saved preference{preferences.length === 1 ? '' : 's'}.
+                </p>
+              </Panel>
+            </TabsContent>
+          </Tabs>
         </div>
       </PageFrame>
     </AppShell>

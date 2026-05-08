@@ -42,13 +42,28 @@ export class NotificationsController {
   @Post('preferences')
   upsertPreference(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { category: NotificationCategory; enabled: boolean; clubId?: string },
+    @Body()
+    body: {
+      category: NotificationCategory;
+      enabled: boolean;
+      clubId?: string;
+      channelId?: string;
+      announcementId?: string;
+      eventId?: string;
+      scopeKey?: string;
+    },
   ) {
     return this.notificationsService.upsertPreference(
       user.id,
       body.category,
       body.enabled,
-      body.clubId,
+      {
+        clubId: body.clubId,
+        channelId: body.channelId,
+        announcementId: body.announcementId,
+        eventId: body.eventId,
+        scopeKey: body.scopeKey,
+      },
     );
   }
 }

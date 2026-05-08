@@ -14,15 +14,14 @@ import {
   endOfWeek,
   isToday,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Plus, Search, X, Trash2, User, School, Building2, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Plus, Search, Trash2, User, School, Building2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
-import { SearchInput } from '@/components/ui/search';
+import { FeatureFilterBar } from '@/components/filters/feature-filter-bar';
 import { filterBySearchQuery } from '@/lib/search';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -114,14 +113,6 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Calendar</h1>
-          <div className="flex items-center gap-4 flex-1 max-w-md ml-8 mr-6">
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              className="w-full rounded-xl border-foreground/10"
-              placeholder="Search events..."
-            />
-          </div>
           <div className="flex items-center gap-4">
             <AddCalendarEntryDialog />
             <div className="flex items-center gap-1">
@@ -138,48 +129,23 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Source filter chips */}
-        <div className="flex flex-wrap items-center gap-2">
-          {SOURCE_FILTERS.map(({ value, label, Icon }) => {
-            const active = activeSources.includes(value);
-            const color = getSourceColor(value);
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => toggleSource(value)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
-                  active
-                    ? 'border-transparent'
-                    : 'border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                )}
-                style={
-                  active
-                    ? { background: color.bg, color: color.text, borderColor: 'transparent' }
-                    : undefined
-                }
-              >
-                <span
-                  className="size-1.5 rounded-full"
-                  style={{ background: active ? color.dot : 'currentColor', opacity: active ? 1 : 0.4 }}
-                />
-                <Icon size={12} />
-                {label}
-              </button>
-            );
-          })}
-          {activeSources.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveSources([])}
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X size={11} />
-              Clear
-            </button>
-          )}
-        </div>
+        <FeatureFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search events..."
+          activeCount={activeSources.length}
+          onClear={() => {
+            setSearch('');
+            setActiveSources([]);
+          }}
+          chips={SOURCE_FILTERS.map(({ value, label, Icon }) => ({
+            value,
+            label,
+            icon: <Icon className="size-3" />,
+          }))}
+          activeChips={activeSources}
+          onChipToggle={(value) => toggleSource(value as CalendarSource)}
+        />
 
         {/* Calendar Content */}
         {isSearching ? (

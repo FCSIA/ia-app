@@ -2,7 +2,7 @@
 
 ## Active Agent Focus
 *   **Agent**: Codex
-*   **Focus**: Implementing large-scale seed expansion, course catalog domain, discrete schedules, and read-only club channels.
+*   **Focus**: Implementing Fluid Functionalism rewrite across announcements, calendar, clubs, and notifications.
 # Current Execution State
 
 ## Active Agent Focus
@@ -26,7 +26,8 @@
 *   (2026-04-20) **Antigravity**: Flex Friday page reworked — `<input type="time">` on session form, inline session edit/delete, workshop form now has multi-checkbox session picker + pill multi-selects for grade/pathway major/minor targeting; workshop cards show linked-session list and targeting badges.
 *   (2026-04-20) **Antigravity**: Club branding — `logoUrl`, `bannerUrl`, `accentColor`, `overview` added to Prisma schema (migration applied); `UpdateClubDto` and `club-management.service.ts` updated; `POST /uploads/club-image` endpoint added. New `<ClubHero>` component renders banner, logo, accent gradient, and overview copy with an inline "Customize" editor (file upload + color picker + textarea) for sponsors/admins. Public club preview also shows banner/logo/overview.
 *   (2026-04-20) **Antigravity**: Sidebar nav `<aside>` given `z-40` so hover-label overlay is always above the club workspace secondary sidebar. My Pass button changed to solid orange (`bg-orange-500 hover:bg-orange-600`).
+*   (2026-05-08) **Codex**: Started announcements/clubs/notifications refactor. Fluid Functionalism registry added to `apps/web/components.json` with `pnpm dlx shadcn@latest registry add @fluid` because `bunx` was unavailable and `--all` is unsupported by current shadcn CLI. Direction is to use Fluid/shadcn primitives opportunistically on touched pages, starting with shared filter controls, cleaner announcement approval/bookmark/featured UX, club QR join flow, entity-level notification controls, and persistent backend error logs.
 
 ## Next Up
-*   Polish / QA on newly shipped features (club hero upload UX, multi-session workshop registration flows).
-*   Consider adding club logo to the sidebar club-switcher pill and the clubs list cards.
+*   Continue Fluid component migration on any newly touched UI surface.
+*   QA role flows for student leader announcement proposals, sponsor approval, saved/featured announcements, QR joins, and notification settings sync.
