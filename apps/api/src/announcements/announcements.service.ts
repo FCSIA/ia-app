@@ -384,7 +384,7 @@ export class AnnouncementsService {
         userIds: [authorId],
         category: NotificationCategory.CONTENT_MODERATED,
         title: 'Post filtered for language',
-        body: `We replaced flagged words in your announcement${matchedWords.length ? ` (${matchedWords.join(', ')})` : ''}.`,
+        body: 'We replaced flagged words in your announcement.',
         announcementId: ann.id,
       });
 
@@ -488,7 +488,7 @@ export class AnnouncementsService {
         userIds: [authorId],
         category: NotificationCategory.CONTENT_MODERATED,
         title: 'Comment filtered for language',
-        body: `We replaced flagged words in your comment${commentModeration.matchedWords.length ? ` (${commentModeration.matchedWords.join(', ')})` : ''}.`,
+        body: 'We replaced flagged words in your comment.',
         announcementId,
       });
 

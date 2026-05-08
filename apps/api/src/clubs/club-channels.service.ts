@@ -709,7 +709,7 @@ export class ClubChannelsService {
         userIds: [actorId],
         category: NotificationCategory.CONTENT_MODERATED,
         title: 'Message filtered for language',
-        body: `We replaced flagged words in your message${bodyModeration.matchedWords.length ? ` (${bodyModeration.matchedWords.join(', ')})` : ''}.`,
+        body: 'We replaced flagged words in your message.',
         clubId,
         channelId,
         messageId: message.id,

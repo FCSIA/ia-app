@@ -41,6 +41,7 @@ describe('EventsService profanity masking', () => {
           matchedWords: [],
         }),
       scanContent: jest.fn().mockResolvedValue([]),
+      createAutomatedReport: jest.fn().mockResolvedValue({ id: 'report-1' }),
     };
     const notifications: any = {
       deliver: jest.fn().mockResolvedValue({ delivered: 0 }),
