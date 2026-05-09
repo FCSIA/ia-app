@@ -95,7 +95,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             iconRight: !isIconOnly && !!TrailingIcon,
           }),
           shape.button,
-          className
+          className,
+          "flex-row flex-nowrap overflow-hidden"
         )}
         disabled={disabled || loading}
         style={style}
@@ -105,11 +106,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           children
         ) : loading ? (
           <>
-            <span className="flex items-center justify-center gap-[inherit] opacity-0">
+            <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit] opacity-0">
               {LeadingIcon && !isIconOnly && (
                 <LeadingIcon size={iconSize} strokeWidth={2} />
               )}
-              {children}
+              <span className="min-w-0 truncate">{children}</span>
               {TrailingIcon && !isIconOnly && (
                 <TrailingIcon size={iconSize} strokeWidth={2} />
               )}
@@ -135,11 +136,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </span>
           </>
         ) : isIconOnly ? (
-          <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
+          <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
             {children}
           </span>
         ) : (
-          <>
+          <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit]">
             {LeadingIcon && (
               <LeadingIcon
                 size={iconSize}
@@ -147,7 +148,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
               />
             )}
-            <span>{children}</span>
+            <span className="min-w-0 truncate">{children}</span>
             {TrailingIcon && (
               <TrailingIcon
                 size={iconSize}
@@ -155,7 +156,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
               />
             )}
-          </>
+          </span>
         )}
       </Comp>
     );

@@ -39,6 +39,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
@@ -65,6 +66,21 @@ const staticActions: CommandAction[] = [
   { id: 'route-pass', label: 'My Pass', detail: 'Flex Friday pass', href: '/flex-friday/pass', Icon: PanelTop },
   { id: 'route-notifications', label: 'Notifications', detail: 'Inbox and settings', href: '/notifications', Icon: Bell },
   { id: 'route-profile', label: 'Profile Settings', detail: 'Account and preferences', href: '/profile', Icon: Settings },
+];
+
+const pageOrder = [
+  'route-dashboard',
+  'route-announcements',
+  'route-clubs',
+  'route-schedule',
+  'route-calendar',
+  'route-events',
+  'route-flex',
+  'route-pass',
+  'route-courses',
+  'route-notifications',
+  'route-profile',
+  'route-admin',
 ];
 
 function commandValue(action: CommandAction) {
@@ -148,7 +164,23 @@ export function GlobalCommandPalette({
   }, [showAdmin]);
 
   const entityGroups = useMemo(() => {
-    const clubActions: CommandAction[] = clubs.slice(0, 30).map((club) => ({
+    const joinedClubs = clubs
+      .filter((club) => myClubIds.has(club.id))
+      .slice(0, 12)
+      .map((club) => ({
+        id: `my-club-${club.id}`,
+        label: club.name,
+        detail: 'Club workspace',
+        href: `/clubs/${club.id}`,
+        Icon: Puzzle,
+        badge: 'Joined',
+        keywords: ['my club', 'joined club', club.name, club.description],
+      }));
+
+    const clubActions: CommandAction[] = clubs
+      .filter((club) => !myClubIds.has(club.id))
+      .slice(0, 24)
+      .map((club) => ({
       id: `club-${club.id}`,
       label: club.name,
       detail: club.description || 'Club workspace',
@@ -158,7 +190,20 @@ export function GlobalCommandPalette({
       keywords: ['club', club.name, club.description],
     }));
 
-    const announcementActions: CommandAction[] = announcements.slice(0, 25).map((announcement) => ({
+    const unreadAnnouncements = announcements
+      .filter((announcement) => !announcement.isRead)
+      .slice(0, 8)
+      .map((announcement) => ({
+        id: `unread-announcement-${announcement.id}`,
+        label: announcement.title,
+        detail: announcement.club?.name || announcement.targetType?.replace(/_/g, ' ') || 'Announcement',
+        href: `/announcements/${announcement.id}`,
+        Icon: Megaphone,
+        badge: 'Unread',
+        keywords: ['unread', 'announcement', announcement.body, announcement.club?.name],
+      }));
+
+    const announcementActions: CommandAction[] = announcements.slice(0, 18).map((announcement) => ({
       id: `announcement-${announcement.id}`,
       label: announcement.title,
       detail: announcement.club?.name || announcement.targetType?.replace(/_/g, ' ') || 'Announcement',
@@ -225,6 +270,8 @@ export function GlobalCommandPalette({
     ];
 
     return {
+      joinedClubs,
+      unreadAnnouncements,
       announcements: announcementActions,
       clubs: clubActions,
       events: eventActions,
@@ -235,6 +282,16 @@ export function GlobalCommandPalette({
     };
   }, [announcements, clubs, courses, events, flexFridays, myClubIds, notifications, schedule]);
 
+  const suggestedActions = useMemo(() => {
+    const unreadNotifications = entityGroups.notifications.slice(0, 3);
+    const unreadAnnouncements = entityGroups.unreadAnnouncements.slice(0, 3);
+    const joinedClubs = entityGroups.joinedClubs.slice(0, 4);
+    const primaryPages = navActions.filter((action) =>
+      ['route-dashboard', 'route-announcements', 'route-clubs', 'route-schedule'].includes(action.id),
+    );
+    return [...unreadNotifications, ...unreadAnnouncements, ...joinedClubs, ...primaryPages].slice(0, 10);
+  }, [entityGroups, navActions]);
+
   const run = (href: string) => {
     onOpenChange(false);
     router.push(href);
@@ -242,21 +299,48 @@ export function GlobalCommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search pages, announcements, clubs, events, courses, notifications..." />
-      <CommandList className="max-h-[70vh]">
+      <CommandInput placeholder="Search IA: pages, people, clubs, announcements, events, courses..." />
+      <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Go to">
-          {navActions.map((action) => (
+
+        <CommandGroup heading="Best matches">
+          {suggestedActions.map((action) => (
             <CommandItem key={action.id} value={commandValue(action)} onSelect={() => run(action.href)}>
               <action.Icon className="mr-2 size-4" />
-              <span>{action.label}</span>
-              {action.detail ? <CommandShortcut>{action.detail}</CommandShortcut> : null}
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-medium">{action.label}</span>
+                  {action.badge ? (
+                    <Badge variant="solid" className="h-5 rounded-full px-1.5 text-[10px]">
+                      {action.badge}
+                    </Badge>
+                  ) : null}
+                </div>
+                {action.detail ? (
+                  <p className="truncate text-xs text-muted-foreground">{action.detail}</p>
+                ) : null}
+              </div>
             </CommandItem>
           ))}
         </CommandGroup>
 
+        <CommandSeparator />
+
+        <CommandGroup heading="Pages">
+          {[...navActions]
+            .sort((left, right) => pageOrder.indexOf(left.id) - pageOrder.indexOf(right.id))
+            .map((action) => (
+              <CommandItem key={action.id} value={commandValue(action)} onSelect={() => run(action.href)}>
+                <action.Icon className="mr-2 size-4" />
+                <span className="truncate">{action.label}</span>
+                {action.detail ? <CommandShortcut>{action.detail}</CommandShortcut> : null}
+              </CommandItem>
+            ))}
+        </CommandGroup>
+
         {Object.entries({
           Notifications: entityGroups.notifications,
+          'My Clubs': entityGroups.joinedClubs,
           Announcements: entityGroups.announcements,
           Clubs: entityGroups.clubs,
           Events: entityGroups.events,

@@ -1,7 +1,9 @@
 import { faker } from '@faker-js/faker';
 import {
+  AnnouncementStatus,
   AnnouncementTarget,
   ClubChannelVisibility,
+  NotificationCategory,
   Pathway,
   PrismaClient,
   Role,
@@ -1104,11 +1106,60 @@ async function main() {
   console.log(`Schedules ready: ${studentDetails.length}`);
 
   const allCurrentUsers = await prisma.user.findMany({ select: { id: true } });
+  const sampleClub = clubByName.get('Robotics Club')!;
+  const sampleChannel = channelRows.find(
+    (channel) => channel.clubId === sampleClub.id && channel.name === 'general',
+  );
+  const sampleClubMemberIds = clubMemberRows
+    .filter((member) => member.clubId === sampleClub.id)
+    .map((member) => member.userId);
+
   await prisma.notificationPreference.createMany({
     data: allCurrentUsers.flatMap((user) => [
-      { userId: user.id, category: 'SCHOOL_ANNOUNCEMENT' as const, enabled: true },
-      { userId: user.id, category: 'EVENT' as const, enabled: true },
-      { userId: user.id, category: 'FLEX_FRIDAY' as const, enabled: true },
+      {
+        userId: user.id,
+        category: NotificationCategory.SCHOOL_ANNOUNCEMENT,
+        scopeKey: 'global',
+        enabled: true,
+        locked: true,
+      },
+      {
+        userId: user.id,
+        category: NotificationCategory.EVENT,
+        scopeKey: 'global',
+        enabled: true,
+      },
+      {
+        userId: user.id,
+        category: NotificationCategory.FLEX_FRIDAY,
+        scopeKey: 'global',
+        enabled: true,
+      },
+      {
+        userId: user.id,
+        category: NotificationCategory.CLUB_CHANNEL_MENTION,
+        scopeKey: 'global',
+        enabled: true,
+      },
+      ...(sampleChannel && sampleClubMemberIds.includes(user.id)
+        ? [
+            {
+              userId: user.id,
+              category: NotificationCategory.CLUB_ANNOUNCEMENT,
+              clubId: sampleClub.id,
+              scopeKey: `club:${sampleClub.id}`,
+              enabled: true,
+            },
+            {
+              userId: user.id,
+              category: NotificationCategory.CLUB_CHANNEL_MENTION,
+              clubId: sampleClub.id,
+              channelId: sampleChannel.id,
+              scopeKey: `channel:${sampleChannel.id}`,
+              enabled: true,
+            },
+          ]
+        : []),
     ]),
   });
 
@@ -1122,106 +1173,268 @@ async function main() {
 
   const adminId = userByUniqueId.get('ADMIN001')!.id;
   const teacherId = userByUniqueId.get('TCH001')!.id;
+  const roboticsLeaderId = clubLeaderIds.get('Robotics Club')?.[0] ?? studentByUniqueId.get('STU003')!.id;
+  const now = new Date();
+  const promotedUntil = new Date(now);
+  promotedUntil.setMonth(promotedUntil.getMonth() + 1);
+  const nextWeek = new Date(now);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const lastWeek = new Date(now);
+  lastWeek.setDate(lastWeek.getDate() - 7);
   const announcements = [
     {
       authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Welcome to IA School App',
       body: 'This is the official school communication platform for schedules, clubs, events, and announcements across Innovation Academy.',
       targetType: AnnouncementTarget.SCHOOL_WIDE,
       isAdminGeneral: true,
       allowComments: false,
+      status: AnnouncementStatus.ACTIVE,
+      promotedUntil,
     },
     {
       authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'April Flex Friday Registration Opens Monday',
       body: 'Registration opens Monday at 8:00 AM in the events portal. Reserve workshop seats early so you can stay on pace for annual Flex Friday credits.',
       targetType: AnnouncementTarget.SCHOOL_WIDE,
       isAdminGeneral: true,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Innovation Showcase Night This Thursday',
       body: 'Families and partners are invited to walk project galleries, see pathway demos, and meet student teams across every grade level.',
       targetType: AnnouncementTarget.SCHOOL_WIDE,
       isAdminGeneral: true,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
+      expiresAt: nextWeek,
     },
     {
       authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Freshman GT Block Pathway Showcase',
       body: 'Ninth graders will rotate through Health Science, Engineering, and IT labs during next week’s GT Block showcase. Bring your lanyard and Chromebook.',
       targetType: AnnouncementTarget.GRADE,
       targetGrade: 9,
+      targetGrades: [9],
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Junior Pinnacle Proposal Window Opens',
       body: 'Students preparing for junior research should submit proposal drafts before advisory next Wednesday so mentors can review placement needs.',
       targetType: AnnouncementTarget.GRADE,
       targetGrade: 11,
+      targetGrades: [11, 12],
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'AI Track Interest Meeting for IT Students',
       body: 'Information Technology students interested in the AI sequence should join the after-school interest meeting in Lab 214 to review sequencing and project expectations.',
       targetType: AnnouncementTarget.PATHWAY,
       targetPathway: Pathway.INFORMATION_TECHNOLOGY,
+      targetMajorPathways: [Pathway.INFORMATION_TECHNOLOGY],
+      targetMinorPathways: [Pathway.INFORMATION_TECHNOLOGY],
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Engineering Fabrication Safety Refresh',
       body: 'Engineering students using fabrication spaces this month need to complete the updated safety check before machine sign-off can be renewed.',
       targetType: AnnouncementTarget.PATHWAY,
       targetPathway: Pathway.ENGINEERING,
+      targetMajorPathways: [Pathway.ENGINEERING],
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: adminId,
+      approvedAt: now,
       title: 'Health Science Simulation Lab Signups',
       body: 'Simulation lab stations for clinical-skills practice are open this week. Review the posted procedure rubric before choosing a session block.',
       targetType: AnnouncementTarget.PATHWAY,
       targetPathway: Pathway.HEALTH_SCIENCE,
+      targetMajorPathways: [Pathway.HEALTH_SCIENCE],
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: teacherId,
+      approvedAt: now,
       title: 'Robotics Club Scrimmage Build Saturday',
       body: 'Robotics Club will run a Saturday build and driver practice session in the fabrication lab. Wear closed-toe shoes and check the officers channel for the task board.',
       targetType: AnnouncementTarget.CLUB,
       clubId: clubByName.get('Robotics Club')!.id,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
+      promotedUntil,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: teacherId,
+      approvedAt: now,
       title: 'HOSA Clinical Skills Workshop Sign-Up',
       body: 'HOSA members can sign up for the after-school clinical skills workshop focused on patient assessment and EMT scenarios. Space is limited to the first 20 registrations.',
       targetType: AnnouncementTarget.CLUB,
       clubId: clubByName.get('HOSA')!.id,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: teacherId,
+      approvedAt: now,
       title: 'CyberPatriot Practice Image Released',
       body: 'The new practice image is posted in the competition-prep channel. Teams should complete first-pass hardening before Wednesday review.',
       targetType: AnnouncementTarget.CLUB,
       clubId: clubByName.get('CyberPatriot')!.id,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
     },
     {
       authorId: teacherId,
+      submittedById: teacherId,
+      approvedById: teacherId,
+      approvedAt: now,
       title: 'IA Beacon Story Pitch Round',
       body: 'Beacon writers should submit one profile idea and one campus-news idea before Friday so the editorial board can lock next issue assignments.',
       targetType: AnnouncementTarget.CLUB,
       clubId: clubByName.get('IA Beacon')!.id,
       allowComments: true,
+      status: AnnouncementStatus.ACTIVE,
+    },
+    {
+      authorId: roboticsLeaderId,
+      submittedById: roboticsLeaderId,
+      title: 'Robotics fundraiser announcement draft',
+      body: 'Student leaders drafted this update for sponsor approval. It should appear in the sponsor review queue before it is published.',
+      targetType: AnnouncementTarget.CLUB,
+      clubId: clubByName.get('Robotics Club')!.id,
+      allowComments: true,
+      status: AnnouncementStatus.PENDING_APPROVAL,
+    },
+    {
+      authorId: roboticsLeaderId,
+      submittedById: roboticsLeaderId,
+      approvedById: teacherId,
+      title: 'Rejected robotics travel note',
+      body: 'This seeded proposal demonstrates rejected copy and sponsor feedback.',
+      targetType: AnnouncementTarget.CLUB,
+      clubId: clubByName.get('Robotics Club')!.id,
+      allowComments: false,
+      status: AnnouncementStatus.REJECTED,
+      rejectionNote: 'Please confirm the travel date and remove unapproved cost language.',
+    },
+    {
+      authorId: adminId,
+      submittedById: adminId,
+      approvedById: adminId,
+      approvedAt: lastWeek,
+      title: 'Expired parking reminder',
+      body: 'This announcement is intentionally expired so archive and expired filters have seeded data.',
+      targetType: AnnouncementTarget.SCHOOL_WIDE,
+      allowComments: false,
+      status: AnnouncementStatus.EXPIRED,
+      expiresAt: lastWeek,
     },
   ];
   await prisma.announcement.createMany({ data: announcements });
+  const seededAnnouncements = await prisma.announcement.findMany({
+    select: { id: true, title: true },
+  });
+  const announcementIdByTitle = new Map(seededAnnouncements.map((announcement) => [announcement.title, announcement.id]));
+  await prisma.announcementBookmark.createMany({
+    data: [
+      {
+        announcementId: announcementIdByTitle.get('Welcome to IA School App')!,
+        userId: studentByUniqueId.get('STU001')!.id,
+      },
+      {
+        announcementId: announcementIdByTitle.get('Robotics Club Scrimmage Build Saturday')!,
+        userId: studentByUniqueId.get('STU003')!.id,
+      },
+      {
+        announcementId: announcementIdByTitle.get('Innovation Showcase Night This Thursday')!,
+        userId: userByUniqueId.get('TCH001')!.id,
+      },
+    ],
+  });
   console.log(`Announcements ready: ${announcements.length}`);
+
+  if (sampleChannel) {
+    const pollOptions = [
+      { id: 'tuesday', label: 'Tuesday after school' },
+      { id: 'thursday', label: 'Thursday after school' },
+      { id: 'saturday', label: 'Saturday morning' },
+    ];
+    const pinnedMessage = await prisma.clubChannelMessage.create({
+      data: {
+        channelId: sampleChannel.id,
+        authorId: teacherId,
+        body: 'Pinned build checklist: charge batteries, confirm drive team, and bring safety glasses.',
+        isPinned: true,
+        pinnedAt: now,
+      },
+    });
+    const pollMessage = await prisma.clubChannelMessage.create({
+      data: {
+        channelId: sampleChannel.id,
+        authorId: roboticsLeaderId,
+        body: 'Vote for the next drive practice. You can use **markdown**, tables, and math like $v = d/t$ in chat.',
+        pollQuestion: 'When should we hold drive practice?',
+        pollOptions,
+      },
+    });
+    await prisma.clubChannelMessagePollVote.createMany({
+      data: sampleClubMemberIds.slice(0, 18).map((userId, index) => ({
+        messageId: pollMessage.id,
+        userId,
+        optionId: pollOptions[index % pollOptions.length]!.id,
+      })),
+    });
+    await prisma.clubChannelMessageAttachment.create({
+      data: {
+        messageId: pinnedMessage.id,
+        fileName: 'build-checklist.pdf',
+        fileUrl: '/uploads/seed/build-checklist.pdf',
+        mimeType: 'application/pdf',
+        size: 128000,
+      },
+    });
+    console.log('Channel messages ready: pinned message, markdown poll, and attachment sample');
+  }
 
   console.log('');
   console.log('Seeding complete.');
