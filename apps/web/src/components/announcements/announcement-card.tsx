@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Sparkles } from 'lucide-react';
+import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,7 @@ export type AnnouncementCardRecord = {
   isRead: boolean;
   isAdminGeneral?: boolean;
   isBookmarked?: boolean;
-  isFeatured?: boolean;
+  isPinned?: boolean;
   allowComments?: boolean;
   status: string;
   targetType: string;
@@ -120,7 +120,7 @@ export function AnnouncementCard({
         'relative transition-all duration-200 hover:-translate-y-0.5',
         !announcement.isRead &&
           'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
-        announcement.isFeatured && 'bg-primary/[0.025]',
+        announcement.isPinned && 'bg-primary/[0.025]',
         className,
       )}
     >
@@ -136,10 +136,10 @@ export function AnnouncementCard({
                   Push notification
                 </Badge>
               ) : null}
-              {announcement.isFeatured ? (
+              {announcement.isPinned ? (
                 <Badge variant="solid" color="amber" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1 transition-all duration-150 hover:-translate-y-px')}>
-                  <Sparkles className="size-3" />
-                  Featured
+                  <Pin className="size-3" />
+                  Pinned
                 </Badge>
               ) : null}
               {announcement.isBookmarked ? (

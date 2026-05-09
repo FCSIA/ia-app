@@ -1,4 +1,4 @@
--- Announcement approval and saved/featured state
+-- Announcement approval and saved/pinned state
 ALTER TYPE "AnnouncementStatus" ADD VALUE IF NOT EXISTS 'DRAFT';
 ALTER TYPE "AnnouncementStatus" ADD VALUE IF NOT EXISTS 'PENDING_APPROVAL';
 ALTER TYPE "AnnouncementStatus" ADD VALUE IF NOT EXISTS 'REJECTED';

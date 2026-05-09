@@ -78,3 +78,7 @@ __pycache__/
 
 # Local Windows cache
 Microsoft/
+
+# Local to testing
+!apps/api/uploads/.gitkeep
+apps/api/uploads/*

@@ -10,7 +10,7 @@ tags: [feature, announcements, comments]
 
 ## Overview
 
-Announcements are messages broadcast to specific audiences. They support comments, expiry, archiving, sponsor approval for club proposals, user bookmarks, featured announcements, and content moderation.
+Announcements are messages broadcast to specific audiences. They support comments, expiry, archiving, sponsor approval for club proposals, user bookmarks, pinned announcements, and content moderation.
 
 **Files:**
 - Backend: `apps/api/src/announcements/`
@@ -47,9 +47,9 @@ The system tracks which users have viewed which announcements using the `Announc
 
 Announcements can be born `ACTIVE` or `PENDING_APPROVAL`. Club student leader proposals require sponsor/admin approval; approval immediately publishes and sends notifications. They can transition to `REJECTED`, `EXPIRED` automatically based on `expiresAt`, or be manually `ARCHIVED` by an author or admin.
 
-## Saved and Featured
+## Saved and Pinned
 
-Users can bookmark announcements locally. Admin-promoted announcements are surfaced as **Featured** and automatically stop being featured after one month.
+Users can bookmark announcements locally. Admin-promoted announcements are surfaced as **Pinned** and automatically stop being pinned after one month.
 
 ---
 

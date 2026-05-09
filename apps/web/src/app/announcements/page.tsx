@@ -47,7 +47,7 @@ export default function AnnouncementsPage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
   const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
-  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'featured'>('all');
+  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'pinned'>('all');
   const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
   const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
   const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
@@ -107,7 +107,7 @@ export default function AnnouncementsPage() {
       if (readFilter === 'unread' && announcement.isRead) return false;
       if (readFilter === 'read' && !announcement.isRead) return false;
       if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
-      if (savedFilter === 'featured' && !announcement.isFeatured) return false;
+      if (savedFilter === 'pinned' && !announcement.isPinned) return false;
       if (
         selectedGrades.length > 0 &&
         !selectedGrades.some((grade) =>
@@ -322,7 +322,7 @@ export default function AnnouncementsPage() {
           chips={[
             { value: 'unread', label: 'Unread', color: 'rose' },
             { value: 'saved', label: 'Saved', icon: <Bookmark className="size-3" />, color: 'blue' },
-            { value: 'featured', label: 'Featured', icon: <Sparkles className="size-3" />, color: 'amber' },
+            { value: 'pinned', label: 'Pinned', icon: <Sparkles className="size-3" />, color: 'amber' },
             ...availableTags.map((tag) => ({
               value: `tag:${tag}`,
               label: ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' '),
@@ -332,13 +332,13 @@ export default function AnnouncementsPage() {
           activeChips={[
             ...(readFilter === 'unread' ? ['unread'] : []),
             ...(savedFilter === 'saved' ? ['saved'] : []),
-            ...(savedFilter === 'featured' ? ['featured'] : []),
+            ...(savedFilter === 'pinned' ? ['pinned'] : []),
             ...(activeTag ? [`tag:${activeTag}`] : []),
           ]}
           onChipToggle={(value) => {
             if (value === 'unread') {
               setReadFilter((current) => (current === 'unread' ? 'all' : 'unread'));
-            } else if (value === 'saved' || value === 'featured') {
+            } else if (value === 'saved' || value === 'pinned') {
               setSavedFilter((current) => (current === value ? 'all' : value));
             } else if (value.startsWith('tag:')) {
               handleTagClick(value.slice(4));
@@ -364,14 +364,14 @@ export default function AnnouncementsPage() {
                   type="single"
                   value={savedFilter}
                   onValueChange={(value) => {
-                    if (value === 'all' || value === 'saved' || value === 'featured') setSavedFilter(value);
+                    if (value === 'all' || value === 'saved' || value === 'pinned') setSavedFilter(value);
                   }}
                   variant="outline"
                   size="sm"
                 >
                   <ToggleGroupItem value="all">Everything</ToggleGroupItem>
                   <ToggleGroupItem value="saved">Saved</ToggleGroupItem>
-                  <ToggleGroupItem value="featured">Featured</ToggleGroupItem>
+                  <ToggleGroupItem value="pinned">Pinned</ToggleGroupItem>
                 </ToggleGroup>
               </div>
               <SearchToolbarFilters>
@@ -596,7 +596,7 @@ export default function AnnouncementsPage() {
                           setForm({ ...form, promoted: event.target.checked })
                         }
                       />
-                      Feature for one month
+                      Pin for one month
                     </label>
                   ) : null}
                 </div>
