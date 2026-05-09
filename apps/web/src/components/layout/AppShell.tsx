@@ -31,15 +31,14 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dropdown, DropdownLabel, DropdownSeparator } from '@/components/ui/dropdown';
+import { MenuItem } from '@/components/ui/menu-item';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
@@ -92,34 +91,27 @@ function NavIcon({
 }) {
   const { icon: Icon, label, href } = item;
   return (
-    <Link
-      href={href}
-      prefetch={true}
-      onMouseEnter={onHover}
-      aria-label={label}
-      className="group relative flex size-11 shrink-0 items-center justify-center"
-    >
-      <span
+    <Tooltip side="right" sideOffset={10} content={label}>
+      <Link
+        href={href}
+        prefetch={true}
+        onMouseEnter={onHover}
+        aria-label={label}
         className={cn(
-          'pointer-events-none absolute left-0 top-0 z-10 flex h-11 items-center rounded-full transition-[background-color,box-shadow] duration-150',
+          'group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
           active
             ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-            : 'text-sidebar-foreground/60 group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground',
+            : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         )}
       >
-        <span className="flex size-11 shrink-0 items-center justify-center">
-          <Icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
-        </span>
-        <span className="hidden whitespace-nowrap pr-5 text-sm font-medium group-hover:inline">
-          {label}
-        </span>
-      </span>
-      {badge ? (
-        <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground group-hover:hidden">
-          {badge}
-        </span>
-      ) : null}
-    </Link>
+        <Icon className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]" strokeWidth={active ? 2.25 : 1.75} />
+        {badge ? (
+          <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+            {badge}
+          </span>
+        ) : null}
+      </Link>
+    </Tooltip>
   );
 }
 
@@ -367,7 +359,7 @@ export function AppShell({
             </div>
             <button
               type="button"
-              className="hidden h-9 min-w-48 items-center gap-2 rounded-full border bg-muted/40 px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:flex"
+              className="hidden h-9 min-w-48 items-center gap-2 rounded-full border bg-muted/40 px-3 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF] lg:flex"
               onClick={() => setCommandOpen(true)}
             >
               <Search className="size-4" />
@@ -382,7 +374,7 @@ export function AppShell({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
                   >
                     <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <span className="text-xs font-semibold">
@@ -401,32 +393,34 @@ export function AppShell({
                     <ChevronDown className="size-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.uniqueId}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <Settings className="mr-2 size-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-red-500 focus:bg-red-500/10 focus:text-red-600"
-                  >
-                    <LogOut className="mr-2 size-4" />
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="border-0 bg-transparent p-0 shadow-none">
+                  <Dropdown className="w-60">
+                    <DropdownLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.uniqueId}
+                        </p>
+                      </div>
+                    </DropdownLabel>
+                    <DropdownSeparator />
+                    <MenuItem
+                      icon={Settings}
+                      label="Settings"
+                      index={0}
+                      onSelect={() => router.push('/profile')}
+                    />
+                    <DropdownSeparator />
+                    <MenuItem
+                      icon={LogOut}
+                      label="Sign out"
+                      index={1}
+                      onSelect={handleLogout}
+                      className="text-red-500 [&_svg]:text-red-500"
+                    />
+                  </Dropdown>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}

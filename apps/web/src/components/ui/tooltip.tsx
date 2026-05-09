@@ -89,11 +89,11 @@ function Tooltip({
               side={side}
               sideOffset={sideOffset}
               forceMount
-              className="z-50"
+              className="z-[90]"
             >
               <motion.div
                 className={cn(
-                  "bg-foreground text-background text-[12px] px-2 py-1",
+                  "bg-foreground px-2 py-1 text-[12px] text-background shadow-[0_8px_24px_rgba(0,0,0,0.22)]",
                   shape.bg,
                   className
                 )}
