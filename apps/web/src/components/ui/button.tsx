@@ -81,6 +81,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     const shape = useShape();
+    const shouldPassChildThrough = asChild && !loading && !LeadingIcon && !TrailingIcon;
 
     return (
       <Comp
@@ -99,7 +100,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={style}
         {...props}
       >
-        {loading ? (
+        {shouldPassChildThrough ? (
+          children
+        ) : loading ? (
           <>
             <span className="flex items-center justify-center gap-[inherit] opacity-0">
               {LeadingIcon && !isIconOnly && (
