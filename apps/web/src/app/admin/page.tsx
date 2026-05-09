@@ -23,7 +23,7 @@ import {
   KeyRound,
   Check,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -940,16 +940,39 @@ export default function AdminPage() {
           {/* ── Moderation Tab ── */}
           <TabPanel value="moderation">
             <div className="grid gap-6">
-              {/* Keyword filter */}
+              {/* Local safety rules */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Keyword Filter Rules</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-base">Local Safety Rules</CardTitle>
+                    <Badge variant="dot" color="blue" className="text-[11px]">
+                      glin-profanity enabled
+                    </Badge>
+                  </div>
+                  <CardDescription>
+                    External profanity filtering handles the main dictionary. Add IA-specific words here only when a local policy term, threat, or harassment phrase needs extra tracking.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex gap-2 mb-6">
+                  <div className="mb-5 grid gap-3 rounded-2xl border bg-muted/20 p-3 text-sm text-muted-foreground md:grid-cols-3">
+                    <div>
+                      <p className="font-medium text-foreground">Detected automatically</p>
+                      <p className="mt-1 text-xs leading-5">Profanity library, Unicode normalization, and package defaults.</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Tracked locally</p>
+                      <p className="mt-1 text-xs leading-5">Only active school-added terms below create keyword match records.</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Admin visibility</p>
+                      <p className="mt-1 text-xs leading-5">Filtered content creates a report in the moderation queue.</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-5 flex flex-col gap-2 sm:flex-row">
                     <Input
-                      className="max-w-xs"
-                      placeholder="Add keyword…"
+                      className="max-w-sm"
+                      placeholder="Add local term..."
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
                       onKeyDown={(e) => {
@@ -958,9 +981,10 @@ export default function AdminPage() {
                     />
                     <Button
                       onClick={() => keyword.trim() && addKeywordMutation.mutate(keyword.trim())}
-                      className="flex items-center gap-2"
+                      leadingIcon={Plus}
+                      disabled={!keyword.trim() || addKeywordMutation.isPending}
                     >
-                      <Plus size={16} /> Add
+                      Add rule
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -968,19 +992,21 @@ export default function AdminPage() {
                       <Badge
                         key={kw.id}
                         variant="solid"
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                        color="red"
+                        className="gap-1.5 px-3 py-1.5 transition-all duration-150 hover:-translate-y-px hover:bg-red-500/20"
                       >
                         {kw.keyword}
                         <button
                           onClick={() => removeKeywordMutation.mutate(kw.id)}
-                          className="hover:text-red-400 transition-colors ml-1"
+                          className="ml-1 rounded-full p-0.5 transition-colors hover:bg-red-500/15 hover:text-red-400"
+                          aria-label={`Remove ${kw.keyword}`}
                         >
                           <Trash2 size={12} />
                         </button>
                       </Badge>
                     ))}
                     {(keywords as any[]).length === 0 && (
-                      <p className="text-muted-foreground text-sm">No keyword rules configured</p>
+                      <p className="text-sm text-muted-foreground">No local safety rules configured.</p>
                     )}
                   </div>
                 </CardContent>
@@ -990,7 +1016,7 @@ export default function AdminPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-base">Reports</CardTitle>
+                    <CardTitle className="text-base">Moderation Queue</CardTitle>
                     {pendingReports > 0 && (
                       <Badge variant="solid" color="red">{pendingReports} pending</Badge>
                     )}
