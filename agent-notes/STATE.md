@@ -17,6 +17,7 @@
 *   **Status**: In Progress
 
 ## Recent Actions
+*   (2026-05-09) **Codex**: Documented moderation behavior in `docs/features/moderation.md`: `glin-profanity` is the external profanity detector, Admin “Keyword Filter Rules” are local school override/policy terms, current code uses package defaults rather than explicit all-language/leetspeak options, authors get `CONTENT_MODERATED` notifications, admins see automated reports in the moderation queue, and admin push notifications are not currently sent.
 *   (2026-04-17) Rewrote `ARCHITECTURE.md` to strictly declare discrete schemas (`Club`, `FlexFriday`, `StudentSchedule`, `Channels`) instead of a shared polymorphic pattern.
 *   (2026-04-17) Updated `todo.md` to align with the discrete schema goal, emphasizing strongly-typed relations.
 *   (2026-04-17) Claimed implementation work for course catalog seeding, schedule normalization, large-scale school seeds, and club channel visibility changes.
