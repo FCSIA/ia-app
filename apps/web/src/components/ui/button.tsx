@@ -10,7 +10,7 @@ import { useShape } from "@/lib/shape-context";
 const buttonVariants = cva(
   [
     "group relative inline-flex items-center justify-center outline-none cursor-pointer",
-    "whitespace-nowrap text-nowrap [&_svg]:shrink-0",
+    "whitespace-nowrap text-nowrap align-middle [&_svg]:shrink-0",
     "text-box-trim-both text-box-edge-cap-alphabetic",
     "transition-all duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
@@ -110,7 +110,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               {LeadingIcon && !isIconOnly && (
                 <LeadingIcon size={iconSize} strokeWidth={2} />
               )}
-              <span className="min-w-0 truncate">{children}</span>
+              <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
+                {children}
+              </span>
               {TrailingIcon && !isIconOnly && (
                 <TrailingIcon size={iconSize} strokeWidth={2} />
               )}
@@ -145,14 +147,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               <LeadingIcon
                 size={iconSize}
                 strokeWidth={1.5}
+                aria-hidden="true"
                 className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
               />
             )}
-            <span className="min-w-0 truncate">{children}</span>
+            <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
+              {children}
+            </span>
             {TrailingIcon && (
               <TrailingIcon
                 size={iconSize}
                 strokeWidth={1.5}
+                aria-hidden="true"
                 className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
               />
             )}
