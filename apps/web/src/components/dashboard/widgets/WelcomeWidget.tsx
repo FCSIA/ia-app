@@ -67,7 +67,7 @@ export function WelcomeWidget() {
               </h2>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {currentBlock ? (
-                  <Badge variant="secondary" className="rounded-full px-2 py-0 h-5 text-[10px]">
+                  <Badge variant="solid" className="rounded-full px-2 py-0 h-5 text-[10px]">
                     {currentBlock.label}
                   </Badge>
                 ) : null}

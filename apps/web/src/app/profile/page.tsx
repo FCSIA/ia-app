@@ -89,7 +89,7 @@ export default function ProfilePage() {
               <p className="text-muted-foreground text-sm font-mono mt-0.5">{user?.uniqueId}</p>
               <div className="flex flex-wrap gap-1 mt-2">
                 {user?.roles?.map((r: string) => (
-                  <Badge key={r} variant="secondary" className="text-[10px]">
+                  <Badge key={r} variant="solid" className="text-[10px]">
                     {r.replace(/_/g, ' ')}
                   </Badge>
                 ))}
@@ -147,7 +147,7 @@ export default function ProfilePage() {
                 <CardTitle className="text-base font-semibold">Change Password</CardTitle>
               </div>
               {!changing && (
-                <Button variant="outline" size="sm" onClick={() => setChanging(true)}>
+                <Button variant="tertiary" size="sm" onClick={() => setChanging(true)}>
                   Change
                 </Button>
               )}
@@ -224,12 +224,10 @@ export default function ProfilePage() {
                   <Label htmlFor={`pref-${key}`} className="text-sm font-medium cursor-pointer">
                     {label}
                   </Label>
-                  <Switch
+                  <Switch label=""
                     id={`pref-${key}`}
                     checked={enabled}
-                    onCheckedChange={(checked: boolean) =>
-                      prefMutation.mutate({ category: key, enabled: checked })
-                    }
+                    onToggle={() => prefMutation.mutate({ category: key, enabled: !enabled })}
                   />
                 </div>
               );

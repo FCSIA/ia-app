@@ -12,7 +12,7 @@ import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SearchInput } from '@/components/ui/search';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { cn } from '@/lib/utils';
 
@@ -127,7 +127,7 @@ export default function NotificationsPage() {
             </div>
             {hasUnread && (
               <Button
-                variant="outline"
+                variant="tertiary"
                 size="sm"
                 onClick={() => markAllMutation.mutate()}
                 disabled={markAllMutation.isPending}
@@ -141,10 +141,10 @@ export default function NotificationsPage() {
 
           <Tabs defaultValue="inbox" className="w-full">
             <TabsList>
-              <TabsTrigger value="inbox">Inbox</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabItem value="inbox" label="Inbox">Inbox</TabItem>
+              <TabItem value="settings" label="Settings">Settings</TabItem>
             </TabsList>
-            <TabsContent value="inbox" className="mt-4">
+            <TabPanel value="inbox" className="mt-4">
               <SearchInput
                 value={search}
                 onValueChange={setSearch}
@@ -208,7 +208,7 @@ export default function NotificationsPage() {
                         />
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary" className="rounded-full text-[10px]">
+                            <Badge variant="solid" className="rounded-full text-[10px]">
                               {categoryLabel}
                             </Badge>
                             <span className="text-[11px] text-muted-foreground">
@@ -234,8 +234,8 @@ export default function NotificationsPage() {
               </ul>
             </Panel>
           )}
-            </TabsContent>
-            <TabsContent value="settings" className="mt-4">
+            </TabPanel>
+            <TabPanel value="settings" className="mt-4">
               <Panel contentClassName="flex flex-col gap-5 p-5">
                 <section className="flex flex-col gap-3">
                   <h2 className="text-sm font-semibold">Global</h2>
@@ -292,7 +292,7 @@ export default function NotificationsPage() {
                   {preferences.length} saved preference{preferences.length === 1 ? '' : 's'}.
                 </p>
               </Panel>
-            </TabsContent>
+            </TabPanel>
           </Tabs>
         </div>
       </PageFrame>

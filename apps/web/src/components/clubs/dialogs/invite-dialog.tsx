@@ -200,7 +200,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
               onChange={(event) => setCsvFile(event.target.files?.[0] || null)}
             />
             <Button
-              variant="outline"
+              variant="tertiary"
               className="w-full"
               disabled={!csvFile || csvMutation.isPending}
               onClick={() => csvMutation.mutate()}
@@ -225,7 +225,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="tertiary" onClick={() => onOpenChange(false)}>
             Done
           </Button>
         </DialogFooter>

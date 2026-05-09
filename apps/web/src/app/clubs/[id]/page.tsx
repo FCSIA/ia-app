@@ -80,7 +80,7 @@ function RequestsPanel({
               <div className="min-w-0 space-y-0.5">
                 <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-                  <Badge variant="outline" className="px-1.5 py-0 font-mono text-[10px] tracking-wider bg-transparent">
+                  <Badge variant="dot" className="px-1.5 py-0 font-mono text-[10px] tracking-wider bg-transparent">
                     {request.requester.uniqueId || 'Student'}
                   </Badge>
                   <span>
@@ -92,7 +92,7 @@ function RequestsPanel({
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 size="sm"
-                variant="outline"
+                variant="tertiary"
                 className="flex-1 sm:flex-none border-border/50"
                 onClick={() => respondMutation.mutate({ requestId: request.id, accept: false })}
               >
@@ -140,7 +140,7 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
     <div className="space-y-3">
       <Button
         type="button"
-        variant="outline"
+        variant="tertiary"
         onClick={() => setRedeemOpen((current) => !current)}
       >
         <KeyRound className="mr-2 size-4" />
@@ -224,9 +224,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
               <div className="flex items-center gap-2 pt-1">
-                <Badge variant="secondary">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
                 {club.viewer.hasPendingJoinRequest ? (
-                  <Badge variant="outline">Request pending</Badge>
+                  <Badge variant="dot">Request pending</Badge>
                 ) : null}
               </div>
             </div>
@@ -476,7 +476,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {canInvite ? (
-                <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
+                <Button size="sm" variant="tertiary" onClick={() => setInviteOpen(true)}>
                   <UserPlus className="mr-1.5 size-4" />
                   Invite member
                 </Button>
@@ -550,7 +550,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
                 </EmptyDescription>
               </EmptyHeader>
               {deferredSearch && (
-                <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+                <Button variant="ghost" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
                   Clear search
                 </Button>
               )}

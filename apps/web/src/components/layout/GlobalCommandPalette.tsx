@@ -273,7 +273,7 @@ export function GlobalCommandPalette({
                     <div className="flex items-center gap-2">
                       <span className="truncate">{action.label}</span>
                       {action.badge ? (
-                        <Badge variant="secondary" className="h-5 rounded-full px-1.5 text-[10px]">
+                        <Badge variant="solid" className="h-5 rounded-full px-1.5 text-[10px]">
                           {action.badge}
                         </Badge>
                       ) : null}

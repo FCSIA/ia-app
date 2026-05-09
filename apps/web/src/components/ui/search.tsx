@@ -4,12 +4,8 @@ import * as React from "react"
 import { Search, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 type SearchInputSize = "sm" | "default" | "lg"
 
@@ -19,31 +15,27 @@ const searchInputSizeStyles: Record<
     group: string
     icon: string
     input: string
-    clearButton: "icon-xs" | "icon-sm"
   }
 > = {
   sm: {
     group: "h-8 rounded-lg",
     icon: "size-3.5",
     input: "text-sm",
-    clearButton: "icon-xs",
   },
   default: {
     group: "rounded-xl",
     icon: "size-4",
     input: "",
-    clearButton: "icon-xs",
   },
   lg: {
     group: "h-11 rounded-xl",
     icon: "size-4",
     input: "text-base",
-    clearButton: "icon-sm",
   },
 }
 
 type SearchInputProps = Omit<
-  React.ComponentProps<typeof InputGroupInput>,
+  React.ComponentProps<typeof Input>,
   "className" | "onChange" | "size" | "type" | "value"
 > & {
   className?: string
@@ -70,34 +62,31 @@ function SearchInput({
   const styles = searchInputSizeStyles[size]
 
   return (
-    <InputGroup className={cn(styles.group, className)}>
-      <InputGroupAddon className="text-muted-foreground">
-        <Search className={styles.icon} />
-      </InputGroupAddon>
-      <InputGroupInput
+    <div className={cn("relative flex items-center", styles.group, className)}>
+      <Search className={cn("pointer-events-none absolute left-3 text-muted-foreground", styles.icon)} />
+      <Input
         type="search"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className={cn("min-w-0", styles.input, inputClassName)}
+        className={cn("min-w-0 pl-9 pr-9", styles.input, inputClassName)}
         {...props}
       />
       {!hideClearButton && value ? (
-        <InputGroupAddon align="inline-end">
-          <InputGroupButton
-            size={styles.clearButton}
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              onValueChange("")
-              onClear?.()
-            }}
-            aria-label={clearLabel}
-          >
-            <X className={styles.icon} />
-          </InputGroupButton>
-        </InputGroupAddon>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="absolute right-1 text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            onValueChange("")
+            onClear?.()
+          }}
+          aria-label={clearLabel}
+        >
+          <X className={styles.icon} />
+        </Button>
       ) : null}
-    </InputGroup>
+    </div>
   )
 }
 

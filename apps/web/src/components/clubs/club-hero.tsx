@@ -241,7 +241,7 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
+                    variant="tertiary"
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={uploadingBanner}
                   >
@@ -294,7 +294,7 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
+                    variant="tertiary"
                     onClick={() => logoInputRef.current?.click()}
                     disabled={uploadingLogo}
                   >

@@ -124,7 +124,7 @@ export default function ClubsLandingPage() {
                     </Button>
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant="tertiary"
                       onClick={() =>
                         respondMutation.mutate({ inviteId: invite.id, accept: false })
                       }
@@ -148,7 +148,7 @@ export default function ClubsLandingPage() {
                   club={club}
                   badge={
                     club.kind === 'sponsor' ? (
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="solid" className="gap-1">
                         <Shield className="size-3" />
                         Sponsor
                       </Badge>
@@ -205,7 +205,7 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
       <Card className="relative h-full transition-colors hover:border-border hover:bg-muted/50">
         <CardContent className="flex h-full flex-col items-center gap-2 p-5 text-center">
           {joined ? (
-            <Badge variant="secondary" className="absolute right-2 top-2 text-[10px]">
+            <Badge variant="solid" className="absolute right-2 top-2 text-[10px]">
               Joined
             </Badge>
           ) : null}

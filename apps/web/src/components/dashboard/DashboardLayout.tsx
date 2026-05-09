@@ -330,7 +330,7 @@ export function DashboardLayout() {
                   <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
                     <DialogTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="tertiary"
                         size="sm"
                         className="h-9 gap-2 rounded-full px-4"
                         disabled={missingWidgets.length === 0}
@@ -397,7 +397,7 @@ export function DashboardLayout() {
                 </>
               ) : (
                 <Button
-                  variant="outline"
+                  variant="tertiary"
                   size="sm"
                   onClick={() => setEditing(true)}
                   className="h-9 gap-2 rounded-full bg-background px-4 font-medium transition hover:bg-muted"

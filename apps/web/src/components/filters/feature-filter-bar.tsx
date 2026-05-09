@@ -68,11 +68,11 @@ export function FeatureFilterBar({
           {advanced ? (
             <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
               <CollapsibleTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="tertiary" size="sm">
                   <SlidersHorizontal className="mr-1.5 size-4" />
                   Filters
                   {activeCount > 0 ? (
-                    <Badge variant="secondary" className="ml-1.5 rounded-full px-1.5">
+                    <Badge variant="solid" className="ml-1.5 rounded-full px-1.5">
                       {activeCount}
                     </Badge>
                   ) : null}

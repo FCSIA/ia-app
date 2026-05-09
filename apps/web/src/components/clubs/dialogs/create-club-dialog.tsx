@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
@@ -123,13 +123,11 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
 
           <div className="space-y-1.5">
             <Label>Join behavior</Label>
-            <Select value={joinPolicy} onValueChange={(value: 'OPEN' | 'REQUEST') => setJoinPolicy(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
+              <SelectTrigger placeholder="" />
               <SelectContent>
-                <SelectItem value="OPEN">Public join</SelectItem>
-                <SelectItem value="REQUEST">Request approval</SelectItem>
+                <SelectItem index={0} value="OPEN">Public join</SelectItem>
+                <SelectItem index={0} value="REQUEST">Request approval</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -147,7 +145,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="tertiary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={mutation.isPending}>

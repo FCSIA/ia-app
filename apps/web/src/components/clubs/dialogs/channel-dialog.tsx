@@ -23,7 +23,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker } from '@/components/clubs/people-picker';
@@ -147,13 +146,11 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
                 if (value !== 'PRIVATE') setMemberIds([]);
               }}
             >
-              <SelectTrigger id="channel-visibility">
-                <SelectValue placeholder="Choose a visibility" />
-              </SelectTrigger>
+              <SelectTrigger id="channel-visibility" placeholder="Choose a visibility" />
               <SelectContent>
-                <SelectItem value="PUBLIC">Public</SelectItem>
-                <SelectItem value="MEMBER_READONLY">Member read only</SelectItem>
-                <SelectItem value="PRIVATE">Private</SelectItem>
+                <SelectItem index={0} value="PUBLIC">Public</SelectItem>
+                <SelectItem index={0} value="MEMBER_READONLY">Member read only</SelectItem>
+                <SelectItem index={0} value="PRIVATE">Private</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -175,7 +172,7 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="tertiary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button

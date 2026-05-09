@@ -91,14 +91,14 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox
               checked={allowComments}
-              onCheckedChange={(checked) => setAllowComments(!!checked)}
+              onToggle={() => setAllowComments((current) => !current)}
             />
             Allow comments
           </label>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="tertiary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button

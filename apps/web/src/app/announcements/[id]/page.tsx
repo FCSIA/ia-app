@@ -265,7 +265,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           <CardHeader className="gap-5 bg-muted/20 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (
-                <Badge variant="destructive" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Admin
                 </Badge>
               ) : null}
@@ -278,11 +278,11 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               >
                 {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType}
               </Badge>
-              <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+              <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                 {audienceLabel}
               </Badge>
               {announcement.status !== 'ACTIVE' ? (
-                <Badge variant="secondary" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   {formatStatus(announcement.status)}
                 </Badge>
               ) : null}
@@ -333,7 +333,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                   Questions and follow-up only.
                 </p>
               </div>
-              <Badge variant="secondary">
+              <Badge variant="solid">
                 {commentCount} comment{commentCount === 1 ? '' : 's'}
               </Badge>
             </div>

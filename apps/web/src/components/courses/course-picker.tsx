@@ -91,7 +91,7 @@ export function CoursePicker({
           </Button>
         ) : (
           <Button
-            variant="outline"
+            variant="tertiary"
             type="button"
             disabled={disabled}
             className={cn(

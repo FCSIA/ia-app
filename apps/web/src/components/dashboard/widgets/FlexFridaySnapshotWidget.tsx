@@ -41,7 +41,7 @@ export function FlexFridaySnapshotWidget() {
       ) : (
         <div className="flex flex-col rounded-[1.5rem] border border-border/70 bg-muted/30 p-5">
           <div className="flex items-start justify-between">
-            <Badge variant="secondary" className="rounded-full">
+            <Badge variant="solid" className="rounded-full">
               {activeRegistration.workshop?.pathway || 'General'}
             </Badge>
             <Sparkles className="size-4 text-muted-foreground" />

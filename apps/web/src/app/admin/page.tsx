@@ -34,7 +34,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import {
   Sheet,
@@ -43,7 +42,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
@@ -161,14 +160,14 @@ function UsersPaginationControls({
 
   return (
     <div className="flex items-center justify-center gap-3 border-t px-4 py-2.5">
-      <Button variant="outline" size="sm" className="h-7 px-2.5 text-[11px]" disabled={page === 1} onClick={onPrev}>
+      <Button variant="tertiary" size="sm" className="h-7 px-2.5 text-[11px]" disabled={page === 1} onClick={onPrev}>
         Prev
       </Button>
       <span className="text-[11px] text-muted-foreground">
         Page {page} of {totalPages}
       </span>
       <Button
-        variant="outline"
+        variant="tertiary"
         size="sm"
         className="h-7 px-2.5 text-[11px]"
         disabled={page >= totalPages}
@@ -212,7 +211,7 @@ function UserTableSection({
       <CardHeader className="border-b px-4 py-2.5">
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="text-sm">{title}</CardTitle>
-          <Badge variant="secondary" className="px-2 py-0 text-[10px]">
+          <Badge variant="solid" className="px-2 py-0 text-[10px]">
             {totalCount ?? users.length}
           </Badge>
         </div>
@@ -252,7 +251,7 @@ function UserTableSection({
                   <TableCell className="px-3 py-1.5">
                     <div className="flex flex-wrap gap-1">
                       {getUserRoles(user).map((role) => (
-                        <Badge key={role} variant="outline" className="px-1.5 py-0 text-[9px]">
+                        <Badge key={role} variant="dot" className="px-1.5 py-0 text-[9px]">
                           {formatRoleLabel(role)}
                         </Badge>
                       ))}
@@ -260,7 +259,7 @@ function UserTableSection({
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
                     <Badge
-                      variant={user.isActive ? 'default' : 'secondary'}
+                      variant={user.isActive ? 'solid' : 'solid'}
                       className={
                         user.isActive
                           ? 'border-none bg-emerald-500/15 px-1.5 py-0 text-[9px] text-emerald-500'
@@ -716,35 +715,35 @@ export default function AdminPage() {
           className={cn('w-full', activeTab === 'users' && 'flex min-h-0 flex-1 flex-col')}
         >
           <TabsList className={cn('mb-6 bg-secondary/50 p-1', activeTab === 'users' && 'mb-3 h-8 shrink-0')}>
-            <TabsTrigger value="users" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+            <TabItem value="users" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Users">
               <Users size={16} /> Users
-            </TabsTrigger>
+            </TabItem>
             {isSuperAdmin && (
-              <TabsTrigger value="schedule" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+              <TabItem value="schedule" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Schedule">
                 <CalendarDays size={16} /> Schedule
-              </TabsTrigger>
+              </TabItem>
             )}
-            <TabsTrigger value="moderation" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+            <TabItem value="moderation" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Moderation">
               <Shield size={16} /> Moderation
               {pendingReports > 0 && (
-                <Badge variant="destructive" className="ml-1 px-1.5 py-0.5 text-[10px] h-auto">
+                <Badge variant="solid" color="red" className="ml-1 px-1.5 py-0.5 text-[10px] h-auto">
                   {pendingReports}
                 </Badge>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="permissions" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+            </TabItem>
+            <TabItem value="permissions" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Permissions">
               <KeyRound size={16} /> Permissions
-            </TabsTrigger>
-            <TabsTrigger value="student-admins" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+            </TabItem>
+            <TabItem value="student-admins" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Student Admins">
               <Users size={16} /> Student Admins
-            </TabsTrigger>
-            <TabsTrigger value="audit" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')}>
+            </TabItem>
+            <TabItem value="audit" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Audit">
               <FileText size={16} /> Audit Log
-            </TabsTrigger>
+            </TabItem>
           </TabsList>
 
           {/* ── Users Tab ── */}
-          <TabsContent value="users" className="mt-0 flex min-h-0 flex-1 flex-col">
+          <TabPanel value="users" className="mt-0 flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               <div className="flex shrink-0 items-center gap-2.5 flex-wrap">
                 <SearchInput
@@ -765,13 +764,11 @@ export default function AdminPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-8 w-[200px] text-xs">
-                    <SelectValue placeholder="Select role view" />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-8 w-[200px] text-xs" placeholder="Select role view" />
                   <SelectContent>
-                    <SelectItem value="students">Students</SelectItem>
-                    <SelectItem value="teachers">Teachers</SelectItem>
-                    <SelectItem value="other">Other Roles</SelectItem>
+                    <SelectItem index={0} value="students">Students</SelectItem>
+                    <SelectItem index={0} value="teachers">Teachers</SelectItem>
+                    <SelectItem index={0} value="other">Other Roles</SelectItem>
                   </SelectContent>
                 </Select>
                 {isSuperAdmin && (
@@ -797,7 +794,7 @@ export default function AdminPage() {
                           {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
                         </p>
                       </div>
-                      <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => refetchUsers()}>
+                      <Button type="button" variant="tertiary" size="sm" className="h-7 text-[11px]" onClick={() => refetchUsers()}>
                         Try again
                       </Button>
                     </CardContent>
@@ -824,11 +821,11 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
-          </TabsContent>
+          </TabPanel>
 
           {/* ── Schedule Tab ── */}
           {isSuperAdmin && (
-            <TabsContent value="schedule">
+            <TabPanel value="schedule">
               <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                 <Card>
                   <CardHeader className="border-b pb-4">
@@ -841,7 +838,7 @@ export default function AdminPage() {
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {['First Name', 'Last Name', 'Student ID', 'Grade Level', 'Major Pathway', 'Minor Pathway (optional)'].map((field) => (
-                          <Badge key={field} variant="outline" className="text-[11px]">
+                          <Badge key={field} variant="dot" className="text-[11px]">
                             {field}
                           </Badge>
                         ))}
@@ -861,7 +858,7 @@ export default function AdminPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <Button
                           type="button"
-                          variant={generatePasswords ? 'default' : 'outline'}
+                          variant={generatePasswords ? 'primary' : 'tertiary'}
                           onClick={() => setGeneratePasswords((current) => !current)}
                         >
                           {generatePasswords ? 'Temp Passwords On' : 'Temp Passwords Off'}
@@ -949,11 +946,11 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-            </TabsContent>
+            </TabPanel>
           )}
 
           {/* ── Moderation Tab ── */}
-          <TabsContent value="moderation">
+          <TabPanel value="moderation">
             <div className="grid gap-6">
               {/* Keyword filter */}
               <Card>
@@ -982,7 +979,7 @@ export default function AdminPage() {
                     {(keywords as any[]).map((kw: any) => (
                       <Badge
                         key={kw.id}
-                        variant="secondary"
+                        variant="solid"
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
                       >
                         {kw.keyword}
@@ -1007,7 +1004,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-base">Reports</CardTitle>
                     {pendingReports > 0 && (
-                      <Badge variant="destructive">{pendingReports} pending</Badge>
+                      <Badge variant="solid" color="red">{pendingReports} pending</Badge>
                     )}
                   </div>
                   <div className="w-full max-w-xs">
@@ -1028,7 +1025,7 @@ export default function AdminPage() {
                         {deferredModerationSearch ? 'No reports match your search' : 'No reports submitted'}
                       </p>
                       {deferredModerationSearch && (
-                        <Button variant="link" size="sm" onClick={() => setModerationSearch('')} className="mt-1 font-semibold text-accent-500">
+                        <Button variant="ghost" size="sm" onClick={() => setModerationSearch('')} className="mt-1 font-semibold text-accent-500">
                           Clear search
                         </Button>
                       )}
@@ -1044,15 +1041,15 @@ export default function AdminPage() {
                             <div>
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge variant={
-                                  r.status === 'PENDING' ? 'default' :
-                                    r.status === 'RESOLVED' ? 'outline' : 'secondary'
+                                  r.status === 'PENDING' ? 'solid' :
+                                    r.status === 'RESOLVED' ? 'dot' : 'solid'
                                 } className={
                                   r.status === 'PENDING' ? 'bg-amber-500/15 text-amber-500 border-none' :
                                     r.status === 'RESOLVED' ? 'text-emerald-500 border-emerald-500/30' : ''
                                 }>
                                   {r.status}
                                 </Badge>
-                                <Badge variant="outline">{r.contentType}</Badge>
+                                <Badge variant="dot">{r.contentType}</Badge>
                               </div>
                               <p className="text-sm font-medium">{r.reason}</p>
                               <p className="text-xs text-muted-foreground mt-1">
@@ -1084,10 +1081,10 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </TabPanel>
 
           {/* ── Permissions Tab ── */}
-          <TabsContent value="permissions">
+          <TabPanel value="permissions">
             <div className="space-y-6">
               <Card>
                 <CardHeader className="border-b pb-4">
@@ -1106,9 +1103,9 @@ export default function AdminPage() {
                       onValueChange={setPermSearch}
                     />
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline" className="gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Teacher — sessions &amp; workshops</Badge>
-                      <Badge variant="outline" className="gap-1"><span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Sponsor — club management</Badge>
-                      <Badge variant="outline" className="gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Support Staff — announcements &amp; events</Badge>
+                      <Badge variant="dot" className="gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Teacher — sessions &amp; workshops</Badge>
+                      <Badge variant="dot" className="gap-1"><span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Sponsor — club management</Badge>
+                      <Badge variant="dot" className="gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Support Staff — announcements &amp; events</Badge>
                     </div>
                   </div>
 
@@ -1190,10 +1187,10 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </TabPanel>
 
           {/* ── Student Admins Tab ── */}
-          <TabsContent value="student-admins">
+          <TabPanel value="student-admins">
             <div className="space-y-6">
               <Card>
                 <CardHeader className="border-b pb-4">
@@ -1252,10 +1249,10 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
+          </TabPanel>
 
           {/* ── Audit Log Tab ── */}
-          <TabsContent value="audit">
+          <TabPanel value="audit">
             <Card>
               <CardHeader className="border-b pb-4">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -1328,13 +1325,11 @@ export default function AdminPage() {
                       value={auditActorScope}
                       onValueChange={(value) => setAuditActorScope(value as AuditActorScope)}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any source" />
-                      </SelectTrigger>
+                      <SelectTrigger placeholder="Any source" />
                       <SelectContent>
-                        <SelectItem value="ALL">All sources</SelectItem>
-                        <SelectItem value="USER">User actions</SelectItem>
-                        <SelectItem value="SYSTEM">System actions</SelectItem>
+                        <SelectItem index={0} value="ALL">All sources</SelectItem>
+                        <SelectItem index={0} value="USER">User actions</SelectItem>
+                        <SelectItem index={0} value="SYSTEM">System actions</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1342,13 +1337,11 @@ export default function AdminPage() {
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">Action</label>
                     <Select value={auditActionFilter} onValueChange={setAuditActionFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any action" />
-                      </SelectTrigger>
+                      <SelectTrigger placeholder="Any action" />
                       <SelectContent>
-                        <SelectItem value="ALL">All actions</SelectItem>
+                        <SelectItem index={0} value="ALL">All actions</SelectItem>
                         {auditActionOptions.map((action) => (
-                          <SelectItem key={action} value={action}>
+                          <SelectItem index={0} key={action} value={action}>
                             {action}
                           </SelectItem>
                         ))}
@@ -1359,13 +1352,11 @@ export default function AdminPage() {
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">Entity Type</label>
                     <Select value={auditEntityTypeFilter} onValueChange={setAuditEntityTypeFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any entity" />
-                      </SelectTrigger>
+                      <SelectTrigger placeholder="Any entity" />
                       <SelectContent>
-                        <SelectItem value="ALL">All entity types</SelectItem>
+                        <SelectItem index={0} value="ALL">All entity types</SelectItem>
                         {auditEntityTypeOptions.map((entityType) => (
-                          <SelectItem key={entityType} value={entityType}>
+                          <SelectItem index={0} key={entityType} value={entityType}>
                             {entityType}
                           </SelectItem>
                         ))}
@@ -1407,7 +1398,7 @@ export default function AdminPage() {
                 {auditFilterChips.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2">
                     {auditFilterChips.map((chip) => (
-                      <Badge key={chip} variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
+                      <Badge key={chip} variant="solid" className="rounded-full px-3 py-1 text-[11px]">
                         {chip}
                       </Badge>
                     ))}
@@ -1468,7 +1459,7 @@ export default function AdminPage() {
                             </TableCell>
                             <TableCell className="px-4 py-3 align-top">
                               <Badge
-                                variant="outline"
+                                variant="dot"
                                 className="font-mono text-[11px] text-accent-600 dark:text-accent-400"
                               >
                                 {event.action}
@@ -1489,7 +1480,7 @@ export default function AdminPage() {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
+                                variant="tertiary"
                                 className="rounded-xl"
                                 onClick={() => setSelectedAuditEventId(event.id)}
                               >
@@ -1509,7 +1500,7 @@ export default function AdminPage() {
                     </p>
                     {hasActiveAuditFilters ? (
                       <Button
-                        variant="link"
+                        variant="ghost"
                         size="sm"
                         onClick={clearAuditFilters}
                         className="mt-1 font-semibold text-accent-500"
@@ -1588,7 +1579,7 @@ export default function AdminPage() {
                               ) : null}
                             </div>
                             {auditEventDetail.entityPreview.href ? (
-                              <Button asChild variant="outline" size="sm" className="rounded-xl">
+                              <Button asChild variant="tertiary" size="sm" className="rounded-xl">
                                 <Link href={auditEventDetail.entityPreview.href}>
                                   {auditEventDetail.entityPreview.hrefLabel || 'Open record'}
                                 </Link>
@@ -1636,7 +1627,7 @@ export default function AdminPage() {
                 </div>
               </SheetContent>
             </Sheet>
-          </TabsContent>
+          </TabPanel>
         </Tabs>
       </div>
     </AppShell>

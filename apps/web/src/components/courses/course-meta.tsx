@@ -33,26 +33,26 @@ export function CourseMeta({
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <Badge variant="outline" className="rounded-full text-[11px] font-medium">
+      <Badge variant="dot" className="rounded-full text-[11px] font-medium">
         {course.department}
       </Badge>
       {courseNumbers ? (
-        <Badge variant="secondary" className="rounded-full text-[11px] font-medium">
+        <Badge variant="solid" className="rounded-full text-[11px] font-medium">
           {courseNumbers}
         </Badge>
       ) : null}
       {course.gradeText ? (
-        <Badge variant="secondary" className="rounded-full text-[11px] font-medium">
+        <Badge variant="solid" className="rounded-full text-[11px] font-medium">
           Grades {course.gradeText}
         </Badge>
       ) : null}
       {pathwayLabel ? (
-        <Badge variant="secondary" className="rounded-full text-[11px] font-medium">
+        <Badge variant="solid" className="rounded-full text-[11px] font-medium">
           {pathwayLabel}
         </Badge>
       ) : null}
       {termLabel ? (
-        <Badge variant="secondary" className="rounded-full text-[11px] font-medium">
+        <Badge variant="solid" className="rounded-full text-[11px] font-medium">
           {termLabel}
         </Badge>
       ) : null}

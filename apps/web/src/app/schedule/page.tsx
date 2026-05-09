@@ -40,7 +40,7 @@ import { Button } from '@/components/ui/button';
 
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -380,35 +380,35 @@ function SchedulePageContent() {
           <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-px">
             <TabsList className="h-auto gap-0 rounded-none border-0 bg-transparent p-0">
               {canEditOwnSchedule ? (
-                <TabsTrigger
+                <TabItem
                   value="my"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                >
+                 label="My">
                   Schedule
-                </TabsTrigger>
+                </TabItem>
               ) : null}
               {canEditOwnSchedule ? (
-                <TabsTrigger
+                <TabItem
                   value="friends"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                >
+                 label="Friends">
                   Friends
-                </TabsTrigger>
+                </TabItem>
               ) : null}
               {canManageBlocks ? (
-                <TabsTrigger
+                <TabItem
                   value="admin"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                >
+                 label="Admin">
                   Blocks
-                </TabsTrigger>
+                </TabItem>
               ) : null}
             </TabsList>
             {activeTab === 'my' && canEditOwnSchedule && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Public</span>
-                  <Switch checked={isPublic} onCheckedChange={setIsPublic} className="scale-[0.85]" />
+                  <Switch label="" checked={isPublic} onToggle={() => setIsPublic((current) => !current)} className="scale-[0.85]" />
                 </div>
                 <span className="text-border">|</span>
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyMondayToWeek}>
@@ -429,7 +429,7 @@ function SchedulePageContent() {
 
           {/* My Schedule */}
           {canEditOwnSchedule ? (
-            <TabsContent value="my" className="mt-6">
+            <TabPanel value="my" className="mt-6">
               {/* Weekday selector — simple underline style */}
               <div className="flex items-center gap-1 border-b border-border/30">
                 {WEEKDAYS.map((day) => (
@@ -464,11 +464,11 @@ function SchedulePageContent() {
                   onChange={updateScheduleEntry}
                 />
               </div>
-            </TabsContent>
+            </TabPanel>
           ) : null}
 
           {canEditOwnSchedule ? (
-            <TabsContent value="friends" className="mt-6">
+            <TabPanel value="friends" className="mt-6">
               <div className="grid gap-8 xl:grid-cols-[340px_minmax(0,1fr)]">
                 {/* Search sidebar */}
                 <div className="space-y-3">
@@ -607,11 +607,11 @@ function SchedulePageContent() {
                   )}
                 </div>
               </div>
-            </TabsContent>
+            </TabPanel>
           ) : null}
 
           {canManageBlocks ? (
-            <TabsContent value="admin" className="mt-6">
+            <TabPanel value="admin" className="mt-6">
               {/* Weekday selector — underline style same as schedule tab */}
               <div className="flex items-center gap-1 border-b border-border/30">
                 {WEEKDAYS.map((day) => (
@@ -711,7 +711,7 @@ function SchedulePageContent() {
                   </p>
                 )}
               </div>
-            </TabsContent>
+            </TabPanel>
           ) : null}
         </Tabs>
 

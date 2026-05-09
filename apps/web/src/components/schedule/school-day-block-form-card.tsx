@@ -10,7 +10,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { parseTimeToMinutes } from './schedule-utils';
 import { SchoolDayBlock, SchoolDayBlockPayload, ScheduleWeekday } from './types';
@@ -88,12 +87,10 @@ export function SchoolDayBlockFormCard({
         <div className="space-y-1.5">
           <Label className="text-xs">Block type</Label>
           <Select value={kind} onValueChange={(value) => setKind(value as 'PERIOD' | 'CUSTOM')}>
-            <SelectTrigger className="h-9">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="h-9" placeholder="" />
             <SelectContent>
-              <SelectItem value="PERIOD">Period block</SelectItem>
-              <SelectItem value="CUSTOM">Custom block</SelectItem>
+              <SelectItem index={0} value="PERIOD">Period block</SelectItem>
+              <SelectItem index={0} value="CUSTOM">Custom block</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -102,12 +99,10 @@ export function SchoolDayBlockFormCard({
           <div className="space-y-1.5">
             <Label className="text-xs">Period</Label>
             <Select value={periodNumber} onValueChange={setPeriodNumber}>
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="h-9" placeholder="" />
               <SelectContent>
                 {Array.from({ length: 8 }, (_, index) => (
-                  <SelectItem key={index + 1} value={(index + 1).toString()}>
+                  <SelectItem index={0} key={index + 1} value={(index + 1).toString()}>
                     Period {index + 1}
                   </SelectItem>
                 ))}

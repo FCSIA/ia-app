@@ -71,8 +71,8 @@ export function NotificationScopeSwitch({
   return (
     <Button
       type="button"
-      variant={enabled ? 'secondary' : 'outline'}
-      size={compact ? 'sm' : 'default'}
+      variant={enabled ? 'secondary' : 'tertiary'}
+      size={compact ? 'sm' : 'md'}
       className={cn('justify-start gap-2', className)}
       disabled={locked || mutation.isPending}
       onClick={() => mutation.mutate()}

@@ -59,7 +59,7 @@ export function DateTimePicker({
         <PopoverTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="tertiary"
             disabled={disabled}
             className={cn(
               'w-full justify-start text-left font-normal',
@@ -107,7 +107,7 @@ export function DateTimePicker({
       {allowClear && value ? (
         <Button
           type="button"
-          variant="outline"
+          variant="tertiary"
           size="icon"
           className="shrink-0"
           onClick={() => onChange('')}

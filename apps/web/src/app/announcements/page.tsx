@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FeatureFilterBar } from '@/components/filters/feature-filter-bar';
 import {
@@ -290,7 +290,7 @@ export default function AnnouncementsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant={showArchived ? 'secondary' : 'outline'}
+              variant={showArchived ? 'secondary' : 'tertiary'}
               size="sm"
               onClick={() => setShowArchived(!showArchived)}
               className={
@@ -375,7 +375,7 @@ export default function AnnouncementsPage() {
                   <Button
                     key={grade}
                     type="button"
-                    variant={selectedGrades.includes(grade) ? 'secondary' : 'outline'}
+                    variant={selectedGrades.includes(grade) ? 'secondary' : 'tertiary'}
                     size="sm"
                     onClick={() => toggleNumber(grade, selectedGrades, setSelectedGrades)}
                   >
@@ -388,7 +388,7 @@ export default function AnnouncementsPage() {
                   <Button
                     key={`major-${pathway.value}`}
                     type="button"
-                    variant={selectedMajorPathways.includes(pathway.value) ? 'secondary' : 'outline'}
+                    variant={selectedMajorPathways.includes(pathway.value) ? 'secondary' : 'tertiary'}
                     size="sm"
                     onClick={() =>
                       toggleString(pathway.value, selectedMajorPathways, setSelectedMajorPathways)
@@ -403,7 +403,7 @@ export default function AnnouncementsPage() {
                   <Button
                     key={`minor-${pathway.value}`}
                     type="button"
-                    variant={selectedMinorPathways.includes(pathway.value) ? 'secondary' : 'outline'}
+                    variant={selectedMinorPathways.includes(pathway.value) ? 'secondary' : 'tertiary'}
                     size="sm"
                     onClick={() =>
                       toggleString(pathway.value, selectedMinorPathways, setSelectedMinorPathways)
@@ -419,7 +419,7 @@ export default function AnnouncementsPage() {
                     <Button
                       key={club.id}
                       type="button"
-                      variant={selectedClubIds.includes(club.id) ? 'secondary' : 'outline'}
+                      variant={selectedClubIds.includes(club.id) ? 'secondary' : 'tertiary'}
                       size="sm"
                       onClick={() => toggleString(club.id, selectedClubIds, setSelectedClubIds)}
                     >
@@ -461,13 +461,11 @@ export default function AnnouncementsPage() {
                       value={form.targetType}
                       onValueChange={(value) => setForm({ ...form, targetType: value })}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select target" />
-                      </SelectTrigger>
+                      <SelectTrigger placeholder="Select target" />
                       <SelectContent>
-                        <SelectItem value="SCHOOL_WIDE">School-wide</SelectItem>
-                        <SelectItem value="GRADE">Grade</SelectItem>
-                        <SelectItem value="PATHWAY">Pathway</SelectItem>
+                        <SelectItem index={0} value="SCHOOL_WIDE">School-wide</SelectItem>
+                        <SelectItem index={0} value="GRADE">Grade</SelectItem>
+                        <SelectItem index={0} value="PATHWAY">Pathway</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -483,7 +481,7 @@ export default function AnnouncementsPage() {
                           key={grade}
                           type="button"
                           size="sm"
-                          variant={form.targetGrades.includes(grade) ? 'secondary' : 'outline'}
+                          variant={form.targetGrades.includes(grade) ? 'secondary' : 'tertiary'}
                           onClick={() =>
                             toggleNumber(grade, form.targetGrades, (targetGrades) =>
                               setForm({ ...form, targetGrades }),
@@ -510,7 +508,7 @@ export default function AnnouncementsPage() {
                           variant={
                             form.targetMajorPathways.includes(pathway.value)
                               ? 'secondary'
-                              : 'outline'
+                              : 'tertiary'
                           }
                           onClick={() =>
                             toggleString(
@@ -533,7 +531,7 @@ export default function AnnouncementsPage() {
                           variant={
                             form.targetMinorPathways.includes(pathway.value)
                               ? 'secondary'
-                              : 'outline'
+                              : 'tertiary'
                           }
                           onClick={() =>
                             toggleString(
@@ -626,7 +624,7 @@ export default function AnnouncementsPage() {
                 No announcements match your filters.
               </p>
               <Button
-                variant="link"
+                variant="ghost"
                 size="sm"
                 className="mt-2"
                 onClick={clearFilters}
@@ -670,7 +668,7 @@ export default function AnnouncementsPage() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="tertiary"
                           onClick={() => rejectMutation.mutate(announcement.id)}
                         >
                           <X className="mr-1.5 size-4" />

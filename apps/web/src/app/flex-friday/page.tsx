@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import Link from 'next/link';
@@ -508,7 +508,7 @@ export default function FlexFridayPage() {
             )}
             {canManage && (
               <Button
-                variant={activeView === 'audit' ? 'default' : 'outline'}
+                variant={activeView === 'audit' ? 'primary' : 'tertiary'}
                 onClick={() => setActiveView(activeView === 'audit' ? 'schedule' : 'audit')}
                 className="flex items-center gap-2"
               >
@@ -614,12 +614,12 @@ export default function FlexFridayPage() {
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block font-medium">Type</label>
                   <Select value={fridayForm.type} onValueChange={(value) => setFridayForm((c) => ({ ...c, type: value }))}>
-                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectTrigger placeholder="Select type" />
                     <SelectContent>
-                      <SelectItem value="ALL_STUDENT">All Student</SelectItem>
-                      <SelectItem value="GRADE_SPECIFIC">Grade Specific</SelectItem>
-                      <SelectItem value="PATHWAY_SPECIFIC">Pathway Specific</SelectItem>
-                      <SelectItem value="TEACHER_PD">Teacher PD (No School)</SelectItem>
+                      <SelectItem index={0} value="ALL_STUDENT">All Student</SelectItem>
+                      <SelectItem index={0} value="GRADE_SPECIFIC">Grade Specific</SelectItem>
+                      <SelectItem index={0} value="PATHWAY_SPECIFIC">Pathway Specific</SelectItem>
+                      <SelectItem index={0} value="TEACHER_PD">Teacher PD (No School)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -627,9 +627,9 @@ export default function FlexFridayPage() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block font-medium">Pathway</label>
                     <Select value={fridayForm.pathway} onValueChange={(v) => setFridayForm({ ...fridayForm, pathway: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select pathway" /></SelectTrigger>
+                      <SelectTrigger placeholder="Select pathway" />
                       <SelectContent>
-                        {PATHWAY_OPTIONS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                        {PATHWAY_OPTIONS.map((p) => <SelectItem index={0} key={p.value} value={p.value}>{p.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -638,9 +638,9 @@ export default function FlexFridayPage() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block font-medium">Grade</label>
                     <Select value={fridayForm.gradeLevel} onValueChange={(v) => setFridayForm({ ...fridayForm, gradeLevel: v })}>
-                      <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+                      <SelectTrigger placeholder="Select grade" />
                       <SelectContent>
-                        {GRADE_OPTIONS.map((g) => <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>)}
+                        {GRADE_OPTIONS.map((g) => <SelectItem index={0} key={g} value={String(g)}>Grade {g}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -702,7 +702,7 @@ export default function FlexFridayPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
                     Sessions
-                    <Badge variant="secondary" className="font-normal">{format(new Date(selectedFriday.date), 'MMM d')}</Badge>
+                    <Badge variant="solid" className="font-normal">{format(new Date(selectedFriday.date), 'MMM d')}</Badge>
                   </h2>
                   {canCreateSession && !sessionFormOpen && (
                     <Button size="sm" onClick={openNewSessionForm} className="flex items-center gap-1 h-8">
@@ -740,10 +740,10 @@ export default function FlexFridayPage() {
                         <div>
                           <label className="text-xs text-muted-foreground mb-1 block font-medium">Session Type</label>
                           <Select value={sessionForm.sessionType} onValueChange={(v) => setSessionForm({ ...sessionForm, sessionType: v as any })}>
-                            <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                            <SelectTrigger placeholder="Select type" />
                             <SelectContent>
-                              <SelectItem value="STUDENT_CHOICE">Student Choice</SelectItem>
-                              <SelectItem value="TEACHER_ASSIGNED">Teacher Assigned</SelectItem>
+                              <SelectItem index={0} value="STUDENT_CHOICE">Student Choice</SelectItem>
+                              <SelectItem index={0} value="TEACHER_ASSIGNED">Teacher Assigned</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -778,7 +778,7 @@ export default function FlexFridayPage() {
                         {deferredSessionSearch ? 'No sessions match your search' : 'No sessions yet'}
                       </p>
                       {deferredSessionSearch && (
-                        <Button variant="link" size="sm" onClick={() => setSessionSearch('')} className="mt-1 font-semibold text-accent-500">
+                        <Button variant="ghost" size="sm" onClick={() => setSessionSearch('')} className="mt-1 font-semibold text-accent-500">
                           Clear search
                         </Button>
                       )}
@@ -804,7 +804,7 @@ export default function FlexFridayPage() {
                               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                 <h3 className="font-semibold text-foreground/90 text-sm">{s.title}</h3>
                                 {s.sessionType === 'TEACHER_ASSIGNED' && (
-                                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-transparent text-[10px] leading-tight py-0">Assigned</Badge>
+                                  <Badge variant="solid" className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-transparent text-[10px] leading-tight py-0">Assigned</Badge>
                                 )}
                               </div>
                               {s.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{s.description}</p>}
@@ -862,7 +862,7 @@ export default function FlexFridayPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
                     Workshops
-                    <Badge variant="secondary" className="font-normal">{selectedSession.title}</Badge>
+                    <Badge variant="solid" className="font-normal">{selectedSession.title}</Badge>
                   </h2>
                   {canCreateSession && !workshopFormOpen && (
                     <Button size="sm" onClick={openNewWorkshopForm} className="flex items-center gap-1 h-8">
@@ -1050,7 +1050,7 @@ export default function FlexFridayPage() {
                         {deferredWorkshopSearch ? 'No workshops match your search' : 'No workshops yet'}
                       </p>
                       {deferredWorkshopSearch && (
-                        <Button variant="link" size="sm" onClick={() => setWorkshopSearch('')} className="mt-1 font-semibold text-accent-500">
+                        <Button variant="ghost" size="sm" onClick={() => setWorkshopSearch('')} className="mt-1 font-semibold text-accent-500">
                           Clear search
                         </Button>
                       )}
@@ -1074,12 +1074,12 @@ export default function FlexFridayPage() {
                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                   <h3 className="font-semibold text-foreground/90 text-sm">{w.title}</h3>
                                   {isRegistered && (
-                                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-transparent text-[10px] leading-tight py-0">
+                                    <Badge variant="solid" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-transparent text-[10px] leading-tight py-0">
                                       <CheckCircle size={10} className="mr-1" /> Registered
                                     </Badge>
                                   )}
                                   {spansMultiple && (
-                                    <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border-transparent text-[10px] leading-tight py-0">
+                                    <Badge variant="solid" className="bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 border-transparent text-[10px] leading-tight py-0">
                                       Spans {linkedSessions.length} sessions
                                     </Badge>
                                   )}
@@ -1094,7 +1094,7 @@ export default function FlexFridayPage() {
                                 {spansMultiple && (
                                   <div className="mt-2 flex flex-wrap gap-1">
                                     {linkedSessions.map((ls) => (
-                                      <Badge key={ls.id} variant="outline" className="text-[10px] py-0">
+                                      <Badge key={ls.id} variant="dot" className="text-[10px] py-0">
                                         {ls.title} · {formatTimeRange(ls.startTime, ls.endTime)}
                                       </Badge>
                                     ))}
@@ -1103,15 +1103,15 @@ export default function FlexFridayPage() {
                                 {(w.targetGrades?.length || w.targetMajorPathways?.length || w.targetMinorPathways?.length) ? (
                                   <div className="mt-2 flex flex-wrap gap-1">
                                     {(w.targetGrades ?? []).map((g: number) => (
-                                      <Badge key={`g-${g}`} variant="secondary" className="text-[10px] py-0">Grade {g}</Badge>
+                                      <Badge key={`g-${g}`} variant="solid" className="text-[10px] py-0">Grade {g}</Badge>
                                     ))}
                                     {(w.targetMajorPathways ?? []).map((p: string) => (
-                                      <Badge key={`maj-${p}`} variant="secondary" className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-transparent text-[10px] py-0">
+                                      <Badge key={`maj-${p}`} variant="solid" className="bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-transparent text-[10px] py-0">
                                         Major: {pathwayLabel(p)}
                                       </Badge>
                                     ))}
                                     {(w.targetMinorPathways ?? []).map((p: string) => (
-                                      <Badge key={`min-${p}`} variant="secondary" className="bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 border-transparent text-[10px] py-0">
+                                      <Badge key={`min-${p}`} variant="solid" className="bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 border-transparent text-[10px] py-0">
                                         Minor: {pathwayLabel(p)}
                                       </Badge>
                                     ))}
@@ -1131,7 +1131,7 @@ export default function FlexFridayPage() {
                                           : '/flex-friday/pass'
                                       }
                                     >
-                                      <Button size="sm" variant="outline" className="h-8 w-full flex items-center gap-1 border-orange-500/30 text-orange-500 hover:bg-orange-500/10">
+                                      <Button size="sm" variant="tertiary" className="h-8 w-full flex items-center gap-1 border-orange-500/30 text-orange-500 hover:bg-orange-500/10">
                                         <Ticket size={12} /> Pass
                                       </Button>
                                     </Link>

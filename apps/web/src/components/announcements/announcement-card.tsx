@@ -117,39 +117,39 @@ export function AnnouncementCard({
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2 pr-4">
               {announcement.isAdminGeneral ? (
-                <Badge variant="destructive" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Push notification
                 </Badge>
               ) : null}
               {announcement.isFeatured ? (
-                <Badge variant="secondary" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                <Badge variant="solid" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
                   <Sparkles className="size-3" />
                   Featured
                 </Badge>
               ) : null}
               {announcement.isBookmarked ? (
-                <Badge variant="outline" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                <Badge variant="dot" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
                   <BookmarkCheck className="size-3" />
                   Saved
                 </Badge>
               ) : null}
               {announcement.status === 'PENDING_APPROVAL' ? (
-                <Badge variant="secondary" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Pending review
                 </Badge>
               ) : null}
               {announcement.status === 'REJECTED' ? (
-                <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Needs changes
                 </Badge>
               ) : null}
               {announcement.status === 'EXPIRED' ? (
-                <Badge variant="secondary" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Expired
                 </Badge>
               ) : null}
               {announcement.status === 'ARCHIVED' ? (
-                <Badge variant="outline" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Archived
                 </Badge>
               ) : null}
@@ -174,7 +174,7 @@ export function AnnouncementCard({
                   onClick={onClubClick ? () => onClubClick(announcement.club!.id) : undefined}
                 >
                   <Badge
-                    variant="outline"
+                    variant="dot"
                     className={cn(
                       ANNOUNCEMENT_BADGE_TEXT_CLASS,
                       onClubClick ? 'cursor-pointer' : '',

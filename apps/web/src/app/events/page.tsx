@@ -39,13 +39,13 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <Badge
-                variant={event.status === 'PUBLISHED' ? 'default' : event.status === 'CANCELLED' ? 'destructive' : 'secondary'}
+                variant={event.status === 'PUBLISHED' ? 'solid' : event.status === 'CANCELLED' ? 'solid' : 'solid'}
                 className={event.status === 'PUBLISHED' ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 border-transparent' : event.status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 border-transparent' : ''}
               >
                 {event.status.replace(/_/g, ' ')}
               </Badge>
               <Badge
-                variant="outline"
+                variant="dot"
                 className={event.club ? 'text-blue-500 border-blue-500/30 bg-blue-500/10' : ''}
               >
                 {event.club?.name || 'General'}
@@ -64,7 +64,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           {event.status === 'PENDING_APPROVAL' && (
             <div className="flex gap-2 flex-shrink-0">
               <Button size="sm" onClick={() => onApprove(event.id)} className="h-8 flex items-center gap-1"><Check size={14} /> Approve</Button>
-              <Button size="sm" variant="destructive" onClick={() => onReject(event.id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
+              <Button size="sm" variant="primary" onClick={() => onReject(event.id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
             </div>
           )}
           {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?.id) && (
@@ -260,7 +260,7 @@ export default function EventsPage() {
                       {canCreateGeneral ? (
                         <Button
                           type="button"
-                          variant={form.clubId ? 'outline' : 'default'}
+                          variant={form.clubId ? 'tertiary' : 'primary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: '' })}
                         >
@@ -271,7 +271,7 @@ export default function EventsPage() {
                         <Button
                           key={club.id}
                           type="button"
-                          variant={form.clubId === club.id ? 'default' : 'outline'}
+                          variant={form.clubId === club.id ? 'primary' : 'tertiary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: club.id })}
                         >
@@ -295,7 +295,7 @@ export default function EventsPage() {
             <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
             <p className="font-medium">No events match your search</p>
             <p className="text-sm text-muted-foreground mt-1">Try a different title, location, or club name.</p>
-            <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
+            <Button variant="ghost" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold text-accent-500">
               Clear search
             </Button>
           </Card>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, Fragment, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -30,7 +30,7 @@ import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { TooltipProvider } from '@/components/ui/tooltip';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -244,7 +244,7 @@ export function AppShell({
     : undefined;
 
   return (
-    <TooltipProvider delayDuration={150}>
+    <Fragment>
       <div className="flex min-h-screen w-full bg-background">
         {/* Narrow dark sidebar (icon-only, sticky).
             z-40 creates a stacking context above all sibling content (including
@@ -440,7 +440,7 @@ export function AppShell({
         </div>
       </div>
       <GlobalCommandPalette user={user} open={commandOpen} onOpenChange={setCommandOpen} />
-    </TooltipProvider>
+    </Fragment>
   );
 }
 

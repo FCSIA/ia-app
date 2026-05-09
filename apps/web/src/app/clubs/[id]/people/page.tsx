@@ -42,7 +42,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { clubsApi, scheduleApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -142,27 +142,27 @@ function ManagePeopleDialog({
         </DialogHeader>
         <Tabs defaultValue="qr" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="qr">
+            <TabItem value="qr" label="Qr">
               <QrCode className="size-4" />
-            </TabsTrigger>
-            <TabsTrigger value="code">
+            </TabItem>
+            <TabItem value="code" label="Code">
               <Sparkles className="size-4" />
-            </TabsTrigger>
-            <TabsTrigger value="single">
+            </TabItem>
+            <TabItem value="single" label="Single">
               <UserPlus className="size-4" />
-            </TabsTrigger>
-            <TabsTrigger value="bulk">
+            </TabItem>
+            <TabItem value="bulk" label="Bulk">
               <Upload className="size-4" />
-            </TabsTrigger>
+            </TabItem>
           </TabsList>
 
-          <TabsContent value="qr" className="mt-4">
+          <TabPanel value="qr" className="mt-4">
             <div className="flex flex-col items-center gap-4 rounded-lg border p-5 text-center">
               {qrUrl ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={qrUrl} alt="Club join QR code" className="size-56 rounded-md border bg-white p-2" />
-                  <Button type="button" variant="outline" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
+                  <Button type="button" variant="tertiary" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
                     <Copy className="mr-2 size-4" />
                     Copy link
                   </Button>
@@ -179,9 +179,9 @@ function ManagePeopleDialog({
                 </>
               )}
             </div>
-          </TabsContent>
+          </TabPanel>
 
-          <TabsContent value="code" className="mt-4">
+          <TabPanel value="code" className="mt-4">
             <div className="flex flex-col gap-4 rounded-lg border p-5">
               {club.activeJoinCode?.code ? (
                 <div className="rounded-lg bg-muted/40 p-4 text-center">
@@ -205,7 +205,7 @@ function ManagePeopleDialog({
                 {club.activeJoinCode?.code ? (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="tertiary"
                     onClick={() => navigator.clipboard?.writeText(club.activeJoinCode?.code ?? '')}
                   >
                     <Copy className="mr-2 size-4" />
@@ -217,9 +217,9 @@ function ManagePeopleDialog({
                 </Button>
               </div>
             </div>
-          </TabsContent>
+          </TabPanel>
 
-          <TabsContent value="single" className="mt-4">
+          <TabPanel value="single" className="mt-4">
             <div className="flex flex-col gap-3">
               {selected ? (
                 <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -273,9 +273,9 @@ function ManagePeopleDialog({
                 </Command>
               )}
             </div>
-          </TabsContent>
+          </TabPanel>
 
-          <TabsContent value="bulk" className="mt-4">
+          <TabPanel value="bulk" className="mt-4">
             <div className="flex flex-col gap-3 rounded-lg border p-5">
               <Label htmlFor="invite-csv">CSV upload</Label>
               <Input
@@ -286,7 +286,7 @@ function ManagePeopleDialog({
                 onChange={(event) => setCsvFile(event.target.files?.[0] || null)}
               />
               <Button
-                variant="outline"
+                variant="tertiary"
                 disabled={!csvFile || csvMutation.isPending}
                 onClick={() => csvMutation.mutate()}
               >
@@ -306,7 +306,7 @@ function ManagePeopleDialog({
                 </div>
               ) : null}
             </div>
-          </TabsContent>
+          </TabPanel>
         </Tabs>
       </DialogContent>
     </Dialog>
@@ -391,18 +391,18 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <Tabs value={filter} onValueChange={setFilter} className="w-full sm:w-auto">
               <TabsList className="grid w-full grid-cols-4 sm:w-auto sm:inline-flex rounded-xl p-1 bg-muted/50 border border-border/50">
-                <TabsTrigger value="all" className="rounded-lg text-xs sm:text-sm">
+                <TabItem value="all" className="rounded-lg text-xs sm:text-sm" label="All">
                   All <span className="ml-1.5 opacity-50">{stats.all}</span>
-                </TabsTrigger>
-                <TabsTrigger value="leaders" className="rounded-lg text-xs sm:text-sm">
+                </TabItem>
+                <TabItem value="leaders" className="rounded-lg text-xs sm:text-sm" label="Leaders">
                   Leaders <span className="ml-1.5 opacity-50">{stats.leaders}</span>
-                </TabsTrigger>
-                <TabsTrigger value="sponsors" className="rounded-lg text-xs sm:text-sm">
+                </TabItem>
+                <TabItem value="sponsors" className="rounded-lg text-xs sm:text-sm" label="Sponsors">
                   Sponsors <span className="ml-1.5 opacity-50">{stats.sponsors}</span>
-                </TabsTrigger>
-                <TabsTrigger value="members" className="rounded-lg text-xs sm:text-sm">
+                </TabItem>
+                <TabItem value="members" className="rounded-lg text-xs sm:text-sm" label="Members">
                   Members <span className="ml-1.5 opacity-50">{stats.members}</span>
-                </TabsTrigger>
+                </TabItem>
               </TabsList>
             </Tabs>
 
@@ -451,7 +451,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
                     : "There are no members in this category yet."}
                 </p>
                 {deferredSearch && (
-                  <Button variant="link" onClick={() => setSearch('')} className="mt-2 text-primary font-semibold">
+                  <Button variant="ghost" onClick={() => setSearch('')} className="mt-2 text-primary font-semibold">
                     Clear search
                   </Button>
                 )}
@@ -492,17 +492,17 @@ function PersonRow({
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold text-foreground">{fullName(person)}</p>
           {isSponsor ? (
-            <Badge variant="default" className="bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 gap-1 px-1.5 py-0 h-5">
+            <Badge variant="solid" className="bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 gap-1 px-1.5 py-0 h-5">
                <ShieldCheck className="size-3" />
                Sponsor
             </Badge>
           ) : person.clubRole ? (
-            <Badge variant="secondary" className="gap-1 px-1.5 py-0 h-5 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Badge variant="solid" className="gap-1 px-1.5 py-0 h-5 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <Crown className="size-3 text-amber-500" />
               {formatClubRole(person.clubRole)}
             </Badge>
           ) : null}
-          {isCurrentUser ? <Badge variant="outline" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
+          {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
         {person.uniqueId ? (
           <p className="truncate font-mono text-[11px] text-muted-foreground">{person.uniqueId}</p>

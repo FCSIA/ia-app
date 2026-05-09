@@ -163,7 +163,7 @@ export default function CalendarPage() {
                 <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
                 <p className="font-medium">No events match your search</p>
                 <p className="text-sm text-muted-foreground mt-1">Try a different title or location.</p>
-                <Button variant="link" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold">
+                <Button variant="ghost" size="sm" onClick={() => setSearch('')} className="mt-2 font-semibold">
                   Clear search
                 </Button>
               </Card>
@@ -332,7 +332,7 @@ export default function CalendarPage() {
                     initialDate={selectedDay}
                     trigger={
                       <Button
-                        variant="outline"
+                        variant="tertiary"
                         size="icon"
                         className="h-8 w-8 rounded-lg border-foreground/10 hover:bg-primary/10 hover:text-primary transition-all"
                       >
@@ -360,7 +360,7 @@ export default function CalendarPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap mb-2">
                                 <Badge
-                                  variant="outline"
+                                  variant="dot"
                                   className="border-transparent"
                                   style={{ background: color.bg, color: color.text }}
                                 >
@@ -368,7 +368,7 @@ export default function CalendarPage() {
                                 </Badge>
                                 {e.event?.club?.name && (
                                   <Badge
-                                    variant="outline"
+                                    variant="dot"
                                     className="text-blue-500 border-blue-500/30 bg-blue-500/10"
                                   >
                                     {e.event.club.name}

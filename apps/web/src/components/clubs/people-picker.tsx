@@ -78,7 +78,7 @@ export function PeoplePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant="tertiary"
             type="button"
             disabled={disabled}
             className="h-auto min-h-11 w-full justify-between rounded-2xl border-border/70 bg-background/80 px-4 py-3 text-left shadow-sm backdrop-blur"
@@ -116,13 +116,13 @@ export function PeoplePicker({
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium text-foreground">{fullName(person)}</span>
                           {person.clubRole ? (
-                            <Badge variant="secondary" className="rounded-full bg-amber-500/12 text-[10px] text-amber-700 dark:text-amber-300">
+                            <Badge variant="solid" className="rounded-full bg-amber-500/12 text-[10px] text-amber-700 dark:text-amber-300">
                               <Crown className="mr-1 size-3" />
                               {formatClubRole(person.clubRole)}
                             </Badge>
                           ) : null}
                           {person.kind === 'SPONSOR' && (
-                            <Badge variant="secondary" className="rounded-full bg-sky-500/12 text-[10px] text-sky-700 dark:text-sky-300">
+                            <Badge variant="solid" className="rounded-full bg-sky-500/12 text-[10px] text-sky-700 dark:text-sky-300">
                               Sponsor
                             </Badge>
                           )}
@@ -147,7 +147,7 @@ export function PeoplePicker({
           {selected.map((person) => (
             <Badge
               key={person.id}
-              variant="secondary"
+              variant="solid"
               className="h-auto rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 text-[11px] text-orange-900 dark:text-orange-100"
             >
               <span>{fullName(person)}</span>

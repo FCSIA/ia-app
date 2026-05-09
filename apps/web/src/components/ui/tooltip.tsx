@@ -1,32 +1,121 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import {
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { springs } from "@/lib/springs";
+import { fontWeights } from "@/lib/font-weight";
+import { useShape } from "@/lib/shape-context";
 
-import { cn } from "@/lib/utils"
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-const TooltipProvider = TooltipPrimitive.Provider
+type TooltipSide = "top" | "right" | "bottom" | "left";
 
-const Tooltip = TooltipPrimitive.Root
+interface TooltipProps {
+  content: ReactNode;
+  children: React.ReactElement;
+  side?: TooltipSide;
+  sideOffset?: number;
+  delayDuration?: number;
+  className?: string;
+  /** When true, forces the tooltip open. When false, forces it closed. When undefined, uses default hover/focus behavior. */
+  forceOpen?: boolean;
+  /** Called when the tooltip's internal open state changes (before forceOpen is applied). */
+  onOpenChange?: (open: boolean) => void;
+}
 
-const TooltipTrigger = TooltipPrimitive.Trigger
+// ---------------------------------------------------------------------------
+// Animation helpers
+// ---------------------------------------------------------------------------
 
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-tooltip-content-transform-origin]",
-        className
-      )}
-      {...props}
-    />
-  </TooltipPrimitive.Portal>
-))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
+function getSlideOffset(side: TooltipSide) {
+  switch (side) {
+    case "top":
+      return { y: 4 };
+    case "bottom":
+      return { y: -4 };
+    case "left":
+      return { x: 4 };
+    case "right":
+      return { x: -4 };
+  }
+}
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+// ---------------------------------------------------------------------------
+// Tooltip
+// ---------------------------------------------------------------------------
+
+function Tooltip({
+  content,
+  children,
+  side = "top",
+  sideOffset = 8,
+  delayDuration = 200,
+  className,
+  forceOpen,
+  onOpenChange: onOpenChangeProp,
+}: TooltipProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = forceOpen !== undefined ? forceOpen : internalOpen;
+  const [mounted, setMounted] = useState(false);
+  const shape = useShape();
+
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
+
+  const handleExitComplete = () => {
+    if (!open) setMounted(false);
+  };
+
+  const slideOffset = getSlideOffset(side);
+
+  return (
+    <TooltipPrimitive.Provider delayDuration={delayDuration}>
+      <TooltipPrimitive.Root open={open} onOpenChange={(v) => { setInternalOpen(v); onOpenChangeProp?.(v); }}>
+        <TooltipPrimitive.Trigger asChild>
+          {children}
+        </TooltipPrimitive.Trigger>
+        {mounted && (
+          <TooltipPrimitive.Portal forceMount>
+            <TooltipPrimitive.Content
+              side={side}
+              sideOffset={sideOffset}
+              forceMount
+              className="z-50"
+            >
+              <motion.div
+                className={cn(
+                  "bg-foreground text-background text-[12px] px-2 py-1",
+                  shape.bg,
+                  className
+                )}
+                style={{ fontVariationSettings: fontWeights.medium }}
+                initial={{ opacity: 0, ...slideOffset }}
+                animate={{
+                  opacity: open ? 1 : 0,
+                  x: 0,
+                  y: 0,
+                }}
+                transition={open ? springs.fast : { duration: 0.1 }}
+                onAnimationComplete={handleExitComplete}
+              >
+                {content}
+              </motion.div>
+            </TooltipPrimitive.Content>
+          </TooltipPrimitive.Portal>
+        )}
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
+  );
+}
+
+export { Tooltip };
+export type { TooltipProps, TooltipSide };

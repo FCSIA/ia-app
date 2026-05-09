@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 type AnnouncementReadToggleProps = {
   announcementId: string;
   isRead: boolean;
-  size?: 'sm' | 'default';
-  variant?: 'outline' | 'ghost' | 'secondary';
+  size?: 'sm' | 'md';
+  variant?: 'tertiary' | 'ghost' | 'secondary';
   className?: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
@@ -17,7 +17,7 @@ export function AnnouncementReadToggle({
   announcementId,
   isRead,
   size = 'sm',
-  variant = 'outline',
+  variant = 'tertiary',
   className,
   onClick,
 }: AnnouncementReadToggleProps) {

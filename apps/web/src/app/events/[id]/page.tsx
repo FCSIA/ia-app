@@ -104,13 +104,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <CardHeader className="bg-muted/20 pb-6 border-b">
             <div className="flex items-center gap-2 mb-4">
               <Badge 
-                variant={event.status === 'PUBLISHED' ? 'default' : 'secondary'}
+                variant={event.status === 'PUBLISHED' ? 'solid' : 'solid'}
                 className={event.status === 'PUBLISHED' ? 'bg-emerald-500/15 text-emerald-500' : ''}
               >
                 {event.status.replace(/_/g, ' ')}
               </Badge>
               {event.club && (
-                <Badge variant="outline" className="text-blue-500 border-blue-500/30">
+                <Badge variant="dot" className="text-blue-500 border-blue-500/30">
                   {event.club.name}
                 </Badge>
               )}
@@ -168,10 +168,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div className="pt-6 border-t flex flex-wrap gap-3">
-                <Button variant="outline" className="gap-2">
+                <Button variant="tertiary" className="gap-2">
                   <Calendar size={16} /> Add to Calendar
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={() => {
+                <Button variant="tertiary" className="gap-2" onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   toast({ title: 'Link copied to clipboard' });
                 }}>

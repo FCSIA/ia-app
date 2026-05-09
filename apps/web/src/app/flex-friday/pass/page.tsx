@@ -260,7 +260,7 @@ function PassCard({
               <CalendarDays size={12} />
               Flex Friday
               {group.type ? (
-                <Badge variant="secondary" className="text-[10px] leading-none">
+                <Badge variant="solid" className="text-[10px] leading-none">
                   {group.type.replace(/_/g, ' ').toLowerCase()}
                 </Badge>
               ) : null}
@@ -327,7 +327,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
             </Badge>
             {linkedSessions.length > 1 ? (
               <Badge
-                variant="secondary"
+                variant="solid"
                 className="text-[10px] leading-none"
                 title={`Spans ${linkedSessions.length} sessions`}
               >

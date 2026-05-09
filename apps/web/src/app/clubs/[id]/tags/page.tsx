@@ -82,7 +82,7 @@ export default function ClubTagsPage({ params }: { params: Promise<{ id: string 
               {tags.map((tag) => (
                 <div key={tag.id} className="rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="font-mono">@{tag.slug}</Badge>
+                    <Badge variant="solid" className="font-mono">@{tag.slug}</Badge>
                     <span className="text-sm font-medium">{tag.name}</span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {tag.members.length} {tag.members.length === 1 ? 'member' : 'members'}
@@ -93,7 +93,7 @@ export default function ClubTagsPage({ params }: { params: Promise<{ id: string 
                       {tag.members.map((member) => (
                         <Badge
                           key={`${tag.id}-${member.user.id}`}
-                          variant="outline"
+                          variant="dot"
                           className="font-normal"
                         >
                           {fullName(member.user)}

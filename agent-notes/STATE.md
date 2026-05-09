@@ -2,7 +2,13 @@
 
 ## Active Agent Focus
 *   **Agent**: Codex
-*   **Focus**: Implementing Fluid Functionalism rewrite across announcements, calendar, clubs, and notifications.
+*   **Focus**: Porting the web app to Fluid Functionalism as the primary UI system.
+*   **Status**: In Progress — Fluid registry primitives installed through shadcn CLI and app call sites migrated to native Fluid APIs. Next pass should improve composition with Fluid surface/elevation ideas, proximity-hover tables/lists, subtle tabs, input copy, color picker, and richer page treatments instead of only compile-level API migration.
+
+## Fluid Functionalism Directive
+*   Use `pnpm dlx shadcn@latest add @fluid/<component>` as the source of truth for Fluid components. Do not add compatibility aliases back into Fluid primitive files unless the user explicitly asks for a temporary bridge.
+*   Prefer native Fluid APIs: `Button` variants `primary/secondary/tertiary/ghost`, `Badge` variants `solid/dot`, `TabItem`/`TabPanel`, `SelectTrigger placeholder`, indexed `SelectItem`, `Switch onToggle`, and Fluid-specific components like `TabsSubtle`, `InputCopy`, `Dropdown`, `ColorPicker`, `ThinkingIndicator`, and `Table`.
+*   Design direction from latest docs: motion should communicate state, proximity hover should preview target actions, spring presets should stay consistent, and layered surfaces should feel intentionally elevated rather than flat card-heavy shadcn defaults.
 # Current Execution State
 
 ## Active Agent Focus

@@ -190,7 +190,7 @@ function MessageRow({
         {message.mentions.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
             {message.mentions.map((mention) => (
-              <Badge key={mention.id} variant="outline" className="h-5 font-mono text-[10px]">
+              <Badge key={mention.id} variant="dot" className="h-5 font-mono text-[10px]">
                 @{mention.token}
               </Badge>
             ))}
@@ -202,7 +202,7 @@ function MessageRow({
             {message.reactions.map((reaction) => (
               <Button
                 key={`${message.id}-${reaction.emoji}`}
-                variant="outline"
+                variant="tertiary"
                 size="sm"
                 className={cn(
                   'h-6 gap-1 px-2 text-xs',

@@ -23,7 +23,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { useCurrentUser } from '@/lib/auth';
 import { coursesApi } from '@/lib/api';
@@ -110,7 +109,7 @@ export default function CoursesPage() {
           action={
             user?.gradeLevel ? (
               <Button
-                variant="outline"
+                variant="tertiary"
                 className="rounded-2xl"
                 onClick={() => setGrade(String(user.gradeLevel))}
               >
@@ -130,37 +129,31 @@ export default function CoursesPage() {
               />
             </div>
             <Select value={department} onValueChange={setDepartment}>
-              <SelectTrigger className="rounded-2xl">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
+              <SelectTrigger className="rounded-2xl" placeholder="Department" />
               <SelectContent>
-                <SelectItem value="ALL">All departments</SelectItem>
+                <SelectItem index={0} value="ALL">All departments</SelectItem>
                 {departments.map((entry) => (
-                  <SelectItem key={entry} value={entry}>
+                  <SelectItem index={0} key={entry} value={entry}>
                     {entry}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={pathway} onValueChange={setPathway}>
-              <SelectTrigger className="rounded-2xl">
-                <SelectValue placeholder="Pathway" />
-              </SelectTrigger>
+              <SelectTrigger className="rounded-2xl" placeholder="Pathway" />
               <SelectContent>
-                <SelectItem value="ALL">All pathways</SelectItem>
-                <SelectItem value="ENGINEERING">Engineering</SelectItem>
-                <SelectItem value="INFORMATION_TECHNOLOGY">Information Technology</SelectItem>
-                <SelectItem value="HEALTH_SCIENCE">Health Science</SelectItem>
+                <SelectItem index={0} value="ALL">All pathways</SelectItem>
+                <SelectItem index={0} value="ENGINEERING">Engineering</SelectItem>
+                <SelectItem index={0} value="INFORMATION_TECHNOLOGY">Information Technology</SelectItem>
+                <SelectItem index={0} value="HEALTH_SCIENCE">Health Science</SelectItem>
               </SelectContent>
             </Select>
             <Select value={grade} onValueChange={setGrade}>
-              <SelectTrigger className="rounded-2xl">
-                <SelectValue placeholder="Grade" />
-              </SelectTrigger>
+              <SelectTrigger className="rounded-2xl" placeholder="Grade" />
               <SelectContent>
-                <SelectItem value="ALL">All grades</SelectItem>
+                <SelectItem index={0} value="ALL">All grades</SelectItem>
                 {[9, 10, 11, 12].map((entry) => (
-                  <SelectItem key={entry} value={String(entry)}>
+                  <SelectItem index={0} key={entry} value={String(entry)}>
                     Grade {entry}
                   </SelectItem>
                 ))}

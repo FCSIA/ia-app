@@ -42,7 +42,7 @@ export function AnnouncementsWidget() {
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Unread</Badge>
                     {announcement.club?.name ? (
-                      <Badge variant="outline">{announcement.club.name}</Badge>
+                      <Badge variant="dot">{announcement.club.name}</Badge>
                     ) : null}
                   </div>
                   <Link href={`/announcements/${announcement.id}`}>

@@ -70,7 +70,7 @@ export function MyClubsWidget() {
                         {club.category?.replace(/_/g, ' ')}
                       </span>
                       {isLeader || isSponsor ? (
-                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px] h-4">
+                        <Badge variant="solid" className="px-1.5 py-0 text-[10px] h-4">
                           {isSponsor ? <Shield className="mr-1 size-3" /> : <User className="mr-1 size-3" />}
                           {clubMember.role.replace('_', ' ')}
                         </Badge>

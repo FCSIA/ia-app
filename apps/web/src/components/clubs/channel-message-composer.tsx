@@ -204,7 +204,7 @@ export function ChannelMessageComposer({
           {files.length > 0 ? (
             <div className="flex flex-wrap gap-1.5 border-b px-3 py-2">
               {files.map((file) => (
-                <Badge key={file.name} variant="outline" className="gap-1 pr-1">
+                <Badge key={file.name} variant="dot" className="gap-1 pr-1">
                   <span className="max-w-40 truncate">{file.name}</span>
                   <button
                     type="button"
@@ -247,7 +247,7 @@ export function ChannelMessageComposer({
                 <Button
                   key={suggestion.token}
                   type="button"
-                  variant="outline"
+                  variant="tertiary"
                   size="sm"
                   className="h-7 rounded-full px-2.5 text-[11px]"
                   onMouseDown={(event) => {
