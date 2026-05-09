@@ -9,6 +9,19 @@
 *   Use `pnpm dlx shadcn@latest add @fluid/<component>` as the source of truth for Fluid components. Do not add compatibility aliases back into Fluid primitive files unless the user explicitly asks for a temporary bridge.
 *   Prefer native Fluid APIs: `Button` variants `primary/secondary/tertiary/ghost`, `Badge` variants `solid/dot`, `TabItem`/`TabPanel`, `SelectTrigger placeholder`, indexed `SelectItem`, `Switch onToggle`, and Fluid-specific components like `TabsSubtle`, `InputCopy`, `Dropdown`, `ColorPicker`, `ThinkingIndicator`, and `Table`.
 *   Design direction from latest docs: motion should communicate state, proximity hover should preview target actions, spring presets should stay consistent, and layered surfaces should feel intentionally elevated rather than flat card-heavy shadcn defaults.
+
+## Fluid Component Opportunity Map
+*   **Navigation and shell**: Convert the user menu and club/channel pickers to Fluid `Dropdown` where the menu is simple action navigation; keep Radix wrappers only where checkbox/radio/submenu semantics are required. Add Fluid `Tooltip` to icon-only sidebar and header actions, and use Fluid surface/elevation styling for overlays.
+*   **Sidebar**: Treat main nav as a proximity-hover list instead of expanding labels with custom absolute spans. Use icon-only resting state, tooltip labels, active row motion, and unread `Badge` dots/counts. Avoid repeating page titles in the header when the main page already names the page.
+*   **Command palette**: Keep shadcn command for fuzzy search, but style groups like Fluid surfaces and use `Badge`, `Kbd`, and row hover states consistently. Prioritize current-context actions first, then unfinished work, then entities, then global navigation.
+*   **Filters**: Replace standalone chip buttons with Fluid `CheckboxGroup` for multi-select filter bands and `RadioGroup`/`TabsSubtle` for mutually exclusive read/status/source modes. Keep `Badge` color mapping for counts and active status.
+*   **Settings and admin panels**: Use Fluid `Tabs` for dense segmented page modes, `TabsSubtle` for secondary sections, `Switch` for notification toggles, `Table` for moderation/audit/user rows, and `Accordion` for advanced or rarely used policy sections.
+*   **Club creation and management**: Use `Dialog` plus `InputGroup` for create/edit forms, `RadioGroup` for join policy, `Slider`/`SliderComfortable` for member cap or default channel limits, `ColorPicker` for club accent, and `InputCopy` for join code/share link.
+*   **Club chat**: Use `Dropdown` for message actions, `Tooltip` for composer icons, `Badge` for attachment/poll/pinned states, `Accordion` for poll results or long thread metadata, and `ThinkingIndicator` only for real upload/send processing states.
+*   **Announcements**: Use `Badge` dot/solid variants for status, target, featured, and unread metadata; `Tooltip` on icon-only bookmark/mark-read controls; `Accordion` for advanced delivery/audience targeting; `CheckboxGroup` for grade/pathway targeting.
+*   **Calendar/events/Flex Friday**: Use the shared filter shell with Fluid grouped controls, `Table` for admin/audit-style lists, `Slider` for capacity and duration choices, and `TabsSubtle` for source/date modes.
+*   **Copy/share flows**: Replace plain copy buttons for join codes, QR links, invite URLs, schedule share links, and course/reference IDs with `InputCopy` so users get consistent animated confirmation.
+*   **Loading and async review flows**: Use `ThinkingIndicator` for compact in-button or inline async states and `ThinkingSteps` for multi-step admin operations only when steps are real and user-visible, such as import/bulk invite/moderation review processing.
 # Current Execution State
 
 ## Active Agent Focus
