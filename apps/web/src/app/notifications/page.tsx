@@ -3,7 +3,7 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clubsApi, notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -58,6 +58,22 @@ export default function NotificationsPage() {
       return true;
     });
   }, [myClubs]);
+
+  const channelQueries = useQueries({
+    queries: involvedClubs.map((club: any) => ({
+      queryKey: ['club-channels', club.id],
+      queryFn: () => clubsApi.getChannels(club.id).then((r) => r.data),
+      enabled: !!club.id,
+    })),
+  });
+
+  const channelsByClub = useMemo(() => {
+    const next = new Map<string, any[]>();
+    involvedClubs.forEach((club: any, index) => {
+      next.set(club.id, (channelQueries[index]?.data as any[]) ?? []);
+    });
+    return next;
+  }, [channelQueries, involvedClubs]);
 
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -265,7 +281,9 @@ export default function NotificationsPage() {
                   <h2 className="text-sm font-semibold">Clubs and channels</h2>
                   {involvedClubs.length > 0 ? (
                     <div className="grid gap-3">
-                      {involvedClubs.map((club: any) => (
+                      {involvedClubs.map((club: any) => {
+                        const channels = channelsByClub.get(club.id) ?? [];
+                        return (
                         <div key={club.id} className="rounded-lg border p-3">
                           <div className="mb-3 flex items-center justify-between gap-3">
                             <p className="font-medium">{club.name}</p>
@@ -276,11 +294,38 @@ export default function NotificationsPage() {
                               compact
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Channel mention controls also appear inside each club channel and stay synced here.
-                          </p>
+                          {channels.length > 0 ? (
+                            <div className="grid gap-2">
+                              {channels.map((channel: any) => (
+                                <div
+                                  key={channel.id}
+                                  className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/30 px-3 py-2"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">#{channel.name}</p>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      Channel mentions
+                                    </p>
+                                  </div>
+                                  <NotificationScopeSwitch
+                                    category="CLUB_CHANNEL_MENTION"
+                                    label={`${channel.name} mentions`}
+                                    clubId={club.id}
+                                    channelId={channel.id}
+                                    compact
+                                    className="shrink-0"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              No visible channels to configure yet.
+                            </p>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">

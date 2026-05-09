@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { SliderComfortable } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
@@ -36,6 +37,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   const [description, setDescription] = useState('');
   const [sponsorIds, setSponsorIds] = useState<string[]>([]);
   const [joinPolicy, setJoinPolicy] = useState<'OPEN' | 'REQUEST'>('OPEN');
+  const [memberLimit, setMemberLimit] = useState(40);
 
   const { data: staff } = useQuery<UserDirectoryResponse>({
     queryKey: ['club-sponsor-directory'],
@@ -58,6 +60,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         description: description.trim() || undefined,
         sponsorIds,
         joinPolicy,
+        memberLimit,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clubs'] });
@@ -67,6 +70,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
       setDescription('');
       setSponsorIds([]);
       setJoinPolicy('OPEN');
+      setMemberLimit(40);
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -140,6 +144,24 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
               onChange={setSponsorIds}
               placeholder="Select sponsors"
               emptyText="No sponsor-eligible staff found."
+            />
+          </div>
+
+          <div className="space-y-2 rounded-2xl border border-border/70 bg-muted/20 p-3">
+            <div>
+              <Label>Member limit</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                New joins and approvals stop once this club reaches the selected limit.
+              </p>
+            </div>
+            <SliderComfortable
+              value={memberLimit}
+              onChange={setMemberLimit}
+              min={10}
+              max={200}
+              step={10}
+              label="Limit"
+              formatValue={(value) => `${value} members`}
             />
           </div>
         </div>

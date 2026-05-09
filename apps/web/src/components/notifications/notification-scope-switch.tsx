@@ -1,8 +1,8 @@
 'use client';
 
-import { Bell, BellOff, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { notificationsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -69,23 +69,23 @@ export function NotificationScopeSwitch({
   });
 
   return (
-    <Button
-      type="button"
-      variant={enabled ? 'secondary' : 'tertiary'}
-      size={compact ? 'sm' : 'md'}
-      className={cn('justify-start gap-2', className)}
-      disabled={locked || mutation.isPending}
-      onClick={() => mutation.mutate()}
+    <div
+      className={cn(
+        'flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/20 px-3 py-2',
+        compact && 'rounded-xl px-2 py-1.5',
+        locked && 'opacity-80',
+        className,
+      )}
       title={locked ? 'Push notifications to everyone cannot be disabled' : undefined}
     >
-      {locked ? (
-        <Lock className="size-4" />
-      ) : enabled ? (
-        <Bell className="size-4" />
-      ) : (
-        <BellOff className="size-4" />
-      )}
-      {compact ? (enabled ? 'On' : 'Off') : label}
-    </Button>
+      <Switch
+        label={compact ? (enabled ? 'On' : 'Off') : label}
+        checked={enabled}
+        onToggle={() => mutation.mutate()}
+        disabled={locked || mutation.isPending}
+        className="min-w-0 flex-1 px-0 py-0"
+      />
+      {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   ClubJoinRequestStatus,
   InviteStatus,
   NotificationCategory,
+  Prisma,
 } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -40,6 +41,8 @@ export class ClubInvitationsService {
           name: true,
           joinPolicy: true,
           joinCode: true,
+          memberLimit: true,
+          _count: { select: { members: true } },
         },
       }),
       this.prisma.clubMember.findFirst({
@@ -54,7 +57,23 @@ export class ClubInvitationsService {
 
     if (!club) throw new NotFoundException('Club not found');
     if (membership || sponsor) throw new ConflictException('Already part of this club');
+    if (club.memberLimit != null && club._count.members >= club.memberLimit) {
+      throw new ConflictException('This club is at its member limit');
+    }
     return club;
+  }
+
+  private async ensureClubHasSpace(tx: Prisma.TransactionClient, clubId: string) {
+    const club = await tx.club.findUnique({
+      where: { id: clubId },
+      select: {
+        memberLimit: true,
+        _count: { select: { members: true } },
+      },
+    });
+    if (club?.memberLimit != null && club._count.members >= club.memberLimit) {
+      throw new ConflictException('This club is at its member limit');
+    }
   }
 
   private async addMemberToClub(clubId: string, userId: string) {
@@ -224,6 +243,7 @@ export class ClubInvitationsService {
 
     await this.prisma.$transaction(async (tx) => {
       if (accept) {
+        await this.ensureClubHasSpace(tx, invite.clubId);
         await tx.clubMember.create({
           data: { clubId: invite.clubId, userId, role: null },
         });
@@ -396,6 +416,7 @@ export class ClubInvitationsService {
 
     await this.prisma.$transaction(async (tx) => {
       if (accept) {
+        await this.ensureClubHasSpace(tx, clubId);
         await tx.clubMember.create({
           data: { clubId, userId: request.requesterId, role: null },
         });

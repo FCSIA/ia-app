@@ -247,6 +247,7 @@ export class ClubManagementService {
         name: nameModeration.masked,
         description: descriptionModeration.masked || undefined,
         joinPolicy: dto.joinPolicy ?? 'OPEN',
+        memberLimit: dto.memberLimit,
         sponsors: {
           create: sponsorIds.map((sponsorId) => ({ userId: sponsorId })),
         },
@@ -302,6 +303,7 @@ export class ClubManagementService {
         bannerUrl: normalizeNullable(dto.bannerUrl),
         accentColor: normalizeNullable(dto.accentColor),
         overview: normalizeNullable(moderatedOverview),
+        memberLimit: dto.memberLimit,
       },
     });
 

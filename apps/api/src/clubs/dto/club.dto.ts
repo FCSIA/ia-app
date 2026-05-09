@@ -33,6 +33,14 @@ export class CreateClubDto {
   @IsOptional()
   joinPolicy?: ClubJoinPolicy;
 
+  @ApiPropertyOptional({ description: 'Maximum number of student members allowed in the club' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(500)
+  memberLimit?: number;
+
   @ApiProperty({ type: [String], description: 'At least one sponsor is required' })
   @IsArray()
   @ArrayNotEmpty()
@@ -56,6 +64,14 @@ export class UpdateClubDto {
   @ApiPropertyOptional({ enum: ClubJoinPolicy })
   @IsOptional()
   joinPolicy?: ClubJoinPolicy;
+
+  @ApiPropertyOptional({ description: 'Maximum number of student members allowed in the club' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(500)
+  memberLimit?: number | null;
 
   @ApiPropertyOptional({ description: 'Public URL to the club logo image' })
   @IsOptional()

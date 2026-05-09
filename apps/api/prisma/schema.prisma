@@ -254,6 +254,7 @@ model Club {
   accentColor   String?                @map("accent_color")
   overview      String?                @db.Text
   joinPolicy    ClubJoinPolicy         @default(OPEN) @map("join_policy")
+  memberLimit   Int?                   @map("member_limit")
   joinCode      String?                @map("join_code")
   joinCodeUpdatedAt DateTime?          @map("join_code_updated_at")
   isActive      Boolean                @default(true) @map("is_active")
