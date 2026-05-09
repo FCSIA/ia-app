@@ -43,6 +43,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
+import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
@@ -755,8 +756,8 @@ export default function AdminPage() {
                   <SelectTrigger className="h-8 w-[200px] text-xs" placeholder="Select role view" />
                   <SelectContent>
                     <SelectItem index={0} value="students">Students</SelectItem>
-                    <SelectItem index={0} value="teachers">Teachers</SelectItem>
-                    <SelectItem index={0} value="other">Other Roles</SelectItem>
+                    <SelectItem index={1} value="teachers">Teachers</SelectItem>
+                    <SelectItem index={2} value="other">Other Roles</SelectItem>
                   </SelectContent>
                 </Select>
                 {isSuperAdmin && (
@@ -1277,24 +1278,14 @@ export default function AdminPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex rounded-lg border bg-muted/30 p-0.5">
-                      <Button
-                        variant={auditSubView === 'general' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-3 text-[11px] rounded-md"
-                        onClick={() => setAuditSubView('general')}
-                      >
-                        General
-                      </Button>
-                      <Button
-                        variant={auditSubView === 'flex' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 px-3 text-[11px] rounded-md"
-                        onClick={() => setAuditSubView('flex')}
-                      >
-                        Flex & Events
-                      </Button>
-                    </div>
+                    <TabsSubtle
+                      selectedIndex={auditSubView === 'general' ? 0 : 1}
+                      onSelect={(index) => setAuditSubView(index === 0 ? 'general' : 'flex')}
+                      className="rounded-full border border-border/70 bg-muted/30 px-1"
+                    >
+                      <TabsSubtleItem index={0} label="General" className="py-1.5" />
+                      <TabsSubtleItem index={1} label="Flex & Events" className="py-1.5" />
+                    </TabsSubtle>
                     {hasActiveAuditFilters ? (
                       <Button type="button" variant="ghost" size="sm" onClick={clearAuditFilters}>
                         <X className="mr-1 size-4" />
