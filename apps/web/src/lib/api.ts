@@ -154,6 +154,18 @@ export const clubsApi = {
       `/clubs/${clubId}/channels/${channelId}/messages/${messageId}/reactions`,
       data,
     ),
+  toggleChannelMessagePin: (
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    pinned: boolean,
+  ) => api.post(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}/pin`, { pinned }),
+  voteChannelPoll: (
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    optionId: string,
+  ) => api.post(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}/poll-vote`, { optionId }),
   sendInvite: (clubId: string, uniqueId: string) =>
     api.post(`/clubs/${clubId}/invite`, { uniqueId }),
   bulkInviteCsv: (clubId: string, file: File) => {

@@ -31,7 +31,9 @@ import {
   RespondToClubJoinRequestDto,
   SetClubMemberRoleDto,
   ToggleClubChannelReactionDto,
+  ToggleClubChannelMessagePinDto,
   UpdateClubDto,
+  VoteClubChannelPollDto,
 } from './dto/club.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -209,6 +211,42 @@ export class ClubsController {
       channelId,
       messageId,
       body,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Post(':id/channels/:channelId/messages/:messageId/pin')
+  toggleChannelMessagePin(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: ToggleClubChannelMessagePinDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.toggleMessagePin(
+      clubId,
+      channelId,
+      messageId,
+      body.pinned,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Post(':id/channels/:channelId/messages/:messageId/poll-vote')
+  voteChannelPoll(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: VoteClubChannelPollDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.votePoll(
+      clubId,
+      channelId,
+      messageId,
+      body.optionId,
       user.id,
       user.role,
     );

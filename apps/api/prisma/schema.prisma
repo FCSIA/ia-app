@@ -31,6 +31,7 @@ model User {
   channelMemberships         ClubChannelMembership[]
   mentionedInChannelMentions ClubChannelMessageMention[]  @relation("ClubChannelMentionUser")
   reactedToChannelMessages   ClubChannelMessageReaction[]
+  votedInChannelPolls        ClubChannelMessagePollVote[]
   authoredChannelMessages    ClubChannelMessage[]         @relation("ClubChannelMessageAuthor")
   createdChannels            ClubChannel[]                @relation("ClubChannelCreator")
   receivedInvites            ClubInvite[]                 @relation("InviteRecipient")
@@ -395,11 +396,16 @@ model ClubChannelMessage {
   parentMessageId String?                        @map("parent_message_id")
   body            String
   bodyRich        Json?                          @map("body_rich")
+  isPinned        Boolean                        @default(false) @map("is_pinned")
+  pinnedAt        DateTime?                      @map("pinned_at")
+  pollQuestion    String?                        @map("poll_question")
+  pollOptions     Json?                          @map("poll_options")
   createdAt       DateTime                       @default(now()) @map("created_at")
   updatedAt       DateTime                       @updatedAt @map("updated_at")
   attachments     ClubChannelMessageAttachment[]
   mentions        ClubChannelMessageMention[]
   reactions       ClubChannelMessageReaction[]
+  pollVotes       ClubChannelMessagePollVote[]
   author          User                           @relation("ClubChannelMessageAuthor", fields: [authorId], references: [id])
   channel         ClubChannel                    @relation(fields: [channelId], references: [id], onDelete: Cascade)
   parentMessage   ClubChannelMessage?            @relation("ClubChannelMessageReplies", fields: [parentMessageId], references: [id], onDelete: Cascade)
@@ -407,7 +413,22 @@ model ClubChannelMessage {
   notifications   NotificationDelivery[]
 
   @@index([channelId, parentMessageId, createdAt])
+  @@index([channelId, isPinned, pinnedAt])
   @@map("club_channel_messages")
+}
+
+model ClubChannelMessagePollVote {
+  id        String             @id @default(cuid())
+  messageId String             @map("message_id")
+  userId    String             @map("user_id")
+  optionId  String             @map("option_id")
+  createdAt DateTime           @default(now()) @map("created_at")
+  message   ClubChannelMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId, optionId])
+  @@map("club_channel_message_poll_votes")
 }
 
 model ClubChannelMessageAttachment {

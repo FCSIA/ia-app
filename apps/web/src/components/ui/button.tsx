@@ -10,6 +10,7 @@ import { useShape } from "@/lib/shape-context";
 const buttonVariants = cva(
   [
     "group relative inline-flex items-center justify-center outline-none cursor-pointer",
+    "whitespace-nowrap text-nowrap [&_svg]:shrink-0",
     "text-box-trim-both text-box-edge-cap-alphabetic",
     "transition-all duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",

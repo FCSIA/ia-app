@@ -168,6 +168,19 @@ export class ClubChannelMessageAttachmentDto {
   size?: number;
 }
 
+export class ClubChannelPollOptionDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  id: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(180)
+  label: string;
+}
+
 export class CreateClubChannelMessageDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -192,6 +205,33 @@ export class CreateClubChannelMessageDto {
   @ValidateNested({ each: true })
   @Type(() => ClubChannelMessageAttachmentDto)
   attachments?: ClubChannelMessageAttachmentDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  pollQuestion?: string;
+
+  @ApiPropertyOptional({ type: [ClubChannelPollOptionDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ClubChannelPollOptionDto)
+  pollOptions?: ClubChannelPollOptionDto[];
+}
+
+export class ToggleClubChannelMessagePinDto {
+  @ApiProperty()
+  @IsBoolean()
+  pinned: boolean;
+}
+
+export class VoteClubChannelPollDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  optionId: string;
 }
 
 export class ToggleClubChannelReactionDto {

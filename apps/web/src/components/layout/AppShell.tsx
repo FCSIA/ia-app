@@ -30,6 +30,7 @@ import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Kbd, KbdGroup } from '@/components/ui/kbd';
 
 import {
   DropdownMenu,
@@ -377,9 +378,10 @@ export function AppShell({
             >
               <Search className="size-4" />
               <span className="flex-1">Search everything</span>
-              <kbd className="rounded bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                {commandHint ? '⌘K' : 'Ctrl K'}
-              </kbd>
+              <KbdGroup>
+                {commandHint ? <Kbd>⌘</Kbd> : <Kbd>Ctrl</Kbd>}
+                <Kbd>K</Kbd>
+              </KbdGroup>
             </button>
             {user ? (
               <DropdownMenu>

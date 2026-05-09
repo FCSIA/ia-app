@@ -56,6 +56,12 @@ const replyMessageInclude = {
     },
     orderBy: { createdAt: 'asc' },
   },
+  pollVotes: {
+    include: {
+      user: { select: channelUserSelect },
+    },
+    orderBy: { createdAt: 'asc' },
+  },
 } as const;
 
 const rootMessageInclude = {
@@ -130,11 +136,40 @@ export class ClubChannelsService {
     );
   }
 
+  private serializePoll(message: ReplyMessageRecord, currentUserId: string) {
+    if (!message.pollQuestion || !Array.isArray(message.pollOptions)) return null;
+    const votesByOption = new Map<string, typeof message.pollVotes>();
+    for (const vote of message.pollVotes) {
+      const bucket = votesByOption.get(vote.optionId) ?? [];
+      bucket.push(vote);
+      votesByOption.set(vote.optionId, bucket);
+    }
+
+    return {
+      question: message.pollQuestion,
+      options: (message.pollOptions as Array<{ id: string; label: string }>).map((option) => {
+        const votes = votesByOption.get(option.id) ?? [];
+        return {
+          id: option.id,
+          label: option.label,
+          count: votes.length,
+          votedByCurrentUser: votes.some((vote) => vote.userId === currentUserId),
+        };
+      }),
+      totalVotes: message.pollVotes.length,
+      selectedOptionId:
+        message.pollVotes.find((vote) => vote.userId === currentUserId)?.optionId ?? null,
+    };
+  }
+
   private serializeReplyMessage(message: ReplyMessageRecord, currentUserId: string) {
     return {
       id: message.id,
       body: message.body,
       bodyRich: Array.isArray(message.bodyRich) ? message.bodyRich : null,
+      isPinned: message.isPinned,
+      pinnedAt: message.pinnedAt,
+      poll: this.serializePoll(message, currentUserId),
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
       parentMessageId: message.parentMessageId,
@@ -170,6 +205,9 @@ export class ClubChannelsService {
       id: message.id,
       body: message.body,
       bodyRich: Array.isArray(message.bodyRich) ? message.bodyRich : null,
+      isPinned: message.isPinned,
+      pinnedAt: message.pinnedAt,
+      poll: this.serializePoll(message, currentUserId),
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
       parentMessageId: message.parentMessageId,
@@ -220,6 +258,23 @@ export class ClubChannelsService {
     return bodyRich as Prisma.InputJsonValue;
   }
 
+  private normalizePoll(dto: CreateClubChannelMessageDto) {
+    const question = dto.pollQuestion?.trim();
+    const options = (dto.pollOptions ?? [])
+      .map((option) => ({
+        id: option.id.trim() || this.slugifyTag(option.label),
+        label: option.label.trim(),
+      }))
+      .filter((option) => option.id && option.label);
+
+    if (!question && options.length === 0) return null;
+    if (!question || options.length < 2) {
+      throw new BadRequestException('Polls need a question and at least two options');
+    }
+
+    return { question, options: options.slice(0, 8) };
+  }
+
   private async resolveThreadParent(channelId: string, parentMessageId?: string) {
     if (!parentMessageId) return null;
 
@@ -243,6 +298,7 @@ export class ClubChannelsService {
     actorId: string,
     body: string,
     audienceIds: string[],
+    canMentionAll: boolean,
   ) {
     const tokens = Array.from(body.matchAll(/@([A-Za-z0-9_-]+)/g))
       .map((match) => match[1]?.trim())
@@ -303,6 +359,9 @@ export class ClubChannelsService {
       const lower = token.toLowerCase();
 
       if (lower === 'all') {
+        if (!canMentionAll) {
+          throw new ForbiddenException('@all can only be used by club sponsors and leaders');
+        }
         mentionRows.push({ kind: 'BUILT_IN_TAG', token: lower });
         for (const userId of audienceIds) {
           if (userId !== actorId) notifyUserIds.add(userId);
@@ -625,7 +684,11 @@ export class ClubChannelsService {
     const richBodyRaw = this.normalizeRichBody(dto.bodyRich);
     const richBody = await this.moderation.maskRichBody(richBodyRaw);
     const attachments = this.normalizeAttachments(dto.attachments);
-    if (!trimmedBody && attachments.length === 0) {
+    const poll = this.normalizePoll(dto);
+    if (poll && !(context.hasClubRole || context.isSponsor || context.isAdmin)) {
+      throw new ForbiddenException('Only club sponsors and leaders can create polls');
+    }
+    if (!trimmedBody && attachments.length === 0 && !poll) {
       throw new BadRequestException('Message body or attachment is required');
     }
 
@@ -642,6 +705,7 @@ export class ClubChannelsService {
       actorId,
       bodyModeration.masked,
       audienceIds,
+      context.hasClubRole || context.isSponsor || context.isAdmin,
     );
 
     if (threadParent?.authorId && threadParent.authorId !== actorId) {
@@ -655,6 +719,8 @@ export class ClubChannelsService {
         parentMessageId: threadParent?.id,
         body: bodyModeration.masked,
         bodyRich: (richBody as any) ?? undefined,
+        pollQuestion: poll?.question,
+        pollOptions: poll?.options as any,
         mentions: {
           create: mentionRows.map((mention) => ({
             kind: mention.kind,
@@ -724,6 +790,63 @@ export class ClubChannelsService {
     }
 
     return this.serializeReplyMessage(message, actorId);
+  }
+
+  async toggleMessagePin(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    pinned: boolean,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const { context } = await this.accessPolicy.assertChannelAccess(clubId, channelId, actorId, actorRole);
+    if (!(context.hasClubRole || context.isSponsor || context.isAdmin)) {
+      throw new ForbiddenException('Only club sponsors and leaders can pin messages');
+    }
+
+    const message = await this.prisma.clubChannelMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, channelId: true },
+    });
+    if (!message || message.channelId !== channelId) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return this.prisma.clubChannelMessage.update({
+      where: { id: messageId },
+      data: { isPinned: pinned, pinnedAt: pinned ? new Date() : null },
+      include: replyMessageInclude,
+    });
+  }
+
+  async votePoll(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    optionId: string,
+    actorId: string,
+    actorRole: string,
+  ) {
+    await this.accessPolicy.assertChannelAccess(clubId, channelId, actorId, actorRole);
+    const message = await this.prisma.clubChannelMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, channelId: true, pollOptions: true },
+    });
+    if (!message || message.channelId !== channelId) {
+      throw new NotFoundException('Message not found');
+    }
+    if (!Array.isArray(message.pollOptions)) {
+      throw new BadRequestException('Message does not have a poll');
+    }
+    const valid = (message.pollOptions as Array<{ id: string }>).some((option) => option.id === optionId);
+    if (!valid) throw new BadRequestException('Unknown poll option');
+
+    return this.prisma.clubChannelMessagePollVote.upsert({
+      where: { messageId_userId: { messageId, userId: actorId } },
+      create: { messageId, userId: actorId, optionId },
+      update: { optionId },
+    });
   }
 
   async toggleReaction(

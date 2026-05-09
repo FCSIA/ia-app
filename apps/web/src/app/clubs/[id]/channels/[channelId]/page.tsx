@@ -4,10 +4,17 @@ import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import {
+  BarChart3,
   FileText,
   ImageIcon,
   MessageSquareText,
+  Pin,
+  PinOff,
   Reply,
   X,
 } from 'lucide-react';
@@ -29,7 +36,6 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { MentionBody } from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -54,6 +60,8 @@ type ComposerSubmitArgs = {
   bodyRich: ClubChannelMessageRichBody | null;
   parentMessageId?: string;
   files: File[];
+  pollQuestion?: string;
+  pollOptions?: Array<{ id: string; label: string }>;
   mode: 'root' | 'thread';
 };
 
@@ -139,19 +147,87 @@ function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAtt
   );
 }
 
+function MarkdownMessage({ body }: { body: string }) {
+  return (
+    <div className="prose prose-sm dark:prose-invert mt-1 max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5">
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {body}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function PollCard({
+  message,
+  onVote,
+  isPending,
+}: {
+  message: ClubChannelMessage;
+  onVote: (messageId: string, optionId: string) => void;
+  isPending: boolean;
+}) {
+  if (!message.poll) return null;
+  const total = Math.max(message.poll.totalVotes, 1);
+  return (
+    <div className="mt-3 rounded-2xl border bg-muted/20 p-3">
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <BarChart3 className="size-4 text-primary" />
+        {message.poll.question}
+      </div>
+      <div className="mt-3 space-y-2">
+        {message.poll.options.map((option) => {
+          const percent = Math.round((option.count / total) * 100);
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={isPending}
+              onClick={() => onVote(message.id, option.id)}
+              className={cn(
+                'relative w-full overflow-hidden rounded-xl border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50',
+                option.votedByCurrentUser && 'border-primary/50 bg-primary/10',
+              )}
+            >
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 bg-primary/10"
+                style={{ width: `${percent}%` }}
+              />
+              <span className="relative flex items-center justify-between gap-3">
+                <span>{option.label}</span>
+                <span className="text-xs text-muted-foreground">{option.count} · {percent}%</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MessageRow({
   message,
   onOpenThread,
   onToggleReaction,
+  onTogglePin,
+  onVotePoll,
   isReactionPending,
+  isPinPending,
+  isVotePending,
   highlighted,
+  canModerate,
   compact = false,
 }: {
   message: ClubChannelMessage;
   onOpenThread: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
+  onTogglePin: (messageId: string, pinned: boolean) => void;
+  onVotePoll: (messageId: string, optionId: string) => void;
   isReactionPending: boolean;
+  isPinPending: boolean;
+  isVotePending: boolean;
   highlighted: boolean;
+  canModerate: boolean;
   compact?: boolean;
 }) {
   return (
@@ -175,15 +251,16 @@ function MessageRow({
           <span className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
           </span>
+          {message.isPinned ? (
+            <Badge variant="dot" color="amber" className="h-5 text-[10px]">
+              Pinned
+            </Badge>
+          ) : null}
         </div>
 
-        {message.body || message.bodyRich ? (
-          <MentionBody
-            body={message.body}
-            bodyRich={message.bodyRich}
-            className="mt-1 text-sm leading-6"
-          />
-        ) : null}
+        {message.body ? <MarkdownMessage body={message.body} /> : null}
+
+        <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
 
         <AttachmentGallery attachments={message.attachments} />
 
@@ -242,6 +319,18 @@ function MessageRow({
               Reply
             </Button>
           ) : null}
+          {canModerate && !compact ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+              disabled={isPinPending}
+              onClick={() => onTogglePin(message.id, !message.isPinned)}
+            >
+              {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
+              {message.isPinned ? 'Unpin' : 'Pin'}
+            </Button>
+          ) : null}
         </div>
 
         {!compact && message.replyCount > 0 ? (
@@ -285,7 +374,7 @@ export default function ClubChannelPage({
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ body, bodyRich, parentMessageId, files }: ComposerSubmitArgs) => {
+    mutationFn: async ({ body, bodyRich, parentMessageId, files, pollQuestion, pollOptions }: ComposerSubmitArgs) => {
       const uploadedAttachments = await Promise.all(
         files.map((file) =>
           uploadsApi.uploadChatAttachment(file).then((response) => response.data),
@@ -295,6 +384,8 @@ export default function ClubChannelPage({
         body: body.trim() || undefined,
         bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
         parentMessageId,
+        pollQuestion,
+        pollOptions,
         attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
           fileName: a.originalName,
           fileUrl: a.url,
@@ -336,6 +427,22 @@ export default function ClubChannelPage({
     },
   });
 
+  const pinMutation = useMutation({
+    mutationFn: ({ messageId, pinned }: { messageId: string; pinned: boolean }) =>
+      clubsApi.toggleChannelMessagePin(id, channelId, messageId, pinned),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club-channel-messages', id, channelId] });
+    },
+  });
+
+  const pollVoteMutation = useMutation({
+    mutationFn: ({ messageId, optionId }: { messageId: string; optionId: string }) =>
+      clubsApi.voteChannelPoll(id, channelId, messageId, optionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club-channel-messages', id, channelId] });
+    },
+  });
+
   const channel = useMemo(
     () => club?.channels?.find((entry) => entry.id === channelId),
     [channelId, club?.channels],
@@ -349,8 +456,9 @@ export default function ClubChannelPage({
   }, [channel, club]);
 
   const suggestionEntries = useMemo<ChannelMentionSuggestion[]>(() => {
+    const canUseAll = !!club?.viewer?.canManageChannels;
     const builtIns: ChannelMentionSuggestion[] = [
-      { token: 'all', label: 'Everyone in this channel', detail: '', kind: 'built-in' },
+      ...(canUseAll ? [{ token: 'all', label: 'Everyone in this channel', detail: '', kind: 'built-in' as const }] : []),
       { token: 'leaders', label: 'Members with club roles', detail: '', kind: 'built-in' },
       { token: 'sponsors', label: 'Faculty sponsors', detail: '', kind: 'built-in' },
     ];
@@ -371,7 +479,7 @@ export default function ClubChannelPage({
         kind: 'person' as const,
       }));
     return [...builtIns, ...tags, ...people];
-  }, [audience, club?.tags]);
+  }, [audience, club?.tags, club?.viewer?.canManageChannels]);
 
   const flattenedMessages = useMemo(
     () =>
@@ -416,6 +524,8 @@ export default function ClubChannelPage({
   }
 
   const canPost = channel.viewerCanPost ?? true;
+  const canModerateChannel = !!club.viewer?.canManageChannels;
+  const pinnedMessages = messages.filter((message) => message.isPinned);
 
   const title: ReactNode = (
     <div className="flex min-w-0 items-center gap-2">
@@ -473,8 +583,13 @@ export default function ClubChannelPage({
           message={selectedThread}
           onOpenThread={setSelectedThreadId}
           onToggleReaction={(messageId, emoji) => reactionMutation.mutate({ messageId, emoji })}
+          onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
+          onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
           isReactionPending={reactionMutation.isPending}
+          isPinPending={pinMutation.isPending}
+          isVotePending={pollVoteMutation.isPending}
           highlighted={false}
+          canModerate={canModerateChannel}
         />
         {selectedThread.replies.map((reply) => (
           <MessageRow
@@ -482,8 +597,13 @@ export default function ClubChannelPage({
             message={reply}
             onOpenThread={setSelectedThreadId}
             onToggleReaction={(messageId, emoji) => reactionMutation.mutate({ messageId, emoji })}
+            onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
+            onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
             isReactionPending={reactionMutation.isPending}
+            isPinPending={pinMutation.isPending}
+            isVotePending={pollVoteMutation.isPending}
             highlighted={false}
+            canModerate={canModerateChannel}
             compact
           />
         ))}
@@ -493,12 +613,14 @@ export default function ClubChannelPage({
         {canPost ? (
           <ChannelMessageComposer
             resetKey={replyComposerResetKey}
-            onSubmit={({ body, bodyRich, files }) =>
+            onSubmit={({ body, bodyRich, files, pollQuestion, pollOptions }) =>
               sendMessageMutation.mutate({
                 body,
                 bodyRich,
                 parentMessageId: selectedThread.id,
                 files,
+                pollQuestion,
+                pollOptions,
                 mode: 'thread',
               })
             }
@@ -506,6 +628,7 @@ export default function ClubChannelPage({
             suggestionEntries={suggestionEntries}
             placeholder="Reply in thread…"
             submitLabel="Reply"
+            canCreatePoll={canModerateChannel}
           />
         ) : (
           <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
@@ -527,6 +650,27 @@ export default function ClubChannelPage({
     >
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl space-y-1 p-3 pb-48">
+          {pinnedMessages.length > 0 ? (
+            <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <Pin className="size-3.5" />
+                Pinned
+              </div>
+              <div className="space-y-1">
+                {pinnedMessages.map((message) => (
+                  <button
+                    key={message.id}
+                    type="button"
+                    className="block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/50"
+                    onClick={() => setSelectedThreadId(message.threadRootId)}
+                  >
+                    <span className="font-medium">{fullName(message.author)}:</span>{' '}
+                    {message.poll?.question || message.body || 'Attachment'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {visibleMessages.length > 0 ? (
             visibleMessages.map((message) => (
               <div key={message.id}>
@@ -536,8 +680,13 @@ export default function ClubChannelPage({
                   onToggleReaction={(messageId, emoji) =>
                     reactionMutation.mutate({ messageId, emoji })
                   }
+                  onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
+                  onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
                   isReactionPending={reactionMutation.isPending}
+                  isPinPending={pinMutation.isPending}
+                  isVotePending={pollVoteMutation.isPending}
                   highlighted={matchingIds.has(message.id)}
+                  canModerate={canModerateChannel}
                 />
               </div>
             ))
@@ -571,11 +720,13 @@ export default function ClubChannelPage({
           {canPost ? (
             <ChannelMessageComposer
               resetKey={rootComposerResetKey}
-              onSubmit={({ body, bodyRich, files }) =>
+              onSubmit={({ body, bodyRich, files, pollQuestion, pollOptions }) =>
                 sendMessageMutation.mutate({
                   body,
                   bodyRich,
                   files,
+                  pollQuestion,
+                  pollOptions,
                   mode: 'root',
                 })
               }
@@ -583,6 +734,7 @@ export default function ClubChannelPage({
               suggestionEntries={suggestionEntries}
               placeholder={`Message #${channel.name}`}
               submitLabel="Send"
+              canCreatePoll={canModerateChannel}
             />
           ) : (
             <div className="rounded-[1.5rem] border bg-background/95 px-5 py-4 shadow-sm">
@@ -595,7 +747,7 @@ export default function ClubChannelPage({
             </div>
           )}
           <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-            {audience.length} {audience.length === 1 ? 'person' : 'people'} can see this channel · {getClubChannelVisibilityLabel(channel.visibility)} visibility
+            {audience.length} {audience.length === 1 ? 'person' : 'people'} can see this channel · Messages tracked
           </p>
         </div>
       </div>

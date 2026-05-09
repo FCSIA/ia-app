@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { clubsApi, uploadsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -154,11 +153,12 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
               // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
             ) : (
-              <ClubAvatar
-                person={{ firstName: club.name, lastName: '' }}
-                className="size-full rounded-none"
-                fallbackClassName="text-2xl"
-              />
+              <div
+                className="flex size-full items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-2xl font-semibold text-orange-100"
+                style={accent ? { background: `linear-gradient(135deg, ${accent}55, ${accent}22)` } : undefined}
+              >
+                {club.name.trim().charAt(0).toUpperCase() || 'C'}
+              </div>
             )}
             {canEdit && (
               <>

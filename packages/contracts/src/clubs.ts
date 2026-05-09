@@ -144,6 +144,19 @@ export interface ClubChannelMessage {
   id: string;
   body: string;
   bodyRich?: ClubChannelMessageRichBody | null;
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  poll?: {
+    question: string;
+    options: Array<{
+      id: string;
+      label: string;
+      count: number;
+      votedByCurrentUser: boolean;
+    }>;
+    totalVotes: number;
+    selectedOptionId?: string | null;
+  } | null;
   createdAt: string;
   updatedAt?: string;
   parentMessageId?: string | null;
@@ -180,6 +193,8 @@ export interface CreateClubChannelMessagePayload {
     mimeType?: string;
     size?: number;
   }>;
+  pollQuestion?: string;
+  pollOptions?: Array<{ id: string; label: string }>;
 }
 
 export interface ToggleClubChannelReactionPayload {

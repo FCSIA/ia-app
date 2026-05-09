@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { ClubChannelMessageRichBody } from '@ia/contracts/clubs';
-import { Bold, AtSign, Italic, Paperclip, Send, Underline, X } from 'lucide-react';
+import { Bold, AtSign, BarChart3, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
 import { BoldPlugin, ItalicPlugin, UnderlinePlugin } from '@platejs/basic-nodes/react';
@@ -39,7 +39,10 @@ type ChannelMessageComposerProps = {
     body: string;
     bodyRich: ClubChannelMessageRichBody | null;
     files: File[];
+    pollQuestion?: string;
+    pollOptions?: Array<{ id: string; label: string }>;
   }) => void;
+  canCreatePoll?: boolean;
 };
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
@@ -90,6 +93,7 @@ export function ChannelMessageComposer({
   isPending,
   resetKey,
   onSubmit,
+  canCreatePoll = false,
 }: ChannelMessageComposerProps) {
   const editor = usePlateEditor(
     {
@@ -108,12 +112,18 @@ export function ChannelMessageComposer({
   const [files, setFiles] = useState<File[]>([]);
   const [plainText, setPlainText] = useState('');
   const [richValue, setRichValue] = useState<Value>(createEmptyClubChannelMessageValue());
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
 
   useEffect(() => {
     const emptyValue = createEmptyClubChannelMessageValue();
     setFiles([]);
     setPlainText('');
     setRichValue(emptyValue);
+    setPollOpen(false);
+    setPollQuestion('');
+    setPollOptions(['', '']);
     editor.tf.setValue(emptyValue);
   }, [editor, resetKey]);
 
@@ -130,7 +140,11 @@ export function ChannelMessageComposer({
       })),
     [suggestionEntries],
   );
-  const canSend = !isPending && (plainText.trim().length > 0 || files.length > 0);
+  const normalizedPollOptions = pollOptions
+    .map((label, index) => ({ id: `option-${index + 1}`, label: label.trim() }))
+    .filter((option) => option.label);
+  const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
+  const canSend = !isPending && (plainText.trim().length > 0 || files.length > 0 || !!hasPoll);
 
   const handleSubmit = () => {
     if (!canSend) return;
@@ -141,6 +155,8 @@ export function ChannelMessageComposer({
         ? (richValue as unknown as ClubChannelMessageRichBody)
         : null,
       files,
+      pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
+      pollOptions: hasPoll ? normalizedPollOptions : undefined,
     });
   };
 
@@ -196,6 +212,21 @@ export function ChannelMessageComposer({
               <AtSign className="size-4" />
               Mention
             </Button>
+            {canCreatePoll ? (
+              <Button
+                type="button"
+                variant={pollOpen ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-muted-foreground"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  setPollOpen((current) => !current);
+                }}
+              >
+                <BarChart3 className="size-4" />
+                Poll
+              </Button>
+            ) : null}
             <div className="ml-auto text-[11px] text-muted-foreground">
               Type @ to search mentions
             </div>
@@ -217,6 +248,44 @@ export function ChannelMessageComposer({
                   </button>
                 </Badge>
               ))}
+            </div>
+          ) : null}
+
+          {pollOpen ? (
+            <div className="space-y-2 border-b px-3 py-3">
+              <input
+                value={pollQuestion}
+                onChange={(event) => setPollQuestion(event.target.value)}
+                placeholder="Poll question"
+                className="h-9 w-full rounded-xl border bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <div className="space-y-1.5">
+                {pollOptions.map((option, index) => (
+                  <input
+                    key={index}
+                    value={option}
+                    onChange={(event) =>
+                      setPollOptions((current) =>
+                        current.map((entry, entryIndex) =>
+                          entryIndex === index ? event.target.value : entry,
+                        ),
+                      )
+                    }
+                    placeholder={`Option ${index + 1}`}
+                    className="h-8 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="tertiary"
+                onClick={() => setPollOptions((current) => [...current, ''].slice(0, 8))}
+                disabled={pollOptions.length >= 8}
+              >
+                <Plus className="size-3.5" />
+                Add option
+              </Button>
             </div>
           ) : null}
 
