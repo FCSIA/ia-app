@@ -257,6 +257,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     const shape = useShape();
     const containerRef = useRef<HTMLDivElement>(null);
     const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
+    const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
 
     const {
       activeIndex,
@@ -273,12 +274,29 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       undefined
     );
 
+    const updateGeometry = useCallback(() => {
+      if (!triggerRef.current) return;
+      setTriggerRect(triggerRef.current.getBoundingClientRect());
+    }, [triggerRef]);
+
     // Capture trigger rect synchronously when opening
     useEffect(() => {
-      if (open && triggerRef.current) {
-        setTriggerRect(triggerRef.current.getBoundingClientRect());
-      }
-    }, [open, triggerRef]);
+      if (open) updateGeometry();
+      else setTriggerRect(null);
+    }, [open, updateGeometry]);
+
+    // Keep portal position correct inside scrollable panels/dialogs.
+    useEffect(() => {
+      if (!open) return;
+      updateGeometry();
+      const onChange = () => updateGeometry();
+      window.addEventListener("resize", onChange);
+      window.addEventListener("scroll", onChange, true);
+      return () => {
+        window.removeEventListener("resize", onChange);
+        window.removeEventListener("scroll", onChange, true);
+      };
+    }, [open, updateGeometry]);
 
     // Measure items + detect checked AFTER the portal has mounted
     // triggerRect being set means the portal will render on the next commit
@@ -292,6 +310,10 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
           measureItems();
           const container = containerRef.current;
           if (container) {
+            setContentSize({
+              width: container.offsetWidth,
+              height: container.offsetHeight,
+            });
             const items = Array.from(
               container.querySelectorAll("[data-proximity-index]")
             ) as HTMLElement[];
@@ -340,14 +362,6 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       document.addEventListener("mousedown", onPointer);
       return () => document.removeEventListener("mousedown", onPointer);
     }, [open, setOpen, triggerRef]);
-
-    // Close on scroll (instead of locking body scroll, which causes layout shift)
-    useEffect(() => {
-      if (!open) return;
-      const onScroll = () => setOpen(false);
-      window.addEventListener("scroll", onScroll, { passive: true });
-      return () => window.removeEventListener("scroll", onScroll);
-    }, [open, setOpen]);
 
     // Keyboard nav inside content
     const handleKeyDown = useCallback(
@@ -404,6 +418,28 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const isHoveringOther =
       activeIndex !== null && activeIndex !== checkedIndex;
+    const viewportPadding = 8;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const estimatedHeight = contentSize.height || 300;
+    const spaceBelow = viewportHeight - triggerRect.bottom - viewportPadding;
+    const spaceAbove = triggerRect.top - viewportPadding;
+    const openAbove =
+      spaceBelow < Math.min(estimatedHeight, 240) && spaceAbove > spaceBelow;
+    const availableHeight = openAbove ? spaceAbove : spaceBelow;
+    const top = openAbove
+      ? Math.max(viewportPadding, triggerRect.top - estimatedHeight - 6)
+      : triggerRect.bottom + 6;
+    const left = Math.min(
+      Math.max(viewportPadding, triggerRect.left),
+      Math.max(
+        viewportPadding,
+        viewportWidth -
+          viewportPadding -
+          (contentSize.width || triggerRect.width)
+      )
+    );
+    const maxHeight = Math.max(96, availableHeight - 6);
 
     return createPortal(
       <SelectContentContext.Provider
@@ -412,17 +448,17 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
         <div
           style={{
             position: "fixed",
-            top: triggerRect.bottom + 6,
-            left: triggerRect.left,
+            top,
+            left,
             minWidth: triggerRect.width,
-            zIndex: 50,
+            zIndex: 80,
           }}
         >
           <motion.div
-            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+            initial={{ opacity: 0, y: openAbove ? 4 : -4, scaleY: 0.96 }}
             animate={{ opacity: 1, y: 0, scaleY: 1 }}
             transition={springs.fast}
-            style={{ transformOrigin: "top center" }}
+            style={{ transformOrigin: openAbove ? "bottom center" : "top center" }}
           >
           <div
             ref={(node) => {
@@ -464,8 +500,9 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
               setActiveIndex(null);
             }}
             onKeyDown={handleKeyDown}
+            style={{ maxHeight }}
             className={cn(
-              `relative flex flex-col gap-0.5 max-h-[300px] overflow-y-auto ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none outline-none`,
+              `relative flex flex-col gap-0.5 overflow-y-auto ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none outline-none`,
               className
             )}
           >
