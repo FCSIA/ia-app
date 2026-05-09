@@ -28,7 +28,7 @@ const badgeColors = {
 type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  "inline-flex items-center font-medium whitespace-nowrap",
+  "inline-flex items-center border font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -74,10 +74,15 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 
     const colorStyle = isSolid
       ? color === "gray"
-        ? { backgroundColor: "var(--accent)", color: "var(--foreground)" }
-        : {
+        ? {
+            backgroundColor: "var(--muted)",
+            borderColor: "var(--border)",
             color: "var(--foreground)",
-            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, var(--background))`,
+          }
+        : {
+            color: colorValue,
+            borderColor: `color-mix(in srgb, ${colorValue} 38%, transparent)`,
+            backgroundColor: `color-mix(in srgb, ${colorValue} 16%, var(--background))`,
           }
       : {};
 

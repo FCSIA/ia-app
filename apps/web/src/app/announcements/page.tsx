@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { BadgeColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -280,6 +281,8 @@ export default function AnnouncementsPage() {
     { value: 'HEALTH_SCIENCE', label: 'Health Science' },
     { value: 'ENGINEERING', label: 'Engineering' },
   ];
+  const tagColor = (tag: string): BadgeColor =>
+    tag === 'CLUB' ? 'emerald' : tag === 'GRADE' ? 'violet' : tag === 'PATHWAY' ? 'cyan' : 'gray';
 
   return (
     <AppShell>
@@ -317,12 +320,13 @@ export default function AnnouncementsPage() {
           advancedOpen={filtersOpen}
           onAdvancedOpenChange={setFiltersOpen}
           chips={[
-            { value: 'unread', label: 'Unread' },
-            { value: 'saved', label: 'Saved', icon: <Bookmark className="size-3" /> },
-            { value: 'featured', label: 'Featured', icon: <Sparkles className="size-3" /> },
+            { value: 'unread', label: 'Unread', color: 'rose' },
+            { value: 'saved', label: 'Saved', icon: <Bookmark className="size-3" />, color: 'blue' },
+            { value: 'featured', label: 'Featured', icon: <Sparkles className="size-3" />, color: 'amber' },
             ...availableTags.map((tag) => ({
               value: `tag:${tag}`,
               label: ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' '),
+              color: tagColor(tag),
             })),
           ]}
           activeChips={[

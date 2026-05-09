@@ -25,11 +25,11 @@ import { useToast } from '@/hooks/use-toast';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const SOURCE_FILTERS: { value: CalendarSource; label: string; Icon: React.ElementType }[] = [
-  { value: 'PERSONAL', label: 'My Events', Icon: User },
-  { value: 'SCHOOL', label: 'School', Icon: School },
-  { value: 'DISTRICT', label: 'District', Icon: Building2 },
-  { value: 'CLUB', label: 'Clubs', Icon: Users },
+const SOURCE_FILTERS: { value: CalendarSource; label: string; Icon: React.ElementType; color: 'violet' | 'orange' | 'cyan' | 'green' }[] = [
+  { value: 'PERSONAL', label: 'My Events', Icon: User, color: 'violet' },
+  { value: 'SCHOOL', label: 'School', Icon: School, color: 'orange' },
+  { value: 'DISTRICT', label: 'District', Icon: Building2, color: 'cyan' },
+  { value: 'CLUB', label: 'Clubs', Icon: Users, color: 'green' },
 ];
 
 const SOURCE_COLORS: Record<CalendarSource, { bg: string; text: string; dot: string }> = {
@@ -138,10 +138,11 @@ export default function CalendarPage() {
             setSearch('');
             setActiveSources([]);
           }}
-          chips={SOURCE_FILTERS.map(({ value, label, Icon }) => ({
+          chips={SOURCE_FILTERS.map(({ value, label, Icon, color }) => ({
             value,
             label,
             icon: <Icon className="size-3" />,
+            color,
           }))}
           activeChips={activeSources}
           onChipToggle={(value) => toggleSource(value as CalendarSource)}
