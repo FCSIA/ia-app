@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clubsApi, notificationsApi } from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Settings } from 'lucide-react';
 import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -141,8 +141,8 @@ export default function NotificationsPage() {
 
           <Tabs defaultValue="inbox" className="w-full">
             <TabsList>
-              <TabItem value="inbox" label="Inbox">Inbox</TabItem>
-              <TabItem value="settings" label="Settings">Settings</TabItem>
+              <TabItem value="inbox" icon={Bell} label="Inbox" />
+              <TabItem value="settings" icon={Settings} label="Settings" />
             </TabsList>
             <TabPanel value="inbox" className="mt-4">
               <SearchInput

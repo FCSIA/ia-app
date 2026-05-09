@@ -4,6 +4,7 @@ import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Sparkles } from
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { Badge } from '@/components/ui/badge';
+import type { BadgeColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -12,13 +13,20 @@ export const ANNOUNCEMENT_BADGE_TEXT_CLASS = 'text-[11px] leading-none';
 
 export const ANNOUNCEMENT_TAG_COLORS: Record<string, string> = {
   SCHOOL_WIDE:
-    'bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 border-transparent',
+    'border-blue-500/25 bg-blue-500/12 text-blue-700 shadow-blue-500/5 hover:border-blue-500/40 hover:bg-blue-500/20 dark:text-blue-300',
   GRADE:
-    'bg-violet-500/15 text-violet-600 dark:text-violet-400 hover:bg-violet-500/25 border-transparent',
+    'border-violet-500/25 bg-violet-500/12 text-violet-700 shadow-violet-500/5 hover:border-violet-500/40 hover:bg-violet-500/20 dark:text-violet-300',
   PATHWAY:
-    'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border-transparent',
+    'border-emerald-500/25 bg-emerald-500/12 text-emerald-700 shadow-emerald-500/5 hover:border-emerald-500/40 hover:bg-emerald-500/20 dark:text-emerald-300',
   CLUB:
-    'bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 border-transparent',
+    'border-amber-500/25 bg-amber-500/12 text-amber-700 shadow-amber-500/5 hover:border-amber-500/40 hover:bg-amber-500/20 dark:text-amber-300',
+};
+
+export const ANNOUNCEMENT_TAG_BADGE_COLORS: Record<string, BadgeColor> = {
+  SCHOOL_WIDE: 'blue',
+  GRADE: 'violet',
+  PATHWAY: 'emerald',
+  CLUB: 'amber',
 };
 
 export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
@@ -78,8 +86,15 @@ function InteractiveBadge({
   if (!onClick) return <>{children}</>;
 
   return (
-    <button type="button" onClick={onClick} className="inline-flex cursor-pointer" aria-label={ariaLabel}>
-      <span className="pointer-events-none">{children}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      className="group inline-flex cursor-pointer rounded-full outline-none transition-all duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+      aria-label={ariaLabel}
+    >
+      <span className="pointer-events-none inline-flex transition-transform duration-150 group-hover:scale-[1.02]">
+        {children}
+      </span>
     </button>
   );
 }
@@ -117,39 +132,39 @@ export function AnnouncementCard({
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2 pr-4">
               {announcement.isAdminGeneral ? (
-                <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="red" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'transition-all duration-150 hover:-translate-y-px')}>
                   Push notification
                 </Badge>
               ) : null}
               {announcement.isFeatured ? (
-                <Badge variant="solid" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                <Badge variant="solid" color="amber" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1 transition-all duration-150 hover:-translate-y-px')}>
                   <Sparkles className="size-3" />
                   Featured
                 </Badge>
               ) : null}
               {announcement.isBookmarked ? (
-                <Badge variant="dot" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1')}>
+                <Badge variant="dot" color="blue" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1 transition-all duration-150 hover:-translate-y-px')}>
                   <BookmarkCheck className="size-3" />
                   Saved
                 </Badge>
               ) : null}
               {announcement.status === 'PENDING_APPROVAL' ? (
-                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="orange" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Pending review
                 </Badge>
               ) : null}
               {announcement.status === 'REJECTED' ? (
-                <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="dot" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Needs changes
                 </Badge>
               ) : null}
               {announcement.status === 'EXPIRED' ? (
-                <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="gray" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Expired
                 </Badge>
               ) : null}
               {announcement.status === 'ARCHIVED' ? (
-                <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="dot" color="gray" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Archived
                 </Badge>
               ) : null}
@@ -158,8 +173,10 @@ export function AnnouncementCard({
                 onClick={onTagClick ? () => onTagClick(announcement.targetType) : undefined}
               >
                 <Badge
+                  color={ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray'}
                   className={cn(
                     ANNOUNCEMENT_BADGE_TEXT_CLASS,
+                    'shadow-sm transition-all duration-150',
                     onTagClick ? 'cursor-pointer' : '',
                     ANNOUNCEMENT_TAG_COLORS[announcement.targetType] || 'bg-muted text-muted-foreground',
                   )}
@@ -175,8 +192,10 @@ export function AnnouncementCard({
                 >
                   <Badge
                     variant="dot"
+                    color="emerald"
                     className={cn(
                       ANNOUNCEMENT_BADGE_TEXT_CLASS,
+                      'transition-all duration-150 hover:-translate-y-px hover:bg-emerald-500/10',
                       onClubClick ? 'cursor-pointer' : '',
                     )}
                   >

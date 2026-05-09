@@ -715,31 +715,19 @@ export default function AdminPage() {
           className={cn('w-full', activeTab === 'users' && 'flex min-h-0 flex-1 flex-col')}
         >
           <TabsList className={cn('mb-6 bg-secondary/50 p-1', activeTab === 'users' && 'mb-3 h-8 shrink-0')}>
-            <TabItem value="users" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Users">
-              <Users size={16} /> Users
-            </TabItem>
+            <TabItem value="users" icon={Users} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Users" />
             {isSuperAdmin && (
-              <TabItem value="schedule" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Schedule">
-                <CalendarDays size={16} /> Schedule
-              </TabItem>
+              <TabItem value="schedule" icon={CalendarDays} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Schedule" />
             )}
-            <TabItem value="moderation" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Moderation">
-              <Shield size={16} /> Moderation
-              {pendingReports > 0 && (
-                <Badge variant="solid" color="red" className="ml-1 px-1.5 py-0.5 text-[10px] h-auto">
-                  {pendingReports}
-                </Badge>
-              )}
-            </TabItem>
-            <TabItem value="permissions" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Permissions">
-              <KeyRound size={16} /> Permissions
-            </TabItem>
-            <TabItem value="student-admins" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Student Admins">
-              <Users size={16} /> Student Admins
-            </TabItem>
-            <TabItem value="audit" className={cn('flex items-center gap-2', activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Audit">
-              <FileText size={16} /> Audit Log
-            </TabItem>
+            <TabItem
+              value="moderation"
+              icon={Shield}
+              className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')}
+              label={pendingReports > 0 ? `Moderation (${pendingReports})` : 'Moderation'}
+            />
+            <TabItem value="permissions" icon={KeyRound} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Permissions" />
+            <TabItem value="student-admins" icon={Users} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Student Admins" />
+            <TabItem value="audit" icon={FileText} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Audit Log" />
           </TabsList>
 
           {/* ── Users Tab ── */}

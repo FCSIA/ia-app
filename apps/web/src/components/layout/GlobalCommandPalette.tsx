@@ -299,7 +299,7 @@ export function GlobalCommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search IA: pages, people, clubs, announcements, events, courses..." />
+      <CommandInput placeholder="Search IA: pages, clubs, announcements, events, courses..." />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 

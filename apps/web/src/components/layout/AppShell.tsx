@@ -363,13 +363,7 @@ export function AppShell({
               <Menu className="size-5" />
             </Button>
             <div className="flex min-w-0 flex-1 items-center gap-4">
-              {headerSlot ?? (
-                <div className="flex min-w-0 flex-1 flex-col leading-none">
-                  <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-                    {currentMeta.label}
-                  </h1>
-                </div>
-              )}
+              {headerSlot ?? <div className="min-w-0 flex-1" />}
             </div>
             <button
               type="button"
