@@ -47,7 +47,7 @@ export class AnnouncementsService {
   >(announcement: T) {
     const readState = announcement.reads[0] ?? null;
     const bookmarkState = announcement.bookmarks?.[0] ?? null;
-    const isFeatured = !!announcement.promotedUntil && announcement.promotedUntil > new Date();
+    const isPinned = !!announcement.promotedUntil && announcement.promotedUntil > new Date();
     return {
       ...announcement,
       reads: undefined,
@@ -56,7 +56,7 @@ export class AnnouncementsService {
       readAt: readState?.readAt.toISOString() ?? null,
       isBookmarked: !!bookmarkState,
       bookmarkedAt: bookmarkState?.createdAt.toISOString() ?? null,
-      isFeatured,
+      isPinned,
       promotedUntil: announcement.promotedUntil?.toISOString?.() ?? announcement.promotedUntil ?? null,
     };
   }
