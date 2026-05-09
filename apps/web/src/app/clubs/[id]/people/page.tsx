@@ -3,27 +3,70 @@
 import { use, useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crown, Copy, QrCode, Sparkles, UserMinus, UserPlus, Users, ShieldCheck, Settings } from 'lucide-react';
+import {
+  Crown,
+  Copy,
+  QrCode,
+  Send,
+  Sparkles,
+  Upload,
+  UserMinus,
+  UserPlus,
+  Users,
+  ShieldCheck,
+  Settings,
+  X,
+} from 'lucide-react';
 import type { ClubDetail, ClubDirectoryEntry } from '@ia/contracts/clubs';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { SetRoleDialog } from '@/components/clubs/dialogs/set-role-dialog';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { clubsApi } from '@/lib/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { clubsApi, scheduleApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
-function ManageJoinCodePopover({ club }: { club: ClubDetail }) {
+type StudentResult = { id: string; uniqueId: string; firstName: string; lastName: string };
+
+function ManagePeopleDialog({
+  club,
+  open,
+  onOpenChange,
+}: {
+  club: ClubDetail;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const [selected, setSelected] = useState<StudentResult | null>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvKey, setCsvKey] = useState(0);
+  const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
 
   const generateMutation = useMutation({
     mutationFn: () => clubsApi.generateJoinCode(club.id),
@@ -38,7 +81,48 @@ function ManageJoinCodePopover({ club }: { club: ClubDetail }) {
       }),
   });
 
-  if (!club.viewer.canManageMembership) return null;
+  const { data: searchResults, isLoading: isSearching } = useQuery({
+    queryKey: ['student-search', deferredQuery],
+    queryFn: () =>
+      scheduleApi.searchPeople(deferredQuery).then((res) => res.data as StudentResult[]),
+    enabled: deferredQuery.length >= 2 && !selected,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: (uniqueId: string) => clubsApi.sendInvite(club.id, uniqueId),
+    onSuccess: () => {
+      setSelected(null);
+      setQuery('');
+      toast({ title: 'Invite sent' });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to send invite',
+        variant: 'destructive',
+      }),
+  });
+
+  const csvMutation = useMutation({
+    mutationFn: () => {
+      if (!csvFile) throw new Error('CSV required');
+      return clubsApi.bulkInviteCsv(club.id, csvFile);
+    },
+    onSuccess: (response) => {
+      setResult(response.data);
+      setCsvFile(null);
+      setCsvKey((key) => key + 1);
+      toast({
+        title: 'CSV processed',
+        description: `${response.data.invited} invited, ${response.data.skipped} skipped`,
+      });
+    },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to import CSV',
+        variant: 'destructive',
+      }),
+  });
+
   const joinUrl =
     typeof window === 'undefined'
       ? ''
@@ -48,68 +132,184 @@ function ManageJoinCodePopover({ club }: { club: ClubDetail }) {
     : null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1.5">
-          <Sparkles className="size-4" />
-          Join code
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-4 shadow-xl">
-        <div className="space-y-1">
-          <h4 className="font-medium leading-none">Join code</h4>
-          <p className="text-sm text-muted-foreground">
-            Generate a reusable code for students to enter directly.
-          </p>
-        </div>
-        {club.activeJoinCode?.code ? (
-          <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Active code
-            </p>
-            <p className="mt-1.5 text-2xl font-bold tracking-[0.32em] text-foreground">
-              {club.activeJoinCode.code}
-            </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Generated{' '}
-              {club.activeJoinCode.updatedAt
-                ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
-                : 'recently'}
-            </p>
-            {qrUrl ? (
-              <div className="mt-3 flex flex-col items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="Club join QR code" className="size-40 rounded-md border bg-white p-2" />
-                <div className="flex gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Add members</DialogTitle>
+          <DialogDescription>
+            Choose the fastest way to bring students into this club.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="qr" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="qr">
+              <QrCode className="size-4" />
+            </TabsTrigger>
+            <TabsTrigger value="code">
+              <Sparkles className="size-4" />
+            </TabsTrigger>
+            <TabsTrigger value="single">
+              <UserPlus className="size-4" />
+            </TabsTrigger>
+            <TabsTrigger value="bulk">
+              <Upload className="size-4" />
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="qr" className="mt-4">
+            <div className="flex flex-col items-center gap-4 rounded-lg border p-5 text-center">
+              {qrUrl ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qrUrl} alt="Club join QR code" className="size-56 rounded-md border bg-white p-2" />
+                  <Button type="button" variant="outline" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
+                    <Copy className="mr-2 size-4" />
+                    Copy link
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <QrCode className="size-10 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Generate a join code first to create a QR link.
+                  </p>
+                  <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+                    Generate join code
+                  </Button>
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="code" className="mt-4">
+            <div className="flex flex-col gap-4 rounded-lg border p-5">
+              {club.activeJoinCode?.code ? (
+                <div className="rounded-lg bg-muted/40 p-4 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Active code
+                  </p>
+                  <p className="mt-1.5 text-3xl font-bold tracking-[0.32em]">
+                    {club.activeJoinCode.code}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Generated{' '}
+                    {club.activeJoinCode.updatedAt
+                      ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
+                      : 'recently'}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No active join code yet.</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {club.activeJoinCode?.code ? (
                   <Button
                     type="button"
-                    size="sm"
                     variant="outline"
                     onClick={() => navigator.clipboard?.writeText(club.activeJoinCode?.code ?? '')}
                   >
-                    <Copy className="mr-1.5 size-4" />
-                    Code
+                    <Copy className="mr-2 size-4" />
+                    Copy code
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => navigator.clipboard?.writeText(joinUrl)}
-                  >
-                    <QrCode className="mr-1.5 size-4" />
-                    Link
+                ) : null}
+                <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+                  {club.activeJoinCode?.code ? 'Regenerate code' : 'Generate code'}
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="single" className="mt-4">
+            <div className="flex flex-col gap-3">
+              {selected ? (
+                <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+                    {selected.firstName[0]}{selected.lastName[0]}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{fullName(selected)}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{selected.uniqueId}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => { setSelected(null); setQuery(''); }}>
+                    <X className="size-4" />
+                  </Button>
+                  <Button size="sm" disabled={inviteMutation.isPending} onClick={() => inviteMutation.mutate(selected.uniqueId)}>
+                    <Send className="mr-1.5 size-4" />
+                    Send
                   </Button>
                 </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="w-full">
-          <Sparkles className="mr-2 size-4" />
-          {club.activeJoinCode?.code ? 'Regenerate code' : 'Generate code'}
-        </Button>
-      </PopoverContent>
-    </Popover>
+              ) : (
+                <Command className="rounded-lg border" shouldFilter={false}>
+                  <CommandInput placeholder="Search by name or student ID..." value={query} onValueChange={setQuery} />
+                  <CommandList className="max-h-[220px]">
+                    {deferredQuery.length < 2 ? (
+                      <div className="py-5 text-center text-sm text-muted-foreground">
+                        Type at least 2 characters to search.
+                      </div>
+                    ) : isSearching ? (
+                      <div className="py-5 text-center text-sm text-muted-foreground">Searching...</div>
+                    ) : searchResults?.length === 0 ? (
+                      <CommandEmpty>No students found.</CommandEmpty>
+                    ) : (
+                      <CommandGroup heading="Results">
+                        {searchResults?.map((student) => (
+                          <CommandItem
+                            key={student.id}
+                            onSelect={() => setSelected(student)}
+                            className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
+                          >
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                              {student.firstName[0]}{student.lastName[0]}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">{fullName(student)}</p>
+                              <p className="font-mono text-xs text-muted-foreground">{student.uniqueId}</p>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bulk" className="mt-4">
+            <div className="flex flex-col gap-3 rounded-lg border p-5">
+              <Label htmlFor="invite-csv">CSV upload</Label>
+              <Input
+                key={csvKey}
+                id="invite-csv"
+                type="file"
+                accept=".csv"
+                onChange={(event) => setCsvFile(event.target.files?.[0] || null)}
+              />
+              <Button
+                variant="outline"
+                disabled={!csvFile || csvMutation.isPending}
+                onClick={() => csvMutation.mutate()}
+              >
+                <Upload className="mr-2 size-4" />
+                {csvMutation.isPending ? 'Uploading...' : 'Upload CSV'}
+              </Button>
+              {result ? (
+                <div className="rounded-md bg-muted/30 p-3 text-sm">
+                  <p className="font-medium">
+                    {result.invited} invited · {result.skipped} skipped
+                  </p>
+                  {result.errors.slice(0, 5).map((error) => (
+                    <p key={error} className="mt-1 text-xs text-muted-foreground">
+                      {error}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -120,7 +320,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const [roleTarget, setRoleTarget] = useState<ClubDirectoryEntry | null>(null);
 
   const [filter, setFilter] = useState('all');
@@ -183,20 +383,8 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
     </div>
   );
 
-  const actions = (
-    <div className="flex items-center gap-2">
-      {club && canManage ? <ManageJoinCodePopover club={club} /> : null}
-      {canInvite ? (
-        <Button size="sm" onClick={() => setInviteOpen(true)}>
-          <UserPlus className="mr-1.5 size-4" />
-          Invite member
-        </Button>
-      ) : null}
-    </div>
-  );
-
   return (
-    <ClubWorkspace clubId={id} title={title} actions={actions}>
+    <ClubWorkspace clubId={id} title={title}>
       <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
 
         <div className="space-y-4">
@@ -224,6 +412,17 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
               placeholder="Search roster..."
               className="w-full sm:w-[280px] rounded-xl bg-muted/30"
             />
+            {club && canInvite ? (
+              <Button
+                type="button"
+                size="icon"
+                onClick={() => setManageOpen(true)}
+                aria-label="Add members"
+                title="Add members"
+              >
+                <UserPlus className="size-4" />
+              </Button>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-border/70 bg-card overflow-hidden shadow-sm">
@@ -262,7 +461,9 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <InviteDialog clubId={id} open={inviteOpen} onOpenChange={setInviteOpen} />
+      {club ? (
+        <ManagePeopleDialog club={club} open={manageOpen} onOpenChange={setManageOpen} />
+      ) : null}
       <SetRoleDialog clubId={id} person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
     </ClubWorkspace>
   );

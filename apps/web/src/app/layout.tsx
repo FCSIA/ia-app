@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Orbitron } from 'next/font/google';
+import { Work_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/toaster';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const orbitron = Orbitron({ subsets: ['latin'], variable: '--font-orbitron' });
+const workSans = Work_Sans({ subsets: ['latin'], variable: '--font-work-sans' });
 
 export const metadata: Metadata = {
   title: 'IA School App',
@@ -34,7 +33,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${inter.variable} ${orbitron.variable} font-sans`} suppressHydrationWarning>
+      <body className={`${workSans.variable} font-sans`} suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster />
       </body>

@@ -852,7 +852,7 @@ function SlideView({ slide, direction }: { slide: Slide; direction: 1 | -1 }) {
               : 'text-6xl sm:text-8xl md:text-9xl'
           }`}
           style={{
-            fontFamily: 'var(--font-orbitron, inherit)',
+            fontFamily: 'var(--font-work-sans, inherit)',
             wordBreak:
               slide.kind === 'name' || slide.kind === 'pathway' || slide.kind === 'word'
                 ? 'break-word'
@@ -1087,7 +1087,7 @@ function LockedScreen({ opensAt, schoolYear }: { opensAt: Date; schoolYear: numb
 
         <h1
           className="locked-title text-5xl sm:text-7xl font-black leading-none tracking-tight mb-6"
-          style={{ fontFamily: 'var(--font-orbitron, inherit)' }}
+          style={{ fontFamily: 'var(--font-work-sans, inherit)' }}
         >
           Come back in May.
         </h1>

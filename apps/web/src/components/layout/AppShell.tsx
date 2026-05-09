@@ -18,6 +18,7 @@ import {
   Sparkles,
   Star,
   Ticket,
+  Search,
   type LucideIcon,
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -135,12 +137,29 @@ export function AppShell({
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandHint, setCommandHint] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const safePathname = pathname ?? '/dashboard';
 
   useEffect(() => {
     setUser(getUser());
+  }, []);
+
+  useEffect(() => {
+    setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen((current) => !current);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   // Close mobile sheet on route change
@@ -351,6 +370,17 @@ export function AppShell({
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              className="hidden h-9 min-w-48 items-center gap-2 rounded-full border bg-muted/40 px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:flex"
+              onClick={() => setCommandOpen(true)}
+            >
+              <Search className="size-4" />
+              <span className="flex-1">Search everything</span>
+              <kbd className="rounded bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                {commandHint ? '⌘K' : 'Ctrl K'}
+              </kbd>
+            </button>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -409,6 +439,7 @@ export function AppShell({
           <main className={mainClassName ?? 'flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8'}>{children}</main>
         </div>
       </div>
+      <GlobalCommandPalette user={user} open={commandOpen} onOpenChange={setCommandOpen} />
     </TooltipProvider>
   );
 }

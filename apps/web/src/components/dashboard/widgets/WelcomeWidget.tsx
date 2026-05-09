@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
-import { useCurrentUser } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { scheduleApi } from '@/lib/api';
 import { getCurrentScheduleStatus } from '@/components/schedule/schedule-utils';
 import type { ScheduleDashboardResponse } from '@/components/schedule/types';
@@ -13,6 +13,7 @@ import { Clock } from 'lucide-react';
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
   const user = useCurrentUser();
+  const isStudent = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 1000);
@@ -22,7 +23,7 @@ export function WelcomeWidget() {
   const { data: scheduleData } = useQuery<ScheduleDashboardResponse>({
     queryKey: ['schedule-dashboard'],
     queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
-    enabled: !!user,
+    enabled: isStudent,
   });
 
   const currentStatus = useMemo(
@@ -47,18 +48,16 @@ export function WelcomeWidget() {
   return (
     <section className="rounded-[2rem] border border-border/70 bg-card/95 px-6 py-8 sm:px-8">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-6">
+        <div className="flex flex-col gap-5">
           <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-              Dashboard Overview
-            </p>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {greeting}
               {firstName ? `, ${firstName}` : ''}.
             </h1>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          {isStudent ? (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
                 Current Class
@@ -79,7 +78,8 @@ export function WelcomeWidget() {
                 </span>
               </div>
             </div>
-          </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col items-start lg:items-end gap-2 shrink-0">
