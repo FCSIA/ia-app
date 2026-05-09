@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -20,11 +20,9 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dropdown, DropdownLabel, DropdownSeparator, useDropdown } from '@/components/ui/dropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChannelDialog } from '@/components/clubs/dialogs/channel-dialog';
 import { clubsApi } from '@/lib/api';
@@ -45,6 +43,49 @@ type MyClubsResponse = {
   memberOf: ClubSummary[];
   sponsoring: ClubSummary[];
 };
+
+function ClubPickerItem({
+  club,
+  active,
+  index,
+}: {
+  club: ClubSummary;
+  active: boolean;
+  index: number;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  const { registerItem, activeIndex } = useDropdown();
+  const isActive = active || activeIndex === index;
+
+  useEffect(() => {
+    registerItem(index, ref.current);
+    return () => registerItem(index, null);
+  }, [index, registerItem]);
+
+  return (
+    <Link
+      ref={ref}
+      href={`/clubs/${club.id}`}
+      data-proximity-index={index}
+      role="menuitemradio"
+      aria-checked={active}
+      className="relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none"
+    >
+      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
+        {club.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full bg-background object-cover" />
+        ) : (
+          club.name.charAt(0).toUpperCase()
+        )}
+      </div>
+      <span className={cn('min-w-0 flex-1 truncate text-sm', isActive ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground')}>
+        {club.name}
+      </span>
+      {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
+    </Link>
+  );
+}
 
 type ClubWorkspaceProps = {
   clubId: string;
@@ -178,40 +219,28 @@ export function ClubWorkspace({
                   <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64">
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                  Your clubs
-                </DropdownMenuLabel>
-                {myClubs.length > 0 ? (
-                  myClubs.map((entry) => (
-                    <DropdownMenuItem key={entry.id} asChild>
-                      <Link href={`/clubs/${entry.id}`} className="cursor-pointer gap-2.5 py-2">
-                        <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
-                          {entry.logoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={resolveMediaUrl(entry.logoUrl)} alt={entry.name} className="size-full object-cover bg-background" />
-                          ) : (
-                            entry.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <span className="flex-1 font-medium truncate">{entry.name}</span>
-                        {entry.id === clubId ? (
-                          <Check className="size-4 text-muted-foreground" />
-                        ) : null}
-                      </Link>
-                    </DropdownMenuItem>
-                  ))
-                ) : (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                    No club memberships yet.
-                  </div>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/clubs" className="cursor-pointer">
+              <DropdownMenuContent align="start" className="border-0 bg-transparent p-0 shadow-none">
+                <Dropdown checkedIndex={myClubs.findIndex((entry) => entry.id === clubId)} className="w-64">
+                  <DropdownLabel className="text-xs font-normal text-muted-foreground">
+                    Your clubs
+                  </DropdownLabel>
+                  {myClubs.length > 0 ? (
+                    myClubs.map((entry, index) => (
+                      <ClubPickerItem key={entry.id} club={entry} active={entry.id === clubId} index={index} />
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No club memberships yet.
+                    </div>
+                  )}
+                  <DropdownSeparator />
+                  <Link
+                    href="/clubs"
+                    className="relative z-10 flex rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground"
+                  >
                     Browse all clubs
                   </Link>
-                </DropdownMenuItem>
+                </Dropdown>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
