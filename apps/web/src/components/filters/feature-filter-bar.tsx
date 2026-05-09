@@ -16,6 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { useShape } from '@/lib/shape-context';
 import { cn } from '@/lib/utils';
 
 type FilterChip = {
@@ -55,6 +56,7 @@ export function FeatureFilterBar({
   onAdvancedOpenChange,
   className,
 }: FeatureFilterBarProps) {
+  const shape = useShape();
   const hasActive = activeCount > 0 || activeChips.length > 0 || !!search.trim();
   const chipColorStyles: Record<BadgeColor, { active: string; idle: string; count: string }> = {
     gray: {
@@ -145,7 +147,7 @@ export function FeatureFilterBar({
   };
 
   return (
-    <SearchToolbar className={cn('rounded-lg border bg-card p-3', className)}>
+    <SearchToolbar className={cn('rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm shadow-foreground/5', className)}>
       <SearchToolbarRow>
         <SearchInput
           value={search}
@@ -157,11 +159,10 @@ export function FeatureFilterBar({
           {advanced ? (
             <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
               <CollapsibleTrigger asChild>
-                <Button variant="tertiary" size="sm">
-                  <SlidersHorizontal className="mr-1.5 size-4" />
+                <Button variant="tertiary" size="sm" leadingIcon={SlidersHorizontal}>
                   Filters
                   {activeCount > 0 ? (
-                    <Badge variant="solid" className="ml-1.5 rounded-full px-1.5">
+                    <Badge variant="solid" color="blue" className="ml-1.5 rounded-full px-1.5">
                       {activeCount}
                     </Badge>
                   ) : null}
@@ -170,8 +171,7 @@ export function FeatureFilterBar({
             </Collapsible>
           ) : null}
           {hasActive && onClear ? (
-            <Button variant="ghost" size="sm" onClick={onClear}>
-              <X className="mr-1.5 size-4" />
+            <Button variant="ghost" size="sm" leadingIcon={X} onClick={onClear}>
               Clear
             </Button>
           ) : null}
@@ -188,16 +188,22 @@ export function FeatureFilterBar({
               <button
                 key={chip.value}
                 type="button"
+                aria-pressed={active}
                 onClick={() => onChipToggle?.(chip.value)}
                 className={cn(
-                  'inline-flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium outline-none transition-all duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
+                  'group inline-flex min-w-0 items-center gap-1.5 border px-3 py-1.5 text-xs font-medium outline-none transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:-translate-y-px active:translate-y-0 active:scale-[0.98] focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
+                  shape.button,
                   active ? styles.active : styles.idle,
                 )}
               >
-                {chip.icon}
+                {chip.icon ? (
+                  <span className="shrink-0 transition-transform duration-150 group-hover:scale-105">
+                    {chip.icon}
+                  </span>
+                ) : null}
                 <span className="truncate">{chip.label}</span>
                 {chip.count != null ? (
-                  <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] leading-none', styles.count)}>
+                  <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] leading-none shadow-sm shadow-foreground/5', styles.count)}>
                     {chip.count}
                   </span>
                 ) : null}
@@ -209,8 +215,10 @@ export function FeatureFilterBar({
 
       {advanced ? (
         <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
-          <CollapsibleContent className="pt-2">
-            {advanced}
+          <CollapsibleContent className="pt-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+            <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
+              {advanced}
+            </div>
           </CollapsibleContent>
         </Collapsible>
       ) : null}
