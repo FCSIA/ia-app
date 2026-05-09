@@ -813,6 +813,7 @@ async function main() {
       name: club.name,
       description: club.description,
       joinPolicy: club.joinPolicy,
+      memberLimit: club.category === 'LEADERSHIP' ? 80 : club.category === 'PATHWAY' ? 60 : 40,
       joinCode: faker.string.alphanumeric({ length: 6, casing: 'upper' }),
       joinCodeUpdatedAt,
       isActive: true,
