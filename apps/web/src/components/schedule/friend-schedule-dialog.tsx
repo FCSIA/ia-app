@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Calendar, X } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ export function FriendScheduleDialog({
     <Dialog>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="h-7 text-[10px] px-2 gap-1.5">
+          <Button variant="secondary" size="sm" className="h-7 text-[10px] px-2 gap-1.5">
             <Calendar className="size-3" />
             Full Schedule
           </Button>

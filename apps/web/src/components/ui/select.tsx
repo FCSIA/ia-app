@@ -8,6 +8,7 @@ import {
   useCallback,
   createContext,
   useContext,
+  useId,
   type ReactNode,
   type HTMLAttributes,
 } from "react";
@@ -31,6 +32,7 @@ interface SelectContextValue {
   setOpen: (open: boolean) => void;
   disabled: boolean;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
+  contentId: string;
   labelMap: React.MutableRefObject<Map<string, string>>;
 }
 
@@ -79,6 +81,7 @@ function Select({
   const [open, setOpen] = useState(false);
   const currentValue = value !== undefined ? value : internalValue;
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentId = useId();
   const labelMap = useRef(new Map<string, string>());
 
   const onChange = useCallback(
@@ -100,6 +103,7 @@ function Select({
         setOpen,
         disabled,
         triggerRef,
+        contentId,
         labelMap,
       }}
     >
@@ -158,7 +162,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
     { className, variant, icon: Icon, placeholder = "Select…", error, ...props },
     ref
   ) => {
-    const { value, open, setOpen, disabled, triggerRef, labelMap } =
+    const { value, open, setOpen, disabled, triggerRef, contentId, labelMap } =
       useSelectContext();
     const shape = useShape();
     const label = value ? labelMap.current.get(value) ?? value : undefined;
@@ -178,6 +182,7 @@ const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
         }}
         type="button"
         role="combobox"
+        aria-controls={contentId}
         aria-expanded={open}
         aria-haspopup="listbox"
         disabled={disabled}
@@ -249,11 +254,12 @@ SelectTrigger.displayName = "SelectTrigger";
 interface SelectContentProps {
   className?: string;
   children: ReactNode;
+  id?: string;
 }
 
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
-  ({ className, children }, ref) => {
-    const { open, setOpen, value, triggerRef } = useSelectContext();
+  ({ className, children, id }, ref) => {
+    const { open, setOpen, value, triggerRef, contentId } = useSelectContext();
     const shape = useShape();
     const containerRef = useRef<HTMLDivElement>(null);
     const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
@@ -470,6 +476,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                   ref as React.MutableRefObject<HTMLDivElement | null>
                 ).current = node;
             }}
+            id={id ?? contentId}
             role="listbox"
             tabIndex={-1}
             onMouseEnter={() => {

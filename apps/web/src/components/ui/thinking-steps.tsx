@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  useRef,
   forwardRef,
   type ReactNode,
   type HTMLAttributes,
 } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
@@ -32,9 +32,11 @@ interface ThinkingStepsProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ({ defaultOpen = true, open, onOpenChange, children, className, defaultValue: _, ...props }, ref) => {
+  ({ defaultOpen = true, open, onOpenChange, children, className, ...props }, ref) => {
     const controlled = open !== undefined;
+    const htmlProps = { ...(props as Record<string, unknown>) };
+    delete htmlProps.defaultValue;
+
     return (
       <Accordion
         ref={ref}
@@ -48,7 +50,7 @@ const ThinkingSteps = forwardRef<HTMLDivElement, ThinkingStepsProps>(
           onOpenChange ? (v: string) => onOpenChange(v === "thinking") : undefined
         }
         className={cn("w-80 max-w-full", className)}
-        {...props}
+        {...htmlProps}
       >
         {/* Hide standalone accordion expanded bg */}
         <AccordionItem value="thinking" className="[&>.absolute]:hidden">
@@ -125,18 +127,17 @@ interface ThinkingStepProps {
   className?: string;
 }
 
-function ThinkingStep({
-  icon = "dot",
-  showIcon = true,
-  label,
-  description,
-  status = "complete",
-  index,
-  delay = 0,
-  isLast = false,
-  children,
-  className,
-}: ThinkingStepProps) {
+function ThinkingStep(props: ThinkingStepProps) {
+    const {
+      icon = "dot",
+      showIcon = true,
+      label,
+      description,
+      status = "complete",
+      isLast = false,
+      children,
+      className,
+    } = props;
     const Icon = useIcon(icon);
     const shape = useShape();
 
@@ -332,11 +333,13 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
         filter: { duration: 0.15, delay },
       }}
     >
-      <img
+      <Image
         src={src}
         alt={alt}
+        width={200}
+        height={112}
         className={cn(
-          "w-full max-w-[200px] object-cover",
+          "h-auto w-full max-w-[200px] object-cover",
           shape.container
         )}
       />
