@@ -77,7 +77,21 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog 
+      open={open} 
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (isOpen) {
+          setForm({
+            title: '',
+            description: '',
+            location: '',
+            date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+            time: '08:00',
+          });
+        }
+      }}
+    >
       <DialogTrigger asChild>
         {trigger || (
           <Button size="sm" className="flex items-center gap-2 rounded-xl">
