@@ -12,6 +12,7 @@ import {
   Search,
   Sparkles,
   UserPlus,
+  Users,
 } from 'lucide-react';
 import type { ClubDetail } from '@ia/contracts/clubs';
 import { AppShell } from '@/components/layout/AppShell';
@@ -34,6 +35,57 @@ import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
+function getMemberLimitState(club: ClubDetail) {
+  const memberCount = club._count?.members ?? club.members.length;
+  const memberLimit = club.memberLimit ?? null;
+  const remaining = memberLimit == null ? null : Math.max(memberLimit - memberCount, 0);
+  const isFull = memberLimit != null && memberCount >= memberLimit;
+  const percent = memberLimit == null ? null : Math.min(Math.round((memberCount / memberLimit) * 100), 100);
+
+  return { memberCount, memberLimit, remaining, isFull, percent };
+}
+
+function MemberLimitMeter({
+  club,
+  compact = false,
+}: {
+  club: ClubDetail;
+  compact?: boolean;
+}) {
+  const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
+
+  return (
+    <div className={compact ? 'space-y-2' : 'rounded-2xl border border-border/70 bg-muted/20 p-4'}>
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
+          <Users className="size-4 shrink-0 text-primary" />
+          <span className="truncate">Members</span>
+        </span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}
+        </span>
+      </div>
+      {memberLimit != null ? (
+        <div className="space-y-2">
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
+              style={{ width: `${percent ?? 0}%` }}
+            />
+          </div>
+          <p className={`text-xs leading-5 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
+            {isFull
+              ? 'This club is full. New joins, join-code redemptions, invites, and approvals are paused until a spot opens.'
+              : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} available before this club is full.`}
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs leading-5 text-muted-foreground">No member limit is set for this club.</p>
+      )}
+    </div>
+  );
+}
+
 function RequestsPanel({
   club,
 }: {
@@ -41,6 +93,7 @@ function RequestsPanel({
 }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isFull } = getMemberLimitState(club);
 
   const respondMutation = useMutation({
     mutationFn: ({ requestId, accept }: { requestId: string; accept: boolean }) =>
@@ -68,6 +121,11 @@ function RequestsPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 p-5">
+        {isFull ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            This club is full. Pending requests can be declined, but approvals are disabled until a member spot opens.
+          </div>
+        ) : null}
         {club.pendingJoinRequests.map((request) => (
           <div
             key={request.id}
@@ -101,6 +159,7 @@ function RequestsPanel({
               <Button
                 size="sm"
                 className="flex-1 sm:flex-none bg-amber-600 hover:bg-amber-700 text-white"
+                disabled={isFull || respondMutation.isPending}
                 onClick={() => respondMutation.mutate({ requestId: request.id, accept: true })}
               >
                 Approve
@@ -118,6 +177,7 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
   const { toast } = useToast();
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [code, setCode] = useState('');
+  const { isFull } = getMemberLimitState(club);
 
   const redeemMutation = useMutation({
     mutationFn: () => clubsApi.redeemJoinCode(club.id, code.trim().toUpperCase()),
@@ -141,6 +201,7 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
       <Button
         type="button"
         variant="tertiary"
+        disabled={isFull}
         onClick={() => setRedeemOpen((current) => !current)}
       >
         <KeyRound className="mr-2 size-4" />
@@ -153,7 +214,7 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
             onChange={(event) => setCode(event.target.value.toUpperCase())}
             placeholder="Enter join code"
           />
-          <Button onClick={() => redeemMutation.mutate()} disabled={!code.trim() || redeemMutation.isPending}>
+          <Button onClick={() => redeemMutation.mutate()} disabled={isFull || !code.trim() || redeemMutation.isPending}>
             Join with code
           </Button>
         </div>
@@ -197,6 +258,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const resolve = (u?: string | null) => (u ? (u.startsWith('http') ? u : `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`) : undefined);
   const bannerUrl = resolve(club.bannerUrl);
   const logoUrl = resolve(club.logoUrl);
+  const { isFull } = getMemberLimitState(club);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
@@ -225,6 +287,11 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
               <div className="flex items-center gap-2 pt-1">
                 <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+                {club.memberLimit != null ? (
+                  <Badge variant={isFull ? 'solid' : 'dot'} color={isFull ? 'red' : 'amber'}>
+                    {isFull ? 'Full' : 'Limited spots'}
+                  </Badge>
+                ) : null}
                 {club.viewer.hasPendingJoinRequest ? (
                   <Badge variant="dot">Request pending</Badge>
                 ) : null}
@@ -234,19 +301,20 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               {club.overview || club.description || 'No club description yet.'}
             </p>
           </div>
+          <MemberLimitMeter club={club} />
           <div className="flex flex-wrap gap-3">
             {club.joinPolicy === 'OPEN' ? (
-              <Button onClick={() => joinMutation.mutate()} disabled={joinMutation.isPending}>
+              <Button onClick={() => joinMutation.mutate()} disabled={isFull || joinMutation.isPending}>
                 <UserPlus className="mr-2 size-4" />
-                Join club
+                {isFull ? 'Club is full' : 'Join club'}
               </Button>
             ) : (
               <Button
                 onClick={() => requestMutation.mutate()}
-                disabled={club.viewer.hasPendingJoinRequest || requestMutation.isPending}
+                disabled={isFull || club.viewer.hasPendingJoinRequest || requestMutation.isPending}
               >
                 <UserPlus className="mr-2 size-4" />
-                {club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
+                {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
               </Button>
             )}
             <RedeemJoinCodePanel club={club} />
@@ -352,7 +420,13 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     const code = searchParams?.get('joinCode');
-    if (code && club && !club.viewer.canAccessWorkspace && !redeemMutation.isPending) {
+    if (
+      code &&
+      club &&
+      !club.viewer.canAccessWorkspace &&
+      !getMemberLimitState(club).isFull &&
+      !redeemMutation.isPending
+    ) {
       redeemMutation.mutate(code);
     }
   }, [club, redeemMutation, searchParams]);
@@ -386,6 +460,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canPost = isSponsor || !!myMembership?.role || isAdmin;
   const canInvite = canPost || isStaff;
+  const { isFull, memberLimit } = getMemberLimitState(club);
 
   const title = (
     <div className="min-w-0">
@@ -447,7 +522,11 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Members</dt>
-            <dd className="font-medium">{club._count?.members ?? club.members.length}</dd>
+            <dd className="font-medium">
+              {memberLimit == null
+                ? (club._count?.members ?? club.members.length)
+                : `${club._count?.members ?? club.members.length}/${memberLimit}`}
+            </dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Channels</dt>
@@ -476,9 +555,9 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {canInvite ? (
-                <Button size="sm" variant="tertiary" onClick={() => setInviteOpen(true)}>
+                <Button size="sm" variant="tertiary" disabled={isFull} onClick={() => setInviteOpen(true)}>
                   <UserPlus className="mr-1.5 size-4" />
-                  Invite member
+                  {isFull ? 'Club is full' : 'Invite member'}
                 </Button>
               ) : null}
               {canPost ? (
@@ -496,6 +575,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
         ) : null}
+        <MemberLimitMeter club={club} compact />
         {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-3">

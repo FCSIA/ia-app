@@ -60,6 +60,7 @@ export interface ClubSummary {
     bannerUrl?: string | null;
     accentColor?: string | null;
     joinPolicy?: ClubJoinPolicy;
+    memberLimit?: number | null;
     role?: ClubMemberRole | null;
     sponsors?: ClubSponsor[];
     _count?: {
