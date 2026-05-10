@@ -1,17 +1,14 @@
 # Agent Notes Guide
 
-`agent-notes/` is the working context layer for agents. It should stay small, current, and easier to trust than chat history.
+`agent-notes/` is the working context layer for agents. It should stay small, current, and easier to trust than chat history. Repo-wide agent workflow belongs in `AGENTS.md`.
 
 ## File Roles
 
-- `context.md`: stable product and domain truth
-- `decisions.md`: durable technical choices and rationale
-- `current-focus.md`: current execution snapshot
-- `constraints.md`: cross-cutting constraints that affect implementation
-- `plan.md`: implementation roadmap or milestone plan
-- `progress-log.md`: short milestone history, not a diary
-- `tasks.md`: user-owned task directive
-- `DO-NOT-EDIT.md`: reserved instruction file
+- `STATE.md`: current execution snapshot and handoff notes
+- `ARCHITECTURE.md`: stable architectural context
+- `WORKFLOW.md`: repo-specific execution workflow
+- `design-principles.md`: durable product/design guidance
+- `todo.md`: short task backlog or known follow-ups
 
 ## Stable vs Volatile
 
@@ -36,10 +33,9 @@ Prefer this split:
 
 For a new task, an agent should usually read:
 
-1. `current-focus.md`
-2. `context.md`
-3. `decisions.md`
-4. the smallest relevant document under `docs/`
-5. the local source files involved in the change
+1. `AGENTS.md`
+2. `agent-notes/STATE.md`
+3. the smallest relevant document under `docs/`
+4. the local source files involved in the change
 
 This should be enough for most work without needing a large custom prompt.

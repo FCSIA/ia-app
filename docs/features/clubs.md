@@ -50,7 +50,7 @@ Sponsors can generate or rotate a **Join Code**. The people page also exposes a 
 
 ## Club Announcements
 
-Club announcements are `Announcement` records with `targetType: CLUB`. Student leaders submit proposals that sponsors/admins approve; approval immediately publishes the announcement to the club workspace and global feed for members.
+Club announcements are `Announcement` records with `targetType: CLUB`. Admins and sponsors publish directly. Student leaders submit proposals that sponsors/admins approve; approval immediately publishes the announcement to the club workspace and global feed for members.
 
 ---
 
@@ -64,7 +64,7 @@ Channels now support a 3-tier visibility model:
 | **Private** | Explicitly assigned members | Assigned members |
 | **Member Read-Only** | All club members | Leaders & Sponsors only |
 
-Mentions (`@all`, `@leaders`, `@sponsors`, `@tag-name`) trigger `CLUB_CHANNEL_MENTION` notifications.
+Direct user mentions trigger `CLUB_CHANNEL_MENTION` notifications. Built-in and custom tag mentions (`@all`, `@leaders`, `@sponsors`, `@tag-name`) trigger `CLUB_CHANNEL_TAG_MENTION` notifications. Users can opt into all-message channel notifications with `IN_APP`, `PUSH`, or `TIME_SENSITIVE` preference levels.
 
 ---
 

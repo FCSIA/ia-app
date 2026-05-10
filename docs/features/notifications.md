@@ -45,7 +45,10 @@ await prisma.notificationDelivery.createMany({
 | `SCHOOL_ANNOUNCEMENT` | New school/grade/pathway announcement | `/announcements/:id` |
 | `CLUB_ANNOUNCEMENT` | New club announcement | `/clubs/:id` |
 | `CLUB_JOIN_REQUEST` | Student requests to join a club | `/clubs/:id?tab=management` |
-| `CLUB_CHANNEL_MENTION` | User/Tag mention in chat | `/clubs/:id/channels/:channelId` |
+| `CLUB_CHANNEL_MESSAGE` | User opted into all messages for a channel | `/clubs/:id/channels/:channelId` |
+| `CLUB_CHANNEL_MENTION` | Direct user mention in chat | `/clubs/:id/channels/:channelId` |
+| `CLUB_CHANNEL_TAG_MENTION` | Built-in or custom tag mention in chat | `/clubs/:id/channels/:channelId` |
+| `CLUB_CHANNEL_THREAD` | Reply to a user's thread | `/clubs/:id/channels/:channelId` |
 | `EVENT` | Event published | `/events/:id` |
 | `FLEX_FRIDAY` | New Friday or Assignment | `/flex-friday` |
 | `FRIEND_REQUEST` | Coworker wants to share schedules | `/schedule` (friends tab) |
@@ -66,13 +69,16 @@ The frontend uses these fields to construct the correct URL and application stat
 Users can disable any category and tune more specific entities where the product exposes them. For club work, preferences can be stored per club and per channel. Forced admin **push notifications to everyone** remain locked on.
 
 ```
-userId + category + scopeKey → enabled (boolean)
+userId + category + scopeKey → enabled + level
 ```
 
 - `scopeKey: "global"`: Global preference for that category.
 - `scopeKey: "club:<id>"`: Override for a specific club.
 - `scopeKey: "channel:<id>"`: Override for a specific club channel.
 - Entity ids are also stored when available to support contextual controls.
+- `level: OFF | IN_APP | PUSH | TIME_SENSITIVE`: stores current delivery intent. Push escalation is modeled now even though delivery remains in-app polling.
+
+Channel all-message alerts are opt-in: if no `CLUB_CHANNEL_MESSAGE` preference exists for a channel, messages do not create all-message deliveries. Mentions and thread replies remain on by default unless a user disables that scoped category.
 
 ---
 
@@ -84,7 +90,7 @@ userId + category + scopeKey → enabled (boolean)
 | GET | `/notifications/unread-count` | Polled every 30s by the sidebar |
 | POST | `/notifications/mark-read` | Mark specific IDs as read |
 | POST | `/notifications/mark-all-read` | Clear all badges |
-| PUT | `/notifications/preferences` | Update a global or club-specific preference |
+| POST | `/notifications/preferences` | Update a global, club, channel, announcement, or event preference |
 
 ---
 

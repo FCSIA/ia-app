@@ -4,6 +4,12 @@ A full-stack school communication and management platform built for **FCS Innova
 
 ---
 
+## For Coding Agents
+
+Coding agents should read [`AGENTS.md`](./AGENTS.md) before making changes. Human-facing setup and product notes stay in this README and `docs/`.
+
+---
+
 ## ✨ Features
 
 - 🔐 **Authentication** — Secure login with JWT sessions and role-based access control
