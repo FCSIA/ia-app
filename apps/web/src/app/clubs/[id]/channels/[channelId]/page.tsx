@@ -48,7 +48,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
-import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
+import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -555,23 +555,11 @@ export default function ClubChannelPage({
   );
 
   const actions: ReactNode = (
-    <div className="flex items-center gap-2">
-      <NotificationScopeSwitch
-        category="CLUB_CHANNEL_MENTION"
-        label="Mentions"
-        clubId={id}
-        channelId={channelId}
-        compact
-      />
-      <SearchInput
-        value={search}
-        onValueChange={setSearch}
-        placeholder="Search messages"
-        size="sm"
-        className="h-8 w-56 rounded-lg"
-        inputClassName="text-sm"
-      />
-    </div>
+    <ChannelNotificationSettings
+      clubId={id}
+      channelId={channelId}
+      channelName={channel.name}
+    />
   );
 
   const rightPane = selectedThread ? (
@@ -665,6 +653,14 @@ export default function ClubChannelPage({
     >
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl space-y-1 p-3 pb-48">
+          <div className="mb-3 flex justify-end">
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Search messages"
+              className="w-full sm:w-72"
+            />
+          </div>
           {pinnedMessages.length > 0 ? (
             <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -717,7 +713,9 @@ export default function ClubChannelPage({
                 <EmptyDescription>
                   {deferredSearch.trim()
                     ? 'No messages match this search.'
-                    : `Start the conversation in #${channel.name}.`}
+                    : canPost
+                      ? `Start the conversation in #${channel.name}.`
+                      : `No posts have been shared in #${channel.name} yet.`}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

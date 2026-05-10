@@ -193,4 +193,82 @@ describe('AnnouncementsService approval and bookmarks', () => {
       }),
     );
   });
+
+  it('allows admins to create active club announcements without sponsor approval', async () => {
+    const announcement: any = {
+      id: 'ann-1',
+      title: 'Room change',
+      body: 'Meet in 203',
+      clubId: 'club-1',
+      isAdminGeneral: false,
+    };
+    const { service, prisma, notifications, accessPolicy } = makeService({
+      announcement: {
+        create: jest.fn().mockResolvedValue(announcement),
+      },
+      clubMember: { findMany: jest.fn().mockResolvedValue([{ userId: 'member-1' }]) },
+    });
+    (service as any).canPost = jest.fn().mockResolvedValue(true);
+    (service as any).moderation = {
+      maskProfanity: jest.fn().mockResolvedValue({
+        original: 'ok',
+        masked: 'ok',
+        wasFiltered: false,
+        matchedWords: [],
+      }),
+      scanContent: jest.fn().mockResolvedValue([]),
+    };
+    accessPolicy.getClubContext.mockResolvedValue({ isSponsor: false, isAdmin: true });
+
+    await service.create(
+      {
+        title: 'Room change',
+        body: 'Meet in 203',
+        targetType: AnnouncementTarget.CLUB,
+        clubId: 'club-1',
+      } as any,
+      'admin-1',
+      Role.ADMIN,
+    );
+
+    expect(prisma.announcement.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: AnnouncementStatus.ACTIVE,
+          approvedById: 'admin-1',
+          submittedById: undefined,
+        }),
+      }),
+    );
+    expect(notifications.deliver).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ['member-1'],
+        category: NotificationCategory.CLUB_ANNOUNCEMENT,
+      }),
+    );
+  });
+
+  it('only lets authors or admins archive announcements', async () => {
+    const { service, prisma } = makeService({
+      announcement: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'ann-1',
+          authorId: 'author-1',
+        }),
+        update: jest.fn().mockResolvedValue({ id: 'ann-1' }),
+      },
+    });
+
+    await expect(service.archive('ann-1', 'teacher-1', Role.TEACHER)).rejects.toThrow(
+      'Cannot archive this announcement',
+    );
+
+    await service.archive('ann-1', 'admin-1', Role.ADMIN);
+    expect(prisma.announcement.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'ann-1' },
+        data: { status: AnnouncementStatus.ARCHIVED },
+      }),
+    );
+  });
 });

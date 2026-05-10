@@ -55,7 +55,7 @@ function ClubPickerItem({
 }) {
   const ref = useRef<HTMLAnchorElement | null>(null);
   const { registerItem, activeIndex } = useDropdown();
-  const isActive = active || activeIndex === index;
+  const isHovered = activeIndex === index;
 
   useEffect(() => {
     registerItem(index, ref.current);
@@ -69,7 +69,10 @@ function ClubPickerItem({
       data-proximity-index={index}
       role="menuitemradio"
       aria-checked={active}
-      className="relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none"
+      className={cn(
+        'relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none transition-colors',
+        active ? 'bg-muted/70 text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+      )}
     >
       <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
         {club.logoUrl ? (
@@ -79,7 +82,7 @@ function ClubPickerItem({
           club.name.charAt(0).toUpperCase()
         )}
       </div>
-      <span className={cn('min-w-0 flex-1 truncate text-sm', isActive ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground')}>
+      <span className={cn('min-w-0 flex-1 truncate text-sm font-medium', isHovered || active ? 'text-foreground' : 'text-muted-foreground')}>
         {club.name}
       </span>
       {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
@@ -220,7 +223,7 @@ export function ClubWorkspace({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="border-0 bg-transparent p-0 shadow-none">
-                <Dropdown checkedIndex={myClubs.findIndex((entry) => entry.id === clubId)} className="w-64">
+                <Dropdown checkedIndex={-1} className="w-64">
                   <DropdownLabel className="text-xs font-normal text-muted-foreground">
                     Your clubs
                   </DropdownLabel>
@@ -236,7 +239,7 @@ export function ClubWorkspace({
                   <DropdownSeparator />
                   <Link
                     href="/clubs"
-                    className="relative z-10 flex rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground"
+                    className="relative z-10 flex rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
                   >
                     Browse all clubs
                   </Link>

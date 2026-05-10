@@ -737,6 +737,7 @@ model NotificationPreference {
   eventId        String?              @map("event_id")
   scopeKey       String               @default("global") @map("scope_key")
   enabled        Boolean              @default(true)
+  level          NotificationPreferenceLevel @default(PUSH)
   locked         Boolean              @default(false)
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -908,11 +909,21 @@ enum NotificationCategory {
   SCHOOL_ANNOUNCEMENT
   CLUB_ANNOUNCEMENT
   CLUB_JOIN_REQUEST
+  CLUB_CHANNEL_MESSAGE
   EVENT
   FLEX_FRIDAY
   CLUB_CHANNEL_MENTION
+  CLUB_CHANNEL_TAG_MENTION
+  CLUB_CHANNEL_THREAD
   FRIEND_REQUEST
   CONTENT_MODERATED
+}
+
+enum NotificationPreferenceLevel {
+  OFF
+  IN_APP
+  PUSH
+  TIME_SENSITIVE
 }
 
 enum CalendarSource {

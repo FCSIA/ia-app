@@ -312,7 +312,8 @@ export class ClubChannelsService {
           userId?: string;
           tagId?: string;
         }>,
-        notifyUserIds: new Set<string>(),
+        directMentionUserIds: new Set<string>(),
+        tagMentionUserIds: new Set<string>(),
       };
     }
 
@@ -352,7 +353,8 @@ export class ClubChannelsService {
       userId?: string;
       tagId?: string;
     }> = [];
-    const notifyUserIds = new Set<string>();
+    const directMentionUserIds = new Set<string>();
+    const tagMentionUserIds = new Set<string>();
 
     for (const rawToken of tokens) {
       const token = rawToken.trim();
@@ -364,7 +366,7 @@ export class ClubChannelsService {
         }
         mentionRows.push({ kind: 'BUILT_IN_TAG', token: lower });
         for (const userId of audienceIds) {
-          if (userId !== actorId) notifyUserIds.add(userId);
+          if (userId !== actorId) tagMentionUserIds.add(userId);
         }
         continue;
       }
@@ -372,7 +374,7 @@ export class ClubChannelsService {
       if (lower === 'leaders') {
         mentionRows.push({ kind: 'BUILT_IN_TAG', token: lower });
         for (const userId of roleHolderIds) {
-          if (userId !== actorId && audienceSet.has(userId)) notifyUserIds.add(userId);
+          if (userId !== actorId && audienceSet.has(userId)) tagMentionUserIds.add(userId);
         }
         continue;
       }
@@ -380,7 +382,7 @@ export class ClubChannelsService {
       if (lower === 'sponsors') {
         mentionRows.push({ kind: 'BUILT_IN_TAG', token: lower });
         for (const userId of sponsorIds) {
-          if (userId !== actorId && audienceSet.has(userId)) notifyUserIds.add(userId);
+          if (userId !== actorId && audienceSet.has(userId)) tagMentionUserIds.add(userId);
         }
         continue;
       }
@@ -390,7 +392,7 @@ export class ClubChannelsService {
         mentionRows.push({ kind: 'CUSTOM_TAG', token: customTag.slug, tagId: customTag.id });
         for (const member of customTag.members) {
           if (member.userId !== actorId && audienceSet.has(member.userId)) {
-            notifyUserIds.add(member.userId);
+            tagMentionUserIds.add(member.userId);
           }
         }
         continue;
@@ -403,11 +405,11 @@ export class ClubChannelsService {
           token: mentionedUser.uniqueId,
           userId: mentionedUser.id,
         });
-        notifyUserIds.add(mentionedUser.id);
+        directMentionUserIds.add(mentionedUser.id);
       }
     }
 
-    return { mentionRows, notifyUserIds };
+    return { mentionRows, directMentionUserIds, tagMentionUserIds };
   }
 
   async getChannels(clubId: string, userId: string, userRole: string) {
@@ -700,7 +702,7 @@ export class ClubChannelsService {
 
     const audienceIds = await this.accessPolicy.getChannelAudienceUserIds(clubId, channelId);
     const threadParent = await this.resolveThreadParent(channelId, dto.parentMessageId);
-    const { mentionRows, notifyUserIds } = await this.resolveMentions(
+    const { mentionRows, directMentionUserIds, tagMentionUserIds } = await this.resolveMentions(
       clubId,
       actorId,
       bodyModeration.masked,
@@ -708,8 +710,9 @@ export class ClubChannelsService {
       context.hasClubRole || context.isSponsor || context.isAdmin,
     );
 
+    const threadReplyUserIds = new Set<string>();
     if (threadParent?.authorId && threadParent.authorId !== actorId) {
-      notifyUserIds.add(threadParent.authorId);
+      threadReplyUserIds.add(threadParent.authorId);
     }
 
     const message = await this.prisma.clubChannelMessage.create({
@@ -741,12 +744,51 @@ export class ClubChannelsService {
       include: replyMessageInclude,
     });
 
-    if (notifyUserIds.size > 0) {
+    const messagePreview = `${author.firstName} ${author.lastName}: ${bodyModeration.masked.slice(0, 140) || 'sent an attachment'}`;
+    const allMessageUserIds = audienceIds.filter((userId) => userId !== actorId);
+
+    if (allMessageUserIds.length > 0) {
       await this.notifications.deliver({
-        userIds: Array.from(notifyUserIds),
+        userIds: allMessageUserIds,
+        category: NotificationCategory.CLUB_CHANNEL_MESSAGE,
+        title: `${context.club.name} · #${channel.name}`,
+        body: messagePreview,
+        clubId,
+        channelId,
+        messageId: message.id,
+      });
+    }
+
+    if (directMentionUserIds.size > 0) {
+      await this.notifications.deliver({
+        userIds: Array.from(directMentionUserIds),
         category: NotificationCategory.CLUB_CHANNEL_MENTION,
         title: `${context.club.name} · #${channel.name}`,
-        body: `${author.firstName} ${author.lastName}: ${bodyModeration.masked.slice(0, 140) || 'sent an attachment'}`,
+        body: messagePreview,
+        clubId,
+        channelId,
+        messageId: message.id,
+      });
+    }
+
+    if (tagMentionUserIds.size > 0) {
+      await this.notifications.deliver({
+        userIds: Array.from(tagMentionUserIds),
+        category: NotificationCategory.CLUB_CHANNEL_TAG_MENTION,
+        title: `${context.club.name} · #${channel.name}`,
+        body: messagePreview,
+        clubId,
+        channelId,
+        messageId: message.id,
+      });
+    }
+
+    if (threadReplyUserIds.size > 0) {
+      await this.notifications.deliver({
+        userIds: Array.from(threadReplyUserIds),
+        category: NotificationCategory.CLUB_CHANNEL_THREAD,
+        title: `${context.club.name} · #${channel.name}`,
+        body: messagePreview,
         clubId,
         channelId,
         messageId: message.id,

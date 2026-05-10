@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationCategory, Prisma } from '@prisma/client';
+import { NotificationCategory, NotificationPreferenceLevel, Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
@@ -61,9 +61,11 @@ export class NotificationsService {
       announcementId?: string;
       eventId?: string;
       scopeKey?: string;
+      level?: NotificationPreferenceLevel;
     },
   ) {
     const scopeKey = this.scopeKey(opts);
+    const level = opts?.level ?? (enabled ? NotificationPreferenceLevel.PUSH : NotificationPreferenceLevel.OFF);
     const existing = await this.prisma.notificationPreference.findUnique({
       where: { userId_category_scopeKey: { userId, category, scopeKey } },
     });
@@ -71,11 +73,12 @@ export class NotificationsService {
 
     return this.prisma.notificationPreference.upsert({
       where: { userId_category_scopeKey: { userId, category, scopeKey } },
-      update: { enabled },
+      update: { enabled: level !== NotificationPreferenceLevel.OFF && enabled, level },
       create: {
         userId,
         category,
-        enabled,
+        enabled: level !== NotificationPreferenceLevel.OFF && enabled,
+        level,
         clubId: opts?.clubId,
         channelId: opts?.channelId,
         announcementId: opts?.announcementId,
@@ -92,6 +95,8 @@ export class NotificationsService {
       NotificationCategory.EVENT,
       NotificationCategory.FLEX_FRIDAY,
       NotificationCategory.CLUB_CHANNEL_MENTION,
+      NotificationCategory.CLUB_CHANNEL_TAG_MENTION,
+      NotificationCategory.CLUB_CHANNEL_THREAD,
       NotificationCategory.CONTENT_MODERATED,
     ];
     for (const category of categories) {
@@ -136,7 +141,8 @@ export class NotificationsService {
         });
         const byScope = new Map(prefs.map((pref) => [pref.scopeKey, pref]));
         const pref = scopeKeys.map((key) => byScope.get(key)).find(Boolean);
-        if (pref && !pref.enabled) continue;
+        if (opts.category === NotificationCategory.CLUB_CHANNEL_MESSAGE && !pref) continue;
+        if (pref && (!pref.enabled || pref.level === NotificationPreferenceLevel.OFF)) continue;
       }
 
       deliveries.push({

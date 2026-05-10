@@ -66,7 +66,8 @@ export default function AnnouncementsPage() {
   });
 
   const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
-  const canArchive = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+  const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
   const { data, isLoading } = useQuery({
     queryKey: ['announcements', showArchived],
@@ -195,9 +196,15 @@ export default function AnnouncementsPage() {
   const archiveMutation = useMutation({
     mutationFn: (id: string) => announcementsApi.archive(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements'] });
+      qc.invalidateQueries({ queryKey: ['announcements', false] });
+      qc.invalidateQueries({ queryKey: ['announcements', true] });
       toast({ title: 'Archived' });
     },
+    onError: (error: any) =>
+      toast({
+        title: error.response?.data?.message || 'Failed to archive',
+        variant: 'destructive',
+      }),
   });
 
   const bookmarkMutation = useMutation({
@@ -645,44 +652,48 @@ export default function AnnouncementsPage() {
               </p>
             ) : null}
             <div className="space-y-4">
-              {(filtered as any[]).map((announcement) => (
-                <AnnouncementCard
-                  key={announcement.id}
-                  announcement={announcement}
-                  canArchive={canArchive}
-                  onArchive={(id: string) => archiveMutation.mutate(id)}
-                  onBookmarkToggle={(announcement) => bookmarkMutation.mutate(announcement)}
-                  onTagClick={handleTagClick}
-                  onClubClick={(clubId: string) => {
-                    setActiveTag('CLUB');
-                    setSelectedClubIds([clubId]);
-                  }}
-                  footer={
-                    announcement.status === 'PENDING_APPROVAL' && canArchive ? (
-                      <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
-                        <span className="text-xs text-muted-foreground">
-                          Sponsor review required
-                        </span>
-                        <Button
-                          size="sm"
-                          onClick={() => approveMutation.mutate(announcement.id)}
-                        >
-                          <Check className="mr-1.5 size-4" />
-                          Publish
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="tertiary"
-                          onClick={() => rejectMutation.mutate(announcement.id)}
-                        >
-                          <X className="mr-1.5 size-4" />
-                          Send back
-                        </Button>
-                      </div>
-                    ) : null
-                  }
-                />
-              ))}
+              {(filtered as any[]).map((announcement) => {
+                const canArchiveAnnouncement =
+                  canArchiveAny || announcement.author?.id === user?.id;
+                return (
+                  <AnnouncementCard
+                    key={announcement.id}
+                    announcement={announcement}
+                    canArchive={canArchiveAnnouncement}
+                    onArchive={(id: string) => archiveMutation.mutate(id)}
+                    onBookmarkToggle={(announcement) => bookmarkMutation.mutate(announcement)}
+                    onTagClick={handleTagClick}
+                    onClubClick={(clubId: string) => {
+                      setActiveTag('CLUB');
+                      setSelectedClubIds([clubId]);
+                    }}
+                    footer={
+                      announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
+                        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
+                          <span className="text-xs text-muted-foreground">
+                            Sponsor review required
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => approveMutation.mutate(announcement.id)}
+                          >
+                            <Check className="mr-1.5 size-4" />
+                            Publish
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="tertiary"
+                            onClick={() => rejectMutation.mutate(announcement.id)}
+                          >
+                            <X className="mr-1.5 size-4" />
+                            Send back
+                          </Button>
+                        </div>
+                      ) : null
+                    }
+                  />
+                );
+              })}
             </div>
           </div>
         )}

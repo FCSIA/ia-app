@@ -394,6 +394,7 @@ export const notificationsApi = {
       announcementId?: string;
       eventId?: string;
       scopeKey?: string;
+      level?: 'OFF' | 'IN_APP' | 'PUSH' | 'TIME_SENSITIVE';
     },
   ) =>
     api.post('/notifications/preferences', { category, enabled, ...(opts ?? {}) }),

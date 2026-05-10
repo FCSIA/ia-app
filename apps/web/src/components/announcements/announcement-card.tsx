@@ -50,6 +50,7 @@ export type AnnouncementCardRecord = {
   status: string;
   targetType: string;
   author?: {
+    id?: string;
     firstName?: string | null;
     lastName?: string | null;
   } | null;

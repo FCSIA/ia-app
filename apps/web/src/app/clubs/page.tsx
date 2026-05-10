@@ -85,16 +85,8 @@ export default function ClubsLandingPage() {
   }, [allClubs, deferredSearch]);
 
   const headerSlot = (
-    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-      <div className="min-w-0">
-        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Clubs</h1>
-      </div>
-      {canCreate ? (
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1.5 size-4" />
-          New club
-        </Button>
-      ) : null}
+    <div className="min-w-0">
+      <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Clubs</h1>
     </div>
   );
 
@@ -161,13 +153,22 @@ export default function ClubsLandingPage() {
         ) : null}
 
         <section className="space-y-4">
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Search clubs..."
-            />
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <SearchInput
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search clubs..."
+                className="w-full sm:w-72"
+              />
+              {canCreate ? (
+                <Button size="sm" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-1.5 size-4" />
+                  New club
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {isLoading ? (

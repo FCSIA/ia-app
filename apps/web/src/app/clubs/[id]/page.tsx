@@ -2,7 +2,6 @@
 
 import { use, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,7 +28,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { announcementsApi, clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -459,6 +457,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canPost = isSponsor || !!myMembership?.role || isAdmin;
+  const canPostDirectAnnouncement = isSponsor || isAdmin;
   const canInvite = canPost || isStaff;
   const { isFull, memberLimit } = getMemberLimitState(club);
 
@@ -563,15 +562,9 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
               {canPost ? (
                 <Button size="sm" onClick={() => setAnnounceOpen(true)}>
                   <Megaphone className="mr-1.5 size-4" />
-                  Propose announcement
+                  {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
                 </Button>
               ) : null}
-              <NotificationScopeSwitch
-                category="CLUB_ANNOUNCEMENT"
-                label="Club announcements"
-                clubId={club.id}
-                compact
-              />
             </CardContent>
           </Card>
         ) : null}
@@ -640,7 +633,12 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
       </div>
 
       <InviteDialog clubId={id} open={inviteOpen} onOpenChange={setInviteOpen} />
-      <AnnouncementDialog clubId={id} open={announceOpen} onOpenChange={setAnnounceOpen} />
+      <AnnouncementDialog
+        clubId={id}
+        open={announceOpen}
+        onOpenChange={setAnnounceOpen}
+        directPost={canPostDirectAnnouncement}
+      />
     </ClubWorkspace>
   );
 }

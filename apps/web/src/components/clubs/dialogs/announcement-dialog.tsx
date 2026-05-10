@@ -22,9 +22,10 @@ type Props = {
   clubId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  directPost?: boolean;
 };
 
-export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
+export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = false }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [title, setTitle] = useState('');
@@ -42,7 +43,8 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['club-announcements', clubId] });
-      toast({ title: 'Announcement submitted' });
+      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
+      toast({ title: directPost ? 'Announcement posted' : 'Announcement submitted' });
       setTitle('');
       setBody('');
       setAllowComments(false);
@@ -60,9 +62,11 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Propose announcement</DialogTitle>
+          <DialogTitle>{directPost ? 'Post announcement' : 'Propose announcement'}</DialogTitle>
           <DialogDescription>
-            Student leader proposals go to sponsors for approval; sponsor posts publish immediately.
+            {directPost
+              ? 'Send an update directly to club members.'
+              : 'Student leader proposals go to sponsors for approval.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -105,7 +109,13 @@ export function AnnouncementDialog({ clubId, open, onOpenChange }: Props) {
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !title.trim() || !body.trim()}
           >
-            {mutation.isPending ? 'Submitting…' : 'Submit'}
+            {mutation.isPending
+              ? directPost
+                ? 'Posting…'
+                : 'Submitting…'
+              : directPost
+                ? 'Post'
+                : 'Submit for review'}
           </Button>
         </DialogFooter>
       </DialogContent>

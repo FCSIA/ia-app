@@ -29,12 +29,6 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: browserApiUrl,
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;

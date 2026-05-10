@@ -388,9 +388,9 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
       <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
 
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <Tabs value={filter} onValueChange={setFilter} className="w-full sm:w-auto">
-              <TabsList className="grid w-full grid-cols-4 sm:w-auto sm:inline-flex rounded-xl p-1 bg-muted/50 border border-border/50">
+              <TabsList className="grid w-full grid-cols-4 rounded-3xl bg-muted p-1 sm:w-auto sm:inline-flex">
                 <TabItem value="all" className="rounded-lg text-xs sm:text-sm" label="All">
                   All <span className="ml-1.5 opacity-50">{stats.all}</span>
                 </TabItem>
@@ -406,26 +406,28 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
               </TabsList>
             </Tabs>
 
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Search roster..."
-              className="w-full sm:w-[280px] rounded-xl bg-muted/30"
-            />
-            {club && canInvite ? (
-              <Button
-                type="button"
-                size="icon"
-                onClick={() => setManageOpen(true)}
-                aria-label="Add members"
-                title="Add members"
-              >
-                <UserPlus className="size-4" />
-              </Button>
-            ) : null}
+            <div className="flex w-full justify-end gap-2 sm:w-auto">
+              <SearchInput
+                value={search}
+                onValueChange={setSearch}
+                placeholder="Search roster..."
+                className="w-full sm:w-[280px]"
+              />
+              {club && canInvite ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  onClick={() => setManageOpen(true)}
+                  aria-label="Add members"
+                  title="Add members"
+                >
+                  <UserPlus className="size-4" />
+                </Button>
+              ) : null}
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-border/70 bg-card overflow-hidden shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
             {filtered.length > 0 ? (
               <div className="divide-y divide-border/60">
                 {filtered.map((person) => (

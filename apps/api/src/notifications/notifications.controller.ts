@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
-import { NotificationCategory } from '@prisma/client';
+import { NotificationCategory, NotificationPreferenceLevel } from '@prisma/client';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -51,6 +51,7 @@ export class NotificationsController {
       announcementId?: string;
       eventId?: string;
       scopeKey?: string;
+      level?: NotificationPreferenceLevel;
     },
   ) {
     return this.notificationsService.upsertPreference(
@@ -63,6 +64,7 @@ export class NotificationsController {
         announcementId: body.announcementId,
         eventId: body.eventId,
         scopeKey: body.scopeKey,
+        level: body.level,
       },
     );
   }
