@@ -4,22 +4,21 @@
 
 ## File Roles
 
-- `context.md`: stable product and domain truth
-- `decisions.md`: durable technical choices and rationale
-- `current-focus.md`: current execution snapshot
-- `constraints.md`: cross-cutting constraints that affect implementation
-- `plan.md`: implementation roadmap or milestone plan
-- `progress-log.md`: short milestone history, not a diary
-- `tasks.md`: user-owned task directive
-- `DO-NOT-EDIT.md`: reserved instruction file
+- `STATE.md`: current execution snapshot, recent handoffs, and next work.
+- `ARCHITECTURE.md`: durable architecture constraints and domain model direction.
+- `WORKFLOW.md`: coordination rules for multi-agent work.
+- `todo.md`: shared priority queue and loose task backlog.
+- `design-principles.md`: product/UI voice, layout, and visual rules.
+- `README.md`: this guide.
 
 ## Stable vs Volatile
 
 Prefer this split:
 
-- Stable context belongs in `context.md`, `decisions.md`, and relevant files under `docs/`.
-- Volatile execution state belongs in `current-focus.md`.
-- Historical summaries belong in `progress-log.md` only when they still help future work.
+- Stable human-facing context belongs under `docs/`.
+- Volatile execution state belongs in `STATE.md`.
+- Durable agent constraints belong in `ARCHITECTURE.md`, `WORKFLOW.md`, or `design-principles.md`.
+- Historical summaries belong in `STATE.md` only while they still help future work.
 
 ## Update Rules
 
@@ -36,9 +35,9 @@ Prefer this split:
 
 For a new task, an agent should usually read:
 
-1. `current-focus.md`
-2. `context.md`
-3. `decisions.md`
+1. `AGENTS.md`
+2. `agent-notes/STATE.md`
+3. `agent-notes/WORKFLOW.md`
 4. the smallest relevant document under `docs/`
 5. the local source files involved in the change
 
