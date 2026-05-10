@@ -24,7 +24,7 @@ A full-stack school communication and management platform built for **FCS Innova
 | Layer | Technology |
 |-------|-----------|
 | **API** | [NestJS](https://nestjs.com/) + TypeScript |
-| **Database** | SQLite (dev) via [Prisma ORM](https://www.prisma.io/) |
+| **Database** | PostgreSQL via [Prisma ORM](https://www.prisma.io/) |
 | **Web Frontend** | [Next.js 15](https://nextjs.org/) + Tailwind CSS + shadcn/ui |
 | **Auth** | JWT + bcrypt |
 | **Monorepo** | [Turborepo](https://turbo.build/) + pnpm workspaces |
@@ -65,6 +65,7 @@ ia-app/
 
 - [Node.js](https://nodejs.org/) v20+
 - [pnpm](https://pnpm.io/) v9+
+- PostgreSQL 16, either through Homebrew scripts or the Nix flake shell
 
 ### 1. Clone the repo
 
@@ -78,15 +79,36 @@ cd ia-app
 ```bash
 cp .env.example .env
 cp .env.example apps/api/.env
+cp .env.example apps/web/.env.local
 ```
 
-### 3. Install dependencies
+The tracked env files currently use the local PostgreSQL defaults from `flake.nix`: `ia_user`, `ia_password`, and `ia_db`.
+
+### 3. Start local services
+
+With Nix + direnv:
+
+```bash
+direnv allow
+```
+
+`.envrc` runs `use flake`, and the flake dev shell initializes/starts a local PostgreSQL 16 instance in `.pgdata`.
+
+Without Nix:
+
+```bash
+pnpm infra:up
+```
+
+`pnpm infra:up` and `pnpm infra:down` manage PostgreSQL through Homebrew.
+
+### 4. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### 4. Set up the database
+### 5. Set up the database
 
 ```bash
 pnpm db:generate   # Generate Prisma client
@@ -94,7 +116,7 @@ pnpm db:migrate    # Run migrations
 pnpm db:seed       # Seed with test data
 ```
 
-### 5. Start the app
+### 6. Start the app
 
 ```bash
 # macOS/Linux
@@ -118,17 +140,6 @@ If Prisma starts failing with missing-column errors such as `users.middle_name`,
 ```bash
 pnpm db:reset
 ```
-
-## Local Services
-
-## 🔑 Test Accounts
-
-```bash
-pnpm infra:up
-pnpm infra:down
-```
-
-`pnpm infra:up` and `pnpm infra:down` manage PostgreSQL through Homebrew.
 
 ## Useful Commands
 
@@ -154,23 +165,15 @@ pnpm infra:up:win # Windows: Start database
 
 ## Test Accounts
 
-All demo accounts use their ID as the password.
+All demo accounts use their ID as the password. The seed creates 1,619 users total: 1,500 students and 119 staff.
 
-| ID | Role |
-|----|------|
-| `SUPER001` | Super Admin |
-| `ADMIN001` | Admin |
-| `TCH001` | Teacher / Sponsor |
-| `STU001` | Student |
-| `STU002` | Student |
-| `STU003` | Student |
-| `STU004` | Student |
-| `STU005` | Student |
-| `STU006` | Student |
-| `STU007` | Student |
-| `STU008` | Student |
-| `STU009` | Student |
-| `STU010` | Student |
+| ID range | Role(s) | Notes |
+|----------|---------|-------|
+| `SUPER001` | `SUPER_ADMIN`, `ADMIN` | System owner |
+| `ADMIN001`-`ADMIN004` | `ADMIN` | School admins |
+| `TCH001`-`TCH085` | `TEACHER`, some also `SPONSOR` | `TCH001` and the first generated teachers sponsor clubs |
+| `STF001`-`STF029` | `SUPPORT_STAFF`, some also `SPONSOR` | Support staff; first few can sponsor clubs |
+| `STU001`-`STU1500` | `STUDENT` | 375 students per grade, balanced across the three pathways |
 
 ---
 
@@ -181,9 +184,13 @@ All demo accounts use their ID as the password.
 | `SUPER_ADMIN` | Full access, manage admins, system-wide settings |
 | `ADMIN` | Manage users, events, moderation, announcements |
 | `TEACHER` | Create sessions, approve events, view rosters |
+| `SPONSOR` | Manage sponsored clubs and approve club activity |
+| `SUPPORT_STAFF` | Read-only admin access plus moderation/report review |
 | `STUDENT_ADMIN` | Assist with student management |
 | `STUDENT_LEADER` | Lead clubs, organize events |
 | `STUDENT` | View announcements, register for Flex, join clubs |
+
+Users can hold multiple roles at once. Club leadership titles such as `President`, `Captain`, or `Operations Lead` are stored separately on club memberships, not in the global `Role` enum.
 
 ---
 
