@@ -174,10 +174,10 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
         {/* Switch */}
         <SwitchPrimitive.Root
           checked={checked}
-          onToggle={() => () => {
+          onCheckedChange={() => {
             if (didDrag.current) return;
             onToggle();
-          (!checked)}}
+          }}
           disabled={disabled}
           tabIndex={0}
           className={cn(

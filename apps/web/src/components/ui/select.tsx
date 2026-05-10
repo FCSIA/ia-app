@@ -303,9 +303,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
     useEffect(() => {
       if (!open || !triggerRect) return;
       // Double rAF: first waits for React commit, second for layout
-      let outer: number;
       let inner: number;
-      outer = requestAnimationFrame(() => {
+      const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
           measureItems();
           const container = containerRef.current;

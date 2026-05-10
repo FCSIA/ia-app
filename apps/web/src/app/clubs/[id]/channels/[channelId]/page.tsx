@@ -36,6 +36,7 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { MentionBody } from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -157,6 +158,20 @@ function MarkdownMessage({ body }: { body: string }) {
   );
 }
 
+function MessageBody({ message }: { message: ClubChannelMessage }) {
+  if (Array.isArray(message.bodyRich) && message.bodyRich.length > 0) {
+    return (
+      <MentionBody
+        body={message.body}
+        bodyRich={message.bodyRich}
+        className="mt-1"
+      />
+    );
+  }
+
+  return message.body ? <MarkdownMessage body={message.body} /> : null;
+}
+
 function PollCard({
   message,
   onVote,
@@ -258,7 +273,7 @@ function MessageRow({
           ) : null}
         </div>
 
-        {message.body ? <MarkdownMessage body={message.body} /> : null}
+        <MessageBody message={message} />
 
         <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
 

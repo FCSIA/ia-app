@@ -64,6 +64,7 @@ export class ClubInvitationsService {
   }
 
   private async ensureClubHasSpace(tx: Prisma.TransactionClient, clubId: string) {
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM "clubs" WHERE id = ${clubId} FOR UPDATE`);
     const club = await tx.club.findUnique({
       where: { id: clubId },
       select: {
@@ -71,32 +72,36 @@ export class ClubInvitationsService {
         _count: { select: { members: true } },
       },
     });
+    if (!club) throw new NotFoundException('Club not found');
     if (club?.memberLimit != null && club._count.members >= club.memberLimit) {
       throw new ConflictException('This club is at its member limit');
     }
   }
 
   private async addMemberToClub(clubId: string, userId: string) {
-    await this.prisma.clubMember.create({
-      data: { clubId, userId, role: null },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await this.ensureClubHasSpace(tx, clubId);
+      await tx.clubMember.create({
+        data: { clubId, userId, role: null },
+      });
 
-    await this.prisma.notificationPreference.upsert({
-      where: {
-        userId_category_scopeKey: {
+      await tx.notificationPreference.upsert({
+        where: {
+          userId_category_scopeKey: {
+            userId,
+            category: NotificationCategory.CLUB_ANNOUNCEMENT,
+            scopeKey: `club:${clubId}`,
+          },
+        },
+        update: { enabled: true },
+        create: {
           userId,
           category: NotificationCategory.CLUB_ANNOUNCEMENT,
+          clubId,
           scopeKey: `club:${clubId}`,
+          enabled: true,
         },
-      },
-      update: { enabled: true },
-      create: {
-        userId,
-        category: NotificationCategory.CLUB_ANNOUNCEMENT,
-        clubId,
-        scopeKey: `club:${clubId}`,
-        enabled: true,
-      },
+      });
     });
   }
 

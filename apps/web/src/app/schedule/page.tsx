@@ -41,7 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
-import { getUser, hasRole, useCurrentUser } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -51,6 +51,21 @@ function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean)
     isPublic,
     entries,
   };
+}
+
+type ScheduleTab = 'my' | 'friends' | 'admin';
+
+function resolveScheduleTab(
+  requestedTab: string | null,
+  canEditOwnSchedule: boolean,
+  canManageBlocks: boolean,
+): ScheduleTab {
+  if (requestedTab === 'friends' && canEditOwnSchedule) return 'friends';
+  if (requestedTab === 'admin' && canManageBlocks) return 'admin';
+  if (requestedTab === 'my' && canEditOwnSchedule) return 'my';
+  if (canEditOwnSchedule) return 'my';
+  if (canManageBlocks) return 'admin';
+  return 'my';
 }
 
 export default function SchedulePage() {
@@ -83,20 +98,7 @@ function SchedulePageContent() {
   const requestedTab = searchParams?.get('tab') ?? null;
   const requestedSection = searchParams?.get('section') ?? null;
 
-  const [activeTab, setActiveTab] = useState<'my' | 'friends' | 'admin'>(() => {
-    if (requestedTab === 'friends') return 'friends';
-    if (requestedTab === 'admin') return 'admin';
-    if (requestedTab === 'my') return 'my';
-    
-    // Default based on role if no requested tab
-    if (typeof window !== 'undefined') {
-      const storedUser = getUser();
-      if (storedUser && hasRole(storedUser, 'ADMIN', 'SUPER_ADMIN') && !hasRole(storedUser, 'STUDENT')) {
-        return 'admin';
-      }
-    }
-    return 'my';
-  });
+  const [activeTab, setActiveTab] = useState<ScheduleTab>('my');
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
@@ -123,24 +125,15 @@ function SchedulePageContent() {
   }, [data?.mySchedule]);
 
   useEffect(() => {
-    if (!requestedTab) return;
-    if (requestedTab === 'friends' && canEditOwnSchedule) {
-      setActiveTab('friends');
-      return;
-    }
-    if (requestedTab === 'admin' && canManageBlocks) {
-      setActiveTab('admin');
-      return;
-    }
-    if (requestedTab === 'my' && canEditOwnSchedule) {
-      setActiveTab('my');
-    }
+    setActiveTab(resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks));
   }, [canEditOwnSchedule, canManageBlocks, requestedTab]);
 
+  const selectedTab = resolveScheduleTab(activeTab, canEditOwnSchedule, canManageBlocks);
+
   useEffect(() => {
-    if (activeTab !== 'friends' || requestedSection !== 'requests') return;
+    if (selectedTab !== 'friends' || requestedSection !== 'requests') return;
     incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [activeTab, requestedSection, data?.incomingRequests?.length]);
+  }, [selectedTab, requestedSection, data?.incomingRequests?.length]);
 
   const { data: searchResults = [], isFetching: isSearching } = useQuery<ScheduleSearchResult[]>({
     queryKey: ['schedule-search', normalizedDeferredSearch],
@@ -387,7 +380,12 @@ function SchedulePageContent() {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'my' | 'friends' | 'admin')}>
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) =>
+            setActiveTab(resolveScheduleTab(value, canEditOwnSchedule, canManageBlocks))
+          }
+        >
           {/* Tab bar + controls in one row */}
           <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-px">
             <TabsList className="h-auto gap-0 rounded-none border-0 bg-transparent p-0">
@@ -413,7 +411,7 @@ function SchedulePageContent() {
                 />
               ) : null}
             </TabsList>
-            {activeTab === 'my' && canEditOwnSchedule && (
+            {selectedTab === 'my' && canEditOwnSchedule && (
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Public</span>

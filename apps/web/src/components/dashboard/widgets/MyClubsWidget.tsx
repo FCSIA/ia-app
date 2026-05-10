@@ -32,7 +32,7 @@ export function MyClubsWidget() {
       {clubs.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[1.4rem] border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
           <Users className="mb-2 size-6 text-muted-foreground/60" />
-          <p>You haven't joined any clubs.</p>
+          <p>You haven&apos;t joined any clubs.</p>
           <Link href="/clubs" className="mt-2 text-primary font-medium hover:underline">
             Browse catalog
           </Link>
