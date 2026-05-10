@@ -41,7 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { getUser, hasRole, useCurrentUser } from '@/lib/auth';
 import { coursesApi, scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -80,9 +80,23 @@ function SchedulePageContent() {
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canManageBlocks = isAdmin;
 
-  const [activeTab, setActiveTab] = useState<'my' | 'friends' | 'admin'>(
-    canEditOwnSchedule ? 'my' : 'admin',
-  );
+  const requestedTab = searchParams?.get('tab') ?? null;
+  const requestedSection = searchParams?.get('section') ?? null;
+
+  const [activeTab, setActiveTab] = useState<'my' | 'friends' | 'admin'>(() => {
+    if (requestedTab === 'friends') return 'friends';
+    if (requestedTab === 'admin') return 'admin';
+    if (requestedTab === 'my') return 'my';
+    
+    // Default based on role if no requested tab
+    if (typeof window !== 'undefined') {
+      const storedUser = getUser();
+      if (storedUser && hasRole(storedUser, 'ADMIN', 'SUPER_ADMIN') && !hasRole(storedUser, 'STUDENT')) {
+        return 'admin';
+      }
+    }
+    return 'my';
+  });
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
@@ -92,8 +106,6 @@ function SchedulePageContent() {
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
-  const requestedTab = searchParams?.get('tab') ?? null;
-  const requestedSection = searchParams?.get('section') ?? null;
 
   const { data, isLoading } = useQuery<ScheduleDashboardResponse>({
     queryKey: ['schedule-dashboard'],
@@ -383,25 +395,22 @@ function SchedulePageContent() {
                 <TabItem
                   value="my"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                 label="My">
-                  Schedule
-                </TabItem>
+                  label="My Schedule"
+                />
               ) : null}
               {canEditOwnSchedule ? (
                 <TabItem
                   value="friends"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                 label="Friends">
-                  Friends
-                </TabItem>
+                  label="Friend Schedules"
+                />
               ) : null}
               {canManageBlocks ? (
                 <TabItem
                   value="admin"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                 label="Admin">
-                  Blocks
-                </TabItem>
+                  label="Manage Blocks"
+                />
               ) : null}
             </TabsList>
             {activeTab === 'my' && canEditOwnSchedule && (

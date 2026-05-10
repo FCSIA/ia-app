@@ -16,6 +16,7 @@ import {
   getCurrentScheduleStatus,
   getWeekdayForDate,
 } from './schedule-utils';
+import { FriendScheduleDialog } from './friend-schedule-dialog';
 import { ScheduleFriend, SchoolDayBlock } from './types';
 
 type FriendScheduleCardProps = {
@@ -56,24 +57,31 @@ export function FriendScheduleCard({
           <p className="font-mono text-[11px] text-muted-foreground mt-0.5">{friend.user.uniqueId}</p>
         </div>
         {isPublic && (
-          <div className="text-right shrink-0 mr-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Now</p>
-            {current.currentEntry?.course ? (
-              <Link
-                href={`/courses/${current.currentEntry.course.slug}`}
-                className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-              >
-                {currentLabel}
-              </Link>
-            ) : (
-              <p className="text-sm font-medium text-foreground">{currentLabel}</p>
-            )}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-right mr-1">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Now</p>
+              {current.currentEntry?.course ? (
+                <Link
+                  href={`/courses/${current.currentEntry.course.slug}`}
+                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                >
+                  {currentLabel}
+                </Link>
+              ) : (
+                <p className="text-sm font-medium text-foreground">{currentLabel}</p>
+              )}
+            </div>
+            
+            <FriendScheduleDialog 
+              friend={friend} 
+              blocks={blocks} 
+            />
           </div>
         )}
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs text-destructive hover:text-destructive shrink-0"
+          className="h-7 text-xs text-destructive hover:text-destructive shrink-0 opacity-40 hover:opacity-100 transition-opacity"
           disabled={isRemoving}
           onClick={onRemove}
         >

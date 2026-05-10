@@ -718,9 +718,9 @@ export class ClubChannelsService {
         authorId: actorId,
         parentMessageId: threadParent?.id,
         body: bodyModeration.masked,
-        bodyRich: (richBody as any) ?? undefined,
+        bodyRich: richBody ?? undefined,
         pollQuestion: poll?.question,
-        pollOptions: poll?.options as any,
+        pollOptions: poll?.options ?? undefined,
         mentions: {
           create: mentionRows.map((mention) => ({
             kind: mention.kind,
@@ -782,7 +782,7 @@ export class ClubChannelsService {
       });
 
       await this.moderation.createAutomatedReport(
-        (ContentType as any).CLUB_CHANNEL_MESSAGE,
+        ContentType.CLUB_CHANNEL_MESSAGE,
         message.id,
         actorId,
         bodyModeration.matchedWords,

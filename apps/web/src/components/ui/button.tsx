@@ -100,6 +100,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         disabled={disabled || loading}
         style={style}
+        suppressHydrationWarning
         {...props}
       >
         {shouldPassChildThrough ? (
