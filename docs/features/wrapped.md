@@ -14,10 +14,13 @@ IA Wrapped is a Spotify Wrapped-style year-in-review experience for each user. I
 
 The feature is available to normal users only during May. Admins and super admins can access it outside the normal availability window.
 
+Wrapped summaries are stored as annual `WrappedSnapshot` rows. The snapshot keeps the student-facing experience fast and stable during the May traffic spike while still letting admins regenerate data after source-record corrections. The API falls back to generating a missing current snapshot for the requesting user, but the intended launch flow is to pre-generate snapshots before the window opens.
+
 **Files:**
 - Backend: `apps/api/src/wrapped/`
 - Web: `apps/web/src/app/wrapped/`
 - Shared frontend helper: `apps/web/src/lib/wrapped.ts`
+- Database: `WrappedSnapshot` plus indexed source tables for channel messages, reactions, mentions, friendships, club membership, and Flex attendance
 
 ---
 
@@ -89,6 +92,36 @@ The slide deck uses GSAP animations, themed gradients, and per-slide visual grap
 | GET | `/wrapped/me` | Returns the authenticated user's Wrapped summary |
 
 Admins can pass a school year query when requesting `/wrapped/me`; normal users are limited to the currently open Wrapped window.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/wrapped/admin/snapshots/status?schoolYear=2025` | Admin-only snapshot coverage and freshness for a school year |
+| POST | `/wrapped/admin/snapshots/generate` | Admin-only generation or refresh for all eligible students or selected user IDs |
+
+Generation payload:
+
+```json
+{
+  "schoolYear": 2025,
+  "userIds": ["user-id-1"],
+  "refresh": false
+}
+```
+
+`userIds` is optional. If omitted, the service targets active student-style users (`STUDENT`, `STUDENT_LEADER`, `STUDENT_ADMIN`). `refresh: false` skips snapshots already generated with the current schema version; `refresh: true` rebuilds them.
+
+---
+
+## Data Strategy
+
+Wrapped uses a Prisma-managed snapshot table instead of PostgreSQL materialized views. Materialized views are useful for repeated aggregate reads, but PostgreSQL refreshes them on demand and Prisma does not model materialized views directly. A first-class snapshot row better matches this app's existing NestJS + Prisma style:
+
+- Student reads are a single indexed lookup during the high-traffic May window.
+- Students see stable school-year results rather than changing numbers during the experience.
+- Admins can check coverage and regenerate snapshots after data fixes.
+- Admin analytics can sort/filter scalar metrics without unpacking the full JSON summary.
+
+The snapshot stores the full public `WrappedSummary` JSON plus scalar metrics such as messages sent, Flex credits, reactions received, and longest streak. If the summary schema changes, bump the schema version and regenerate snapshots.
 
 ---
 

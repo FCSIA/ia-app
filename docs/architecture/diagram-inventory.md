@@ -452,7 +452,7 @@ Optional keyword match, automated report, notification, and audit records are cr
 - Longest message length.
 - Stopword filtering prevents common filler words from dominating the most-used-word stat.
 - Message dates and hours are normalized to America/New_York for day/hour stats.
-- Wrapped data is computed from existing records rather than stored as a separate annual snapshot.
+- Wrapped data is precomputed into annual snapshots for fast May reads, with admin regeneration when source records are corrected.
 - The frontend builds a slide list dynamically, skipping some slides when the user has no relevant activity.
 
 Wrapped data sources:

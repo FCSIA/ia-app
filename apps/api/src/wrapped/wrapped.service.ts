@@ -1,14 +1,10 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { FlexAttendanceStatus, FriendshipStatus, Pathway, Role } from '@prisma/client';
+import { FlexAttendanceStatus, FriendshipStatus, Pathway, Prisma, Role } from '@prisma/client';
 
-/**
- * School year runs Aug 1 → Jul 31. Aug 2025 belongs to the 2025-26 school
- * year, i.e. startYear = 2025.
- */
-function schoolYearStart(date: Date): number {
-  return date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
-}
+export const WRAPPED_SCHEMA_VERSION = 1;
+
+const WRAPPED_STUDENT_ROLES = [Role.STUDENT, Role.STUDENT_LEADER, Role.STUDENT_ADMIN];
 
 function schoolYearRange(startYear: number): { start: Date; end: Date } {
   const start = new Date(startYear, 7, 1);
@@ -93,7 +89,7 @@ const STOPWORDS = new Set<string>([
   'com', 'www', 'message', 'messages',
 ]);
 
-function extractTopWord(bodies: string[]): { word: string; count: number } | null {
+export function extractTopWord(bodies: string[]): { word: string; count: number } | null {
   const counts = new Map<string, number>();
   for (const body of bodies) {
     if (!body) continue;
@@ -120,7 +116,7 @@ function extractTopWord(bodies: string[]): { word: string; count: number } | nul
 /**
  * Longest consecutive run of calendar days (in ET) with at least one message.
  */
-function longestMessageStreak(dates: Date[]): number {
+export function longestMessageStreak(dates: Date[]): number {
   if (dates.length === 0) return 0;
   const dayKeys = new Set<string>();
   for (const d of dates) dayKeys.add(toEtDayKey(d));
@@ -142,7 +138,7 @@ function longestMessageStreak(dates: Date[]): number {
 }
 
 /** ISO-ish YYYY-MM-DD in America/New_York. */
-function toEtDayKey(d: Date): string {
+export function toEtDayKey(d: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/New_York',
     year: 'numeric',
@@ -155,7 +151,7 @@ function toEtDayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function etHour(d: Date): number {
+export function etHour(d: Date): number {
   const hourStr = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/New_York',
     hour: '2-digit',
@@ -216,6 +212,24 @@ export interface WrappedSummary {
   longestMessageChars: number;
 }
 
+export interface WrappedSnapshotGenerationResult {
+  schoolYear: number;
+  schemaVersion: number;
+  requested: number;
+  generated: number;
+  skipped: number;
+}
+
+export interface WrappedSnapshotStatus {
+  schoolYear: number;
+  schemaVersion: number;
+  eligibleUsers: number;
+  generated: number;
+  stale: number;
+  missing: number;
+  latestGeneratedAt: string | null;
+}
+
 const PATHWAY_META: Record<Pathway, { label: string; lanyard: string }> = {
   HEALTH_SCIENCE: { label: 'Health Science', lanyard: 'Green' },
   INFORMATION_TECHNOLOGY: { label: 'Information Technology', lanyard: 'Blue' },
@@ -226,13 +240,32 @@ const PATHWAY_META: Record<Pathway, { label: string; lanyard: string }> = {
 export class WrappedService {
   constructor(private prisma: PrismaService) {}
 
+  private schoolYearLabel(startYear: number) {
+    return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
+  }
+
+  private isAdmin(userRoles?: Role[]) {
+    return userRoles?.includes(Role.ADMIN) || userRoles?.includes(Role.SUPER_ADMIN);
+  }
+
+  private snapshotToSummary(snapshot: { summary: Prisma.JsonValue }) {
+    return snapshot.summary as unknown as WrappedSummary;
+  }
+
+  private async findCurrentSnapshot(userId: string, schoolYearStart: number) {
+    return this.prisma.wrappedSnapshot.findUnique({
+      where: { userId_schoolYearStart: { userId, schoolYearStart } },
+      select: { summary: true, schemaVersion: true },
+    });
+  }
+
   getAvailability(): WrappedAvailability {
     const now = new Date();
     const a = wrappedAvailability(now);
     return {
       open: a.open,
       schoolYear: a.schoolYear,
-      schoolYearLabel: `${a.schoolYear}-${String((a.schoolYear + 1) % 100).padStart(2, '0')}`,
+      schoolYearLabel: this.schoolYearLabel(a.schoolYear),
       opensAt: a.opensAt.toISOString(),
       closesAt: a.closesAt.toISOString(),
       secondsUntilOpen: Math.round((a.opensAt.getTime() - now.getTime()) / 1000),
@@ -245,8 +278,7 @@ export class WrappedService {
   ): Promise<WrappedSummary> {
     const now = new Date();
     const availability = wrappedAvailability(now);
-    const isAdmin =
-      opts.userRoles?.includes(Role.ADMIN) || opts.userRoles?.includes(Role.SUPER_ADMIN);
+    const isAdmin = this.isAdmin(opts.userRoles);
 
     if (!availability.open && !isAdmin) {
       throw new ForbiddenException({
@@ -261,8 +293,135 @@ export class WrappedService {
     // Default to the school year this Wrapped window is summarising — the one
     // that started the prior August. Lets admins still target any year.
     const startYear = opts.requestedSchoolYear ?? availability.schoolYear;
+    const snapshot = await this.findCurrentSnapshot(userId, startYear);
+    if (snapshot?.schemaVersion === WRAPPED_SCHEMA_VERSION) {
+      return this.snapshotToSummary(snapshot);
+    }
+
+    return this.generateAndStoreSnapshot(userId, startYear);
+  }
+
+  async getSnapshotStatus(schoolYear: number): Promise<WrappedSnapshotStatus> {
+    const startYear = this.normalizeSchoolYear(schoolYear);
+    const [eligibleUsers, generated, stale, latest] = await Promise.all([
+      this.prisma.user.count({
+        where: { isActive: true, roles: { hasSome: WRAPPED_STUDENT_ROLES } },
+      }),
+      this.prisma.wrappedSnapshot.count({
+        where: { schoolYearStart: startYear, schemaVersion: WRAPPED_SCHEMA_VERSION },
+      }),
+      this.prisma.wrappedSnapshot.count({
+        where: { schoolYearStart: startYear, schemaVersion: { not: WRAPPED_SCHEMA_VERSION } },
+      }),
+      this.prisma.wrappedSnapshot.aggregate({
+        where: { schoolYearStart: startYear },
+        _max: { generatedAt: true },
+      }),
+    ]);
+
+    return {
+      schoolYear: startYear,
+      schemaVersion: WRAPPED_SCHEMA_VERSION,
+      eligibleUsers,
+      generated,
+      stale,
+      missing: Math.max(eligibleUsers - generated, 0),
+      latestGeneratedAt: latest._max.generatedAt?.toISOString() ?? null,
+    };
+  }
+
+  async generateSnapshots(input: {
+    schoolYear: number;
+    userIds?: string[];
+    refresh?: boolean;
+  }): Promise<WrappedSnapshotGenerationResult> {
+    const startYear = this.normalizeSchoolYear(input.schoolYear);
+    const requestedUserIds = input.userIds?.filter((id) => id.trim().length > 0);
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        roles: { hasSome: WRAPPED_STUDENT_ROLES },
+        ...(requestedUserIds?.length ? { id: { in: requestedUserIds } } : {}),
+      },
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+
+    let skipped = 0;
+    let candidateIds = users.map((user) => user.id);
+    if (!input.refresh && candidateIds.length > 0) {
+      const existing = await this.prisma.wrappedSnapshot.findMany({
+        where: {
+          schoolYearStart: startYear,
+          schemaVersion: WRAPPED_SCHEMA_VERSION,
+          userId: { in: candidateIds },
+        },
+        select: { userId: true },
+      });
+      const existingIds = new Set(existing.map((snapshot) => snapshot.userId));
+      skipped = existingIds.size;
+      candidateIds = candidateIds.filter((id) => !existingIds.has(id));
+    }
+
+    for (const id of candidateIds) {
+      await this.generateAndStoreSnapshot(id, startYear);
+    }
+
+    return {
+      schoolYear: startYear,
+      schemaVersion: WRAPPED_SCHEMA_VERSION,
+      requested: users.length,
+      generated: candidateIds.length,
+      skipped,
+    };
+  }
+
+  private normalizeSchoolYear(value: number) {
+    if (!Number.isInteger(value) || value < 2000 || value > 2100) {
+      throw new BadRequestException('schoolYear must be a valid school year start year');
+    }
+    return value;
+  }
+
+  async generateAndStoreSnapshot(
+    userId: string,
+    startYear: number,
+  ): Promise<WrappedSummary> {
+    const summary = await this.buildSummary(userId, startYear);
+    await this.prisma.wrappedSnapshot.upsert({
+      where: { userId_schoolYearStart: { userId, schoolYearStart: startYear } },
+      update: this.snapshotData(summary),
+      create: {
+        userId,
+        schoolYearStart: startYear,
+        ...this.snapshotData(summary),
+      },
+    });
+    return summary;
+  }
+
+  private snapshotData(summary: WrappedSummary) {
+    return {
+      schoolYearLabel: summary.schoolYearLabel,
+      rangeStart: new Date(summary.rangeStart),
+      rangeEnd: new Date(summary.rangeEnd),
+      schemaVersion: WRAPPED_SCHEMA_VERSION,
+      summary: summary as unknown as Prisma.InputJsonValue,
+      messagesSent: summary.messagesSent,
+      channelsEngaged: summary.channelsEngaged,
+      friends: summary.friends,
+      clubs: summary.clubs,
+      flexCredits: summary.flexCredits,
+      pathwayFlexCredits: summary.pathwayFlexCredits,
+      reactionsReceived: summary.reactionsReceived,
+      longestStreak: summary.longestStreak,
+      generatedAt: new Date(),
+    };
+  }
+
+  private async buildSummary(userId: string, startYear: number): Promise<WrappedSummary> {
     const { start, end } = schoolYearRange(startYear);
-    const label = `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
+    const label = this.schoolYearLabel(startYear);
 
     // Pull all of the user's messages in the window once; most of the new
     // stats are cheap to compute in memory from this one result set.

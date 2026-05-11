@@ -57,6 +57,7 @@ model User {
   friendshipRequestsSent     StudentScheduleFriend[]      @relation("StudentScheduleFriendRequester")
   studentSchedule            StudentSchedule?
   calendarEntries            CalendarEntry[]
+  wrappedSnapshots           WrappedSnapshot[]
   dashboardLayout            String[]                     @default([]) @map("dashboard_layout")
 
   @@map("users")
@@ -142,6 +143,8 @@ model StudentScheduleFriend {
   @@unique([requesterId, addresseeId])
   @@index([addresseeId])
   @@index([status])
+  @@index([requesterId, status, acceptedAt])
+  @@index([addresseeId, status, acceptedAt])
   @@map("student_schedule_friends")
 }
 
@@ -284,6 +287,7 @@ model ClubMember {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([clubId, userId])
+  @@index([userId, joinedAt])
   @@map("club_members")
 }
 
@@ -415,6 +419,8 @@ model ClubChannelMessage {
 
   @@index([channelId, parentMessageId, createdAt])
   @@index([channelId, isPinned, pinnedAt])
+  @@index([authorId, createdAt])
+  @@index([authorId, channelId, createdAt])
   @@map("club_channel_messages")
 }
 
@@ -457,6 +463,8 @@ model ClubChannelMessageReaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId, emoji])
+  @@index([userId, createdAt])
+  @@index([messageId, createdAt])
   @@map("club_channel_message_reactions")
 }
 
@@ -472,6 +480,8 @@ model ClubChannelMessageMention {
   tag       ClubTag?           @relation(fields: [tagId], references: [id], onDelete: Cascade)
   user      User?              @relation("ClubChannelMentionUser", fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([messageId, userId])
+  @@index([userId])
   @@map("club_channel_message_mentions")
 }
 
@@ -781,6 +791,37 @@ model AuditEvent {
   actor      User?    @relation(fields: [actorId], references: [id])
 
   @@map("audit_events")
+}
+
+model WrappedSnapshot {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  schoolYearStart    Int      @map("school_year_start")
+  schoolYearLabel    String   @map("school_year_label")
+  rangeStart         DateTime @map("range_start")
+  rangeEnd           DateTime @map("range_end")
+  schemaVersion      Int      @default(1) @map("schema_version")
+  summary            Json
+  messagesSent       Int      @default(0) @map("messages_sent")
+  channelsEngaged    Int      @default(0) @map("channels_engaged")
+  friends            Int      @default(0)
+  clubs              Int      @default(0)
+  flexCredits        Int      @default(0) @map("flex_credits")
+  pathwayFlexCredits Int      @default(0) @map("pathway_flex_credits")
+  reactionsReceived  Int      @default(0) @map("reactions_received")
+  longestStreak      Int      @default(0) @map("longest_streak")
+  generatedAt        DateTime @default(now()) @map("generated_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolYearStart])
+  @@index([schoolYearStart])
+  @@index([schoolYearStart, schemaVersion])
+  @@index([schoolYearStart, generatedAt])
+  @@index([schoolYearStart, messagesSent])
+  @@index([schoolYearStart, flexCredits])
+  @@index([schoolYearStart, reactionsReceived])
+  @@map("wrapped_snapshots")
 }
 
 enum Role {
