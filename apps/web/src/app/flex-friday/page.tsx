@@ -616,7 +616,7 @@ export default function FlexFridayPage() {
                   <Select value={fridayForm.type} onValueChange={(value) => setFridayForm((c) => ({ ...c, type: value }))}>
                     <SelectTrigger placeholder="Select type" />
                     <SelectContent>
-                      <SelectItem index={0} value="ALL_STUDENT">All Students</SelectItem>
+                      <SelectItem index={0} value="ALL_STUDENT">All Student</SelectItem>
                       <SelectItem index={0} value="GRADE_SPECIFIC">Grade Specific</SelectItem>
                       <SelectItem index={0} value="PATHWAY_SPECIFIC">Pathway Specific</SelectItem>
                       <SelectItem index={0} value="TEACHER_PD">Teacher PD (No School)</SelectItem>
@@ -701,7 +701,7 @@ export default function FlexFridayPage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
-                    Sessions (Time Slots)
+                    Sessions
                     <Badge variant="solid" className="font-normal">{format(new Date(selectedFriday.date), 'MMM d')}</Badge>
                   </h2>
                   {canCreateSession && !sessionFormOpen && (
@@ -710,7 +710,6 @@ export default function FlexFridayPage() {
                     </Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 mb-4">Sessions represent the time periods available on this day.</p>
 
                 <SearchInput
                   value={sessionSearch}
@@ -743,8 +742,8 @@ export default function FlexFridayPage() {
                           <Select value={sessionForm.sessionType} onValueChange={(v) => setSessionForm({ ...sessionForm, sessionType: v as any })}>
                             <SelectTrigger placeholder="Select type" />
                             <SelectContent>
-                              <SelectItem index={0} value="STUDENT_CHOICE">Open Signup (Students pick)</SelectItem>
-                              <SelectItem index={0} value="TEACHER_ASSIGNED">Assigned by Teacher (Staff picks)</SelectItem>
+                              <SelectItem index={0} value="STUDENT_CHOICE">Student Choice</SelectItem>
+                              <SelectItem index={0} value="TEACHER_ASSIGNED">Teacher Assigned</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -862,7 +861,7 @@ export default function FlexFridayPage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-foreground text-lg flex items-center gap-2">
-                    Workshops (Activities)
+                    Workshops
                     <Badge variant="solid" className="font-normal">{selectedSession.title}</Badge>
                   </h2>
                   {canCreateSession && !workshopFormOpen && (
@@ -871,7 +870,6 @@ export default function FlexFridayPage() {
                     </Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 mb-4">Workshops are the specific activities students sign up for.</p>
 
                 <SearchInput
                   value={workshopSearch}
@@ -1123,9 +1121,7 @@ export default function FlexFridayPage() {
                               {isStudent && selectedSession?.sessionType === 'STUDENT_CHOICE' && (
                                 isRegistered ? (
                                   <div className="flex flex-col gap-1.5 flex-shrink-0">
-                                    <Button variant="ghost" size="sm" onClick={() => {
-                                      if (confirm(`Unregister from "${w.title}"?`)) unregisterMutation.mutate(w.id);
-                                    }} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                                    <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(w.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
                                       {isUnregistering ? 'Updating…' : 'Unregister'}
                                     </Button>
                                     <Link

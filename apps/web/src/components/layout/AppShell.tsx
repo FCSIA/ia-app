@@ -57,25 +57,25 @@ const primaryNav: NavItem[] = [
 ];
 
 const accountNav: NavItem[] = [
-  { href: '/notifications', label: 'Alerts', icon: Bell },
+  { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/profile', label: 'Profile & Settings', icon: Settings },
 ];
 
 const adminNav: NavItem[] = [{ href: '/admin', label: 'Admin Panel', icon: Shield }];
 
 const pageMeta: Record<string, { label: string; detail: string }> = {
-  '/dashboard': { label: 'Dashboard', detail: 'Your homepage with everything at a glance.' },
-  '/announcements': { label: 'Announcements', detail: 'School news and updates.' },
-  '/clubs': { label: 'Clubs', detail: 'Your clubs, conversations, and activities.' },
-  '/courses': { label: 'Courses', detail: 'Browse classes and course details.' },
-  '/schedule': { label: 'Schedule', detail: 'View and manage your daily classes.' },
-  '/events': { label: 'Events', detail: 'Upcoming events and things happening soon.' },
-  '/calendar': { label: 'Calendar', detail: 'See what\'s coming up this week and month.' },
-  '/flex-friday': { label: 'Flex Friday', detail: 'Sign up for Friday workshops.' },
+  '/dashboard': { label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
+  '/announcements': { label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
+  '/clubs': { label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
+  '/courses': { label: 'Courses', detail: 'Catalog, prerequisites, and class details.' },
+  '/schedule': { label: 'Schedule', detail: 'View and manage your daily periods.' },
+  '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
+  '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
+  '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
   '/wrapped': { label: 'Wrapped', detail: 'Your year at a glance.' },
-  '/notifications': { label: 'Notifications', detail: 'Messages and alerts that need your attention.' },
-  '/profile': { label: 'Profile', detail: 'Your info, password, and notification settings.' },
-  '/admin': { label: 'Admin', detail: 'Manage users, permissions, and school settings.' },
+  '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
+  '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
+  '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },
 };
 
 function NavIcon({
@@ -257,7 +257,7 @@ export function AppShell({
             <img src="/icons/logo.png" alt="IA" className="size-full object-cover" />
           </Link>
 
-          <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden px-0 scrollbar-none">
+          <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 px-0">
             {primary.map((item) => (
               <NavIcon
                 key={item.href}

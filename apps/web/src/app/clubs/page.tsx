@@ -63,7 +63,6 @@ export default function ClubsLandingPage() {
       queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
       toast({ title: 'Response sent' });
     },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Something went wrong. Please try again.', variant: 'destructive' }),
   });
 
   const myClubs = useMemo(() => {
@@ -113,7 +112,7 @@ export default function ClubsLandingPage() {
                         respondMutation.mutate({ inviteId: invite.id, accept: true })
                       }
                     >
-                      <Check className="size-4 mr-1" /> Accept
+                      <Check className="size-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -122,7 +121,7 @@ export default function ClubsLandingPage() {
                         respondMutation.mutate({ inviteId: invite.id, accept: false })
                       }
                     >
-                      <X className="size-4 mr-1" /> Decline
+                      <X className="size-4" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -143,7 +142,7 @@ export default function ClubsLandingPage() {
                     club.kind === 'sponsor' ? (
                       <Badge variant="solid" className="gap-1">
                         <Shield className="size-3" />
-                        Advisor
+                        Sponsor
                       </Badge>
                     ) : null
                   }
@@ -166,7 +165,7 @@ export default function ClubsLandingPage() {
               {canCreate ? (
                 <Button size="sm" onClick={() => setCreateOpen(true)}>
                   <Plus className="mr-1.5 size-4" />
-                  Create a Club
+                  New club
                 </Button>
               ) : null}
             </div>
@@ -221,16 +220,16 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
           </div>
           <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
           <p className="line-clamp-4 min-h-[5rem] text-xs leading-5 text-muted-foreground">
-            {club.description || 'This club hasn\'t added a description yet.'}
+            {club.description || 'No description.'}
           </p>
           <div className="mt-auto flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Users2 className="size-3" />
-              {club._count?.members ?? 0} members
+              {club._count?.members ?? 0}
             </span>
             <span className="inline-flex items-center gap-1">
               <Hash className="size-3" />
-              {club._count?.channels ?? 0} chats
+              {club._count?.channels ?? 0}
             </span>
           </div>
         </CardContent>
@@ -258,17 +257,17 @@ function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode 
           <div>
             <p className="font-medium text-foreground">{club.name}</p>
             <p className="mt-1 line-clamp-4 text-sm leading-6 text-muted-foreground">
-              {club.description || 'This club hasn\'t added a description yet.'}
+              {club.description || 'No description.'}
             </p>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Users2 className="size-3.5" />
-              {club._count?.members ?? 0} members
+              {club._count?.members ?? 0}
             </span>
             <span className="inline-flex items-center gap-1">
               <Hash className="size-3.5" />
-              {club._count?.channels ?? 0} chats
+              {club._count?.channels ?? 0}
             </span>
           </div>
         </CardContent>

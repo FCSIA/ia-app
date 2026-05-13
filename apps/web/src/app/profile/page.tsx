@@ -11,16 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import Link from 'next/link';
-
-function toTitleCase(str: string) {
-  return str
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
@@ -50,7 +42,7 @@ export default function ProfilePage() {
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
     },
     onError: (e: any) =>
-      toast({ title: e.response?.data?.message || 'Could not change password. Please try again.', variant: 'destructive' }),
+      toast({ title: e.response?.data?.message || 'Failed to change password', variant: 'destructive' }),
   });
 
   const prefMutation = useMutation({
@@ -98,7 +90,7 @@ export default function ProfilePage() {
               <div className="flex flex-wrap gap-1 mt-2">
                 {user?.roles?.map((r: string) => (
                   <Badge key={r} variant="solid" className="text-[10px]">
-                    {toTitleCase(r)}
+                    {r.replace(/_/g, ' ')}
                   </Badge>
                 ))}
               </div>
@@ -122,11 +114,11 @@ export default function ProfilePage() {
                     { label: 'Grade', value: user?.gradeLevel || '—' },
                     {
                       label: 'Major Pathway',
-                      value: user?.major ? toTitleCase(user.major) : '—',
+                      value: user?.major ? user.major.replace(/_/g, ' ') : '—',
                     },
                     {
                       label: 'Minor Pathway',
-                      value: user?.minor ? toTitleCase(user.minor) : '—',
+                      value: user?.minor ? user.minor.replace(/_/g, ' ') : '—',
                     },
                   ]
                 : []),
@@ -186,7 +178,7 @@ export default function ProfilePage() {
                 />
                 <Input
                   type="password"
-                  placeholder="New password (at least 8 characters)"
+                  placeholder="New password (min 8 chars)"
                   value={pwForm.newPassword}
                   onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
                   required
@@ -216,26 +208,40 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Link to notification settings */}
+        {/* Notification Preferences */}
         <Card>
-          <CardContent className="flex items-center justify-between gap-4 p-5">
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-accent-500" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Notification Preferences</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Manage which alerts you receive.</p>
-              </div>
+              <CardTitle className="text-base font-semibold">Notification Preferences</CardTitle>
             </div>
-            <Button asChild variant="tertiary" size="sm">
-              <Link href="/notifications?tab=settings">Go to Settings</Link>
-            </Button>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            {categories.map(({ key, label }) => {
+              const enabled = prefMap[`${key}:null`] !== false;
+              return (
+                <div key={key} className="flex items-center justify-between gap-4">
+                  <Label htmlFor={`pref-${key}`} className="text-sm font-medium cursor-pointer">
+                    {label}
+                  </Label>
+                  <Switch label=""
+                    id={`pref-${key}`}
+                    checked={enabled}
+                    onToggle={() => prefMutation.mutate({ category: key, enabled: !enabled })}
+                  />
+                </div>
+              );
+            })}
+            <p className="text-xs text-muted-foreground pt-3 mt-1 border-t border-foreground/[0.06]">
+              Admin-general announcements always notify you regardless of preferences.
+            </p>
           </CardContent>
         </Card>
 
         {/* Content moderation alerts */}
         <Card>
           <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <CardTitle className="text-base font-semibold">Content Flagged by Safety Filters</CardTitle>
+            <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             {(moderationAlerts as any[]).length === 0 ? (

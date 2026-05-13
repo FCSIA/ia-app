@@ -98,7 +98,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Invite members</DialogTitle>
           <DialogDescription>
-            Search for a student by name or Student / Staff ID, or bulk-upload a CSV.
+            Search for a student by name or unique ID, or bulk-upload a CSV.
           </DialogDescription>
         </DialogHeader>
 

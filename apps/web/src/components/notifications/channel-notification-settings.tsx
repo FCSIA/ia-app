@@ -70,7 +70,7 @@ const mentionOptions: Array<{
   {
     category: DIRECT_CATEGORY,
     label: 'Direct mentions',
-    detail: 'When someone tags you in a chat.',
+    detail: 'When someone mentions your unique ID.',
     icon: Bell,
   },
   {

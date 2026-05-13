@@ -134,10 +134,7 @@ function getUserRoles(user: AdminUserRecord) {
 }
 
 function formatRoleLabel(role: string) {
-  return role
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return role.replace(/_/g, ' ');
 }
 
 function getDynamicUsersPageSize(availableHeight: number) {
@@ -207,8 +204,8 @@ function UserTableSection({
   pagination?: ReactNode;
 }) {
   const headers = showGrade
-    ? ['Student / Staff ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
-    : ['Student / Staff ID', 'Name', 'Roles', 'Status', 'Actions'];
+    ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
+    : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
 
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -279,9 +276,7 @@ function UserTableSection({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to deactivate ${user.firstName} ${user.lastName}? This will prevent them from logging in.`)) onDeactivate(user.id);
-                          }}
+                          onClick={() => onDeactivate(user.id)}
                           className="h-6 px-2 text-[10px] text-red-500 hover:bg-red-500/10 hover:text-red-400"
                         >
                           Deactivate
@@ -725,10 +720,15 @@ export default function AdminPage() {
             {isSuperAdmin && (
               <TabItem value="schedule" icon={CalendarDays} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Schedule" />
             )}
-            <TabItem value="moderation" icon={Shield} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label={pendingReports > 0 ? `Safety & Reports (${pendingReports})` : 'Safety & Reports'} />
-            <TabItem value="permissions" icon={KeyRound} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Access Control" />
+            <TabItem
+              value="moderation"
+              icon={Shield}
+              className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')}
+              label={pendingReports > 0 ? `Moderation (${pendingReports})` : 'Moderation'}
+            />
+            <TabItem value="permissions" icon={KeyRound} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Permissions" />
             <TabItem value="student-admins" icon={Users} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Student Admins" />
-            <TabItem value="audit" icon={FileText} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Activity History" />
+            <TabItem value="audit" icon={FileText} className={cn(activeTab === 'users' && 'px-2.5 py-1 text-xs')} label="Audit Log" />
           </TabsList>
 
           {/* ── Users Tab ── */}
@@ -818,7 +818,7 @@ export default function AdminPage() {
               <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
                 <Card>
                   <CardHeader className="border-b pb-4">
-                    <CardTitle className="text-base">Import Student List from CSV</CardTitle>
+                    <CardTitle className="text-base">Saturn-Style Student Roster Import</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6 space-y-5">
                     <div className="space-y-2">
@@ -945,7 +945,7 @@ export default function AdminPage() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-base">Safety Keywords</CardTitle>
+                    <CardTitle className="text-base">Local Safety Rules</CardTitle>
                     <Badge variant="dot" color="blue" className="text-[11px]">
                       glin-profanity enabled
                     </Badge>
@@ -1103,7 +1103,7 @@ export default function AdminPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader className="border-b pb-4">
-                  <CardTitle className="text-base">User Role Management</CardTitle>
+                  <CardTitle className="text-base">Content Creator Permissions</CardTitle>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Grant or revoke roles that allow users to add sessions, workshops, announcements, and events.
                     Search for any user and toggle their permissions below.
@@ -1272,7 +1272,7 @@ export default function AdminPage() {
               <CardHeader className="border-b pb-4">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div>
-                    <CardTitle className="text-base">Activity History</CardTitle>
+                    <CardTitle className="text-base">Audit Log</CardTitle>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Filter by actor, entity, source, and date range, then inspect the exact context behind a logged action.
                     </p>
@@ -1311,7 +1311,7 @@ export default function AdminPage() {
                     <Input
                       value={auditActor}
                       onChange={(e) => setAuditActor(e.target.value)}
-                      placeholder="Name or Student / Staff ID"
+                      placeholder="Name or unique ID"
                     />
                   </div>
 

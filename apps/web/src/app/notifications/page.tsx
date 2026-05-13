@@ -20,14 +20,14 @@ const CATEGORY_LABEL: Record<string, string> = {
   SCHOOL_ANNOUNCEMENT: 'School',
   CLUB_ANNOUNCEMENT: 'Club',
   CLUB_JOIN_REQUEST: 'Club',
-  CLUB_CHANNEL_MESSAGE: 'Club Chat',
-  CLUB_CHANNEL_MENTION: 'Someone tagged you',
-  CLUB_CHANNEL_TAG_MENTION: 'Someone tagged you',
-  CLUB_CHANNEL_THREAD: 'Reply in thread',
+  CLUB_CHANNEL_MESSAGE: 'Channel',
+  CLUB_CHANNEL_MENTION: 'Mention',
+  CLUB_CHANNEL_TAG_MENTION: 'Tag mention',
+  CLUB_CHANNEL_THREAD: 'Thread',
   EVENT: 'Event',
   FLEX_FRIDAY: 'Flex Friday',
-  CONTENT_MODERATED: 'Safety Filter',
-  FRIEND_REQUEST: 'Friend Request',
+  CONTENT_MODERATED: 'Moderation',
+  FRIEND_REQUEST: 'Friends',
 };
 
 export default function NotificationsPage() {
@@ -220,8 +220,8 @@ export default function NotificationsPage() {
                       >
                         <span
                           className={cn(
-                            'mt-2 size-2.5 shrink-0 rounded-full',
-                            n.isRead ? 'bg-muted-foreground/20' : 'bg-primary shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]',
+                            'mt-2 size-2 shrink-0 rounded-full',
+                            n.isRead ? 'bg-muted-foreground/30' : 'bg-primary',
                           )}
                           aria-hidden
                         />
@@ -263,8 +263,8 @@ export default function NotificationsPage() {
                       ['SCHOOL_ANNOUNCEMENT', 'School announcements'],
                       ['EVENT', 'Events'],
                       ['FLEX_FRIDAY', 'Flex Friday'],
-                      ['FRIEND_REQUEST', 'Friend requests'],
-                      ['CONTENT_MODERATED', 'Safety filter notices'],
+                      ['FRIEND_REQUEST', 'Friend schedules'],
+                      ['CONTENT_MODERATED', 'Moderation notices'],
                     ].map(([category, label]) => (
                       <NotificationScopeSwitch
                         key={category}
@@ -274,14 +274,14 @@ export default function NotificationsPage() {
                     ))}
                     <NotificationScopeSwitch
                       category="SCHOOL_ANNOUNCEMENT"
-                      label="Admin broadcast alerts (always on)"
+                      label="Push notifications to everyone"
                       scopeKey="admin-push"
                       locked
                     />
                   </div>
                 </section>
                 <section className="flex flex-col gap-3">
-                  <h2 className="text-sm font-semibold">Club conversations</h2>
+                  <h2 className="text-sm font-semibold">Clubs and channels</h2>
                   {involvedClubs.length > 0 ? (
                     <div className="grid gap-3">
                       {involvedClubs.map((club: any) => {
@@ -307,7 +307,7 @@ export default function NotificationsPage() {
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-medium">#{channel.name}</p>
                                     <p className="truncate text-xs text-muted-foreground">
-                                      Get notified when someone tags you
+                                      Channel mentions
                                     </p>
                                   </div>
                                   <NotificationScopeSwitch
@@ -323,7 +323,7 @@ export default function NotificationsPage() {
                             </div>
                           ) : (
                             <p className="text-xs text-muted-foreground">
-                              This club doesn't have any chat channels yet.
+                              No visible channels to configure yet.
                             </p>
                           )}
                         </div>
@@ -337,7 +337,7 @@ export default function NotificationsPage() {
                   )}
                 </section>
                 <p className="text-xs text-muted-foreground">
-                  Your preferences are saved automatically.
+                  {preferences.length} saved preference{preferences.length === 1 ? '' : 's'}.
                 </p>
               </Panel>
             </TabPanel>

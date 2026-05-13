@@ -96,7 +96,7 @@ export function PeoplePicker({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder="Search by name or Student / Staff ID"
+              placeholder="Search by name or unique ID"
             />
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
