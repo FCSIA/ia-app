@@ -34,7 +34,7 @@ export function MyClubsWidget() {
           <Users className="mb-2 size-6 text-muted-foreground/60" />
           <p>You haven&apos;t joined any clubs.</p>
           <Link href="/clubs" className="mt-2 text-primary font-medium hover:underline">
-            Browse catalog
+            Browse clubs
           </Link>
         </div>
       ) : (
@@ -72,7 +72,7 @@ export function MyClubsWidget() {
                       {isLeader || isSponsor ? (
                         <Badge variant="solid" className="px-1.5 py-0 text-[10px] h-4">
                           {isSponsor ? <Shield className="mr-1 size-3" /> : <User className="mr-1 size-3" />}
-                          {clubMember.role.replace('_', ' ')}
+                          {clubMember.role.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                         </Badge>
                       ) : null}
                     </div>

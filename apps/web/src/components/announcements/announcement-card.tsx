@@ -30,9 +30,9 @@ export const ANNOUNCEMENT_TAG_BADGE_COLORS: Record<string, BadgeColor> = {
 };
 
 export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
-  SCHOOL_WIDE: 'School Wide',
-  GRADE: 'Grade',
-  PATHWAY: 'Pathway',
+  SCHOOL_WIDE: 'Whole School',
+  GRADE: 'By Grade',
+  PATHWAY: 'By Pathway',
   CLUB: 'Club',
 };
 
@@ -120,13 +120,16 @@ export function AnnouncementCard({
       className={cn(
         'relative transition-all duration-200 hover:-translate-y-0.5',
         !announcement.isRead &&
-          'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
+          'ring-2 ring-primary/40 border-primary/60 bg-primary/[0.04] shadow-[0_0_12px_hsl(var(--primary)/0.08)]',
         announcement.isPinned && 'bg-primary/[0.025]',
         className,
       )}
     >
       {!announcement.isRead ? (
-        <span className="absolute right-4 top-4 size-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.14)]" />
+        <>
+          <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[inherit] bg-primary" />
+          <span className="absolute right-4 top-4 size-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,0.14)]" />
+        </>
       ) : null}
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -134,7 +137,7 @@ export function AnnouncementCard({
             <div className="mb-2 flex flex-wrap items-center gap-2 pr-4">
               {announcement.isAdminGeneral ? (
                 <Badge variant="solid" color="red" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'transition-all duration-150 hover:-translate-y-px')}>
-                  Push notification
+                  Sent to everyone
                 </Badge>
               ) : null}
               {announcement.isPinned ? (
@@ -151,7 +154,7 @@ export function AnnouncementCard({
               ) : null}
               {announcement.status === 'PENDING_APPROVAL' ? (
                 <Badge variant="solid" color="orange" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
-                  Pending review
+                  Waiting for approval
                 </Badge>
               ) : null}
               {announcement.status === 'REJECTED' ? (
@@ -246,7 +249,7 @@ export function AnnouncementCard({
                 size="icon"
                 onClick={() => onBookmarkToggle(announcement)}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                title={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                title={announcement.isBookmarked ? 'Remove from saved' : 'Save for later'}
               >
                 {announcement.isBookmarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
               </Button>

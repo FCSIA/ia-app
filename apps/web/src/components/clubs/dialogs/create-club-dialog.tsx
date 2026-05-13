@@ -99,7 +99,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Create club</DialogTitle>
           <DialogDescription>
-            Every club requires at least one teacher sponsor with visibility into every channel.
+            Every club requires at least one staff advisor who has visibility into all channels.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,20 +130,20 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
             <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
               <SelectTrigger placeholder="" />
               <SelectContent>
-                <SelectItem index={0} value="OPEN">Public join</SelectItem>
-                <SelectItem index={0} value="REQUEST">Request approval</SelectItem>
+                <SelectItem index={0} value="OPEN">Anyone can join</SelectItem>
+                <SelectItem index={0} value="REQUEST">Requires approval</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label>Teacher sponsors</Label>
+            <Label>Staff advisors</Label>
             <PeoplePicker
               people={sponsorOptions}
               selectedIds={sponsorIds}
               onChange={setSponsorIds}
               placeholder="Select sponsors"
-              emptyText="No sponsor-eligible staff found."
+              emptyText="No advisor-eligible staff found."
             />
           </div>
 

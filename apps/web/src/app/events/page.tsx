@@ -29,6 +29,13 @@ type ClubCollection = {
   sponsoring?: ClubSummary[];
 };
 
+const EVENT_STATUS_LABEL: Record<string, string> = {
+  PENDING_APPROVAL: 'Pending Approval',
+  PUBLISHED: 'Published',
+  CANCELLED: 'Cancelled',
+  DRAFT: 'Draft',
+};
+
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
@@ -42,13 +49,13 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
                 variant={event.status === 'PUBLISHED' ? 'solid' : event.status === 'CANCELLED' ? 'solid' : 'solid'}
                 className={event.status === 'PUBLISHED' ? 'bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 border-transparent' : event.status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 border-transparent' : ''}
               >
-                {event.status.replace(/_/g, ' ')}
+                {EVENT_STATUS_LABEL[event.status] || event.status.replace(/_/g, ' ')}
               </Badge>
               <Badge
                 variant="dot"
                 className={event.club ? 'text-blue-500 border-blue-500/30 bg-blue-500/10' : ''}
               >
-                {event.club?.name || 'General'}
+                {event.club?.name || 'School Event'}
               </Badge>
             </div>
             <Link href={`/events/${event.id}`}>
@@ -64,11 +71,15 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           {event.status === 'PENDING_APPROVAL' && (
             <div className="flex gap-2 flex-shrink-0">
               <Button size="sm" onClick={() => onApprove(event.id)} className="h-8 flex items-center gap-1"><Check size={14} /> Approve</Button>
-              <Button size="sm" variant="primary" onClick={() => onReject(event.id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
+              <Button size="sm" variant="primary" onClick={() => {
+                if (confirm('Are you sure you want to reject this event? The organizer will not see a reason.')) onReject(event.id);
+              }} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
             </div>
           )}
           {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?.id) && (
-            <Button variant="ghost" size="sm" onClick={() => onCancel(event.id)} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={() => {
+              if (confirm('Are you sure you want to cancel this event? This cannot be undone.')) onCancel(event.id);
+            }} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel Event</Button>
           )}
         </div>
       </CardContent>
@@ -123,7 +134,7 @@ export default function EventsPage() {
       setShowNew(false);
       toast({ title: 'Event created' });
     },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: e.response?.data?.message || 'Something went wrong. Please try again.', variant: 'destructive' }),
   });
 
   const approveMutation = useMutation({
@@ -131,7 +142,7 @@ export default function EventsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['pending-approvals'] });
-      toast({ title: 'Approved' });
+      toast({ title: 'Event approved' });
     },
   });
 
@@ -140,7 +151,7 @@ export default function EventsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['pending-approvals'] });
-      toast({ title: 'Rejected' });
+      toast({ title: 'Event rejected' });
     },
   });
 
@@ -149,7 +160,7 @@ export default function EventsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['events'] });
       qc.invalidateQueries({ queryKey: ['pending-approvals'] });
-      toast({ title: 'Cancelled' });
+      toast({ title: 'Event cancelled' });
     },
   });
 
@@ -254,7 +265,7 @@ export default function EventsPage() {
                 {availableClubs.length > 0 ? (
                   <div className="space-y-2">
                     <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                      {canCreateGeneral ? 'Club event (optional)' : 'Choose a club'}
+                      {canCreateGeneral ? 'Link to a club (leave blank for a school-wide event)' : 'Choose a club'}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {canCreateGeneral ? (
@@ -264,7 +275,7 @@ export default function EventsPage() {
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: '' })}
                         >
-                          General
+                          School Event
                         </Button>
                       ) : null}
                       {availableClubs.map((club) => (

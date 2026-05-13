@@ -336,20 +336,20 @@ export function DashboardLayout() {
                         disabled={missingWidgets.length === 0}
                       >
                         <Plus className="size-4" />
-                        Add widget
+                        Add section
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-lg rounded-[2rem]">
                       <DialogHeader>
-                        <DialogTitle>Add a widget</DialogTitle>
+                        <DialogTitle>Add a section</DialogTitle>
                         <DialogDescription>
-                          Choose a widget to add to your dashboard.
+                          Pick a section to add to your homepage.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="mt-4 grid gap-2">
                         {missingWidgets.length === 0 ? (
                           <p className="py-6 text-center text-sm text-muted-foreground">
-                            All available widgets are already on your dashboard.
+                            All available sections are already on your dashboard.
                           </p>
                         ) : (
                           missingWidgets.map((widget) => (
@@ -392,7 +392,7 @@ export function DashboardLayout() {
                     className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
                   >
                     <Save className="size-4" />
-                    Done
+                    Save
                   </Button>
                 </>
               ) : (
@@ -479,7 +479,7 @@ export function DashboardLayout() {
                     <p className="text-sm font-medium text-foreground">Your dashboard is empty.</p>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Click <span className="font-semibold">Customize</span> then{' '}
-                      <span className="font-semibold">Add widget</span> to build it up.
+                      <span className="font-semibold">Add section</span> to set up your homepage.
                     </p>
                   </div>
                 )}

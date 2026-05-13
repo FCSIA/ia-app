@@ -400,27 +400,27 @@ function SchedulePageContent() {
                 <TabItem
                   value="friends"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  label="Friend Schedules"
+                  label="Students & Friends"
                 />
               ) : null}
               {canManageBlocks ? (
                 <TabItem
                   value="admin"
                   className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  label="Manage Blocks"
+                  label="Master Schedule (Staff Only)"
                 />
               ) : null}
             </TabsList>
             {selectedTab === 'my' && canEditOwnSchedule && (
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>Public</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground" title="When on, your friends can see your schedule">
+                  <span>Visible to Friends</span>
                   <Switch label="" checked={isPublic} onToggle={() => setIsPublic((current) => !current)} className="scale-[0.85]" />
                 </div>
                 <span className="text-border">|</span>
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyMondayToWeek}>
                   <Copy className="mr-1.5 size-3" />
-                  Copy Mon
+                  Copy Mon to Week
                 </Button>
                 <Button
                   size="sm"
@@ -456,7 +456,7 @@ function SchedulePageContent() {
                 <Link href="/courses" className="ml-auto mb-1">
                   <Button variant="secondary" size="sm" className="h-7 text-xs">
                     <BookOpen className="mr-1.5 size-3" />
-                    Catalog
+                    Browse Courses
                   </Button>
                 </Link>
               </div>
