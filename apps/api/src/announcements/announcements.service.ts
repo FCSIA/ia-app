@@ -111,27 +111,51 @@ export class AnnouncementsService {
     userId: string,
     userRole: string,
   ) {
-    if (announcement.clubId) {
-      await this.clubAccessPolicy.getClubContext(announcement.clubId, userId, userRole);
-      return;
-    }
-
     if (this.isElevatedReader(userRole)) {
       return;
     }
 
     const viewer = await this.getViewerAudience(userId);
-    const allowed =
-      announcement.targetType === AnnouncementTarget.SCHOOL_WIDE ||
-      (announcement.targetType === AnnouncementTarget.GRADE &&
-        viewer.gradeLevel != null &&
-        (announcement.targetGrade === viewer.gradeLevel ||
-          announcement.targetGrades.includes(viewer.gradeLevel))) ||
-      (announcement.targetType === AnnouncementTarget.PATHWAY &&
-        ((announcement.targetPathway != null &&
-          [viewer.major, viewer.minor].filter(Boolean).includes(announcement.targetPathway)) ||
-          (viewer.major != null && announcement.targetMajorPathways.includes(viewer.major)) ||
-          (viewer.minor != null && announcement.targetMinorPathways.includes(viewer.minor))));
+    const accessibleClubIds = await this.getAccessibleClubIds(userId);
+
+    const matchesGrade =
+      viewer.gradeLevel != null &&
+      (announcement.targetGrade === viewer.gradeLevel ||
+        announcement.targetGrades.includes(viewer.gradeLevel));
+
+    const pathwayTargets = [viewer.major, viewer.minor].filter(
+      (value): value is NonNullable<typeof value> => value != null,
+    );
+    const matchesPathway =
+      (announcement.targetPathway != null && pathwayTargets.includes(announcement.targetPathway)) ||
+      (viewer.major != null && announcement.targetMajorPathways.includes(viewer.major)) ||
+      (viewer.minor != null && announcement.targetMinorPathways.includes(viewer.minor));
+
+    const matchesClub = !announcement.clubId || accessibleClubIds.includes(announcement.clubId);
+
+    let allowed = false;
+    if (announcement.targetType === AnnouncementTarget.SCHOOL_WIDE) {
+      allowed = true;
+    } else if (announcement.targetType === AnnouncementTarget.GRADE) {
+      allowed = matchesGrade;
+    } else if (announcement.targetType === AnnouncementTarget.PATHWAY) {
+      allowed = matchesPathway;
+    } else if (announcement.targetType === AnnouncementTarget.CLUB) {
+      allowed = matchesClub;
+    } else if (announcement.targetType === (AnnouncementTarget as any).INTERSECTION) {
+      const hasGradeTarget =
+        announcement.targetGrade != null || announcement.targetGrades.length > 0;
+      const hasPathwayTarget =
+        announcement.targetPathway != null ||
+        announcement.targetMajorPathways.length > 0 ||
+        announcement.targetMinorPathways.length > 0;
+      const hasClubTarget = !!announcement.clubId;
+
+      allowed = true;
+      if (hasGradeTarget) allowed = allowed && matchesGrade;
+      if (hasPathwayTarget) allowed = allowed && matchesPathway;
+      if (hasClubTarget) allowed = allowed && matchesClub;
+    }
 
     if (!allowed) {
       throw new ForbiddenException('Announcement not available to this user');
@@ -293,6 +317,42 @@ export class AnnouncementsService {
           clubId: { in: accessibleClubIds },
         });
       }
+
+      audienceScopes.push({
+        targetType: (AnnouncementTarget as any).INTERSECTION,
+        AND: [
+          {
+            OR: [
+              { targetGrade: null, targetGrades: { equals: [] } },
+              ...(viewer.gradeLevel != null
+                ? [{ targetGrade: viewer.gradeLevel }, { targetGrades: { has: viewer.gradeLevel } }]
+                : []),
+            ],
+          },
+          {
+            OR: [
+              {
+                targetPathway: null,
+                targetMajorPathways: { equals: [] },
+                targetMinorPathways: { equals: [] },
+              },
+              ...(pathwayTargets.length > 0
+                ? [
+                    { targetPathway: { in: pathwayTargets } },
+                    { targetMajorPathways: { hasSome: pathwayTargets } },
+                    { targetMinorPathways: { hasSome: pathwayTargets } },
+                  ]
+                : []),
+            ],
+          },
+          {
+            OR: [
+              { clubId: null },
+              ...(accessibleClubIds.length > 0 ? [{ clubId: { in: accessibleClubIds } }] : []),
+            ],
+          },
+        ],
+      });
 
       where = {
         OR: [
@@ -649,27 +709,59 @@ export class AnnouncementsService {
 
   private async deliverNotifications(ann: Announcement) {
     const isAdminGeneral = ann.isAdminGeneral;
-    const isClub = !!ann.clubId;
 
-    let userIds: string[] = [];
+    let where: Prisma.UserWhereInput = { isActive: true };
 
-    if (isClub) {
-      const members = await this.prisma.clubMember.findMany({
-        where: { clubId: ann.clubId },
-        select: { userId: true },
-      });
-      userIds = members.map((m) => m.userId);
-    } else {
-      const users = await this.prisma.user.findMany({
-        where: { isActive: true },
-        select: { id: true },
-      });
-      userIds = users.map((u) => u.id);
+    if (ann.targetType === AnnouncementTarget.GRADE) {
+      const grades = ann.targetGrades.concat(ann.targetGrade ? [ann.targetGrade] : []);
+      where.gradeLevel = { in: grades };
+    } else if (ann.targetType === AnnouncementTarget.PATHWAY) {
+      const pathways = ann.targetMajorPathways
+        .concat(ann.targetMinorPathways)
+        .concat(ann.targetPathway ? [ann.targetPathway] : []);
+      where.OR = [{ major: { in: pathways } }, { minor: { in: pathways } }];
+    } else if (ann.targetType === AnnouncementTarget.CLUB && ann.clubId) {
+      where.OR = [
+        { clubMemberships: { some: { clubId: ann.clubId } } },
+        { clubsSponsored: { some: { clubId: ann.clubId } } },
+      ];
+    } else if (ann.targetType === (AnnouncementTarget as any).INTERSECTION) {
+      const gradeTargets = ann.targetGrades.concat(ann.targetGrade ? [ann.targetGrade] : []);
+      const pathways = ann.targetMajorPathways
+        .concat(ann.targetMinorPathways)
+        .concat(ann.targetPathway ? [ann.targetPathway] : []);
+
+      const andFilters: Prisma.UserWhereInput[] = [];
+      if (gradeTargets.length > 0) {
+        andFilters.push({ gradeLevel: { in: gradeTargets } });
+      }
+      if (pathways.length > 0) {
+        andFilters.push({
+          OR: [{ major: { in: pathways } }, { minor: { in: pathways } }],
+        });
+      }
+      if (ann.clubId) {
+        andFilters.push({
+          OR: [
+            { clubMemberships: { some: { clubId: ann.clubId } } },
+            { clubsSponsored: { some: { clubId: ann.clubId } } },
+          ],
+        });
+      }
+      if (andFilters.length > 0) {
+        where.AND = andFilters;
+      }
     }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      select: { id: true },
+    });
+    const userIds = users.map((u) => u.id);
 
     await this.notifications.deliver({
       userIds,
-      category: isClub
+      category: !!ann.clubId
         ? NotificationCategory.CLUB_ANNOUNCEMENT
         : NotificationCategory.SCHOOL_ANNOUNCEMENT,
       title: ann.title,

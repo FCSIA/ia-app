@@ -30,6 +30,18 @@ import {
   AnnouncementCard,
 } from '@/components/announcements/announcement-card';
 import { matchesSearchQuery } from '@/lib/search';
+import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+
+const PATHWAY_OPTIONS = [
+  { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
+  { value: 'HEALTH_SCIENCE', label: 'Health Science' },
+  { value: 'ENGINEERING', label: 'Engineering' },
+];
+
+const GRADE_OPTIONS = [9, 10, 11, 12];
+
+const pathwayOptions = PATHWAY_OPTIONS; // Compatibility with filter bar
 
 type ClubFilterOption = {
   id: string;
@@ -64,6 +76,35 @@ export default function AnnouncementsPage() {
     promoted: false,
     expiresAt: '',
   });
+
+  const toggleString = (val: string, list: string[], setter: (val: string[]) => void) => {
+    setter(list.includes(val) ? list.filter((v) => v !== val) : [...list, val]);
+  };
+
+  const toggleNumber = (val: number, list: number[], setter: (val: number[]) => void) => {
+    setter(list.includes(val) ? list.filter((v) => v !== val) : [...list, val]);
+  };
+
+  const updateTargeting = (partial: Partial<typeof form>) => {
+    const next = { ...form, ...partial };
+
+    const hasGrades = next.targetGrades.length > 0;
+    const hasPathways =
+      next.targetMajorPathways.length > 0 || next.targetMinorPathways.length > 0;
+
+    let targetType = 'SCHOOL_WIDE';
+    const activeDimensions = [hasGrades, hasPathways].filter(Boolean).length;
+
+    if (activeDimensions > 1) {
+      targetType = 'INTERSECTION';
+    } else if (hasGrades) {
+      targetType = 'GRADE';
+    } else if (hasPathways) {
+      targetType = 'PATHWAY';
+    }
+
+    setForm({ ...next, targetType });
+  };
 
   const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
@@ -235,12 +276,15 @@ export default function AnnouncementsPage() {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    const isIntersection = form.targetType === 'INTERSECTION';
     createMutation.mutate({
       ...form,
       expiresAt: form.expiresAt || undefined,
-      targetGrades: form.targetType === 'GRADE' ? form.targetGrades : [],
-      targetMajorPathways: form.targetType === 'PATHWAY' ? form.targetMajorPathways : [],
-      targetMinorPathways: form.targetType === 'PATHWAY' ? form.targetMinorPathways : [],
+      targetGrades: form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
+      targetMajorPathways:
+        form.targetType === 'PATHWAY' || isIntersection ? form.targetMajorPathways : [],
+      targetMinorPathways:
+        form.targetType === 'PATHWAY' || isIntersection ? form.targetMinorPathways : [],
     });
   };
 
@@ -275,19 +319,6 @@ export default function AnnouncementsPage() {
     selectedMinorPathways.length,
   ].filter(Boolean).length;
 
-  const toggleNumber = (value: number, values: number[], onChange: (values: number[]) => void) => {
-    onChange(values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]);
-  };
-
-  const toggleString = (value: string, values: string[], onChange: (values: string[]) => void) => {
-    onChange(values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]);
-  };
-
-  const pathwayOptions = [
-    { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
-    { value: 'HEALTH_SCIENCE', label: 'Health Science' },
-    { value: 'ENGINEERING', label: 'Engineering' },
-  ];
   const tagColor = (tag: string): BadgeColor =>
     tag === 'CLUB' ? 'emerald' : tag === 'GRADE' ? 'violet' : tag === 'PATHWAY' ? 'cyan' : 'gray';
 
@@ -463,101 +494,94 @@ export default function AnnouncementsPage() {
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   required
                 />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                      Target
-                    </label>
-                    <Select
-                      value={form.targetType}
-                      onValueChange={(value) => setForm({ ...form, targetType: value })}
-                    >
-                      <SelectTrigger placeholder="Select target" />
-                      <SelectContent>
-                        <SelectItem index={0} value="SCHOOL_WIDE">School-wide</SelectItem>
-                        <SelectItem index={0} value="GRADE">Grade</SelectItem>
-                        <SelectItem index={0} value="PATHWAY">Pathway</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-4">
+                  <Label className="text-sm font-semibold">Audience Targeting</Label>
+
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">
+                        Grades
+                      </Label>
+                      <div className="flex gap-1.5">
+                        {GRADE_OPTIONS.map((grade) => {
+                          const active = form.targetGrades.includes(grade);
+                          return (
+                            <Button
+                              key={grade}
+                              type="button"
+                              variant={active ? 'primary' : 'secondary'}
+                              size="sm"
+                              className={cn(
+                                'h-8 w-10 p-0 rounded-lg transition-all',
+                                active && 'ring-2 ring-primary ring-offset-2',
+                              )}
+                              onClick={() => {
+                                const next = active
+                                  ? form.targetGrades.filter((g) => g !== grade)
+                                  : [...form.targetGrades, grade];
+                                updateTargeting({ targetGrades: next });
+                              }}
+                            >
+                              {grade}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">
+                        Pathways
+                      </Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PATHWAY_OPTIONS.map((p) => {
+                          const active = form.targetMajorPathways.includes(p.value);
+                          return (
+                            <Button
+                              key={p.value}
+                              type="button"
+                              variant={active ? 'primary' : 'secondary'}
+                              size="sm"
+                              className={cn(
+                                'h-8 rounded-lg transition-all',
+                                active && 'ring-2 ring-primary ring-offset-2',
+                              )}
+                              onClick={() => {
+                                const next = active
+                                  ? form.targetMajorPathways.filter((v) => v !== p.value)
+                                  : [...form.targetMajorPathways, p.value];
+                                updateTargeting({ targetMajorPathways: next });
+                              }}
+                            >
+                              {p.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {form.targetType !== 'SCHOOL_WIDE' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-[10px] text-muted-foreground hover:text-foreground h-6 px-1.5"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            targetType: 'SCHOOL_WIDE',
+                            targetGrades: [],
+                            targetMajorPathways: [],
+                            targetMinorPathways: [],
+                          })
+                        }
+                      >
+                        Reset to School-wide
+                      </Button>
+                    )}
                   </div>
                 </div>
-                {form.targetType === 'GRADE' ? (
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Grade levels
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {[9, 10, 11, 12].map((grade) => (
-                        <Button
-                          key={grade}
-                          type="button"
-                          size="sm"
-                          variant={form.targetGrades.includes(grade) ? 'secondary' : 'tertiary'}
-                          onClick={() =>
-                            toggleNumber(grade, form.targetGrades, (targetGrades) =>
-                              setForm({ ...form, targetGrades }),
-                            )
-                          }
-                        >
-                          Grade {grade}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {form.targetType === 'PATHWAY' ? (
-                  <div className="flex flex-col gap-3">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Pathways
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {pathwayOptions.map((pathway) => (
-                        <Button
-                          key={`form-major-${pathway.value}`}
-                          type="button"
-                          size="sm"
-                          variant={
-                            form.targetMajorPathways.includes(pathway.value)
-                              ? 'secondary'
-                              : 'tertiary'
-                          }
-                          onClick={() =>
-                            toggleString(
-                              pathway.value,
-                              form.targetMajorPathways,
-                              (targetMajorPathways) => setForm({ ...form, targetMajorPathways }),
-                            )
-                          }
-                        >
-                          Major: {pathway.label}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {pathwayOptions.map((pathway) => (
-                        <Button
-                          key={`form-minor-${pathway.value}`}
-                          type="button"
-                          size="sm"
-                          variant={
-                            form.targetMinorPathways.includes(pathway.value)
-                              ? 'secondary'
-                              : 'tertiary'
-                          }
-                          onClick={() =>
-                            toggleString(
-                              pathway.value,
-                              form.targetMinorPathways,
-                              (targetMinorPathways) => setForm({ ...form, targetMinorPathways }),
-                            )
-                          }
-                        >
-                          Minor: {pathway.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                     Expires (optional)

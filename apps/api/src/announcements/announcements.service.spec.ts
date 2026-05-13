@@ -91,8 +91,13 @@ describe('AnnouncementsService approval and bookmarks', () => {
         upsert: jest.fn(),
         deleteMany: jest.fn(),
       },
+      announcementRead: {
+        upsert: jest.fn(),
+        deleteMany: jest.fn(),
+      },
       clubMember: { findMany: jest.fn().mockResolvedValue([]) },
       user: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
+      clubSponsor: { findMany: jest.fn().mockResolvedValue([]) },
       ...overrides,
     };
     const audit: any = { log: jest.fn() };
@@ -138,6 +143,10 @@ describe('AnnouncementsService approval and bookmarks', () => {
         }),
       },
       clubMember: { findMany: jest.fn().mockResolvedValue([{ userId: 'member-1' }]) },
+      user: {
+        findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([{ id: 'member-1' }]),
+      },
     });
 
     await service.approve('ann-1', 'sponsor-1', Role.SPONSOR);
@@ -207,6 +216,10 @@ describe('AnnouncementsService approval and bookmarks', () => {
         create: jest.fn().mockResolvedValue(announcement),
       },
       clubMember: { findMany: jest.fn().mockResolvedValue([{ userId: 'member-1' }]) },
+      user: {
+        findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([{ id: 'member-1' }]),
+      },
     });
     (service as any).canPost = jest.fn().mockResolvedValue(true);
     (service as any).moderation = {
@@ -269,6 +282,51 @@ describe('AnnouncementsService approval and bookmarks', () => {
         where: { id: 'ann-1' },
         data: { status: AnnouncementStatus.ARCHIVED },
       }),
+    );
+  });
+
+  it('correctly handles intersection-based targeting for Grade 11 IT students', async () => {
+    const announcement: any = {
+      id: 'ann-1',
+      targetType: 'INTERSECTION',
+      targetGrades: [11],
+      targetMajorPathways: ['INFORMATION_TECHNOLOGY'],
+      targetMinorPathways: [],
+      clubId: null,
+    };
+
+    const { service, prisma } = makeService({
+      announcement: {
+        findUnique: jest.fn().mockResolvedValue(announcement),
+      },
+      user: {
+        findUnique: jest.fn().mockImplementation((args) => {
+          if (args.where.id === 'it-11') {
+            return Promise.resolve({ id: 'it-11', gradeLevel: 11, major: 'INFORMATION_TECHNOLOGY', minor: null });
+          }
+          if (args.where.id === 'hs-11') {
+            return Promise.resolve({ id: 'hs-11', gradeLevel: 11, major: 'HEALTH_SCIENCE', minor: null });
+          }
+          if (args.where.id === 'it-10') {
+            return Promise.resolve({ id: 'it-10', gradeLevel: 10, major: 'INFORMATION_TECHNOLOGY', minor: null });
+          }
+          return Promise.resolve(null);
+        }),
+      },
+      clubSponsor: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    // Grade 11 IT student should have access
+    await expect(service.markRead('ann-1', 'it-11', Role.STUDENT)).resolves.not.toThrow();
+
+    // Grade 11 Health Science student should NOT have access
+    await expect(service.markRead('ann-1', 'hs-11', Role.STUDENT)).rejects.toThrow(
+      'Announcement not available to this user',
+    );
+
+    // Grade 10 IT student should NOT have access
+    await expect(service.markRead('ann-1', 'it-10', Role.STUDENT)).rejects.toThrow(
+      'Announcement not available to this user',
     );
   });
 });

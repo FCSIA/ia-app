@@ -860,6 +860,7 @@ enum AnnouncementTarget {
   GRADE
   PATHWAY
   CLUB
+  INTERSECTION
 }
 
 enum AnnouncementStatus {
