@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { AppUser } from '@ia/contracts/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ThemeToggle } from '../ThemeToggle';
+
 import { clearAuth, getUser, hasRole } from '@/lib/auth';
 import { authApi, notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
@@ -285,7 +285,7 @@ export function AppShell({
               ))
               : null}
             <div className="my-2 h-px w-8 bg-white/10" />
-            <ThemeToggle />
+
           </div>
         </aside>
 
@@ -333,10 +333,7 @@ export function AppShell({
                     ))
                   : null}
               </nav>
-              <div className="flex items-center justify-between border-t border-sidebar-border p-3">
-                <span className="text-xs text-sidebar-foreground/60">Theme</span>
-                <ThemeToggle />
-              </div>
+              <div className="flex items-center justify-between border-t border-sidebar-border p-3" />
             </div>
           </SheetContent>
         </Sheet>

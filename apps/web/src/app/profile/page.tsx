@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Bell } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +20,9 @@ export default function ProfilePage() {
   const user = useCurrentUser();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
 
@@ -237,6 +242,45 @@ export default function ProfilePage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Appearance */}
+        {mounted && (
+          <Card>
+            <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+              <div className="flex items-center gap-2">
+                <Palette size={16} className="text-accent-500" />
+                <CardTitle className="text-base font-semibold">Appearance</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { id: 'light', label: 'Light', icon: Sun },
+                  { id: 'dark', label: 'Dark', icon: Moon },
+                  { id: 'system', label: 'System', icon: Monitor },
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTheme(id)}
+                    className={cn(
+                      'flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-200 outline-none',
+                      theme === id
+                        ? 'border-primary bg-primary/[0.03] text-primary ring-1 ring-primary'
+                        : 'border-foreground/[0.06] hover:border-foreground/[0.12] hover:bg-foreground/[0.02] text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <Icon size={20} className={cn(
+                      "transition-transform duration-300",
+                      theme === id && "scale-110"
+                    )} />
+                    <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Content moderation alerts */}
         <Card>
