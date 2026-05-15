@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { cn } from '@/lib/utils';
-import { getUserRoles } from './admin-utils';
-import type { AdminUserRecord } from './types';
+import { getUserRoles } from '../_lib/admin-utils';
+import type { AdminUserRecord } from '../_lib/types';
 
 const CONTENT_ROLES: Array<{ role: string; label: string; color: 'emerald' | 'blue' | 'purple' | 'amber' | 'red' }> = [
   { role: 'STUDENT_ADMIN', label: 'Student Admin', color: 'emerald' },

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import type { WrappedSnapshotGenerationResult, WrappedSnapshotStatus } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { formatDateTime, schoolYearLabel } from './admin-utils';
+import { formatDateTime, schoolYearLabel } from '../_lib/admin-utils';
 
 export function WrappedSnapshotsTab({
   wrappedSchoolYear,

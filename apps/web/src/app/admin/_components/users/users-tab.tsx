@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from './admin-utils';
-import type { AdminUserRecord, AdminUserRoleGroup } from './types';
+import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
+import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 
 export function UsersPaginationControls({
   page,
@@ -191,7 +191,7 @@ export function AdminUsersTab({
   const users = usersData?.users ?? [];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <SearchInput
           className="max-w-xs"

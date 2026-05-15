@@ -1,0 +1,129 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usersApi } from '@/lib/api';
+import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
+import { getDynamicUsersPageSize, getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
+import type { AdminTabId } from './use-admin-tab';
+import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
+
+export function useAdminUsers(activeTab: AdminTabId) {
+  const user = useCurrentUser();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
+  const [usersPageSize, setUsersPageSize] = useState(10);
+
+  const canDeactivate = (targetUser: AdminUserRecord) => {
+    if (!user) return false;
+    const targetRoles = getUserRoles(targetUser);
+    const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
+    if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
+    return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'users') return;
+
+    const updateUsersPageSize = () => {
+      const availableHeight = viewportRef.current?.clientHeight ?? 0;
+      if (availableHeight <= 0) return;
+
+      const nextPageSize = getDynamicUsersPageSize(availableHeight);
+      setUsersPageSize((currentPageSize) =>
+        currentPageSize === nextPageSize ? currentPageSize : nextPageSize,
+      );
+    };
+
+    const frameId = window.requestAnimationFrame(updateUsersPageSize);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' && viewportRef.current
+        ? new ResizeObserver(updateUsersPageSize)
+        : null;
+
+    if (resizeObserver && viewportRef.current) {
+      resizeObserver.observe(viewportRef.current);
+    }
+
+    window.addEventListener('resize', updateUsersPageSize);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateUsersPageSize);
+      resizeObserver?.disconnect();
+    };
+  }, [activeTab]);
+
+  const {
+    data: usersData,
+    isLoading: isUsersLoading,
+    isError: isUsersError,
+    error: usersError,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ['admin-users', page, search, userRoleGroup, usersPageSize],
+    queryFn: () =>
+      usersApi.getAll(page, usersPageSize, search || undefined, userRoleGroup).then((r) => r.data),
+    enabled: activeTab === 'users',
+  });
+
+  useEffect(() => {
+    const totalPages = usersData?.total ? Math.max(1, Math.ceil(usersData.total / usersPageSize)) : 1;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, usersData?.total, usersPageSize]);
+
+  const deactivateMutation = useMutation({
+    mutationFn: (id: string) => usersApi.deactivate(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'Deactivated' });
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => usersApi.activate(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'Activated' });
+    },
+  });
+
+  const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
+  const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+
+  return {
+    search,
+    setSearch: (value: string) => {
+      setSearch(value);
+      setPage(1);
+    },
+    page,
+    setPage,
+    userRoleGroup,
+    setUserRoleGroup: (value: AdminUserRoleGroup) => {
+      setUserRoleGroup(value);
+      setPage(1);
+    },
+    usersPageSize,
+    viewportRef,
+    usersData,
+    isUsersLoading,
+    isUsersError,
+    usersError,
+    refetchUsers,
+    selectedUserRoleMeta,
+    currentUserId: user?.id,
+    canDeactivate,
+    onDeactivate: (userId: string) => deactivateMutation.mutate(userId),
+    onActivate: (userId: string) => activateMutation.mutate(userId),
+    isSuperAdmin,
+  };
+}
