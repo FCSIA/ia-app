@@ -93,7 +93,7 @@ export class UsersController {
     @Body() body: ResetPasswordDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.usersService.resetPassword(id, body.newPassword, user.id);
+    return this.usersService.resetPassword(id, body.newPassword, user.id, user.roles ?? []);
   }
 
   @Post('import/csv')

@@ -36,6 +36,15 @@ import {
   SelectTrigger,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -188,8 +197,10 @@ function UserTableSection({
   showGrade = false,
   currentUserId,
   canDeactivate,
+  canResetPassword,
   onDeactivate,
   onActivate,
+  onResetPassword,
   pagination,
 }: {
   title: string;
@@ -199,8 +210,10 @@ function UserTableSection({
   showGrade?: boolean;
   currentUserId?: string;
   canDeactivate: (user: AdminUserRecord) => boolean;
+  canResetPassword: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  onResetPassword: (user: AdminUserRecord) => void;
   pagination?: ReactNode;
 }) {
   const headers = showGrade
@@ -271,29 +284,42 @@ function UserTableSection({
                     </Badge>
                   </TableCell>
                   <TableCell className="px-3 py-1.5">
-                    {user.isActive ? (
-                      canDeactivate(user) && user.id !== currentUserId ? (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {canResetPassword(user) && user.id !== currentUserId ? (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onDeactivate(user.id)}
-                          className="h-6 px-2 text-[10px] text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                          onClick={() => onResetPassword(user)}
+                          className="h-6 px-2 text-[10px]"
                         >
-                          Deactivate
+                          <KeyRound className="mr-1 h-3 w-3" />
+                          Reset
                         </Button>
+                      ) : null}
+                      {user.isActive ? (
+                        canDeactivate(user) && user.id !== currentUserId ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDeactivate(user.id)}
+                            className="h-6 px-2 text-[10px] text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            Deactivate
+                          </Button>
+                        ) : !canResetPassword(user) || user.id === currentUserId ? (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        ) : null
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">—</span>
-                      )
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onActivate(user.id)}
-                        className="h-6 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
-                      >
-                        Activate
-                      </Button>
-                    )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onActivate(user.id)}
+                          className="h-6 px-2 text-[10px] text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+                        >
+                          Activate
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -365,6 +391,8 @@ export default function AdminPage() {
   const [studentAdminSearch, setStudentAdminSearch] = useState('');
   const deferredStudentAdminSearch = useDeferredValue(studentAdminSearch);
   const [auditSubView, setAuditSubView] = useState<'general' | 'flex'>('general');
+  const [passwordResetTarget, setPasswordResetTarget] = useState<AdminUserRecord | null>(null);
+  const [passwordResetValue, setPasswordResetValue] = useState('');
   const qc = useQueryClient();
 
   // Permission: can current user deactivate this target user?
@@ -376,6 +404,14 @@ export default function AdminPage() {
     if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
     // Admins can deactivate everyone else
     return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  };
+
+  const canResetPassword = (targetUser: AdminUserRecord) => {
+    if (!user) return false;
+    if (hasRole(user, 'SUPER_ADMIN')) return true;
+    if (!hasRole(user, 'ADMIN')) return false;
+    const targetRoles = getUserRoles(targetUser);
+    return !targetRoles.includes('ADMIN') && !targetRoles.includes('SUPER_ADMIN');
   };
 
   useEffect(() => {
@@ -568,6 +604,20 @@ export default function AdminPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-users'] }); toast({ title: 'Activated' }); },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
+      usersApi.resetPassword(id, newPassword),
+    onSuccess: () => {
+      setPasswordResetTarget(null);
+      setPasswordResetValue('');
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'Password reset' });
+    },
+    onError: (err: any) => {
+      toast({ title: err.response?.data?.message || 'Could not reset password', variant: 'destructive' });
+    },
+  });
+
   const addKeywordMutation = useMutation({
     mutationFn: (kw: string) => moderationApi.addKeyword(kw),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['keywords'] }); setKeyword(''); toast({ title: 'Keyword added' }); },
@@ -666,6 +716,19 @@ export default function AdminPage() {
     );
 
     toast({ title: 'Temporary passwords exported' });
+  };
+
+  const openPasswordReset = (targetUser: AdminUserRecord) => {
+    setPasswordResetTarget(targetUser);
+    setPasswordResetValue('');
+  };
+
+  const resetUserPassword = () => {
+    if (!passwordResetTarget || passwordResetValue.length < 8) return;
+    resetPasswordMutation.mutate({
+      id: passwordResetTarget.id,
+      newPassword: passwordResetValue,
+    });
   };
 
   const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
@@ -803,8 +866,10 @@ export default function AdminPage() {
                     showGrade={selectedUserRoleMeta.showGrade}
                     currentUserId={user?.id}
                     canDeactivate={canDeactivate}
+                    canResetPassword={canResetPassword}
                     onDeactivate={(userId) => deactivateMutation.mutate(userId)}
                     onActivate={(userId) => activateMutation.mutate(userId)}
+                    onResetPassword={openPasswordReset}
                     pagination={usersPagination}
                   />
                 )}
@@ -1634,6 +1699,61 @@ export default function AdminPage() {
             </Sheet>
           </TabPanel>
         </Tabs>
+
+        <Dialog
+          open={!!passwordResetTarget}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPasswordResetTarget(null);
+              setPasswordResetValue('');
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Reset password</DialogTitle>
+              <DialogDescription>
+                Set a temporary password for {passwordResetTarget?.firstName} {passwordResetTarget?.lastName}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="admin-reset-password">Temporary password</Label>
+              <Input
+                id="admin-reset-password"
+                type="password"
+                value={passwordResetValue}
+                onChange={(event) => setPasswordResetValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') resetUserPassword();
+                }}
+                placeholder="At least 8 characters"
+              />
+              <p className="text-xs text-muted-foreground">
+                The user should change this after signing in.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="tertiary"
+                onClick={() => {
+                  setPasswordResetTarget(null);
+                  setPasswordResetValue('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={passwordResetValue.length < 8}
+                loading={resetPasswordMutation.isPending}
+                onClick={resetUserPassword}
+              >
+                Reset password
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
