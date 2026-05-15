@@ -369,12 +369,39 @@ export interface WrappedAvailability {
   secondsUntilOpen: number;
 }
 
+export interface WrappedSnapshotStatus {
+  schoolYear: number;
+  schemaVersion: number;
+  eligibleUsers: number;
+  generated: number;
+  stale: number;
+  missing: number;
+  latestGeneratedAt: string | null;
+}
+
+export interface WrappedSnapshotGenerationResult {
+  schoolYear: number;
+  schemaVersion: number;
+  requested: number;
+  generated: number;
+  skipped: number;
+}
+
 export const wrappedApi = {
   getAvailability: () => api.get<WrappedAvailability>('/wrapped/availability'),
   getMine: (schoolYear?: number) =>
     api.get<WrappedSummary>('/wrapped/me', {
       params: schoolYear != null ? { schoolYear } : undefined,
     }),
+  getSnapshotStatus: (schoolYear: number) =>
+    api.get<WrappedSnapshotStatus>('/wrapped/admin/snapshots/status', {
+      params: { schoolYear },
+    }),
+  generateSnapshots: (data: {
+    schoolYear: number;
+    userIds?: string[];
+    refresh?: boolean;
+  }) => api.post<WrappedSnapshotGenerationResult>('/wrapped/admin/snapshots/generate', data),
 };
 
 // Notifications

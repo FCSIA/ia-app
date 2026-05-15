@@ -35,7 +35,7 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 | Command           | What it does                            |
 | ----------------- | --------------------------------------- |
-| `pnpm dev`        | Start API (3001) + Web (3000) via Turbo |
+| `pnpm dev`        | Start API (3001) + Web (3000) via Turbo, falling back to the next open ports |
 | `pnpm build`      | Build all apps for production           |
 | `pnpm lint`       | Run ESLint across all apps              |
 
@@ -49,6 +49,26 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 | `pnpm infra:up:win` | Start PostgreSQL via local binaries (Windows) |
 | `pnpm infra:down` | Stop PostgreSQL via Homebrew (macOS) |
 | `pnpm setup:win` | Full automated setup (Windows only) |
+
+---
+
+### Dev ports
+
+The dev launchers prefer web `3000` and API `3001`. If either port is busy, they pick the next available port and print a loud banner with the actual URLs.
+
+```bash
+# Override only the API starting port
+API_PORT=3003 pnpm --filter api dev
+
+# Override only the web starting port
+WEB_PORT=3004 pnpm --filter web dev
+
+# CLI-style port override also works for each app
+pnpm --filter api dev -- --port 3003
+pnpm --filter web dev -- --port 3004
+```
+
+When `pnpm dev` starts both apps, the API writes its selected port to `.dev/api-port.json`; the web launcher reads that file and configures `NEXT_PUBLIC_API_URL` / the `/api` proxy target to match.
 
 ---
 
@@ -112,9 +132,9 @@ The `--filter` flag tells pnpm which workspace to target.
 
 | Port | Service |
 |------|---------|
-| 3000 | Next.js web app |
-| 3001 | NestJS API |
-| 3001/docs | Swagger API documentation |
+| 3000 | Next.js web app, unless busy |
+| 3001 | NestJS API, unless busy |
+| 3001/docs | Swagger API documentation, unless API falls back |
 | 5432 | PostgreSQL |
 
 ---

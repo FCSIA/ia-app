@@ -6,6 +6,22 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { PersistentExceptionFilter } from './common/filters/persistent-exception.filter';
 
+function parsePort(value: string | undefined) {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port < 65536 ? port : undefined;
+}
+
+function getCliPort() {
+  const args = process.argv.slice(2);
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--port' || arg === '-p') return parsePort(args[index + 1]);
+    if (arg.startsWith('--port=')) return parsePort(arg.slice('--port='.length));
+    if (arg.startsWith('-p=')) return parsePort(arg.slice('-p='.length));
+  }
+  return undefined;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalFilters(new PersistentExceptionFilter());
@@ -37,7 +53,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.API_PORT || 3001;
+  const port = getCliPort() ?? parsePort(process.env.API_PORT) ?? 3001;
   await app.listen(port);
   console.log(`API running on http://localhost:${port}`);
   console.log(`Swagger docs at http://localhost:${port}/docs`);
