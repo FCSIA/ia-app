@@ -1,230 +1,169 @@
-# 🎓 IA School App
+# IA School App
 
-A full-stack school communication and management platform built for **FCS Innovation Academy**. It connects students, teachers, and administrators through a unified web experience.
-
----
+A full-stack school communication and management platform for FCS Innovation Academy.
 
 ## For Coding Agents
 
-Coding agents should read [`AGENTS.md`](./AGENTS.md) before making changes. Human-facing setup and product notes stay in this README and `docs/`.
+Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and handoff notes out of this README.
 
----
+## What It Includes
 
-## ✨ Features
+- Authentication with JWT sessions and role-based access
+- Announcements, comments, moderation, and notification preferences
+- Clubs, channels, invites, membership, and leader/sponsor workflows
+- Events, calendar entries, Flex Friday sessions, and student schedules
+- Admin user management, audit logging, and demo seed data
 
-- 🔐 **Authentication** — Secure login with JWT sessions and role-based access control
-- 📢 **Announcements** — School-wide, grade-level, pathway, and club-specific announcements with keyword moderation
-- 🏫 **Clubs** — Create clubs, manage members, send invites via CSV, promote leaders
-- 📅 **Events** — Submit, approve/reject, and publish school events with a multi-step approval flow
-- 🗓️ **Calendar** — Unified calendar view of all approved events and manual entries
-- 🕐 **Flex Friday** — Schedule and register for Flex Friday sessions; teachers can assign students
-- 🛡️ **Moderation** — Keyword flagging system and content reporting
-- 🔔 **Notifications** — In-app notification delivery with preferences per category
-- 👥 **User Management** — Bulk import students via CSV, role assignment, account activation/deactivation
-- 📊 **Audit Log** — Full audit trail of admin actions
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| **API** | [NestJS](https://nestjs.com/) + TypeScript |
-| **Database** | SQLite (dev) via [Prisma ORM](https://www.prisma.io/) |
-| **Web Frontend** | [Next.js 15](https://nextjs.org/) + Tailwind CSS + shadcn/ui |
-| **Auth** | JWT + bcrypt |
-| **Monorepo** | [Turborepo](https://turbo.build/) + pnpm workspaces |
-| **API Docs** | Swagger / OpenAPI |
+|-------|------------|
+| Web | Next.js 15, React 19, Tailwind CSS, shadcn/ui |
+| API | NestJS, TypeScript, Swagger |
+| Database | PostgreSQL 16, Prisma |
+| Tooling | pnpm workspaces, Turborepo |
 
----
+## Project Structure
 
-## 📁 Project Structure
-
-```
+```text
 ia-app/
-├── apps/
-│   ├── api/          # NestJS REST API (port 3001)
-│   │   ├── src/
-│   │   │   ├── auth/
-│   │   │   ├── users/
-│   │   │   ├── clubs/
-│   │   │   ├── events/
-│   │   │   ├── calendar/
-│   │   │   ├── flex-friday/
-│   │   │   ├── announcements/
-│   │   │   ├── moderation/
-│   │   │   ├── notifications/
-│   │   │   └── audit/
-│   │   └── prisma/
-│   │       └── schema.prisma
-│   └── web/          # Next.js web app (port 3000)
-├── turbo.json
-├── pnpm-workspace.yaml
-└── .env.example
+├── apps/api/       # NestJS API, Prisma schema, seed data
+├── apps/web/       # Next.js web app
+├── docs/           # Product, architecture, setup, and reference docs
+├── infra/          # Infrastructure helpers
+├── AGENTS.md       # Agent workflow rules
+├── SETUP.md        # Full new-machine setup guide
+└── .env.example    # Environment variable template
 ```
 
----
+## Quick Start
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) v20+
-- [pnpm](https://pnpm.io/) v9+
-
-### 1. Clone the repo
+For a full setup walkthrough, use [SETUP.md](./SETUP.md). Technical setup details live in [docs/reference/getting-started.md](./docs/reference/getting-started.md), [docs/reference/environment.md](./docs/reference/environment.md), and [docs/database/database-overview.md](./docs/database/database-overview.md).
 
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
-```
-
-### 2. Set up environment variables
-
-```bash
 cp .env.example .env
 cp .env.example apps/api/.env
-```
-
-### 3. Install dependencies
-
-```bash
 pnpm install
 ```
 
-### 4. Set up the database
+Start PostgreSQL, then prepare the database:
 
 ```bash
-pnpm db:generate   # Generate Prisma client
-pnpm db:migrate    # Run migrations
-pnpm db:seed       # Seed with test data
+pnpm infra:up       # macOS/Homebrew
+pnpm infra:up:win   # Windows
+
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
 ```
 
-### 5. Start the app
+Optional Nix + direnv users can run `direnv allow` instead of the Homebrew/Windows database startup path. See [SETUP.md](./SETUP.md#nix--direnv-setup).
+
+Start the app:
 
 ```bash
-# macOS/Linux
 pnpm dev
-
-# Windows
-pnpm infra:up:win  # Start PostgreSQL
-pnpm dev           # Start the app
 ```
 
 | Service | URL |
 |---------|-----|
-| 🌐 Web App | http://localhost:3000 |
-| ⚙️ API | http://localhost:3001 |
-| 📖 API Docs (Swagger) | http://localhost:3001/docs |
+| Web | http://localhost:3000 |
+| API | http://localhost:3001 |
+| Swagger | http://localhost:3001/docs |
 
-If you pull schema changes later, run `pnpm db:migrate` before `pnpm dev`.
+Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [docs/database/seed.md](./docs/database/seed.md) for the seed data.
 
-If Prisma starts failing with missing-column errors such as `users.middle_name`, your local database is stale relative to the current migration history. Reset and reseed it with:
-
-```bash
-pnpm db:reset
-```
-
-## Local Services
-
-## 🔑 Test Accounts
+## Common Commands
 
 ```bash
-pnpm infra:up
-pnpm infra:down
+pnpm dev          # Start web + API
+pnpm lint         # Lint all workspaces
+pnpm build        # Build all workspaces
+pnpm test         # Run tests
+pnpm db:migrate   # Apply Prisma migrations
+pnpm db:reset     # Reset and reseed local database
+pnpm db:studio    # Open Prisma Studio
 ```
 
-`pnpm infra:up` and `pnpm infra:down` manage PostgreSQL through Homebrew.
+More commands are documented in [docs/reference/commands.md](./docs/reference/commands.md).
 
-## Useful Commands
+## Deployment
 
-```bash
-pnpm dev         # API + web
-pnpm build
-pnpm lint
-pnpm test
-pnpm db:generate
-pnpm db:migrate
-pnpm db:reset
-pnpm db:seed
-pnpm db:studio   # Open database in Prisma Studio
-pnpm setup:win   # Windows: Full automated setup
-pnpm infra:up:win # Windows: Start database
+The deployment shape should stay boring and maintainable. This app is not a static site: the web app is a Next.js server, the API is a NestJS server, and the database is PostgreSQL. Uploaded files are currently stored on disk by the API, so production backups must include both PostgreSQL and the upload directory.
+
+The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Use that doc when explaining what belongs in a system diagram, including the baseline server/database version and the hypothetical Azure version.
+
+### React Server Components
+
+Next.js App Router and React Server Components are compatible with all server-based scenarios below as long as the Next.js app runs as a Node server or container. RSC does **not** mean the app can be deployed as static files.
+
+The current app is mostly client-rendered and stores auth in browser `localStorage`. That is simple, but it limits useful RSC adoption because server components cannot read a browser-only JWT. A serious RSC migration should first decide whether auth moves to secure HttpOnly cookies, then migrate read-heavy pages gradually.
+
+### Scenario 1: Generic Single Server
+
+This is the simplest private-school deployment model:
+
+```text
+Users
+  -> HTTPS reverse proxy
+  -> Next.js web app
+  -> NestJS API
+  -> PostgreSQL database
+  -> Upload directory on persistent disk
 ```
 
-## Local URLs
+This can run on one Linux server or VM with Docker Compose. It is the easiest option to understand and operate, but the school or project owner is responsible for OS patching, backups, monitoring, and recovery.
 
-- Web: `http://localhost:3000`
-- API: `http://localhost:3001`
-- Swagger: `http://localhost:3001/docs`
+RSC: The server already has to run Node for Next.js, so RSC does not materially change this scenario. The important requirement is that the reverse proxy forwards requests to the Next.js server instead of serving static build files.
 
-## Test Accounts
+### Scenario 2: Azure VM
 
-All demo accounts use their ID as the password.
+If the school closes on Azure but wants to avoid many separate cloud services, the most practical Azure version is still a single-server design:
 
-| ID | Role |
-|----|------|
-| `SUPER001` | Super Admin |
-| `ADMIN001` | Admin |
-| `TCH001` | Teacher / Sponsor |
-| `STU001` | Student |
-| `STU002` | Student |
-| `STU003` | Student |
-| `STU004` | Student |
-| `STU005` | Student |
-| `STU006` | Student |
-| `STU007` | Student |
-| `STU008` | Student |
-| `STU009` | Student |
-| `STU010` | Student |
-
----
-
-## 🔐 Role Permissions
-
-| Role | Capabilities |
-|------|-------------|
-| `SUPER_ADMIN` | Full access, manage admins, system-wide settings |
-| `ADMIN` | Manage users, events, moderation, announcements |
-| `TEACHER` | Create sessions, approve events, view rosters |
-| `STUDENT_ADMIN` | Assist with student management |
-| `STUDENT_LEADER` | Lead clubs, organize events |
-| `STUDENT` | View announcements, register for Flex, join clubs |
-
----
-
-## 📡 API Endpoints
-
-The full interactive API documentation is available at **http://localhost:3001/docs** (Swagger UI).
-
-Key route groups:
-- `POST /auth/login` — Sign in
-- `GET /users` — List users (Admin+)
-- `POST /users/import/csv` — Bulk import students
-- `GET /announcements` — Fetch announcements
-- `GET /events` — View events
-- `POST /flex-friday` — Create Flex Friday
-- `GET /calendar` — Calendar entries
-- `GET /notifications` — User notifications
-
----
-
-## 🧑‍💻 Development Commands
-
-```bash
-pnpm dev              # Start all apps (web + api)
-pnpm build            # Build all apps
-pnpm db:generate      # Regenerate Prisma client
-pnpm db:migrate       # Run new migrations
-pnpm db:seed          # Reseed database
+```text
+Azure Linux VM
+  -> reverse proxy container
+  -> Next.js container
+  -> NestJS API container
+  -> PostgreSQL container or attached database
+  -> persistent upload volume
 ```
 
----
+This keeps the architecture close to the generic server model while giving the school Azure billing, access controls, networking, backups, and administrative ownership. For this project, that is probably the best balance between privacy, cost, and maintainability.
 
-## 📄 License
+RSC: This scenario is essentially the generic single-server setup running inside Azure. The Next.js container can serve App Router/RSC pages normally.
 
-This project is private and intended for use by **FCS Innovation Academy**.
+### Scenario 3: More Managed Azure
 
----
+A more managed Azure setup can split responsibilities across services:
 
-> Built with ❤️ for FCS Innovation Academy students, teachers, and staff.
+- Azure App Service or Container Apps for the web/API containers.
+- Azure Database for PostgreSQL for managed database backups and patching.
+- Azure Blob Storage for uploaded files.
+- Azure Key Vault for secrets.
+- Azure Monitor/Application Insights for logs and metrics.
+
+This is more sustainable if the app becomes important school infrastructure, because less operational risk sits on one VM. The tradeoff is complexity: more Azure services, more configuration, more security review, and more things for someone to own long-term.
+
+RSC: Azure App Service or Container Apps can run the Next.js server/container, but Azure Static Web Apps or static blob hosting are not a fit for full RSC/App Router runtime behavior. Managed Azure also makes cookie/session, API origin, and private networking choices more important.
+
+### Sustainability Recommendation
+
+For a school-private app, the best starting point is usually **Azure VM + Docker Compose + managed backups**. It keeps the system small enough for students/staff to reason about while giving the school an official cloud environment and recovery path.
+
+If the app becomes production-critical, the first upgrade should be moving PostgreSQL to managed Azure Database for PostgreSQL. The second upgrade should be moving uploaded files to Azure Blob Storage. Those two changes reduce the biggest long-term risks: database loss and file backup mistakes.
+
+## Documentation
+
+- [docs/index.md](./docs/index.md) — Documentation map
+- [docs/architecture/overview.md](./docs/architecture/overview.md) — System overview
+- [docs/architecture/tech-stack.md](./docs/architecture/tech-stack.md) — Tooling and framework details
+- [docs/reference/roles-and-permissions.md](./docs/reference/roles-and-permissions.md) — Role capability reference
+- [docs/backend/backend-overview.md](./docs/backend/backend-overview.md) — API overview
+- [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Web overview
+
+## License
+
+Private project for FCS Innovation Academy.

@@ -17,7 +17,34 @@ tags: [database, postgresql, prisma]
 - **Columns** — the fields on each record (`firstName`, `createdAt`, etc.)
 - **Relations** — links between tables (a `Comment` belongs to an `Announcement`)
 
-In this project, PostgreSQL runs locally via Homebrew on port `5432`.
+In this project, PostgreSQL runs locally on port `5432`. The common macOS path uses Homebrew services, Windows uses `setup_pg.ps1`, and the optional Nix + direnv path starts a repo-local database from `.pgdata`.
+
+### Local App Database
+
+The local app database is defined by `DATABASE_URL`:
+
+```bash
+postgresql://ia_user:ia_password@localhost:5432/ia_db
+```
+
+That URL breaks down as:
+
+| Part | Meaning |
+|------|---------|
+| `ia_user` | Local PostgreSQL role the API and Prisma use |
+| `ia_password` | Local development password for `ia_user` |
+| `localhost:5432` | Local PostgreSQL server and port |
+| `ia_db` | Local development database owned by `ia_user` |
+
+Manual setup creates that role and database with:
+
+```sql
+CREATE USER ia_user WITH PASSWORD 'ia_password';
+CREATE DATABASE ia_db OWNER ia_user;
+ALTER USER ia_user CREATEDB;
+```
+
+`CREATEDB` is required by Prisma Migrate because `prisma migrate dev` creates a temporary shadow database while calculating schema changes. The optional Nix + direnv route runs those SQL commands automatically against the repo-local `.pgdata` server.
 
 ### Connect Directly
 

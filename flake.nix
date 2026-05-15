@@ -4,14 +4,15 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }:
+  outputs =
+    { nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs { inherit system; };
       in
       {
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
@@ -31,24 +32,23 @@
               initdb -D "$PGDATA" -U postgres
             fi
 
-            # Start DB if it's not already running
-            if ! pg_isready -h localhost > /dev/null 2>&1; then
+            # Start this repo's DB if its data directory is not already running.
+            if ! pg_ctl status -D "$PGDATA" > /dev/null 2>&1; then
               echo "Starting local PostgreSQL..."
-              pg_ctl start -D "$PGDATA" -l "$PGDATA/postgres.log" > /dev/null 2>&1
-
-              echo "Waiting for postgres to be ready..."
-              for i in {1..10}; do
-                pg_isready -h localhost > /dev/null 2>&1 && break
-                sleep 0.5
-              done
-
-              echo "Setting up database user and role..."
-              psql -U postgres -h localhost -d postgres -c "CREATE USER ia_user WITH PASSWORD 'ia_password';" 2>/dev/null || true
-              psql -U postgres -h localhost -d postgres -c "CREATE DATABASE ia_db OWNER ia_user;" 2>/dev/null || true
-              psql -U postgres -h localhost -d postgres -c "ALTER USER ia_user CREATEDB;" 2>/dev/null || true
+              if ! pg_ctl start -w -t 10 -D "$PGDATA" -l "$PGDATA/postgres.log"; then
+                echo "Failed to start repo-local PostgreSQL from $PGDATA."
+                echo "If another PostgreSQL server is using localhost:5432, stop it or update this flake and DATABASE_URL to use a different port."
+                echo "See $PGDATA/postgres.log for details."
+                return 1 2>/dev/null || exit 1
+              fi
             fi
 
-            echo "✨ PostgreSQL is running"
+            echo "Setting up database user and role..."
+            psql -U postgres -h localhost -d postgres -c "CREATE USER ia_user WITH PASSWORD 'ia_password';" 2>/dev/null || true
+            psql -U postgres -h localhost -d postgres -c "CREATE DATABASE ia_db OWNER ia_user;" 2>/dev/null || true
+            psql -U postgres -h localhost -d postgres -c "ALTER USER ia_user CREATEDB;" 2>/dev/null || true
+
+            echo "✨ Repo-local PostgreSQL is running"
           '';
         };
       }

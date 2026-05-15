@@ -33,6 +33,8 @@ cp .env.example .env
 cp .env.example apps/api/.env
 ```
 
+If you use the Nix + direnv route, the dev shell starts PostgreSQL automatically, but these files are still required. The shell sets `PGDATA`, not `DATABASE_URL`.
+
 ---
 
 ## All Variables
@@ -44,6 +46,15 @@ DATABASE_URL="postgresql://ia_user:ia_password@localhost:5432/ia_db"
 The full PostgreSQL connection string. Format: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
 
 Used by: Prisma (API)
+
+Matches the database that `flake.nix` creates on first direnv load:
+
+- user: `ia_user`
+- password: `ia_password`
+- database: `ia_db`
+- host/port: `localhost:5432`
+
+Manual Homebrew setup creates the same role/database pair with the SQL shown in [[database-overview]]. The `ia_user` role also needs `CREATEDB` so Prisma can create its temporary shadow database during `pnpm db:migrate`.
 
 ---
 

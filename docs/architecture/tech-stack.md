@@ -47,7 +47,8 @@ tags: [architecture, tech-stack]
 |-----------|------|
 | **pnpm** | Package manager (faster than npm/yarn) |
 | **Turbo** | Monorepo task runner with caching |
-| **PostgreSQL via Homebrew** | Local database (no Docker needed) |
+| **Nix + direnv** | Optional macOS/Linux dev shell; provides Node, pnpm, PostgreSQL, OpenSSL, and pkg-config |
+| **PostgreSQL 16** | Local database; repo-local via Nix/direnv or manually managed via Homebrew/Windows script |
 | **Prisma Migrate** | Database migration system |
 
 ---

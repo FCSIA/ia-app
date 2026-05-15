@@ -53,6 +53,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[wrapped]] — Spotify Wrapped-style school-year activity recap
 
 ### Reference
+- [[getting-started]] — New machine setup and local dev environment
 - [[roles-and-permissions]] — All 8 user roles and what they can do
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do
@@ -64,14 +65,24 @@ Welcome to the IA App developer documentation. This is a school communication pl
 ```bash
 # First time setup — see [[getting-started]]
 git clone https://github.com/virajdas/ia-app.git && cd ia-app
-pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed
+cp .env.example .env && cp .env.example apps/api/.env
+pnpm install
+
+# Start PostgreSQL before migrations:
+# macOS/Linux Homebrew: pnpm infra:up
+# Optional Nix + direnv: direnv allow
+# Windows: pnpm infra:up:win
+
+pnpm db:generate && pnpm db:migrate && pnpm db:seed
 
 # Start
-# macOS/Linux: brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
+# macOS/Linux Homebrew: brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
+# Optional Nix + direnv: direnv allow && pnpm db:migrate && pnpm dev
 # Windows: pnpm infra:up:win && pnpm dev
 
 # Stop
-# macOS/Linux: lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
+# Nix + direnv PostgreSQL: pg_ctl stop -D .pgdata
+# macOS/Linux Homebrew: lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 # Windows: Stop the pnpm dev process (Ctrl+C) and run .\pgsql\bin\pg_ctl.exe -D .\pgsql\data stop
 ```
 

@@ -6,12 +6,99 @@ Follow every step in order.
 
 ## 💻 Choose your Platform
 
-- **macOS (Homebrew)**: Follow steps 1-13 below.
+- **macOS (Homebrew)**: Follow the Homebrew section.
+- **macOS/Linux (optional Nix + direnv)**: Follow the Nix + direnv section if you want the checked-in dev shell.
 - **Windows**: [Skip to Windows Setup](#windows-setup)
 
 ---
 
-## 1. Install Homebrew
+## Nix + direnv Setup
+
+Use this optional route if you already use Nix or want the repo to own its dev toolchain. The repository includes `.envrc` with `use flake`, and `flake.nix` provides Node.js 20, pnpm, PostgreSQL 16, OpenSSL, and pkg-config.
+
+### 1. Install Nix and direnv
+
+Install Nix with flakes enabled, then install direnv and hook it into your shell.
+
+Verify:
+
+```bash
+nix --version
+direnv --version
+```
+
+### 2. Clone the Repository
+
+```bash
+git clone https://github.com/virajdas/ia-app.git && cd ia-app
+```
+
+### 3. Allow direnv
+
+```bash
+direnv allow
+```
+
+On load, the flake shell sets `PGDATA=$PWD/.pgdata`, initializes `.pgdata` if needed, starts PostgreSQL, and creates:
+
+- user: `ia_user`
+- password: `ia_password`
+- database: `ia_db`
+
+The PostgreSQL log is written to `.pgdata/postgres.log`.
+
+Important: the flake checks whether this repo's `.pgdata` server is running. If another PostgreSQL instance is already using `localhost:5432`, the repo-local server will fail to start instead of silently using the other server.
+
+### 4. Create Environment Files
+
+```bash
+cp .env.example .env && cp .env.example apps/api/.env
+```
+
+The dev shell starts PostgreSQL, but it does not set `DATABASE_URL`; Prisma reads it from these files.
+
+### 5. Install Dependencies
+
+```bash
+pnpm install
+```
+
+### 6. Generate, Migrate, and Seed
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+```
+
+### 7. Start the App
+
+```bash
+pnpm dev
+```
+
+- **Web app**: http://localhost:3000
+- **API**: http://localhost:3001
+
+### Daily Use
+
+```bash
+cd ia-app
+pnpm db:migrate
+pnpm dev
+```
+
+To stop the repo-local database:
+
+```bash
+pg_ctl stop -D .pgdata
+```
+
+---
+
+## Homebrew Setup
+
+### 1. Install Homebrew
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
@@ -22,7 +109,7 @@ brew --version
 
 ---
 
-## 2. Install Node.js 20+
+### 2. Install Node.js 20+
 ```bash
 brew install node@20
 ```
@@ -37,7 +124,7 @@ node --version   # should be v20.x.x or higher
 
 ---
 
-## 3. Install pnpm
+### 3. Install pnpm
 ```bash
 npm install -g pnpm
 ```
@@ -48,7 +135,7 @@ pnpm --version   # should be 9.x.x or higher
 
 ---
 
-## 4. Install PostgreSQL 16
+### 4. Install PostgreSQL 16
 ```bash
 brew install postgresql@16
 ```
@@ -65,7 +152,7 @@ psql --version   # should say postgresql 16.x
 
 ---
 
-## 5. Start PostgreSQL
+### 5. Start PostgreSQL
 ```bash
 brew services start postgresql@16
 ```
@@ -77,7 +164,7 @@ You should see `postgresql@16  started`
 
 ---
 
-## 6. Create the Database and User
+### 6. Create the Database and User
 ```bash
 psql postgres -c "CREATE USER ia_user WITH PASSWORD 'ia_password';" && psql postgres -c "CREATE DATABASE ia_db OWNER ia_user;" && psql postgres -c "ALTER USER ia_user CREATEDB;"
 ```
@@ -88,21 +175,21 @@ psql postgresql://ia_user:ia_password@localhost:5432/ia_db -c "\conninfo"
 
 ---
 
-## 7. Clone the Repository
+### 7. Clone the Repository
 ```bash
 git clone https://github.com/virajdas/ia-app.git && cd ia-app
 ```
 
 ---
 
-## 8. Create Environment Files
+### 8. Create Environment Files
 ```bash
 cp .env.example .env && cp .env.example apps/api/.env
 ```
 
 ---
 
-## 9. Install Dependencies
+### 9. Install Dependencies
 ```bash
 pnpm install
 ```
@@ -110,21 +197,21 @@ pnpm install
 
 ---
 
-## 10. Generate Prisma Client
+### 10. Generate Prisma Client
 ```bash
 pnpm db:generate
 ```
 
 ---
 
-## 11. Run Database Migrations
+### 11. Run Database Migrations
 ```bash
 pnpm db:migrate
 ```
 
 ---
 
-## 12. Seed the Database
+### 12. Seed the Database
 ```bash
 pnpm db:seed
 ```
@@ -132,7 +219,7 @@ You should see output confirming users, clubs, and events were created.
 
 ---
 
-## 13. Start the App
+### 13. Start the App
 ```bash
 pnpm dev
 ```

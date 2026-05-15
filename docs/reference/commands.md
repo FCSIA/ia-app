@@ -12,7 +12,12 @@ tags: [reference, commands, dev]
 
 ### Start (after first-time setup)
 ```bash
-# macOS/Linux
+# Nix + direnv
+cd ia-app
+pnpm db:migrate
+pnpm dev
+
+# macOS/Linux Homebrew
 brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
 
 # Windows
@@ -21,7 +26,10 @@ pnpm infra:up:win && pnpm dev
 
 ### Stop
 ```bash
-# macOS/Linux
+# Nix + direnv PostgreSQL
+pg_ctl stop -D .pgdata
+
+# macOS/Linux Homebrew
 lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 # Windows
@@ -45,6 +53,8 @@ lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
 
 | Command | What it does |
 |---------|-------------|
+| `direnv allow` | Trust `.envrc`, enter the Nix flake shell, and auto-start repo-local PostgreSQL |
+| `pg_ctl stop -D .pgdata` | Stop the repo-local PostgreSQL server started by the Nix shell |
 | `pnpm infra:up` | Start PostgreSQL via Homebrew (macOS) |
 | `pnpm infra:up:win` | Start PostgreSQL via local binaries (Windows) |
 | `pnpm infra:down` | Stop PostgreSQL via Homebrew (macOS) |
@@ -92,6 +102,23 @@ If Prisma reports missing-column errors such as `users.middle_name`, use `pnpm d
 ```bash
 psql postgresql://ia_user:ia_password@localhost:5432/ia_db
 ```
+
+### Nix + direnv notes
+
+The repo's `.envrc` contains `use flake`, so direnv loads `flake.nix` automatically after `direnv allow`.
+
+The flake dev shell provides Node.js 20, pnpm, PostgreSQL 16, OpenSSL, and pkg-config. It exports `PGDATA=$PWD/.pgdata`, initializes that directory on first load, starts PostgreSQL, and creates the `ia_user` / `ia_db` pair used by `.env.example`.
+
+It intentionally does not run app-level setup. You still run:
+
+```bash
+pnpm install
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+```
+
+One caveat: the repo-local server still uses `localhost:5432`. If another PostgreSQL server is already listening there, the flake fails fast and points you at `.pgdata/postgres.log`.
 
 ---
 

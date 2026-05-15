@@ -508,6 +508,79 @@ Current implementation does not include third-party email, SMS, push notificatio
 
 ---
 
+## React Server Components and Deployment
+
+The web app uses Next.js App Router, but most current pages are client components and fetch data from the NestJS API through Axios. React Server Components can be introduced without changing the high-level deployment shape, but they do affect auth and hosting assumptions.
+
+### Current State
+
+| Area | Current behavior |
+|------|------------------|
+| Rendering | Mostly client-rendered pages and components |
+| Auth storage | JWT and user profile in browser local storage |
+| API access | Browser-side Axios calls to the NestJS API |
+| Next.js runtime | Requires a Node server for production; not a static export |
+| RSC/server actions | Not currently a major part of the app |
+
+### RSC Constraint
+
+Server components run on the Next.js server, not in the browser. That means they cannot read `localStorage`. With the current auth model, user-specific server component data fetching is limited unless auth is changed.
+
+Practical implication:
+
+```text
+Current client auth:
+Browser localStorage JWT
+  -> client component can call API
+  -> server component cannot read JWT directly
+```
+
+A stronger RSC-friendly auth model would be:
+
+```text
+HttpOnly session/JWT cookie
+  -> browser sends cookie automatically
+  -> Next.js server can read request cookies
+  -> server components can fetch user-specific data
+  -> NestJS API can validate cookie/session or receive trusted server-side auth
+```
+
+### RSC Migration Candidates
+
+Good candidates:
+
+- Course catalog and course detail pages.
+- Announcement detail pages.
+- Event detail pages.
+- Calendar/event read views if filtering is simple.
+- Club directory and static club overview data.
+- Wrapped availability and read-only summary shell.
+
+Poor first candidates:
+
+- Club channel chat.
+- Rich message composer.
+- Admin dashboards with many mutations.
+- Flex Friday management screens.
+- Schedule editor and drag/drop dashboard layouts.
+- Notification inbox interactions.
+
+### Scenario Impact
+
+| Scenario | RSC impact |
+|----------|------------|
+| Generic single server | Low. Run Next.js as a Node server/container and proxy to it. Do not deploy as static files. |
+| Azure VM | Low. Same as generic single server, but hosted on an Azure Linux VM. |
+| More managed Azure | Medium. App Service or Container Apps can run the Next.js server/container; Static Web Apps or blob static hosting are not enough for full RSC runtime behavior. |
+
+### Recommendation
+
+RSC should be adopted gradually for read-heavy routes after the team decides whether to move auth from browser local storage to HttpOnly cookies. Porting everything to RSC up front would add risk without solving the main deployment problem.
+
+For architecture diagrams, RSC does not add a new infrastructure box. It changes the responsibilities inside the **Next.js web app** box: some data fetching and rendering can move from browser-side client components to server-side components running in the Next.js process.
+
+---
+
 ## Frontend Pages
 
 | Route | Feature surface |
