@@ -54,4 +54,4 @@ export type AdminUserRecord = {
   isActive?: boolean;
 };
 
-export type AdminUserRoleGroup = 'students' | 'teachers' | 'other';
+export type AdminUserRoleGroup = 'students' | 'teachers' | 'other' | 'student-admin' | 'all';

@@ -8,9 +8,7 @@ import { AdminShell } from './admin-shell';
 import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
 import { AuditTabPanel } from './panels/audit-tab-panel';
 import { ModerationTabPanel } from './panels/moderation-tab-panel';
-import { PermissionsTabPanel } from './panels/permissions-tab-panel';
 import { ScheduleTabPanel } from './panels/schedule-tab-panel';
-import { StudentAdminsTabPanel } from './panels/student-admins-tab-panel';
 import { UsersTabPanel } from './panels/users-tab-panel';
 import { WrappedTabPanel } from './panels/wrapped-tab-panel';
 import { useAdminModerationPending } from '../_hooks/use-admin-moderation-pending';
@@ -55,14 +53,6 @@ export function AdminPageContent() {
 
         <AdminScrollTabPanel value="moderation">
           {activeTab === 'moderation' ? <ModerationTabPanel /> : null}
-        </AdminScrollTabPanel>
-
-        <AdminScrollTabPanel value="permissions">
-          {activeTab === 'permissions' ? <PermissionsTabPanel /> : null}
-        </AdminScrollTabPanel>
-
-        <AdminScrollTabPanel value="student-admins">
-          {activeTab === 'student-admins' ? <StudentAdminsTabPanel /> : null}
         </AdminScrollTabPanel>
 
         {canManageWrapped ? (
