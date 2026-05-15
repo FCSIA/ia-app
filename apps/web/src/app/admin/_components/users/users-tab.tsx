@@ -3,7 +3,9 @@
 import type { RefObject, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
+import { Empty, EmptyTitle } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -65,89 +67,85 @@ function UserTableSection({
   onActivate: (userId: string) => void;
   pagination?: ReactNode;
 }) {
+  const d = dataTableClasses('compact');
   const headers = showGrade
     ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
     : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <CardHeader className="border-b px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm">{title}</CardTitle>
-          <Badge variant="solid" size="sm">
-            {totalCount ?? users.length}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-auto p-0">
-        <Table className="text-xs">
-          <TableHeader className="bg-muted/50">
+    <DataTablePanel
+      title={title}
+      count={totalCount ?? users.length}
+      density="compact"
+      fillHeight
+      footer={pagination}
+    >
+      <Table className={d.table}>
+        <TableHeader className="bg-muted/50">
+          <TableRow>
+            {headers.map((header) => (
+              <TableHead key={header} className={d.head}>
+                {header}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.length === 0 ? (
             <TableRow>
-              {headers.map((header) => (
-                <TableHead key={header} className="h-8 px-3 py-1 text-[11px] uppercase tracking-wide">
-                  {header}
-                </TableHead>
-              ))}
+              <TableCell colSpan={headers.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
+                {emptyMessage}
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={headers.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
-                  {emptyMessage}
+          ) : (
+            users.map((user) => (
+              <TableRow key={user.id} className="hover:bg-muted/30">
+                <TableCell className={d.cell}>
+                  <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
+                </TableCell>
+                <TableCell className={d.cell}>
+                  <span className="font-medium leading-tight">{user.firstName} {user.lastName}</span>
+                </TableCell>
+                {showGrade ? (
+                  <TableCell className={d.cell}>
+                    <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
+                  </TableCell>
+                ) : null}
+                <TableCell className={d.cell}>
+                  <div className="flex flex-wrap gap-1">
+                    {getUserRoles(user).map((role) => (
+                      <Badge key={role} variant="dot" size="sm">
+                        {formatRoleLabel(role)}
+                      </Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell className={d.cell}>
+                  <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
+                    {user.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </TableCell>
+                <TableCell className={d.cell}>
+                  {user.isActive ? (
+                    canDeactivate(user) && user.id !== currentUserId ? (
+                      <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => onActivate(user.id)} className="h-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600">
+                      Activate
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.id} className="hover:bg-muted/30">
-                  <TableCell className="px-3 py-1.5 font-mono text-[11px] text-muted-foreground">
-                    {user.uniqueId}
-                  </TableCell>
-                  <TableCell className="px-3 py-1.5 text-xs font-medium leading-tight">
-                    {user.firstName} {user.lastName}
-                  </TableCell>
-                  {showGrade ? (
-                    <TableCell className="px-3 py-1.5 text-xs text-muted-foreground">
-                      {user.gradeLevel || '-'}
-                    </TableCell>
-                  ) : null}
-                  <TableCell className="px-3 py-1.5">
-                    <div className="flex flex-wrap gap-1">
-                      {getUserRoles(user).map((role) => (
-                        <Badge key={role} variant="dot" size="sm">
-                          {formatRoleLabel(role)}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-3 py-1.5">
-                    <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-3 py-1.5">
-                    {user.isActive ? (
-                      canDeactivate(user) && user.id !== currentUserId ? (
-                        <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                          Deactivate
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => onActivate(user.id)} className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600">
-                        Activate
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-      {pagination}
-    </Card>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </DataTablePanel>
   );
 }
 
@@ -191,7 +189,7 @@ export function AdminUsersTab({
   const users = usersData?.users ?? [];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <SearchInput
           className="max-w-xs"
@@ -237,11 +235,11 @@ export function AdminUsersTab({
             </CardContent>
           </Card>
         ) : users.length === 0 ? (
-          <Card className="flex min-h-0 flex-1">
-            <CardContent className="flex flex-1 items-center justify-center py-8 text-center text-sm text-muted-foreground">
+          <Empty className="flex-1">
+            <EmptyTitle className="text-sm font-medium text-muted-foreground">
               {selectedUserRoleMeta.emptyMessage}
-            </CardContent>
-          </Card>
+            </EmptyTitle>
+          </Empty>
         ) : (
           <UserTableSection
             title={selectedUserRoleMeta.label}

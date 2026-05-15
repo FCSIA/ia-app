@@ -6,7 +6,10 @@ import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
+export type AdminShellLayout = 'scroll' | 'fill';
+
 type AdminShellProps = {
+  layout: AdminShellLayout;
   activeTab: AdminTabId;
   onTabChange: (tab: AdminTabId) => void;
   isSuperAdmin: boolean;
@@ -16,6 +19,7 @@ type AdminShellProps = {
 };
 
 export function AdminShell({
+  layout,
   activeTab,
   onTabChange,
   isSuperAdmin,
@@ -23,8 +27,10 @@ export function AdminShell({
   pendingReports,
   children,
 }: AdminShellProps) {
+  const isFill = layout === 'fill';
+
   return (
-    <div className={cn('w-full', activeTab === 'users' && 'flex min-h-0 flex-1 flex-col')}>
+    <div className={cn('w-full', isFill && 'flex min-h-0 flex-1 flex-col')}>
       <div className="mb-6 shrink-0">
         <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -35,7 +41,7 @@ export function AdminShell({
       <Tabs
         value={activeTab}
         onValueChange={(value) => onTabChange(value as AdminTabId)}
-        className={cn('w-full', activeTab === 'users' && 'flex min-h-0 flex-1 flex-col')}
+        className={cn('w-full', isFill && 'flex min-h-0 flex-1 flex-col')}
       >
         <TabsList className="mb-2 shrink-0 bg-secondary/50 p-1">
           <TabItem value="users" icon={Users} label="Users" />
