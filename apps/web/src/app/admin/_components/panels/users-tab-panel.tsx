@@ -35,6 +35,8 @@ export function UsersTabPanel() {
       canDeactivate={users.canDeactivate}
       onDeactivate={users.onDeactivate}
       onActivate={users.onActivate}
+      isAssignRolesPending={users.isAssignRolesPending}
+      onAssignRoles={users.onAssignRoles}
       pagination={pagination}
     />
   );

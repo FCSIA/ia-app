@@ -7,26 +7,28 @@ export const ADMIN_TABS = [
   'users',
   'schedule',
   'moderation',
-  'permissions',
-  'student-admins',
   'wrapped',
   'audit',
 ] as const;
 
 export type AdminTabId = (typeof ADMIN_TABS)[number];
 
+const LEGACY_USER_TABS = new Set(['permissions', 'student-admins']);
+
 export function resolveAdminTab(
   requestedTab: string | null,
   isSuperAdmin: boolean,
   canManageWrapped: boolean,
 ): AdminTabId {
+  if (requestedTab && LEGACY_USER_TABS.has(requestedTab)) {
+    return 'users';
+  }
+
   if (requestedTab === 'schedule' && isSuperAdmin) return 'schedule';
   if (requestedTab === 'wrapped' && canManageWrapped) return 'wrapped';
   if (
     requestedTab === 'users' ||
     requestedTab === 'moderation' ||
-    requestedTab === 'permissions' ||
-    requestedTab === 'student-admins' ||
     requestedTab === 'audit'
   ) {
     return requestedTab;
@@ -46,8 +48,17 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
   );
 
   useEffect(() => {
-    setActiveTab(resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped));
-  }, [canManageWrapped, isSuperAdmin, requestedTab]);
+    const resolved = resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped);
+    setActiveTab(resolved);
+
+    if (requestedTab && LEGACY_USER_TABS.has(requestedTab)) {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      params.delete('tab');
+      const query = params.toString();
+      const path = pathname ?? '/admin';
+      router.replace(query ? `${path}?${query}` : path, { scroll: false });
+    }
+  }, [canManageWrapped, isSuperAdmin, pathname, requestedTab, router, searchParams]);
 
   const selectedTab = resolveAdminTab(activeTab, isSuperAdmin, canManageWrapped);
 

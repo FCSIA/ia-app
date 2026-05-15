@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
+import { UserPermissionsPopover } from './user-permissions-popover';
 
 export function UsersPaginationControls({
   page,
@@ -51,9 +52,12 @@ function UserTableSection({
   totalCount,
   showGrade = false,
   currentUserId,
+  isSuperAdmin,
   canDeactivate,
   onDeactivate,
   onActivate,
+  isAssignRolesPending,
+  onAssignRoles,
   pagination,
 }: {
   title: string;
@@ -62,9 +66,12 @@ function UserTableSection({
   totalCount?: number;
   showGrade?: boolean;
   currentUserId?: string;
+  isSuperAdmin: boolean;
   canDeactivate: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  isAssignRolesPending: boolean;
+  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
 }) {
   const d = dataTableClasses('compact');
@@ -126,19 +133,25 @@ function UserTableSection({
                   </Badge>
                 </TableCell>
                 <TableCell className={d.cell}>
-                  {user.isActive ? (
-                    canDeactivate(user) && user.id !== currentUserId ? (
-                      <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
-                        Deactivate
-                      </Button>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <UserPermissionsPopover
+                      user={user}
+                      isSuperAdmin={isSuperAdmin}
+                      isPending={isAssignRolesPending}
+                      onAssignRoles={onAssignRoles}
+                    />
+                    {user.isActive ? (
+                      canDeactivate(user) && user.id !== currentUserId ? (
+                        <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                          Deactivate
+                        </Button>
+                      ) : null
                     ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={() => onActivate(user.id)} className="h-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600">
-                      Activate
-                    </Button>
-                  )}
+                      <Button variant="ghost" size="sm" onClick={() => onActivate(user.id)} className="h-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600">
+                        Activate
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))
@@ -166,6 +179,8 @@ export function AdminUsersTab({
   canDeactivate,
   onDeactivate,
   onActivate,
+  isAssignRolesPending,
+  onAssignRoles,
   pagination,
 }: {
   search: string;
@@ -184,6 +199,8 @@ export function AdminUsersTab({
   canDeactivate: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  isAssignRolesPending: boolean;
+  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
 }) {
   const users = usersData?.users ?? [];
@@ -199,18 +216,15 @@ export function AdminUsersTab({
           size="sm"
         />
         <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
-          <SelectTrigger className="w-[200px]" placeholder="Select role view" />
+          <SelectTrigger className="w-[220px]" placeholder="Filter by role" />
           <SelectContent>
             <SelectItem index={0} value="students">Students</SelectItem>
             <SelectItem index={1} value="teachers">Teachers</SelectItem>
-            <SelectItem index={2} value="other">Other Roles</SelectItem>
+            <SelectItem index={2} value="student-admin">Student Admins</SelectItem>
+            <SelectItem index={3} value="other">Other Roles</SelectItem>
+            <SelectItem index={4} value="all">All Users</SelectItem>
           </SelectContent>
         </Select>
-        {isSuperAdmin ? (
-          <p className="text-xs text-muted-foreground">
-            Student roster import/export lives in the Schedule tab.
-          </p>
-        ) : null}
       </div>
 
       <div ref={viewportRef} className="flex min-h-0 flex-1 flex-col">
@@ -248,9 +262,12 @@ export function AdminUsersTab({
             totalCount={usersData?.total}
             showGrade={selectedUserRoleMeta.showGrade}
             currentUserId={currentUserId}
+            isSuperAdmin={isSuperAdmin}
             canDeactivate={canDeactivate}
             onDeactivate={onDeactivate}
             onActivate={onActivate}
+            isAssignRolesPending={isAssignRolesPending}
+            onAssignRoles={onAssignRoles}
             pagination={pagination}
           />
         )}

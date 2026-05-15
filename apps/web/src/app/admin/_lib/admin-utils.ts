@@ -23,6 +23,16 @@ export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; e
     emptyMessage: 'No admin or staff accounts found.',
     showGrade: false,
   },
+  'student-admin': {
+    label: 'Student Admins',
+    emptyMessage: 'No student admins found.',
+    showGrade: true,
+  },
+  all: {
+    label: 'All Users',
+    emptyMessage: 'No users found.',
+    showGrade: false,
+  },
 };
 
 export function getUserRoles(user: AdminUserRecord) {

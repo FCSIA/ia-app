@@ -5,7 +5,7 @@ import type { UseMutationResult } from '@tanstack/react-query';
 import { RefreshCw, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import type { WrappedSnapshotGenerationResult, WrappedSnapshotStatus } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -40,12 +40,7 @@ export function WrappedSnapshotsTab({
       <Card>
         <CardHeader className="border-b pb-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <CardTitle className="text-base">Wrapped Snapshot Console</CardTitle>
-              <CardDescription>
-                Check current school-year coverage and run snapshot generation before the May Wrapped window.
-              </CardDescription>
-            </div>
+            <CardTitle className="text-base">Wrapped Snapshots</CardTitle>
             <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={String(wrappedSchoolYear)}

@@ -40,9 +40,6 @@ export function AdminScheduleTab({
         </CardHeader>
         <CardContent className="space-y-5 pt-6">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Import students from a roster CSV. Email is derived automatically as <span className="font-mono text-foreground">student_id@fcstu.org</span>.
-            </p>
             <div className="flex flex-wrap gap-2">
               {['First Name', 'Last Name', 'Student ID', 'Grade Level', 'Major Pathway', 'Minor Pathway (optional)'].map((field) => (
                 <Badge key={field} variant="dot" size="sm">

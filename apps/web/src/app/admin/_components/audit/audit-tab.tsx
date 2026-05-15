@@ -16,13 +16,8 @@ export function AuditTab() {
     <>
       <Card>
         <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
-              <CardTitle className="text-base">Audit Log</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Filter by actor, entity, source, and date range, then inspect the exact context behind a logged action.
-              </p>
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base">Audit Log</CardTitle>
             <div className="flex items-center gap-2">
               <TabsSubtle
                 selectedIndex={audit.auditSubView === 'general' ? 0 : 1}

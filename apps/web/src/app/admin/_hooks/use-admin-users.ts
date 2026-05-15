@@ -69,7 +69,14 @@ export function useAdminUsers(activeTab: AdminTabId) {
   } = useQuery({
     queryKey: ['admin-users', page, search, userRoleGroup, usersPageSize],
     queryFn: () =>
-      usersApi.getAll(page, usersPageSize, search || undefined, userRoleGroup).then((r) => r.data),
+      usersApi
+        .getAll(
+          page,
+          usersPageSize,
+          search || undefined,
+          userRoleGroup === 'all' ? undefined : userRoleGroup,
+        )
+        .then((r) => r.data),
     enabled: activeTab === 'users',
   });
 
@@ -94,6 +101,19 @@ export function useAdminUsers(activeTab: AdminTabId) {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
       toast({ title: 'Activated' });
     },
+  });
+
+  const assignRolesMutation = useMutation({
+    mutationFn: ({ id, roles }: { id: string; roles: string[] }) => usersApi.assignRoles(id, roles),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'Permissions updated' });
+    },
+    onError: (e: unknown) =>
+      toast({
+        title: (e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update permissions',
+        variant: 'destructive',
+      }),
   });
 
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
@@ -125,5 +145,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
     onDeactivate: (userId: string) => deactivateMutation.mutate(userId),
     onActivate: (userId: string) => activateMutation.mutate(userId),
     isSuperAdmin,
+    isAssignRolesPending: assignRolesMutation.isPending,
+    onAssignRoles: (payload: { id: string; roles: string[] }) => assignRolesMutation.mutate(payload),
   };
 }
