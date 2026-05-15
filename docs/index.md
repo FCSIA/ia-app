@@ -77,9 +77,9 @@ pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed
 
 | URL | What |
 |-----|------|
-| http://localhost:3000 | Web app |
-| http://localhost:3001 | API |
-| http://localhost:3001/docs | Swagger API docs |
+| http://localhost:3000 | Web app, unless the dev launcher falls back |
+| http://localhost:3001 | API, unless the dev launcher falls back |
+| http://localhost:3001/docs | Swagger API docs, unless the API port falls back |
 
 ---
 
