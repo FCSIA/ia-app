@@ -43,7 +43,7 @@ export function AdminShell({
         onValueChange={(value) => onTabChange(value as AdminTabId)}
         className={cn('w-full', isFill && 'flex min-h-0 flex-1 flex-col')}
       >
-        <TabsList className="mb-2 shrink-0 bg-secondary/50 p-1">
+        <TabsList className="mb-6 shrink-0 bg-secondary/50 p-1">
           <TabItem value="users" icon={Users} label="Users" />
           {isSuperAdmin ? (
             <TabItem value="schedule" icon={CalendarDays} label="Schedule" />

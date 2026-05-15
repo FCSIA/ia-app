@@ -2,23 +2,19 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FillPageLayout } from '@/components/layout/fill-page-layout';
-import { ScrollPageLayout } from '@/components/layout/scroll-page-layout';
 import { hasRole, useCurrentUser } from '@/lib/auth';
+import { AdminPageLayout } from './admin-page-layout';
 import { AdminShell } from './admin-shell';
 import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
-import { AuditTab } from './audit/audit-tab';
-import { ModerationTab } from './moderation-tab';
-import { PermissionsTab, StudentAdminsTab } from './permissions-tab';
-import { AdminScheduleTab } from './schedule-tab';
-import { AdminUsersTab, UsersPaginationControls } from './users/users-tab';
-import { WrappedSnapshotsTab } from './wrapped-snapshots-tab';
-import { useAdminModeration } from '../_hooks/use-admin-moderation';
-import { useAdminPermissions } from '../_hooks/use-admin-permissions';
-import { useAdminScheduleImport } from '../_hooks/use-admin-schedule-import';
+import { AuditTabPanel } from './panels/audit-tab-panel';
+import { ModerationTabPanel } from './panels/moderation-tab-panel';
+import { PermissionsTabPanel } from './panels/permissions-tab-panel';
+import { ScheduleTabPanel } from './panels/schedule-tab-panel';
+import { StudentAdminsTabPanel } from './panels/student-admins-tab-panel';
+import { UsersTabPanel } from './panels/users-tab-panel';
+import { WrappedTabPanel } from './panels/wrapped-tab-panel';
+import { useAdminModerationPending } from '../_hooks/use-admin-moderation-pending';
 import { useAdminTab } from '../_hooks/use-admin-tab';
-import { useAdminUsers } from '../_hooks/use-admin-users';
-import { useAdminWrapped } from '../_hooks/use-admin-wrapped';
 
 export function AdminPageContent() {
   const user = useCurrentUser();
@@ -27,11 +23,7 @@ export function AdminPageContent() {
   const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   const { activeTab, setActiveTab, isUsersTab } = useAdminTab(isSuperAdmin, canManageWrapped);
-  const users = useAdminUsers(activeTab);
-  const moderation = useAdminModeration(activeTab);
-  const permissions = useAdminPermissions(activeTab);
-  const schedule = useAdminScheduleImport(activeTab);
-  const wrapped = useAdminWrapped(activeTab, canManageWrapped);
+  const pendingReports = useAdminModerationPending();
 
   useEffect(() => {
     if (user && !hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF')) {
@@ -39,141 +31,50 @@ export function AdminPageContent() {
     }
   }, [user, router]);
 
-  const usersPagination =
-    users.usersData?.total ? (
-      <UsersPaginationControls
-        page={users.page}
-        total={users.usersData.total}
-        pageSize={users.usersPageSize}
-        onPrev={() => users.setPage((p) => p - 1)}
-        onNext={() => users.setPage((p) => p + 1)}
-      />
-    ) : null;
-
-  const PageLayout = isUsersTab ? FillPageLayout : ScrollPageLayout;
+  const layout = isUsersTab ? 'fill' : 'scroll';
 
   return (
-    <PageLayout>
+    <AdminPageLayout layout={layout}>
       <AdminShell
-        layout={isUsersTab ? 'fill' : 'scroll'}
+        layout={layout}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isSuperAdmin={isSuperAdmin}
         canManageWrapped={canManageWrapped}
-        pendingReports={moderation.pendingReports}
+        pendingReports={pendingReports}
       >
         <AdminFillTabPanel value="users">
-          {activeTab === 'users' && (
-            <AdminUsersTab
-              search={users.search}
-              onSearchChange={users.setSearch}
-              userRoleGroup={users.userRoleGroup}
-              onUserRoleGroupChange={users.setUserRoleGroup}
-              isSuperAdmin={users.isSuperAdmin}
-              viewportRef={users.viewportRef}
-              usersData={users.usersData}
-              isUsersLoading={users.isUsersLoading}
-              isUsersError={users.isUsersError}
-              usersError={users.usersError}
-              refetchUsers={users.refetchUsers}
-              selectedUserRoleMeta={users.selectedUserRoleMeta}
-              currentUserId={users.currentUserId}
-              canDeactivate={users.canDeactivate}
-              onDeactivate={users.onDeactivate}
-              onActivate={users.onActivate}
-              pagination={usersPagination}
-            />
-          )}
+          {activeTab === 'users' ? <UsersTabPanel /> : null}
         </AdminFillTabPanel>
 
         {isSuperAdmin ? (
           <AdminScrollTabPanel value="schedule">
-            {activeTab === 'schedule' && (
-              <AdminScheduleTab
-                studentCsvInputKey={schedule.studentCsvInputKey}
-                onStudentCsvFileChange={schedule.setStudentCsvFile}
-                generatePasswords={schedule.generatePasswords}
-                onGeneratePasswordsChange={schedule.setGeneratePasswords}
-                canImport={schedule.canImport}
-                isImporting={schedule.isImporting}
-                onImport={schedule.onImport}
-                isExporting={schedule.isExporting}
-                onExport={schedule.onExport}
-                lastStudentImport={schedule.lastStudentImport}
-                onExportGeneratedPasswords={schedule.onExportGeneratedPasswords}
-              />
-            )}
+            {activeTab === 'schedule' ? <ScheduleTabPanel /> : null}
           </AdminScrollTabPanel>
         ) : null}
 
         <AdminScrollTabPanel value="moderation">
-          {activeTab === 'moderation' && (
-            <ModerationTab
-              keyword={moderation.keyword}
-              onKeywordChange={moderation.setKeyword}
-              keywords={moderation.keywords}
-              addKeywordMutation={moderation.addKeywordMutation}
-              removeKeywordMutation={moderation.removeKeywordMutation}
-              moderationSearch={moderation.moderationSearch}
-              onModerationSearchChange={moderation.setModerationSearch}
-              deferredModerationSearch={moderation.deferredModerationSearch}
-              filteredReports={moderation.filteredReports}
-              pendingReports={moderation.pendingReports}
-              reportMutation={moderation.reportMutation}
-            />
-          )}
+          {activeTab === 'moderation' ? <ModerationTabPanel /> : null}
         </AdminScrollTabPanel>
 
         <AdminScrollTabPanel value="permissions">
-          {activeTab === 'permissions' && (
-            <PermissionsTab
-              search={permissions.permSearch}
-              onSearchChange={permissions.setPermSearch}
-              deferredSearch={permissions.deferredPermSearch}
-              isLoading={permissions.isPermUsersLoading}
-              users={permissions.permUsers}
-              isSuperAdmin={isSuperAdmin}
-              isPending={permissions.assignRolesMutation.isPending}
-              onAssignRoles={(payload) => permissions.assignRolesMutation.mutate(payload)}
-            />
-          )}
+          {activeTab === 'permissions' ? <PermissionsTabPanel /> : null}
         </AdminScrollTabPanel>
 
         <AdminScrollTabPanel value="student-admins">
-          {activeTab === 'student-admins' && (
-            <StudentAdminsTab
-              search={permissions.studentAdminSearch}
-              onSearchChange={permissions.setStudentAdminSearch}
-              deferredSearch={permissions.deferredStudentAdminSearch}
-              isLoading={permissions.isStudentAdminsLoading}
-              users={permissions.studentAdmins}
-              isPending={permissions.assignRolesMutation.isPending}
-              onAssignRoles={(payload) => permissions.assignRolesMutation.mutate(payload)}
-            />
-          )}
+          {activeTab === 'student-admins' ? <StudentAdminsTabPanel /> : null}
         </AdminScrollTabPanel>
 
         {canManageWrapped ? (
           <AdminScrollTabPanel value="wrapped">
-            {activeTab === 'wrapped' && (
-              <WrappedSnapshotsTab
-                wrappedSchoolYear={wrapped.wrappedSchoolYear}
-                onWrappedSchoolYearChange={wrapped.setWrappedSchoolYear}
-                wrappedYearOptions={wrapped.wrappedYearOptions}
-                status={wrapped.status}
-                isLoading={wrapped.isLoading}
-                isError={wrapped.isError}
-                error={wrapped.error}
-                generateMutation={wrapped.generateMutation}
-              />
-            )}
+            {activeTab === 'wrapped' ? <WrappedTabPanel canManageWrapped={canManageWrapped} /> : null}
           </AdminScrollTabPanel>
         ) : null}
 
         <AdminScrollTabPanel value="audit">
-          <AuditTab activeTab={activeTab} />
+          {activeTab === 'audit' ? <AuditTabPanel /> : null}
         </AdminScrollTabPanel>
       </AdminShell>
-    </PageLayout>
+    </AdminPageLayout>
   );
 }

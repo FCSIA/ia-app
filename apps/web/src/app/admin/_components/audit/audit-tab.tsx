@@ -4,14 +4,13 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
-import type { AdminTabId } from '../../_hooks/use-admin-tab';
 import { useAdminAudit } from '../../_hooks/use-admin-audit';
 import { AuditDetailSheet } from './audit-detail-sheet';
 import { AuditFilters } from './audit-filters';
 import { AuditTable } from './audit-table';
 
-export function AuditTab({ activeTab }: { activeTab: AdminTabId }) {
-  const audit = useAdminAudit(activeTab);
+export function AuditTab() {
+  const audit = useAdminAudit('audit');
 
   return (
     <>

@@ -41,6 +41,8 @@ export function DataTablePanel({
   className,
   contentClassName,
 }: DataTablePanelProps) {
+  const densityClasses = dataTableClasses(density);
+
   return (
     <Card
       className={cn(
@@ -63,6 +65,7 @@ export function DataTablePanel({
       <CardContent
         className={cn(
           'min-h-0 flex-1 overflow-auto p-0',
+          densityClasses.table,
           contentClassName,
         )}
       >

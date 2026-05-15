@@ -44,8 +44,6 @@ export function useAdminModeration(activeTab: AdminTabId) {
     });
   }, [reports, deferredModerationSearch]);
 
-  const pendingReports = (reports as any[]).filter((r: any) => r.status === 'PENDING').length;
-
   const addKeywordMutation = useMutation({
     mutationFn: (kw: string) => moderationApi.addKeyword(kw),
     onSuccess: () => {
@@ -82,7 +80,6 @@ export function useAdminModeration(activeTab: AdminTabId) {
     setModerationSearch,
     deferredModerationSearch,
     filteredReports,
-    pendingReports,
     reportMutation,
   };
 }
