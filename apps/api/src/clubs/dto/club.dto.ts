@@ -237,6 +237,20 @@ export class CreateClubChannelMessageDto {
   pollOptions?: ClubChannelPollOptionDto[];
 }
 
+export class UpdateClubChannelMessageDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  body?: string;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  @IsObject({ each: true })
+  bodyRich?: Record<string, unknown>[];
+}
+
 export class ToggleClubChannelMessagePinDto {
   @ApiProperty()
   @IsBoolean()

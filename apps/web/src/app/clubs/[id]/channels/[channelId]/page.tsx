@@ -11,13 +11,29 @@ import rehypeKatex from 'rehype-katex';
 import {
   BarChart3,
   FileText,
+  History,
   ImageIcon,
   MessageSquareText,
+  Pencil,
   Pin,
   PinOff,
   Reply,
+  Trash2,
+  AlertTriangle,
   X,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type {
   ChatAttachmentUploadResponse,
   ClubChannelMessage,
@@ -49,7 +65,7 @@ import {
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
-import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
+import { authApi, clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -226,11 +242,17 @@ function MessageRow({
   onToggleReaction,
   onTogglePin,
   onVotePoll,
+  onStartEdit,
+  onDelete,
+  onShowHistory,
+  isEditing,
   isReactionPending,
   isPinPending,
   isVotePending,
+  isDeletePending,
   highlighted,
   canModerate,
+  currentUserId,
   compact = false,
 }: {
   message: ClubChannelMessage;
@@ -238,19 +260,30 @@ function MessageRow({
   onToggleReaction: (messageId: string, emoji: string) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
   onVotePoll: (messageId: string, optionId: string) => void;
+  onStartEdit: (messageId: string) => void;
+  onDelete: (messageId: string) => void;
+  onShowHistory: (messageId: string) => void;
+  isEditing: boolean;
   isReactionPending: boolean;
   isPinPending: boolean;
   isVotePending: boolean;
+  isDeletePending: boolean;
   highlighted: boolean;
   canModerate: boolean;
+  currentUserId?: string;
   compact?: boolean;
 }) {
+  const isAuthor = message.author.id === currentUserId;
+  const isFiltered = message.body.includes('***'); // Simple heuristic for rule-breaking messages - TODO: NEEDS TO BE UPDATED THOUGH as users can type asterisks for fun.
+  const isEdited = message.updatedAt !== message.createdAt;
+
   return (
     <div
       className={cn(
         'group flex gap-3 rounded-md px-3 py-2 transition-colors',
         highlighted && 'bg-primary/[0.04]',
         !compact && 'hover:bg-muted/40',
+        isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
       )}
     >
       <ClubAvatar
@@ -271,93 +304,154 @@ function MessageRow({
               Pinned
             </Badge>
           ) : null}
+          {isEdited ? (
+            <button
+              type="button"
+              className="group/history flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary"
+              onClick={() => onShowHistory?.(message.id)}
+            >
+              <History className="size-3" />
+              <span>(edited)</span>
+            </button>
+          ) : null}
         </div>
 
-        <MessageBody message={message} />
+        {isEditing ? (
+          <div className="mt-2" />
+        ) : (
+          <>
+            <MessageBody message={message} />
+            <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
+            <AttachmentGallery attachments={message.attachments} />
+          </>
+        )}
 
-        <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
+        {!isEditing && (
+          <>
+            {message.reactions.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {message.reactions.map((reaction) => (
+                  <Button
+                    key={`${message.id}-${reaction.emoji}`}
+                    variant="tertiary"
+                    size="sm"
+                    className={cn(
+                      'h-6 gap-1 px-2 text-xs',
+                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+                    )}
+                    disabled={isReactionPending}
+                    onClick={() => onToggleReaction(message.id, reaction.emoji)}
+                  >
+                    <span>{reaction.emoji}</span>
+                    {reaction.count}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
 
-        <AttachmentGallery attachments={message.attachments} />
+            <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              {QUICK_REACTIONS.map((emoji) => (
+                <Button
+                  key={`${message.id}-${emoji}-quick`}
+                  variant="ghost"
+                  size="sm"
+                  className="size-6 p-0 text-sm"
+                  disabled={isReactionPending}
+                  onClick={() => onToggleReaction(message.id, emoji)}
+                >
+                  {emoji}
+                </Button>
+              ))}
+              {!compact ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  onClick={() => onOpenThread(message.threadRootId)}
+                >
+                  <Reply className="size-3" />
+                  Reply
+                </Button>
+              ) : null}
+              {isAuthor && !isFiltered && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  onClick={() => onStartEdit(message.id)}
+                >
+                  <Pencil className="size-3" />
+                  Edit
+                </Button>
+              )}
+              {(isAuthor || canModerate) && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      disabled={isDeletePending}
+                    >
+                      <Trash2 className="size-3" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="text-sm text-muted-foreground">
+                          This will remove the message for everyone in the channel.
+                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+                            <AlertTriangle className="size-5 shrink-0 text-amber-500" />
+                            <div className="text-xs">
+                              <strong>Note:</strong> While the message will be hidden from the UI,
+                              all message activity is still logged and visible to school administrators
+                              in the audit panel.
+                            </div>
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => onDelete(message.id)}
+                      >
+                        Delete for everyone
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {canModerate && !compact ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                  disabled={isPinPending}
+                  onClick={() => onTogglePin(message.id, !message.isPinned)}
+                >
+                  {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
+                  {message.isPinned ? 'Unpin' : 'Pin'}
+                </Button>
+              ) : null}
+            </div>
 
-        {message.mentions.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {message.mentions.map((mention) => (
-              <Badge key={mention.id} variant="dot" className="h-5 font-mono text-[10px]">
-                @{mention.token}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
-
-        {message.reactions.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {message.reactions.map((reaction) => (
-              <Button
-                key={`${message.id}-${reaction.emoji}`}
-                variant="tertiary"
-                size="sm"
-                className={cn(
-                  'h-6 gap-1 px-2 text-xs',
-                  reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                )}
-                disabled={isReactionPending}
-                onClick={() => onToggleReaction(message.id, reaction.emoji)}
+            {!compact && message.replyCount > 0 ? (
+              <button
+                type="button"
+                className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                onClick={() => onOpenThread(message.threadRootId)}
               >
-                <span>{reaction.emoji}</span>
-                {reaction.count}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {QUICK_REACTIONS.map((emoji) => (
-            <Button
-              key={`${message.id}-${emoji}-quick`}
-              variant="ghost"
-              size="sm"
-              className="size-6 p-0 text-sm"
-              disabled={isReactionPending}
-              onClick={() => onToggleReaction(message.id, emoji)}
-            >
-              {emoji}
-            </Button>
-          ))}
-          {!compact ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-              onClick={() => onOpenThread(message.threadRootId)}
-            >
-              <Reply className="size-3" />
-              Reply
-            </Button>
-          ) : null}
-          {canModerate && !compact ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-              disabled={isPinPending}
-              onClick={() => onTogglePin(message.id, !message.isPinned)}
-            >
-              {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
-              {message.isPinned ? 'Unpin' : 'Pin'}
-            </Button>
-          ) : null}
-        </div>
-
-        {!compact && message.replyCount > 0 ? (
-          <button
-            type="button"
-            className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
-            onClick={() => onOpenThread(message.threadRootId)}
-          >
-            <Reply className="size-3" />
-            {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
-          </button>
-        ) : null}
+                <Reply className="size-3" />
+                {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
+              </button>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
@@ -374,9 +468,16 @@ export default function ClubChannelPage({
 
   const [rootComposerResetKey, setRootComposerResetKey] = useState(0);
   const [replyComposerResetKey, setReplyComposerResetKey] = useState(0);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [historyMessageId, setHistoryMessageId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
+
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => authApi.me().then((r) => r.data),
+  });
 
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', id],
@@ -426,6 +527,51 @@ export default function ClubChannelPage({
         variant: 'destructive',
       });
     },
+  });
+
+  const updateMessageMutation = useMutation({
+    mutationFn: ({
+      messageId,
+      body,
+      bodyRich,
+    }: {
+      messageId: string;
+      body: string;
+      bodyRich: ClubChannelMessageRichBody | null;
+    }) => clubsApi.updateChannelMessage(id, channelId, messageId, { body, bodyRich }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club-channel-messages', id, channelId] });
+      setEditingMessageId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to update message',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: (messageId: string) => clubsApi.deleteChannelMessage(id, channelId, messageId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['club-channel-messages', id, channelId] });
+      toast({ title: 'Message deleted' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to delete message',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const { data: messageHistory = [], isFetching: isHistoryLoading } = useQuery({
+    queryKey: ['club-channel-message-history', id, channelId, historyMessageId],
+    queryFn: () => {
+      if (!historyMessageId) return [];
+      return clubsApi.getMessageHistory(id, channelId, historyMessageId).then((r) => r.data);
+    },
+    enabled: !!historyMessageId,
   });
 
   const reactionMutation = useMutation({
@@ -528,6 +674,59 @@ export default function ClubChannelPage({
     return messages.find((m) => m.id === selectedThreadId) ?? null;
   }, [messages, selectedThreadId]);
 
+  const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
+    const isEditing = editingMessageId === message.id;
+
+    return (
+      <div key={message.id}>
+        <MessageRow
+          message={message}
+          currentUserId={user?.id}
+          onOpenThread={setSelectedThreadId}
+          onToggleReaction={(messageId, emoji) =>
+            reactionMutation.mutate({ messageId, emoji })
+          }
+          onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
+          onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
+          onStartEdit={setEditingMessageId}
+          isEditing={isEditing}
+          isReactionPending={reactionMutation.isPending}
+          isPinPending={pinMutation.isPending}
+          isVotePending={pollVoteMutation.isPending}
+          highlighted={matchingIds.has(message.id)}
+          canModerate={canModerateChannel}
+          compact={compact}
+        />
+        {isEditing && (
+          <div className="ml-12 mr-3 mt-1">
+            <ChannelMessageComposer
+              suggestionEntries={suggestionEntries}
+              placeholder="Edit message..."
+              submitLabel="Save Changes"
+              isPending={updateMessageMutation.isPending}
+              resetKey={0}
+              onSubmit={({ body, bodyRich }) =>
+                updateMessageMutation.mutate({
+                  messageId: message.id,
+                  body,
+                  bodyRich,
+                })
+              }
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 h-7 px-2 text-xs text-muted-foreground"
+              onClick={() => setEditingMessageId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!club || !channel) {
     return (
       <ClubWorkspace clubId={id}>
@@ -554,14 +753,6 @@ export default function ClubChannelPage({
     </div>
   );
 
-  const actions: ReactNode = (
-    <ChannelNotificationSettings
-      clubId={id}
-      channelId={channelId}
-      channelName={channel.name}
-    />
-  );
-
   const rightPane = selectedThread ? (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -582,34 +773,8 @@ export default function ClubChannelPage({
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        <MessageRow
-          message={selectedThread}
-          onOpenThread={setSelectedThreadId}
-          onToggleReaction={(messageId, emoji) => reactionMutation.mutate({ messageId, emoji })}
-          onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
-          onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
-          isReactionPending={reactionMutation.isPending}
-          isPinPending={pinMutation.isPending}
-          isVotePending={pollVoteMutation.isPending}
-          highlighted={false}
-          canModerate={canModerateChannel}
-        />
-        {selectedThread.replies.map((reply) => (
-          <MessageRow
-            key={reply.id}
-            message={reply}
-            onOpenThread={setSelectedThreadId}
-            onToggleReaction={(messageId, emoji) => reactionMutation.mutate({ messageId, emoji })}
-            onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
-            onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
-            isReactionPending={reactionMutation.isPending}
-            isPinPending={pinMutation.isPending}
-            isVotePending={pollVoteMutation.isPending}
-            highlighted={false}
-            canModerate={canModerateChannel}
-            compact
-          />
-        ))}
+        {selectedThread && renderMessageRow(selectedThread)}
+        {selectedThread?.replies.map((reply) => renderMessageRow(reply, true))}
       </div>
 
       <div className="border-t p-3">
@@ -647,19 +812,26 @@ export default function ClubChannelPage({
     <ClubWorkspace
       clubId={id}
       title={title}
-      actions={actions}
       rightPane={rightPane}
       contentClassName="relative flex flex-col bg-card"
     >
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl space-y-1 p-3 pb-48">
-          <div className="mb-3 flex justify-end">
+          <div className="mb-3 flex items-center gap-2">
             <SearchInput
               value={search}
               onValueChange={setSearch}
               placeholder="Search messages"
-              className="w-full sm:w-72"
+              className="w-full sm:ml-auto sm:w-72"
             />
+
+            <div className="shrink-0">
+              <ChannelNotificationSettings
+                clubId={id}
+                channelId={channelId}
+                channelName={channel.name}
+              />
+            </div>
           </div>
           {pinnedMessages.length > 0 ? (
             <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
@@ -683,24 +855,7 @@ export default function ClubChannelPage({
             </div>
           ) : null}
           {visibleMessages.length > 0 ? (
-            visibleMessages.map((message) => (
-              <div key={message.id}>
-                <MessageRow
-                  message={message}
-                  onOpenThread={setSelectedThreadId}
-                  onToggleReaction={(messageId, emoji) =>
-                    reactionMutation.mutate({ messageId, emoji })
-                  }
-                  onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
-                  onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
-                  isReactionPending={reactionMutation.isPending}
-                  isPinPending={pinMutation.isPending}
-                  isVotePending={pollVoteMutation.isPending}
-                  highlighted={matchingIds.has(message.id)}
-                  canModerate={canModerateChannel}
-                />
-              </div>
-            ))
+            visibleMessages.map((message) => renderMessageRow(message))
           ) : (
             <Empty className="mt-8 border border-dashed">
               <EmptyHeader>
@@ -764,6 +919,36 @@ export default function ClubChannelPage({
           </p>
         </div>
       </div>
+      <Popover open={!!historyMessageId} onOpenChange={(open) => !open && setHistoryMessageId(null)}>
+        <PopoverContent className="w-80 p-0" align="start">
+          <div className="border-b px-3 py-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Message History
+            </h4>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {isHistoryLoading ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">Loading history...</div>
+            ) : messageHistory.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">No history found.</div>
+            ) : (
+              <div className="divide-y">
+                {messageHistory.map((version: any) => (
+                  <div key={version.id} className="px-3 py-2 text-xs">
+                    <div className="mb-1 flex items-center justify-between font-medium text-muted-foreground">
+                      <span>{formatDistanceToNow(new Date(version.createdAt), { addSuffix: true })}</span>
+                      {version.isOriginal && <Badge variant="dot" size="sm">Original</Badge>}
+                    </div>
+                    <div className="whitespace-pre-wrap leading-relaxed text-foreground">
+                      {version.body}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
     </ClubWorkspace>
   );
 }

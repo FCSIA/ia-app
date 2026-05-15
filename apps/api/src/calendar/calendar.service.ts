@@ -23,7 +23,6 @@ export class CalendarService {
     // Build source filter:
     // - Public sources (DISTRICT, SCHOOL, CLUB) are visible to everyone
     // - PERSONAL entries are only visible to the user who created them
-    let sourceConditions: Prisma.CalendarEntryWhereInput[];
 
     const requestedSources =
       sources && sources.length > 0
@@ -40,7 +39,7 @@ export class CalendarService {
     );
     const includePersonal = requestedSources.includes(CalendarSource.PERSONAL);
 
-    sourceConditions = [];
+    const sourceConditions: Prisma.CalendarEntryWhereInput[] = [];
     if (publicSources.length > 0) {
       sourceConditions.push({ source: { in: publicSources } });
     }

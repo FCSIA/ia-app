@@ -176,9 +176,14 @@ export function ChannelMessageComposer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      handleSubmit();
+    if (event.key === 'Enter') {
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        editor.tf.insertBreak();
+      } else if (!event.shiftKey) {
+        event.preventDefault();
+        handleSubmit();
+      }
     }
   };
 
@@ -211,6 +216,16 @@ export function ChannelMessageComposer({
             >
               <AtSign className="size-4" />
               Mention
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 px-2 text-muted-foreground"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="size-4" />
+              Attach
             </Button>
             {canCreatePoll ? (
               <Button
@@ -289,48 +304,26 @@ export function ChannelMessageComposer({
             </div>
           ) : null}
 
-          <div className="px-3 py-3">
-            <PlateContent
-              placeholder={placeholder}
-              onKeyDown={handleKeyDown}
-              className={cn(
-                'max-h-64 min-h-24 overflow-y-auto text-sm leading-6 outline-none',
-                '[&_[data-slate-placeholder=true]]:text-muted-foreground',
-              )}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 px-2 text-muted-foreground"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="size-3.5" />
-                Attach
-              </Button>
-              {builtInMentions.map((suggestion) => (
-                <Button
-                  key={suggestion.token}
-                  type="button"
-                  variant="tertiary"
-                  size="sm"
-                  className="h-7 rounded-full px-2.5 text-[11px]"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    insertMention(suggestion.token);
-                  }}
-                >
-                  @{suggestion.token}
-                </Button>
-              ))}
+          <div className="flex items-end gap-3 px-3 py-3">
+            <div className="flex-1 min-w-0">
+              <PlateContent
+                placeholder={placeholder}
+                onKeyDown={handleKeyDown}
+                className={cn(
+                  'max-h-64 min-h-[40px] overflow-y-auto py-2 text-sm leading-6 outline-none',
+                  '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-2',
+                )}
+              />
             </div>
 
-            <Button type="button" size="sm" className="h-8" disabled={!canSend} onClick={handleSubmit}>
-              <Send className="size-3.5" />
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 shrink-0"
+              disabled={!canSend}
+              onClick={handleSubmit}
+            >
+              <Send className="size-4" />
               {isPending ? 'Sending...' : submitLabel}
             </Button>
           </div>

@@ -9,7 +9,6 @@ import {
   BadRequestException,
   UploadedFile,
   UseInterceptors,
-  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -32,6 +31,7 @@ import {
   SetClubMemberRoleDto,
   ToggleClubChannelReactionDto,
   ToggleClubChannelMessagePinDto,
+  UpdateClubChannelMessageDto,
   UpdateClubDto,
   VoteClubChannelPollDto,
 } from './dto/club.dto';
@@ -196,6 +196,44 @@ export class ClubsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.clubChannels.postChannelMessage(clubId, channelId, body, user.id, user.role);
+  }
+
+  @Patch(':id/channels/:channelId/messages/:messageId')
+  updateChannelMessage(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: UpdateClubChannelMessageDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.updateChannelMessage(
+      clubId,
+      channelId,
+      messageId,
+      body,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Delete(':id/channels/:channelId/messages/:messageId')
+  deleteChannelMessage(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.deleteChannelMessage(clubId, channelId, messageId, user.id, user.role);
+  }
+
+  @Get(':id/channels/:channelId/messages/:messageId/history')
+  getMessageHistory(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.getMessageHistory(clubId, channelId, messageId, user.id, user.role);
   }
 
   @Post(':id/channels/:channelId/messages/:messageId/reactions')

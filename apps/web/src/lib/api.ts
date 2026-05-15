@@ -144,6 +144,16 @@ export const clubsApi = {
     channelId: string,
     data: CreateClubChannelMessagePayload,
   ) => api.post(`/clubs/${clubId}/channels/${channelId}/messages`, data),
+  updateChannelMessage: (
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    data: { body?: string; bodyRich?: any },
+  ) => api.patch(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}`, data),
+  deleteChannelMessage: (clubId: string, channelId: string, messageId: string) =>
+    api.delete(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}`),
+  getMessageHistory: (clubId: string, channelId: string, messageId: string) =>
+    api.get(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}/history`),
   toggleChannelReaction: (
     clubId: string,
     channelId: string,

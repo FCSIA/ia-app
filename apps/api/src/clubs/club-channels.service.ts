@@ -20,6 +20,7 @@ import {
   CreateClubChannelMessageDto,
   CreateClubTagDto,
   UpdateClubChannelDto,
+  UpdateClubChannelMessageDto,
   ToggleClubChannelReactionDto,
 } from './dto/club.dto';
 
@@ -832,6 +833,196 @@ export class ClubChannelsService {
     }
 
     return this.serializeReplyMessage(message, actorId);
+  }
+
+  async updateChannelMessage(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    dto: UpdateClubChannelMessageDto,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const { context } = await this.accessPolicy.assertChannelAccess(
+      clubId,
+      channelId,
+      actorId,
+      actorRole,
+    );
+
+    const message = await this.prisma.clubChannelMessage.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!message || message.channelId !== channelId) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.authorId !== actorId && !context.isAdmin) {
+      throw new ForbiddenException('You can only edit your own messages');
+    }
+
+    // Check if the message has broken rules (Automated report exists)
+    const report = await this.prisma.report.findFirst({
+      where: {
+        contentType: ContentType.CLUB_CHANNEL_MESSAGE,
+        contentId: messageId,
+        reason: { contains: 'Automated: Profanity Filtered' },
+      },
+    });
+
+    if (report) {
+      throw new ForbiddenException('Messages with filtered profanity cannot be edited');
+    }
+
+    const trimmedBody = dto.body?.trim();
+    if (trimmedBody === undefined && dto.bodyRich === undefined) {
+      throw new BadRequestException('Nothing to update');
+    }
+
+    const oldBody = message.body;
+    const oldBodyRich = message.bodyRich;
+
+    let moderatedBody = message.body;
+    let moderatedRichBody = message.bodyRich;
+    let bodyModerationResult;
+
+    if (trimmedBody !== undefined) {
+      bodyModerationResult = await this.moderation.maskProfanity(trimmedBody);
+      moderatedBody = bodyModerationResult.masked;
+    }
+
+    if (dto.bodyRich !== undefined) {
+      const richBodyRaw = this.normalizeRichBody(dto.bodyRich);
+      moderatedRichBody = await this.moderation.maskRichBody(richBodyRaw);
+    }
+
+    const audienceIds = await this.accessPolicy.getChannelAudienceUserIds(clubId, channelId);
+    const { mentionRows } = await this.resolveMentions(
+      clubId,
+      actorId,
+      moderatedBody,
+      audienceIds,
+      context.hasClubRole || context.isSponsor || context.isAdmin,
+    );
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.clubChannelMessageMention.deleteMany({ where: { messageId } });
+
+      return tx.clubChannelMessage.update({
+        where: { id: messageId },
+        data: {
+          body: moderatedBody,
+          bodyRich: moderatedRichBody ?? undefined,
+          mentions: {
+            create: mentionRows.map((mention) => ({
+              kind: mention.kind,
+              token: mention.token,
+              userId: mention.userId,
+              tagId: mention.tagId,
+            })),
+          },
+        },
+        include: replyMessageInclude,
+      });
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'CLUB_CHANNEL_MESSAGE_EDITED',
+      entityType: 'ClubChannelMessage',
+      entityId: messageId,
+      meta: {
+        clubId,
+        channelId,
+        oldBody,
+        oldBodyRich,
+        newBody: moderatedBody,
+        newBodyRich: moderatedRichBody,
+      },
+    });
+
+    if (bodyModerationResult?.wasFiltered) {
+      await this.moderation.createAutomatedReport(
+        ContentType.CLUB_CHANNEL_MESSAGE,
+        messageId,
+        actorId,
+        bodyModerationResult.matchedWords,
+      );
+    }
+
+    return this.serializeReplyMessage(updated, actorId);
+  }
+
+  async deleteChannelMessage(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    actorId: string,
+    actorRole: string,
+  ) {
+    const { context } = await this.accessPolicy.assertChannelAccess(
+      clubId,
+      channelId,
+      actorId,
+      actorRole,
+    );
+
+    const message = await this.prisma.clubChannelMessage.findUnique({
+      where: { id: messageId },
+    });
+
+    if (!message || message.channelId !== channelId) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.authorId !== actorId && !context.isAdmin) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+
+    await this.prisma.clubChannelMessage.delete({
+      where: { id: messageId },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'CLUB_CHANNEL_MESSAGE_DELETED',
+      entityType: 'ClubChannelMessage',
+      entityId: messageId,
+      meta: {
+        clubId,
+        channelId,
+        authorId: message.authorId,
+        body: message.body,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async getMessageHistory(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    actorId: string,
+    actorRole: string,
+  ) {
+    await this.accessPolicy.assertChannelAccess(clubId, channelId, actorId, actorRole);
+
+    const logs = await this.audit.getForEntity('ClubChannelMessage', messageId);
+
+    return logs
+      .filter((log) => log.action === 'CLUB_CHANNEL_MESSAGE_SENT' || log.action === 'CLUB_CHANNEL_MESSAGE_EDITED')
+      .map((log) => {
+        const meta = log.meta as Record<string, unknown>;
+        return {
+          id: log.id,
+          createdAt: log.createdAt,
+          body: log.action === 'CLUB_CHANNEL_MESSAGE_SENT' ? (meta?.bodyPreview as string) : (meta?.newBody as string),
+          bodyRich: log.action === 'CLUB_CHANNEL_MESSAGE_SENT' ? null : meta?.newBodyRich,
+          isOriginal: log.action === 'CLUB_CHANNEL_MESSAGE_SENT',
+        };
+      });
   }
 
   async toggleMessagePin(
