@@ -1000,6 +1000,53 @@ export class ClubChannelsService {
     return { success: true };
   }
 
+  async reportMessage(
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    reason: string,
+    actorId: string,
+    actorRole: string,
+  ) {
+    await this.accessPolicy.assertChannelAccess(clubId, channelId, actorId, actorRole);
+
+    const message = await this.prisma.clubChannelMessage.findUnique({
+      where: { id: messageId, channelId },
+      include: { author: true, channel: { include: { club: true } } },
+    });
+    if (!message) throw new NotFoundException('Message not found');
+
+    const report = await this.moderation.submitReport(
+      actorId,
+      ContentType.CLUB_CHANNEL_MESSAGE,
+      messageId,
+      reason,
+      message.authorId,
+      clubId,
+    );
+
+    // Notify sponsors
+    const sponsors = await this.prisma.clubSponsor.findMany({
+      where: { clubId },
+      select: { userId: true },
+    });
+    const sponsorIds = sponsors.map((s) => s.userId);
+
+    if (sponsorIds.length > 0) {
+      await this.notifications.deliver({
+        userIds: sponsorIds,
+        category: NotificationCategory.CONTENT_MODERATED,
+        title: `Message reported in ${message.channel.club.name}`,
+        body: `A message in #${message.channel.name} has been reported.`,
+        clubId,
+        channelId,
+        messageId,
+      });
+    }
+
+    return report;
+  }
+
   async getMessageHistory(
     clubId: string,
     channelId: string,

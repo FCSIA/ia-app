@@ -710,7 +710,7 @@ export class AnnouncementsService {
   private async deliverNotifications(ann: Announcement) {
     const isAdminGeneral = ann.isAdminGeneral;
 
-    let where: Prisma.UserWhereInput = { isActive: true };
+    const where: Prisma.UserWhereInput = { isActive: true };
 
     if (ann.targetType === AnnouncementTarget.GRADE) {
       const grades = ann.targetGrades.concat(ann.targetGrade ? [ann.targetGrade] : []);
@@ -761,7 +761,7 @@ export class AnnouncementsService {
 
     await this.notifications.deliver({
       userIds,
-      category: !!ann.clubId
+      category: ann.clubId
         ? NotificationCategory.CLUB_ANNOUNCEMENT
         : NotificationCategory.SCHOOL_ANNOUNCEMENT,
       title: ann.title,

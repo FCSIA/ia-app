@@ -217,13 +217,31 @@ export class ClubsController {
   }
 
   @Delete(':id/channels/:channelId/messages/:messageId')
-  deleteChannelMessage(
+  deleteMessage(
     @Param('id') clubId: string,
     @Param('channelId') channelId: string,
     @Param('messageId') messageId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.clubChannels.deleteChannelMessage(clubId, channelId, messageId, user.id, user.role);
+    return this.clubChannels.deleteMessage(clubId, channelId, messageId, user.id, user.role);
+  }
+
+  @Post(':id/channels/:channelId/messages/:messageId/report')
+  reportMessage(
+    @Param('id') clubId: string,
+    @Param('channelId') channelId: string,
+    @Param('messageId') messageId: string,
+    @Body() body: { reason: string },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.clubChannels.reportMessage(
+      clubId,
+      channelId,
+      messageId,
+      body.reason,
+      user.id,
+      user.role,
+    );
   }
 
   @Get(':id/channels/:channelId/messages/:messageId/history')

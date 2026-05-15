@@ -206,13 +206,18 @@ export class ModerationService {
 
   // ── Reports ───────────────────────────────────────────────────────────────
 
-  async getReports(status?: ReportStatus) {
+  async getReports(status?: ReportStatus, clubId?: string, isEscalated?: boolean) {
     return this.prisma.report.findMany({
-      where: status ? { status } : undefined,
+      where: {
+        ...(status ? { status } : {}),
+        ...(clubId ? { clubId } : {}),
+        ...(isEscalated !== undefined ? { isEscalated } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         submitter: { select: { id: true, firstName: true, lastName: true, uniqueId: true } },
         reportedUser: { select: { id: true, firstName: true, lastName: true, uniqueId: true } },
+        club: { select: { id: true, name: true } },
       },
     });
   }
@@ -223,6 +228,7 @@ export class ModerationService {
     contentId: string,
     reason: string,
     reportedUserId?: string,
+    clubId?: string,
   ) {
     const report = await this.prisma.report.create({
       data: {
@@ -231,6 +237,7 @@ export class ModerationService {
         contentId,
         reason,
         reportedUserId,
+        clubId,
       },
     });
     await this.audit.log({
@@ -238,7 +245,25 @@ export class ModerationService {
       action: 'REPORT_SUBMITTED',
       entityType: 'Report',
       entityId: report.id,
-      meta: { contentType, contentId },
+      meta: { contentType, contentId, clubId },
+    });
+    return report;
+  }
+
+  async escalateReport(id: string, reviewNote: string, actorId: string) {
+    const report = await this.prisma.report.update({
+      where: { id },
+      data: {
+        isEscalated: true,
+        reviewNote,
+        status: ReportStatus.PENDING, // Reset to pending for admin review
+      },
+    });
+    await this.audit.log({
+      actorId,
+      action: 'REPORT_ESCALATED',
+      entityType: 'Report',
+      entityId: id,
     });
     return report;
   }

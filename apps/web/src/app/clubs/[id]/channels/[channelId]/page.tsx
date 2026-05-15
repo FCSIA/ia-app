@@ -20,6 +20,7 @@ import {
   Reply,
   Trash2,
   AlertTriangle,
+  Flag,
   X,
 } from 'lucide-react';
 import {
@@ -33,6 +34,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type {
   ChatAttachmentUploadResponse,
@@ -263,6 +272,7 @@ function MessageRow({
   onStartEdit: (messageId: string) => void;
   onDelete: (messageId: string) => void;
   onShowHistory: (messageId: string) => void;
+  onReport?: (messageId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
   isPinPending: boolean;
@@ -384,6 +394,17 @@ function MessageRow({
                   Edit
                 </Button>
               )}
+              {!isAuthor && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
+                  onClick={() => onReport?.(message.id)}
+                >
+                  <Flag className="size-3" />
+                  Report
+                </Button>
+              )}
               {(isAuthor || canModerate) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -470,6 +491,7 @@ export default function ClubChannelPage({
   const [replyComposerResetKey, setReplyComposerResetKey] = useState(0);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [historyMessageId, setHistoryMessageId] = useState<string | null>(null);
+  const [reportingMessageId, setReportingMessageId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
@@ -560,6 +582,24 @@ export default function ClubChannelPage({
     onError: (error: any) => {
       toast({
         title: error.response?.data?.message || 'Failed to delete message',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const reportMessageMutation = useMutation({
+    mutationFn: ({ messageId, reason }: { messageId: string; reason: string }) =>
+      clubsApi.reportChannelMessage(id, channelId, messageId, reason),
+    onSuccess: () => {
+      toast({
+        title: 'Message reported',
+        description: 'Club sponsors have been notified.',
+      });
+      setReportingMessageId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Failed to report message',
         variant: 'destructive',
       });
     },
@@ -689,10 +729,14 @@ export default function ClubChannelPage({
           onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
           onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
           onStartEdit={setEditingMessageId}
+          onDelete={(messageId) => deleteMessageMutation.mutate(messageId)}
+          onShowHistory={setHistoryMessageId}
+          onReport={setReportingMessageId}
           isEditing={isEditing}
           isReactionPending={reactionMutation.isPending}
           isPinPending={pinMutation.isPending}
           isVotePending={pollVoteMutation.isPending}
+          isDeletePending={deleteMessageMutation.isPending}
           highlighted={matchingIds.has(message.id)}
           canModerate={canModerateChannel}
           compact={compact}
@@ -948,7 +992,41 @@ export default function ClubChannelPage({
             )}
           </div>
         </PopoverContent>
-      </Popover>
-    </ClubWorkspace>
-  );
-}
+        </Popover>
+
+        <Dialog open={!!reportingMessageId} onOpenChange={(open) => !open && setReportingMessageId(null)}>
+        <DialogContent>
+        <DialogHeader>
+        <DialogTitle>Report Message</DialogTitle>
+        <DialogDescription>
+        Help us maintain a safe community. Please describe why you are reporting this message.
+        </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+        <textarea
+        className="w-full rounded-md border p-2 text-sm"
+        rows={4}
+        placeholder="Explain your concern..."
+        onChange={(e) => (e.target as any).dataset.reason = e.target.value}
+        />
+        </div>
+        <DialogFooter>
+        <Button variant="ghost" onClick={() => setReportingMessageId(null)}>
+        Cancel
+        </Button>
+        <Button
+        onClick={() => {
+        const reason = (document.querySelector('textarea') as any)?.value;
+        if (!reason) return;
+        reportMessageMutation.mutate({ messageId: reportingMessageId!, reason });
+        }}
+        disabled={reportMessageMutation.isPending}
+        >
+        Submit Report
+        </Button>
+        </DialogFooter>
+        </DialogContent>
+        </Dialog>
+        </ClubWorkspace>
+        );
+        }

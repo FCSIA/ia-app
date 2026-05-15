@@ -442,9 +442,19 @@ export const moderationApi = {
   getKeywords: () => api.get('/moderation/keywords'),
   addKeyword: (keyword: string) => api.post('/moderation/keywords', { keyword }),
   removeKeyword: (id: string) => api.patch(`/moderation/keywords/${id}/remove`),
-  getReports: (status?: string) => api.get('/moderation/reports', { params: { status } }),
-  submitReport: (data: any) => api.post('/moderation/reports', data),
-  updateReport: (id: string, data: any) => api.patch(`/moderation/reports/${id}`, data),
+  getReports: (params?: { status?: string; clubId?: string; isEscalated?: boolean }) =>
+    api.get('/moderation/reports', { params }),
+  submitReport: (data: {
+    contentType: string;
+    contentId: string;
+    reason: string;
+    reportedUserId?: string;
+    clubId?: string;
+  }) => api.post('/moderation/reports', data),
+  updateReport: (id: string, data: { status: string; reviewNote: string }) =>
+    api.patch(`/moderation/reports/${id}`, data),
+  escalateReport: (id: string, data: { reviewNote: string }) =>
+    api.patch(`/moderation/reports/${id}/escalate`, data),
 };
 
 // Audit

@@ -272,6 +272,7 @@ model Club {
   tags          ClubTag[]
   events        Event[]
   notifications NotificationDelivery[]
+  reports       Report[]
 
   @@map("clubs")
 }
@@ -702,14 +703,17 @@ model Report {
   submitterId    String       @map("submitter_id")
   contentType    ContentType  @map("content_type")
   contentId      String       @map("content_id")
+  clubId         String?      @map("club_id")
   reportedUserId String?      @map("reported_user_id")
   reason         String
   status         ReportStatus @default(PENDING)
+  isEscalated    Boolean      @default(false) @map("is_escalated")
   reviewNote     String?      @map("review_note")
   reviewedAt     DateTime?    @map("reviewed_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   reportedUser   User?        @relation("ReportedContent", fields: [reportedUserId], references: [id])
   submitter      User         @relation("ReportSubmitter", fields: [submitterId], references: [id])
+  club           Club?        @relation(fields: [clubId], references: [id])
 
   @@map("reports")
 }
