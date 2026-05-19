@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent } from '@/components/ui/popover';
 import type {
   ChatAttachmentUploadResponse,
   ClubChannelMessage,
@@ -689,10 +689,13 @@ export default function ClubChannelPage({
           onTogglePin={(messageId, pinned) => pinMutation.mutate({ messageId, pinned })}
           onVotePoll={(messageId, optionId) => pollVoteMutation.mutate({ messageId, optionId })}
           onStartEdit={setEditingMessageId}
+          onDelete={(messageId) => deleteMessageMutation.mutate(messageId)}
+          onShowHistory={setHistoryMessageId}
           isEditing={isEditing}
           isReactionPending={reactionMutation.isPending}
           isPinPending={pinMutation.isPending}
           isVotePending={pollVoteMutation.isPending}
+          isDeletePending={deleteMessageMutation.isPending}
           highlighted={matchingIds.has(message.id)}
           canModerate={canModerateChannel}
           compact={compact}

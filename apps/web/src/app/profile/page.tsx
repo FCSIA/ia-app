@@ -206,9 +206,14 @@ export default function ProfilePage() {
                 </div>
               </form>
             ) : (
-              <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
+              <div className="space-y-2">
+                <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
                 ••••••••
-              </p>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Change this after signing in with an admin-generated temporary password.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

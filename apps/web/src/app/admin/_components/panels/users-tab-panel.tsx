@@ -33,8 +33,16 @@ export function UsersTabPanel() {
       selectedUserRoleMeta={users.selectedUserRoleMeta}
       currentUserId={users.currentUserId}
       canDeactivate={users.canDeactivate}
+      canResetPassword={users.canResetPassword}
       onDeactivate={users.onDeactivate}
       onActivate={users.onActivate}
+      onResetPassword={users.openPasswordReset}
+      passwordResetTarget={users.passwordResetTarget}
+      passwordResetValue={users.passwordResetValue}
+      onPasswordResetValueChange={users.setPasswordResetValue}
+      onClosePasswordReset={users.closePasswordReset}
+      onSubmitPasswordReset={users.resetPassword}
+      isResetPasswordPending={users.isResetPasswordPending}
       isAssignRolesPending={users.isAssignRolesPending}
       onAssignRoles={users.onAssignRoles}
       pagination={pagination}

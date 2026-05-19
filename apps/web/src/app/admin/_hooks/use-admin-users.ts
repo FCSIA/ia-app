@@ -19,6 +19,8 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const [page, setPage] = useState(1);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [usersPageSize, setUsersPageSize] = useState(10);
+  const [passwordResetTarget, setPasswordResetTarget] = useState<AdminUserRecord | null>(null);
+  const [passwordResetValue, setPasswordResetValue] = useState('');
 
   const canDeactivate = (targetUser: AdminUserRecord) => {
     if (!user) return false;
@@ -26,6 +28,14 @@ export function useAdminUsers(activeTab: AdminTabId) {
     const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
     if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
     return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  };
+
+  const canResetPassword = (targetUser: AdminUserRecord) => {
+    if (!user) return false;
+    if (hasRole(user, 'SUPER_ADMIN')) return true;
+    if (!hasRole(user, 'ADMIN')) return false;
+    const targetRoles = getUserRoles(targetUser);
+    return !targetRoles.includes('ADMIN') && !targetRoles.includes('SUPER_ADMIN');
   };
 
   useEffect(() => {
@@ -103,6 +113,22 @@ export function useAdminUsers(activeTab: AdminTabId) {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
+      usersApi.resetPassword(id, newPassword),
+    onSuccess: () => {
+      setPasswordResetTarget(null);
+      setPasswordResetValue('');
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast({ title: 'Password reset' });
+    },
+    onError: (e: unknown) =>
+      toast({
+        title: (e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not reset password',
+        variant: 'destructive',
+      }),
+  });
+
   const assignRolesMutation = useMutation({
     mutationFn: ({ id, roles }: { id: string; roles: string[] }) => usersApi.assignRoles(id, roles),
     onSuccess: () => {
@@ -142,8 +168,28 @@ export function useAdminUsers(activeTab: AdminTabId) {
     selectedUserRoleMeta,
     currentUserId: user?.id,
     canDeactivate,
+    canResetPassword,
     onDeactivate: (userId: string) => deactivateMutation.mutate(userId),
     onActivate: (userId: string) => activateMutation.mutate(userId),
+    passwordResetTarget,
+    passwordResetValue,
+    setPasswordResetValue,
+    openPasswordReset: (targetUser: AdminUserRecord) => {
+      setPasswordResetTarget(targetUser);
+      setPasswordResetValue('');
+    },
+    closePasswordReset: () => {
+      setPasswordResetTarget(null);
+      setPasswordResetValue('');
+    },
+    resetPassword: () => {
+      if (!passwordResetTarget || passwordResetValue.length < 8) return;
+      resetPasswordMutation.mutate({
+        id: passwordResetTarget.id,
+        newPassword: passwordResetValue,
+      });
+    },
+    isResetPasswordPending: resetPasswordMutation.isPending,
     isSuperAdmin,
     isAssignRolesPending: assignRolesMutation.isPending,
     onAssignRoles: (payload: { id: string; roles: string[] }) => assignRolesMutation.mutate(payload),

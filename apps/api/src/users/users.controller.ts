@@ -87,13 +87,12 @@ export class UsersController {
   }
 
   @Post(':id/reset-password')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   resetPassword(
     @Param('id') id: string,
     @Body() body: ResetPasswordDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.usersService.resetPassword(id, body.newPassword, user.id);
+    return this.usersService.resetPassword(id, body.newPassword, user.id, user.roles ?? []);
   }
 
   @Post('import/csv')

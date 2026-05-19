@@ -1,11 +1,22 @@
 'use client';
 
 import type { RefObject, ReactNode } from 'react';
+import { KeyRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Empty, EmptyTitle } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -54,8 +65,10 @@ function UserTableSection({
   currentUserId,
   isSuperAdmin,
   canDeactivate,
+  canResetPassword,
   onDeactivate,
   onActivate,
+  onResetPassword,
   isAssignRolesPending,
   onAssignRoles,
   pagination,
@@ -68,8 +81,10 @@ function UserTableSection({
   currentUserId?: string;
   isSuperAdmin: boolean;
   canDeactivate: (user: AdminUserRecord) => boolean;
+  canResetPassword: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  onResetPassword: (user: AdminUserRecord) => void;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
@@ -140,6 +155,17 @@ function UserTableSection({
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
                     />
+                    {canResetPassword(user) && user.id !== currentUserId ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onResetPassword(user)}
+                        className="h-7"
+                      >
+                        <KeyRound className="mr-1 size-3" />
+                        Reset
+                      </Button>
+                    ) : null}
                     {user.isActive ? (
                       canDeactivate(user) && user.id !== currentUserId ? (
                         <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -177,8 +203,16 @@ export function AdminUsersTab({
   selectedUserRoleMeta,
   currentUserId,
   canDeactivate,
+  canResetPassword,
   onDeactivate,
   onActivate,
+  onResetPassword,
+  passwordResetTarget,
+  passwordResetValue,
+  onPasswordResetValueChange,
+  onClosePasswordReset,
+  onSubmitPasswordReset,
+  isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
   pagination,
@@ -197,8 +231,16 @@ export function AdminUsersTab({
   selectedUserRoleMeta: typeof USER_ROLE_GROUP_META[AdminUserRoleGroup];
   currentUserId?: string;
   canDeactivate: (user: AdminUserRecord) => boolean;
+  canResetPassword: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  onResetPassword: (user: AdminUserRecord) => void;
+  passwordResetTarget: AdminUserRecord | null;
+  passwordResetValue: string;
+  onPasswordResetValueChange: (value: string) => void;
+  onClosePasswordReset: () => void;
+  onSubmitPasswordReset: () => void;
+  isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
@@ -255,21 +297,69 @@ export function AdminUsersTab({
             </EmptyTitle>
           </Empty>
         ) : (
-          <UserTableSection
-            title={selectedUserRoleMeta.label}
-            emptyMessage={selectedUserRoleMeta.emptyMessage}
-            users={users}
-            totalCount={usersData?.total}
-            showGrade={selectedUserRoleMeta.showGrade}
-            currentUserId={currentUserId}
-            isSuperAdmin={isSuperAdmin}
-            canDeactivate={canDeactivate}
-            onDeactivate={onDeactivate}
-            onActivate={onActivate}
-            isAssignRolesPending={isAssignRolesPending}
-            onAssignRoles={onAssignRoles}
-            pagination={pagination}
-          />
+          <>
+            <UserTableSection
+              title={selectedUserRoleMeta.label}
+              emptyMessage={selectedUserRoleMeta.emptyMessage}
+              users={users}
+              totalCount={usersData?.total}
+              showGrade={selectedUserRoleMeta.showGrade}
+              currentUserId={currentUserId}
+              isSuperAdmin={isSuperAdmin}
+              canDeactivate={canDeactivate}
+              canResetPassword={canResetPassword}
+              onDeactivate={onDeactivate}
+              onActivate={onActivate}
+              onResetPassword={onResetPassword}
+              isAssignRolesPending={isAssignRolesPending}
+              onAssignRoles={onAssignRoles}
+              pagination={pagination}
+            />
+            <Dialog
+              open={!!passwordResetTarget}
+              onOpenChange={(open) => {
+                if (!open) onClosePasswordReset();
+              }}
+            >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Reset password</DialogTitle>
+                  <DialogDescription>
+                    Set a temporary password for {passwordResetTarget?.firstName} {passwordResetTarget?.lastName}.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="admin-reset-password">Temporary password</Label>
+                  <Input
+                    id="admin-reset-password"
+                    type="password"
+                    value={passwordResetValue}
+                    onChange={(event) => onPasswordResetValueChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') onSubmitPasswordReset();
+                    }}
+                    placeholder="At least 8 characters"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The user should change this after signing in.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="tertiary" onClick={onClosePasswordReset}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={passwordResetValue.length < 8}
+                    loading={isResetPasswordPending}
+                    onClick={onSubmitPasswordReset}
+                  >
+                    Reset password
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </div>
     </div>

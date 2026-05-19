@@ -28,6 +28,13 @@ export class UsersService {
     roles: { hasSome: [Role.STUDENT] },
   };
 
+  private canResetPasswordFor(actorId: string | undefined, targetId: string, actorRoles: string[], targetRoles: string[]) {
+    if (actorId === targetId) return true;
+    if (actorRoles.includes(Role.SUPER_ADMIN)) return true;
+    if (!actorRoles.includes(Role.ADMIN)) return false;
+    return !targetRoles.some((role) => role === Role.ADMIN || role === Role.SUPER_ADMIN);
+  }
+
   private safeUser(user: User) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, roles, ...safe } = user;
@@ -321,9 +328,12 @@ export class UsersService {
     return this.safeUser(user);
   }
 
-  async resetPassword(id: string, newPassword: string, actorId?: string) {
-    await this.findOne(id);
+  async resetPassword(id: string, newPassword: string, actorId?: string, actorRoles: string[] = []) {
+    const target = await this.findOne(id);
     if (newPassword.length < 8) throw new BadRequestException('Password too short');
+    if (!this.canResetPasswordFor(actorId, id, actorRoles, target.roles ?? [])) {
+      throw new ForbiddenException('Admins can only reset passwords for accounts below admin level');
+    }
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.prisma.user.update({ where: { id }, data: { passwordHash } });
     await this.audit.log({
