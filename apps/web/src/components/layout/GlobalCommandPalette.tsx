@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useQuery as useConvexQuery } from 'convex/react';
 import {
   Bell,
   BookOpen,
@@ -28,9 +29,9 @@ import {
   coursesApi,
   eventsApi,
   flexFridayApi,
-  notificationsApi,
   scheduleApi,
 } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
 import { hasRole } from '@/lib/auth';
 import {
   CommandDialog,
@@ -128,11 +129,10 @@ export function GlobalCommandPalette({
     queryFn: () => coursesApi.list({ limit: 40 }).then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: notifications = [] } = useQuery<any[]>({
-    queryKey: ['command-notifications'],
-    queryFn: () => notificationsApi.getAll(true).then((response) => response.data),
-    enabled: shouldLoad,
-  });
+  const notifications = useConvexQuery(
+    api.notifications.list,
+    shouldLoad ? { unreadOnly: true, limit: 20 } : 'skip',
+  ) ?? [];
   const { data: flexFridays = [] } = useQuery<any[]>({
     queryKey: ['command-flex-friday'],
     queryFn: () => flexFridayApi.getAll().then((response) => response.data),

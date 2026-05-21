@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tooltip } from '@/components/ui/tooltip';
-import { notificationsApi } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
 import { cn } from '@/lib/utils';
 
 type PreferenceLevel = 'OFF' | 'IN_APP' | 'PUSH' | 'TIME_SENSITIVE';
@@ -104,11 +105,8 @@ export function ChannelNotificationSettings({
   channelId,
   channelName,
 }: ChannelNotificationSettingsProps) {
-  const queryClient = useQueryClient();
-  const { data: preferences = [] } = useQuery<any[]>({
-    queryKey: ['notification-preferences'],
-    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
-  });
+  const upsertPreference = useConvexMutation(api.notifications.upsertPreference);
+  const preferences = useConvexQuery(api.notifications.preferences) ?? [];
 
   const messagePreference = scopePreference(preferences, MESSAGE_CATEGORY, channelId);
   const messageLevel: PreferenceLevel = messagePreference?.enabled
@@ -130,14 +128,13 @@ export function ChannelNotificationSettings({
       category: string;
       level: PreferenceLevel;
     }) =>
-      notificationsApi.upsertPreference(category, level !== 'OFF', {
+      upsertPreference({
+        category: category as any,
+        enabled: level !== 'OFF',
         clubId,
         channelId,
         level,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
-    },
   });
 
   return (

@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMutation as useConvexMutation } from 'convex/react';
-import { notificationsApi } from '@/lib/api';
+import { useMutation } from '@tanstack/react-query';
+import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { api } from '../../../../../convex/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
@@ -20,7 +19,6 @@ import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
-  const qc = useQueryClient();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -28,19 +26,12 @@ export default function ProfilePage() {
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
   const changePassword = useConvexMutation(api.users.changePassword);
+  const upsertPreference = useConvexMutation(api.notifications.upsertPreference);
 
-  const { data: prefs = [] } = useQuery({
-    queryKey: ['notification-prefs'],
-    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
-  });
-  const { data: moderationAlerts = [] } = useQuery({
-    queryKey: ['profile-moderation-alerts'],
-    queryFn: () =>
-      notificationsApi
-        .getAll(true)
-        .then((r) => r.data)
-        .then((rows: any[]) => rows.filter((row) => row.category === 'CONTENT_MODERATED').slice(0, 5)),
-  });
+  const prefs = useConvexQuery(api.notifications.preferences) ?? [];
+  const moderationAlerts = (useConvexQuery(api.notifications.list, { unreadOnly: true }) ?? [])
+    .filter((row) => row.category === 'CONTENT_MODERATED')
+    .slice(0, 5);
 
   const changePwMutation = useMutation({
     mutationFn: (d: { currentPassword: string; newPassword: string }) =>
@@ -58,8 +49,8 @@ export default function ProfilePage() {
   });
 
   const prefMutation = useMutation({
-    mutationFn: ({ category, enabled }: any) => notificationsApi.upsertPreference(category, enabled),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
+    mutationFn: ({ category, enabled }: { category: any; enabled: boolean }) =>
+      upsertPreference({ category, enabled }),
   });
 
   const prefMap = Object.fromEntries(

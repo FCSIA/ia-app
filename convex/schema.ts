@@ -1,6 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { appRoleValidator, pathwayValidator } from "./validators";
+import {
+  appRoleValidator,
+  notificationCategoryValidator,
+  notificationPreferenceLevelValidator,
+  pathwayValidator,
+} from "./validators";
 
 export default defineSchema({
   users: defineTable({
@@ -75,4 +80,43 @@ export default defineSchema({
       "entityId",
       "createdAt",
     ]),
+
+  notificationDeliveries: defineTable({
+    userId: v.id("users"),
+    category: notificationCategoryValidator,
+    title: v.string(),
+    body: v.string(),
+    isRead: v.boolean(),
+    announcementId: v.optional(v.string()),
+    eventId: v.optional(v.string()),
+    clubId: v.optional(v.string()),
+    channelId: v.optional(v.string()),
+    messageId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_userId_and_isRead_and_createdAt", [
+      "userId",
+      "isRead",
+      "createdAt",
+    ]),
+
+  notificationPreferences: defineTable({
+    userId: v.id("users"),
+    category: notificationCategoryValidator,
+    enabled: v.boolean(),
+    level: notificationPreferenceLevelValidator,
+    locked: v.boolean(),
+    clubId: v.optional(v.string()),
+    channelId: v.optional(v.string()),
+    announcementId: v.optional(v.string()),
+    eventId: v.optional(v.string()),
+    scopeKey: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId_and_category_and_scopeKey", [
+    "userId",
+    "category",
+    "scopeKey",
+  ]),
 });

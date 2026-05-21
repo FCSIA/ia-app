@@ -1,9 +1,10 @@
 'use client';
 
 import { Lock } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
-import { notificationsApi } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
 import { cn } from '@/lib/utils';
 
 type NotificationScopeSwitchProps = {
@@ -31,7 +32,7 @@ export function NotificationScopeSwitch({
   compact = false,
   className,
 }: NotificationScopeSwitchProps) {
-  const queryClient = useQueryClient();
+  const upsertPreference = useConvexMutation(api.notifications.upsertPreference);
   const resolvedScopeKey =
     scopeKey ??
     (channelId
@@ -44,10 +45,7 @@ export function NotificationScopeSwitch({
             ? `club:${clubId}`
             : 'global');
 
-  const { data: preferences = [] } = useQuery<any[]>({
-    queryKey: ['notification-preferences'],
-    queryFn: () => notificationsApi.getPreferences().then((response) => response.data),
-  });
+  const preferences = useConvexQuery(api.notifications.preferences) ?? [];
 
   const preference = preferences.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
@@ -56,16 +54,15 @@ export function NotificationScopeSwitch({
 
   const mutation = useMutation({
     mutationFn: () =>
-      notificationsApi.upsertPreference(category, !enabled, {
+      upsertPreference({
+        category: category as any,
+        enabled: !enabled,
         clubId,
         channelId,
         announcementId,
         eventId,
         scopeKey: resolvedScopeKey,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
-    },
   });
 
   return (

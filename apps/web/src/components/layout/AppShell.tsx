@@ -21,11 +21,13 @@ import {
   Search,
   type LucideIcon,
 } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useQuery as useConvexQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
-import { notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
+import { announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -156,12 +158,7 @@ export function AppShell({
     setMobileOpen(false);
   }, [safePathname]);
 
-  const { data: unreadData } = useQuery({
-    queryKey: ['unread-count'],
-    queryFn: () => notificationsApi.getUnreadCount().then((response) => response.data),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-  });
+  const unreadData = useConvexQuery(api.notifications.unreadCount);
 
   const handlePrefetch = (href: string) => {
     switch (href) {
@@ -182,7 +179,6 @@ export function AppShell({
         queryClient.prefetchQuery({ queryKey: ['flex-friday'], queryFn: () => flexFridayApi.getAll().then((r) => r.data) });
         break;
       case '/notifications':
-        queryClient.prefetchQuery({ queryKey: ['notifications'], queryFn: () => notificationsApi.getAll().then((r) => r.data) });
         break;
     }
   };

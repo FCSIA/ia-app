@@ -10,10 +10,11 @@ tags: [feature, notifications]
 
 ## Overview
 
-Notifications alert users to relevant activity. The system uses **polling** (regular API checks) rather than WebSockets, making it simpler but slightly less real-time.
+Notifications alert users to relevant activity. In the Convex port, the
+frontend subscribes to Convex queries instead of polling REST endpoints.
 
 **Files:**
-- Backend: `apps/api/src/notifications/`
+- Convex: `convex/notifications.ts`
 - Web: `apps/web/src/app/notifications/`
 - Database: [[schema#NotificationDelivery]], [[schema#NotificationPreference]]
 
@@ -21,18 +22,18 @@ Notifications alert users to relevant activity. The system uses **polling** (reg
 
 ## How Notifications Are Created
 
-When something happens on the backend (new announcement, event published, etc.), the `NotificationsService` creates `NotificationDelivery` rows for each affected user:
+When a ported domain creates a notification, it writes `notificationDeliveries`
+rows for affected users after checking `notificationPreferences`.
 
-```typescript
-// When a school-wide announcement is published:
-const users = await prisma.user.findMany({ where: { isActive: true } });
-await prisma.notificationDelivery.createMany({
-  data: users.map(user => ({
-    userId: user.id,
-    category: 'SCHOOL_ANNOUNCEMENT',
-    title: announcement.title,
-    body: announcement.body.substring(0, 100),
-  })),
+```ts
+await ctx.db.insert('notificationDeliveries', {
+  userId,
+  category: 'SCHOOL_ANNOUNCEMENT',
+  title,
+  body,
+  isRead: false,
+  announcementId,
+  createdAt: Date.now(),
 });
 ```
 
@@ -57,7 +58,7 @@ await prisma.notificationDelivery.createMany({
 
 ## Data Model and Deep-Linking
 
-The `NotificationDelivery` model stores nullable foreign keys to provide a high-performance deep-link experience:
+The `notificationDeliveries` table stores nullable string references to provide a high-performance deep-link experience while the referenced domains are being ported:
 - `announcementId`, `eventId`, `clubId`, `channelId`, `messageId`
 
 The frontend uses these fields to construct the correct URL and application state upon clicking a notification.
@@ -82,15 +83,18 @@ Channel all-message alerts are opt-in: if no `CLUB_CHANNEL_MESSAGE` preference e
 
 ---
 
-## API Surface
+## Convex Surface
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/notifications` | All notifications for current user |
-| GET | `/notifications/unread-count` | Polled every 30s by the sidebar |
-| POST | `/notifications/mark-read` | Mark specific IDs as read |
-| POST | `/notifications/mark-all-read` | Clear all badges |
-| POST | `/notifications/preferences` | Update a global, club, channel, announcement, or event preference |
+- `api.notifications.list`
+- `api.notifications.unreadCount`
+- `api.notifications.markRead`
+- `api.notifications.markAllRead`
+- `api.notifications.preferences`
+- `api.notifications.upsertPreference`
+
+Unread counts currently read a bounded recent set, which is fine for alpha and
+seeded data. Before production scale, replace exact large unread counts with an
+Aggregate/Sharded Counter-backed counter updated by delivery/read mutations.
 
 ---
 

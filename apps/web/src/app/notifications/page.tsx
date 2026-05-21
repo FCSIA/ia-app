@@ -3,8 +3,11 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { clubsApi, notificationsApi } from '@/lib/api';
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
+import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
+import { clubsApi } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
+import type { Id } from '../../../../../convex/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, CheckCheck, Settings } from 'lucide-react';
@@ -32,20 +35,17 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const qc = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
+  const markAllRead = useConvexMutation(api.notifications.markAllRead);
+  const markRead = useConvexMutation(api.notifications.markRead);
 
-  const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => notificationsApi.getAll().then((r) => r.data),
-  });
+  const notificationsQuery = useConvexQuery(api.notifications.list, {});
+  const notifications = notificationsQuery ?? [];
+  const isLoading = notificationsQuery === undefined;
 
-  const { data: preferences = [] } = useQuery<any[]>({
-    queryKey: ['notification-preferences'],
-    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
-  });
+  const preferences = useConvexQuery(api.notifications.preferences) ?? [];
 
   const { data: myClubs } = useQuery<any>({
     queryKey: ['my-clubs'],
@@ -91,20 +91,15 @@ export default function NotificationsPage() {
   }, [notifications, deferredSearch]);
 
   const markAllMutation = useMutation({
-    mutationFn: () => notificationsApi.markAllRead(),
+    mutationFn: () => markAllRead(),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['unread-count'] });
       toast({ title: 'All marked as read' });
     },
   });
 
   const markReadMutation = useMutation({
-    mutationFn: (id: string) => notificationsApi.markRead([id]),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-      qc.invalidateQueries({ queryKey: ['unread-count'] });
-    },
+    mutationFn: (id: string) =>
+      markRead({ ids: [id as Id<'notificationDeliveries'>] }),
   });
 
   function getNotificationHref(notification: any) {
