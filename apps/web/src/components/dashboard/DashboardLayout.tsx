@@ -33,6 +33,8 @@ import {
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useMutation as useConvexMutation } from 'convex/react';
+import { api } from '../../../../../convex/_generated/api';
 import {
   WIDGETS,
   getAvailableWidgets,
@@ -40,7 +42,6 @@ import {
   isWidgetAllowed,
   type WidgetDefinition,
 } from './widget-registry';
-import { usersApi } from '@/lib/api';
 
 const STORAGE_PREFIX = 'ia_dashboard_layout_';
 
@@ -167,6 +168,7 @@ function DragGhost({ widget }: { widget: WidgetDefinition }) {
 export function DashboardLayout() {
   const user = useCurrentUser();
   const { toast } = useToast();
+  const updateDashboardLayout = useConvexMutation(api.users.updateDashboardLayout);
   const [layout, setLayout] = useState<string[] | null>(null);
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -205,24 +207,17 @@ export function DashboardLayout() {
       return;
     }
 
-    usersApi
-      .getDashboardLayout()
-      .then((serverLayout) => {
-        if (serverLayout && serverLayout.length > 0) {
-          const cleaned = serverLayout.filter((id) => {
-            const widget = WIDGETS[id];
-            return widget && isWidgetAllowed(widget, user.roles);
-          });
-          setLayout(cleaned);
-        } else {
-          const persisted = loadLayout(user.id);
-          setLayout(persisted ?? getDefaultLayout(user.roles));
-        }
-      })
-      .catch(() => {
-        const persisted = loadLayout(user.id);
-        setLayout(persisted ?? getDefaultLayout(user.roles));
+    if (user.dashboardLayout && user.dashboardLayout.length > 0) {
+      const cleaned = user.dashboardLayout.filter((id) => {
+        const widget = WIDGETS[id];
+        return widget && isWidgetAllowed(widget, user.roles);
       });
+      setLayout(cleaned);
+      return;
+    }
+
+    const persisted = loadLayout(user.id);
+    setLayout(persisted ?? getDefaultLayout(user.roles));
   }, [user]);
 
   const availableWidgets = useMemo(
@@ -232,12 +227,12 @@ export function DashboardLayout() {
 
   const handleSave = useCallback(() => {
     if (user && layout) {
-      usersApi.updateDashboardLayout(layout);
+      void updateDashboardLayout({ layout });
       saveLayout(user.id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
     setEditing(false);
-  }, [layout, toast, user]);
+  }, [layout, toast, updateDashboardLayout, user]);
 
   const handleReset = useCallback(() => {
     if (!user) return;

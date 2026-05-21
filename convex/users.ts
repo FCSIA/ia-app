@@ -603,3 +603,23 @@ export const resetPassword = mutation({
     return { temporaryPassword };
   },
 });
+
+export const updateDashboardLayout = mutation({
+  args: {
+    layout: v.array(v.string()),
+  },
+  returns: appUserPublicValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(user._id, {
+      dashboardLayout: args.layout,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(user._id);
+    if (!updated) {
+      throw new ConvexError("User not found.");
+    }
+    return toPublicUser(updated);
+  },
+});

@@ -74,7 +74,8 @@ import {
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
-import { authApi, clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
+import { clubsApi, toApiUrl, uploadsApi } from '@/lib/api';
+import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -497,10 +498,7 @@ export default function ClubChannelPage({
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
-  const { data: user } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => authApi.me().then((r) => r.data),
-  });
+  const user = useCurrentUser();
 
   const { data: club } = useQuery<ClubDetail>({
     queryKey: ['club', id],

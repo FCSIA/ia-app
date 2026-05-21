@@ -2,8 +2,9 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { auditApi } from '@/lib/api';
+import { useQuery as useConvexQuery } from 'convex/react';
+import { api } from '../../../../../../convex/_generated/api';
+import type { Id } from '../../../../../../convex/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope, AuditEventDetail, AuditEventRecord } from '../_lib/types';
@@ -56,11 +57,12 @@ export function useAdminAudit(activeTab: AdminTabId) {
     ],
   );
 
-  const { data: auditEvents = [], isLoading: isAuditLoading } = useQuery<AuditEventRecord[]>({
-    queryKey: ['audit', auditQueryParams],
-    queryFn: () => auditApi.getAll(auditQueryParams).then((r) => r.data),
-    enabled: activeTab === 'audit',
-  });
+  const auditEvents =
+    (useConvexQuery(
+      api.audit.list,
+      activeTab === 'audit' ? auditQueryParams : 'skip',
+    ) as AuditEventRecord[] | undefined) ?? [];
+  const isAuditLoading = activeTab === 'audit' && auditEvents.length === 0;
 
   const displayedAuditEvents = useMemo(() => {
     if (auditSubView === 'flex') {
@@ -69,17 +71,19 @@ export function useAdminAudit(activeTab: AdminTabId) {
     return auditEvents.filter((e) => !FLEX_ENTITY_TYPES.includes(e.entityType));
   }, [auditEvents, auditSubView]);
 
-  const { data: auditFilterSource = [] } = useQuery<AuditEventRecord[]>({
-    queryKey: ['audit', 'filter-source'],
-    queryFn: () => auditApi.getAll({ limit: 500 }).then((r) => r.data),
-    enabled: activeTab === 'audit',
-  });
+  const auditFilterSource =
+    (useConvexQuery(
+      api.audit.list,
+      activeTab === 'audit' ? { limit: 500 } : 'skip',
+    ) as AuditEventRecord[] | undefined) ?? [];
 
-  const { data: auditEventDetail, isLoading: isAuditDetailLoading } = useQuery<AuditEventDetail>({
-    queryKey: ['audit', 'entry', selectedAuditEventId],
-    queryFn: () => auditApi.getOne(selectedAuditEventId!).then((r) => r.data),
-    enabled: !!selectedAuditEventId,
-  });
+  const auditEventDetail = useConvexQuery(
+    api.audit.getOne,
+    selectedAuditEventId
+      ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
+      : 'skip',
+  ) as AuditEventDetail | null | undefined;
+  const isAuditDetailLoading = !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
     () => Array.from(new Set(auditFilterSource.map((event) => event.action))).sort(),
@@ -170,7 +174,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     hasActiveAuditFilters,
     clearAuditFilters,
     auditFilterChips,
-    auditEventDetail,
+    auditEventDetail: auditEventDetail ?? undefined,
     isAuditDetailLoading,
   };
 }

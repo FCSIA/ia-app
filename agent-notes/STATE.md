@@ -15,6 +15,7 @@
 - Next.js is wired to Better Auth + Convex via `apps/web/src/app/api/auth/[...all]/route.ts`, `apps/web/src/lib/auth-client.ts`, `apps/web/src/lib/convex.ts`, and `ConvexBetterAuthProvider`.
 - Admin user management now reads/writes through Convex cursor pagination. Remaining app domains still use the transitional REST client until they are ported.
 - Convex audit logging exists in `convex/lib/audit.ts` and the `auditEvents` table for sensitive user-management mutations.
+- Profile password changes, dashboard layout persistence, admin audit reads, and club channel current-user reads no longer depend on the old REST auth endpoints.
 - Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
 
 ## Next Verification

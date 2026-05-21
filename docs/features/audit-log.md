@@ -13,25 +13,22 @@ tags: [feature, audit, admin]
 The audit log is an immutable record of every significant action taken in the system. It gives admins full visibility into who did what and when.
 
 **Files:**
-- Backend: `apps/api/src/audit/`
+- Convex: `convex/audit.ts`, `convex/lib/audit.ts`
 - Web: `apps/web/src/app/admin/` (Audit Log tab)
 - Database: [[schema#AuditEvent]]
 
 ---
 
-## AuditEvent Model
+## Audit Event Table
 
-```prisma
-model AuditEvent {
-  id         String   @id @default(cuid())
-  actorId    String?  // who did it (null = system action)
-  action     String   // what happened
-  entityType String   // e.g. "User", "Club", "Announcement"
-  entityId   String?  // affected record's ID
-  meta       Json?    // extra context (e.g. { role: "ADMIN" })
-  createdAt  DateTime @default(now())
-}
-```
+Convex stores audit rows in `auditEvents`:
+
+- `actorId` — optional `users` id; missing means system/bootstrap action
+- `action` — event code, currently lower-case dot notation for Convex writes
+- `entityType` — affected domain/table kind
+- `entityId` — affected document id when available
+- `meta` — structured context
+- `createdAt` — numeric timestamp
 
 ---
 
@@ -39,8 +36,9 @@ model AuditEvent {
 
 | Action | Entity Type | Context |
 |--------|-------------|---------|
-| `USER_DEACTIVATED` | `User` | Account soft-deletion |
-| `USER_ROLES_UPDATED` | `User` | Manual role assignment |
+| `user.deactivated` | `user` | Account deactivation |
+| `user.roles_assigned` | `user` | Manual role assignment |
+| `user.password_reset` | `user` | Front-office/admin password reset |
 | `SCHEDULE_UPDATED` | `StudentSchedule` | Every time a student saves their classes |
 | `SCHEDULE_FRIEND_REQUESTED` | `User` | Friend request sent to another user |
 | `CLUB_CREATED` | `Club` | Manual or bulk club creation |
@@ -55,19 +53,15 @@ model AuditEvent {
 
 ## How Audit Events Are Created
 
-The `AuditService` is injected into services that perform significant actions:
+Convex mutations call `logAuditEvent`:
 
-```typescript
-// In users.service.ts:
-async deactivate(id: string, actor: User) {
-  await this.prisma.user.update({ where: { id }, data: { isActive: false } });
-  await this.auditService.log({
-    actorId: actor.id,
-    action: 'USER_DEACTIVATED',
-    entityType: 'User',
-    entityId: id,
-  });
-}
+```ts
+await logAuditEvent(ctx, {
+  actorId: actor._id,
+  action: 'user.deactivated',
+  entityType: 'user',
+  entityId: target._id,
+});
 ```
 
 ---
@@ -84,9 +78,15 @@ Only admins can view the audit log — it's in the Admin Panel under the "Audit 
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/audit` | Recent audit events (paginated) |
+The frontend reads audit rows with Convex functions:
+
+- `api.audit.list`
+- `api.audit.getOne`
+
+The first Convex version uses bounded recent-event reads with in-memory filters.
+That is acceptable for the current alpha seed data and keeps the admin tab
+working while more domains start writing Convex audit rows. Before production
+scale, move high-cardinality audit search to explicit search/index fields.
 
 ---
 

@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi, notificationsApi } from '@/lib/api';
+import { useMutation as useConvexMutation } from 'convex/react';
+import { notificationsApi } from '@/lib/api';
+import { api } from '../../../../../convex/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -25,6 +27,7 @@ export default function ProfilePage() {
   useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
+  const changePassword = useConvexMutation(api.users.changePassword);
 
   const { data: prefs = [] } = useQuery({
     queryKey: ['notification-prefs'],
@@ -40,14 +43,18 @@ export default function ProfilePage() {
   });
 
   const changePwMutation = useMutation({
-    mutationFn: (d: any) => authApi.changePassword(d.currentPassword, d.newPassword),
+    mutationFn: (d: { currentPassword: string; newPassword: string }) =>
+      changePassword(d),
     onSuccess: () => {
       toast({ title: 'Password changed' });
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
     },
-    onError: (e: any) =>
-      toast({ title: e.response?.data?.message || 'Failed to change password', variant: 'destructive' }),
+    onError: (e: unknown) =>
+      toast({
+        title: e instanceof Error ? e.message : 'Failed to change password',
+        variant: 'destructive',
+      }),
   });
 
   const prefMutation = useMutation({
@@ -183,11 +190,11 @@ export default function ProfilePage() {
                 />
                 <Input
                   type="password"
-                  placeholder="New password (min 8 chars)"
+                  placeholder="New password (min 12 chars)"
                   value={pwForm.newPassword}
                   onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                 />
                 <Input
                   type="password"
