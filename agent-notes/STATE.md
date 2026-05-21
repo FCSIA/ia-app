@@ -3,25 +3,24 @@
 ## Active Focus
 
 - **Agent**: Codex
-- **Focus**: Club UI cleanup, channel notification preferences, announcement archive permissions, and agent docs consolidation.
-- **Status**: In progress on `main`.
+- **Focus**: Convex backend port implementation.
+- **Status**: In progress on `codex/convex-port`.
 
 ## Current Truth
 
-- `AGENTS.md` is the agent-facing workflow guide. Keep `README.md` for humans.
-- Fluid/shadcn primitive drift should be fixed at the component or call-site level; broad lint/build ignores are not acceptable as a long-term fix.
-- Channel notification preferences are moving from boolean mention-only toggles to scoped preference levels for all messages, direct mentions, tag mentions, and thread replies.
-- Club announcement posting should be role-aware: admins and sponsors post directly; student leaders submit for sponsor approval.
-- Theme selection has been relocated from the global navbar to the Profile & Settings page.
+- The Convex port has moved from planning into implementation on the draft PR branch.
+- Convex is configured in `convex/` with a local Better Auth component, generated Convex AI guidance, generated Convex types, and an anonymous local Convex deployment for development.
+- Better Auth is the selected auth provider. Public signup is disabled; `uniqueId` login is modeled through the username plugin; app roles stay in the app `users` table.
+- Initial Convex users/auth slice exists in `convex/auth.ts`, `convex/http.ts`, and `convex/users.ts`: current-user lookup, password change, admin-created users, first-superadmin bootstrap, and temporary-password reset.
+- Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
 
 ## Next Verification
 
-- Run `pnpm db:generate` after Prisma notification schema edits.
-- Run focused API tests for announcements and notifications.
-- Run `pnpm lint` and `pnpm build` before committing.
+- Continue running Convex checks with `CONVEX_AGENT_MODE=anonymous direnv exec . pnpm exec convex dev --once --typecheck enable --codegen enable`.
+- As frontend migration begins, add the Next.js Better Auth/Convex provider and route-handler wiring, then run `pnpm lint` and `pnpm build`.
 
 ## Handoff Notes
 
-- Consult `docs/features/notifications.md` for notification category/preference behavior.
-- Consult `docs/features/clubs.md` for club roles, announcements, channels, and visibility behavior.
-- Use `gh issue view 7` for the channel notification flexibility request.
+- Read `convex/_generated/ai/guidelines.md` before editing Convex code.
+- Better Auth local schema is generated from `convex/betterAuth/auth.ts`; regenerate with `direnv exec . pnpm exec auth generate -y` from `convex/betterAuth` after plugin/config changes that affect schema.
+- `BOOTSTRAP_SECRET` must be set in the Convex deployment before `users.bootstrapFirstSuperAdmin` can create the first admin.
