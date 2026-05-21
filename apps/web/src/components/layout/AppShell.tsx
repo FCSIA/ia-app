@@ -21,11 +21,11 @@ import {
   Search,
   type LucideIcon,
 } from 'lucide-react';
-import type { AppUser } from '@ia/contracts/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { clearAuth, getUser, hasRole } from '@/lib/auth';
-import { authApi, notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
+import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
+import { notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -128,17 +128,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<AppUser | null>(null);
+  const user = useCurrentUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const safePathname = pathname ?? '/dashboard';
-
-  useEffect(() => {
-    setUser(getUser());
-  }, []);
 
   useEffect(() => {
     setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
@@ -193,7 +189,7 @@ export function AppShell({
 
   const handleLogout = async () => {
     try {
-      await authApi.logout();
+      await authClient.signOut();
     } catch { }
     clearAuth();
     queryClient.clear();

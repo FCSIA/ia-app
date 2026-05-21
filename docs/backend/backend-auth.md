@@ -1,5 +1,5 @@
 ---
-tags: [backend, auth, jwt, security]
+tags: [backend, auth, convex, better-auth, security]
 ---
 
 # Authentication & Authorization
@@ -8,210 +8,100 @@ tags: [backend, auth, jwt, security]
 
 ---
 
-## Two Different Concepts
+## Current Model
 
-**Authentication** — "Who are you?" → verifying identity (login with password)
+The Convex port uses **Better Auth backed by Convex** for authentication and the
+app `users` table for school-specific authorization.
 
-**Authorization** — "Are you allowed to do this?" → checking roles/permissions
+Authentication answers "who is signed in?" Better Auth owns the credential,
+session, and password APIs.
 
-This app uses **JWT** for authentication and **role-based guards** for authorization.
-
----
-
-## JWT — JSON Web Token
-
-A JWT is a self-contained signed token. Think of it like a wristband at a concert — it proves you paid without needing to check the ticket desk every time.
-
-### Structure
-
-A JWT has three base64-encoded parts separated by dots:
-```
-eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLWlkIiwidW5pcXVlSWQiOiJTVFUwMDEi...
-─────────────────────.──────────────────────────────────────────────────────
-      HEADER                            PAYLOAD
-```
-
-- **Header** — algorithm used (`HS256`)
-- **Payload** — the data (user id, uniqueId, expiry)
-- **Signature** — proves the token wasn't tampered with (signed with `JWT_SECRET`)
-
-Anyone can decode the payload (it's just base64). But they **cannot forge** a token without knowing `JWT_SECRET`.
+Authorization answers "what can this person do?" Convex functions load the
+linked app user and check its app roles.
 
 ---
 
-## Login Flow
+## Server Files
 
-```typescript
-// auth/auth.service.ts
-async login(uniqueId: string, password: string) {
-  // 1. Find user
-  const user = await this.prisma.user.findUnique({ where: { uniqueId } });
-  if (!user) throw new UnauthorizedException('Invalid credentials');
-
-  // 2. Compare password against stored hash
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-  // 3. Sign a JWT with the user's id and uniqueId
-  const payload = { sub: user.id, uniqueId: user.uniqueId };
-  const token = this.jwtService.sign(payload, { expiresIn: '7d' });
-
-  return { token, user: { ...safeUser, roles: user.roles, role: user.roles[0] ?? null } };
-}
-```
-
-### bcrypt
-
-Passwords are **never stored in plain text**. bcrypt is a one-way hashing function:
-
-```typescript
-// When user is created / password is changed:
-const hash = await bcrypt.hash(plainTextPassword, 12);
-// Stored: "$2b$12$abcdef..." (never the original)
-
-// When logging in:
-const valid = await bcrypt.compare(enteredPassword, storedHash);
-// Returns true or false — original password is never recoverable
-```
-
-The `12` is the "cost factor" — higher means slower to compute, which makes brute-force attacks harder.
+- `convex/auth.ts` configures Better Auth, the username plugin, the admin
+  plugin, and the Convex auth plugin.
+- `convex/http.ts` registers the Better Auth HTTP routes.
+- `convex/auth.config.ts` exposes Better Auth JWT discovery to Convex.
+- `convex/users.ts` owns app-user lookup, admin-created users, password changes,
+  front-office password resets, activation, deactivation, role assignment, and
+  user listing.
+- `convex/lib/currentUser.ts` derives the current app user from the Better Auth
+  auth user. Convex functions must use this instead of accepting a caller
+  supplied user id for authorization.
+- `convex/lib/audit.ts` records audit events for sensitive user-management
+  actions.
 
 ---
 
-## JWT Strategy
+## Account Rules
 
-```typescript
-// auth/strategies/jwt.strategy.ts
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private prisma: PrismaService) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.JWT_SECRET,
-    });
-  }
-
-  async validate(payload: { sub: string; uniqueId: string }) {
-    // Called after token signature is verified
-    // payload.sub = the user's id (stored when token was signed)
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-    });
-    if (!user || !user.isActive) throw new UnauthorizedException();
-    return { ...user, role: user.roles[0] ?? null }; // attached to request.user
-  }
-}
-```
-
-`validate()` is called automatically after the token signature passes. It fetches the full user from the database (so you always have fresh data), keeps the canonical `roles` array, and adds a convenience `role` alias for code paths that still read a primary role.
+- Public signup is disabled.
+- `uniqueId` is the Better Auth username.
+- Admin/import workflows create users and generate temporary passwords.
+- Users created with generated passwords get `mustResetPassword: true`.
+- Front-office/support staff may reset student passwords only.
+- Only super admins may create or modify privileged admin accounts.
+- No legacy Postgres id compatibility is preserved for the Convex port.
 
 ---
 
-## JwtAuthGuard
+## Authorization Pattern
 
-```typescript
-// auth/guards/jwt-auth.guard.ts
-@Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
-    super();
-  }
+Every protected Convex function should derive identity server-side:
 
-  canActivate(context: ExecutionContext) {
-    // Check if route is marked @Public()
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
-
-    // Otherwise require valid JWT
-    return super.canActivate(context);
-  }
-}
+```ts
+const actor = await getCurrentAppUser(ctx);
+requireAnyRole(actor, ['ADMIN', 'SUPER_ADMIN']);
 ```
 
-This guard is registered **globally** — it runs on every single request. The `@Public()` decorator is the escape hatch for routes that don't need auth (like `/auth/login`).
-
-```typescript
-// Marking a route as public:
-@Public()
-@Post('login')
-login(@Body() dto: LoginDto) { ... }
-```
+Do not accept `userId` arguments as proof of the caller. Arguments may identify
+the target of an operation, but the actor must always come from Better Auth via
+Convex.
 
 ---
 
-## RolesGuard
+## User Listing
 
-```typescript
-// auth/guards/roles.guard.ts
-@Injectable()
-export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-
-  canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (!requiredRoles) return true; // no roles required — allow
-
-    const user = context.switchToHttp().getRequest().user;
-    const roles = Array.isArray(user.roles) ? user.roles : user.role ? [user.role] : [];
-    return requiredRoles.some((role) => roles.includes(role));
-  }
-}
-```
-
-Used with the `@Roles()` decorator:
-```typescript
-@Delete(':id')
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
-deleteUser(@Param('id') id: string) { ... }
-```
+Admin user listing uses Convex indexes/search instead of SQL offset pagination.
+The frontend uses cursor pagination from `api.users.list`. The `users` table
+stores role-group booleans and `searchText` to keep common admin filters indexed.
 
 ---
 
-## The Full Auth Pipeline Per Request
+## Audit Logging
 
-```
-Incoming request
-       ↓
-JwtAuthGuard.canActivate()
-  → Is route @Public? Yes → pass through
-  → No → extract Bearer token from Authorization header
-       → verify signature with JWT_SECRET
-       → call JwtStrategy.validate(payload)
-         → fetch user from DB
-         → check user.isActive
-         → attach user to request.user
-       ↓
-RolesGuard.canActivate()
-  → Does route have @Roles()? No → pass through
-  → Yes → check request.user.roles (or fallback request.user.role alias) includes required role
-       ↓
-Controller method runs with @CurrentUser() user
-```
+Sensitive user-management mutations write `auditEvents` rows:
+
+- `user.created`
+- `user.bootstrap_super_admin`
+- `user.password_changed`
+- `user.password_reset`
+- `user.activated`
+- `user.deactivated`
+- `user.roles_assigned`
+
+The app policy is "keep everything; log everything." Future domains should add
+audit events when porting writes that currently have operational or moderation
+impact.
 
 ---
 
-## Token Storage
+## Transitional Note
 
-The web app stores the JWT in `localStorage` under the key `ia_token`. It's persistent across browser sessions. Every Axios request reads it and adds it to the `Authorization` header automatically. See [[frontend-auth]].
-
----
-
-## Sessions
-
-The database has an `AuthSession` model that tracks active sessions. This allows features like "log out everywhere" — when implemented, you can invalidate all tokens for a user by deleting their sessions.
+The old Nest/Postgres JWT backend still exists for domains not yet ported. It is
+not the target auth model. As each domain moves to Convex, remove its DTOs,
+controllers, REST client methods, and localStorage JWT dependency instead of
+preserving compatibility.
 
 ---
 
 ## Related
 
-- [[roles-and-permissions]] — All roles and what they can do
-- [[frontend-auth]] — How the web app stores and uses tokens
-- [[dtos]] — The LoginDto
-- [[data-flow]] — Full login flow traced end-to-end
+- [[frontend-auth]] — Next/React Better Auth wiring
+- [[roles-and-permissions]] — App roles and permissions
+- [[data-flow]] — End-to-end request flow

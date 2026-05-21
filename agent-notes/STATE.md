@@ -11,13 +11,16 @@
 - The Convex port has moved from planning into implementation on the draft PR branch.
 - Convex is configured in `convex/` with a local Better Auth component, generated Convex AI guidance, generated Convex types, and an anonymous local Convex deployment for development.
 - Better Auth is the selected auth provider. Public signup is disabled; `uniqueId` login is modeled through the username plugin; app roles stay in the app `users` table.
-- Initial Convex users/auth slice exists in `convex/auth.ts`, `convex/http.ts`, and `convex/users.ts`: current-user lookup, password change, admin-created users, first-superadmin bootstrap, and temporary-password reset.
+- Initial Convex users/auth slice exists in `convex/auth.ts`, `convex/http.ts`, and `convex/users.ts`: current-user lookup, password change, admin-created users, first-superadmin bootstrap, temporary-password reset, admin user listing, activation/deactivation, and role assignment.
+- Next.js is wired to Better Auth + Convex via `apps/web/src/app/api/auth/[...all]/route.ts`, `apps/web/src/lib/auth-client.ts`, `apps/web/src/lib/convex.ts`, and `ConvexBetterAuthProvider`.
+- Admin user management now reads/writes through Convex cursor pagination. Remaining app domains still use the transitional REST client until they are ported.
+- Convex audit logging exists in `convex/lib/audit.ts` and the `auditEvents` table for sensitive user-management mutations.
 - Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
 
 ## Next Verification
 
 - Continue running Convex checks with `CONVEX_AGENT_MODE=anonymous direnv exec . pnpm exec convex dev --once --typecheck enable --codegen enable`.
-- As frontend migration begins, add the Next.js Better Auth/Convex provider and route-handler wiring, then run `pnpm lint` and `pnpm build`.
+- Keep running `direnv exec . pnpm --filter web build` after frontend changes. It currently passes with pre-existing lint warnings.
 
 ## Handoff Notes
 

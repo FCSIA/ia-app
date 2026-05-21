@@ -13,11 +13,6 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   "http://localhost:3000";
 
-const authBaseUrl =
-  process.env.CONVEX_SITE_URL ??
-  process.env.NEXT_PUBLIC_CONVEX_SITE_URL ??
-  siteUrl;
-
 const supportStaffAc = defaultAc.newRole({
   user: ["get", "set-password"],
   session: [],
@@ -34,7 +29,8 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
-    baseURL: authBaseUrl,
+    baseURL: siteUrl,
+    basePath: "/api/auth",
     trustedOrigins: [siteUrl],
     database: authComponent.adapter(ctx),
     disabledPaths: ["/is-username-available"],

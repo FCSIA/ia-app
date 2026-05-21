@@ -7,11 +7,10 @@ export function UsersTabPanel() {
   const users = useAdminUsers('users');
 
   const pagination =
-    users.usersData?.total ? (
+    users.usersData ? (
       <UsersPaginationControls
         page={users.page}
-        total={users.usersData.total}
-        pageSize={users.usersPageSize}
+        hasNext={!users.usersData.isDone}
         onPrev={() => users.setPage((p) => p - 1)}
         onNext={() => users.setPage((p) => p + 1)}
       />

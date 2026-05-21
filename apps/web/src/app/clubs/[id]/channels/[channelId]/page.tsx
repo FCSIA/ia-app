@@ -254,6 +254,7 @@ function MessageRow({
   onStartEdit,
   onDelete,
   onShowHistory,
+  onReport,
   isEditing,
   isReactionPending,
   isPinPending,

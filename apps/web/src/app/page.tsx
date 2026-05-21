@@ -2,19 +2,16 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getToken } from '@/lib/auth';
+import { useConvexAuth } from 'convex/react';
 
 export default function HomePage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useConvexAuth();
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      router.replace('/dashboard');
-    } else {
-      router.replace('/login');
-    }
-  }, [router]);
+    if (isLoading) return;
+    router.replace(isAuthenticated ? '/dashboard' : '/login');
+  }, [isAuthenticated, isLoading, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

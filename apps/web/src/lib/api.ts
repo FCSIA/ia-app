@@ -154,6 +154,15 @@ export const clubsApi = {
     api.delete(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}`),
   getMessageHistory: (clubId: string, channelId: string, messageId: string) =>
     api.get(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}/history`),
+  reportChannelMessage: (
+    clubId: string,
+    channelId: string,
+    messageId: string,
+    reason: string,
+  ) =>
+    api.post(`/clubs/${clubId}/channels/${channelId}/messages/${messageId}/report`, {
+      reason,
+    }),
   toggleChannelReaction: (
     clubId: string,
     channelId: string,

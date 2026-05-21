@@ -1,5 +1,5 @@
 ---
-tags: [frontend, auth, jwt, localstorage]
+tags: [frontend, auth, convex, better-auth]
 ---
 
 # Frontend Authentication
@@ -8,153 +8,90 @@ tags: [frontend, auth, jwt, localstorage]
 
 ---
 
-## How Auth Works on the Frontend
+## Current Model
 
-After logging in, the backend sends back a JWT token and the user object. The frontend stores both, then attaches the token to every subsequent API request.
+The Convex port uses **Better Auth on Convex** as the identity/session system.
+The browser authenticates through the Next route at `/api/auth/*`, which proxies
+to the Convex HTTP auth routes. Convex queries and mutations receive the Better
+Auth token through `ConvexBetterAuthProvider`.
 
 ```
-Login → receive token + user
-     → store in localStorage
-     → attach token to every API call
-     → read user from localStorage for UI decisions
+Login form
+  → authClient.signIn.username(...)
+  → Better Auth sets the session cookie
+  → ConvexBetterAuthProvider fetches Convex auth tokens
+  → useCurrentUser() reads api.users.me
 ```
+
+The old `ia_token` JWT localStorage key is transitional only. It remains so
+unported REST screens can still be identified and removed deliberately as their
+domains move to Convex. New Convex code must not depend on it.
 
 ---
 
-## The Auth Helpers (`src/lib/auth.ts`)
+## Files
 
-```typescript
-const TOKEN_KEY = 'ia_token';
-const USER_KEY = 'ia_user';
-
-// Store token + user after successful login
-export const setAuth = (token: string, user: any) => {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-};
-
-// Clear everything on logout
-export const clearAuth = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-};
-
-// Read the current token
-export const getToken = (): string | null => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-// Read and parse the current user
-export const getUser = (): any | null => {
-  const raw = localStorage.getItem(USER_KEY);
-  return raw ? JSON.parse(raw) : null;
-};
-
-// Role checks
-export const hasRole = (user: any, ...roles: string[]): boolean =>
-  roles.some((r) => user?.roles?.includes(r));
-
-export const isAdmin = (user: any): boolean =>
-  hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-
-export const isSuperAdmin = (user: any): boolean =>
-  hasRole(user, 'SUPER_ADMIN');
-```
-
----
-
-## localStorage
-
-`localStorage` is a browser API that stores key-value pairs as strings, permanently (until cleared). Data persists across browser sessions — closing and reopening the browser keeps the user logged in.
-
-```typescript
-localStorage.setItem('ia_token', 'eyJhbGc...');   // store
-localStorage.getItem('ia_token');                  // read → "eyJhbGc..."
-localStorage.removeItem('ia_token');               // delete
-```
-
-Since values must be strings, objects are serialized with `JSON.stringify` and parsed back with `JSON.parse`.
+- `apps/web/src/lib/auth-client.ts` creates the Better Auth client with the
+  username and Convex client plugins.
+- `apps/web/src/lib/convex.ts` creates the `ConvexReactClient`.
+- `apps/web/src/app/api/auth/[...all]/route.ts` exposes the Better Auth proxy
+  route for Next.
+- `apps/web/src/app/providers.tsx` wraps the app in `ConvexBetterAuthProvider`.
+- `apps/web/src/lib/auth.ts` exposes role helpers and `useCurrentUser()`.
 
 ---
 
 ## Login Flow
 
+`apps/web/src/app/login/page.tsx` signs in with the school `uniqueId` as the
+Better Auth username:
+
 ```tsx
-// app/login/page.tsx
-const loginMutation = useMutation({
-  mutationFn: ({ uniqueId, password }: any) =>
-    authApi.login(uniqueId, password).then(r => r.data),
-  onSuccess: (data) => {
-    setAuth(data.token, data.user); // store token + user
-    router.push('/dashboard');              // redirect
-  },
-  onError: () => toast.error('Invalid credentials'),
+await authClient.signIn.username({
+  username: uniqueId.trim().toUpperCase(),
+  password,
 });
 ```
 
----
-
-## Logout Flow
-
-```tsx
-// In AppShell.tsx
-const handleSignOut = async () => {
-  try {
-    await authApi.logout(); // tell backend to invalidate session
-  } catch {}
-  clearAuth();              // clear localStorage
-  router.push('/login');    // redirect
-};
-```
+Students and staff do not self-register. Admin/front-office workflows create
+accounts and issue temporary passwords. The first successful password change
+clears `mustResetPassword`.
 
 ---
 
-## Using the Logged-in User
+## Logged-In User
+
+Use `useCurrentUser()` for UI decisions:
 
 ```tsx
-import { getUser, hasRole } from '@/lib/auth';
+const user = useCurrentUser();
 
-export default function SomePage() {
-  const user = getUser(); // read from localStorage
-
-  return (
-    <div>
-      <p>Hello, {user?.firstName}</p>
-
-      {/* Conditional rendering based on role */}
-      {hasRole(user, 'ADMIN', 'SUPER_ADMIN') && (
-        <AdminPanel />
-      )}
-    </div>
-  );
+if (hasRole(user, 'ADMIN', 'SUPER_ADMIN')) {
+  // show admin UI
 }
 ```
 
-`user?.firstName` uses optional chaining — if `user` is null (not logged in), it returns `undefined` instead of throwing an error.
+`useCurrentUser()` reads `api.users.me` from Convex and caches the public user in
+`ia_user` only as a temporary compatibility layer for old synchronous UI code.
 
 ---
 
-## Token Expiry
+## Required Environment
 
-JWTs have an expiry (`7d` = 7 days in this app). When a token expires:
-1. The next API call returns `401 Unauthorized`
-2. The Axios response interceptor catches it
-3. `localStorage` is cleared
-4. User is redirected to `/login`
+For local development:
 
----
+```bash
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
+NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
 
-## Security Note
-
-Storing JWTs in `localStorage` is common but has trade-offs:
-- **Accessible to JavaScript** — vulnerable to XSS if malicious scripts run on the page
-- **Alternative**: `httpOnly` cookies (not accessible to JS, but requires CSRF protection)
-
-For a school app, `localStorage` is an acceptable choice.
+Alpha cloud deploys must set the Convex Cloud equivalents. Missing Convex envs
+should fail CI/deploy builds; local builds fall back to the local Convex URLs.
 
 ---
 
 ## Related
 
-- [[backend-auth]] — How the backend signs and validates tokens
-- [[api-layer]] — The Axios interceptor that attaches the token
+- [[backend-auth]] — Better Auth and Convex server-side auth
+- [[api-layer]] — Transitional REST client that still attaches `ia_token`

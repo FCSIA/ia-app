@@ -1,24 +1,27 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { usersApi } from '@/lib/api';
+import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '../../../../../../convex/_generated/api';
+import type { Id } from '../../../../../../convex/_generated/dataModel';
 import { getDynamicUsersPageSize, getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
+import type { AppRole } from '@ia/contracts/auth';
 
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const qc = useQueryClient();
   const viewportRef = useRef<HTMLDivElement | null>(null);
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageCursors, setPageCursors] = useState<Array<string | null>>([null]);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [usersPageSize, setUsersPageSize] = useState(10);
+  const [isUserMutationPending, setIsUserMutationPending] = useState(false);
 
   const canDeactivate = (targetUser: AdminUserRecord) => {
     if (!user) return false;
@@ -60,61 +63,51 @@ export function useAdminUsers(activeTab: AdminTabId) {
     };
   }, [activeTab]);
 
-  const {
-    data: usersData,
-    isLoading: isUsersLoading,
-    isError: isUsersError,
-    error: usersError,
-    refetch: refetchUsers,
-  } = useQuery({
-    queryKey: ['admin-users', page, search, userRoleGroup, usersPageSize],
-    queryFn: () =>
-      usersApi
-        .getAll(
-          page,
-          usersPageSize,
-          search || undefined,
-          userRoleGroup === 'all' ? undefined : userRoleGroup,
-        )
-        .then((r) => r.data),
-    enabled: activeTab === 'users',
-  });
-
   useEffect(() => {
-    const totalPages = usersData?.total ? Math.max(1, Math.ceil(usersData.total / usersPageSize)) : 1;
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, usersData?.total, usersPageSize]);
+    setPage(1);
+    setPageCursors([null]);
+  }, [search, userRoleGroup, usersPageSize]);
 
-  const deactivateMutation = useMutation({
-    mutationFn: (id: string) => usersApi.deactivate(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-      toast({ title: 'Deactivated' });
-    },
-  });
+  const usersPage = useConvexQuery(
+    api.users.list,
+    activeTab === 'users'
+      ? {
+          paginationOpts: {
+            numItems: usersPageSize,
+            cursor: pageCursors[page - 1] ?? null,
+          },
+          search: search || undefined,
+          roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
+        }
+      : 'skip',
+  );
 
-  const activateMutation = useMutation({
-    mutationFn: (id: string) => usersApi.activate(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-      toast({ title: 'Activated' });
-    },
-  });
+  const deactivateUser = useConvexMutation(api.users.deactivate);
+  const activateUser = useConvexMutation(api.users.activate);
+  const assignRoles = useConvexMutation(api.users.assignRoles);
 
-  const assignRolesMutation = useMutation({
-    mutationFn: ({ id, roles }: { id: string; roles: string[] }) => usersApi.assignRoles(id, roles),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-      toast({ title: 'Permissions updated' });
-    },
-    onError: (e: unknown) =>
+  const runUserMutation = async (action: () => Promise<unknown>, successTitle: string) => {
+    try {
+      setIsUserMutationPending(true);
+      await action();
+      toast({ title: successTitle });
+    } catch (e: unknown) {
       toast({
-        title: (e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update permissions',
+        title: e instanceof Error ? e.message : 'Request failed',
         variant: 'destructive',
-      }),
-  });
+      });
+    } finally {
+      setIsUserMutationPending(false);
+    }
+  };
+
+  const usersData = usersPage
+    ? {
+        users: usersPage.page as AdminUserRecord[],
+        isDone: usersPage.isDone,
+        continueCursor: usersPage.continueCursor,
+      }
+    : undefined;
 
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
@@ -123,29 +116,55 @@ export function useAdminUsers(activeTab: AdminTabId) {
     search,
     setSearch: (value: string) => {
       setSearch(value);
-      setPage(1);
     },
     page,
-    setPage,
+    setPage: (updater: (page: number) => number) => {
+      setPage((current) => {
+        const next = Math.max(1, updater(current));
+        if (next > current && usersData?.continueCursor) {
+          setPageCursors((currentCursors) => {
+            const copy = [...currentCursors];
+            copy[current] = usersData.continueCursor;
+            return copy;
+          });
+        }
+        return next;
+      });
+    },
     userRoleGroup,
     setUserRoleGroup: (value: AdminUserRoleGroup) => {
       setUserRoleGroup(value);
-      setPage(1);
     },
     usersPageSize,
     viewportRef,
     usersData,
-    isUsersLoading,
-    isUsersError,
-    usersError,
-    refetchUsers,
+    isUsersLoading: activeTab === 'users' && usersPage === undefined,
+    isUsersError: false,
+    usersError: null,
+    refetchUsers: () => undefined,
     selectedUserRoleMeta,
     currentUserId: user?.id,
     canDeactivate,
-    onDeactivate: (userId: string) => deactivateMutation.mutate(userId),
-    onActivate: (userId: string) => activateMutation.mutate(userId),
+    onDeactivate: (userId: string) =>
+      void runUserMutation(
+        () => deactivateUser({ userId: userId as Id<'users'> }),
+        'Deactivated',
+      ),
+    onActivate: (userId: string) =>
+      void runUserMutation(
+        () => activateUser({ userId: userId as Id<'users'> }),
+        'Activated',
+      ),
     isSuperAdmin,
-    isAssignRolesPending: assignRolesMutation.isPending,
-    onAssignRoles: (payload: { id: string; roles: string[] }) => assignRolesMutation.mutate(payload),
+    isAssignRolesPending: isUserMutationPending,
+    onAssignRoles: (payload: { id: string; roles: string[] }) =>
+      void runUserMutation(
+        () =>
+          assignRoles({
+            userId: payload.id as Id<'users'>,
+            roles: payload.roles as AppRole[],
+          }),
+        'Permissions updated',
+      ),
   };
 }

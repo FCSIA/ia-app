@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as lib_audit from "../lib/audit.js";
 import type * as lib_currentUser from "../lib/currentUser.js";
 import type * as lib_roles from "../lib/roles.js";
 import type * as users from "../users.js";
@@ -24,6 +25,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   http: typeof http;
+  "lib/audit": typeof lib_audit;
   "lib/currentUser": typeof lib_currentUser;
   "lib/roles": typeof lib_roles;
   users: typeof users;

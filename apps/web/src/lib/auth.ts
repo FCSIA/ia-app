@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useConvexAuth, useQuery } from 'convex/react';
 import type { AppRole, AppUser } from '@ia/contracts/auth';
+import { api } from '../../../../convex/_generated/api';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
+  // Transitional only: old REST screens still read this until their domains move
+  // to Convex. Better Auth sessions are cookie-based and do not use this token.
   return localStorage.getItem('ia_token');
 }
 
@@ -22,6 +26,15 @@ export function getUser(): AppUser | null {
 export function setAuth(token: string, user: AppUser) {
   localStorage.setItem('ia_token', token);
   localStorage.setItem('ia_user', JSON.stringify(user));
+}
+
+export function cacheUser(user: AppUser | null) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem('ia_user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('ia_user');
+  }
 }
 
 export function clearAuth() {
@@ -43,9 +56,23 @@ export function isSuperAdmin(user: AppUser | null): boolean {
 }
 
 export function useCurrentUser(): AppUser | null {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const user = useQuery(api.users.me, isAuthenticated ? {} : 'skip') as AppUser | null | undefined;
+  const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
+
   useEffect(() => {
-    setUser(getUser());
+    setCachedUser(getUser());
   }, []);
-  return user;
+
+  useEffect(() => {
+    if (user) {
+      cacheUser(user);
+      setCachedUser(user);
+    } else if (!isLoading && !isAuthenticated) {
+      cacheUser(null);
+      setCachedUser(null);
+    }
+  }, [isAuthenticated, isLoading, user]);
+
+  return user ?? cachedUser;
 }
