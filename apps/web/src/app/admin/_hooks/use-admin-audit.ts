@@ -2,12 +2,12 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
-import type { AuditActorScope, AuditEventDetail, AuditEventRecord } from '../_lib/types';
+import type { AuditActorScope } from '../_lib/types';
 
 const FLEX_ENTITY_TYPES = [
   'FlexFriday',
@@ -58,10 +58,10 @@ export function useAdminAudit(activeTab: AdminTabId) {
   );
 
   const auditEvents =
-    (useConvexQuery(
+    (useQuery(
       api.audit.list,
       activeTab === 'audit' ? auditQueryParams : 'skip',
-    ) as AuditEventRecord[] | undefined) ?? [];
+    )) ?? [];
   const isAuditLoading = activeTab === 'audit' && auditEvents.length === 0;
 
   const displayedAuditEvents = useMemo(() => {
@@ -72,17 +72,17 @@ export function useAdminAudit(activeTab: AdminTabId) {
   }, [auditEvents, auditSubView]);
 
   const auditFilterSource =
-    (useConvexQuery(
+    (useQuery(
       api.audit.list,
       activeTab === 'audit' ? { limit: 500 } : 'skip',
-    ) as AuditEventRecord[] | undefined) ?? [];
+    )) ?? [];
 
-  const auditEventDetail = useConvexQuery(
+  const auditEventDetail = useQuery(
     api.audit.getOne,
     selectedAuditEventId
       ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
       : 'skip',
-  ) as AuditEventDetail | null | undefined;
+  );
   const isAuditDetailLoading = !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(

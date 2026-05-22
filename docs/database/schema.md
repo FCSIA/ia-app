@@ -109,6 +109,12 @@ Key points:
 ### Course
 Represents an academic course offered at the school.
 
+During the Convex port, the active course-catalog model is
+`apps/convex/src/schema.ts` table `courses`. It uses native Convex `_id`
+values, a `by_slug` index, department/pathway indexes, and a `search_courses`
+search index. The Prisma model below is legacy reference only while the old API
+is being deleted.
+
 ```prisma
 model Course {
   id                String              @id @default(cuid())
@@ -666,4 +672,3 @@ model AuditEvent {
 - [[migrations]] — How the schema was applied
 - [[seed]] — Current seeding statistics and demo data
 - [[roles-and-permissions]] — Role-based access control rules
-

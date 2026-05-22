@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 
 export const appRoleValidator = v.union(
   v.literal("STUDENT"),
@@ -16,6 +16,23 @@ export const pathwayValidator = v.union(
   v.literal("HEALTH_SCIENCE"),
   v.literal("ENGINEERING"),
 );
+
+export type Pathway = Infer<typeof pathwayValidator>;
+
+export const courseCatalogSourceValidator = v.union(
+  v.literal("COURSE_CATALOG"),
+  v.literal("AP_CATALOG"),
+  v.literal("MERGED"),
+);
+
+export type CourseCatalogSource = Infer<typeof courseCatalogSourceValidator>;
+
+export const courseTermValidator = v.union(
+  v.literal("YEAR"),
+  v.literal("SEMESTER"),
+);
+
+export type CourseTerm = Infer<typeof courseTermValidator>;
 
 export const notificationCategoryValidator = v.union(
   v.literal("SCHOOL_ANNOUNCEMENT"),

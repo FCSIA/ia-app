@@ -67,7 +67,7 @@ When the seed script completes, the following environment is created:
 ## What Gets Created
 
 ### Academic Data
-- **103 Courses**: Imported from `seed-data/courses.ts`.
+- **103 Courses**: Ported to Convex fixtures in `apps/convex/seed-data/courses.ts` and loaded through `api.courses.seedFromStaticData`.
 - **Schedules**: Every student has a full 5-day schedule (8 periods/day) mapped to valid courses for their grade level and pathway.
 - **Friendships**: A pool of students are pre-linked as friends to test schedule comparison features.
 
@@ -91,4 +91,3 @@ When the seed script completes, the following environment is created:
 - [[migrations]] — Setting up the structure before seeding
 - [[schema]] — The models being populated
 - [[roles-and-permissions]] — What each seeded role can do
-

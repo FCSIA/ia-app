@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import type { CourseSummary } from '@ia/contracts/courses';
-import { Lock, PencilLine } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 import { CoursePicker } from '@/components/courses/course-picker';
+import type { CourseSummary } from '@/components/courses/types';
 import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
 import { SchoolDayBlock, ScheduleWeekday, StudentScheduleEntry } from './types';
 

@@ -24,6 +24,17 @@ Prisma, PostgreSQL, local-upload architecture to Convex.
   delete Nest DTOs, Axios response types, and Prisma-shaped transport types.
   Keep only genuinely shared product enums or pure cross-app logic that still
   earns its place after generated Convex API types exist.
+- Convex-generated types are the source of truth for ported frontend reads and
+  writes. Do not cast Convex hook results to old DTOs. Use the inferred hook
+  result directly, or derive local component types with
+  `FunctionReturnType<typeof api.domain.function>` when a prop type is needed.
+- Import Convex React hooks by their real names: `useQuery`, `useMutation`,
+  `useAction`, etc. If a file still uses TanStack Query for unported REST
+  calls, alias TanStack instead (`useQuery as useRestQuery`) so Convex code
+  reads like Convex docs and generated types remain obvious.
+- Do not add narrow aliases for `apps/convex`. Use the repo-root `~/*` alias
+  for cross-app imports during the transition, and prefer generated Convex
+  function references/types over hand-maintained package contracts.
 - Keep `docs/` synchronized with the port. Any accepted Convex phase that
   changes architecture, data shape, auth, frontend API flow, storage, or feature
   behavior must update the matching docs in the same change. Do not leave

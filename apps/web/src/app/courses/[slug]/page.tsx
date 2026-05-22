@@ -2,15 +2,14 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import type { CourseDetail } from '@ia/contracts/courses';
+import { useQuery } from 'convex/react';
 import { ArrowLeft, BookOpen, GraduationCap, LibraryBig } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
 import { CourseMeta, formatCourseNumbers } from '@/components/courses/course-meta';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { coursesApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 
 export default function CourseDetailPage({
   params,
@@ -18,11 +17,9 @@ export default function CourseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const { data: course, isLoading } = useQuery<CourseDetail>({
-    queryKey: ['course', slug],
-    queryFn: () => coursesApi.getOne(slug).then((response) => response.data),
-    staleTime: 60_000,
-  });
+  const courseQuery = useQuery(api.courses.getOne, { slug });
+  const course = courseQuery;
+  const isLoading = courseQuery === undefined;
 
   if (!isLoading && !course) {
     return (

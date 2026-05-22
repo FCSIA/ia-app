@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
+import { useMutation as useRestMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -105,8 +105,8 @@ export function ChannelNotificationSettings({
   channelId,
   channelName,
 }: ChannelNotificationSettingsProps) {
-  const upsertPreference = useConvexMutation(api.notifications.upsertPreference);
-  const preferences = useConvexQuery(api.notifications.preferences) ?? [];
+  const upsertPreference = useMutation(api.notifications.upsertPreference);
+  const preferences = useQuery(api.notifications.preferences) ?? [];
 
   const messagePreference = scopePreference(preferences, MESSAGE_CATEGORY, channelId);
   const messageLevel: PreferenceLevel = messagePreference?.enabled
@@ -120,7 +120,7 @@ export function ChannelNotificationSettings({
     return 'Mentions';
   }, [messageLevel]);
 
-  const mutation = useMutation({
+  const mutation = useRestMutation({
     mutationFn: ({
       category,
       level,

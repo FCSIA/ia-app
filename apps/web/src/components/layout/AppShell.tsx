@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
@@ -158,7 +158,7 @@ export function AppShell({
     setMobileOpen(false);
   }, [safePathname]);
 
-  const unreadData = useConvexQuery(api.notifications.unreadCount);
+  const unreadData = useQuery(api.notifications.unreadCount);
 
   const handlePrefetch = (href: string) => {
     switch (href) {

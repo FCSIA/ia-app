@@ -2,8 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import type { CourseSummary } from '@ia/contracts/courses';
+import { useQuery } from 'convex/react';
 import { BookOpen, Search, SlidersHorizontal } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
@@ -18,6 +17,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
+import type { CourseSummary } from '@/components/courses/types';
 import {
   Select,
   SelectContent,
@@ -25,7 +25,7 @@ import {
   SelectTrigger,
 } from '@/components/ui/select';
 import { useCurrentUser } from '@/lib/auth';
-import { coursesApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 
 function pathwayLabel(pathway?: CourseSummary['pathway']) {
   if (!pathway) return 'All pathways';
@@ -34,19 +34,27 @@ function pathwayLabel(pathway?: CourseSummary['pathway']) {
   return 'Engineering';
 }
 
+type CoursePathway = NonNullable<CourseSummary['pathway']>;
+
+function isCoursePathway(value: string): value is CoursePathway {
+  return (
+    value === 'ENGINEERING' ||
+    value === 'INFORMATION_TECHNOLOGY' ||
+    value === 'HEALTH_SCIENCE'
+  );
+}
+
 export default function CoursesPage() {
   const user = useCurrentUser();
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('ALL');
-  const [pathway, setPathway] = useState('ALL');
+  const [pathway, setPathway] = useState<CoursePathway | 'ALL'>('ALL');
   const [grade, setGrade] = useState('ALL');
   const deferredSearch = useDeferredValue(search);
 
-  const { data: courses = [], isLoading } = useQuery<CourseSummary[]>({
-    queryKey: ['courses-catalog'],
-    queryFn: () => coursesApi.list({ limit: 200 }).then((response) => response.data),
-    staleTime: 60_000,
-  });
+  const coursesQuery = useQuery(api.courses.list, { limit: 200 });
+  const courses = coursesQuery ?? [];
+  const isLoading = coursesQuery === undefined;
 
   const departments = useMemo(
     () => Array.from(new Set(courses.map((course) => course.department))).sort(),
@@ -139,7 +147,10 @@ export default function CoursesPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={pathway} onValueChange={setPathway}>
+            <Select
+              value={pathway}
+              onValueChange={(value) => setPathway(isCoursePathway(value) ? value : 'ALL')}
+            >
               <SelectTrigger className="rounded-2xl" placeholder="Pathway" />
               <SelectContent>
                 <SelectItem index={0} value="ALL">All pathways</SelectItem>
@@ -172,7 +183,7 @@ export default function CoursesPage() {
           action={
             <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
               <SlidersHorizontal className="size-3.5" />
-              {pathwayLabel(pathway === 'ALL' ? undefined : (pathway as CourseSummary['pathway']))}
+              {pathwayLabel(pathway === 'ALL' ? undefined : pathway)}
             </div>
           }
         >

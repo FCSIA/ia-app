@@ -3,8 +3,8 @@
 import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CourseSummary } from '@ia/contracts/courses';
+import { useMutation, useQuery as useRestQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import {
   BookOpen,
   Clock3,
@@ -21,6 +21,7 @@ import { PageFrame } from '@/components/layout/page-frame';
 import { FriendScheduleCard } from '@/components/schedule/friend-schedule-card';
 import { ScheduleDayEditor } from '@/components/schedule/schedule-day-editor';
 import { SchoolDayBlockFormCard } from '@/components/schedule/school-day-block-form-card';
+import type { CourseSummary } from '@/components/courses/types';
 import {
   ScheduleDashboardResponse,
   ScheduleSearchResult,
@@ -42,8 +43,9 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { hasRole, useCurrentUser } from '@/lib/auth';
-import { coursesApi, scheduleApi } from '@/lib/api';
+import { scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '~/apps/convex/src/_generated/api';
 
 function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
   return {
@@ -109,15 +111,11 @@ function SchedulePageContent() {
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<ScheduleDashboardResponse>({
+  const { data, isLoading } = useRestQuery<ScheduleDashboardResponse>({
     queryKey: ['schedule-dashboard'],
     queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
   });
-  const { data: courses = [] } = useQuery<CourseSummary[]>({
-    queryKey: ['courses', 'all'],
-    queryFn: () => coursesApi.list({ limit: 200 }).then((response) => response.data),
-    staleTime: 60_000,
-  });
+  const courses = useQuery(api.courses.list, { limit: 200 }) ?? [];
 
   useEffect(() => {
     setScheduleEntries(data?.mySchedule?.entries ?? []);
@@ -135,7 +133,7 @@ function SchedulePageContent() {
     incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedTab, requestedSection, data?.incomingRequests?.length]);
 
-  const { data: searchResults = [], isFetching: isSearching } = useQuery<ScheduleSearchResult[]>({
+  const { data: searchResults = [], isFetching: isSearching } = useRestQuery<ScheduleSearchResult[]>({
     queryKey: ['schedule-search', normalizedDeferredSearch],
     queryFn: () =>
       scheduleApi.searchPeople(normalizedDeferredSearch).then((response) => response.data),

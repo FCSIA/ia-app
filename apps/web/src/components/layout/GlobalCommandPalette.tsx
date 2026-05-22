@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { useQuery as useConvexQuery } from 'convex/react';
+import { useQuery as useRestQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import {
   Bell,
   BookOpen,
@@ -22,17 +22,15 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import type { AppUser } from '@ia/contracts/auth';
 import {
   announcementsApi,
   clubsApi,
-  coursesApi,
   eventsApi,
   flexFridayApi,
   scheduleApi,
 } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
-import { hasRole } from '@/lib/auth';
+import { hasRole, type AppUser } from '@/lib/auth';
 import {
   CommandDialog,
   CommandEmpty,
@@ -104,41 +102,38 @@ export function GlobalCommandPalette({
   const shouldLoad = open && !!user;
   const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
-  const { data: announcements = [] } = useQuery<any[]>({
+  const { data: announcements = [] } = useRestQuery<any[]>({
     queryKey: ['command-announcements'],
     queryFn: () => announcementsApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: clubs = [] } = useQuery<any[]>({
+  const { data: clubs = [] } = useRestQuery<any[]>({
     queryKey: ['command-clubs'],
     queryFn: () => clubsApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: myClubs } = useQuery<any>({
+  const { data: myClubs } = useRestQuery<any>({
     queryKey: ['command-my-clubs'],
     queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: events = [] } = useQuery<any[]>({
+  const { data: events = [] } = useRestQuery<any[]>({
     queryKey: ['command-events'],
     queryFn: () => eventsApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: courses = [] } = useQuery<any[]>({
-    queryKey: ['command-courses'],
-    queryFn: () => coursesApi.list({ limit: 40 }).then((response) => response.data),
-    enabled: shouldLoad,
-  });
-  const notifications = useConvexQuery(
+  const courses =
+    useQuery(api.courses.list, shouldLoad ? { limit: 40 } : 'skip') ?? [];
+  const notifications = useQuery(
     api.notifications.list,
     shouldLoad ? { unreadOnly: true, limit: 20 } : 'skip',
   ) ?? [];
-  const { data: flexFridays = [] } = useQuery<any[]>({
+  const { data: flexFridays = [] } = useRestQuery<any[]>({
     queryKey: ['command-flex-friday'],
     queryFn: () => flexFridayApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: schedule } = useQuery<any>({
+  const { data: schedule } = useRestQuery<any>({
     queryKey: ['command-schedule'],
     queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
     enabled: shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN'),
@@ -228,7 +223,7 @@ export function GlobalCommandPalette({
       detail: [course.department, course.pathway?.replace(/_/g, ' ')].filter(Boolean).join(' · ') || 'Course',
       href: `/courses/${course.slug}`,
       Icon: BookOpen,
-      keywords: ['course', course.department, course.courseNumbers?.join(' '), course.summary],
+      keywords: ['course', course.department, course.courseNumbers?.join(' ')],
     }));
 
     const notificationActions: CommandAction[] = notifications.slice(0, 15).map((notification) => ({

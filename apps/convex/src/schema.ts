@@ -2,6 +2,8 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
   appRoleValidator,
+  courseCatalogSourceValidator,
+  courseTermValidator,
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
   pathwayValidator,
@@ -119,4 +121,37 @@ export default defineSchema({
     "category",
     "scopeKey",
   ]),
+
+  courses: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    courseNumbers: v.array(v.string()),
+    department: v.string(),
+    pathway: v.optional(pathwayValidator),
+    catalogSource: courseCatalogSourceValidator,
+    term: v.optional(courseTermValidator),
+    gradeText: v.optional(v.string()),
+    minGrade: v.optional(v.number()),
+    maxGrade: v.optional(v.number()),
+    prerequisitesText: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    majorTopics: v.optional(v.string()),
+    essentialSkills: v.optional(v.string()),
+    studentWorkload: v.optional(v.string()),
+    teacherWorkload: v.optional(v.string()),
+    searchText: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_department_and_title", ["department", "title"])
+    .index("by_pathway_and_minGrade_and_maxGrade", [
+      "pathway",
+      "minGrade",
+      "maxGrade",
+    ])
+    .searchIndex("search_courses", {
+      searchField: "searchText",
+      filterFields: ["department", "pathway"],
+    }),
 });

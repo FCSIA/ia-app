@@ -1,8 +1,8 @@
 'use client';
 
-import type { CourseSummary } from '@ia/contracts/courses';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { CourseSummary } from './types';
 
 function formatPathway(pathway?: CourseSummary['pathway']) {
   if (!pathway) return null;

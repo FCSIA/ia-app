@@ -3,8 +3,8 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query';
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
+import { useMutation as useRestMutation, useQueries, useQuery as useRestQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { clubsApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -38,16 +38,16 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const markAllRead = useConvexMutation(api.notifications.markAllRead);
-  const markRead = useConvexMutation(api.notifications.markRead);
+  const markAllRead = useMutation(api.notifications.markAllRead);
+  const markRead = useMutation(api.notifications.markRead);
 
-  const notificationsQuery = useConvexQuery(api.notifications.list, {});
+  const notificationsQuery = useQuery(api.notifications.list, {});
   const notifications = notificationsQuery ?? [];
   const isLoading = notificationsQuery === undefined;
 
-  const preferences = useConvexQuery(api.notifications.preferences) ?? [];
+  const preferences = useQuery(api.notifications.preferences) ?? [];
 
-  const { data: myClubs } = useQuery<any>({
+  const { data: myClubs } = useRestQuery<any>({
     queryKey: ['my-clubs'],
     queryFn: () => clubsApi.getMyClubs().then((r) => r.data),
   });
@@ -81,7 +81,7 @@ export default function NotificationsPage() {
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
     if (!query) return notifications;
-    return (notifications as any[]).filter((n) => {
+    return notifications.filter((n) => {
       const searchable = [n.title, n.body, n.category]
         .filter(Boolean)
         .join(' ')
@@ -90,14 +90,14 @@ export default function NotificationsPage() {
     });
   }, [notifications, deferredSearch]);
 
-  const markAllMutation = useMutation({
+  const markAllMutation = useRestMutation({
     mutationFn: () => markAllRead(),
     onSuccess: () => {
       toast({ title: 'All marked as read' });
     },
   });
 
-  const markReadMutation = useMutation({
+  const markReadMutation = useRestMutation({
     mutationFn: (id: string) =>
       markRead({ ids: [id as Id<'notificationDeliveries'>] }),
   });
@@ -123,7 +123,7 @@ export default function NotificationsPage() {
     if (href) router.push(href);
   }
 
-  const hasUnread = (notifications as any[]).some((n: any) => !n.isRead);
+  const hasUnread = notifications.some((n) => !n.isRead);
 
   return (
     <AppShell>

@@ -18,6 +18,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 
 ### Backend (API)
 - [[backend-overview]] — NestJS, Node.js, and how the server works
+- [[convex]] — Convex backend app layout, commands, and generated types
 - [[modules]] — The NestJS module system
 - [[controllers]] — HTTP endpoints and routing
 - [[services]] — Business logic layer
@@ -99,7 +100,8 @@ pnpm db:generate && pnpm db:migrate && pnpm db:seed
 ```
 ia-app/
 ├── apps/
-│   ├── api/        → NestJS backend (port 3001)
+│   ├── api/        → Legacy NestJS backend during the Convex port
+│   ├── convex/     → Convex backend app
 │   └── web/        → Next.js web app (port 3000)
 ├── docs/           → This documentation vault
 ├── infra/          → Docker / infrastructure config

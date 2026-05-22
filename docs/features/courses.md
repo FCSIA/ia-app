@@ -13,7 +13,9 @@ tags: [feature, courses, academics]
 The Course feature provides a centralized, searchable catalog of every academic class offered at the school. It replaces the disparate PDF course catalogs and integrates directly into the student schedule builder.
 
 **Files:**
-- Backend: `apps/api/src/courses/`
+- Legacy Backend: `apps/api/src/courses/`
+- Convex: `apps/convex/src/courses.ts`
+- Seed fixtures: `apps/convex/seed-data/courses.ts`
 - Web: `apps/web/src/app/courses/`
 - Database: [[schema#Course]]
 
@@ -41,10 +43,14 @@ Key fields on the `Course` model:
 
 ## Searching and Filtering
 
-The `CoursesService` provides a high-performance fuzzy search and filtering engine:
+The Convex `courses` functions provide the active course-catalog read path:
 - **Search**: Matches against title, department, slug, and course numbers.
 - **Grade Filtering**: Automatically hides courses the student is ineligible for.
 - **Pathway Filtering**: Allows students to see what specific classes fulfill their diploma requirements.
+
+For the current seeded catalog size, Convex reads a bounded candidate set and
+filters in TypeScript. Before importing a much larger real catalog, move search
+to `search_courses` and keep department/pathway filters indexed.
 
 ---
 
@@ -52,8 +58,9 @@ The `CoursesService` provides a high-performance fuzzy search and filtering engi
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/courses` | List courses with fuzzy search and filters |
-| GET | `/courses/:slug` | Detailed course profile |
+| Convex | `api.courses.list` | List courses with search and filters |
+| Convex | `api.courses.getOne` | Detailed course profile by slug |
+| Convex | `api.courses.seedFromStaticData` | Seed/reset the Convex course catalog from app fixtures |
 
 ---
 

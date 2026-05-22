@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
-import { useMutation } from '@tanstack/react-query';
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
+import { useMutation as useRestMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
@@ -25,15 +25,15 @@ export default function ProfilePage() {
   useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
-  const changePassword = useConvexMutation(api.users.changePassword);
-  const upsertPreference = useConvexMutation(api.notifications.upsertPreference);
+  const changePassword = useMutation(api.users.changePassword);
+  const upsertPreference = useMutation(api.notifications.upsertPreference);
 
-  const prefs = useConvexQuery(api.notifications.preferences) ?? [];
-  const moderationAlerts = (useConvexQuery(api.notifications.list, { unreadOnly: true }) ?? [])
+  const prefs = useQuery(api.notifications.preferences) ?? [];
+  const moderationAlerts = (useQuery(api.notifications.list, { unreadOnly: true }) ?? [])
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
 
-  const changePwMutation = useMutation({
+  const changePwMutation = useRestMutation({
     mutationFn: (d: { currentPassword: string; newPassword: string }) =>
       changePassword(d),
     onSuccess: () => {
@@ -48,13 +48,13 @@ export default function ProfilePage() {
       }),
   });
 
-  const prefMutation = useMutation({
+  const prefMutation = useRestMutation({
     mutationFn: ({ category, enabled }: { category: any; enabled: boolean }) =>
       upsertPreference({ category, enabled }),
   });
 
   const prefMap = Object.fromEntries(
-    (prefs as any[]).map((p: any) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
+    prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
   );
 
   const categories = [
@@ -286,10 +286,10 @@ export default function ProfilePage() {
             <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
-            {(moderationAlerts as any[]).length === 0 ? (
+            {moderationAlerts.length === 0 ? (
               <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
             ) : (
-              (moderationAlerts as any[]).map((alert) => (
+              moderationAlerts.map((alert) => (
                 <div key={alert.id} className="rounded-md border p-3">
                   <p className="text-sm font-medium">{alert.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{alert.body}</p>

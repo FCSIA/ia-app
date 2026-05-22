@@ -10,8 +10,10 @@
 
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
+import type * as courses from "../courses.js";
 import type * as http from "../http.js";
 import type * as lib_audit from "../lib/audit.js";
+import type * as lib_courses from "../lib/courses.js";
 import type * as lib_currentUser from "../lib/currentUser.js";
 import type * as lib_roles from "../lib/roles.js";
 import type * as notifications from "../notifications.js";
@@ -27,8 +29,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   auth: typeof auth;
+  courses: typeof courses;
   http: typeof http;
   "lib/audit": typeof lib_audit;
+  "lib/courses": typeof lib_courses;
   "lib/currentUser": typeof lib_currentUser;
   "lib/roles": typeof lib_roles;
   notifications: typeof notifications;

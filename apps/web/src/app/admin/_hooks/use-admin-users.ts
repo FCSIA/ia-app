@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -68,7 +68,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
     setPageCursors([null]);
   }, [search, userRoleGroup, usersPageSize]);
 
-  const usersPage = useConvexQuery(
+  const usersPage = useQuery(
     api.users.list,
     activeTab === 'users'
       ? {
@@ -82,9 +82,9 @@ export function useAdminUsers(activeTab: AdminTabId) {
       : 'skip',
   );
 
-  const deactivateUser = useConvexMutation(api.users.deactivate);
-  const activateUser = useConvexMutation(api.users.activate);
-  const assignRoles = useConvexMutation(api.users.assignRoles);
+  const deactivateUser = useMutation(api.users.deactivate);
+  const activateUser = useMutation(api.users.activate);
+  const assignRoles = useMutation(api.users.assignRoles);
 
   const runUserMutation = async (action: () => Promise<unknown>, successTitle: string) => {
     try {
@@ -103,7 +103,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
 
   const usersData = usersPage
     ? {
-        users: usersPage.page as AdminUserRecord[],
+        users: usersPage.page,
         isDone: usersPage.isDone,
         continueCursor: usersPage.continueCursor,
       }

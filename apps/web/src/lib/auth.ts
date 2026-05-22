@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
-import type { AppRole, AppUser } from '@ia/contracts/auth';
+import type { FunctionReturnType } from 'convex/server';
+import type { AppRole } from '@ia/contracts/auth';
 import { api } from '~/apps/convex/src/_generated/api';
+
+export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me>>;
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -57,7 +60,7 @@ export function isSuperAdmin(user: AppUser | null): boolean {
 
 export function useCurrentUser(): AppUser | null {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const user = useQuery(api.users.me, isAuthenticated ? {} : 'skip') as AppUser | null | undefined;
+  const user = useQuery(api.users.me, isAuthenticated ? {} : 'skip');
   const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
