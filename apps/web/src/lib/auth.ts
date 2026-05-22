@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import type { AppRole, AppUser } from '@ia/contracts/auth';
-import { api } from '../../../../convex/_generated/api';
+import { api } from '~/apps/convex/convex/_generated/api';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;

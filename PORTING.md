@@ -1,10 +1,7 @@
 # IA Backend -> Convex Porting Guide
 
 This guide is for planning a backend replatform from the current NestJS,
-Prisma, PostgreSQL, local-upload architecture to Convex. It is intentionally
-not an instruction to start porting. Do not add `convex/`, remove NestJS,
-change Prisma, or write reset/backfill scripts until Phase 0 is complete and
-explicitly approved.
+Prisma, PostgreSQL, local-upload architecture to Convex.
 
 ## Ground Rules
 
@@ -13,9 +10,9 @@ explicitly approved.
   for the domain being planned or changed.
 - Use Nix + direnv in this repo: run `direnv allow` once, then prefer
   `direnv exec . <command>` when checking tools.
-- Before touching Convex code in this repo, run `npx convex ai-files install`
-  and read `convex/_generated/ai/guidelines.md`. Those generated rules override
-  stale memory about Convex APIs.
+- Before touching Convex code in this repo, read
+  `apps/convex/convex/_generated/ai/guidelines.md`. Those generated rules
+  override stale memory about Convex APIs.
 - Match or improve the existing product behavior. API shapes, database IDs,
   seeded data, and internal implementation details can break if that makes the
   Convex design cleaner; permissions, data visibility, audit semantics, and
@@ -23,9 +20,10 @@ explicitly approved.
 - Treat current docs as the product map and current code/schema as the source
   of truth where they disagree. The Prisma schema currently has 43 models and
   24 enums, including newer fields that some docs do not yet mention.
-- Treat `packages/contracts` as a first-class porting surface. Decide which
-  DTOs survive, which are replaced by Convex validators/return types, and which
-  frontend modules should import generated Convex API types directly.
+- Treat `packages/contracts` as transitional. As each domain moves to Convex,
+  delete Nest DTOs, Axios response types, and Prisma-shaped transport types.
+  Keep only genuinely shared product enums or pure cross-app logic that still
+  earns its place after generated Convex API types exist.
 - Keep `docs/` synchronized with the port. Any accepted Convex phase that
   changes architecture, data shape, auth, frontend API flow, storage, or feature
   behavior must update the matching docs in the same change. Do not leave
@@ -137,7 +135,7 @@ No. File-by-file porting is the wrong Phase A for this project.
 The current files are shaped by NestJS dependency injection and Prisma. Convex
 code should be shaped by tables, indexes, auth identity, function visibility,
 transaction boundaries, and client subscriptions. Translating
-`announcements.service.ts` into `convex/announcements.ts` line by line would
+`announcements.service.ts` into `apps/convex/convex/announcements.ts` line by line would
 carry over the wrong abstractions: Prisma includes, HTTP exceptions,
 controller/service splits, N+1 preference checks, and in-memory filters that
 Convex specifically warns against.
@@ -168,7 +166,7 @@ Runtime today:
   global roles guard, Swagger docs, static upload serving, and CORS.
 - Prisma Client over PostgreSQL.
 - Local disk uploads through Multer and `UPLOAD_DIR`.
-- Shared TypeScript contracts in `packages/contracts`.
+- Transitional TypeScript contracts in `packages/contracts`.
 
 Backend domains:
 
@@ -244,7 +242,7 @@ Implementation constraints:
 - Prefer Better Auth local install so the generated auth schema, indexes, and
   plugin choices are visible in the repo. This still stores Better Auth data in
   Convex component tables; "local install" means the component/schema live under
-  `convex/betterAuth/` instead of using the opaque default component schema.
+  `apps/convex/convex/betterAuth/` instead of using the opaque default component schema.
   Regenerate the local auth schema when plugin configuration changes.
 - Do not use Better Auth SSO/SAML as a Phase 1 assumption. The current Convex +
   Better Auth docs list the official SSO plugin as incompatible with this
@@ -308,6 +306,10 @@ schema and IDs over mirroring historical rows.
 
 - Default path: transform the seed data into Convex seed/import functions,
   accept new `_id` values, and update fixture references during seeding.
+- New Convex seed fixtures should live with the Convex app, preferably under
+  `apps/convex/seed-data/`, with callable seed/reset functions or actions under
+  `apps/convex/convex/`. Do not move the legacy Prisma seed files until the
+  old API no longer depends on them.
 - Do not carry old PostgreSQL IDs through the schema, temporary import code, or
   comparison tests. Compare behavior and fixture meaning, not old IDs.
 - Preserve explicit `createdAt` / `updatedAt` fields only where product
@@ -391,9 +393,9 @@ Do this before implementation, not while debugging failed deploys:
 - Audit every backend dependency for Convex runtime compatibility. Anything
   requiring Node APIs, native bindings, filesystem access, long CPU work, or
   external network calls belongs in a Node action or should be replaced.
-- Decide the future of `packages/contracts`: keep product enums/shared frontend
-  types where useful, but do not keep Nest DTOs, Axios response shapes, or
-  Prisma-shaped objects just to avoid touching frontend imports.
+- Shrink `packages/contracts` aggressively. Generated Convex API/data-model
+  types should replace backend transport contracts as domains move. Keep shared
+  code only when it is not Convex-derived and is needed by more than one app.
 - Expected end state: remove backend DTOs and REST transport contracts as each
   domain moves to Convex. Keep only product-level shared types that remain
   useful after Convex validators/generated API types exist.
@@ -447,7 +449,7 @@ before code.
   public/internal function boundaries, actions, HTTP actions, and component
   usage. Remove NestJS controller/service/guard language once it is no longer
   active.
-- Rewrite `docs/database/*` for `convex/schema.ts`, validators, indexes,
+- Rewrite `docs/database/*` for `apps/convex/convex/schema.ts`, validators, indexes,
   Convex IDs, storage metadata, seed/reset strategy, Aggregate/Sharded Counter
   state, and future Convex data-evolution jobs.
 - Rewrite `docs/frontend/*` for Convex React hooks/client usage, auth provider
@@ -482,7 +484,7 @@ before code.
 
 ### Schema
 
-- Define all tables in `convex/schema.ts`.
+- Define all tables in `apps/convex/convex/schema.ts`.
 - Prefer explicit validators over `v.any()`. Use `v.any()` only for rich-text
   or snapshot JSON after documenting the expected shape and size risk.
 - Use `Id<"table">` for new Convex references, not bare `string`.
@@ -796,10 +798,15 @@ Deliver artifacts only, no porting:
   admins.
 - Product behavior map from existing feature flows and `apps/web/src/lib/api.ts`
   to Convex functions. Preserve behavior, not old response shapes.
-- Contracts decision for `packages/contracts` and the frontend API layer.
+- Contracts decision for the frontend API layer and any remaining non-Convex
+  shared product types.
 - Component decision map: which domains use Aggregate, Sharded Counter, Rate
   Limiter, Workpool, Workflow, Action Cache, or no component.
 - Runtime/dependency audit and environment variable map.
+- Folder-structure decision: keep `apps/convex` as the backend app, move
+  Convex-owned seed fixtures under `apps/convex/seed-data`, and avoid new
+  `packages/*` workspace packages unless code is truly shared by multiple app
+  runtimes and is not generated by Convex.
 - Docs impact map for every file under `docs/`: keep/rewrite/remove, expected
   phase, and owner. This is required before implementation because the docs are
   part of the repo's source of truth.
@@ -812,14 +819,14 @@ Exit only when those decisions are accepted.
 
 - Add Convex project files.
 - Install Convex AI files and commit the managed guidance.
-- Add `convex/schema.ts`, generated code, and test setup.
+- Add `apps/convex/convex/schema.ts`, generated code, and test setup.
 - Add auth provider wiring and `requireCurrentUser` helpers.
 - Add minimal users table and identity mapping.
-- Add `convex/convex.config.ts` only for approved components, with named
+- Add `apps/convex/convex/convex.config.ts` only for approved components, with named
   Aggregate instances for distinct domains/access patterns.
 - Lock component/package versions intentionally and document why each component
   is installed. Do not install components speculatively.
-- Add CI/dev commands for `npx convex dev --once`, type generation, and
+- Add CI/dev commands for Convex codegen, explicit `tsc` typechecking, and
   Convex tests.
 - Update foundational docs in `docs/architecture/`, `docs/backend/`,
   `docs/database/`, and `docs/frontend/` to describe the new Convex foundation
@@ -884,7 +891,8 @@ unless the slice is explicitly bounded and tested.
 
 Before ported code is considered equivalent:
 
-- `npx convex dev --once` succeeds and generated types are current.
+- Convex codegen succeeds, generated types are current, and explicit Convex
+  `tsc` typechecking passes.
 - Convex tests use `convex-test` with Vitest and `edge-runtime`.
 - `pnpm lint` and `pnpm build` still pass.
 - Existing product behavior has comparison tests or scripted checks for each
@@ -913,7 +921,7 @@ Before ported code is considered equivalent:
   simple drop-in.
 - Existing Prisma CUIDs should be discarded. Do not design around old IDs.
 - `packages/contracts` can become a source of accidental legacy coupling. Keep
-  shared product types; delete backend transport DTOs that only exist for Nest.
+  only non-transport shared product types that still matter after Convex codegen.
 - Prisma array fields like `roles`, target grades/pathways, and course numbers
   should not become scan-based Convex filters.
 - Runtime compatibility will bite late if it is skipped. Bcrypt, CSV parsing,

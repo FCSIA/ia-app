@@ -20,9 +20,6 @@
     "up:win": "pnpm infra:up:win && pnpm install && pnpm db:migrate && pnpm dev"
   },
   "devDependencies": {
-    "auth": "1.6.11",
-    "convex-test": "0.0.53",
-    "edge-runtime": "4.0.1",
     "turbo": "^2.8.14",
     "typescript": "^5.9.3"
   },
@@ -45,10 +42,5 @@
       "prisma",
       "sharp"
     ]
-  },
-  "dependencies": {
-    "@convex-dev/better-auth": "0.12.2",
-    "better-auth": "1.6.11",
-    "convex": "1.39.1"
   }
 }

@@ -13,7 +13,7 @@ tags: [feature, audit, admin]
 The audit log is an immutable record of every significant action taken in the system. It gives admins full visibility into who did what and when.
 
 **Files:**
-- Convex: `convex/audit.ts`, `convex/lib/audit.ts`
+- Convex: `apps/convex/convex/audit.ts`, `apps/convex/convex/lib/audit.ts`
 - Web: `apps/web/src/app/admin/` (Audit Log tab)
 - Database: [[schema#AuditEvent]]
 

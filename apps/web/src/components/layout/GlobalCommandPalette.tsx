@@ -31,7 +31,7 @@ import {
   flexFridayApi,
   scheduleApi,
 } from '@/lib/api';
-import { api } from '../../../../../convex/_generated/api';
+import { api } from '~/apps/convex/convex/_generated/api';
 import { hasRole } from '@/lib/auth';
 import {
   CommandDialog,

@@ -14,7 +14,7 @@ Notifications alert users to relevant activity. In the Convex port, the
 frontend subscribes to Convex queries instead of polling REST endpoints.
 
 **Files:**
-- Convex: `convex/notifications.ts`
+- Convex: `apps/convex/convex/notifications.ts`
 - Web: `apps/web/src/app/notifications/`
 - Database: [[schema#NotificationDelivery]], [[schema#NotificationPreference]]
 
@@ -80,6 +80,11 @@ userId + category + scopeKey → enabled + level
 - `level: OFF | IN_APP | PUSH | TIME_SENSITIVE`: stores current delivery intent. Push escalation is modeled now even though delivery remains in-app polling.
 
 Channel all-message alerts are opt-in: if no `CLUB_CHANNEL_MESSAGE` preference exists for a channel, messages do not create all-message deliveries. Mentions and thread replies remain on by default unless a user disables that scoped category.
+
+Closed-tab/browser delivery should use standard Web Push through a service
+worker, persisted push subscriptions, and the same Convex notification
+preference checks. Do not treat background polling from an open tab as the
+production answer for `PUSH` or `TIME_SENSITIVE` levels.
 
 ---
 

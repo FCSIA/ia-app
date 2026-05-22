@@ -5,7 +5,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
 import { useMutation } from '@tanstack/react-query';
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
-import { api } from '../../../../../convex/_generated/api';
+import { api } from '~/apps/convex/convex/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
 import { useTheme } from 'next-themes';

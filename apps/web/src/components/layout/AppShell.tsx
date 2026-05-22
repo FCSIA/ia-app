@@ -27,7 +27,7 @@ import { useQuery as useConvexQuery } from 'convex/react';
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
 import { announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
-import { api } from '../../../../../convex/_generated/api';
+import { api } from '~/apps/convex/convex/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
