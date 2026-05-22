@@ -67,10 +67,27 @@ Current seed functions:
 cd apps/convex
 PATH=../../node_modules/.bin:$PATH convex run courses:seedFromStaticData \
   '{"secret":"<COURSE_SEED_SECRET_OR_BOOTSTRAP_SECRET>","reset":true}'
+
+PATH=../../node_modules/.bin:$PATH convex run schedule:seedFromStaticData \
+  '{"secret":"<SCHEDULE_SEED_SECRET_OR_BOOTSTRAP_SECRET>","reset":true,"batchSize":20}'
 ```
 
 The course seed mutation accepts `COURSE_SEED_SECRET` first and falls back to
-`BOOTSTRAP_SECRET`. Keep this reset-only posture while all data is fake.
+`BOOTSTRAP_SECRET`. The schedule seed mutation accepts `SCHEDULE_SEED_SECRET`
+first and falls back to `BOOTSTRAP_SECRET`.
+
+`schedule:seedFromStaticData` is cursor-based because a full fixture creates a
+schedule and 40 schedule-entry documents for each student. Re-run it with the
+returned `nextCursor` until `isDone` is `true`:
+
+```bash
+PATH=../../node_modules/.bin:$PATH convex run schedule:seedFromStaticData \
+  '{"secret":"<SCHEDULE_SEED_SECRET_OR_BOOTSTRAP_SECRET>","cursor":"20","batchSize":20}'
+```
+
+If `reset:true` returns deleted rows with `isDone:false`, call it again with
+`reset:true` until the deleted counts are zero and seeding begins. Keep this
+reset-friendly posture while all data is fake.
 
 ---
 

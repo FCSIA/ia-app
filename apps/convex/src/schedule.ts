@@ -1,6 +1,13 @@
 import { ConvexError, v, type Infer } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import {
+  BASE_BLOCKS,
+  SCHEDULE_WEEKDAYS,
+  buildScheduleCourses,
+  compareStudents,
+  stableScheduleVisibility,
+} from "../seed-data/schedule";
 import { logAuditEvent } from "./lib/audit";
 import { getCurrentAppUser } from "./lib/currentUser";
 import {
@@ -27,6 +34,21 @@ type ScheduleSearchFriendshipStatus =
   | "REQUEST_RECEIVED"
   | "FRIENDS";
 type ScheduleSearchResult = Infer<typeof scheduleSearchResultValidator>;
+
+const scheduleSeedResultValidator = v.object({
+  blocksInserted: v.number(),
+  schedulesUpserted: v.number(),
+  entriesInserted: v.number(),
+  friendshipsInserted: v.number(),
+  deleted: v.object({
+    entries: v.number(),
+    schedules: v.number(),
+    friendships: v.number(),
+    blocks: v.number(),
+  }),
+  nextCursor: v.union(v.string(), v.null()),
+  isDone: v.boolean(),
+});
 
 function studentVisibility(schedule: { isPublic: boolean } | null) {
   if (!schedule) return "NONE" as const;
@@ -60,6 +82,99 @@ async function getStudentTarget(
     throw new ConvexError("Student not found.");
   }
   return user;
+}
+
+async function deleteSeedBatch(ctx: MutationCtx) {
+  const deleted = {
+    entries: 0,
+    schedules: 0,
+    friendships: 0,
+    blocks: 0,
+  };
+
+  const entries = await ctx.db.query("studentScheduleEntries").take(1000);
+  for (const entry of entries) {
+    await ctx.db.delete(entry._id);
+    deleted.entries += 1;
+  }
+
+  if (entries.length === 0) {
+    const schedules = await ctx.db.query("studentSchedules").take(500);
+    for (const schedule of schedules) {
+      await ctx.db.delete(schedule._id);
+      deleted.schedules += 1;
+    }
+
+    const friendships = await ctx.db.query("studentScheduleFriends").take(500);
+    for (const friendship of friendships) {
+      await ctx.db.delete(friendship._id);
+      deleted.friendships += 1;
+    }
+
+    const blocks = await ctx.db.query("schoolDayBlocks").take(100);
+    for (const block of blocks) {
+      await ctx.db.delete(block._id);
+      deleted.blocks += 1;
+    }
+  }
+
+  return deleted;
+}
+
+async function seedDefaultBlocks(ctx: MutationCtx, actorId: Id<"users">, now: number) {
+  let blocksInserted = 0;
+  for (const weekday of SCHEDULE_WEEKDAYS) {
+    for (const block of BASE_BLOCKS) {
+      const existing = await ctx.db
+        .query("schoolDayBlocks")
+        .withIndex("by_weekday_and_startTime", (q) =>
+          q.eq("weekday", weekday).eq("startTime", block.startTime),
+        )
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("schoolDayBlocks", {
+        weekday,
+        label: block.label,
+        periodNumber: block.periodNumber ?? undefined,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        createdById: actorId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      blocksInserted += 1;
+    }
+  }
+  return blocksInserted;
+}
+
+async function seedAcceptedFriendPairs(
+  ctx: MutationCtx,
+  students: Doc<"users">[],
+  now: number,
+) {
+  let friendshipsInserted = 0;
+  const pairCount = Math.min(Math.floor(students.length / 2), 180);
+
+  for (let index = 0; index < pairCount * 2; index += 2) {
+    const requester = students[index];
+    const addressee = students[index + 1];
+    if (!requester || !addressee) continue;
+
+    const existing = await getFriendshipBetween(ctx, requester._id, addressee._id);
+    if (existing) continue;
+
+    await ctx.db.insert("studentScheduleFriends", {
+      requesterId: requester._id,
+      addresseeId: addressee._id,
+      status: "ACCEPTED",
+      createdAt: now,
+      acceptedAt: now,
+    });
+    friendshipsInserted += 1;
+  }
+
+  return friendshipsInserted;
 }
 
 export const dashboard = query({
@@ -138,6 +253,131 @@ export const dashboard = query({
       friends,
       incomingRequests,
       outgoingRequests,
+    };
+  },
+});
+
+export const seedFromStaticData = mutation({
+  args: {
+    secret: v.string(),
+    reset: v.optional(v.boolean()),
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  returns: scheduleSeedResultValidator,
+  handler: async (ctx, args) => {
+    const expectedSecret = process.env.SCHEDULE_SEED_SECRET ?? process.env.BOOTSTRAP_SECRET;
+    if (!expectedSecret || args.secret !== expectedSecret) {
+      throw new ConvexError("Invalid seed secret.");
+    }
+
+    const now = Date.now();
+    const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
+    const batchSize = Math.min(Math.max(Math.floor(args.batchSize ?? 20), 1), 25);
+    const deleted = args.reset && cursor === 0
+      ? await deleteSeedBatch(ctx)
+      : { entries: 0, schedules: 0, friendships: 0, blocks: 0 };
+
+    if (deleted.entries > 0 || deleted.schedules > 0 || deleted.friendships > 0 || deleted.blocks > 0) {
+      return {
+        blocksInserted: 0,
+        schedulesUpserted: 0,
+        entriesInserted: 0,
+        friendshipsInserted: 0,
+        deleted,
+        nextCursor: "0",
+        isDone: false,
+      };
+    }
+
+    const users = await ctx.db.query("users").take(5000);
+    const students = users
+      .filter(
+        (user) =>
+          user.isActive &&
+          isStudentUser(user) &&
+          user.gradeLevel &&
+          user.major &&
+          user.minor,
+      )
+      .sort(compareStudents);
+    const actor = users.find(
+      (user) => user.roles.includes("SUPER_ADMIN") || user.roles.includes("ADMIN"),
+    )
+      ?? users[0];
+    if (!actor) throw new ConvexError("Seed users before schedule fixtures.");
+
+    const courses = await ctx.db.query("courses").take(1000);
+    if (courses.length === 0) throw new ConvexError("Seed courses before schedule fixtures.");
+    const courseMap = new Map(courses.map((course) => [course.slug, course]));
+
+    const isFirstPage = cursor === 0;
+    const blocksInserted = isFirstPage ? await seedDefaultBlocks(ctx, actor._id, now) : 0;
+    const friendshipsInserted = isFirstPage ? await seedAcceptedFriendPairs(ctx, students, now) : 0;
+
+    let schedulesUpserted = 0;
+    let entriesInserted = 0;
+
+    for (const student of students.slice(cursor, cursor + batchSize)) {
+      const scheduleCourses = buildScheduleCourses(student, courseMap);
+      if (scheduleCourses.length === 0) continue;
+
+      const existingSchedule = await ctx.db
+        .query("studentSchedules")
+        .withIndex("by_userId", (q) => q.eq("userId", student._id))
+        .unique();
+      const scheduleId = existingSchedule?._id
+        ?? await ctx.db.insert("studentSchedules", {
+          userId: student._id,
+          isPublic: stableScheduleVisibility(student.uniqueId),
+          createdAt: now,
+          updatedAt: now,
+        });
+
+      if (existingSchedule) {
+        await ctx.db.patch(existingSchedule._id, {
+          isPublic: stableScheduleVisibility(student.uniqueId),
+          updatedAt: now,
+        });
+      }
+      schedulesUpserted += 1;
+
+      const oldEntries = await ctx.db
+        .query("studentScheduleEntries")
+        .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
+          q.eq("scheduleId", scheduleId),
+        )
+        .take(60);
+      for (const entry of oldEntries) {
+        await ctx.db.delete(entry._id);
+      }
+
+      for (const [index, course] of scheduleCourses.entries()) {
+        for (const weekday of SCHEDULE_WEEKDAYS) {
+          await ctx.db.insert("studentScheduleEntries", {
+            scheduleId,
+            userId: student._id,
+            courseId: course._id,
+            weekday,
+            periodNumber: index + 1,
+            className: course.title,
+            createdAt: now,
+            updatedAt: now,
+          });
+          entriesInserted += 1;
+        }
+      }
+    }
+
+    const nextIndex = cursor + batchSize;
+    return {
+      blocksInserted,
+      schedulesUpserted,
+      entriesInserted,
+      friendshipsInserted,
+      deleted,
+      nextCursor: nextIndex < students.length ? String(nextIndex) : null,
+      isDone: nextIndex >= students.length,
     };
   },
 });

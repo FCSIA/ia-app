@@ -20,6 +20,7 @@
 - Course catalog reads now use Convex `courses` functions for `/courses`, `/courses/[slug]`, command-palette course search, and the schedule editor course picker.
 - Schedule dashboard reads/writes now use Convex `schedule` functions for personal schedules, friend search/requests, and admin bell-schedule blocks.
 - Convex-owned course fixtures live in `apps/convex/seed-data/courses.ts`. Run `api.courses.seedFromStaticData` with `COURSE_SEED_SECRET` or `BOOTSTRAP_SECRET` to populate the Convex course catalog.
+- Convex-owned schedule fixtures live in `apps/convex/seed-data/schedule.ts`. Run `api.schedule.seedFromStaticData` with `SCHEDULE_SEED_SECRET` or `BOOTSTRAP_SECRET`; it is cursor-based, so repeat with `nextCursor` until `isDone`.
 - Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
 
 ## Next Verification

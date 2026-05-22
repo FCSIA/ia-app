@@ -65,6 +65,7 @@ and these Convex tables:
 - `api.schedule.createBlock`
 - `api.schedule.updateBlock`
 - `api.schedule.deleteBlock`
+- `api.schedule.seedFromStaticData` (secret-protected fixture loader)
 
 The old REST endpoints are legacy reference only while the remaining API app is
 being removed.
@@ -73,6 +74,22 @@ being removed.
 
 ## Seed Data
 
-The old Prisma seed script created default blocks, student schedules, and
-accepted friend pairs. The Convex schedule schema is ready for native seed data,
-but the schedule seed fixture has not been ported yet.
+Schedule fixtures are Convex-owned in `apps/convex/seed-data/schedule.ts`.
+They create:
+
+- default Monday-Friday school-day blocks
+- one personal schedule for each active student with grade/pathway metadata
+- 5 weekday entries for each selected period/course
+- accepted schedule friendships for the first 180 sorted student pairs
+
+Run `api.schedule.seedFromStaticData` after users and courses are seeded. The
+mutation is cursor-based because the full fixture writes thousands of entry
+documents:
+
+```bash
+cd apps/convex
+PATH=../../node_modules/.bin:$PATH convex run schedule:seedFromStaticData \
+  '{"secret":"<SCHEDULE_SEED_SECRET_OR_BOOTSTRAP_SECRET>","reset":true,"batchSize":20}'
+```
+
+Continue calling it with the returned `nextCursor` until `isDone` is `true`.
