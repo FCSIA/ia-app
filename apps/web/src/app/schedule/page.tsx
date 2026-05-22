@@ -3,8 +3,7 @@
 import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMutation, useQuery as useRestQuery, useQueryClient } from '@tanstack/react-query';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import {
   BookOpen,
   Clock3,
@@ -23,11 +22,8 @@ import { ScheduleDayEditor } from '@/components/schedule/schedule-day-editor';
 import { SchoolDayBlockFormCard } from '@/components/schedule/school-day-block-form-card';
 import type { CourseSummary } from '@/components/courses/types';
 import {
-  ScheduleDashboardResponse,
-  ScheduleSearchResult,
   ScheduleWeekday,
-  SchoolDayBlockPayload,
-  StudentScheduleEntry,
+  StudentScheduleDraftEntry,
 } from '@/components/schedule/types';
 import {
   WEEKDAYS,
@@ -43,11 +39,10 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { hasRole, useCurrentUser } from '@/lib/auth';
-import { scheduleApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 
-function buildScheduleRecord(entries: StudentScheduleEntry[], isPublic: boolean) {
+function buildScheduleRecord(entries: StudentScheduleDraftEntry[], isPublic: boolean) {
   return {
     id: 'draft',
     isPublic,
@@ -89,7 +84,6 @@ export default function SchedulePage() {
 function SchedulePageContent() {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
@@ -106,15 +100,13 @@ function SchedulePageContent() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
-  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleEntry[]>([]);
+  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleDraftEntry[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
-  const { data, isLoading } = useRestQuery<ScheduleDashboardResponse>({
-    queryKey: ['schedule-dashboard'],
-    queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
-  });
+  const data = useQuery(api.schedule.dashboard);
+  const isLoading = data === undefined;
   const courses = useQuery(api.courses.list, { limit: 200 }) ?? [];
 
   useEffect(() => {
@@ -133,132 +125,60 @@ function SchedulePageContent() {
     incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedTab, requestedSection, data?.incomingRequests?.length]);
 
-  const { data: searchResults = [], isFetching: isSearching } = useRestQuery<ScheduleSearchResult[]>({
-    queryKey: ['schedule-search', normalizedDeferredSearch],
-    queryFn: () =>
-      scheduleApi.searchPeople(normalizedDeferredSearch).then((response) => response.data),
-    enabled: canEditOwnSchedule && normalizedDeferredSearch.length >= 2,
-    staleTime: 30_000,
-    placeholderData: (previous) => previous,
-  });
+  const searchResults =
+    useQuery(
+      api.schedule.searchPeople,
+      canEditOwnSchedule && normalizedDeferredSearch.length >= 2
+        ? { query: normalizedDeferredSearch, limit: 20 }
+        : 'skip',
+    ) ?? [];
+  const isSearching =
+    canEditOwnSchedule && normalizedDeferredSearch.length >= 2 && searchResults.length === 0;
 
   const searchIsDeferred =
     canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
 
-  const saveScheduleMutation = useMutation({
-    mutationFn: () =>
-      scheduleApi.saveMine({
-        isPublic,
-        entries: scheduleEntries
-          .map(({ weekday, periodNumber, courseId }) => ({ weekday, periodNumber, courseId: courseId?.trim() ?? '' }))
-          .filter((entry) => entry.courseId.length > 0),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      toast({ title: 'Schedule saved' });
-    },
-    onError: (error: any) => {
+  const saveSchedule = useMutation(api.schedule.saveMine);
+  const sendFriendRequest = useMutation(api.schedule.sendFriendRequest);
+  const acceptFriendRequest = useMutation(api.schedule.acceptFriendRequest);
+  const removeFriend = useMutation(api.schedule.removeFriend);
+  const createBlock = useMutation(api.schedule.createBlock);
+  const updateBlock = useMutation(api.schedule.updateBlock);
+  const deleteBlock = useMutation(api.schedule.deleteBlock);
+
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  const runScheduleAction = async (
+    key: string,
+    action: () => Promise<unknown>,
+    successTitle: string,
+  ) => {
+    try {
+      setPendingAction(key);
+      await action();
+      toast({ title: successTitle });
+    } catch (error) {
       toast({
-        title: error.response?.data?.message || 'Failed to save schedule',
+        title: error instanceof Error ? error.message : 'Request failed',
         variant: 'destructive',
       });
-    },
-  });
-
-  const invalidateFriendQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-    queryClient.invalidateQueries({ queryKey: ['schedule-search'] });
+    } finally {
+      setPendingAction(null);
+    }
   };
 
-  const sendFriendRequestMutation = useMutation({
-    mutationFn: (friendId: string) => scheduleApi.sendFriendRequest(friendId),
-    onSuccess: (response: any) => {
-      invalidateFriendQueries();
-      toast({
-        title: response?.data?.status === 'ACCEPTED' ? 'Friend added' : 'Request sent',
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not send friend request',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const acceptFriendRequestMutation = useMutation({
-    mutationFn: (requesterId: string) => scheduleApi.acceptFriendRequest(requesterId),
-    onSuccess: () => {
-      invalidateFriendQueries();
-      toast({ title: 'Friend added' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not accept request',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const removeFriendMutation = useMutation({
-    mutationFn: (otherUserId: string) => scheduleApi.removeFriend(otherUserId),
-    onSuccess: () => {
-      invalidateFriendQueries();
-      toast({ title: 'Removed' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not remove',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const createBlockMutation = useMutation({
-    mutationFn: (payload: SchoolDayBlockPayload) => scheduleApi.createBlock(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      setCreatingDay(null);
-      toast({ title: 'Block created' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not create block',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const updateBlockMutation = useMutation({
-    mutationFn: ({ blockId, payload }: { blockId: string; payload: SchoolDayBlockPayload }) =>
-      scheduleApi.updateBlock(blockId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      setEditingBlockId(null);
-      toast({ title: 'Block updated' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not update block',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const deleteBlockMutation = useMutation({
-    mutationFn: (blockId: string) => scheduleApi.deleteBlock(blockId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['schedule-dashboard'] });
-      setEditingBlockId(null);
-      toast({ title: 'Block removed' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Could not delete block',
-        variant: 'destructive',
-      });
-    },
-  });
+  const handleSaveSchedule = () =>
+    void runScheduleAction(
+      'save-schedule',
+      () =>
+        saveSchedule({
+          isPublic,
+          entries: scheduleEntries.flatMap(({ weekday, periodNumber, courseId }) =>
+            courseId ? [{ weekday, periodNumber, courseId }] : [],
+          ),
+        }),
+      'Schedule saved',
+    );
 
   const blocks = data?.blocks ?? [];
   const draftSchedule = useMemo(
@@ -423,10 +343,10 @@ function SchedulePageContent() {
                 <Button
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => saveScheduleMutation.mutate()}
-                  disabled={saveScheduleMutation.isPending}
+                  onClick={handleSaveSchedule}
+                  disabled={pendingAction === 'save-schedule'}
                 >
-                  {saveScheduleMutation.isPending ? 'Saving…' : 'Save'}
+                  {pendingAction === 'save-schedule' ? 'Saving…' : 'Save'}
                 </Button>
               </div>
             )}
@@ -502,12 +422,10 @@ function SchedulePageContent() {
                   {deferredSearch.trim().length < 2 ? null : searchResults.length > 0 ? (
                     <div className="divide-y divide-border/40 overflow-hidden">
                       {searchResults.map((person) => {
-                        const isSending =
-                          sendFriendRequestMutation.isPending &&
-                          sendFriendRequestMutation.variables === person.id;
-                        const isAccepting =
-                          acceptFriendRequestMutation.isPending &&
-                          acceptFriendRequestMutation.variables === person.id;
+                        const sendKey = `friend-send:${person.id}`;
+                        const acceptKey = `friend-accept:${person.id}`;
+                        const isSending = pendingAction === sendKey;
+                        const isAccepting = pendingAction === acceptKey;
                         const status = person.friendshipStatus;
                         return (
                           <div key={person.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -529,7 +447,13 @@ function SchedulePageContent() {
                                 variant="secondary"
                                 className="h-6 text-[10px] px-2"
                                 disabled={isAccepting}
-                                onClick={() => acceptFriendRequestMutation.mutate(person.id)}
+                                onClick={() =>
+                                  void runScheduleAction(
+                                    acceptKey,
+                                    () => acceptFriendRequest({ requesterId: person.id }),
+                                    'Friend added',
+                                  )
+                                }
                               >
                                 Accept
                               </Button>
@@ -539,7 +463,13 @@ function SchedulePageContent() {
                                 variant="ghost"
                                 className="h-6 text-[10px] px-2"
                                 disabled={isSending}
-                                onClick={() => sendFriendRequestMutation.mutate(person.id)}
+                                onClick={() =>
+                                  void runScheduleAction(
+                                    sendKey,
+                                    () => sendFriendRequest({ friendId: person.id }),
+                                    'Request sent',
+                                  )
+                                }
                               >
                                 <UserPlus className="mr-1 size-2.5" />
                                 Add
@@ -562,22 +492,43 @@ function SchedulePageContent() {
                         Requests · {data.incomingRequests.length}
                       </p>
                       {data.incomingRequests.map((req) => {
-                        const isAccepting =
-                          acceptFriendRequestMutation.isPending &&
-                          acceptFriendRequestMutation.variables === req.user.id;
-                        const isDeclining =
-                          removeFriendMutation.isPending &&
-                          removeFriendMutation.variables === req.user.id;
+                        const acceptKey = `friend-accept:${req.user.id}`;
+                        const removeKey = `friend-remove:${req.user.id}`;
+                        const isAccepting = pendingAction === acceptKey;
+                        const isDeclining = pendingAction === removeKey;
                         return (
                           <div key={req.id} className="flex items-center justify-between gap-2 py-1.5">
                             <span className="text-sm text-foreground truncate">
                               {req.user.firstName} {req.user.lastName}
                             </span>
                             <div className="flex gap-1 shrink-0">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" disabled={isDeclining || isAccepting} onClick={() => removeFriendMutation.mutate(req.user.id)}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                disabled={isDeclining || isAccepting}
+                                onClick={() =>
+                                  void runScheduleAction(
+                                    removeKey,
+                                    () => removeFriend({ otherUserId: req.user.id }),
+                                    'Removed',
+                                  )
+                                }
+                              >
                                 <X className="size-3" />
                               </Button>
-                              <Button size="sm" className="h-6 text-[10px] px-2" disabled={isAccepting || isDeclining} onClick={() => acceptFriendRequestMutation.mutate(req.user.id)}>
+                              <Button
+                                size="sm"
+                                className="h-6 text-[10px] px-2"
+                                disabled={isAccepting || isDeclining}
+                                onClick={() =>
+                                  void runScheduleAction(
+                                    acceptKey,
+                                    () => acceptFriendRequest({ requesterId: req.user.id }),
+                                    'Friend added',
+                                  )
+                                }
+                              >
                                 Accept
                               </Button>
                             </div>
@@ -597,11 +548,14 @@ function SchedulePageContent() {
                           key={friend.id}
                           friend={friend}
                           blocks={blocks}
-                          onRemove={() => removeFriendMutation.mutate(friend.user.id)}
-                          isRemoving={
-                            removeFriendMutation.isPending &&
-                            removeFriendMutation.variables === friend.user.id
+                          onRemove={() =>
+                            void runScheduleAction(
+                              `friend-remove:${friend.user.id}`,
+                              () => removeFriend({ otherUserId: friend.user.id }),
+                              'Removed',
+                            )
                           }
+                          isRemoving={pendingAction === `friend-remove:${friend.user.id}`}
                         />
                       ))}
                     </div>
@@ -651,11 +605,20 @@ function SchedulePageContent() {
                   <SchoolDayBlockFormCard
                     weekday={adminWeekday}
                     title="New block"
-                    submitLabel={createBlockMutation.isPending ? 'Creating…' : 'Create'}
+                    submitLabel={pendingAction === 'block-create' ? 'Creating…' : 'Create'}
                     submitIcon="plus"
-                    onSubmit={(payload) => createBlockMutation.mutate(payload)}
+                    onSubmit={(payload) =>
+                      void runScheduleAction(
+                        'block-create',
+                        async () => {
+                          await createBlock(payload);
+                          setCreatingDay(null);
+                        },
+                        'Block created',
+                      )
+                    }
                     onCancel={() => setCreatingDay(null)}
-                    isPending={createBlockMutation.isPending}
+                    isPending={pendingAction === 'block-create'}
                   />
                 ) : null}
 
@@ -668,14 +631,30 @@ function SchedulePageContent() {
                           weekday={adminWeekday}
                           block={block}
                           title={`Edit ${block.label}`}
-                          submitLabel={updateBlockMutation.isPending ? 'Saving…' : 'Save'}
+                          submitLabel={pendingAction === `block-update:${block.id}` ? 'Saving…' : 'Save'}
                           onSubmit={(payload) =>
-                            updateBlockMutation.mutate({ blockId: block.id, payload })
+                            void runScheduleAction(
+                              `block-update:${block.id}`,
+                              async () => {
+                                await updateBlock({ blockId: block.id, ...payload });
+                                setEditingBlockId(null);
+                              },
+                              'Block updated',
+                            )
                           }
-                          onDelete={() => deleteBlockMutation.mutate(block.id)}
+                          onDelete={() =>
+                            void runScheduleAction(
+                              `block-delete:${block.id}`,
+                              async () => {
+                                await deleteBlock({ blockId: block.id });
+                                setEditingBlockId(null);
+                              },
+                              'Block removed',
+                            )
+                          }
                           onCancel={() => setEditingBlockId(null)}
-                          isPending={updateBlockMutation.isPending}
-                          isDeleting={deleteBlockMutation.isPending}
+                          isPending={pendingAction === `block-update:${block.id}`}
+                          isDeleting={pendingAction === `block-delete:${block.id}`}
                         />
                       ) : (
                         <div
@@ -701,7 +680,11 @@ function SchedulePageContent() {
                             className="h-6 text-[10px] px-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteBlockMutation.mutate(block.id);
+                              void runScheduleAction(
+                                `block-delete:${block.id}`,
+                                () => deleteBlock({ blockId: block.id }),
+                                'Block removed',
+                              );
                             }}
                           >
                             Delete

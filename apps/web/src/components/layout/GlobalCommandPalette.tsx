@@ -27,7 +27,6 @@ import {
   clubsApi,
   eventsApi,
   flexFridayApi,
-  scheduleApi,
 } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, type AppUser } from '@/lib/auth';
@@ -133,11 +132,12 @@ export function GlobalCommandPalette({
     queryFn: () => flexFridayApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: schedule } = useRestQuery<any>({
-    queryKey: ['command-schedule'],
-    queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
-    enabled: shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN'),
-  });
+  const schedule = useQuery(
+    api.schedule.dashboard,
+    shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
+      ? {}
+      : 'skip',
+  );
 
   const myClubIds = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
@@ -254,13 +254,13 @@ export function GlobalCommandPalette({
     }));
 
     const scheduleActions: CommandAction[] = [
-      ...(schedule?.friends ?? []).slice(0, 12).map((friend: any) => ({
-        id: `schedule-friend-${friend.id ?? friend.user?.id}`,
-        label: friend.user ? `${friend.user.firstName} ${friend.user.lastName}` : friend.firstName ? `${friend.firstName} ${friend.lastName}` : 'Schedule friend',
+      ...(schedule?.friends ?? []).slice(0, 12).map((friend) => ({
+        id: `schedule-friend-${friend.id}`,
+        label: `${friend.user.firstName} ${friend.user.lastName}`,
         detail: 'Schedule friend',
         href: '/schedule?tab=friends',
         Icon: Users,
-        keywords: ['schedule friend', friend.user?.uniqueId, friend.uniqueId],
+        keywords: ['schedule friend', friend.user.uniqueId],
       })),
     ];
 

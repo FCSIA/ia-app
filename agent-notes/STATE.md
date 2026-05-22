@@ -18,6 +18,7 @@
 - Profile password changes, dashboard layout persistence, admin audit reads, and club channel current-user reads no longer depend on the old REST auth endpoints.
 - Notification inbox, unread counts, notification preferences, channel notification settings, and command-palette unread notification reads now use Convex `notifications` functions.
 - Course catalog reads now use Convex `courses` functions for `/courses`, `/courses/[slug]`, command-palette course search, and the schedule editor course picker.
+- Schedule dashboard reads/writes now use Convex `schedule` functions for personal schedules, friend search/requests, and admin bell-schedule blocks.
 - Convex-owned course fixtures live in `apps/convex/seed-data/courses.ts`. Run `api.courses.seedFromStaticData` with `COURSE_SEED_SECRET` or `BOOTSTRAP_SECRET` to populate the Convex course catalog.
 - Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
 

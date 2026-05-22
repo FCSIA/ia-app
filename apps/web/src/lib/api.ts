@@ -9,11 +9,6 @@ import type {
   CreateClubTagPayload,
   ToggleClubChannelReactionPayload,
 } from '@ia/contracts/clubs';
-import type { CourseDetail, CourseSummary } from '@ia/contracts/courses';
-import type {
-  SchoolDayBlockPayload,
-  UpsertStudentSchedulePayload,
-} from '@ia/contracts/schedule';
 
 export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
 
@@ -235,32 +230,6 @@ export const calendarApi = {
     tags?: string[];
   }) => api.post('/calendar', data),
   deleteEntry: (id: string) => api.delete(`/calendar/${id}`),
-};
-
-// Schedule
-export const scheduleApi = {
-  getDashboard: () => api.get('/schedule'),
-  saveMine: (data: UpsertStudentSchedulePayload) => api.put('/schedule/me', data),
-  searchPeople: (q: string) => api.get('/schedule/search', { params: { q } }),
-  sendFriendRequest: (friendId: string) => api.post('/schedule/friends', { friendId }),
-  acceptFriendRequest: (requesterId: string) =>
-    api.post(`/schedule/friends/${requesterId}/accept`),
-  removeFriend: (otherUserId: string) => api.delete(`/schedule/friends/${otherUserId}`),
-  createBlock: (data: SchoolDayBlockPayload) => api.post('/schedule/blocks', data),
-  updateBlock: (blockId: string, data: SchoolDayBlockPayload) =>
-    api.patch(`/schedule/blocks/${blockId}`, data),
-  deleteBlock: (blockId: string) => api.delete(`/schedule/blocks/${blockId}`),
-};
-
-export const coursesApi = {
-  list: (params?: {
-    q?: string;
-    department?: string;
-    pathway?: string;
-    gradeLevel?: number;
-    limit?: number;
-  }) => api.get<CourseSummary[]>('/courses', { params }),
-  getOne: (slug: string) => api.get<CourseDetail>(`/courses/${slug}`),
 };
 
 export const uploadsApi = {

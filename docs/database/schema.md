@@ -153,6 +153,12 @@ model AuthSession {
 
 ## Student Schedule Models
 
+During the Convex port, the active schedule models are Convex tables in
+`apps/convex/src/schema.ts`: `studentSchedules`, `studentScheduleEntries`,
+`studentScheduleFriends`, and `schoolDayBlocks`. These use native Convex `_id`
+values and explicit indexes for user, friendship, weekday, and course lookups.
+The Prisma models below are legacy reference only while the old API is deleted.
+
 ### ScheduleWeekday
 ```prisma
 enum ScheduleWeekday {

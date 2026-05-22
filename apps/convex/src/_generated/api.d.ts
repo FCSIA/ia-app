@@ -16,7 +16,9 @@ import type * as lib_audit from "../lib/audit.js";
 import type * as lib_courses from "../lib/courses.js";
 import type * as lib_currentUser from "../lib/currentUser.js";
 import type * as lib_roles from "../lib/roles.js";
+import type * as lib_schedule from "../lib/schedule.js";
 import type * as notifications from "../notifications.js";
+import type * as schedule from "../schedule.js";
 import type * as users from "../users.js";
 import type * as validators from "../validators.js";
 
@@ -35,7 +37,9 @@ declare const fullApi: ApiFromModules<{
   "lib/courses": typeof lib_courses;
   "lib/currentUser": typeof lib_currentUser;
   "lib/roles": typeof lib_roles;
+  "lib/schedule": typeof lib_schedule;
   notifications: typeof notifications;
+  schedule: typeof schedule;
   users: typeof users;
   validators: typeof validators;
 }>;

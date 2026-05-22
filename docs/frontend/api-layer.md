@@ -108,16 +108,24 @@ Now handles join requests and codes:
 - `approve(id, note)` / `reject(id, note)`
 - `getPendingApprovals()`
 
-### scheduleApi
-- `getDashboard()`
-- `saveMine(data)`
-- `sendFriendRequest(friendId)`
-- `acceptFriendRequest(requesterId)`
-- `removeFriend(userId)`
+### Schedule And Courses
+Schedule and course catalog screens now call Convex directly through generated
+function references:
 
-### coursesApi
-- `list(params)` // fuzzy search, department, pathway filters
-- `getOne(slug)`
+- `api.schedule.dashboard`
+- `api.schedule.saveMine`
+- `api.schedule.searchPeople`
+- `api.schedule.sendFriendRequest`
+- `api.schedule.acceptFriendRequest`
+- `api.schedule.removeFriend`
+- `api.schedule.createBlock`
+- `api.schedule.updateBlock`
+- `api.schedule.deleteBlock`
+- `api.courses.list`
+- `api.courses.getOne`
+
+Do not add `scheduleApi`, `coursesApi`, or replacement package-contract DTOs for
+these domains. Use generated Convex hook return types instead.
 
 ### flexFridayApi
 - `createFriday(data)`
@@ -174,4 +182,3 @@ const { data: clubs } = useQuery({
 - [[state-management]] — TanStack Query patterns
 - [[frontend-auth]] — The token interceptor
 - [[data-flow]] — Full request lifecycle
-

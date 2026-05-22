@@ -2,7 +2,8 @@
 
 import { use, useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery as useRestQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import {
   Crown,
   Copy,
@@ -43,7 +44,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
-import { clubsApi, scheduleApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
+import { clubsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -81,12 +83,14 @@ function ManagePeopleDialog({
       }),
   });
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ['student-search', deferredQuery],
-    queryFn: () =>
-      scheduleApi.searchPeople(deferredQuery).then((res) => res.data as StudentResult[]),
-    enabled: deferredQuery.length >= 2 && !selected,
-  });
+  const searchResults =
+    useQuery(
+      api.schedule.searchPeople,
+      deferredQuery.length >= 2 && !selected
+        ? { query: deferredQuery, limit: 20 }
+        : 'skip',
+    ) ?? [];
+  const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
   const inviteMutation = useMutation({
     mutationFn: (uniqueId: string) => clubsApi.sendInvite(club.id, uniqueId),
@@ -325,7 +329,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
 
   const [filter, setFilter] = useState('all');
 
-  const { data: club } = useQuery<ClubDetail>({
+  const { data: club } = useRestQuery<ClubDetail>({
     queryKey: ['club', id],
     queryFn: () => clubsApi.getOne(id).then((r) => r.data),
   });

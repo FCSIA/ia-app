@@ -43,31 +43,36 @@ Private schedules stay hidden from friends, but the owner still sees their own l
 
 ## Data Model
 
-- `student_schedules` (The container)
-- `student_schedule_entries` (Links to `courses`)
-- `student_schedule_friends` (Request/Accept workflow)
-- `school_day_blocks` (The bell schedule)
-- `courses` (The source of truth for class names)
+During the Convex port, `/schedule` is backed by `apps/convex/src/schedule.ts`
+and these Convex tables:
+
+- `studentSchedules` (one schedule container per student)
+- `studentScheduleEntries` (one child document per weekday/period/course)
+- `studentScheduleFriends` (request/accept workflow)
+- `schoolDayBlocks` (the bell schedule)
+- `courses` (the source of truth for class names)
 
 ---
 
-## API Surface
+## Convex Surface
 
-- `GET /schedule` (Dashboard with entries, blocks, and friends)
-- `PUT /schedule/me` (Update my schedule)
-- `GET /schedule/search?q=...` (Search students)
-- `POST /schedule/friends` (Send friend request)
-- `POST /schedule/friends/:id/respond` (Accept/Decline)
-- `DELETE /schedule/friends/:id` (Remove friend)
-- `POST /schedule/blocks` (Admin: create block)
-- `PATCH /schedule/blocks/:id` (Admin: update block)
+- `api.schedule.dashboard` (Dashboard with entries, blocks, and friends)
+- `api.schedule.saveMine` (Update my schedule)
+- `api.schedule.searchPeople` (Search students through the users search index)
+- `api.schedule.sendFriendRequest`
+- `api.schedule.acceptFriendRequest`
+- `api.schedule.removeFriend`
+- `api.schedule.createBlock`
+- `api.schedule.updateBlock`
+- `api.schedule.deleteBlock`
+
+The old REST endpoints are legacy reference only while the remaining API app is
+being removed.
 
 ---
 
 ## Seed Data
 
-The seed script creates:
-- A default Monday-Friday bell schedule.
-- 1,500 student schedules (every student gets one).
-- ~180 pre-accepted friend pairs for testing.
-
+The old Prisma seed script created default blocks, student schedules, and
+accepted friend pairs. The Convex schedule schema is ready for native seed data,
+but the schedule seed fixture has not been ported yet.

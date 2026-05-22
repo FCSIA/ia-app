@@ -34,6 +34,30 @@ export const courseTermValidator = v.union(
 
 export type CourseTerm = Infer<typeof courseTermValidator>;
 
+export const scheduleWeekdayValidator = v.union(
+  v.literal("MONDAY"),
+  v.literal("TUESDAY"),
+  v.literal("WEDNESDAY"),
+  v.literal("THURSDAY"),
+  v.literal("FRIDAY"),
+);
+
+export type ScheduleWeekday = Infer<typeof scheduleWeekdayValidator>;
+
+export const schoolDayBlockKindValidator = v.union(
+  v.literal("PERIOD"),
+  v.literal("CUSTOM"),
+);
+
+export type SchoolDayBlockKind = Infer<typeof schoolDayBlockKindValidator>;
+
+export const friendshipStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("ACCEPTED"),
+);
+
+export type FriendshipStatus = Infer<typeof friendshipStatusValidator>;
+
 export const notificationCategoryValidator = v.union(
   v.literal("SCHOOL_ANNOUNCEMENT"),
   v.literal("CLUB_ANNOUNCEMENT"),

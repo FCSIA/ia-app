@@ -68,8 +68,8 @@ When the seed script completes, the following environment is created:
 
 ### Academic Data
 - **103 Courses**: Ported to Convex fixtures in `apps/convex/seed-data/courses.ts` and loaded through `api.courses.seedFromStaticData`.
-- **Schedules**: Every student has a full 5-day schedule (8 periods/day) mapped to valid courses for their grade level and pathway.
-- **Friendships**: A pool of students are pre-linked as friends to test schedule comparison features.
+- **Schedules**: Legacy Prisma seed data gave every student a full 5-day schedule. The active Convex schedule tables are ready, but native Convex schedule fixtures still need to be ported.
+- **Friendships**: Legacy Prisma seed data pre-linked a pool of students as friends. Native Convex friendship fixtures still need to be ported.
 
 ### Clubs & Communication
 - **26 Clubs**: Defined in `seed-data/clubs.ts`. Each club is assigned:

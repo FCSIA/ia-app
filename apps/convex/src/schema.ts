@@ -4,9 +4,11 @@ import {
   appRoleValidator,
   courseCatalogSourceValidator,
   courseTermValidator,
+  friendshipStatusValidator,
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
   pathwayValidator,
+  scheduleWeekdayValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -154,4 +156,60 @@ export default defineSchema({
       searchField: "searchText",
       filterFields: ["department", "pathway"],
     }),
+
+  studentSchedules: defineTable({
+    userId: v.id("users"),
+    isPublic: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  studentScheduleEntries: defineTable({
+    scheduleId: v.id("studentSchedules"),
+    userId: v.id("users"),
+    courseId: v.id("courses"),
+    weekday: scheduleWeekdayValidator,
+    periodNumber: v.number(),
+    className: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_scheduleId_and_weekday_and_periodNumber", [
+      "scheduleId",
+      "weekday",
+      "periodNumber",
+    ])
+    .index("by_userId", ["userId"])
+    .index("by_courseId", ["courseId"]),
+
+  studentScheduleFriends: defineTable({
+    requesterId: v.id("users"),
+    addresseeId: v.id("users"),
+    status: friendshipStatusValidator,
+    createdAt: v.number(),
+    acceptedAt: v.optional(v.number()),
+  })
+    .index("by_requesterId_and_addresseeId", ["requesterId", "addresseeId"])
+    .index("by_addresseeId_and_requesterId", ["addresseeId", "requesterId"])
+    .index("by_requesterId_and_status_and_acceptedAt", [
+      "requesterId",
+      "status",
+      "acceptedAt",
+    ])
+    .index("by_addresseeId_and_status_and_acceptedAt", [
+      "addresseeId",
+      "status",
+      "acceptedAt",
+    ]),
+
+  schoolDayBlocks: defineTable({
+    weekday: scheduleWeekdayValidator,
+    label: v.string(),
+    periodNumber: v.optional(v.number()),
+    startTime: v.string(),
+    endTime: v.string(),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_weekday_and_startTime", ["weekday", "startTime"]),
 });

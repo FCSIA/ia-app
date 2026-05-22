@@ -6,12 +6,12 @@ import { Lock } from 'lucide-react';
 import { CoursePicker } from '@/components/courses/course-picker';
 import type { CourseSummary } from '@/components/courses/types';
 import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
-import { SchoolDayBlock, ScheduleWeekday, StudentScheduleEntry } from './types';
+import { SchoolDayBlock, ScheduleWeekday, StudentScheduleDraftEntry } from './types';
 
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
-  entries: StudentScheduleEntry[];
+  entries: StudentScheduleDraftEntry[];
   courses: CourseSummary[];
   preferredGradeLevel?: number;
   onChange: (

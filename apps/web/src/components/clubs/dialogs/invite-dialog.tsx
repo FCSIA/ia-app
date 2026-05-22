@@ -1,7 +1,8 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { Send, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +23,8 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { clubsApi, scheduleApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
+import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { fullName } from '@/components/clubs/types';
 
@@ -47,13 +49,14 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ['student-search', deferredQuery],
-    queryFn: () =>
-      scheduleApi.searchPeople(deferredQuery).then((res) => res.data as StudentResult[]),
-    // Only search while no student is selected
-    enabled: deferredQuery.length >= 2 && !selected,
-  });
+  const searchResults =
+    useQuery(
+      api.schedule.searchPeople,
+      deferredQuery.length >= 2 && !selected
+        ? { query: deferredQuery, limit: 20 }
+        : 'skip',
+    ) ?? [];
+  const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
   const inviteMutation = useMutation({
     mutationFn: (id: string) => clubsApi.sendInvite(clubId, id),
