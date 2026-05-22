@@ -14,7 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tooltip } from '@/components/ui/tooltip';
-import { api } from '~/apps/convex/convex/_generated/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
 
 type PreferenceLevel = 'OFF' | 'IN_APP' | 'PUSH' | 'TIME_SENSITIVE';

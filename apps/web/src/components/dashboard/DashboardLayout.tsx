@@ -34,7 +34,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useMutation as useConvexMutation } from 'convex/react';
-import { api } from '~/apps/convex/convex/_generated/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import {
   WIDGETS,
   getAvailableWidgets,

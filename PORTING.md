@@ -11,7 +11,7 @@ Prisma, PostgreSQL, local-upload architecture to Convex.
 - Use Nix + direnv in this repo: run `direnv allow` once, then prefer
   `direnv exec . <command>` when checking tools.
 - Before touching Convex code in this repo, read
-  `apps/convex/convex/_generated/ai/guidelines.md`. Those generated rules
+  `apps/convex/src/_generated/ai/guidelines.md`. Those generated rules
   override stale memory about Convex APIs.
 - Match or improve the existing product behavior. API shapes, database IDs,
   seeded data, and internal implementation details can break if that makes the
@@ -135,7 +135,7 @@ No. File-by-file porting is the wrong Phase A for this project.
 The current files are shaped by NestJS dependency injection and Prisma. Convex
 code should be shaped by tables, indexes, auth identity, function visibility,
 transaction boundaries, and client subscriptions. Translating
-`announcements.service.ts` into `apps/convex/convex/announcements.ts` line by line would
+`announcements.service.ts` into `apps/convex/src/announcements.ts` line by line would
 carry over the wrong abstractions: Prisma includes, HTTP exceptions,
 controller/service splits, N+1 preference checks, and in-memory filters that
 Convex specifically warns against.
@@ -242,7 +242,7 @@ Implementation constraints:
 - Prefer Better Auth local install so the generated auth schema, indexes, and
   plugin choices are visible in the repo. This still stores Better Auth data in
   Convex component tables; "local install" means the component/schema live under
-  `apps/convex/convex/betterAuth/` instead of using the opaque default component schema.
+  `apps/convex/src/betterAuth/` instead of using the opaque default component schema.
   Regenerate the local auth schema when plugin configuration changes.
 - Do not use Better Auth SSO/SAML as a Phase 1 assumption. The current Convex +
   Better Auth docs list the official SSO plugin as incompatible with this
@@ -308,7 +308,7 @@ schema and IDs over mirroring historical rows.
   accept new `_id` values, and update fixture references during seeding.
 - New Convex seed fixtures should live with the Convex app, preferably under
   `apps/convex/seed-data/`, with callable seed/reset functions or actions under
-  `apps/convex/convex/`. Do not move the legacy Prisma seed files until the
+  `apps/convex/src/`. Do not move the legacy Prisma seed files until the
   old API no longer depends on them.
 - Do not carry old PostgreSQL IDs through the schema, temporary import code, or
   comparison tests. Compare behavior and fixture meaning, not old IDs.
@@ -449,7 +449,7 @@ before code.
   public/internal function boundaries, actions, HTTP actions, and component
   usage. Remove NestJS controller/service/guard language once it is no longer
   active.
-- Rewrite `docs/database/*` for `apps/convex/convex/schema.ts`, validators, indexes,
+- Rewrite `docs/database/*` for `apps/convex/src/schema.ts`, validators, indexes,
   Convex IDs, storage metadata, seed/reset strategy, Aggregate/Sharded Counter
   state, and future Convex data-evolution jobs.
 - Rewrite `docs/frontend/*` for Convex React hooks/client usage, auth provider
@@ -484,7 +484,7 @@ before code.
 
 ### Schema
 
-- Define all tables in `apps/convex/convex/schema.ts`.
+- Define all tables in `apps/convex/src/schema.ts`.
 - Prefer explicit validators over `v.any()`. Use `v.any()` only for rich-text
   or snapshot JSON after documenting the expected shape and size risk.
 - Use `Id<"table">` for new Convex references, not bare `string`.
@@ -819,10 +819,10 @@ Exit only when those decisions are accepted.
 
 - Add Convex project files.
 - Install Convex AI files and commit the managed guidance.
-- Add `apps/convex/convex/schema.ts`, generated code, and test setup.
+- Add `apps/convex/src/schema.ts`, generated code, and test setup.
 - Add auth provider wiring and `requireCurrentUser` helpers.
 - Add minimal users table and identity mapping.
-- Add `apps/convex/convex/convex.config.ts` only for approved components, with named
+- Add `apps/convex/src/convex.config.ts` only for approved components, with named
   Aggregate instances for distinct domains/access patterns.
 - Lock component/package versions intentionally and document why each component
   is installed. Do not install components speculatively.

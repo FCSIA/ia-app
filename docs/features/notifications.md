@@ -14,7 +14,7 @@ Notifications alert users to relevant activity. In the Convex port, the
 frontend subscribes to Convex queries instead of polling REST endpoints.
 
 **Files:**
-- Convex: `apps/convex/convex/notifications.ts`
+- Convex: `apps/convex/src/notifications.ts`
 - Web: `apps/web/src/app/notifications/`
 - Database: [[schema#NotificationDelivery]], [[schema#NotificationPreference]]
 

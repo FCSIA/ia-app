@@ -4,7 +4,7 @@ import { Lock } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useMutation as useConvexMutation, useQuery as useConvexQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
-import { api } from '~/apps/convex/convex/_generated/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
 
 type NotificationScopeSwitchProps = {

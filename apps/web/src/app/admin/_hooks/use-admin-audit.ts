@@ -3,8 +3,8 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useQuery as useConvexQuery } from 'convex/react';
-import { api } from '~/apps/convex/convex/_generated/api';
-import type { Id } from '~/apps/convex/convex/_generated/dataModel';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AuditActorScope, AuditEventDetail, AuditEventRecord } from '../_lib/types';

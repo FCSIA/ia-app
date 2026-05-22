@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "PATH=../../node_modules/.bin:$PATH convex dev",
     "codegen": "PATH=../../node_modules/.bin:$PATH convex dev --once --typecheck disable --codegen enable",
-    "typecheck": "PATH=../../node_modules/.bin:$PATH tsc -p convex/tsconfig.json",
+    "typecheck": "PATH=../../node_modules/.bin:$PATH tsc -p src/tsconfig.json",
     "deploy": "PATH=../../node_modules/.bin:$PATH convex deploy",
-    "auth:generate": "cd convex/betterAuth && PATH=../../../../node_modules/.bin:$PATH auth generate -y"
+    "auth:generate": "cd src/betterAuth && PATH=../../../../node_modules/.bin:$PATH auth generate -y"
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.12.2",
