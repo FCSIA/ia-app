@@ -59,6 +59,7 @@ to `search_courses` and keep department/pathway filters indexed.
 | Method | Path | Description |
 |--------|------|-------------|
 | Convex | `api.courses.list` | List courses with search and filters |
+| Convex | `api.courses.listPage` | Cursor-paginated course catalog for browse/search screens |
 | Convex | `api.courses.getOne` | Detailed course profile by slug |
 | Convex | `api.courses.seedFromStaticData` | Seed/reset the Convex course catalog from app fixtures |
 

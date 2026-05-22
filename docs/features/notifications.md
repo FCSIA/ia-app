@@ -90,7 +90,8 @@ production answer for `PUSH` or `TIME_SENSITIVE` levels.
 
 ## Convex Surface
 
-- `api.notifications.list`
+- `api.notifications.list` (bounded preview reads)
+- `api.notifications.listPage` (cursor-paginated inbox)
 - `api.notifications.unreadCount`
 - `api.notifications.markRead`
 - `api.notifications.markAllRead`

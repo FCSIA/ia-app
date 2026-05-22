@@ -12,24 +12,28 @@ type AuditTableProps = {
   isAuditLoading: boolean;
   displayedAuditEvents: AuditEventRecord[];
   auditEvents: AuditEventRecord[];
+  auditStatus: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   hasActiveAuditFilters: boolean;
   onClearFilters: () => void;
   onInspect: (eventId: string) => void;
+  onLoadMore: (numItems: number) => void;
 };
 
 export function AuditTable({
   isAuditLoading,
   displayedAuditEvents,
   auditEvents,
+  auditStatus,
   hasActiveAuditFilters,
   onClearFilters,
   onInspect,
+  onLoadMore,
 }: AuditTableProps) {
   return (
     <>
       <p className="text-xs text-muted-foreground">
         Showing {displayedAuditEvents.length} matching event{displayedAuditEvents.length === 1 ? '' : 's'}
-        {auditEvents.length >= AUDIT_FETCH_LIMIT ? ` from the latest ${AUDIT_FETCH_LIMIT}` : ''}.
+        {auditEvents.length > displayedAuditEvents.length ? ` from ${auditEvents.length} loaded` : ''}.
       </p>
 
       {isAuditLoading ? (
@@ -37,6 +41,7 @@ export function AuditTable({
                     Loading audit events…
                   </div>
                 ) : displayedAuditEvents.length > 0 ? (
+                  <>
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
@@ -115,6 +120,20 @@ export function AuditTable({
                       })}
                     </TableBody>
                   </Table>
+                  {auditStatus !== 'Exhausted' ? (
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        type="button"
+                        variant="tertiary"
+                        className="rounded-xl"
+                        disabled={auditStatus !== 'CanLoadMore'}
+                        onClick={() => onLoadMore(AUDIT_FETCH_LIMIT)}
+                      >
+                        {auditStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}
+                      </Button>
+                    </div>
+                  ) : null}
+                  </>
                 ) : (
                   <div className="text-center py-10">
                     <p className="text-muted-foreground text-sm">

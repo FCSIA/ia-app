@@ -62,9 +62,11 @@ export function AuditTab() {
             isAuditLoading={audit.isAuditLoading}
             displayedAuditEvents={audit.displayedAuditEvents}
             auditEvents={audit.auditEvents}
+            auditStatus={audit.auditStatus}
             hasActiveAuditFilters={audit.hasActiveAuditFilters}
             onClearFilters={audit.clearAuditFilters}
             onInspect={audit.setSelectedAuditEventId}
+            onLoadMore={audit.loadMoreAuditEvents}
           />
         </CardContent>
       </Card>

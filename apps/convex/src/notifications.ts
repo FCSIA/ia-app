@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { getCurrentAppUser } from "./lib/currentUser";
@@ -101,6 +102,38 @@ export const list = query({
 
     const rows = await queryBase.order("desc").take(limit);
     return rows.map(toNotification);
+  },
+});
+
+export const listPage = query({
+  args: {
+    unreadOnly: v.optional(v.boolean()),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(notificationValidator),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const queryBase = args.unreadOnly
+      ? ctx.db
+          .query("notificationDeliveries")
+          .withIndex("by_userId_and_isRead_and_createdAt", (q) =>
+            q.eq("userId", user._id).eq("isRead", false),
+          )
+      : ctx.db
+          .query("notificationDeliveries")
+          .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", user._id));
+
+    const result = await queryBase.order("desc").paginate(args.paginationOpts);
+    return {
+      ...result,
+      page: result.page.map(toNotification),
+    };
   },
 });
 

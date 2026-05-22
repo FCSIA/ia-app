@@ -552,7 +552,11 @@ before code.
 - Replace unbounded `findMany` and Prisma `include` trees with bounded,
   indexed queries and explicit projections.
 - Use pagination for feeds, messages, audit logs, notifications, and any admin
-  listing.
+  listing. Prefer Convex's native cursor flow:
+  `paginationOptsValidator` on the function, `.paginate(args.paginationOpts)`
+  on an indexed query, and React `usePaginatedQuery` on list screens. Keep
+  `.take(n)` only for intentional previews, fixed-size child sets, command
+  palette snippets, and seed/admin batches.
 - Prefer the Aggregate component for counts/sums/rank/offset access that must
   stay queryable and reactive. Prefer Sharded Counter for high-write singleton
   counters. Hand-written summary tables are the fallback when neither component

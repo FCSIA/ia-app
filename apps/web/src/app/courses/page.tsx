@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from 'convex/react';
 import { BookOpen, Search, SlidersHorizontal } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';
@@ -52,41 +52,28 @@ export default function CoursesPage() {
   const [grade, setGrade] = useState('ALL');
   const deferredSearch = useDeferredValue(search);
 
-  const coursesQuery = useQuery(api.courses.list, { limit: 200 });
-  const courses = coursesQuery ?? [];
-  const isLoading = coursesQuery === undefined;
+  const parsedGrade = grade === 'ALL' ? undefined : Number.parseInt(grade, 10);
+  const {
+    results: courses,
+    status: coursesStatus,
+    loadMore: loadMoreCourses,
+  } = usePaginatedQuery(
+    api.courses.listPage,
+    {
+      q: deferredSearch.trim() || undefined,
+      department: department === 'ALL' ? undefined : department,
+      pathway: pathway === 'ALL' ? undefined : pathway,
+      gradeLevel: parsedGrade,
+    },
+    { initialNumItems: 40 },
+  );
+  const isLoading = coursesStatus === 'LoadingFirstPage';
+  const filterCourses = useQuery(api.courses.list, { limit: 500 }) ?? [];
 
   const departments = useMemo(
-    () => Array.from(new Set(courses.map((course) => course.department))).sort(),
-    [courses],
+    () => Array.from(new Set(filterCourses.map((course) => course.department))).sort(),
+    [filterCourses],
   );
-
-  const filteredCourses = useMemo(() => {
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-    const parsedGrade = grade === 'ALL' ? null : Number.parseInt(grade, 10);
-
-    return courses.filter((course) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        [
-          course.title,
-          course.department,
-          course.gradeText,
-          ...course.courseNumbers,
-        ]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(normalizedSearch));
-
-      const matchesDepartment = department === 'ALL' || course.department === department;
-      const matchesPathway = pathway === 'ALL' || course.pathway === pathway;
-      const matchesGrade =
-        parsedGrade == null ||
-        ((course.minGrade == null || parsedGrade >= course.minGrade) &&
-          (course.maxGrade == null || parsedGrade <= course.maxGrade));
-
-      return matchesSearch && matchesDepartment && matchesPathway && matchesGrade;
-    });
-  }, [courses, deferredSearch, department, pathway, grade]);
 
   const apCourseCount = useMemo(
     () => courses.filter((course) => course.catalogSource !== 'COURSE_CATALOG').length,
@@ -178,7 +165,7 @@ export default function CoursesPage() {
           description={
             isLoading
               ? 'Loading courses...'
-              : `${filteredCourses.length} matching class${filteredCourses.length === 1 ? '' : 'es'}`
+              : `${courses.length} loaded matching class${courses.length === 1 ? '' : 'es'}`
           }
           action={
             <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-muted-foreground">
@@ -187,26 +174,40 @@ export default function CoursesPage() {
             </div>
           }
         >
-          {filteredCourses.length > 0 ? (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {filteredCourses.map((course) => (
-                <Link key={course.id} href={`/courses/${course.slug}`}>
-                  <Card className="h-full rounded-[1.75rem] border-border/70 bg-background/90 transition-transform duration-200 hover:-translate-y-0.5">
-                    <CardContent className="space-y-4 p-5">
-                      <div className="space-y-2">
-                        <p className="text-lg font-semibold tracking-tight text-foreground">
-                          {course.title}
-                        </p>
-                        <CourseMeta course={course} />
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <BookOpen className="size-4" />
-                        Open class details
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+          {courses.length > 0 ? (
+            <div className="space-y-5">
+              <div className="grid gap-4 xl:grid-cols-2">
+                {courses.map((course) => (
+                  <Link key={course.id} href={`/courses/${course.slug}`}>
+                    <Card className="h-full rounded-[1.75rem] border-border/70 bg-background/90 transition-transform duration-200 hover:-translate-y-0.5">
+                      <CardContent className="space-y-4 p-5">
+                        <div className="space-y-2">
+                          <p className="text-lg font-semibold tracking-tight text-foreground">
+                            {course.title}
+                          </p>
+                          <CourseMeta course={course} />
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <BookOpen className="size-4" />
+                          Open class details
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+              {coursesStatus !== 'Exhausted' ? (
+                <div className="flex justify-center">
+                  <Button
+                    variant="tertiary"
+                    onClick={() => loadMoreCourses(40)}
+                    disabled={coursesStatus !== 'CanLoadMore'}
+                    className="rounded-full"
+                  >
+                    {coursesStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <Empty className="rounded-[1.75rem] border border-dashed border-border/70 bg-muted/20">

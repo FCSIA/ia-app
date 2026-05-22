@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import { COURSE_SEEDS } from "../seed-data/courses";
 import {
@@ -36,6 +37,83 @@ export const list = query({
       )
       .slice(0, limit)
       .map(toCourseSummary);
+  },
+});
+
+const coursePageValidator = v.object({
+  page: v.array(courseSummaryValidator),
+  isDone: v.boolean(),
+  continueCursor: v.string(),
+  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+  splitCursor: v.optional(v.union(v.string(), v.null())),
+});
+
+export const listPage = query({
+  args: {
+    q: v.optional(v.string()),
+    department: v.optional(v.string()),
+    pathway: v.optional(pathwayValidator),
+    gradeLevel: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: coursePageValidator,
+  handler: async (ctx, args) => {
+    const search = args.q?.trim();
+    const department = args.department?.trim() || undefined;
+
+    if (search) {
+      const result = await (
+        department && args.pathway
+          ? ctx.db
+              .query("courses")
+              .withSearchIndex("search_courses", (q) =>
+                q.search("searchText", search).eq("department", department).eq("pathway", args.pathway),
+              )
+          : department
+            ? ctx.db
+                .query("courses")
+                .withSearchIndex("search_courses", (q) =>
+                  q.search("searchText", search).eq("department", department),
+                )
+            : args.pathway
+              ? ctx.db
+                  .query("courses")
+                  .withSearchIndex("search_courses", (q) =>
+                    q.search("searchText", search).eq("pathway", args.pathway),
+                  )
+              : ctx.db
+                  .query("courses")
+                  .withSearchIndex("search_courses", (q) => q.search("searchText", search))
+      ).paginate(args.paginationOpts);
+
+      return {
+        ...result,
+        page: result.page
+          .filter((course) => matchesCourseGradeLevel(course, args.gradeLevel))
+          .map(toCourseSummary),
+      };
+    }
+
+    const result = await (
+      department
+        ? ctx.db
+            .query("courses")
+            .withIndex("by_department_and_title", (q) => q.eq("department", department))
+        : args.pathway
+          ? ctx.db
+              .query("courses")
+              .withIndex("by_pathway_and_minGrade_and_maxGrade", (q) =>
+                q.eq("pathway", args.pathway),
+              )
+          : ctx.db.query("courses").withIndex("by_title")
+    ).paginate(args.paginationOpts);
+
+    return {
+      ...result,
+      page: result.page
+        .filter((course) => matchesCourseGradeLevel(course, args.gradeLevel))
+        .map(toCourseSummary),
+    };
   },
 });
 

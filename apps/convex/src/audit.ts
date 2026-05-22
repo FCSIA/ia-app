@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
 import { query } from "./_generated/server";
@@ -22,6 +23,14 @@ const auditEventValidator = v.object({
   createdAt: v.string(),
   meta: v.union(v.any(), v.null()),
   actor: actorValidator,
+});
+
+const auditPageValidator = v.object({
+  page: v.array(auditEventValidator),
+  isDone: v.boolean(),
+  continueCursor: v.string(),
+  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+  splitCursor: v.optional(v.union(v.string(), v.null())),
 });
 
 async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
@@ -126,6 +135,75 @@ export const list = query({
       }
       return true;
     });
+  },
+});
+
+export const listPage = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    query: v.optional(v.string()),
+    actor: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    action: v.optional(v.string()),
+    entityType: v.optional(v.string()),
+    actorScope: v.optional(v.union(v.literal("USER"), v.literal("SYSTEM"))),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+  },
+  returns: auditPageValidator,
+  handler: async (ctx, args) => {
+    const viewer = await getCurrentAppUser(ctx);
+    requireAnyRole(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+
+    const queryText = args.query?.trim().toLowerCase();
+    const actorText = args.actor?.trim().toLowerCase();
+    const entityIdText = args.entityId?.trim().toLowerCase();
+
+    const result = await ctx.db
+      .query("auditEvents")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const hydrated = await Promise.all(result.page.map((row) => toAuditEvent(ctx, row)));
+
+    return {
+      ...result,
+      page: hydrated.filter((event) => {
+        if (args.action && event.action !== args.action) return false;
+        if (args.entityType && event.entityType !== args.entityType) return false;
+        if (args.actorScope === "SYSTEM" && event.actor) return false;
+        if (args.actorScope === "USER" && !event.actor) return false;
+        if (!matchesDateRange(Date.parse(event.createdAt), args.startDate, args.endDate)) {
+          return false;
+        }
+        if (entityIdText && !includes(event.entityId, entityIdText)) return false;
+        if (
+          actorText &&
+          !(
+            includes(event.actor?.firstName, actorText) ||
+            includes(event.actor?.lastName, actorText) ||
+            includes(event.actor?.uniqueId, actorText)
+          )
+        ) {
+          return false;
+        }
+        if (
+          queryText &&
+          !(
+            includes(event.action, queryText) ||
+            includes(event.entityType, queryText) ||
+            includes(event.entityId, queryText) ||
+            includes(event.actor?.firstName, queryText) ||
+            includes(event.actor?.lastName, queryText) ||
+            includes(event.actor?.uniqueId, queryText)
+          )
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    };
   },
 });
 

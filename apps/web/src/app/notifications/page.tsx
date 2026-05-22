@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
 import { useMutation as useRestMutation, useQueries, useQuery as useRestQuery } from '@tanstack/react-query';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { clubsApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -41,9 +41,12 @@ export default function NotificationsPage() {
   const markAllRead = useMutation(api.notifications.markAllRead);
   const markRead = useMutation(api.notifications.markRead);
 
-  const notificationsQuery = useQuery(api.notifications.list, {});
-  const notifications = notificationsQuery ?? [];
-  const isLoading = notificationsQuery === undefined;
+  const {
+    results: notifications,
+    status: notificationsStatus,
+    loadMore: loadMoreNotifications,
+  } = usePaginatedQuery(api.notifications.listPage, {}, { initialNumItems: 50 });
+  const isLoading = notificationsStatus === 'LoadingFirstPage';
 
   const preferences = useQuery(api.notifications.preferences) ?? [];
 
@@ -248,6 +251,18 @@ export default function NotificationsPage() {
               </ul>
             </Panel>
           )}
+          {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="tertiary"
+                onClick={() => loadMoreNotifications(50)}
+                disabled={notificationsStatus !== 'CanLoadMore'}
+                className="rounded-full"
+              >
+                {notificationsStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          ) : null}
             </TabPanel>
             <TabPanel value="settings" className="mt-4">
               <Panel contentClassName="flex flex-col gap-5 p-5">

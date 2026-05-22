@@ -146,6 +146,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_slug", ["slug"])
+    .index("by_title", ["title"])
     .index("by_department_and_title", ["department", "title"])
     .index("by_pathway_and_minGrade_and_maxGrade", [
       "pathway",

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery } from 'convex/react';
+import { usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
@@ -35,7 +35,6 @@ export function useAdminAudit(activeTab: AdminTabId) {
 
   const auditQueryParams = useMemo(
     () => ({
-      limit: AUDIT_FETCH_LIMIT,
       query: deferredAuditSearch.trim() || undefined,
       actor: deferredAuditActor.trim() || undefined,
       entityId: deferredAuditEntityId.trim() || undefined,
@@ -57,12 +56,16 @@ export function useAdminAudit(activeTab: AdminTabId) {
     ],
   );
 
-  const auditEvents =
-    (useQuery(
-      api.audit.list,
-      activeTab === 'audit' ? auditQueryParams : 'skip',
-    )) ?? [];
-  const isAuditLoading = activeTab === 'audit' && auditEvents.length === 0;
+  const {
+    results: auditEvents,
+    status: auditStatus,
+    loadMore: loadMoreAuditEvents,
+  } = usePaginatedQuery(
+    api.audit.listPage,
+    activeTab === 'audit' ? auditQueryParams : 'skip',
+    { initialNumItems: AUDIT_FETCH_LIMIT },
+  );
+  const isAuditLoading = activeTab === 'audit' && auditStatus === 'LoadingFirstPage';
 
   const displayedAuditEvents = useMemo(() => {
     if (auditSubView === 'flex') {
@@ -169,6 +172,8 @@ export function useAdminAudit(activeTab: AdminTabId) {
     displayedAuditEvents,
     auditEvents,
     isAuditLoading,
+    auditStatus,
+    loadMoreAuditEvents,
     auditActionOptions,
     auditEntityTypeOptions,
     hasActiveAuditFilters,

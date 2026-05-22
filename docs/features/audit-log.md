@@ -81,12 +81,13 @@ Only admins can view the audit log — it's in the Admin Panel under the "Audit 
 The frontend reads audit rows with Convex functions:
 
 - `api.audit.list`
+- `api.audit.listPage`
 - `api.audit.getOne`
 
-The first Convex version uses bounded recent-event reads with in-memory filters.
-That is acceptable for the current alpha seed data and keeps the admin tab
-working while more domains start writing Convex audit rows. Before production
-scale, move high-cardinality audit search to explicit search/index fields.
+The admin table uses Convex cursor pagination for newest-first browsing. Some
+filters still apply after each page is hydrated because actor names and freeform
+metadata are not indexed fields yet. Before production scale, move
+high-cardinality audit search to explicit search/index fields.
 
 ---
 
