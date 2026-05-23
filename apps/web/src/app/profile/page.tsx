@@ -12,8 +12,7 @@ import { HexColorPicker } from 'react-colorful';
 import {
   CUSTOM_BG_STORAGE_KEY,
   CUSTOM_COLORS_STORAGE_KEY,
-  hexToHslParts,
-  readableForegroundParts,
+  applyCustomColors,
   type CustomColorKey,
   type CustomColors,
 } from '@/app/providers';
@@ -522,43 +521,15 @@ function CustomColorsPanel() {
       } else {
         localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(next));
       }
-      applyToDom(next);
+      // Writes a `.custom { ... }` rule to a managed <style> tag — scoped, so
+      // these picks never apply to other themes.
+      applyCustomColors(next);
     } catch {
       toast({
         title: 'Couldn’t save colors',
         description: 'Your browser blocked localStorage. Changes won’t persist.',
         variant: 'destructive',
       });
-    }
-  }
-
-  function applyToDom(next: CustomColors) {
-    const root = document.documentElement;
-    const slots: Array<{ key: CustomColorKey; vars: string[]; fg?: string }> = [
-      { key: 'background', vars: ['--background'], fg: '--foreground' },
-      {
-        key: 'primary',
-        vars: ['--primary', '--ring', '--sidebar-primary', '--sidebar-ring'],
-        fg: '--primary-foreground',
-      },
-      {
-        key: 'secondary',
-        vars: ['--secondary', '--muted', '--card', '--popover'],
-        fg: '--secondary-foreground',
-      },
-      { key: 'accent', vars: ['--accent', '--border', '--input'], fg: '--accent-foreground' },
-    ];
-    for (const slot of slots) {
-      for (const v of slot.vars) root.style.removeProperty(v);
-      if (slot.fg) root.style.removeProperty(slot.fg);
-    }
-    for (const slot of slots) {
-      const hex = next[slot.key];
-      if (!hex) continue;
-      const hsl = hexToHslParts(hex);
-      if (!hsl) continue;
-      for (const v of slot.vars) root.style.setProperty(v, hsl);
-      if (slot.fg) root.style.setProperty(slot.fg, readableForegroundParts(hex));
     }
   }
 

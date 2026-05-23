@@ -63,46 +63,73 @@ export function readableForegroundParts(hex: string): string {
   return L > 0.5 ? '0 0% 8%' : '0 0% 100%';
 }
 
-function applyCustomColors(colors: CustomColors) {
-  const root = document.documentElement;
-  const slots: Array<{ key: CustomColorKey; vars: string[]; withForeground?: string }> = [
-    { key: 'background', vars: ['--background'], withForeground: '--foreground' },
-    { key: 'foreground', vars: ['--foreground'] },
+const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
+
+/**
+ * Apply user-picked palette colors by writing a `<style>` tag whose rules are
+ * SCOPED to `.custom`. This way the overrides only take effect while the
+ * Custom theme is selected — switching back to Light/Dark/etc. doesn't leak
+ * the user's picks because the `.custom` selector no longer matches.
+ */
+export function applyCustomColors(colors: CustomColors) {
+  if (typeof document === 'undefined') return;
+
+  const slots: Array<{ key: CustomColorKey; vars: string[]; fg?: string }> = [
+    { key: 'background', vars: ['--background'], fg: '--foreground' },
     {
       key: 'primary',
       vars: ['--primary', '--ring', '--sidebar-primary', '--sidebar-ring'],
-      withForeground: '--primary-foreground',
+      fg: '--primary-foreground',
     },
     {
       key: 'secondary',
       vars: ['--secondary', '--muted', '--card', '--popover'],
-      withForeground: '--secondary-foreground',
+      fg: '--secondary-foreground',
     },
     {
       key: 'accent',
       vars: ['--accent', '--border', '--input'],
-      withForeground: '--accent-foreground',
+      fg: '--accent-foreground',
     },
   ];
 
-  // First clear any previously-set overrides so removing a color cleans up.
-  for (const slot of slots) {
-    for (const v of slot.vars) root.style.removeProperty(v);
-    if (slot.withForeground) root.style.removeProperty(slot.withForeground);
-  }
-
+  const declarations: string[] = [];
   for (const slot of slots) {
     const hex = colors[slot.key];
     if (!hex) continue;
     const hsl = hexToHslParts(hex);
     if (!hsl) continue;
-    for (const v of slot.vars) root.style.setProperty(v, hsl);
-    if (slot.withForeground) {
-      // For 'background' the explicit foreground (if set) wins; otherwise auto.
-      if (slot.key === 'background' && colors.foreground) continue;
-      root.style.setProperty(slot.withForeground, readableForegroundParts(hex));
+    for (const v of slot.vars) declarations.push(`${v}: ${hsl};`);
+    if (slot.fg) {
+      // Allow an explicit foreground override (used for the 'background' slot).
+      if (slot.key === 'background' && colors.foreground) {
+        const fgHsl = hexToHslParts(colors.foreground);
+        if (fgHsl) declarations.push(`${slot.fg}: ${fgHsl};`);
+      } else {
+        declarations.push(`${slot.fg}: ${readableForegroundParts(hex)};`);
+      }
     }
   }
+  // Standalone foreground override (only meaningful if background isn't set).
+  if (!colors.background && colors.foreground) {
+    const fgHsl = hexToHslParts(colors.foreground);
+    if (fgHsl) declarations.push(`--foreground: ${fgHsl};`);
+  }
+
+  let style = document.getElementById(CUSTOM_COLORS_STYLE_ID) as HTMLStyleElement | null;
+  if (declarations.length === 0) {
+    // No overrides — drop the style tag entirely.
+    style?.remove();
+    return;
+  }
+
+  if (!style) {
+    style = document.createElement('style');
+    style.id = CUSTOM_COLORS_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  // The rule is scoped to `.custom` so it only takes effect under that theme.
+  style.textContent = `.custom { ${declarations.join(' ')} }`;
 }
 
 /**
