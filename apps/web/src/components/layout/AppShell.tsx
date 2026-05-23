@@ -284,8 +284,6 @@ export function AppShell({
                 <NavIcon key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
               ))
               : null}
-            <div className="my-2 h-px w-8 bg-white/10" />
-
           </div>
         </aside>
 
