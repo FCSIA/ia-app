@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Bell, Sun, Moon, Monitor, Palette } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { CUSTOM_BG_STORAGE_KEY } from '@/app/providers';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -252,12 +253,15 @@ export default function ProfilePage() {
                 <CardTitle className="text-base font-semibold">Appearance</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-3 gap-3">
+            <CardContent className="pt-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
                 {[
                   { id: 'light', label: 'Light', icon: Sun },
                   { id: 'dark', label: 'Dark', icon: Moon },
                   { id: 'system', label: 'System', icon: Monitor },
+                  { id: 'high-contrast', label: 'Contrast', icon: Contrast },
+                  { id: 'bubblegum', label: 'Bubblegum', icon: Heart },
+                  { id: 'custom', label: 'Custom', icon: ImageIcon },
                 ].map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
@@ -271,13 +275,15 @@ export default function ProfilePage() {
                     )}
                   >
                     <Icon size={20} className={cn(
-                      "transition-transform duration-300",
-                      theme === id && "scale-110"
+                      'transition-transform duration-300',
+                      theme === id && 'scale-110'
                     )} />
                     <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
                   </button>
                 ))}
               </div>
+
+              {theme === 'custom' && <CustomBackgroundEditor />}
             </CardContent>
           </Card>
         )}
@@ -303,5 +309,139 @@ export default function ProfilePage() {
 
       </div>
     </AppShell>
+  );
+}
+
+const MAX_CUSTOM_BG_BYTES = 4 * 1024 * 1024; // 4MB — keeps the data URL under the
+// typical localStorage 5MB quota with headroom.
+
+function CustomBackgroundEditor() {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setPreview(localStorage.getItem(CUSTOM_BG_STORAGE_KEY));
+  }, []);
+
+  function applyDataUrl(dataUrl: string | null) {
+    if (typeof window === 'undefined') return;
+    try {
+      if (dataUrl) {
+        localStorage.setItem(CUSTOM_BG_STORAGE_KEY, dataUrl);
+        document.documentElement.style.setProperty(
+          '--custom-bg-image',
+          `url("${dataUrl}")`,
+        );
+      } else {
+        localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
+        document.documentElement.style.removeProperty('--custom-bg-image');
+      }
+      setPreview(dataUrl);
+    } catch {
+      toast({
+        title: 'Couldn’t save background',
+        description: 'The image is too large for your browser to store locally. Try a smaller file.',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  function handleFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Not an image', description: 'Pick a JPG, PNG, or WebP file.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > MAX_CUSTOM_BG_BYTES) {
+      toast({
+        title: 'Image too large',
+        description: 'Max size is 4 MB. Try a smaller or more compressed image.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : null;
+      if (result) applyDataUrl(result);
+    };
+    reader.onerror = () => {
+      toast({ title: 'Couldn’t read file', variant: 'destructive' });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] p-4">
+      <div className="flex items-start gap-3">
+        <div
+          className="size-20 shrink-0 overflow-hidden rounded-xl border border-foreground/10 bg-muted"
+          style={
+            preview
+              ? {
+                  backgroundImage: `url("${preview}")`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : undefined
+          }
+          aria-hidden
+        >
+          {!preview && (
+            <div className="flex h-full items-center justify-center text-muted-foreground/60">
+              <ImageIcon size={20} />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Background image</p>
+          <p className="text-xs text-muted-foreground">
+            Upload a picture and it’ll sit behind every page. Saved on this device.
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            JPG, PNG, or WebP. Max 4 MB.
+          </p>
+        </div>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          // reset so selecting the same file again still fires
+          e.target.value = '';
+        }}
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => fileRef.current?.click()}
+          className="rounded-full"
+        >
+          <ImageIcon className="size-4" />
+          {preview ? 'Replace image' : 'Upload image'}
+        </Button>
+        {preview && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => applyDataUrl(null)}
+            className="rounded-full text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-4" />
+            Remove
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

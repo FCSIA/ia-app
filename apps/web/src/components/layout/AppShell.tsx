@@ -238,7 +238,7 @@ export function AppShell({
 
   return (
     <Fragment>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="app-root flex min-h-screen w-full bg-background">
         {/* Narrow dark sidebar (icon-only, sticky).
             z-40 creates a stacking context above all sibling content (including
             the clubs workspace secondary sidebar at bg-background / z-auto), so
@@ -337,8 +337,8 @@ export function AppShell({
         </Sheet>
 
         {/* Main */}
-        <div className="flex min-w-0 flex-1 flex-col bg-card">
-          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 lg:px-8">
+        <div className="app-main-surface flex min-w-0 flex-1 flex-col bg-card">
+          <header className="app-main-header sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 lg:px-8">
             <Button
               type="button"
               variant="ghost"
