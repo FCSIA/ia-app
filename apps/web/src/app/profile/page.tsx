@@ -6,9 +6,17 @@ import { useCurrentUser } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authApi, notificationsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { CUSTOM_BG_STORAGE_KEY } from '@/app/providers';
+import { HexColorPicker } from 'react-colorful';
+import {
+  CUSTOM_BG_STORAGE_KEY,
+  CUSTOM_COLORS_STORAGE_KEY,
+  hexToHslParts,
+  readableForegroundParts,
+  type CustomColorKey,
+  type CustomColors,
+} from '@/app/providers';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -283,7 +291,7 @@ export default function ProfilePage() {
                 ))}
               </div>
 
-              {theme === 'custom' && <CustomBackgroundEditor />}
+              {theme === 'custom' && <CustomThemeEditor />}
             </CardContent>
           </Card>
         )}
@@ -315,7 +323,53 @@ export default function ProfilePage() {
 const MAX_CUSTOM_BG_BYTES = 4 * 1024 * 1024; // 4MB — keeps the data URL under the
 // typical localStorage 5MB quota with headroom.
 
-function CustomBackgroundEditor() {
+const PALETTE_SLOTS: Array<{ key: CustomColorKey; label: string; help: string }> = [
+  { key: 'background', label: 'Background', help: 'Outer page backdrop.' },
+  { key: 'primary', label: 'Primary', help: 'Buttons, links, focus rings.' },
+  { key: 'secondary', label: 'Secondary', help: 'Cards and inner panels.' },
+  { key: 'accent', label: 'Accent', help: 'Borders, hover highlights.' },
+];
+
+function CustomThemeEditor() {
+  const [mode, setMode] = useState<'image' | 'colors'>('image');
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] p-4">
+      <div
+        role="tablist"
+        className="inline-flex rounded-full border border-foreground/10 bg-background/40 p-0.5"
+      >
+        {(
+          [
+            { id: 'image', label: 'Image', icon: ImageIcon },
+            { id: 'colors', label: 'Colors', icon: Droplet },
+          ] as const
+        ).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            role="tab"
+            type="button"
+            aria-selected={mode === id}
+            onClick={() => setMode(id)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+              mode === id
+                ? 'bg-foreground text-background'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="size-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'image' ? <CustomBackgroundPanel /> : <CustomColorsPanel />}
+    </div>
+  );
+}
+
+function CustomBackgroundPanel() {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -373,7 +427,7 @@ function CustomBackgroundEditor() {
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-foreground/[0.08] bg-foreground/[0.02] p-4">
+    <div className="space-y-3">
       <div className="flex items-start gap-3">
         <div
           className="size-20 shrink-0 overflow-hidden rounded-xl border border-foreground/10 bg-muted"
@@ -413,7 +467,6 @@ function CustomBackgroundEditor() {
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
-          // reset so selecting the same file again still fires
           e.target.value = '';
         }}
       />
@@ -442,6 +495,176 @@ function CustomBackgroundEditor() {
           </Button>
         )}
       </div>
+    </div>
+  );
+}
+
+function CustomColorsPanel() {
+  const { toast } = useToast();
+  const [colors, setColors] = useState<CustomColors>({});
+  const [openSlot, setOpenSlot] = useState<CustomColorKey | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
+      if (raw) setColors(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function persist(next: CustomColors) {
+    setColors(next);
+    try {
+      if (Object.keys(next).length === 0) {
+        localStorage.removeItem(CUSTOM_COLORS_STORAGE_KEY);
+      } else {
+        localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(next));
+      }
+      applyToDom(next);
+    } catch {
+      toast({
+        title: 'Couldn’t save colors',
+        description: 'Your browser blocked localStorage. Changes won’t persist.',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  function applyToDom(next: CustomColors) {
+    const root = document.documentElement;
+    const slots: Array<{ key: CustomColorKey; vars: string[]; fg?: string }> = [
+      { key: 'background', vars: ['--background'], fg: '--foreground' },
+      {
+        key: 'primary',
+        vars: ['--primary', '--ring', '--sidebar-primary', '--sidebar-ring'],
+        fg: '--primary-foreground',
+      },
+      {
+        key: 'secondary',
+        vars: ['--secondary', '--muted', '--card', '--popover'],
+        fg: '--secondary-foreground',
+      },
+      { key: 'accent', vars: ['--accent', '--border', '--input'], fg: '--accent-foreground' },
+    ];
+    for (const slot of slots) {
+      for (const v of slot.vars) root.style.removeProperty(v);
+      if (slot.fg) root.style.removeProperty(slot.fg);
+    }
+    for (const slot of slots) {
+      const hex = next[slot.key];
+      if (!hex) continue;
+      const hsl = hexToHslParts(hex);
+      if (!hsl) continue;
+      for (const v of slot.vars) root.style.setProperty(v, hsl);
+      if (slot.fg) root.style.setProperty(slot.fg, readableForegroundParts(hex));
+    }
+  }
+
+  function handleChange(key: CustomColorKey, hex: string) {
+    persist({ ...colors, [key]: hex });
+  }
+
+  function handleClear(key: CustomColorKey) {
+    const next = { ...colors };
+    delete next[key];
+    persist(next);
+  }
+
+  function handleResetAll() {
+    persist({});
+    setOpenSlot(null);
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-sm font-medium text-foreground">Color palette</p>
+        <p className="text-xs text-muted-foreground">
+          Pick any color for each slot — text contrast adjusts automatically. Saved on this device.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {PALETTE_SLOTS.map(({ key, label, help }) => {
+          const hex = colors[key];
+          const isOpen = openSlot === key;
+          return (
+            <div
+              key={key}
+              className="rounded-xl border border-foreground/[0.08] bg-background/40"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenSlot(isOpen ? null : key)}
+                className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+              >
+                <span
+                  className={cn(
+                    'size-7 shrink-0 rounded-lg border border-foreground/15',
+                    !hex && 'bg-[repeating-conic-gradient(#ddd_0_25%,_#fff_0_50%)] bg-[length:10px_10px]',
+                  )}
+                  style={hex ? { backgroundColor: hex } : undefined}
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-[11px] text-muted-foreground">{help}</p>
+                </div>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {hex ?? 'auto'}
+                </span>
+              </button>
+              {isOpen && (
+                <div className="space-y-2 border-t border-foreground/[0.08] p-3">
+                  <HexColorPicker
+                    color={hex ?? '#888888'}
+                    onChange={(value) => handleChange(key, value)}
+                    style={{ width: '100%', height: 180 }}
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      value={hex ?? ''}
+                      placeholder="#rrggbb"
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^#[0-9a-fA-F]{6}$/.test(v)) handleChange(key, v);
+                      }}
+                      className="w-28 rounded-md border border-foreground/15 bg-background px-2 py-1 font-mono text-xs"
+                    />
+                    {hex && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleClear(key)}
+                        className="h-7 rounded-full text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {Object.keys(colors).length > 0 && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={handleResetAll}
+          className="rounded-full text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="size-4" />
+          Reset all colors
+        </Button>
+      )}
     </div>
   );
 }
