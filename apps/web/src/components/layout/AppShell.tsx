@@ -42,6 +42,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
+import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -134,6 +135,7 @@ export function AppShell({
   const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? '/dashboard';
 
   useEffect(() => {
@@ -405,7 +407,10 @@ export function AppShell({
                       icon={Settings}
                       label="Settings"
                       index={0}
-                      onSelect={() => router.push('/profile')}
+                      onSelect={() => {
+                        navigationLoading?.startNavigation('/profile');
+                        router.push('/profile');
+                      }}
                     />
                     <DropdownSeparator />
                     <MenuItem

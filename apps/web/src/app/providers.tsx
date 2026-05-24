@@ -3,7 +3,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 
 export const CUSTOM_BG_STORAGE_KEY = 'ia_custom_bg_image';
 export const CUSTOM_COLORS_STORAGE_KEY = 'ia_custom_colors';
@@ -206,7 +207,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'custom']}
       >
         <CustomThemeBootstrap />
-        {children}
+        <Suspense fallback={null}>
+          <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+        </Suspense>
         <Toaster position="top-right" />
       </ThemeProvider>
     </QueryClientProvider>
