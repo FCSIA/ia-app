@@ -54,6 +54,7 @@ Welcome to the IA App developer documentation. This is a school communication pl
 
 ### Reference
 - [[getting-started]] — New machine setup and local dev environment
+- [[deployment-options]] — Production hosting (Next.js + Convex Cloud)
 - [[roles-and-permissions]] — All 8 user roles and what they can do
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do

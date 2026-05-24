@@ -91,69 +91,13 @@ More commands are documented in [docs/reference/commands.md](./docs/reference/co
 
 ## Deployment
 
-The deployment shape should stay boring and maintainable. This app is not a static site: the web app is a Next.js server, the API is a NestJS server, and the database is PostgreSQL. Uploaded files are currently stored on disk by the API, so production backups must include both PostgreSQL and the upload directory.
+The deployment shape should stay boring and maintainable. Production is modeled as **Next.js** plus **Convex Cloud** (data, real-time, and file storage). The app is not a static site.
 
-The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Use that doc when explaining what belongs in a system diagram, including the baseline server/database version and the hypothetical Azure version.
+**Full guide:** [docs/reference/deployment-options.md](./docs/reference/deployment-options.md) — Vercel vs Azure hosting options, Convex CI/CD, and scale planning (~1,600 students, few hundred online at peak).
 
-### React Server Components
+The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
 
-Next.js App Router and React Server Components are compatible with all server-based scenarios below as long as the Next.js app runs as a Node server or container. RSC does **not** mean the app can be deployed as static files.
-
-The current app is mostly client-rendered and stores auth in browser `localStorage`. That is simple, but it limits useful RSC adoption because server components cannot read a browser-only JWT. A serious RSC migration should first decide whether auth moves to secure HttpOnly cookies, then migrate read-heavy pages gradually.
-
-### Scenario 1: Generic Single Server
-
-This is the simplest private-school deployment model:
-
-```text
-Users
-  -> HTTPS reverse proxy
-  -> Next.js web app
-  -> NestJS API
-  -> PostgreSQL database
-  -> Upload directory on persistent disk
-```
-
-This can run on one Linux server or VM with Docker Compose. It is the easiest option to understand and operate, but the school or project owner is responsible for OS patching, backups, monitoring, and recovery.
-
-RSC: The server already has to run Node for Next.js, so RSC does not materially change this scenario. The important requirement is that the reverse proxy forwards requests to the Next.js server instead of serving static build files.
-
-### Scenario 2: Azure VM
-
-If the school closes on Azure but wants to avoid many separate cloud services, the most practical Azure version is still a single-server design:
-
-```text
-Azure Linux VM
-  -> reverse proxy container
-  -> Next.js container
-  -> NestJS API container
-  -> PostgreSQL container or attached database
-  -> persistent upload volume
-```
-
-This keeps the architecture close to the generic server model while giving the school Azure billing, access controls, networking, backups, and administrative ownership. For this project, that is probably the best balance between privacy, cost, and maintainability.
-
-RSC: This scenario is essentially the generic single-server setup running inside Azure. The Next.js container can serve App Router/RSC pages normally.
-
-### Scenario 3: More Managed Azure
-
-A more managed Azure setup can split responsibilities across services:
-
-- Azure App Service or Container Apps for the web/API containers.
-- Azure Database for PostgreSQL for managed database backups and patching.
-- Azure Blob Storage for uploaded files.
-- Azure Key Vault for secrets.
-- Azure Monitor/Application Insights for logs and metrics.
-
-This is more sustainable if the app becomes important school infrastructure, because less operational risk sits on one VM. The tradeoff is complexity: more Azure services, more configuration, more security review, and more things for someone to own long-term.
-
-RSC: Azure App Service or Container Apps can run the Next.js server/container, but Azure Static Web Apps or static blob hosting are not a fit for full RSC/App Router runtime behavior. Managed Azure also makes cookie/session, API origin, and private networking choices more important.
-
-### Sustainability Recommendation
-
-For a school-private app, the best starting point is usually **Azure VM + Docker Compose + managed backups**. It keeps the system small enough for students/staff to reason about while giving the school an official cloud environment and recovery path.
-
-If the app becomes production-critical, the first upgrade should be moving PostgreSQL to managed Azure Database for PostgreSQL. The second upgrade should be moving uploaded files to Azure Blob Storage. Those two changes reduce the biggest long-term risks: database loss and file backup mistakes.
+**Typical choices:** Vercel + Convex (simplest ops), or **Azure Container Apps + Convex** if the frontend must stay in the school Azure subscription.
 
 ## Documentation
 
