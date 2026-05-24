@@ -15,6 +15,36 @@ type RequestWithUser = Request & {
   user?: { id?: string; sub?: string };
 };
 
+function formatExceptionMessage(exception: unknown): string {
+  if (exception instanceof HttpException) {
+    const response = exception.getResponse();
+
+    if (typeof response === 'string') {
+      return response;
+    }
+
+    if (typeof response === 'object' && response !== null) {
+      const body = response as { message?: string | string[] };
+      if (Array.isArray(body.message)) {
+        return body.message.join(' ');
+      }
+      if (typeof body.message === 'string') {
+        return body.message;
+      }
+    }
+  }
+
+  if (exception instanceof Error) {
+    return exception.message;
+  }
+
+  if (typeof exception === 'string') {
+    return exception;
+  }
+
+  return 'Unexpected error';
+}
+
 @Injectable()
 @Catch()
 export class PersistentExceptionFilter implements ExceptionFilter {
@@ -29,12 +59,7 @@ export class PersistentExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
-    const message =
-      exception instanceof Error
-        ? exception.message
-        : typeof exception === 'string'
-          ? exception
-          : 'Unexpected error';
+    const message = formatExceptionMessage(exception);
 
     if (status >= 500) {
       await this.writeErrorLog({

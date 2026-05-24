@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { authApi } from '@/lib/api';
+import { authApi, getApiErrorMessage } from '@/lib/api';
 import { setAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,7 @@ export default function LoginPage() {
       toast({ title: 'Logged in successfully' });
       router.replace('/dashboard');
     } catch (err: any) {
-      toast({ title: err.response?.data?.message || 'Login failed', variant: 'destructive' });
+      toast({ title: getApiErrorMessage(err, 'Login failed. Check your ID and password.'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }

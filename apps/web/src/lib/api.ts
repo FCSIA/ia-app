@@ -19,6 +19,21 @@ export type UpdateClubChannelPayload = Partial<CreateClubChannelPayload>;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
+export function getApiErrorMessage(error: unknown, fallback: string) {
+  const message = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data
+    ?.message;
+
+  if (Array.isArray(message)) {
+    return message.join(' ');
+  }
+
+  if (typeof message === 'string' && message.trim()) {
+    return message;
+  }
+
+  return fallback;
+}
+
 export function toApiUrl(path: string) {
   if (!path) return path;
   if (/^https?:\/\//.test(path)) return path;
@@ -41,14 +56,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → redirect to login
+// Handle 401 → redirect to login (except failed login attempts)
 api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('ia_token');
-      localStorage.removeItem('ia_user');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url ?? '';
+      const isLoginAttempt = requestUrl.includes('/auth/login');
+
+      if (!isLoginAttempt) {
+        localStorage.removeItem('ia_token');
+        localStorage.removeItem('ia_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },
