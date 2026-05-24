@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: 'IA School App',
   description: 'School communication and operations platform',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/logo.png',
+    apple: '/icons/logo.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -30,9 +34,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-      </head>
       <body className={`${workSans.variable} font-sans`} suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster />
