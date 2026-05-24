@@ -20,13 +20,16 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [usersPageSize, setUsersPageSize] = useState(10);
 
-  const canDeactivate = (targetUser: AdminUserRecord) => {
+  const canManageUser = (targetUser: AdminUserRecord) => {
     if (!user) return false;
     const targetRoles = getUserRoles(targetUser);
     const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
     if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
     return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   };
+
+  const canDeactivate = canManageUser;
+  const canResetPassword = canManageUser;
 
   useEffect(() => {
     if (activeTab !== 'users') return;
@@ -116,6 +119,18 @@ export function useAdminUsers(activeTab: AdminTabId) {
       }),
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: (id: string) => usersApi.resetPassword(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+    onError: (e: unknown) =>
+      toast({
+        title: (e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to reset password',
+        variant: 'destructive',
+      }),
+  });
+
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
 
@@ -142,8 +157,17 @@ export function useAdminUsers(activeTab: AdminTabId) {
     selectedUserRoleMeta,
     currentUserId: user?.id,
     canDeactivate,
+    canResetPassword,
     onDeactivate: (userId: string) => deactivateMutation.mutate(userId),
     onActivate: (userId: string) => activateMutation.mutate(userId),
+    onResetPassword: (targetUser: AdminUserRecord) => {
+      resetPasswordMutation.mutate(targetUser.id, {
+        onSuccess: () => {
+          toast({ title: 'Password reset' });
+        },
+      });
+    },
+    isResetPasswordPending: resetPasswordMutation.isPending,
     isSuperAdmin,
     isAssignRolesPending: assignRolesMutation.isPending,
     onAssignRoles: (payload: { id: string; roles: string[] }) => assignRolesMutation.mutate(payload),

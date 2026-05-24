@@ -87,9 +87,3 @@ export class AssignRolesDto {
   roles: Role[];
 }
 
-export class ResetPasswordDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(8)
-  newPassword: string;
-}

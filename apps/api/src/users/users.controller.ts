@@ -16,7 +16,7 @@ import { ApiBearerAuth, ApiTags, ApiConsumes } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@ia/contracts/auth';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, AssignRolesDto, ResetPasswordDto } from './dto/user.dto';
+import { CreateUserDto, UpdateUserDto, AssignRolesDto } from './dto/user.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
@@ -88,12 +88,8 @@ export class UsersController {
 
   @Post(':id/reset-password')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  resetPassword(
-    @Param('id') id: string,
-    @Body() body: ResetPasswordDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.usersService.resetPassword(id, body.newPassword, user.id);
+  resetPassword(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.resetPassword(id, user.id, user.role ?? undefined);
   }
 
   @Post('import/csv')

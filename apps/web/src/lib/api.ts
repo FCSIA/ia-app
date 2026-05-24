@@ -75,8 +75,7 @@ export const usersApi = {
     api.patch(`/users/${id}/roles`, { roles }),
   deactivate: (id: string) => api.patch(`/users/${id}/deactivate`),
   activate: (id: string) => api.patch(`/users/${id}/activate`),
-  resetPassword: (id: string, newPassword: string) =>
-    api.post(`/users/${id}/reset-password`, { newPassword }),
+  resetPassword: (id: string) => api.post(`/users/${id}/reset-password`),
   importCsv: (file: File, options?: { generatePasswords?: boolean }) => {
     const fd = new FormData();
     fd.append('file', file);

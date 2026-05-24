@@ -321,18 +321,31 @@ export class UsersService {
     return this.safeUser(user);
   }
 
-  async resetPassword(id: string, newPassword: string, actorId?: string) {
-    await this.findOne(id);
-    if (newPassword.length < 8) throw new BadRequestException('Password too short');
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+  async resetPassword(id: string, actorId?: string, actorRole?: string) {
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
+
+    if (actorId === id) {
+      throw new ForbiddenException('You cannot reset your own password from the admin panel');
+    }
+
+    const targetRoles = target.roles ?? [];
+    const isTargetPrivileged = targetRoles.includes(Role.ADMIN) || targetRoles.includes(Role.SUPER_ADMIN);
+    const actorIsSuperAdmin = actorRole === Role.SUPER_ADMIN;
+    if (isTargetPrivileged && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Only Super Admins can reset admin account passwords');
+    }
+
+    const passwordHash = await bcrypt.hash(target.uniqueId, 12);
     await this.prisma.user.update({ where: { id }, data: { passwordHash } });
     await this.audit.log({
       actorId,
       action: 'USER_PASSWORD_RESET',
       entityType: 'User',
       entityId: id,
+      meta: { uniqueId: target.uniqueId, resetToDefault: true },
     });
-    return { success: true };
+    return { success: true, uniqueId: target.uniqueId };
   }
 
   async exportStudentsCsv() {
