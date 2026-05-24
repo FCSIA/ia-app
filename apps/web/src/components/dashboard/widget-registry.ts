@@ -9,6 +9,7 @@ import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { DayProgressWidget } from './widgets/DayProgressWidget';
 import { FlexFridaySnapshotWidget } from './widgets/FlexFridaySnapshotWidget';
 import { MyClubsWidget } from './widgets/MyClubsWidget';
+import { FunFactWidget } from './widgets/FunFactWidget';
 
 export type WidgetSize = 'full' | 'half';
 
@@ -98,38 +99,25 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     size: 'half',
     Component: MyClubsWidget,
   },
+  'fun-fact': {
+    id: 'fun-fact',
+    label: 'Did you know?',
+    description: 'School trivia and fun facts while you browse.',
+    size: 'half',
+    Component: FunFactWidget,
+  },
 };
 
-/** Default layouts per role. The first matching role wins. */
-export const DEFAULT_LAYOUTS: Array<{ roles: AppRole[]; layout: string[] }> = [
-  {
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    layout: ['welcome', 'admin-stats', 'pending-approvals', 'calendar', 'announcements'],
-  },
-  {
-    roles: ['SPONSOR', 'TEACHER'],
-    layout: ['welcome', 'pending-approvals', 'calendar', 'upcoming-events', 'my-clubs', 'announcements'],
-  },
-  {
-    roles: ['SUPPORT_STAFF'],
-    layout: ['welcome', 'calendar', 'announcements', 'quick-actions'],
-  },
-  {
-    roles: ['STUDENT_ADMIN', 'STUDENT_LEADER', 'STUDENT'],
-    layout: ['welcome', 'day-progress', 'my-clubs', 'flex-friday', 'calendar', 'upcoming-events', 'announcements'],
-  },
-];
+/** Default dashboard for all roles (reset + first-time layout). */
+export const DEFAULT_DASHBOARD_LAYOUT = [
+  'welcome',
+  'fun-fact',
+  'calendar',
+  'announcements',
+] as const;
 
-export function getDefaultLayout(roles: AppRole[] | undefined): string[] {
-  if (!roles || roles.length === 0) {
-    return ['welcome', 'calendar', 'announcements', 'quick-actions'];
-  }
-  for (const entry of DEFAULT_LAYOUTS) {
-    if (entry.roles.some((r) => roles.includes(r))) {
-      return entry.layout;
-    }
-  }
-  return ['welcome', 'calendar', 'announcements', 'quick-actions'];
+export function getDefaultLayout(_roles?: AppRole[] | undefined): string[] {
+  return [...DEFAULT_DASHBOARD_LAYOUT];
 }
 
 export function isWidgetAllowed(widget: WidgetDefinition, roles: AppRole[] | undefined): boolean {
