@@ -1,7 +1,89 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../lib/currentUser";
 import { flexAttendanceStatusValidator } from "../validators";
+
+function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string, actorId?: string) {
+  const isStaff =
+    user.roles.includes("TEACHER") ||
+    user.roles.includes("ADMIN") ||
+    user.roles.includes("SUPER_ADMIN");
+  const isWorkshopTeacher = workshopTeacherId && actorId && workshopTeacherId === actorId;
+  return isStaff || isWorkshopTeacher;
+}
+
+export const getRoster = query({
+  args: { workshopId: v.id("flexWorkshops") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const workshop = await ctx.db.get(args.workshopId);
+    if (!workshop) throw new Error("Workshop not found");
+
+    if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
+      throw new Error("Cannot view this roster");
+    }
+
+    const links = await ctx.db
+      .query("flexWorkshopSessions")
+      .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", args.workshopId))
+      .collect();
+    const sessions = await Promise.all(
+      links.map(async (link) => {
+        const session = await ctx.db.get(link.sessionId);
+        return session ? { session } : null;
+      }),
+    );
+
+    const registrations = await ctx.db
+      .query("flexRegistrations")
+      .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
+      .collect();
+    const assignments = await ctx.db
+      .query("flexAssignments")
+      .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
+      .collect();
+    const attendances = await ctx.db
+      .query("flexAttendances")
+      .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
+      .collect();
+
+    const serializeStudent = async (studentId: Id<"users">) => {
+      const student = await ctx.db.get(studentId);
+      if (!student) return null;
+      return {
+        _id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        gradeLevel: student.gradeLevel,
+        uniqueId: student.uniqueId,
+      };
+    };
+
+    return {
+      workshop,
+      sessions: sessions.filter((s): s is NonNullable<typeof s> => s !== null),
+      registrations: await Promise.all(
+        registrations.map(async (registration) => ({
+          ...registration,
+          student: await serializeStudent(registration.studentId),
+        })),
+      ),
+      assignments: await Promise.all(
+        assignments.map(async (assignment) => ({
+          ...assignment,
+          student: await serializeStudent(assignment.studentId),
+        })),
+      ),
+      attendances: attendances.map((attendance) => ({
+        studentId: attendance.studentId,
+        status: attendance.status,
+        markedAt: attendance.markedAt,
+        markedById: attendance.markedById,
+      })),
+    };
+  },
+});
 
 export const markAttendance = mutation({
   args: {
@@ -11,29 +93,27 @@ export const markAttendance = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    
-    if (!user.roles.includes("TEACHER") && !user.roles.includes("ADMIN") && !user.roles.includes("SUPER_ADMIN")) {
-      throw new Error("Unauthorized to mark attendance");
-    }
-
     const workshop = await ctx.db.get(args.workshopId);
     if (!workshop) throw new Error("Workshop not found");
-    
-    // Find the Friday for this workshop
+
+    if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
+      throw new Error("Only teachers or admins may mark attendance");
+    }
+
     const workshopSession = await ctx.db
       .query("flexWorkshopSessions")
       .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", args.workshopId))
       .first();
-      
+
     if (!workshopSession) throw new Error("Workshop is not attached to any session");
-    
+
     const session = await ctx.db.get(workshopSession.sessionId);
     if (!session) throw new Error("Session not found");
 
     const existingAttendance = await ctx.db
       .query("flexAttendances")
       .withIndex("by_workshopId_and_studentId", (q) =>
-        q.eq("workshopId", args.workshopId).eq("studentId", args.studentId)
+        q.eq("workshopId", args.workshopId).eq("studentId", args.studentId),
       )
       .first();
 
@@ -58,6 +138,51 @@ export const markAttendance = mutation({
       });
     }
 
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "FLEX_ATTENDANCE_MARKED",
+      entityId: attendanceId,
+      entityType: "FLEX_ATTENDANCE",
+      createdAt: Date.now(),
+    });
+
     return attendanceId;
+  },
+});
+
+export const clearAttendance = mutation({
+  args: {
+    workshopId: v.id("flexWorkshops"),
+    studentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const workshop = await ctx.db.get(args.workshopId);
+    if (!workshop) throw new Error("Workshop not found");
+
+    if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
+      throw new Error("Only teachers or admins may clear attendance");
+    }
+
+    const existing = await ctx.db
+      .query("flexAttendances")
+      .withIndex("by_workshopId_and_studentId", (q) =>
+        q.eq("workshopId", args.workshopId).eq("studentId", args.studentId),
+      )
+      .first();
+
+    if (!existing) return { success: true };
+
+    await ctx.db.delete(existing._id);
+
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "FLEX_ATTENDANCE_CLEARED",
+      entityId: existing._id,
+      entityType: "FLEX_ATTENDANCE",
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });
