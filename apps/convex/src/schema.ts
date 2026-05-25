@@ -264,4 +264,25 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_announcementId_and_userId", ["announcementId", "userId"]),
+
+  clubs: defineTable({
+    name: v.string(),
+    description: v.string(),
+    createdAt: v.number(),
+  }),
+
+  clubMembers: defineTable({
+    clubId: v.id("clubs"),
+    userId: v.id("users"),
+    role: v.string(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_clubId", ["clubId"]),
+
+  channels: defineTable({
+    clubId: v.id("clubs"),
+    name: v.string(),
+    isPrivate: v.boolean(),
+  })
+    .index("by_clubId", ["clubId"]),
 });

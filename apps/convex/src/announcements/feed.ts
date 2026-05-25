@@ -58,7 +58,13 @@ export const create = mutation({
   args: {
     title: v.string(),
     body: v.string(),
-    targetType: v.string(),
+    targetType: v.union(
+      v.literal("SCHOOL_WIDE"),
+      v.literal("GRADE"),
+      v.literal("PATHWAY"),
+      v.literal("CLUB"),
+      v.literal("INTERSECTION"),
+    ),
     targetGrade: v.optional(v.number()),
     targetGrades: v.array(v.number()),
     targetPathway: v.optional(v.string()),
@@ -72,30 +78,62 @@ export const create = mutation({
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    // TODO: implement moderation, permission check, approval, and notification triggers
-    return await ctx.db.insert("announcements", {
+    
+    // Create the announcement
+    const annId = await ctx.db.insert("announcements", {
       authorId: user._id,
-      status: "ACTIVE" as const,
-      ...args,
+      title: args.title,
+      body: args.body,
+      targetType: args.targetType,
+      targetGrade: args.targetGrade,
+      targetGrades: args.targetGrades,
+      targetPathway: args.targetPathway,
+      targetMajorPathways: args.targetMajorPathways,
+      targetMinorPathways: args.targetMinorPathways,
+      clubId: args.clubId,
+      status: "ACTIVE",
+      allowComments: args.allowComments,
+      isAdminGeneral: args.isAdminGeneral,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    
+    await logAuditEvent(ctx, { 
+      actorId: user._id, 
+      action: "announcement.created", 
+      entityType: "announcement", 
+      entityId: annId,
+      meta: { title: args.title }
+    });
+    
+    return annId;
   },
 });
 
-export const archive = mutation({
+export const approve = mutation({
   args: { id: v.id("announcements") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const ann = await ctx.db.get(args.id);
     if (!ann) throw new ConvexError("Announcement not found");
     
-    // Check permission
-    if (ann.authorId !== user._id && !user.roles.includes("ADMIN")) {
-        throw new ConvexError("Unauthorized");
-    }
+    if (!user.roles.includes("ADMIN")) throw new ConvexError("Unauthorized");
 
-    await ctx.db.patch(args.id, { status: "ARCHIVED", updatedAt: Date.now() });
-    await logAuditEvent(ctx, { actorId: user._id, action: "announcement.archived", entityType: "announcement", entityId: args.id });
+    await ctx.db.patch(args.id, { status: "ACTIVE", approvedAt: Date.now(), approvedById: user._id, updatedAt: Date.now() });
+    await logAuditEvent(ctx, { actorId: user._id, action: "announcement.approved", entityType: "announcement", entityId: args.id });
+  },
+});
+
+export const reject = mutation({
+  args: { id: v.id("announcements"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const ann = await ctx.db.get(args.id);
+    if (!ann) throw new ConvexError("Announcement not found");
+
+    if (!user.roles.includes("ADMIN")) throw new ConvexError("Unauthorized");
+
+    await ctx.db.patch(args.id, { status: "REJECTED", rejectionNote: args.note, updatedAt: Date.now() });
+    await logAuditEvent(ctx, { actorId: user._id, action: "announcement.rejected", entityType: "announcement", entityId: args.id });
   },
 });
