@@ -21,10 +21,25 @@ import {
   classifyRoles,
   createLinkedUser,
   createUserResultValidator,
+  buildStudentEmail,
   generateTemporaryPassword,
   listUsersResultValidator,
+  normalizeUniqueId,
+  studentExportRowValidator,
+  studentImportResultValidator,
   userRoleGroupValidator,
+  type Pathway,
 } from "./_lib";
+
+const studentImportRowValidator = v.object({
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  gradeLevel: v.optional(v.number()),
+  major: v.optional(pathwayValidator),
+  minor: v.optional(pathwayValidator),
+  email: v.optional(v.string()),
+});
 
 export const list = query({
   args: {
@@ -139,6 +154,134 @@ export const createUser = mutation({
     });
 
     return result;
+  },
+});
+
+export const importStudents = mutation({
+  args: {
+    rows: v.array(studentImportRowValidator),
+    generatePasswords: v.optional(v.boolean()),
+  },
+  returns: studentImportResultValidator,
+  handler: async (ctx, args) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    if (args.rows.length > 200) {
+      throw new ConvexError("Import at most 200 students at a time.");
+    }
+
+    const results = {
+      created: 0,
+      skipped: 0,
+      errors: [] as string[],
+      generatedCredentials: [] as Array<{
+        firstName: string;
+        lastName: string;
+        uniqueId: string;
+        email: string;
+        temporaryPassword: string;
+      }>,
+    };
+
+    for (const [index, row] of args.rows.entries()) {
+      try {
+        const uniqueId = normalizeUniqueId(row.uniqueId);
+        const firstName = row.firstName.trim();
+        const lastName = row.lastName.trim();
+        if (!uniqueId || !firstName || !lastName) {
+          results.errors.push(`Row ${index + 2}: missing first name, last name, or student id`);
+          results.skipped += 1;
+          continue;
+        }
+        if (row.gradeLevel != null && (row.gradeLevel < 9 || row.gradeLevel > 12)) {
+          throw new ConvexError(`Grade level must be between 9 and 12. Received "${row.gradeLevel}"`);
+        }
+        if (row.major && row.minor && row.major === row.minor) {
+          throw new ConvexError("Minor pathway must be different from major pathway");
+        }
+
+        const existing = await ctx.db
+          .query("users")
+          .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
+          .unique();
+        if (existing) {
+          results.skipped += 1;
+          continue;
+        }
+
+        const email = row.email?.trim() || buildStudentEmail(uniqueId);
+        const temporaryPassword = args.generatePasswords
+          ? generateTemporaryPassword(10)
+          : uniqueId;
+
+        await createLinkedUser(ctx, {
+          uniqueId,
+          firstName,
+          lastName,
+          gradeLevel: row.gradeLevel,
+          major: row.major as Pathway | undefined,
+          minor: row.minor as Pathway | undefined,
+          email,
+          password: temporaryPassword,
+          roles: ["STUDENT"],
+        });
+
+        results.created += 1;
+        if (args.generatePasswords) {
+          results.generatedCredentials.push({
+            firstName,
+            lastName,
+            uniqueId,
+            email,
+            temporaryPassword,
+          });
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        results.errors.push(`Row ${index + 2}: ${message}`);
+        results.skipped += 1;
+      }
+    }
+
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_CSV_IMPORT",
+      entityType: "User",
+      meta: {
+        created: results.created,
+        skipped: results.skipped,
+        generatedPasswords: args.generatePasswords ?? false,
+      },
+    });
+
+    return results;
+  },
+});
+
+export const exportStudents = query({
+  args: {},
+  returns: v.array(studentExportRowValidator),
+  handler: async (ctx) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    const students = await ctx.db
+      .query("users")
+      .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
+        q.eq("isStudent", true),
+      )
+      .take(5000);
+
+    return students.map((student) => ({
+      firstName: student.firstName,
+      lastName: student.lastName,
+      uniqueId: student.uniqueId,
+      email: student.email ?? buildStudentEmail(student.uniqueId),
+      gradeLevel: student.gradeLevel ?? null,
+      major: student.major ?? null,
+      minor: student.minor ?? null,
+    }));
   },
 });
 

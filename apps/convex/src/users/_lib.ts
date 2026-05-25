@@ -30,6 +30,29 @@ export const listUsersResultValidator = v.object({
   continueCursor: v.string(),
 });
 
+export const studentImportResultValidator = v.object({
+  created: v.number(),
+  skipped: v.number(),
+  errors: v.array(v.string()),
+  generatedCredentials: v.array(v.object({
+    firstName: v.string(),
+    lastName: v.string(),
+    uniqueId: v.string(),
+    email: v.string(),
+    temporaryPassword: v.string(),
+  })),
+});
+
+export const studentExportRowValidator = v.object({
+  firstName: v.string(),
+  lastName: v.string(),
+  uniqueId: v.string(),
+  email: v.string(),
+  gradeLevel: v.union(v.number(), v.null()),
+  major: v.union(v.string(), v.null()),
+  minor: v.union(v.string(), v.null()),
+});
+
 export type Pathway = "INFORMATION_TECHNOLOGY" | "HEALTH_SCIENCE" | "ENGINEERING";
 
 export type CreateLinkedUserArgs = {
