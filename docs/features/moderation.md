@@ -13,7 +13,8 @@ tags: [feature, moderation, safety]
 The moderation system has two parts: automated keyword filtering that scans content as it's created, and a user report system for flagging problematic content for admin review.
 
 **Files:**
-- Backend: `apps/api/src/moderation/`
+- Backend (Convex): `apps/convex/src/moderation/` — `keywords`, `reports`
+- Legacy REST: `apps/api/src/moderation/` (retained during port)
 - Web: `apps/web/src/app/admin/` (Moderation tab)
 - Database: [[schema#KeywordRule]], [[schema#Report]]
 

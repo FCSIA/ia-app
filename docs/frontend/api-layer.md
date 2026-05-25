@@ -73,6 +73,18 @@ If any request returns `401 Unauthorized` (token expired, invalid, or missing), 
 
 ---
 
+## Convex port (in progress)
+
+Many screens now call **Convex** directly via `useQuery` / `useMutation` and `api` from `apps/convex/src/_generated/api`. The Axios groups below remain for domains not yet ported.
+
+**On Convex today (web):** clubs, events, calendar, Flex Friday, notifications, schedule dashboard, announcements, moderation, uploads (chat attachments + club images), audit (admin + Flex Friday audit tab).
+
+**Still on REST (`api.ts`):** admin user CSV import, legacy auth token helpers, and any straggler not listed above.
+
+Prefer adding new behavior in `apps/convex/src/` rather than new Nest routes.
+
+---
+
 ## API Groups
 
 All endpoints are grouped by feature into exported objects:

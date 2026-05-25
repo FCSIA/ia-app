@@ -13,8 +13,9 @@ tags: [feature, announcements, comments]
 Announcements are messages broadcast to specific audiences. They support comments, expiry, archiving, sponsor approval for club proposals, user bookmarks, pinned announcements, and content moderation.
 
 **Files:**
-- Backend: `apps/api/src/announcements/`
-- Web: `apps/web/src/app/announcements/`
+- Backend (Convex): `apps/convex/src/announcements/` — `feed`, `engagement`, `comments`
+- Legacy REST: `apps/api/src/announcements/` (retained during port)
+- Web: `apps/web/src/app/announcements/` (Convex hooks)
 - Database: [[schema#Announcement]], [[schema#Comment]]
 
 ---

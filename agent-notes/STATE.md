@@ -24,8 +24,9 @@
 | Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.) |
 | Wrapped page + admin wrapped tab | **Convex** |
 | Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
-| Clubs CSV bulk invite | **REST** (`clubsApi.bulkInviteCsv`) until Convex action exists |
-| Events, calendar, flex-friday, announcements UI | **Still REST** (`@/lib/api`) |
+| Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
+| Events, calendar, flex-friday UI | **Convex** (`api.events.*`, `api.flexFriday.*`) |
+| Announcements UI | **Still REST** (`@/lib/api`) |
 
 ### Dev data commands (`package.json`)
 
@@ -44,8 +45,8 @@
 
 ## Next Work
 
-1. Add Convex **bulk CSV invite**; port **message report/history** if still needed.
-2. Wire **events/calendar/flex** UI; add missing Convex queries (`getPendingApprovals`, etc.).
+1. Port **message report/history** if still needed.
+2. Wire **announcements** UI; complete bookmark/archive/mark-read mutations.
 3. Wire **announcements** UI; complete bookmark/archive/mark-read mutations.
 4. Port **moderation** + **uploads** (Convex storage).
 5. Docs sweep (`docs/index.md`, architecture, seed docs).
