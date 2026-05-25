@@ -14,11 +14,15 @@ import type * as announcements_feed from "../announcements/feed.js";
 import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
+import type * as bootstrap from "../bootstrap.js";
 import type * as clubs__lib from "../clubs/_lib.js";
 import type * as clubs_access from "../clubs/access.js";
 import type * as clubs_channels from "../clubs/channels.js";
+import type * as clubs_detail from "../clubs/detail.js";
 import type * as clubs_invitations from "../clubs/invitations.js";
 import type * as clubs_management from "../clubs/management.js";
+import type * as clubs_serialize from "../clubs/serialize.js";
+import type * as clubs_tags from "../clubs/tags.js";
 import type * as courses__lib from "../courses/_lib.js";
 import type * as courses_catalog from "../courses/catalog.js";
 import type * as courses_seed from "../courses/seed.js";
@@ -50,6 +54,8 @@ import type * as users_admin from "../users/admin.js";
 import type * as users_auth from "../users/auth.js";
 import type * as users_me from "../users/me.js";
 import type * as validators from "../validators.js";
+import type * as wrapped__lib from "../wrapped/_lib.js";
+import type * as wrapped_snapshots from "../wrapped/snapshots.js";
 
 import type {
   ApiFromModules,
@@ -64,11 +70,15 @@ declare const fullApi: ApiFromModules<{
   "audit/_lib": typeof audit__lib;
   "audit/events": typeof audit_events;
   auth: typeof auth;
+  bootstrap: typeof bootstrap;
   "clubs/_lib": typeof clubs__lib;
   "clubs/access": typeof clubs_access;
   "clubs/channels": typeof clubs_channels;
+  "clubs/detail": typeof clubs_detail;
   "clubs/invitations": typeof clubs_invitations;
   "clubs/management": typeof clubs_management;
+  "clubs/serialize": typeof clubs_serialize;
+  "clubs/tags": typeof clubs_tags;
   "courses/_lib": typeof courses__lib;
   "courses/catalog": typeof courses_catalog;
   "courses/seed": typeof courses_seed;
@@ -100,6 +110,8 @@ declare const fullApi: ApiFromModules<{
   "users/auth": typeof users_auth;
   "users/me": typeof users_me;
   validators: typeof validators;
+  "wrapped/_lib": typeof wrapped__lib;
+  "wrapped/snapshots": typeof wrapped_snapshots;
 }>;
 
 /**

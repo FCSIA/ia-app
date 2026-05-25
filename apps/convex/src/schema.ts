@@ -551,4 +551,25 @@ export default defineSchema({
     .index("by_workshopId_and_studentId", ["workshopId", "studentId"])
     .index("by_studentId_and_flexFridayId", ["studentId", "flexFridayId"])
     .index("by_flexFridayId", ["flexFridayId"]),
+
+  wrappedSnapshots: defineTable({
+    userId: v.id("users"),
+    schoolYearStart: v.number(),
+    schoolYearLabel: v.string(),
+    rangeStart: v.number(),
+    rangeEnd: v.number(),
+    schemaVersion: v.number(),
+    summary: v.any(),
+    messagesSent: v.number(),
+    channelsEngaged: v.number(),
+    friends: v.number(),
+    clubs: v.number(),
+    flexCredits: v.number(),
+    pathwayFlexCredits: v.number(),
+    reactionsReceived: v.number(),
+    longestStreak: v.number(),
+    generatedAt: v.number(),
+  })
+    .index("by_userId_and_schoolYearStart", ["userId", "schoolYearStart"])
+    .index("by_schoolYearStart", ["schoolYearStart"]),
 });
