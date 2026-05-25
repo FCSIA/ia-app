@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query, mutation } from "../_generated/server";
 import { getCurrentAppUser } from "../lib/currentUser";
 import {
@@ -11,8 +11,8 @@ import {
   studentScheduleRecordValidator,
   normalizeScheduleEntries,
   requireStudentUser,
-} from "./lib";
-import { logAuditEvent } from "../audit/lib";
+} from "./_lib";
+import { logAuditEvent } from "../audit/_lib";
 import { scheduleWeekdayValidator } from "../validators";
 import { Id, Doc } from "../_generated/dataModel";
 

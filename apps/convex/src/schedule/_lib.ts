@@ -6,7 +6,7 @@ import {
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
-import { toCourseSummary } from "../courses/lib";
+import { toCourseSummary } from "../courses/_lib";
 import type { AppRole } from "../lib/roles";
 
 export const schoolDayBlockValidator = v.object({

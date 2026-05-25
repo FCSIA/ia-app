@@ -1,7 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { logAuditEvent } from "../audit/lib";
+import { logAuditEvent } from "../audit/_lib";
 import {
   getCurrentAppUser,
   requireAnyRole,
@@ -24,7 +24,7 @@ import {
   generateTemporaryPassword,
   listUsersResultValidator,
   userRoleGroupValidator,
-} from "./lib";
+} from "./_lib";
 
 export const list = query({
   args: {

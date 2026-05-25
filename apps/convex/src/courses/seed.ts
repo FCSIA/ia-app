@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { COURSE_SEEDS } from "../../seed-data/courses";
-import { courseSeedResultValidator, courseSeedToDocument } from "./lib";
+import { courseSeedResultValidator, courseSeedToDocument } from "./_lib";
 
 export const run = mutation({
   args: {

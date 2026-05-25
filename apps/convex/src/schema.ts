@@ -213,4 +213,55 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_weekday_and_startTime", ["weekday", "startTime"]),
+
+  announcements: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    targetType: v.string(),
+    targetGrade: v.optional(v.number()),
+    targetGrades: v.array(v.number()),
+    targetPathway: v.optional(v.string()),
+    targetMajorPathways: v.array(v.string()),
+    targetMinorPathways: v.array(v.string()),
+    clubId: v.optional(v.id("clubs")),
+    status: v.string(),
+    allowComments: v.boolean(),
+    isAdminGeneral: v.boolean(),
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    approvedAt: v.optional(v.number()),
+    approvedById: v.optional(v.id("users")),
+    submittedById: v.optional(v.id("users")),
+    rejectionNote: v.optional(v.string()),
+    promotedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_clubId", ["clubId"])
+    .index("by_status", ["status"]),
+
+  comments: defineTable({
+    announcementId: v.id("announcements"),
+    authorId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_announcementId", ["announcementId"]),
+
+  announcementReads: defineTable({
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+    readAt: v.number(),
+  })
+    .index("by_announcementId", ["announcementId"])
+    .index("by_userId", ["userId"])
+    .index("by_announcementId_and_userId", ["announcementId", "userId"]),
+
+  announcementBookmarks: defineTable({
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_announcementId_and_userId", ["announcementId", "userId"]),
 });

@@ -12,8 +12,8 @@ import {
   scheduleSearchResultValidator,
   type ScheduleSearchResult,
   type ScheduleSearchFriendshipStatus,
-} from "./lib";
-import { logAuditEvent } from "../audit/lib";
+} from "./_lib";
+import { logAuditEvent } from "../audit/_lib";
 
 export const search = query({
   args: {

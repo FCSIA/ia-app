@@ -11,7 +11,7 @@ import {
   sortCoursesForCatalog,
   toCourseDetail,
   toCourseSummary,
-} from "./lib";
+} from "./_lib";
 
 export const list = query({
   args: {

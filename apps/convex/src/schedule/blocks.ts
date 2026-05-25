@@ -7,8 +7,8 @@ import {
   validateBlockConflicts,
   serializeBlock,
   schoolDayBlockValidator,
-} from "./lib";
-import { logAuditEvent } from "../audit/lib";
+} from "./_lib";
+import { logAuditEvent } from "../audit/_lib";
 import { scheduleWeekdayValidator, schoolDayBlockKindValidator } from "../validators";
 
 export const createBlock = mutation({

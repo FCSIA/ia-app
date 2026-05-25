@@ -5,7 +5,7 @@ import { getCurrentAppUser } from "../lib/currentUser";
 import {
   notificationValidator,
   toNotification,
-} from "./lib";
+} from "./_lib";
 
 export const list = query({
   args: {

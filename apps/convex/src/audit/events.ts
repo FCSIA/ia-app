@@ -8,7 +8,7 @@ import {
   includes,
   matchesDateRange,
   toAuditEvent,
-} from "./lib";
+} from "./_lib";
 
 export const list = query({
   args: {

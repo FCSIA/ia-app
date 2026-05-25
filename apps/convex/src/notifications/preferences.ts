@@ -5,7 +5,7 @@ import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
 } from "../validators";
-import { preferenceValidator, scopeKey, toPreference } from "./lib";
+import { preferenceValidator, scopeKey, toPreference } from "./_lib";
 
 export const list = query({
   args: {},

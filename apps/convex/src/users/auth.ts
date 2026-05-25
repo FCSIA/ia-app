@@ -1,9 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { authComponent, createAuth } from "../auth";
 import { mutation } from "../_generated/server";
-import { logAuditEvent } from "../audit/lib";
+import { logAuditEvent } from "../audit/_lib";
 import { getCurrentAppUser } from "../lib/currentUser";
-import { createLinkedUser, createUserResultValidator } from "./lib";
+import { createLinkedUser, createUserResultValidator } from "./_lib";
 
 export const changePassword = mutation({
   args: {

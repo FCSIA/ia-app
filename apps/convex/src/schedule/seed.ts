@@ -13,7 +13,7 @@ import {
   deleteSeedBatch,
   seedDefaultBlocks,
   seedAcceptedFriendPairs,
-} from "./lib";
+} from "./_lib";
 
 export const seedFromStaticData = mutation({
   args: {
@@ -70,7 +70,7 @@ export const seedFromStaticData = mutation({
     const courseMap = new Map(courses.map((course) => [course.slug, course]));
 
     const isFirstPage = cursor === 0;
-    const blocksInserted = isFirstPage ? await seedDefaultBlocks(ctx, actor._id, now, SCHEDULE_WEEKDAYS, BASE_BLOCKS) : 0;
+    const blocksInserted = isFirstPage ? await seedDefaultBlocks(ctx, actor._id, now, SCHEDULE_WEEKDAYS, BASE_BLOCKS as unknown as any[]) : 0;
     const friendshipsInserted = isFirstPage ? await seedAcceptedFriendPairs(ctx, students, now) : 0;
 
     let schedulesUpserted = 0;
