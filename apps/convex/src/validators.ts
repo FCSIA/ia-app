@@ -101,3 +101,107 @@ export const clubMemberRoleValidator = v.union(
 );
 
 export type ClubMemberRole = Infer<typeof clubMemberRoleValidator>;
+
+export const inviteStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("ACCEPTED"),
+  v.literal("DECLINED"),
+);
+
+export type InviteStatus = Infer<typeof inviteStatusValidator>;
+
+export const clubChannelVisibilityValidator = v.union(
+  v.literal("PUBLIC"),
+  v.literal("PRIVATE"),
+  v.literal("MEMBER_READONLY"),
+);
+
+export type ClubChannelVisibility = Infer<typeof clubChannelVisibilityValidator>;
+
+export const clubJoinPolicyValidator = v.union(
+  v.literal("OPEN"),
+  v.literal("REQUEST"),
+);
+
+export type ClubJoinPolicy = Infer<typeof clubJoinPolicyValidator>;
+
+export const clubJoinRequestStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("APPROVED"),
+  v.literal("DECLINED"),
+);
+
+export type ClubJoinRequestStatus = Infer<typeof clubJoinRequestStatusValidator>;
+
+export const clubMentionKindValidator = v.union(
+  v.literal("USER"),
+  v.literal("BUILT_IN_TAG"),
+  v.literal("CUSTOM_TAG"),
+);
+
+export type ClubMentionKind = Infer<typeof clubMentionKindValidator>;
+
+export const eventStatusValidator = v.union(
+  v.literal("DRAFT"),
+  v.literal("PENDING_APPROVAL"),
+  v.literal("APPROVED"),
+  v.literal("PUBLISHED"),
+  v.literal("CANCELLED"),
+);
+
+export type EventStatus = Infer<typeof eventStatusValidator>;
+
+export const eventAttendanceStatusValidator = v.union(
+  v.literal("PRESENT"),
+  v.literal("ABSENT"),
+  v.literal("TARDY"),
+);
+
+export type EventAttendanceStatus = Infer<typeof eventAttendanceStatusValidator>;
+
+export const approvalStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("APPROVED"),
+  v.literal("DECLINED"),
+);
+
+export type ApprovalStatus = Infer<typeof approvalStatusValidator>;
+
+export const eventTypeValidator = v.union(
+  v.literal("GENERAL"),
+  v.literal("CLUB"),
+);
+
+export type EventType = Infer<typeof eventTypeValidator>;
+
+export const calendarSourceValidator = v.union(
+  v.literal("SCHOOL"),
+  v.literal("CLUB"),
+  v.literal("FLEX_FRIDAY"),
+);
+
+export type CalendarSource = Infer<typeof calendarSourceValidator>;
+
+export const flexFridayTypeValidator = v.union(
+  v.literal("ALL_STUDENT"),
+  v.literal("SENIOR_ONLY"),
+  v.literal("ADVISORY"),
+);
+
+export type FlexFridayType = Infer<typeof flexFridayTypeValidator>;
+
+export const flexSessionTypeValidator = v.union(
+  v.literal("STUDENT_CHOICE"),
+  v.literal("MANDATORY_ASSEMBLY"),
+  v.literal("TEACHER_ASSIGNED"),
+);
+
+export type FlexSessionType = Infer<typeof flexSessionTypeValidator>;
+
+export const flexAttendanceStatusValidator = v.union(
+  v.literal("PRESENT"),
+  v.literal("ABSENT"),
+  v.literal("TARDY"),
+);
+
+export type FlexAttendanceStatus = Infer<typeof flexAttendanceStatusValidator>;

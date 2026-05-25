@@ -10,6 +10,19 @@ import {
   pathwayValidator,
   scheduleWeekdayValidator,
   clubMemberRoleValidator,
+  inviteStatusValidator,
+  clubChannelVisibilityValidator,
+  clubJoinPolicyValidator,
+  clubJoinRequestStatusValidator,
+  clubMentionKindValidator,
+  eventStatusValidator,
+  eventTypeValidator,
+  eventAttendanceStatusValidator,
+  approvalStatusValidator,
+  calendarSourceValidator,
+  flexFridayTypeValidator,
+  flexSessionTypeValidator,
+  flexAttendanceStatusValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -268,22 +281,274 @@ export default defineSchema({
 
   clubs: defineTable({
     name: v.string(),
-    description: v.string(),
+    description: v.optional(v.string()),
+    logoUrl: v.optional(v.string()),
+    bannerUrl: v.optional(v.string()),
+    accentColor: v.optional(v.string()),
+    overview: v.optional(v.string()),
+    joinPolicy: clubJoinPolicyValidator,
+    memberLimit: v.optional(v.number()),
+    joinCode: v.optional(v.string()),
+    joinCodeUpdatedAt: v.optional(v.number()),
+    isActive: v.boolean(),
     createdAt: v.number(),
+    updatedAt: v.number(),
   }),
 
   clubMembers: defineTable({
     clubId: v.id("clubs"),
     userId: v.id("users"),
-    role: clubMemberRoleValidator,
+    role: v.optional(clubMemberRoleValidator),
+    joinedAt: v.number(),
   })
-    .index("by_userId", ["userId"])
+    .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"]),
 
-  channels: defineTable({
+  clubSponsors: defineTable({
+    clubId: v.id("clubs"),
+    userId: v.id("users"),
+    addedAt: v.number(),
+  }),
+
+  clubInvites: defineTable({
+    clubId: v.id("clubs"),
+    senderId: v.id("users"),
+    recipientId: v.id("users"),
+    status: inviteStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  clubJoinRequests: defineTable({
+    clubId: v.id("clubs"),
+    requesterId: v.id("users"),
+    status: clubJoinRequestStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clubId_and_status", ["clubId", "status"]),
+
+  clubChannels: defineTable({
     clubId: v.id("clubs"),
     name: v.string(),
-    isPrivate: v.boolean(),
+    description: v.optional(v.string()),
+    visibility: clubChannelVisibilityValidator,
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
   })
-    .index("by_clubId", ["clubId"]),
+    .index("by_clubId_and_visibility", ["clubId", "visibility"]),
+
+  clubChannelMemberships: defineTable({
+    channelId: v.id("clubChannels"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }),
+
+  clubTags: defineTable({
+    clubId: v.id("clubs"),
+    name: v.string(),
+    slug: v.string(),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+  }),
+
+  clubTagMembers: defineTable({
+    tagId: v.id("clubTags"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  }),
+
+  clubChannelMessages: defineTable({
+    channelId: v.id("clubChannels"),
+    authorId: v.id("users"),
+    parentMessageId: v.optional(v.id("clubChannelMessages")),
+    body: v.string(),
+    bodyRich: v.optional(v.any()),
+    isPinned: v.boolean(),
+    pinnedAt: v.optional(v.number()),
+    pollQuestion: v.optional(v.string()),
+    pollOptions: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_channelId_and_parentMessageId_and_createdAt", ["channelId", "parentMessageId", "createdAt"])
+    .index("by_channelId_and_isPinned_and_pinnedAt", ["channelId", "isPinned", "pinnedAt"])
+    .index("by_authorId_and_createdAt", ["authorId", "createdAt"])
+    .index("by_authorId_and_channelId_and_createdAt", ["authorId", "channelId", "createdAt"]),
+
+  clubChannelMessagePollVotes: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.id("users"),
+    optionId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_messageId_and_optionId", ["messageId", "optionId"]),
+
+  clubChannelMessageAttachments: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    fileName: v.string(),
+    fileUrl: v.string(),
+    mimeType: v.optional(v.string()),
+    size: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+
+  clubChannelMessageReactions: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.id("users"),
+    emoji: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_messageId_and_emoji", ["messageId", "emoji"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+
+  clubChannelMessageMentions: defineTable({
+    messageId: v.id("clubChannelMessages"),
+    userId: v.optional(v.id("users")),
+    tagId: v.optional(v.id("clubTags")),
+    kind: clubMentionKindValidator,
+    token: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_messageId_and_userId", ["messageId", "userId"])
+    .index("by_userId", ["userId"]),
+
+  eventCategories: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  events: defineTable({
+    authorId: v.id("users"),
+    ownerId: v.optional(v.id("users")),
+    clubId: v.optional(v.id("clubs")),
+    categoryId: v.optional(v.id("eventCategories")),
+    status: eventStatusValidator,
+    type: eventTypeValidator,
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    flyerUrl: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+    registrationOpensAt: v.optional(v.number()),
+    registrationClosesAt: v.optional(v.number()),
+    allowedMajorPathways: v.array(pathwayValidator),
+    allowedMinorPathways: v.array(pathwayValidator),
+    requiredMajorWorkshopCount: v.number(),
+    isInactive: v.boolean(),
+    deactivatedAt: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clubId", ["clubId"])
+    .index("by_status", ["status"])
+    .index("by_startAt", ["startAt"]),
+
+  eventApprovals: defineTable({
+    eventId: v.id("events"),
+    sponsorId: v.id("users"),
+    status: approvalStatusValidator,
+    note: v.optional(v.string()),
+    decidedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_eventId_and_sponsorId", ["eventId", "sponsorId"]),
+
+  calendarEntries: defineTable({
+    eventId: v.optional(v.id("events")),
+    flexFridayId: v.optional(v.id("flexFridays")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+    tags: v.array(v.string()),
+    source: calendarSourceValidator,
+    createdById: v.optional(v.id("users")),
+    createdAt: v.number(),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_flexFridayId", ["flexFridayId"])
+    .index("by_startAt", ["startAt"]),
+
+  flexFridays: defineTable({
+    date: v.number(),
+    type: flexFridayTypeValidator,
+    gradeLevel: v.optional(v.number()),
+    pathway: v.optional(pathwayValidator),
+    isSchoolDay: v.boolean(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_date", ["date"]),
+
+  flexSessions: defineTable({
+    flexFridayId: v.id("flexFridays"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    startTime: v.string(),
+    endTime: v.string(),
+    sessionType: flexSessionTypeValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_flexFridayId", ["flexFridayId"]),
+
+  flexWorkshops: defineTable({
+    teacherId: v.optional(v.id("users")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    capacity: v.optional(v.number()),
+    targetGrades: v.array(v.number()),
+    targetMajorPathways: v.array(pathwayValidator),
+    targetMinorPathways: v.array(pathwayValidator),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  flexWorkshopSessions: defineTable({
+    workshopId: v.id("flexWorkshops"),
+    sessionId: v.id("flexSessions"),
+    createdAt: v.number(),
+  })
+    .index("by_workshopId_and_sessionId", ["workshopId", "sessionId"])
+    .index("by_sessionId", ["sessionId"]),
+
+  flexRegistrations: defineTable({
+    workshopId: v.id("flexWorkshops"),
+    studentId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_workshopId_and_studentId", ["workshopId", "studentId"])
+    .index("by_studentId", ["studentId"]),
+
+  flexAssignments: defineTable({
+    workshopId: v.id("flexWorkshops"),
+    studentId: v.id("users"),
+    assignedBy: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_workshopId_and_studentId", ["workshopId", "studentId"])
+    .index("by_studentId", ["studentId"]),
+
+  flexAttendances: defineTable({
+    workshopId: v.id("flexWorkshops"),
+    studentId: v.id("users"),
+    flexFridayId: v.id("flexFridays"),
+    status: flexAttendanceStatusValidator,
+    markedById: v.id("users"),
+    markedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_workshopId_and_studentId", ["workshopId", "studentId"])
+    .index("by_studentId_and_flexFridayId", ["studentId", "flexFridayId"])
+    .index("by_flexFridayId", ["flexFridayId"]),
 });
