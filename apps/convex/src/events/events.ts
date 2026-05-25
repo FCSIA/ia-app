@@ -78,3 +78,39 @@ export const update = mutation({
     });
   },
 });
+
+export const publish = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(args.eventId, {
+      status: "PUBLISHED",
+      updatedAt: Date.now(),
+    });
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "EVENT_PUBLISHED",
+      entityId: args.eventId,
+      entityType: "EVENT",
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const cancel = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(args.eventId, {
+      status: "CANCELLED",
+      updatedAt: Date.now(),
+    });
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "EVENT_CANCELLED",
+      entityId: args.eventId,
+      entityType: "EVENT",
+      createdAt: Date.now(),
+    });
+  },
+});
