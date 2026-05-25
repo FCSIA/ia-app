@@ -178,14 +178,17 @@ export const calendarSourceValidator = v.union(
   v.literal("SCHOOL"),
   v.literal("CLUB"),
   v.literal("FLEX_FRIDAY"),
+  v.literal("PERSONAL"),
+  v.literal("DISTRICT"),
 );
 
 export type CalendarSource = Infer<typeof calendarSourceValidator>;
 
 export const flexFridayTypeValidator = v.union(
   v.literal("ALL_STUDENT"),
-  v.literal("SENIOR_ONLY"),
-  v.literal("ADVISORY"),
+  v.literal("GRADE_SPECIFIC"),
+  v.literal("PATHWAY_SPECIFIC"),
+  v.literal("TEACHER_PD"),
 );
 
 export type FlexFridayType = Infer<typeof flexFridayTypeValidator>;
@@ -201,6 +204,7 @@ export type FlexSessionType = Infer<typeof flexSessionTypeValidator>;
 export const flexAttendanceStatusValidator = v.union(
   v.literal("PRESENT"),
   v.literal("ABSENT"),
+  v.literal("EXCUSED"),
   v.literal("TARDY"),
 );
 
