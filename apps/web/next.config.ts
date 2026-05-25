@@ -18,14 +18,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${proxyTarget.replace(/\/$/, '')}/:path*`,
-      },
-    ];
-  },
   env: {
     NEXT_PUBLIC_API_URL: browserApiUrl,
   },

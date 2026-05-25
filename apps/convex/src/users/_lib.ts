@@ -195,3 +195,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
     temporaryPassword: args.password ? null : password,
   };
 }
+
+export function isStudentUser(user: Doc<"users">) {
+  return user.roles.some((role) => ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role));
+}

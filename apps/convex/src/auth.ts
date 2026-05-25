@@ -29,6 +29,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
 
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
+    secret: process.env.BETTER_AUTH_SECRET,
     baseURL: siteUrl,
     basePath: "/api/auth",
     trustedOrigins: [siteUrl],
