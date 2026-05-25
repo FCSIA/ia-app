@@ -32,7 +32,7 @@ export function NotificationScopeSwitch({
   compact = false,
   className,
 }: NotificationScopeSwitchProps) {
-  const upsertPreference = useMutation(api.notifications.preferences.upsertPreference);
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const resolvedScopeKey =
     scopeKey ??
     (channelId
@@ -45,7 +45,7 @@ export function NotificationScopeSwitch({
             ? `club:${clubId}`
             : 'global');
 
-  const preferences = useQuery(api.notifications.preferences.preferences) ?? [];
+  const preferences = useQuery(api.notifications.preferences.list) ?? [];
 
   const preference = preferences.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,

@@ -105,7 +105,7 @@ function SchedulePageContent() {
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
-  const data = useQuery(api.schedule.dashboard.dashboard);
+  const data = useQuery(api.schedule.dashboard.get);
   const isLoading = data === undefined;
   const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? [];
 
@@ -127,7 +127,7 @@ function SchedulePageContent() {
 
   const searchResults =
     useQuery(
-      api.schedule.friends.searchPeople,
+      api.schedule.friends.search,
       canEditOwnSchedule && normalizedDeferredSearch.length >= 2
         ? { query: normalizedDeferredSearch, limit: 20 }
         : 'skip',
@@ -138,10 +138,10 @@ function SchedulePageContent() {
   const searchIsDeferred =
     canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
 
-  const saveSchedule = useMutation(api.schedule.dashboard.saveMine);
-  const sendFriendRequest = useMutation(api.schedule.friends.sendFriendRequest);
-  const acceptFriendRequest = useMutation(api.schedule.friends.acceptFriendRequest);
-  const removeFriend = useMutation(api.schedule.friends.removeFriend);
+  const saveSchedule = useMutation(api.schedule.dashboard.save);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
+  const acceptFriendRequest = useMutation(api.schedule.friends.acceptRequest);
+  const removeFriend = useMutation(api.schedule.friends.remove);
   const createBlock = useMutation(api.schedule.blocks.createBlock);
   const updateBlock = useMutation(api.schedule.blocks.updateBlock);
   const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);

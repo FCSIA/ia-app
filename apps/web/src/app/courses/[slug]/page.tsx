@@ -17,7 +17,7 @@ export default function CourseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const courseQuery = useQuery(api.courses.catalog.getOne, { slug });
+  const courseQuery = useQuery(api.courses.catalog.get, { slug });
   const course = courseQuery;
   const isLoading = courseQuery === undefined;
 

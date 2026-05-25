@@ -81,7 +81,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     )) ?? [];
 
   const auditEventDetail = useQuery(
-    api.audit.events.getOne,
+    api.audit.events.get,
     selectedAuditEventId
       ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
       : 'skip',

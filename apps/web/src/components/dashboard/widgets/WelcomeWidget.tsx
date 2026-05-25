@@ -19,7 +19,7 @@ export function WelcomeWidget() {
     return () => window.clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(api.schedule.dashboard.dashboard, isStudent ? {} : 'skip');
+  const scheduleData = useQuery(api.schedule.dashboard.get, isStudent ? {} : 'skip');
 
   const currentStatus = useMemo(
     () =>

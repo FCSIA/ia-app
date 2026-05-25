@@ -2,7 +2,9 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery as useConvexQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
 import gsap from 'gsap';
 import {
   AtSign,
@@ -36,7 +38,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { wrappedApi, type WrappedSummary } from '@/lib/api';
+import type { WrappedSummary } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
 import {
   computeWrappedAvailability,
@@ -1137,12 +1139,12 @@ export default function WrappedPage() {
   const availability = useMemo(() => computeWrappedAvailability(nowTick), [nowTick]);
   const gated = mounted && !availability.open && !isAdmin;
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['wrapped', 'me'],
-    queryFn: () => wrappedApi.getMine().then((r) => r.data),
-    // Don't hit the API while the gate is closed for non-admins.
-    enabled: mounted && !gated,
-  });
+  const data = useConvexQuery(
+    api.wrapped.snapshots.getMine,
+    mounted && !gated ? {} : 'skip',
+  ) as WrappedSummary | undefined;
+  const isLoading = mounted && !gated && data === undefined;
+  const error = null;
 
   const slides = useMemo(
     () => (data ? buildSlides(data, displayName) : []),

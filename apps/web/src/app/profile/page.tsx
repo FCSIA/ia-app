@@ -26,9 +26,9 @@ export default function ProfilePage() {
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
   const changePassword = useMutation(api.users.auth.changePassword);
-  const upsertPreference = useMutation(api.notifications.preferences.upsertPreference);
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
 
-  const prefs = useQuery(api.notifications.preferences.preferences) ?? [];
+  const prefs = useQuery(api.notifications.preferences.list) ?? [];
   const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
