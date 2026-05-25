@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation as useRestMutation, useQuery as useRestQuery } from '@tanstack/react-query';
+import { useQuery as useRestQuery } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import {
   Crown,
@@ -47,7 +47,7 @@ import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { api } from '~/apps/convex/src/_generated/api';
-import { clubsApi } from '@/lib/api';
+import { parseInviteCsv } from '@/lib/parse-invite-csv';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -84,27 +84,31 @@ function ManagePeopleDialog({
   const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
   const sendInvite = useMutation(api.clubs.invitations.sendInvite);
+  const bulkInvite = useMutation(api.clubs.invitations.bulkInvite);
+  const [csvPending, setCsvPending] = useState(false);
 
-  const csvMutation = useRestMutation({
-    mutationFn: () => {
-      if (!csvFile) throw new Error('CSV required');
-      return clubsApi.bulkInviteCsv(clubId, csvFile);
-    },
-    onSuccess: (response) => {
-      setResult(response.data);
+  const handleCsvUpload = async () => {
+    if (!csvFile) return;
+    setCsvPending(true);
+    try {
+      const uniqueIds = parseInviteCsv(await csvFile.text());
+      const response = await bulkInvite({ clubId, uniqueIds });
+      setResult(response);
       setCsvFile(null);
       setCsvKey((key) => key + 1);
       toast({
         title: 'CSV processed',
-        description: `${response.data.invited} invited, ${response.data.skipped} skipped`,
+        description: `${response.invited} invited, ${response.skipped} skipped`,
       });
-    },
-    onError: (error: any) =>
+    } catch (error) {
       toast({
-        title: error.response?.data?.message || 'Failed to import CSV',
+        title: error instanceof Error ? error.message : 'Failed to import CSV',
         variant: 'destructive',
-      }),
-  });
+      });
+    } finally {
+      setCsvPending(false);
+    }
+  };
 
   const joinUrl =
     typeof window === 'undefined'
@@ -291,11 +295,11 @@ function ManagePeopleDialog({
               />
               <Button
                 variant="tertiary"
-                disabled={!csvFile || csvMutation.isPending}
-                onClick={() => csvMutation.mutate()}
+                disabled={!csvFile || csvPending}
+                onClick={() => void handleCsvUpload()}
               >
                 <Upload className="mr-2 size-4" />
-                {csvMutation.isPending ? 'Uploading...' : 'Upload CSV'}
+                {csvPending ? 'Uploading...' : 'Upload CSV'}
               </Button>
               {result ? (
                 <div className="rounded-md bg-muted/30 p-3 text-sm">

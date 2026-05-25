@@ -1,7 +1,58 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
+
+async function inviteRecipientByUniqueId(
+  ctx: MutationCtx,
+  clubId: Id<"clubs">,
+  senderId: Id<"users">,
+  recipientUniqueId: string,
+) {
+  const recipient = await ctx.db
+    .query("users")
+    .filter((q) => q.eq(q.field("uniqueId"), recipientUniqueId))
+    .first();
+
+  if (!recipient || !recipient.isActive) {
+    throw new Error("User not found");
+  }
+
+  const existingMember = await ctx.db
+    .query("clubMembers")
+    .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
+    .filter((q) => q.eq(q.field("userId"), recipient._id))
+    .first();
+
+  if (existingMember) {
+    throw new Error("User is already a member");
+  }
+
+  const existingInvite = await ctx.db
+    .query("clubInvites")
+    .filter((q) => q.eq(q.field("clubId"), clubId))
+    .filter((q) => q.eq(q.field("recipientId"), recipient._id))
+    .first();
+
+  if (!existingInvite) {
+    await ctx.db.insert("clubInvites", {
+      clubId,
+      senderId,
+      recipientId: recipient._id,
+      status: "PENDING",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  } else if (existingInvite.status !== "PENDING") {
+    await ctx.db.patch(existingInvite._id, {
+      status: "PENDING",
+      senderId,
+      updatedAt: Date.now(),
+    });
+  }
+}
 
 export const joinOpenClub = mutation({
   args: { clubId: v.id("clubs") },
@@ -123,31 +174,68 @@ export const sendInvite = mutation({
       throw new Error("Not authorized to invite");
     }
 
-    const recipient = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("uniqueId"), args.recipientUniqueId))
-      .first();
+    await inviteRecipientByUniqueId(ctx, args.clubId, user._id, args.recipientUniqueId);
+  },
+});
 
-    if (!recipient || !recipient.isActive) {
-      throw new Error("User not found");
+export const bulkInvite = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    uniqueIds: v.array(v.string()),
+  },
+  returns: v.object({
+    invited: v.number(),
+    skipped: v.number(),
+    errors: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+
+    if (!context.hasClubRole && !context.isSponsor && !context.isAdmin) {
+      throw new Error("Not authorized to invite");
     }
 
-    const existingInvite = await ctx.db
-      .query("clubInvites")
-      .filter((q) => q.eq(q.field("clubId"), args.clubId))
-      .filter((q) => q.eq(q.field("recipientId"), recipient._id))
-      .first();
-
-    if (!existingInvite) {
-      await ctx.db.insert("clubInvites", {
-        clubId: args.clubId,
-        senderId: user._id,
-        recipientId: recipient._id,
-        status: "PENDING",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
+    if (args.uniqueIds.length === 0) {
+      throw new Error("CSV file is empty");
     }
+
+    const seen = new Set<string>();
+    const results = { invited: 0, skipped: 0, errors: [] as string[] };
+
+    for (const [index, rawId] of args.uniqueIds.entries()) {
+      const uniqueId = rawId.trim();
+      if (!uniqueId) {
+        results.skipped++;
+        results.errors.push(`Row ${index + 2}: missing unique ID`);
+        continue;
+      }
+      if (seen.has(uniqueId)) {
+        results.skipped++;
+        results.errors.push(`Row ${index + 2}: duplicate unique ID ${uniqueId} in file`);
+        continue;
+      }
+      seen.add(uniqueId);
+
+      try {
+        await inviteRecipientByUniqueId(ctx, args.clubId, user._id, uniqueId);
+        results.invited++;
+      } catch (error) {
+        results.skipped++;
+        const message = error instanceof Error ? error.message : "Failed to process row";
+        results.errors.push(`Row ${index + 2}: ${message}`);
+      }
+    }
+
+    await ctx.db.insert("auditEvents", {
+      action: "CLUB_INVITES_BULK_IMPORTED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { invited: results.invited, skipped: results.skipped },
+      createdAt: Date.now(),
+    });
+
+    return results;
   },
 });
 

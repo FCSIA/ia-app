@@ -2,36 +2,65 @@
 
 ## Active Focus
 
-- **Agent**: Codex
-- **Focus**: Convex backend port implementation.
-- **Status**: In progress on `codex/convex-port`.
+- **Branch**: `codex/convex-port` (includes `6845f48` clubs/events/flex backend + ongoing frontend/db work)
+- **Goal**: Finish Convex port — Wrapped done; migrate remaining web domains off REST; Convex-only `db:*`.
 
 ## Current Truth
 
-- The Convex port has moved from planning into implementation on the draft PR branch.
-- Convex is configured as the `apps/convex` workspace app, with functions in `apps/convex/src/` via `apps/convex/convex.json`, a local Better Auth component, generated Convex AI guidance, generated Convex types, and an anonymous local Convex deployment for development.
-- Better Auth is the selected auth provider. Public signup is disabled; `uniqueId` login is modeled through the username plugin; app roles stay in the app `users` table.
-- Convex public functions are organized into domain-specific folders (`audit/`, `courses/`, `notifications/`, `schedule/`, `users/`) for long-term maintainability.
-- Initial Convex users/auth slice exists in `apps/convex/src/users/`: current-user lookup, password change, admin-created users, first-superadmin bootstrap, temporary-password reset, admin user listing, activation/deactivation, and role assignment.
-- Next.js is wired to Better Auth + Convex via `apps/web/src/app/api/auth/[...all]/route.ts`, `apps/web/src/lib/auth-client.ts`, `apps/web/src/lib/convex.ts`, and `ConvexBetterAuthProvider`.
-- Admin user management now reads/writes through Convex cursor pagination. Remaining app domains still use the transitional REST client until they are ported.
-- Convex audit logging exists in `apps/convex/src/audit/lib.ts` and the `auditEvents` table for sensitive user-management mutations.
-- Profile password changes, dashboard layout persistence, admin audit reads, and club channel current-user reads no longer depend on the old REST auth endpoints.
-- Notification inbox, unread counts, notification preferences, channel notification settings, and command-palette unread notification reads now use Convex `notifications` functions.
-- Course catalog reads now use Convex `courses` functions for `/courses`, `/courses/[slug]`, command-palette course search, and the schedule editor course picker.
-- Schedule dashboard reads/writes now use Convex `schedule` functions for personal schedules, friend search/requests, and admin bell-schedule blocks.
-- Growable Convex list screens use cursor pagination where currently ported: notification inbox (`notifications.inbox.listPage`), course catalog browsing (`courses.catalog.listPage`), admin users, and admin audit browsing (`audit.events.listPage`). Bounded preview/control reads still use `.take(n)`.
-- Convex-owned course fixtures live in `apps/convex/seed-data/courses.ts`. Run `api.courses.seed.seedFromStaticData` with `COURSE_SEED_SECRET` or `BOOTSTRAP_SECRET` to populate the Convex course catalog.
-- Convex-owned schedule fixtures live in `apps/convex/seed-data/schedule.ts`. Run `api.schedule.seed.seedFromStaticData` with `SCHEDULE_SEED_SECRET` or `BOOTSTRAP_SECRET`; it is cursor-based, so repeat with `nextCursor` until `isDone`.
-- Current Postgres data remains disposable. No legacy ID/backfill compatibility is being preserved for the Convex port.
+### Backend on Convex
 
-## Next Verification
+| Domain | Status |
+|--------|--------|
+| Users, audit, courses, schedule, notifications | **Done** |
+| Clubs, events, Flex Friday | **Schema + partial APIs** (`6845f48`) |
+| Wrapped | **Done** — `wrapped/snapshots.ts`, `wrappedSnapshots` table |
+| Announcements | Partial (`feed`, `comments`) |
+| Moderation, uploads | Not started |
 
-- Continue running Convex checks with `CONVEX_AGENT_MODE=anonymous direnv exec . pnpm --filter convex-backend codegen` and `direnv exec . pnpm --filter convex-backend typecheck`.
-- Keep running `direnv exec . pnpm --filter web build` after frontend changes. It currently passes with pre-existing lint warnings.
+### Frontend on Convex
 
-## Handoff Notes
+| Area | Status |
+|------|--------|
+| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.) |
+| Wrapped page + admin wrapped tab | **Convex** |
+| Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
+| Clubs CSV bulk invite | **REST** (`clubsApi.bulkInviteCsv`) until Convex action exists |
+| Events, calendar, flex-friday, announcements UI | **Still REST** (`@/lib/api`) |
 
-- Read `apps/convex/src/_generated/ai/guidelines.md` before editing Convex code.
-- Better Auth local schema is generated from `apps/convex/src/betterAuth/auth.ts`; regenerate with `direnv exec . pnpm --filter convex-backend auth:generate` after plugin/config changes that affect schema.
-- `BOOTSTRAP_SECRET` must be set in the Convex deployment before `users.auth.bootstrapFirstSuperAdmin` can create the first admin.
+### Dev data commands (`package.json`)
+
+- `pnpm db:reset` → `node scripts/convex-db.mjs reset` (bootstrap + batched schedule seed)
+- `pnpm db:seed` → `node scripts/convex-db.mjs seed`
+- `pnpm db:generate` → `pnpm --filter convex-backend codegen`
+- `pnpm db:studio` → `pnpm convex:dev`
+- Requires `BOOTSTRAP_SECRET` on the Convex deployment
+- Public entry: `bootstrap:resetAndSeed` → `internal.seed.run`
+
+### Verification (latest)
+
+- `pnpm --filter convex-backend codegen` + `typecheck` — pass
+- `pnpm --filter web build` — pass
+- Web `tsc --noEmit` — pass
+
+## Next Work
+
+1. Add Convex **bulk CSV invite**; port **message report/history** if still needed.
+2. Wire **events/calendar/flex** UI; add missing Convex queries (`getPendingApprovals`, etc.).
+3. Wire **announcements** UI; complete bookmark/archive/mark-read mutations.
+4. Port **moderation** + **uploads** (Convex storage).
+5. Docs sweep (`docs/index.md`, architecture, seed docs).
+6. Remove Nest/Prisma from default dev path when no REST callers remain.
+
+## Handoff Commands
+
+```bash
+direnv exec . pnpm --filter convex-backend codegen
+direnv exec . pnpm --filter convex-backend typecheck
+direnv exec . pnpm lint
+direnv exec . pnpm --filter web build
+BOOTSTRAP_SECRET=dev-secret pnpm db:reset   # example; use your deployment secret
+```
+
+## Stash
+
+`agent-wip-convex-port` — largely superseded by fixes on branch; safe to drop after review (`git stash drop`).
