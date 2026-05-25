@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { clubMemberRoleValidator } from "../validators";
 
 export const clubValidator = v.object({
   _id: v.id("clubs"),
@@ -11,7 +12,7 @@ export const memberValidator = v.object({
   _id: v.id("clubMembers"),
   clubId: v.id("clubs"),
   userId: v.id("users"),
-  role: v.union(v.literal("MEMBER"), v.literal("LEADER"), v.literal("SPONSOR")),
+  role: clubMemberRoleValidator,
 });
 
 export const channelValidator = v.object({

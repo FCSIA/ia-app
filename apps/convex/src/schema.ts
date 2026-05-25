@@ -9,6 +9,7 @@ import {
   notificationPreferenceLevelValidator,
   pathwayValidator,
   scheduleWeekdayValidator,
+  clubMemberRoleValidator,
 } from "./validators";
 
 export default defineSchema({
@@ -274,7 +275,7 @@ export default defineSchema({
   clubMembers: defineTable({
     clubId: v.id("clubs"),
     userId: v.id("users"),
-    role: v.string(),
+    role: clubMemberRoleValidator,
   })
     .index("by_userId", ["userId"])
     .index("by_clubId", ["clubId"]),

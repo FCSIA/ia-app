@@ -2,7 +2,7 @@ import type {
   CourseCatalogSource,
   CourseTerm,
   Pathway,
-} from '../src/validators';
+} from '../validators';
 
 export type CourseSeed = {
   slug: string;

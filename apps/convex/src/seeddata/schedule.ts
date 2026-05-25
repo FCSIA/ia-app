@@ -1,5 +1,5 @@
-import type { Doc } from '../src/_generated/dataModel';
-import type { Pathway, ScheduleWeekday } from '../src/validators';
+import type { Doc } from '../_generated/dataModel';
+import type { Pathway, ScheduleWeekday } from '../validators';
 
 type CourseLike = Pick<Doc<'courses'>, '_id' | 'slug' | 'title' | 'minGrade' | 'maxGrade'>;
 type StudentLike = Pick<

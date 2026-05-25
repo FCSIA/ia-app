@@ -91,6 +91,13 @@ export const appUserPublicValidator = v.object({
   minor: v.union(pathwayValidator, v.null()),
   email: v.union(v.string(), v.null()),
   isActive: v.boolean(),
-  mustResetPassword: v.boolean(),
   dashboardLayout: v.array(v.string()),
 });
+
+export const clubMemberRoleValidator = v.union(
+  v.literal("MEMBER"),
+  v.literal("LEADER"),
+  v.literal("SPONSOR"),
+);
+
+export type ClubMemberRole = Infer<typeof clubMemberRoleValidator>;

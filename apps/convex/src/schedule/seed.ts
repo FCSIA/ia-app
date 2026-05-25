@@ -6,7 +6,7 @@ import {
   buildScheduleCourses,
   compareStudents,
   stableScheduleVisibility,
-} from "../seed-data/schedule";
+} from "../seeddata/schedule";
 import {
   isStudentUser,
   scheduleSeedResultValidator,
