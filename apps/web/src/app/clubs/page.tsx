@@ -17,14 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const clubs = useQuery(api.clubs.membership.list) ?? [];
 
 function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+if (!url) return undefined;
+return url;
 }
-
 type MyClubsResponse = {
   memberOf: ClubSummary[];
   sponsoring: ClubSummary[];

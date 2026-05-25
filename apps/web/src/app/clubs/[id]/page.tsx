@@ -252,11 +252,13 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
       }),
   });
 
-  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-  const resolve = (u?: string | null) => (u ? (u.startsWith('http') ? u : `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`) : undefined);
-  const bannerUrl = resolve(club.bannerUrl);
-  const logoUrl = resolve(club.logoUrl);
-  const { isFull } = getMemberLimitState(club);
+  const user = useCurrentUser();
+  const clubs = useQuery(api.clubs.membership.list) ?? [];
+  const club = clubs.find((c) => c._id === id);
+  const resolve = (u?: string | null) => u; // Placeholder since Convex storage is handled differently
+  const bannerUrl = resolve(club?.bannerUrl); // Adjust as needed after implementing storage
+  const logoUrl = resolve(club?.logoUrl); // Adjust as needed after implementing storage
+  const { isFull } = { isFull: false }; // Placeholder for club member limit logic
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
