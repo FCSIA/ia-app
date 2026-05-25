@@ -2,16 +2,19 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { commentValidator } from "./_lib";
+import { commentWithAuthorValidator } from "./_lib";
+import { serializeComment } from "./serialize";
 
 export const list = query({
   args: { announcementId: v.id("announcements") },
-  returns: v.array(commentValidator),
+  returns: v.array(commentWithAuthorValidator),
   handler: async (ctx, args) => {
-    return await ctx.db
+    await getCurrentAppUser(ctx);
+    const comments = await ctx.db
       .query("comments")
       .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
       .collect();
+    return Promise.all(comments.map((c) => serializeComment(ctx, c)));
   },
 });
 
@@ -30,14 +33,14 @@ export const add = mutation({
     const id = await ctx.db.insert("comments", {
       announcementId: args.announcementId,
       authorId: user._id,
-      body: args.body,
+      body: args.body.trim(),
       createdAt: Date.now(),
     });
 
     await logAuditEvent(ctx, {
       actorId: user._id,
-      action: "announcement.comment_added",
-      entityType: "comment",
+      action: "ANNOUNCEMENT_COMMENT_ADDED",
+      entityType: "Comment",
       entityId: id,
     });
 
@@ -46,22 +49,25 @@ export const add = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("comments") },
+  args: { commentId: v.id("comments") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const comment = await ctx.db.get(args.id);
+    const comment = await ctx.db.get(args.commentId);
     if (!comment) throw new ConvexError("Comment not found");
 
-    if (comment.authorId !== user._id && !user.roles.includes("ADMIN")) {
+    const isAdmin =
+      user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
+    if (comment.authorId !== user._id && !isAdmin) {
       throw new ConvexError("Unauthorized");
     }
 
-    await ctx.db.delete(args.id);
+    await ctx.db.delete(args.commentId);
     await logAuditEvent(ctx, {
       actorId: user._id,
-      action: "announcement.comment_deleted",
-      entityType: "comment",
-      entityId: args.id,
+      action: "ANNOUNCEMENT_COMMENT_DELETED",
+      entityType: "Comment",
+      entityId: args.commentId,
     });
   },
 });

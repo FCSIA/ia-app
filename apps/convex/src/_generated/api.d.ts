@@ -10,7 +10,9 @@
 
 import type * as announcements__lib from "../announcements/_lib.js";
 import type * as announcements_comments from "../announcements/comments.js";
+import type * as announcements_engagement from "../announcements/engagement.js";
 import type * as announcements_feed from "../announcements/feed.js";
+import type * as announcements_serialize from "../announcements/serialize.js";
 import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
@@ -41,6 +43,8 @@ import type * as flexFriday_workshops from "../flexFriday/workshops.js";
 import type * as http from "../http.js";
 import type * as lib_currentUser from "../lib/currentUser.js";
 import type * as lib_roles from "../lib/roles.js";
+import type * as moderation_keywords from "../moderation/keywords.js";
+import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
 import type * as notifications_inbox from "../notifications/inbox.js";
 import type * as notifications_preferences from "../notifications/preferences.js";
@@ -52,6 +56,7 @@ import type * as schedule_seed from "../schedule/seed.js";
 import type * as seed from "../seed.js";
 import type * as seeddata_courses from "../seeddata/courses.js";
 import type * as seeddata_schedule from "../seeddata/schedule.js";
+import type * as uploads_files from "../uploads/files.js";
 import type * as users__lib from "../users/_lib.js";
 import type * as users_admin from "../users/admin.js";
 import type * as users_auth from "../users/auth.js";
@@ -69,7 +74,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   "announcements/_lib": typeof announcements__lib;
   "announcements/comments": typeof announcements_comments;
+  "announcements/engagement": typeof announcements_engagement;
   "announcements/feed": typeof announcements_feed;
+  "announcements/serialize": typeof announcements_serialize;
   "audit/_lib": typeof audit__lib;
   "audit/events": typeof audit_events;
   auth: typeof auth;
@@ -100,6 +107,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/currentUser": typeof lib_currentUser;
   "lib/roles": typeof lib_roles;
+  "moderation/keywords": typeof moderation_keywords;
+  "moderation/reports": typeof moderation_reports;
   "notifications/_lib": typeof notifications__lib;
   "notifications/inbox": typeof notifications_inbox;
   "notifications/preferences": typeof notifications_preferences;
@@ -111,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   "seeddata/courses": typeof seeddata_courses;
   "seeddata/schedule": typeof seeddata_schedule;
+  "uploads/files": typeof uploads_files;
   "users/_lib": typeof users__lib;
   "users/admin": typeof users_admin;
   "users/auth": typeof users_auth;

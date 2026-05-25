@@ -552,6 +552,29 @@ export default defineSchema({
     .index("by_studentId_and_flexFridayId", ["studentId", "flexFridayId"])
     .index("by_flexFridayId", ["flexFridayId"]),
 
+  moderationKeywordRules: defineTable({
+    keyword: v.string(),
+    addedById: v.id("users"),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_keyword", ["keyword"]),
+
+  moderationReports: defineTable({
+    submitterId: v.id("users"),
+    contentType: v.string(),
+    contentId: v.string(),
+    clubId: v.optional(v.id("clubs")),
+    reportedUserId: v.optional(v.id("users")),
+    reason: v.string(),
+    status: v.string(),
+    isEscalated: v.boolean(),
+    reviewNote: v.optional(v.string()),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
+
   wrappedSnapshots: defineTable({
     userId: v.id("users"),
     schoolYearStart: v.number(),

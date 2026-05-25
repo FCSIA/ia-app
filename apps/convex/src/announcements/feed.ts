@@ -1,9 +1,21 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../lib/currentUser";
-import { announcementValidator, getAccessibleClubIds, getViewerAudience } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
-import { Doc, Id } from "../_generated/dataModel";
+import {
+  announcementListItemValidator,
+  assertAnnouncementAccess,
+  canViewAnnouncement,
+  commentWithAuthorValidator,
+  getAccessibleClubIds,
+  getViewerAudience,
+  isElevatedReader,
+} from "./_lib";
+import { serializeAnnouncement, serializeComment } from "./serialize";
+
+function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: number) {
+  return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
+}
 
 export const list = query({
   args: {
@@ -11,48 +23,100 @@ export const list = query({
     clubId: v.optional(v.id("clubs")),
     unreadOnly: v.optional(v.boolean()),
   },
-  returns: v.array(announcementValidator),
+  returns: v.array(announcementListItemValidator),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const now = Date.now();
+
     const viewer = await getViewerAudience(ctx, user._id);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
-    
-    // TODO: implement status filtering and full audience logic based on legacy service
-    const all = await ctx.db
+    const elevated = isElevatedReader(user.roles);
+    const archived = args.archived ?? false;
+
+    let announcements = await ctx.db
       .query("announcements")
       .withIndex("by_createdAt")
       .order("desc")
       .collect();
 
-    return all.filter((ann) => {
-        if (ann.status === "ACTIVE") {
-            if (ann.targetType === "SCHOOL_WIDE") return true;
-            if (ann.targetType === "GRADE" && viewer.gradeLevel && (ann.targetGrade === viewer.gradeLevel || ann.targetGrades.includes(viewer.gradeLevel))) return true;
-            if (ann.targetType === "CLUB" && ann.clubId && (accessibleClubIds as any[]).includes(ann.clubId)) return true;
-            return false;
-        }
-        return false;
-    }).map(ann => ({ 
-      ...ann, 
-      status: ann.status as "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "ARCHIVED" | "REJECTED",
-      targetType: ann.targetType as any 
-    }));
-    },
+    if (args.clubId) {
+      const isMember = accessibleClubIds.includes(args.clubId);
+      const isSponsor = await ctx.db
+        .query("clubSponsors")
+        .filter((q) =>
+          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        )
+        .first();
+      if (!isMember && !isSponsor && !elevated) {
+        throw new ConvexError("Not a club member");
+      }
+      announcements = announcements.filter((ann) => ann.clubId === args.clubId);
+    }
+
+    announcements = announcements.filter((ann) => {
+      if (isEffectivelyExpired(ann, now)) {
+        return archived;
+      }
+      if (archived) {
+        return ["EXPIRED", "ARCHIVED", "REJECTED"].includes(ann.status);
+      }
+      if (elevated) {
+        return (
+          (ann.status === "ACTIVE" && !isEffectivelyExpired(ann, now)) ||
+          ann.status === "PENDING_APPROVAL" ||
+          (ann.authorId === user._id &&
+            ["PENDING_APPROVAL", "REJECTED"].includes(ann.status))
+        );
+      }
+      if (
+        ann.authorId === user._id &&
+        ["PENDING_APPROVAL", "REJECTED"].includes(ann.status)
+      ) {
+        return true;
+      }
+      return (
+        ann.status === "ACTIVE" &&
+        !isEffectivelyExpired(ann, now) &&
+        canViewAnnouncement(ann, user._id, user.roles, accessibleClubIds, viewer)
+      );
     });
 
-    export const get = query({
-    args: { id: v.id("announcements") },
-    returns: announcementValidator,
-    handler: async (ctx, args) => {
-    const ann = await ctx.db.get(args.id);
+    const serialized = await Promise.all(
+      announcements.map((ann) => serializeAnnouncement(ctx, ann, user._id)),
+    );
+
+    if (!args.unreadOnly) {
+      return serialized;
+    }
+
+    return serialized.filter((ann) => !ann.isRead);
+  },
+});
+
+export const get = query({
+  args: { announcementId: v.id("announcements") },
+  returns: v.object({
+    announcement: announcementListItemValidator,
+    comments: v.array(commentWithAuthorValidator),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+
+    const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
-    return { 
-      ...ann, 
-      status: ann.status as "PENDING_APPROVAL" | "ACTIVE" | "EXPIRED" | "ARCHIVED" | "REJECTED",
-      targetType: ann.targetType as any
+    await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
+
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
+      .collect();
+
+    return {
+      announcement: await serializeAnnouncement(ctx, ann, user._id),
+      comments: await Promise.all(comments.map((c) => serializeComment(ctx, c))),
     };
-    },
-    });
+  },
+});
 
 export const create = mutation({
   args: {
@@ -74,16 +138,43 @@ export const create = mutation({
     allowComments: v.boolean(),
     isAdminGeneral: v.boolean(),
     expiresAt: v.optional(v.number()),
+    promoted: v.optional(v.boolean()),
   },
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    
-    // Create the announcement
+    const canPost =
+      user.roles.includes("ADMIN") ||
+      user.roles.includes("SUPER_ADMIN") ||
+      user.roles.includes("TEACHER");
+    if (!canPost) throw new ConvexError("Insufficient permissions");
+
+    const isAdmin =
+      user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");
+
+    let status: "ACTIVE" | "PENDING_APPROVAL" = "ACTIVE";
+    if (args.clubId) {
+      const isSponsor = await ctx.db
+        .query("clubSponsors")
+        .filter((q) =>
+          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        )
+        .first();
+      if (!isSponsor && !isAdmin) {
+        status = "PENDING_APPROVAL";
+      }
+    }
+
+    const now = Date.now();
+    const promotedUntil =
+      args.promoted && isAdmin
+        ? now + 30 * 24 * 60 * 60 * 1000
+        : undefined;
+
     const annId = await ctx.db.insert("announcements", {
       authorId: user._id,
-      title: args.title,
-      body: args.body,
+      title: args.title.trim(),
+      body: args.body.trim(),
       targetType: args.targetType,
       targetGrade: args.targetGrade,
       targetGrades: args.targetGrades,
@@ -91,49 +182,84 @@ export const create = mutation({
       targetMajorPathways: args.targetMajorPathways,
       targetMinorPathways: args.targetMinorPathways,
       clubId: args.clubId,
-      status: "ACTIVE",
+      status,
       allowComments: args.allowComments,
       isAdminGeneral: args.isAdminGeneral,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      expiresAt: args.expiresAt,
+      promotedUntil,
+      submittedById: status === "PENDING_APPROVAL" ? user._id : undefined,
+      approvedById: status === "ACTIVE" ? user._id : undefined,
+      approvedAt: status === "ACTIVE" ? now : undefined,
+      createdAt: now,
+      updatedAt: now,
     });
-    
-    await logAuditEvent(ctx, { 
-      actorId: user._id, 
-      action: "announcement.created", 
-      entityType: "announcement", 
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "ANNOUNCEMENT_CREATED",
+      entityType: "Announcement",
       entityId: annId,
-      meta: { title: args.title }
+      meta: { title: args.title },
     });
-    
+
     return annId;
   },
 });
 
 export const approve = mutation({
-  args: { id: v.id("announcements") },
+  args: { announcementId: v.id("announcements") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const ann = await ctx.db.get(args.id);
-    if (!ann) throw new ConvexError("Announcement not found");
-    
-    if (!user.roles.includes("ADMIN")) throw new ConvexError("Unauthorized");
+    if (!isElevatedReader(user.roles)) {
+      throw new ConvexError("Unauthorized");
+    }
 
-    await ctx.db.patch(args.id, { status: "ACTIVE", approvedAt: Date.now(), approvedById: user._id, updatedAt: Date.now() });
-    await logAuditEvent(ctx, { actorId: user._id, action: "announcement.approved", entityType: "announcement", entityId: args.id });
+    const ann = await ctx.db.get(args.announcementId);
+    if (!ann) throw new ConvexError("Announcement not found");
+
+    await ctx.db.patch(args.announcementId, {
+      status: "ACTIVE",
+      approvedAt: Date.now(),
+      approvedById: user._id,
+      updatedAt: Date.now(),
+    });
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "ANNOUNCEMENT_APPROVED",
+      entityType: "Announcement",
+      entityId: args.announcementId,
+    });
   },
 });
 
 export const reject = mutation({
-  args: { id: v.id("announcements"), note: v.optional(v.string()) },
+  args: {
+    announcementId: v.id("announcements"),
+    note: v.optional(v.string()),
+  },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const ann = await ctx.db.get(args.id);
+    if (!isElevatedReader(user.roles)) {
+      throw new ConvexError("Unauthorized");
+    }
+
+    const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
 
-    if (!user.roles.includes("ADMIN")) throw new ConvexError("Unauthorized");
+    await ctx.db.patch(args.announcementId, {
+      status: "REJECTED",
+      rejectionNote: args.note,
+      updatedAt: Date.now(),
+    });
 
-    await ctx.db.patch(args.id, { status: "REJECTED", rejectionNote: args.note, updatedAt: Date.now() });
-    await logAuditEvent(ctx, { actorId: user._id, action: "announcement.rejected", entityType: "announcement", entityId: args.id });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "ANNOUNCEMENT_REJECTED",
+      entityType: "Announcement",
+      entityId: args.announcementId,
+    });
   },
 });
