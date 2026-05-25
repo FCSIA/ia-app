@@ -1,9 +1,11 @@
 'use client';
 
-import { use, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation as useRestMutation, useQuery as useRestQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import {
   KeyRound,
   Megaphone,
@@ -13,7 +15,8 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
-import type { ClubDetail } from '@ia/contracts/clubs';
+import { useClubId } from '../club-route';
+import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
@@ -28,7 +31,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { announcementsApi, clubsApi } from '@/lib/api';
+import { announcementsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -89,24 +92,10 @@ function RequestsPanel({
 }: {
   club: ClubDetail;
 }) {
-  const queryClient = useQueryClient();
+  const clubId = useClubId();
   const { toast } = useToast();
   const { isFull } = getMemberLimitState(club);
-
-  const respondMutation = useMutation({
-    mutationFn: ({ requestId, accept }: { requestId: string; accept: boolean }) =>
-      clubsApi.respondToJoinRequest(club.id, requestId, accept),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      queryClient.invalidateQueries({ queryKey: ['clubs'] });
-      toast({ title: 'Join request updated' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to update request',
-        variant: 'destructive',
-      }),
-  });
+  const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
 
   if (!club.pendingJoinRequests?.length) return null;
 
@@ -126,7 +115,7 @@ function RequestsPanel({
         ) : null}
         {club.pendingJoinRequests.map((request) => (
           <div
-            key={request.id}
+            key={request._id}
             className="flex flex-col gap-4 rounded-xl border border-border/50 bg-background/80 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm transition-all hover:border-amber-500/30"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -150,15 +139,27 @@ function RequestsPanel({
                 size="sm"
                 variant="tertiary"
                 className="flex-1 sm:flex-none border-border/50"
-                onClick={() => respondMutation.mutate({ requestId: request.id, accept: false })}
+                onClick={() =>
+                  void respondToJoinRequest({
+                    clubId,
+                    requestId: request._id,
+                    accept: false,
+                  }).then(() => toast({ title: 'Join request updated' }))
+                }
               >
                 Decline
               </Button>
               <Button
                 size="sm"
                 className="flex-1 sm:flex-none bg-amber-600 hover:bg-amber-700 text-white"
-                disabled={isFull || respondMutation.isPending}
-                onClick={() => respondMutation.mutate({ requestId: request.id, accept: true })}
+                disabled={isFull}
+                onClick={() =>
+                  void respondToJoinRequest({
+                    clubId,
+                    requestId: request._id,
+                    accept: true,
+                  }).then(() => toast({ title: 'Join request updated' }))
+                }
               >
                 Approve
               </Button>
@@ -171,26 +172,12 @@ function RequestsPanel({
 }
 
 function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
-  const queryClient = useQueryClient();
+  const clubId = useClubId();
   const { toast } = useToast();
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [code, setCode] = useState('');
   const { isFull } = getMemberLimitState(club);
-
-  const redeemMutation = useMutation({
-    mutationFn: () => clubsApi.redeemJoinCode(club.id, code.trim().toUpperCase()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Joined club with code' });
-      setCode('');
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Invalid join code',
-        variant: 'destructive',
-      }),
-  });
+  const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
 
   if (club.joinPolicy !== 'REQUEST') return null;
 
@@ -212,7 +199,14 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
             onChange={(event) => setCode(event.target.value.toUpperCase())}
             placeholder="Enter join code"
           />
-          <Button onClick={() => redeemMutation.mutate()} disabled={isFull || !code.trim() || redeemMutation.isPending}>
+          <Button
+            onClick={() =>
+              void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() =>
+                toast({ title: 'Joined club with code' }),
+              )
+            }
+            disabled={isFull || !code.trim()}
+          >
             Join with code
           </Button>
         </div>
@@ -222,43 +216,14 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
 }
 
 function PublicClubOverview({ club }: { club: ClubDetail }) {
-  const queryClient = useQueryClient();
+  const clubId = useClubId();
   const { toast } = useToast();
+  const joinOpenClub = useMutation(api.clubs.invitations.joinOpenClub);
+  const requestToJoin = useMutation(api.clubs.invitations.requestToJoin);
 
-  const joinMutation = useMutation({
-    mutationFn: () => clubsApi.join(club.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Joined club' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to join club',
-        variant: 'destructive',
-      }),
-  });
-
-  const requestMutation = useMutation({
-    mutationFn: () => clubsApi.requestToJoin(club.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      toast({ title: 'Join request sent' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to send request',
-        variant: 'destructive',
-      }),
-  });
-
-  const user = useCurrentUser();
-  const clubs = useQuery(api.clubs.membership.list) ?? [];
-  const club = clubs.find((c) => c._id === id);
-  const resolve = (u?: string | null) => u; // Placeholder since Convex storage is handled differently
-  const bannerUrl = resolve(club?.bannerUrl); // Adjust as needed after implementing storage
-  const logoUrl = resolve(club?.logoUrl); // Adjust as needed after implementing storage
-  const { isFull } = { isFull: false }; // Placeholder for club member limit logic
+  const { isFull } = getMemberLimitState(club);
+  const bannerUrl = club.bannerUrl;
+  const logoUrl = club.logoUrl;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
@@ -304,14 +269,21 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
           <MemberLimitMeter club={club} />
           <div className="flex flex-wrap gap-3">
             {club.joinPolicy === 'OPEN' ? (
-              <Button onClick={() => joinMutation.mutate()} disabled={isFull || joinMutation.isPending}>
+              <Button
+                onClick={() =>
+                  void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))
+                }
+                disabled={isFull}
+              >
                 <UserPlus className="mr-2 size-4" />
                 {isFull ? 'Club is full' : 'Join club'}
               </Button>
             ) : (
               <Button
-                onClick={() => requestMutation.mutate()}
-                disabled={isFull || club.viewer.hasPendingJoinRequest || requestMutation.isPending}
+                onClick={() =>
+                  void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))
+                }
+                disabled={isFull || club.viewer.hasPendingJoinRequest}
               >
                 <UserPlus className="mr-2 size-4" />
                 {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
@@ -387,11 +359,10 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   );
 }
 
-export default function ClubOverviewPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ClubOverviewPage() {
+  const clubId = useClubId();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
@@ -399,24 +370,8 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
 
-  const { data: club } = useQuery<ClubDetail>({
-    queryKey: ['club', id],
-    queryFn: () => clubsApi.getOne(id).then((r) => r.data),
-  });
-
-  const redeemMutation = useMutation({
-    mutationFn: (code: string) => clubsApi.redeemJoinCode(id, code.trim().toUpperCase()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', id] });
-      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Joined club with code' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Invalid join code',
-        variant: 'destructive',
-      }),
-  });
+  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
+  const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
 
   useEffect(() => {
     const code = searchParams?.get('joinCode');
@@ -424,16 +379,17 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
       code &&
       club &&
       !club.viewer.canAccessWorkspace &&
-      !getMemberLimitState(club).isFull &&
-      !redeemMutation.isPending
+      !getMemberLimitState(club).isFull
     ) {
-      redeemMutation.mutate(code);
+      void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() =>
+        toast({ title: 'Joined club with code' }),
+      );
     }
-  }, [club, redeemMutation, searchParams]);
+  }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
-  const { data: announcements = [] } = useQuery<AnnouncementSummary[]>({
-    queryKey: ['club-announcements', id],
-    queryFn: () => announcementsApi.getAll(false, id).then((r) => r.data),
+  const { data: announcements = [] } = useRestQuery<AnnouncementSummary[]>({
+    queryKey: ['club-announcements', clubId],
+    queryFn: () => announcementsApi.getAll(false, clubId).then((r) => r.data),
     enabled: !!club?.viewer.canAccessWorkspace,
   });
 
@@ -543,7 +499,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
   );
 
   return (
-    <ClubWorkspace clubId={id} title={title} actions={actions} rightPane={rightPane}>
+    <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
         <ClubHero
           club={club}
@@ -598,7 +554,7 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
             <div className="grid gap-4">
               {filteredAnnouncements.map((announcement) => (
                 <AnnouncementCard
-                  key={announcement.id}
+                  key={announcement._id}
                   announcement={{
                     ...(announcement as any),
                     isRead: (announcement as any).isRead ?? true,
@@ -634,9 +590,9 @@ export default function ClubOverviewPage({ params }: { params: Promise<{ id: str
         </section>
       </div>
 
-      <InviteDialog clubId={id} open={inviteOpen} onOpenChange={setInviteOpen} />
+      <InviteDialog clubId={clubId} open={inviteOpen} onOpenChange={setInviteOpen} />
       <AnnouncementDialog
-        clubId={id}
+        clubId={clubId}
         open={announceOpen}
         onOpenChange={setAnnounceOpen}
         directPost={canPostDirectAnnouncement}

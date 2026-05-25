@@ -26,7 +26,7 @@ import { useQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
-import { announcementsApi, clubsApi, eventsApi, flexFridayApi } from '@/lib/api';
+import { announcementsApi, eventsApi, flexFridayApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
@@ -166,8 +166,6 @@ export function AppShell({
         queryClient.prefetchQuery({ queryKey: ['announcements'], queryFn: () => announcementsApi.getAll().then((r) => r.data) });
         break;
       case '/clubs':
-        queryClient.prefetchQuery({ queryKey: ['my-clubs'], queryFn: () => clubsApi.getMyClubs().then((r) => r.data) });
-        queryClient.prefetchQuery({ queryKey: ['clubs'], queryFn: () => clubsApi.getAll().then((r) => r.data) });
         break;
       case '/events':
         queryClient.prefetchQuery({ queryKey: ['events'], queryFn: () => eventsApi.getAll().then((r) => r.data) });

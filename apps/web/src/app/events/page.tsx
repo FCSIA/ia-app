@@ -2,8 +2,10 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clubsApi, eventsApi } from '@/lib/api';
+import { useQuery as useRestQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import { eventsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -18,16 +20,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { filterBySearchQuery } from '@/lib/search';
 
-type ClubSummary = {
-  id: string;
-  name: string;
-  role?: string | null;
-};
-
-type ClubCollection = {
-  memberOf?: ClubSummary[];
-  sponsoring?: ClubSummary[];
-};
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
@@ -91,18 +83,17 @@ export default function EventsPage() {
     setHydrated(true);
   }, []);
 
-  const { data: events, isLoading } = useQuery({
+  const { data: events, isLoading } = useRestQuery({
     queryKey: ['events'],
     queryFn: () => eventsApi.getAll().then((r) => r.data),
   });
 
-  const { data: myClubs } = useQuery<ClubCollection>({
-    queryKey: ['my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
-    enabled: hydrated && !!user,
-  });
+  const myClubs = useQuery(
+    api.clubs.management.getMyClubs,
+    hydrated && !!user ? {} : 'skip',
+  );
 
-  const { data: pendingApprovals = [] } = useQuery({
+  const { data: pendingApprovals = [] } = useRestQuery({
     queryKey: ['pending-approvals'],
     queryFn: () => eventsApi.getPendingApprovals().then((response) => response.data.map((approval: any) => approval.event)),
     enabled: hydrated && !!user,
@@ -111,7 +102,7 @@ export default function EventsPage() {
   const availableClubs = [
     ...((myClubs?.memberOf || []).filter((club) => !!club.role)),
     ...(myClubs?.sponsoring || []),
-  ].filter((club, index, list) => list.findIndex((item) => item.id === club.id) === index);
+  ].filter((club, index, list) => list.findIndex((item) => item._id === club._id) === index);
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
 
@@ -269,11 +260,11 @@ export default function EventsPage() {
                       ) : null}
                       {availableClubs.map((club) => (
                         <Button
-                          key={club.id}
+                          key={club._id}
                           type="button"
-                          variant={form.clubId === club.id ? 'primary' : 'tertiary'}
+                          variant={form.clubId === club._id ? 'primary' : 'tertiary'}
                           className="rounded-full"
-                          onClick={() => setForm({ ...form, clubId: club.id })}
+                          onClick={() => setForm({ ...form, clubId: club._id })}
                         >
                           {club.name}
                         </Button>

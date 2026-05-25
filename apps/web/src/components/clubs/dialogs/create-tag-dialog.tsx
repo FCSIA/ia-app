@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ClubDetail } from '@ia/contracts/clubs';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import { useClubId } from '@/app/clubs/club-route';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,49 +17,27 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PeoplePicker } from '@/components/clubs/people-picker';
-import { clubsApi } from '@/lib/api';
+import { type ClubDetail } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
 
 type Props = {
-  clubId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function CreateTagDialog({ clubId, open, onOpenChange }: Props) {
-  const queryClient = useQueryClient();
+export function CreateTagDialog({ open, onOpenChange }: Props) {
+  const clubId = useClubId();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [memberIds, setMemberIds] = useState<string[]>([]);
 
-  const { data: club } = useQuery<ClubDetail>({
-    queryKey: ['club', clubId],
-    queryFn: () => clubsApi.getOne(clubId).then((r) => r.data),
-    enabled: open,
-  });
+  const club = useQuery(api.clubs.detail.get, open ? { clubId } : 'skip') as ClubDetail | undefined;
+  const createTag = useMutation(api.clubs.tags.create);
 
   const memberOptions = useMemo(
     () => (club?.directory ?? []).filter((person) => person.kind === 'MEMBER'),
     [club?.directory],
   );
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      clubsApi.createTag(clubId, { name: name.trim(), memberIds }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: 'Tag created' });
-      setName('');
-      setMemberIds([]);
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to create tag',
-        variant: 'destructive',
-      });
-    },
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,10 +76,21 @@ export function CreateTagDialog({ clubId, open, onOpenChange }: Props) {
             Cancel
           </Button>
           <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !name.trim()}
+            onClick={() =>
+              void createTag({
+                clubId,
+                name: name.trim(),
+                memberIds: memberIds as Id<'users'>[],
+              }).then(() => {
+                toast({ title: 'Tag created' });
+                setName('');
+                setMemberIds([]);
+                onOpenChange(false);
+              })
+            }
+            disabled={!name.trim()}
           >
-            {mutation.isPending ? 'Creating…' : 'Create tag'}
+            Create tag
           </Button>
         </DialogFooter>
       </DialogContent>

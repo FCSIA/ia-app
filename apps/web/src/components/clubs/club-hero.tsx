@@ -2,13 +2,14 @@
 
 import { useRef, useState } from 'react';
 import { Camera, ImagePlus, Loader2, Palette, Settings2, Trash2, X } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ClubDetail } from '@ia/contracts/clubs';
+import { useMutation } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { ClubDetail } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { clubsApi, uploadsApi } from '@/lib/api';
+import { uploadsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -21,8 +22,8 @@ function resolveMediaUrl(url?: string | null) {
 }
 
 export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean }) {
-  const qc = useQueryClient();
   const { toast } = useToast();
+  const updateClub = useMutation(api.clubs.management.update);
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
@@ -41,11 +42,7 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
     setUploadingLogo(true);
     try {
       const { data } = await uploadsApi.uploadClubImage(file);
-      await clubsApi.update(club.id, { logoUrl: data.url });
-
-      qc.invalidateQueries({ queryKey: ['club', club.id] });
-      qc.invalidateQueries({ queryKey: ['clubs'] });
-      qc.invalidateQueries({ queryKey: ['my-clubs'] });
+      await updateClub({ clubId: club._id, logoUrl: data.url });
       toast({ title: 'Club logo updated' });
 
       setForm((c) => ({ ...c, logoUrl: data.url }));
@@ -59,21 +56,6 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
     }
   };
 
-  const updateMutation = useMutation({
-    mutationFn: (payload: any) => clubsApi.update(club.id, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['club', club.id] });
-      qc.invalidateQueries({ queryKey: ['clubs'] });
-      qc.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Club branding saved' });
-      setEditing(false);
-    },
-    onError: (e: any) =>
-      toast({
-        title: e.response?.data?.message || 'Failed to save',
-        variant: 'destructive',
-      }),
-  });
 
   const openEditor = () => {
     setForm({
@@ -102,11 +84,15 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
   };
 
   const handleSave = () => {
-    updateMutation.mutate({
-      overview: form.overview || null,
-      accentColor: form.accentColor || null,
-      logoUrl: form.logoUrl || null,
-      bannerUrl: form.bannerUrl || null,
+    void updateClub({
+      clubId: club._id,
+      overview: form.overview || undefined,
+      accentColor: form.accentColor || undefined,
+      logoUrl: form.logoUrl || undefined,
+      bannerUrl: form.bannerUrl || undefined,
+    }).then(() => {
+      toast({ title: 'Club branding saved' });
+      setEditing(false);
     });
   };
 
@@ -363,8 +349,8 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
             </div>
 
             <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+              <Button size="sm" onClick={handleSave}>
+                Save changes
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
                 Cancel

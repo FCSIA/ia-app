@@ -3,9 +3,8 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation as useRestMutation, useQueries, useQuery as useRestQuery } from '@tanstack/react-query';
+import { useMutation as useRestMutation } from '@tanstack/react-query';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
-import { clubsApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,6 +17,55 @@ import { SearchInput } from '@/components/ui/search';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { cn } from '@/lib/utils';
+
+function ClubNotificationChannels({
+  clubId,
+  clubName,
+}: {
+  clubId: Id<'clubs'>;
+  clubName: string;
+}) {
+  const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
+
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-medium">{clubName}</p>
+        <NotificationScopeSwitch
+          category="CLUB_ANNOUNCEMENT"
+          label="Announcements"
+          clubId={clubId}
+          compact
+        />
+      </div>
+      {channels.length > 0 ? (
+        <div className="grid gap-2">
+          {channels.map((channel) => (
+            <div
+              key={channel._id}
+              className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/30 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">#{channel.name}</p>
+                <p className="truncate text-xs text-muted-foreground">Channel mentions</p>
+              </div>
+              <NotificationScopeSwitch
+                category="CLUB_CHANNEL_MENTION"
+                label={`${channel.name} mentions`}
+                clubId={clubId}
+                channelId={channel._id}
+                compact
+                className="shrink-0"
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">No visible channels to configure yet.</p>
+      )}
+    </div>
+  );
+}
 
 const CATEGORY_LABEL: Record<string, string> = {
   SCHOOL_ANNOUNCEMENT: 'School',
@@ -48,38 +96,19 @@ export default function NotificationsPage() {
   } = usePaginatedQuery(api.notifications.inbox.listPage, {}, { initialNumItems: 50 });
   const isLoading = notificationsStatus === 'LoadingFirstPage';
 
-  const preferences = useQuery(api.notifications.preferences.preferences) ?? [];
+  const preferences = useQuery(api.notifications.preferences.list) ?? [];
 
-  const { data: myClubs } = useRestQuery<any>({
-    queryKey: ['my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((r) => r.data),
-  });
+  const myClubs = useQuery(api.clubs.management.getMyClubs);
 
   const involvedClubs = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
     const seen = new Set<string>();
-    return entries.filter((club: any) => {
-      if (seen.has(club.id)) return false;
-      seen.add(club.id);
+    return entries.filter((club) => {
+      if (seen.has(club._id)) return false;
+      seen.add(club._id);
       return true;
     });
   }, [myClubs]);
-
-  const channelQueries = useQueries({
-    queries: involvedClubs.map((club: any) => ({
-      queryKey: ['club-channels', club.id],
-      queryFn: () => clubsApi.getChannels(club.id).then((r) => r.data),
-      enabled: !!club.id,
-    })),
-  });
-
-  const channelsByClub = useMemo(() => {
-    const next = new Map<string, any[]>();
-    involvedClubs.forEach((club: any, index) => {
-      next.set(club.id, (channelQueries[index]?.data as any[]) ?? []);
-    });
-    return next;
-  }, [channelQueries, involvedClubs]);
 
   const filteredNotifications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
@@ -294,51 +323,9 @@ export default function NotificationsPage() {
                   <h2 className="text-sm font-semibold">Clubs and channels</h2>
                   {involvedClubs.length > 0 ? (
                     <div className="grid gap-3">
-                      {involvedClubs.map((club: any) => {
-                        const channels = channelsByClub.get(club.id) ?? [];
-                        return (
-                        <div key={club.id} className="rounded-lg border p-3">
-                          <div className="mb-3 flex items-center justify-between gap-3">
-                            <p className="font-medium">{club.name}</p>
-                            <NotificationScopeSwitch
-                              category="CLUB_ANNOUNCEMENT"
-                              label="Announcements"
-                              clubId={club.id}
-                              compact
-                            />
-                          </div>
-                          {channels.length > 0 ? (
-                            <div className="grid gap-2">
-                              {channels.map((channel: any) => (
-                                <div
-                                  key={channel.id}
-                                  className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/30 px-3 py-2"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium">#{channel.name}</p>
-                                    <p className="truncate text-xs text-muted-foreground">
-                                      Channel mentions
-                                    </p>
-                                  </div>
-                                  <NotificationScopeSwitch
-                                    category="CLUB_CHANNEL_MENTION"
-                                    label={`${channel.name} mentions`}
-                                    clubId={club.id}
-                                    channelId={channel.id}
-                                    compact
-                                    className="shrink-0"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              No visible channels to configure yet.
-                            </p>
-                          )}
-                        </div>
-                        );
-                      })}
+                      {involvedClubs.map((club) => (
+                        <ClubNotificationChannels key={club._id} clubId={club._id} clubName={club.name} />
+                      ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">

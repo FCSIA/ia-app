@@ -1,9 +1,9 @@
 'use client';
 
-import { use, useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery as useRestQuery, useQueryClient } from '@tanstack/react-query';
-import { useQuery } from 'convex/react';
+import { useMutation as useRestMutation, useQuery as useRestQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import {
   Crown,
   Copy,
@@ -18,7 +18,9 @@ import {
   Settings,
   X,
 } from 'lucide-react';
-import type { ClubDetail, ClubDirectoryEntry } from '@ia/contracts/clubs';
+import { useClubId } from '../../club-route';
+import type { ClubDetail, ClubDirectoryEntry } from '@/components/clubs/types';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { SetRoleDialog } from '@/components/clubs/dialogs/set-role-dialog';
@@ -61,7 +63,7 @@ function ManagePeopleDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const queryClient = useQueryClient();
+  const clubId = useClubId();
   const { toast } = useToast();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -70,46 +72,23 @@ function ManagePeopleDialog({
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
 
-  const generateMutation = useMutation({
-    mutationFn: () => clubsApi.generateJoinCode(club.id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', club.id] });
-      toast({ title: 'Join code generated' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to generate code',
-        variant: 'destructive',
-      }),
-  });
+  const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
 
   const searchResults =
     useQuery(
-      api.schedule.friends.searchPeople,
+      api.schedule.friends.search,
       deferredQuery.length >= 2 && !selected
         ? { query: deferredQuery, limit: 20 }
         : 'skip',
     ) ?? [];
   const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
-  const inviteMutation = useMutation({
-    mutationFn: (uniqueId: string) => clubsApi.sendInvite(club.id, uniqueId),
-    onSuccess: () => {
-      setSelected(null);
-      setQuery('');
-      toast({ title: 'Invite sent' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to send invite',
-        variant: 'destructive',
-      }),
-  });
+  const sendInvite = useMutation(api.clubs.invitations.sendInvite);
 
-  const csvMutation = useMutation({
+  const csvMutation = useRestMutation({
     mutationFn: () => {
       if (!csvFile) throw new Error('CSV required');
-      return clubsApi.bulkInviteCsv(club.id, csvFile);
+      return clubsApi.bulkInviteCsv(clubId, csvFile);
     },
     onSuccess: (response) => {
       setResult(response.data);
@@ -130,7 +109,7 @@ function ManagePeopleDialog({
   const joinUrl =
     typeof window === 'undefined'
       ? ''
-      : `${window.location.origin}/clubs/${club.id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
+      : `${window.location.origin}/clubs/${club._id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
   const qrUrl = club.activeJoinCode?.code
     ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
     : null;
@@ -177,7 +156,13 @@ function ManagePeopleDialog({
                   <p className="text-sm text-muted-foreground">
                     Generate a join code first to create a QR link.
                   </p>
-                  <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+                  <Button
+                    onClick={() =>
+                      void generateJoinCode({ clubId }).then(() =>
+                        toast({ title: 'Join code generated' }),
+                      )
+                    }
+                  >
                     Generate join code
                   </Button>
                 </>
@@ -216,7 +201,13 @@ function ManagePeopleDialog({
                     Copy code
                   </Button>
                 ) : null}
-                <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+                <Button
+                  onClick={() =>
+                    void generateJoinCode({ clubId }).then(() =>
+                      toast({ title: 'Join code generated' }),
+                    )
+                  }
+                >
                   {club.activeJoinCode?.code ? 'Regenerate code' : 'Generate code'}
                 </Button>
               </div>
@@ -237,7 +228,16 @@ function ManagePeopleDialog({
                   <Button type="button" variant="ghost" size="icon" onClick={() => { setSelected(null); setQuery(''); }}>
                     <X className="size-4" />
                   </Button>
-                  <Button size="sm" disabled={inviteMutation.isPending} onClick={() => inviteMutation.mutate(selected.uniqueId)}>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      void sendInvite({ clubId, recipientUniqueId: selected.uniqueId }).then(() => {
+                        setSelected(null);
+                        setQuery('');
+                        toast({ title: 'Invite sent' });
+                      })
+                    }
+                  >
                     <Send className="mr-1.5 size-4" />
                     Send
                   </Button>
@@ -317,10 +317,9 @@ function ManagePeopleDialog({
   );
 }
 
-export default function ClubPeoplePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ClubPeoplePage() {
+  const clubId = useClubId();
   const user = useCurrentUser();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -329,24 +328,8 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
 
   const [filter, setFilter] = useState('all');
 
-  const { data: club } = useRestQuery<ClubDetail>({
-    queryKey: ['club', id],
-    queryFn: () => clubsApi.getOne(id).then((r) => r.data),
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (memberId: string) => clubsApi.removeMember(id, memberId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', id] });
-      toast({ title: 'Member removed' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to remove member',
-        variant: 'destructive',
-      });
-    },
-  });
+  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
+  const removeMember = useMutation(api.clubs.management.removeMember);
 
   const canManage = !!club?.viewer.canManageMembership;
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
@@ -388,7 +371,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
   );
 
   return (
-    <ClubWorkspace clubId={id} title={title}>
+    <ClubWorkspace title={title}>
       <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
 
         <div className="space-y-4">
@@ -436,12 +419,16 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
               <div className="divide-y divide-border/60">
                 {filtered.map((person) => (
                   <PersonRow
-                    key={person.id}
+                    key={person._id}
                     person={person}
-                    isCurrentUser={person.id === user?.id}
+                    isCurrentUser={person._id === user?.id}
                     canManage={canManage && person.kind === 'MEMBER'}
                     onSetRole={setRoleTarget}
-                    onRemove={(memberId) => removeMutation.mutate(memberId)}
+                    onRemove={(memberId) =>
+                      void removeMember({ clubId, memberId: memberId as Id<'users'> }).then(() =>
+                        toast({ title: 'Member removed' }),
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -470,7 +457,7 @@ export default function ClubPeoplePage({ params }: { params: Promise<{ id: strin
       {club ? (
         <ManagePeopleDialog club={club} open={manageOpen} onOpenChange={setManageOpen} />
       ) : null}
-      <SetRoleDialog clubId={id} person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
+      <SetRoleDialog person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
     </ClubWorkspace>
   );
 }
@@ -524,7 +511,7 @@ function PersonRow({
             size="sm"
             variant="ghost"
             className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
-            onClick={() => onRemove(person.id)}
+            onClick={() => onRemove(person._id)}
           >
             <UserMinus className="size-4" />
           </Button>

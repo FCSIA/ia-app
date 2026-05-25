@@ -1,8 +1,8 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useQuery } from 'convex/react';
+import { useMutation as useRestMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { Send, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { fullName } from '@/components/clubs/types';
@@ -31,7 +32,7 @@ import { fullName } from '@/components/clubs/types';
 type StudentResult = { id: string; uniqueId: string; firstName: string; lastName: string };
 
 type Props = {
-  clubId: string;
+  clubId: Id<'clubs'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -51,29 +52,16 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
 
   const searchResults =
     useQuery(
-      api.schedule.friends.searchPeople,
+      api.schedule.friends.search,
       deferredQuery.length >= 2 && !selected
         ? { query: deferredQuery, limit: 20 }
         : 'skip',
     ) ?? [];
   const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
-  const inviteMutation = useMutation({
-    mutationFn: (id: string) => clubsApi.sendInvite(clubId, id),
-    onSuccess: () => {
-      setSelected(null);
-      setQuery('');
-      toast({ title: 'Invite sent!' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to send invite',
-        variant: 'destructive',
-      });
-    },
-  });
+  const sendInvite = useMutation(api.clubs.invitations.sendInvite);
 
-  const csvMutation = useMutation({
+  const csvMutation = useRestMutation({
     mutationFn: () => {
       if (!csvFile) throw new Error('CSV required');
       return clubsApi.bulkInviteCsv(clubId, csvFile);
@@ -130,12 +118,20 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                 </button>
                 <Button
                   size="sm"
-                  disabled={inviteMutation.isPending}
-                  onClick={() => inviteMutation.mutate(selected.uniqueId)}
+                  onClick={() =>
+                    void sendInvite({
+                      clubId,
+                      recipientUniqueId: selected.uniqueId,
+                    }).then(() => {
+                      setSelected(null);
+                      setQuery('');
+                      toast({ title: 'Invite sent!' });
+                    })
+                  }
                   className="shrink-0"
                 >
                   <Send className="mr-1.5 size-3.5" />
-                  {inviteMutation.isPending ? 'Sending…' : 'Send'}
+                  Send
                 </Button>
               </div>
             ) : (

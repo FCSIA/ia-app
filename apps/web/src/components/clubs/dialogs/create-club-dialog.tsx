@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +20,6 @@ import { SliderComfortable } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
-import { clubsApi, usersApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 type Props = {
@@ -26,12 +27,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-type UserDirectoryResponse = {
-  users: Array<SelectablePerson>;
-};
-
 export function CreateClubDialog({ open, onOpenChange }: Props) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -39,59 +35,31 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   const [joinPolicy, setJoinPolicy] = useState<'OPEN' | 'REQUEST'>('OPEN');
   const [memberLimit, setMemberLimit] = useState(40);
 
-  const { data: staff } = useQuery<UserDirectoryResponse>({
-    queryKey: ['club-sponsor-directory'],
-    queryFn: () => usersApi.getAll(1, 250).then((r) => r.data),
-    enabled: open,
-  });
-
-  const sponsorOptions = useMemo(
-    () =>
-      (staff?.users ?? [])
-        .filter(isSponsorEligible)
-        .sort((a, b) => fullName(a).localeCompare(fullName(b))),
-    [staff?.users],
+  const staffPage = useQuery(
+    api.users.admin.list,
+    open
+      ? {
+          paginationOpts: { numItems: 250, cursor: null },
+          roleGroup: 'teachers' as const,
+        }
+      : 'skip',
   );
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      clubsApi.create({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        sponsorIds,
-        joinPolicy,
-        memberLimit,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clubs'] });
-      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Club created' });
-      setName('');
-      setDescription('');
-      setSponsorIds([]);
-      setJoinPolicy('OPEN');
-      setMemberLimit(40);
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to create club',
-        variant: 'destructive',
-      });
-    },
-  });
+  const sponsorOptions = useMemo((): SelectablePerson[] => {
+    return (staffPage?.page ?? [])
+      .map((user) => ({
+        _id: user.id,
+        uniqueId: user.uniqueId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        roles: user.roles,
+      }))
+      .filter(isSponsorEligible)
+      .sort((a, b) => fullName(a).localeCompare(fullName(b)));
+  }, [staffPage?.page]);
 
-  const handleSubmit = () => {
-    if (!name.trim()) {
-      toast({ title: 'Club name is required', variant: 'destructive' });
-      return;
-    }
-    if (sponsorIds.length === 0) {
-      toast({ title: 'At least one teacher sponsor is required', variant: 'destructive' });
-      return;
-    }
-    mutation.mutate();
-  };
+  const createClub = useMutation(api.clubs.management.create);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -99,7 +67,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Create club</DialogTitle>
           <DialogDescription>
-            Every club requires at least one teacher sponsor with visibility into every channel.
+            Set up a new club workspace with sponsors and membership rules.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,59 +78,64 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
               id="club-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Robotics, Debate, Esports…"
+              placeholder="Robotics Club"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="club-description">Description (optional)</Label>
+            <Label htmlFor="club-description">Description</Label>
             <Textarea
               id="club-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={3}
-              placeholder="What is this club for?"
+              placeholder="What does this club do?"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Join behavior</Label>
-            <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
-              <SelectTrigger placeholder="" />
-              <SelectContent>
-                <SelectItem index={0} value="OPEN">Public join</SelectItem>
-                <SelectItem index={0} value="REQUEST">Request approval</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Teacher sponsors</Label>
+            <Label>Sponsors</Label>
             <PeoplePicker
               people={sponsorOptions}
               selectedIds={sponsorIds}
               onChange={setSponsorIds}
-              placeholder="Select sponsors"
-              emptyText="No sponsor-eligible staff found."
+              placeholder="Select faculty sponsors"
             />
           </div>
 
-          <div className="space-y-2 rounded-2xl border border-border/70 bg-muted/20 p-3">
-            <div>
-              <Label>Member limit</Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                New joins and approvals stop once this club reaches the selected limit.
-              </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="join-policy">Join policy</Label>
+              <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
+                <SelectTrigger id="join-policy" placeholder="Choose policy" />
+                <SelectContent>
+                  <SelectItem index={0} value="OPEN">
+                    Open join
+                  </SelectItem>
+                  <SelectItem index={0} value="REQUEST">
+                    Request approval
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <SliderComfortable
-              value={memberLimit}
-              onChange={setMemberLimit}
-              min={10}
-              max={200}
-              step={10}
-              label="Limit"
-              formatValue={(value) => `${value} members`}
-            />
+
+            <div className="space-y-2 rounded-2xl border border-border/70 bg-muted/20 p-3 sm:col-span-2">
+              <div>
+                <Label>Member limit</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  New joins and approvals stop once this club reaches the selected limit.
+                </p>
+              </div>
+              <SliderComfortable
+                value={memberLimit}
+                onChange={setMemberLimit}
+                min={10}
+                max={200}
+                step={10}
+                label="Limit"
+                formatValue={(value) => `${value} members`}
+              />
+            </div>
           </div>
         </div>
 
@@ -170,8 +143,27 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
           <Button variant="tertiary" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create club'}
+          <Button
+            onClick={() =>
+              void createClub({
+                name: name.trim(),
+                description: description.trim() || undefined,
+                joinPolicy,
+                memberLimit,
+                sponsorIds: sponsorIds as Id<'users'>[],
+              }).then(() => {
+                toast({ title: 'Club created' });
+                setName('');
+                setDescription('');
+                setSponsorIds([]);
+                setJoinPolicy('OPEN');
+                setMemberLimit(40);
+                onOpenChange(false);
+              })
+            }
+            disabled={!name.trim()}
+          >
+            Create club
           </Button>
         </DialogFooter>
       </DialogContent>

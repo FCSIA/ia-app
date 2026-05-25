@@ -3,7 +3,8 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import {
   AtSign,
   Check,
@@ -25,11 +26,12 @@ import {
 import { Dropdown, DropdownLabel, DropdownSeparator, useDropdown } from '@/components/ui/dropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChannelDialog } from '@/components/clubs/dialogs/channel-dialog';
-import { clubsApi } from '@/lib/api';
+import { useClubId } from '@/app/clubs/club-route';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { ClubDetail, ClubSummary } from '@ia/contracts/clubs';
+import type { ClubChannel, ClubDetail, ClubSummary } from '@/components/clubs/types';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
 
@@ -65,7 +67,7 @@ function ClubPickerItem({
   return (
     <Link
       ref={ref}
-      href={`/clubs/${club.id}`}
+      href={`/clubs/${club._id}`}
       data-proximity-index={index}
       role="menuitemradio"
       aria-checked={active}
@@ -91,7 +93,6 @@ function ClubPickerItem({
 }
 
 type ClubWorkspaceProps = {
-  clubId: string;
   children: ReactNode;
   rightPane?: ReactNode;
   title?: ReactNode;
@@ -100,7 +101,6 @@ type ClubWorkspaceProps = {
 };
 
 export function ClubWorkspace({
-  clubId,
   children,
   rightPane,
   title,
@@ -109,33 +109,12 @@ export function ClubWorkspace({
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? '';
   const user = useCurrentUser();
+  const clubId = useClubId();
 
-  const { data: club } = useQuery<ClubDetail>({
-    queryKey: ['club', clubId],
-    queryFn: () => clubsApi.getOne(clubId).then((response) => response.data),
-  });
-
-  const queryClient = useQueryClient();
+  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const { toast } = useToast();
-
-  const deleteChannelMutation = useMutation({
-    mutationFn: (channelId: string) => clubsApi.deleteChannel(clubId, channelId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: 'Channel deleted' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to delete channel',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const { data: myData } = useQuery<MyClubsResponse>({
-    queryKey: ['my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
-  });
+  const deleteChannel = useMutation(api.clubs.channels.remove);
+  const myData = useQuery(api.clubs.management.getMyClubs);
 
   const channels = club?.channels ?? [];
   const myClubs = useMemo(() => {
@@ -145,8 +124,8 @@ export function ClubWorkspace({
     ];
     const seen = new Set<string>();
     return entries.filter((entry) => {
-      if (seen.has(entry.id)) return false;
-      seen.add(entry.id);
+      if (seen.has(entry._id)) return false;
+      seen.add(entry._id);
       return true;
     });
   }, [myData]);
@@ -229,7 +208,7 @@ export function ClubWorkspace({
                   </DropdownLabel>
                   {myClubs.length > 0 ? (
                     myClubs.map((entry, index) => (
-                      <ClubPickerItem key={entry.id} club={entry} active={entry.id === clubId} index={index} />
+                      <ClubPickerItem key={entry._id} club={entry} active={entry._id === clubId} index={index} />
                     ))
                   ) : (
                     <div className="px-2 py-1.5 text-xs text-muted-foreground">
@@ -284,11 +263,11 @@ export function ClubWorkspace({
                 <div className="space-y-0.5">
                   {channels.length > 0 ? (
                     channels.map((channel) => {
-                      const active = channel.id === activeChannelId;
+                      const active = channel._id === activeChannelId;
                       return (
                         <Link
-                          key={channel.id}
-                          href={`/clubs/${clubId}/channels/${channel.id}`}
+                          key={channel._id}
+                          href={`/clubs/${clubId}/channels/${channel._id}`}
                           className={cn(
                             'group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors',
                             active
@@ -310,7 +289,9 @@ export function ClubWorkspace({
                                   e.preventDefault();
                                   e.stopPropagation();
                                   if (confirm(`Are you sure you want to delete #${channel.name}?`)) {
-                                    deleteChannelMutation.mutate(channel.id);
+                                    void deleteChannel({ channelId: channel._id }).then(() =>
+                                      toast({ title: 'Channel deleted' }),
+                                    );
                                   }
                                 }}
                                 className="p-1 hover:bg-destructive/10 hover:text-destructive rounded transition-all"
@@ -349,7 +330,7 @@ export function ClubWorkspace({
   );
 }
 
-function CreateChannelTrigger({ clubId }: { clubId: string }) {
+function CreateChannelTrigger({ clubId }: { clubId: Id<'clubs'> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -367,7 +348,13 @@ function CreateChannelTrigger({ clubId }: { clubId: string }) {
   );
 }
 
-function ChannelActionsTrigger({ clubId, channel }: { clubId: string; channel: any }) {
+function ChannelActionsTrigger({
+  clubId,
+  channel,
+}: {
+  clubId: Id<'clubs'>;
+  channel: ClubChannel;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>

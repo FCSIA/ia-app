@@ -42,7 +42,7 @@ export function PeoplePicker({
   const deferredQuery = useDeferredValue(query);
 
   const selected = useMemo(
-    () => selectedIds.map((id) => people.find((person) => person.id === id)).filter(Boolean) as SelectablePerson[],
+    () => selectedIds.map((id) => people.find((person) => person._id === id)).filter(Boolean) as SelectablePerson[],
     [people, selectedIds],
   );
 
@@ -102,13 +102,13 @@ export function PeoplePicker({
               <CommandEmpty>{emptyText}</CommandEmpty>
               <CommandGroup className="p-2">
                 {filtered.map((person) => {
-                  const isSelected = selectedIds.includes(person.id);
+                  const isSelected = selectedIds.includes(person._id);
 
                   return (
                     <CommandItem
-                      key={person.id}
+                      key={person._id}
                       value={`${fullName(person)} ${person.uniqueId ?? ''}`}
-                      onSelect={() => togglePerson(person.id)}
+                      onSelect={() => togglePerson(person._id)}
                       className="rounded-xl px-3 py-2"
                     >
                       <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
@@ -146,7 +146,7 @@ export function PeoplePicker({
         <div className="flex flex-wrap gap-2">
           {selected.map((person) => (
             <Badge
-              key={person.id}
+              key={person._id}
               variant="solid"
               className="h-auto rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 text-[11px] text-orange-900 dark:text-orange-100"
             >
@@ -154,7 +154,7 @@ export function PeoplePicker({
               {person.uniqueId ? <span className="ml-1 font-mono opacity-75">{person.uniqueId}</span> : null}
               <button
                 type="button"
-                onClick={() => togglePerson(person.id)}
+                onClick={() => togglePerson(person._id)}
                 className="ml-2 rounded-full text-orange-700/80 transition hover:text-orange-900 dark:text-orange-200 dark:hover:text-white"
                 aria-label={`Remove ${fullName(person)}`}
               >

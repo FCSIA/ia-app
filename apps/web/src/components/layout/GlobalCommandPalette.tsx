@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import {
   announcementsApi,
-  clubsApi,
   eventsApi,
   flexFridayApi,
 } from '@/lib/api';
@@ -106,16 +105,8 @@ export function GlobalCommandPalette({
     queryFn: () => announcementsApi.getAll().then((response) => response.data),
     enabled: shouldLoad,
   });
-  const { data: clubs = [] } = useRestQuery<any[]>({
-    queryKey: ['command-clubs'],
-    queryFn: () => clubsApi.getAll().then((response) => response.data),
-    enabled: shouldLoad,
-  });
-  const { data: myClubs } = useRestQuery<any>({
-    queryKey: ['command-my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
-    enabled: shouldLoad,
-  });
+  const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip') ?? [];
+  const myClubs = useQuery(api.clubs.management.getMyClubs, shouldLoad ? {} : 'skip');
   const { data: events = [] } = useRestQuery<any[]>({
     queryKey: ['command-events'],
     queryFn: () => eventsApi.getAll().then((response) => response.data),
@@ -133,7 +124,7 @@ export function GlobalCommandPalette({
     enabled: shouldLoad,
   });
   const schedule = useQuery(
-    api.schedule.dashboard.dashboard,
+    api.schedule.dashboard.get,
     shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
       ? {}
       : 'skip',
@@ -141,7 +132,7 @@ export function GlobalCommandPalette({
 
   const myClubIds = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
-    return new Set(entries.map((club: any) => club.id));
+    return new Set(entries.map((club) => club._id));
   }, [myClubs]);
 
   const navActions = useMemo(() => {
@@ -160,29 +151,29 @@ export function GlobalCommandPalette({
 
   const entityGroups = useMemo(() => {
     const joinedClubs = clubs
-      .filter((club) => myClubIds.has(club.id))
+      .filter((club) => myClubIds.has(club._id))
       .slice(0, 12)
       .map((club) => ({
-        id: `my-club-${club.id}`,
+        id: `my-club-${club._id}`,
         label: club.name,
         detail: 'Club workspace',
-        href: `/clubs/${club.id}`,
+        href: `/clubs/${club._id}`,
         Icon: Puzzle,
         badge: 'Joined',
-        keywords: ['my club', 'joined club', club.name, club.description],
+        keywords: ['my club', 'joined club', club.name, club.description ?? ''],
       }));
 
     const clubActions: CommandAction[] = clubs
-      .filter((club) => !myClubIds.has(club.id))
+      .filter((club) => !myClubIds.has(club._id))
       .slice(0, 24)
       .map((club) => ({
-      id: `club-${club.id}`,
+      id: `club-${club._id}`,
       label: club.name,
       detail: club.description || 'Club workspace',
-      href: `/clubs/${club.id}`,
+      href: `/clubs/${club._id}`,
       Icon: Puzzle,
-      badge: myClubIds.has(club.id) ? 'Joined' : undefined,
-      keywords: ['club', club.name, club.description],
+      badge: myClubIds.has(club._id) ? 'Joined' : undefined,
+      keywords: ['club', club.name, club.description ?? ''],
     }));
 
     const unreadAnnouncements = announcements
