@@ -2,8 +2,11 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { calendarApi, type CalendarSource } from '@/lib/api';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+
+export type CalendarSource = 'DISTRICT' | 'SCHOOL' | 'CLUB' | 'PERSONAL' | 'FLEX_FRIDAY';
 import {
   format,
   startOfMonth,
@@ -37,6 +40,7 @@ const SOURCE_COLORS: Record<CalendarSource, { bg: string; text: string; dot: str
   SCHOOL:   { bg: 'rgba(249,115,22,0.12)',  text: '#f97316', dot: '#f97316' },
   DISTRICT: { bg: 'rgba(14,165,233,0.12)',  text: '#0ea5e9', dot: '#0ea5e9' },
   CLUB:     { bg: 'rgba(34,197,94,0.12)',   text: '#22c55e', dot: '#22c55e' },
+  FLEX_FRIDAY: { bg: 'rgba(251,146,60,0.12)', text: '#fb923c', dot: '#fb923c' },
 };
 
 export default function CalendarPage() {
@@ -46,36 +50,31 @@ export default function CalendarPage() {
   const [activeSources, setActiveSources] = useState<CalendarSource[]>([]);
   const deferredSearch = useDeferredValue(search);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const calStart = startOfWeek(startOfMonth(currentMonth));
   const calEnd = endOfWeek(endOfMonth(currentMonth));
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
 
-  const startDate = format(calStart, 'yyyy-MM-dd');
-  const endDate = format(calEnd, 'yyyy-MM-dd');
+  const entries =
+    useQuery(api.events.calendar.list, {
+      startDate: calStart.getTime(),
+      endDate: calEnd.getTime(),
+      sources: activeSources.length > 0 ? activeSources : undefined,
+    }) ?? [];
 
-  const { data: entries = [] } = useQuery({
-    queryKey: ['calendar', startDate, endDate, activeSources],
-    queryFn: () =>
-      calendarApi
-        .getEntries(startDate, endDate, undefined, activeSources.length > 0 ? activeSources : undefined)
-        .then((r) => r.data),
-  });
+  const removeEntry = useMutation(api.events.calendar.remove);
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => calendarApi.deleteEntry(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+  const handleDelete = async (entryId: Id<'calendarEntries'>) => {
+    try {
+      await removeEntry({ entryId });
       toast({ title: 'Reminder deleted' });
-    },
-    onError: (error: any) => {
+    } catch (error) {
       toast({
-        title: error.response?.data?.message || 'Failed to delete',
+        title: error instanceof Error ? error.message : 'Failed to delete',
         variant: 'destructive',
       });
-    },
-  });
+    }
+  };
 
   const isSearching = deferredSearch.trim() !== '';
   const filteredEntries = useMemo(() => {
@@ -173,7 +172,7 @@ export default function CalendarPage() {
                 {filteredEntries.map((e: any) => {
                   const color = getSourceColor(e.source as CalendarSource);
                   return (
-                    <Card key={e.id} className="overflow-hidden border-foreground/10 transition-colors">
+                    <Card key={e._id} className="overflow-hidden border-foreground/10 transition-colors">
                       <CardContent className="p-4 flex gap-4">
                         <div
                           className="w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 border"
@@ -205,7 +204,7 @@ export default function CalendarPage() {
                         {e.source === 'PERSONAL' && (
                           <button
                             type="button"
-                            onClick={() => deleteMutation.mutate(e.id)}
+                            onClick={() => void handleDelete(e._id)}
                             className="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
                             <Trash2 size={14} />
@@ -292,7 +291,7 @@ export default function CalendarPage() {
                             const color = getSourceColor(e.source as CalendarSource);
                             return (
                               <div
-                                key={e.id}
+                                key={e._id}
                                 className="text-[10px] rounded px-1.5 py-0.5 truncate font-medium"
                                 style={{ background: color.bg, color: color.text }}
                               >
@@ -355,7 +354,7 @@ export default function CalendarPage() {
                     const color = getSourceColor(e.source as CalendarSource);
                     const sourceLabel = e.source.charAt(0) + e.source.slice(1).toLowerCase();
                     return (
-                      <Card key={e.id} className="hover:-translate-y-0.5 transition-all duration-200">
+                      <Card key={e._id} className="hover:-translate-y-0.5 transition-all duration-200">
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -399,7 +398,7 @@ export default function CalendarPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteMutation.mutate(e.id)}
+                                onClick={() => void handleDelete(e._id)}
                                 className="h-8 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                               >
                                 <Trash2 size={14} />

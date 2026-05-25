@@ -11,14 +11,17 @@ import {
   MapPin,
   Share2,
 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { eventsApi, moderationApi } from '@/lib/api';
+import { moderationApi } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -26,15 +29,12 @@ import { cn } from '@/lib/utils';
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const user = useCurrentUser();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
 
-  const { data: event, isLoading } = useQuery({
-    queryKey: ['event', id],
-    queryFn: () => eventsApi.getOne(id).then((response) => response.data),
-  });
+  const event = useQuery(api.events.events.get, { eventId: id as Id<'events'> });
+  const isLoading = event === undefined;
 
   const reportMutation = useMutation({
     mutationFn: () =>

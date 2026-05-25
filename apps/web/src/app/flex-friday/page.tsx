@@ -2,8 +2,11 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { flexFridayApi, auditApi } from '@/lib/api';
+import { useQuery as useRestQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import { auditApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import { Plus, Users, MapPin, CheckCircle, Ticket, ChevronRight, Clock, Pencil, Trash2, History } from 'lucide-react';
@@ -63,7 +66,6 @@ function pathwayLabel(value: string) {
 
 export default function FlexFridayPage() {
   const user = useCurrentUser();
-  const qc = useQueryClient();
   const { toast } = useToast();
 
   const [selectedFriday, setSelectedFriday] = useState<any>(null);
@@ -105,56 +107,49 @@ export default function FlexFridayPage() {
 
   const [activeView, setActiveView] = useState<'schedule' | 'audit'>('schedule');
 
-  // ── Queries ───────────────────────────────────────────────────────────────
-  const { data: fridays = [], isLoading } = useQuery({
-    queryKey: ['flex-fridays'],
-    queryFn: () => flexFridayApi.getAll().then((r) => r.data),
-  });
+  const fridaysRaw = useQuery(api.flexFriday.fridays.list, mounted ? {} : 'skip');
+  const fridays = fridaysRaw ?? [];
+  const isLoading = mounted && fridaysRaw === undefined;
 
-  const { data: sessions = [] } = useQuery({
-    queryKey: ['flex-sessions', selectedFriday?.id],
-    queryFn: () => flexFridayApi.getSessions(selectedFriday.id).then((r) => r.data),
-    enabled: !!selectedFriday,
-  });
+  const sessions =
+    useQuery(
+      api.flexFriday.sessions.listByFriday,
+      selectedFriday ? { flexFridayId: selectedFriday._id as Id<'flexFridays'> } : 'skip',
+    ) ?? [];
 
-  const { data: workshops = [] } = useQuery({
-    queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id],
-    queryFn: () =>
-      flexFridayApi
-        .getWorkshops(selectedFriday.id, selectedSession.id)
-        .then((r) => r.data),
-    enabled: !!selectedFriday && !!selectedSession,
-  });
+  const workshops =
+    useQuery(
+      api.flexFriday.workshops.listBySession,
+      selectedFriday && selectedSession
+        ? {
+            flexFridayId: selectedFriday._id as Id<'flexFridays'>,
+            sessionId: selectedSession._id as Id<'flexSessions'>,
+          }
+        : 'skip',
+    ) ?? [];
 
-  const { data: myRegs = [] } = useQuery({
-    queryKey: ['my-flex-registrations'],
-    queryFn: () => flexFridayApi.getMyRegistrations().then((r) => r.data),
-  });
+  const myRegs = useQuery(api.flexFriday.registration.getMyRegistrations, mounted ? {} : 'skip') ?? [];
 
-  const { data: auditEvents = [], isLoading: auditLoading } = useQuery({
+  const { data: auditEvents = [], isLoading: auditLoading } = useRestQuery({
     queryKey: ['flex-audit'],
     queryFn: () => auditApi.getAll({ query: 'Flex', limit: 5 }).then((r) => r.data),
     enabled: !!canManage && activeView === 'audit',
   });
 
-  const { data: credits } = useQuery({
-    queryKey: ['my-flex-credits'],
-    queryFn: () => flexFridayApi.getMyCredits().then((r) => r.data),
-    enabled: !!user,
-  });
+  const credits = useQuery(
+    api.flexFriday.credits.getMyCredits,
+    mounted && !!user ? {} : 'skip',
+  );
 
-  const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<string | null>(null);
-  const {
-    data: rosterData,
-    isLoading: rosterLoading,
-    error: rosterError,
-  } = useQuery({
-    queryKey: ['flex-workshop-roster', attendanceWorkshopId],
-    queryFn: () =>
-      flexFridayApi.getRoster(attendanceWorkshopId as string).then((r) => r.data),
-    enabled: !!attendanceWorkshopId && !!canCreateSession,
-    retry: false,
-  });
+  const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<Id<'flexWorkshops'> | null>(null);
+  const rosterData = useQuery(
+    api.flexFriday.attendance.getRoster,
+    attendanceWorkshopId && canCreateSession
+      ? { workshopId: attendanceWorkshopId }
+      : 'skip',
+  );
+  const rosterLoading = attendanceWorkshopId != null && rosterData === undefined;
+  const rosterError = null;
 
   const filteredSessions = useMemo(() => {
     return filterBySearchQuery(sessions as any[], deferredSessionSearch, (session) => [
@@ -173,174 +168,34 @@ export default function FlexFridayPage() {
 
   const myRegWorkshopIds = new Set((myRegs as any[]).map((r: any) => r.workshopId));
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
-  const createFridayMutation = useMutation({
-    mutationFn: (d: any) => flexFridayApi.createFriday(d),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-fridays'] });
-      setShowNewFriday(false);
-      toast({ title: 'Flex Friday created' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
+  const createFridayMut = useMutation(api.flexFriday.fridays.create);
+  const createSessionMut = useMutation(api.flexFriday.sessions.create);
+  const updateSessionMut = useMutation(api.flexFriday.sessions.update);
+  const deleteSessionMut = useMutation(api.flexFriday.sessions.remove);
+  const createWorkshopMut = useMutation(api.flexFriday.workshops.create);
+  const updateWorkshopMut = useMutation(api.flexFriday.workshops.update);
+  const deleteWorkshopMut = useMutation(api.flexFriday.workshops.remove);
+  const registerMut = useMutation(api.flexFriday.registration.register);
+  const unregisterMut = useMutation(api.flexFriday.registration.unregister);
+  const markAttendanceMut = useMutation(api.flexFriday.attendance.markAttendance);
+  const clearAttendanceMut = useMutation(api.flexFriday.attendance.clearAttendance);
 
-  const createSessionMutation = useMutation({
-    mutationFn: (d: any) => flexFridayApi.createSession(selectedFriday.id, d),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-sessions', selectedFriday?.id] });
-      closeSessionForm();
-      toast({ title: 'Session created' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
+  const [actionPending, setActionPending] = useState<string | null>(null);
 
-  const updateSessionMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => flexFridayApi.updateSession(id, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-sessions', selectedFriday?.id] });
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id] });
-      closeSessionForm();
-      toast({ title: 'Session updated' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
-
-  const deleteSessionMutation = useMutation({
-    mutationFn: (id: string) => flexFridayApi.deleteSession(id),
-    onSuccess: (_res, id) => {
-      qc.invalidateQueries({ queryKey: ['flex-sessions', selectedFriday?.id] });
-      if (selectedSession?.id === id) setSelectedSession(null);
-      toast({ title: 'Session deleted' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
-
-  const createWorkshopMutation = useMutation({
-    mutationFn: (d: any) => flexFridayApi.createWorkshop(selectedFriday.id, d),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] });
-      closeWorkshopForm();
-      toast({ title: 'Workshop created' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
-
-  const updateWorkshopMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => flexFridayApi.updateWorkshop(id, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] });
-      closeWorkshopForm();
-      toast({ title: 'Workshop updated' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
-
-  const deleteWorkshopMutation = useMutation({
-    mutationFn: (id: string) => flexFridayApi.deleteWorkshop(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] });
-      toast({ title: 'Workshop deleted' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
-
-  const registerMutation = useMutation({
-    mutationFn: (workshopId: string) => flexFridayApi.register(workshopId),
-    onMutate: async (workshopId: string) => {
-      await Promise.all([
-        qc.cancelQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] }),
-        qc.cancelQueries({ queryKey: ['my-flex-registrations'] }),
-      ]);
-      const prevWorkshops = qc.getQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id]);
-      const prevRegs = qc.getQueryData(['my-flex-registrations']);
-      qc.setQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id], (current: any[] | undefined) =>
-        current?.map((w) =>
-          w.id === workshopId
-            ? { ...w, _count: { ...w._count, registrations: (w._count?.registrations || 0) + 1 } }
-            : w,
-        ),
-      );
-      qc.setQueryData(['my-flex-registrations'], (current: any[] | undefined) => {
-        if ((current || []).some((r) => r.workshopId === workshopId)) return current;
-        return [...(current || []), { id: `optimistic-${workshopId}`, workshopId }];
-      });
-      return { prevWorkshops, prevRegs };
-    },
-    onSuccess: () => toast({ title: 'Registered!' }),
-    onError: (e: any, _wid, ctx) => {
-      qc.setQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id], ctx?.prevWorkshops);
-      qc.setQueryData(['my-flex-registrations'], ctx?.prevRegs);
-      toast({ title: e.response?.data?.message || 'Could not register', variant: 'destructive' });
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] });
-      qc.invalidateQueries({ queryKey: ['my-flex-registrations'] });
-    },
-  });
-
-  const unregisterMutation = useMutation({
-    mutationFn: (workshopId: string) => flexFridayApi.unregister(workshopId),
-    onMutate: async (workshopId: string) => {
-      await Promise.all([
-        qc.cancelQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] }),
-        qc.cancelQueries({ queryKey: ['my-flex-registrations'] }),
-      ]);
-      const prevWorkshops = qc.getQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id]);
-      const prevRegs = qc.getQueryData(['my-flex-registrations']);
-      qc.setQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id], (current: any[] | undefined) =>
-        current?.map((w) =>
-          w.id === workshopId
-            ? { ...w, _count: { ...w._count, registrations: Math.max((w._count?.registrations || 1) - 1, 0) } }
-            : w,
-        ),
-      );
-      qc.setQueryData(['my-flex-registrations'], (current: any[] | undefined) =>
-        (current || []).filter((r) => r.workshopId !== workshopId),
-      );
-      return { prevWorkshops, prevRegs };
-    },
-    onSuccess: () => toast({ title: 'Unregistered' }),
-    onError: (e: any, _wid, ctx) => {
-      qc.setQueryData(['flex-workshops', selectedFriday?.id, selectedSession?.id], ctx?.prevWorkshops);
-      qc.setQueryData(['my-flex-registrations'], ctx?.prevRegs);
-      toast({ title: e.response?.data?.message || 'Could not unregister', variant: 'destructive' });
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['flex-workshops', selectedFriday?.id, selectedSession?.id] });
-      qc.invalidateQueries({ queryKey: ['my-flex-registrations'] });
-    },
-  });
-
-
-  const markAttendanceMutation = useMutation({
-    mutationFn: ({
-      workshopId,
-      studentId,
-      status,
-    }: {
-      workshopId: string;
-      studentId: string;
-      status: 'PRESENT' | 'ABSENT' | 'EXCUSED';
-    }) => flexFridayApi.markAttendance(workshopId, studentId, status),
-    onSuccess: (_res, vars) => {
-      qc.invalidateQueries({ queryKey: ['flex-workshop-roster', vars.workshopId] });
-      qc.invalidateQueries({ queryKey: ['my-flex-credits'] });
-    },
-    onError: (e: any) =>
+  const runAction = async (key: string, fn: () => Promise<unknown>) => {
+    setActionPending(key);
+    try {
+      await fn();
+    } catch (error) {
       toast({
-        title: e.response?.data?.message || 'Could not mark attendance',
+        title: error instanceof Error ? error.message : 'Failed',
         variant: 'destructive',
-      }),
-  });
-
-  const clearAttendanceMutation = useMutation({
-    mutationFn: ({ workshopId, studentId }: { workshopId: string; studentId: string }) =>
-      flexFridayApi.clearAttendance(workshopId, studentId),
-    onSuccess: (_res, vars) => {
-      qc.invalidateQueries({ queryKey: ['flex-workshop-roster', vars.workshopId] });
-      qc.invalidateQueries({ queryKey: ['my-flex-credits'] });
-    },
-  });
+      });
+      throw error;
+    } finally {
+      setActionPending(null);
+    }
+  };
 
   // ── Form helpers ──────────────────────────────────────────────────────────
   const openNewSessionForm = () => {
@@ -350,7 +205,7 @@ export default function FlexFridayPage() {
   };
 
   const openEditSessionForm = (s: any) => {
-    setEditingSessionId(s.id);
+    setEditingSessionId(s._id);
     setSessionForm({
       title: s.title ?? '',
       description: s.description ?? '',
@@ -369,6 +224,7 @@ export default function FlexFridayPage() {
 
   const submitSessionForm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedFriday) return;
     const payload = {
       title: sessionForm.title,
       description: sessionForm.description || undefined,
@@ -377,9 +233,23 @@ export default function FlexFridayPage() {
       endTime: sessionForm.endTime,
     };
     if (editingSessionId) {
-      updateSessionMutation.mutate({ id: editingSessionId, data: payload });
+      void runAction('session-update', async () => {
+        await updateSessionMut({
+          sessionId: editingSessionId as Id<'flexSessions'>,
+          ...payload,
+        });
+        closeSessionForm();
+        toast({ title: 'Session updated' });
+      });
     } else {
-      createSessionMutation.mutate(payload);
+      void runAction('session-create', async () => {
+        await createSessionMut({
+          flexFridayId: selectedFriday._id as Id<'flexFridays'>,
+          ...payload,
+        });
+        closeSessionForm();
+        toast({ title: 'Session created' });
+      });
     }
   };
 
@@ -388,20 +258,20 @@ export default function FlexFridayPage() {
     // Preselect the currently selected session
     setWorkshopForm({
       ...EMPTY_WORKSHOP_FORM,
-      sessionIds: selectedSession ? [selectedSession.id] : [],
+      sessionIds: selectedSession ? [selectedSession._id] : [],
     });
     setWorkshopFormOpen(true);
   };
 
   const openEditWorkshopForm = (w: any) => {
-    setEditingWorkshopId(w.id);
+    setEditingWorkshopId(w._id);
     setWorkshopForm({
       title: w.title ?? '',
       description: w.description ?? '',
       location: w.location ?? '',
       capacity: w.capacity != null ? String(w.capacity) : '',
       sessionIds: Array.isArray(w.linkedSessions)
-        ? w.linkedSessions.map((s: any) => s.id)
+        ? w.linkedSessions.map((s: any) => s._id)
         : Array.isArray(w.sessions)
           ? w.sessions.map((link: any) => link.session?.id ?? link.sessionId).filter(Boolean)
           : [],
@@ -437,10 +307,36 @@ export default function FlexFridayPage() {
       targetMajorPathways: workshopForm.targetMajorPathways,
       targetMinorPathways: workshopForm.targetMinorPathways,
     };
+    if (!selectedFriday) return;
+    const workshopPayload = {
+      ...payload,
+      sessionIds: workshopForm.sessionIds as Id<'flexSessions'>[],
+      capacity: workshopForm.capacity ? parseInt(workshopForm.capacity, 10) : undefined,
+      targetMajorPathways: workshopForm.targetMajorPathways as Array<
+        'INFORMATION_TECHNOLOGY' | 'HEALTH_SCIENCE' | 'ENGINEERING'
+      >,
+      targetMinorPathways: workshopForm.targetMinorPathways as Array<
+        'INFORMATION_TECHNOLOGY' | 'HEALTH_SCIENCE' | 'ENGINEERING'
+      >,
+    };
     if (editingWorkshopId) {
-      updateWorkshopMutation.mutate({ id: editingWorkshopId, data: payload });
+      void runAction('workshop-update', async () => {
+        await updateWorkshopMut({
+          workshopId: editingWorkshopId as Id<'flexWorkshops'>,
+          ...workshopPayload,
+        });
+        closeWorkshopForm();
+        toast({ title: 'Workshop updated' });
+      });
     } else {
-      createWorkshopMutation.mutate(payload);
+      void runAction('workshop-create', async () => {
+        await createWorkshopMut({
+          flexFridayId: selectedFriday._id as Id<'flexFridays'>,
+          ...workshopPayload,
+        });
+        closeWorkshopForm();
+        toast({ title: 'Workshop created' });
+      });
     }
   };
 
@@ -489,7 +385,7 @@ export default function FlexFridayPage() {
   useEffect(() => {
     closeWorkshopForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSession?.id]);
+  }, [selectedSession?._id]);
 
   return (
     <AppShell>
@@ -518,8 +414,8 @@ export default function FlexFridayPage() {
             {isStudent && (
               <Link
                 href={
-                  selectedFriday?.id
-                    ? `/flex-friday/pass?fridayId=${selectedFriday.id}`
+                  selectedFriday?._id
+                    ? `/flex-friday/pass?fridayId=${selectedFriday._id}`
                     : '/flex-friday/pass'
                 }
               >
@@ -592,13 +488,17 @@ export default function FlexFridayPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  createFridayMutation.mutate({
-                    date: fridayForm.date,
-                    type: fridayForm.type,
-                    notes: fridayForm.notes,
-                    isSchoolDay: fridayForm.type !== 'TEACHER_PD',
-                    pathway: fridayForm.type === 'PATHWAY_SPECIFIC' ? fridayForm.pathway : undefined,
-                    gradeLevel: fridayForm.type === 'GRADE_SPECIFIC' ? Number(fridayForm.gradeLevel) : undefined,
+                  void runAction('friday-create', async () => {
+                    await createFridayMut({
+                      date: fridayForm.date,
+                      type: fridayForm.type,
+                      notes: fridayForm.notes,
+                      isSchoolDay: fridayForm.type !== 'TEACHER_PD',
+                      pathway: fridayForm.type === 'PATHWAY_SPECIFIC' ? fridayForm.pathway : undefined,
+                      gradeLevel: fridayForm.type === 'GRADE_SPECIFIC' ? Number(fridayForm.gradeLevel) : undefined,
+                    });
+                    setShowNewFriday(false);
+                    toast({ title: 'Flex Friday created' });
                   });
                 }}
                 className="space-y-4"
@@ -650,7 +550,7 @@ export default function FlexFridayPage() {
                   <Textarea placeholder="Notes (optional)" value={fridayForm.notes} onChange={(e) => setFridayForm({ ...fridayForm, notes: e.target.value })} rows={2} />
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-border mt-2">
-                  <Button type="submit" disabled={createFridayMutation.isPending || !fridayForm.date}>Create</Button>
+                  <Button type="submit" disabled={actionPending === 'friday-create' || !fridayForm.date}>Create</Button>
                   <Button type="button" variant="ghost" onClick={() => setShowNewFriday(false)}>Cancel</Button>
                 </div>
               </form>
@@ -668,8 +568,8 @@ export default function FlexFridayPage() {
               (fridays as any[]).length === 0 ? <p className="text-muted-foreground text-sm">No Flex Fridays scheduled</p> :
                 <div className="space-y-2">
                   {(fridays as any[]).map((f) => (
-                    <button key={f.id} onClick={() => handleSelectFriday(f)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${selectedFriday?.id === f.id
+                    <button key={f._id} onClick={() => handleSelectFriday(f)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${selectedFriday?._id === f._id
                         ? 'border-border bg-muted/60 text-foreground'
                         : 'border-border hover:bg-muted/40 bg-background text-foreground/80 hover:text-foreground'
                         }`}>
@@ -761,7 +661,7 @@ export default function FlexFridayPage() {
                         </div>
                         <div className="flex gap-2 pt-2 border-t border-border mt-2">
                           <Button type="submit" size="sm"
-                            disabled={createSessionMutation.isPending || updateSessionMutation.isPending}>
+                            disabled={actionPending === 'session-create' || actionPending === 'session-update'}>
                             {editingSessionId ? 'Save changes' : 'Create'}
                           </Button>
                           <Button type="button" variant="ghost" size="sm" onClick={closeSessionForm}>Cancel</Button>
@@ -788,8 +688,8 @@ export default function FlexFridayPage() {
                   <div className="space-y-2">
                     {filteredSessions.map((s: any) => (
                       <div
-                        key={s.id}
-                        className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${selectedSession?.id === s.id
+                        key={s._id}
+                        className={`w-full text-left p-4 rounded-xl border transition-all duration-200 ${selectedSession?._id === s._id
                           ? 'border-border bg-muted/60'
                           : 'border-border hover:bg-muted/40 bg-background'
                           }`}
@@ -832,7 +732,11 @@ export default function FlexFridayPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (confirm(`Delete session "${s.title}"? All its workshops will also be removed.`)) {
-                                  deleteSessionMutation.mutate(s.id);
+                                  void runAction('session-delete', async () => {
+                                    await deleteSessionMut({ sessionId: s._id });
+                                    if (selectedSession?._id === s._id) setSelectedSession(null);
+                                    toast({ title: 'Session deleted' });
+                                  });
                                 }
                               }}>
                               <Trash2 size={12} /> Delete
@@ -922,7 +826,7 @@ export default function FlexFridayPage() {
                             {(sessions as any[]).map((s) => {
                               const checked = workshopForm.sessionIds.includes(s.id);
                               return (
-                                <label key={s.id}
+                                <label key={s._id}
                                   className={cn(
                                     'flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition',
                                     checked ? 'border-accent-500/40 bg-accent-500/10' : 'border-border hover:bg-muted/40',
@@ -1033,7 +937,7 @@ export default function FlexFridayPage() {
 
                         <div className="flex gap-2 pt-2 border-t border-border mt-2">
                           <Button type="submit" size="sm"
-                            disabled={createWorkshopMutation.isPending || updateWorkshopMutation.isPending}>
+                            disabled={actionPending === 'workshop-create' || actionPending === 'workshop-update'}>
                             {editingWorkshopId ? 'Save changes' : 'Create'}
                           </Button>
                           <Button type="button" variant="ghost" size="sm" onClick={closeWorkshopForm}>Cancel</Button>
@@ -1059,15 +963,15 @@ export default function FlexFridayPage() {
                 ) : (
                   <div className="space-y-3">
                     {(filteredWorkshops as any[]).map((w) => {
-                      const isRegistered = myRegWorkshopIds.has(w.id);
+                      const isRegistered = myRegWorkshopIds.has(w._id);
                       const isFull = w.capacity && w._count?.registrations >= w.capacity;
-                      const isRegistering = registerMutation.isPending && registerMutation.variables === w.id;
-                      const isUnregistering = unregisterMutation.isPending && unregisterMutation.variables === w.id;
+                      const isRegistering = actionPending === `register-${w._id}`;
+                      const isUnregistering = actionPending === `unregister-${w._id}`;
                       const linkedSessions: Array<{ id: string; title: string; startTime?: string; endTime?: string }> =
                         Array.isArray(w.linkedSessions) ? w.linkedSessions : [];
                       const spansMultiple = linkedSessions.length > 1;
                       return (
-                        <Card key={w.id} className={`transition-all duration-200 ${isRegistered ? 'bg-muted/40' : 'hover:-translate-y-0.5'}`}>
+                        <Card key={w._id} className={`transition-all duration-200 ${isRegistered ? 'bg-muted/40' : 'hover:-translate-y-0.5'}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
@@ -1121,13 +1025,16 @@ export default function FlexFridayPage() {
                               {isStudent && selectedSession?.sessionType === 'STUDENT_CHOICE' && (
                                 isRegistered ? (
                                   <div className="flex flex-col gap-1.5 flex-shrink-0">
-                                    <Button variant="ghost" size="sm" onClick={() => unregisterMutation.mutate(w.id)} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                                    <Button variant="ghost" size="sm" onClick={() => void runAction(`unregister-${w._id}`, async () => {
+                                      await unregisterMut({ workshopId: w._id });
+                                      toast({ title: 'Unregistered' });
+                                    })} disabled={isUnregistering} className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
                                       {isUnregistering ? 'Updating…' : 'Unregister'}
                                     </Button>
                                     <Link
                                       href={
-                                        selectedFriday?.id
-                                          ? `/flex-friday/pass?fridayId=${selectedFriday.id}`
+                                        selectedFriday?._id
+                                          ? `/flex-friday/pass?fridayId=${selectedFriday._id}`
                                           : '/flex-friday/pass'
                                       }
                                     >
@@ -1137,7 +1044,10 @@ export default function FlexFridayPage() {
                                     </Link>
                                   </div>
                                 ) : (
-                                  <Button size="sm" onClick={() => registerMutation.mutate(w.id)} disabled={!!isFull || isRegistering} className="h-8 flex-shrink-0">
+                                  <Button size="sm" onClick={() => void runAction(`register-${w._id}`, async () => {
+                                    await registerMut({ workshopId: w._id });
+                                    toast({ title: 'Registered!' });
+                                  })} disabled={!!isFull || isRegistering} className="h-8 flex-shrink-0">
                                     {isFull ? 'Full' : isRegistering ? 'Registering…' : 'Register'}
                                   </Button>
                                 )
@@ -1153,44 +1063,47 @@ export default function FlexFridayPage() {
                                   className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                                   onClick={() => {
                                     if (confirm(`Delete workshop "${w.title}"?`)) {
-                                      deleteWorkshopMutation.mutate(w.id);
+                                      void runAction('workshop-delete', async () => {
+                                        await deleteWorkshopMut({ workshopId: w._id });
+                                        toast({ title: 'Workshop deleted' });
+                                      });
                                     }
                                   }}>
                                   <Trash2 size={12} /> Delete
                                 </Button>
                                 <Button
-                                  variant={attendanceWorkshopId === w.id ? 'secondary' : 'ghost'}
+                                  variant={attendanceWorkshopId === w._id ? 'secondary' : 'ghost'}
                                   size="sm"
                                   className="h-7 text-xs gap-1"
                                   onClick={() =>
-                                    setAttendanceWorkshopId((id) => (id === w.id ? null : w.id))
+                                    setAttendanceWorkshopId((id) => (id === w._id ? null : w._id))
                                   }
                                 >
                                   <CheckCircle size={12} />
-                                  {attendanceWorkshopId === w.id ? 'Hide attendance' : 'Take attendance'}
+                                  {attendanceWorkshopId === w._id ? 'Hide attendance' : 'Take attendance'}
                                 </Button>
                               </div>
                             )}
-                            {canCreateSession && attendanceWorkshopId === w.id && (
+                            {canCreateSession && attendanceWorkshopId === w._id && (
                               <AttendancePanel
-                                roster={rosterData}
+                                roster={rosterData as any}
                                 isLoading={rosterLoading}
                                 error={rosterError as Error | null}
-                                workshopId={w.id}
+                                workshopId={w._id}
                                 onMark={(studentId, status) =>
-                                  markAttendanceMutation.mutate({
-                                    workshopId: w.id,
-                                    studentId,
+                                  void markAttendanceMut({
+                                    workshopId: w._id,
+                                    studentId: studentId as Id<'users'>,
                                     status,
                                   })
                                 }
                                 onClear={(studentId) =>
-                                  clearAttendanceMutation.mutate({
-                                    workshopId: w.id,
-                                    studentId,
+                                  void clearAttendanceMut({
+                                    workshopId: w._id,
+                                    studentId: studentId as Id<'users'>,
                                   })
                                 }
-                                isMarking={markAttendanceMutation.isPending}
+                                isMarking={actionPending != null}
                               />
                             )}
                           </CardContent>

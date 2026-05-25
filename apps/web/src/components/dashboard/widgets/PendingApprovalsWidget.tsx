@@ -2,20 +2,16 @@
 
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { Panel } from '@/components/layout/page-frame';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { eventsApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 
 export function PendingApprovalsWidget() {
-  const { data = [] } = useQuery({
-    queryKey: ['events', 'pending-approvals'],
-    queryFn: () => eventsApi.getPendingApprovals().then((r) => r.data),
-  });
-
-  const items = (data as any[]).slice(0, 5);
+  const pending = useQuery(api.events.approvals.listPendingForSponsor, {}) ?? [];
+  const items = pending.slice(0, 5);
 
   return (
     <Panel
@@ -31,9 +27,9 @@ export function PendingApprovalsWidget() {
     >
       {items.length > 0 ? (
         <div className="space-y-3">
-          {items.map((event: any) => (
+          {items.map((event) => (
             <Link
-              key={event.id}
+              key={event._id}
               href="/events"
               className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
             >

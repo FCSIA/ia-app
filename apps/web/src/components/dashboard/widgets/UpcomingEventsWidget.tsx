@@ -2,22 +2,17 @@
 
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { ArrowRight, Ticket } from 'lucide-react';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { eventsApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 
 export function UpcomingEventsWidget() {
-  const now = new Date();
-
-  const { data: eventsData = [] } = useQuery({
-    queryKey: ['events'],
-    queryFn: () => eventsApi.getAll().then((response) => response.data),
-  });
-
-  const upcomingEvents = (eventsData as any[])
-    .filter((event: any) => new Date(event.startAt) >= now)
+  const now = Date.now();
+  const eventsData = useQuery(api.events.events.list, {}) ?? [];
+  const upcomingEvents = eventsData
+    .filter((event) => event.status === 'PUBLISHED' && event.startAt >= now)
     .slice(0, 4);
 
   return (
@@ -34,10 +29,10 @@ export function UpcomingEventsWidget() {
     >
       {upcomingEvents.length > 0 ? (
         <div className="space-y-3">
-          {upcomingEvents.map((event: any) => (
+          {upcomingEvents.map((event) => (
             <Link
-              key={event.id}
-              href="/events"
+              key={event._id}
+              href={`/events/${event._id}`}
               className="block rounded-[1.4rem] border border-border/70 bg-muted/20 px-4 py-4 transition hover:-translate-y-0.5 hover:border-border hover:bg-muted/60"
             >
               <div className="flex items-start justify-between gap-4">

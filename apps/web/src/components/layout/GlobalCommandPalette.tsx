@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useQuery as useRestQuery } from '@tanstack/react-query';
 import { useQuery } from 'convex/react';
@@ -24,8 +25,6 @@ import {
 } from 'lucide-react';
 import {
   announcementsApi,
-  eventsApi,
-  flexFridayApi,
 } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, type AppUser } from '@/lib/auth';
@@ -107,22 +106,14 @@ export function GlobalCommandPalette({
   });
   const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip') ?? [];
   const myClubs = useQuery(api.clubs.management.getMyClubs, shouldLoad ? {} : 'skip');
-  const { data: events = [] } = useRestQuery<any[]>({
-    queryKey: ['command-events'],
-    queryFn: () => eventsApi.getAll().then((response) => response.data),
-    enabled: shouldLoad,
-  });
+  const events = useQuery(api.events.events.list, shouldLoad ? {} : 'skip') ?? [];
   const courses =
     useQuery(api.courses.catalog.list, shouldLoad ? { limit: 40 } : 'skip') ?? [];
   const notifications = useQuery(
     api.notifications.inbox.list,
     shouldLoad ? { unreadOnly: true, limit: 20 } : 'skip',
   ) ?? [];
-  const { data: flexFridays = [] } = useRestQuery<any[]>({
-    queryKey: ['command-flex-friday'],
-    queryFn: () => flexFridayApi.getAll().then((response) => response.data),
-    enabled: shouldLoad,
-  });
+  const flexFridays = useQuery(api.flexFriday.fridays.list, shouldLoad ? {} : 'skip') ?? [];
   const schedule = useQuery(
     api.schedule.dashboard.get,
     shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
@@ -200,12 +191,14 @@ export function GlobalCommandPalette({
     }));
 
     const eventActions: CommandAction[] = events.slice(0, 25).map((event) => ({
-      id: `event-${event.id}`,
+      id: `event-${event._id}`,
       label: event.title,
       detail: [event.location, event.club?.name].filter(Boolean).join(' · ') || 'Event',
-      href: event.id ? `/events/${event.id}` : '/events',
+      href: event._id ? `/events/${event._id}` : '/events',
       Icon: Ticket,
-      keywords: ['event', event.description, event.location, event.club?.name],
+      keywords: ['event', event.description, event.location, event.club?.name].filter(
+        (k): k is string => !!k,
+      ),
     }));
 
     const courseActions: CommandAction[] = courses.slice(0, 25).map((course) => ({
@@ -236,12 +229,12 @@ export function GlobalCommandPalette({
     }));
 
     const flexActions: CommandAction[] = flexFridays.slice(0, 10).map((friday) => ({
-      id: `flex-${friday.id}`,
-      label: friday.date ? `Flex Friday ${friday.date.slice(0, 10)}` : 'Flex Friday',
+      id: `flex-${friday._id}`,
+      label: friday.date ? `Flex Friday ${format(new Date(friday.date), 'yyyy-MM-dd')}` : 'Flex Friday',
       detail: friday.type?.replace(/_/g, ' ') || 'Workshop day',
-      href: `/flex-friday?friday=${friday.id}`,
+      href: `/flex-friday?friday=${friday._id}`,
       Icon: Sparkles,
-      keywords: ['flex friday', friday.notes, friday.type],
+      keywords: ['flex friday', friday.notes, friday.type].filter((k): k is string => !!k),
     }));
 
     const scheduleActions: CommandAction[] = [

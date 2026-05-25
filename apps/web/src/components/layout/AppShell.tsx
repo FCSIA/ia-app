@@ -26,7 +26,7 @@ import { useQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
-import { announcementsApi, eventsApi, flexFridayApi } from '@/lib/api';
+import { announcementsApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
@@ -168,12 +168,10 @@ export function AppShell({
       case '/clubs':
         break;
       case '/events':
-        queryClient.prefetchQuery({ queryKey: ['events'], queryFn: () => eventsApi.getAll().then((r) => r.data) });
         break;
       case '/schedule':
         break;
       case '/flex-friday':
-        queryClient.prefetchQuery({ queryKey: ['flex-friday'], queryFn: () => flexFridayApi.getAll().then((r) => r.data) });
         break;
       case '/notifications':
         break;

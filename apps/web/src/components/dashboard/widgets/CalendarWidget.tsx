@@ -12,11 +12,11 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin } from 'lucide-react';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { calendarApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -24,13 +24,13 @@ export function CalendarWidget() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date());
 
-  const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const monthEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-
-  const { data: calendarEntries = [] } = useQuery({
-    queryKey: ['calendar', monthStart, monthEnd],
-    queryFn: () => calendarApi.getEntries(monthStart, monthEnd).then((response) => response.data),
-  });
+  const calStart = startOfWeek(startOfMonth(currentMonth));
+  const calEnd = endOfWeek(endOfMonth(currentMonth));
+  const calendarEntries =
+    useQuery(api.events.calendar.list, {
+      startDate: calStart.getTime(),
+      endDate: calEnd.getTime(),
+    }) ?? [];
 
   const calendarStart = startOfWeek(startOfMonth(currentMonth));
   const calendarEnd = endOfWeek(endOfMonth(currentMonth));
@@ -129,7 +129,7 @@ export function CalendarWidget() {
                 <div className="mt-1 flex h-1.5 w-full items-center justify-center gap-0.5">
                   {dayEvents.slice(0, 3).map((entry: any) => (
                     <div
-                      key={entry.id}
+                      key={entry._id}
                       className="size-1 rounded-full bg-primary/60"
                     />
                   ))}

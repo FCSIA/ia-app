@@ -1,8 +1,8 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from '@tanstack/react-query';
-import { flexFridayApi } from '@/lib/api';
+import { useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { getUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import {
@@ -26,7 +26,7 @@ type LinkedSession = {
   title: string;
   startTime?: string | null;
   endTime?: string | null;
-  flexFriday?: { id: string; date: string; type?: string } | null;
+  flexFriday?: { _id: string; date: number | string; type?: string } | null;
 };
 
 type PassRecord = {
@@ -98,17 +98,18 @@ function FlexFridayPassContent() {
   const searchParams = useSearchParams();
   const requestedFridayId = searchParams?.get('fridayId') ?? null;
 
-  const { data: myRegs = [], isLoading: loadingRegs } = useQuery({
-    queryKey: ['my-flex-registrations'],
-    queryFn: () => flexFridayApi.getMyRegistrations().then((r) => r.data),
-  });
-
-  const { data: myAssignments = [], isLoading: loadingAssignments } = useQuery({
-    queryKey: ['my-flex-assignments'],
-    queryFn: () => flexFridayApi.getMyAssignments().then((r) => r.data),
-  });
-
-  const isLoading = loadingRegs || loadingAssignments;
+  const myRegsRaw = useQuery(
+    api.flexFriday.registration.getMyRegistrations,
+    mounted ? {} : 'skip',
+  );
+  const myAssignmentsRaw = useQuery(
+    api.flexFriday.registration.getMyAssignments,
+    mounted ? {} : 'skip',
+  );
+  const myRegs = myRegsRaw ?? [];
+  const myAssignments = myAssignmentsRaw ?? [];
+  const isLoading =
+    mounted && (myRegsRaw === undefined || myAssignmentsRaw === undefined);
 
   const allPasses = useMemo<PassRecord[]>(
     () => [
@@ -124,12 +125,13 @@ function FlexFridayPassContent() {
     for (const pass of allPasses) {
       const friday = fridayForPass(pass);
       if (!friday) continue;
-      const existing = byFriday.get(friday.id);
+      const fridayId = friday._id;
+      const existing = byFriday.get(fridayId);
       if (existing) {
         existing.passes.push(pass);
       } else {
-        byFriday.set(friday.id, {
-          fridayId: friday.id,
+        byFriday.set(fridayId, {
+          fridayId,
           date: new Date(friday.date),
           type: friday.type,
           passes: [pass],

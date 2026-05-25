@@ -2,10 +2,9 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery as useRestQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { eventsApi } from '@/lib/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -43,7 +42,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
                 {event.club?.name || 'General'}
               </Badge>
             </div>
-            <Link href={`/events/${event.id}`}>
+            <Link href={`/events/${event._id}`}>
               <h3 className="font-semibold text-foreground/90 hover:text-accent-500 transition-colors">{event.title}</h3>
             </Link>
             <div className="flex flex-wrap gap-3 mt-2 text-xs text-muted-foreground">
@@ -55,12 +54,12 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           </div>
           {event.status === 'PENDING_APPROVAL' && (
             <div className="flex gap-2 flex-shrink-0">
-              <Button size="sm" onClick={() => onApprove(event.id)} className="h-8 flex items-center gap-1"><Check size={14} /> Approve</Button>
-              <Button size="sm" variant="primary" onClick={() => onReject(event.id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
+              <Button size="sm" onClick={() => onApprove(event._id)} className="h-8 flex items-center gap-1"><Check size={14} /> Approve</Button>
+              <Button size="sm" variant="primary" onClick={() => onReject(event._id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
             </div>
           )}
-          {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?.id) && (
-            <Button variant="ghost" size="sm" onClick={() => onCancel(event.id)} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel</Button>
+          {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?._id) && (
+            <Button variant="ghost" size="sm" onClick={() => onCancel(event._id)} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel</Button>
           )}
         </div>
       </CardContent>
@@ -71,7 +70,6 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 export default function EventsPage() {
   const user = useCurrentUser();
   const [hydrated, setHydrated] = useState(false);
-  const qc = useQueryClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
@@ -83,21 +81,19 @@ export default function EventsPage() {
     setHydrated(true);
   }, []);
 
-  const { data: events, isLoading } = useRestQuery({
-    queryKey: ['events'],
-    queryFn: () => eventsApi.getAll().then((r) => r.data),
-  });
+  const events = useQuery(api.events.events.list, hydrated && !!user ? {} : 'skip');
+  const isLoading = events === undefined;
 
   const myClubs = useQuery(
     api.clubs.management.getMyClubs,
     hydrated && !!user ? {} : 'skip',
   );
 
-  const { data: pendingApprovals = [] } = useRestQuery({
-    queryKey: ['pending-approvals'],
-    queryFn: () => eventsApi.getPendingApprovals().then((response) => response.data.map((approval: any) => approval.event)),
-    enabled: hydrated && !!user,
-  });
+  const pendingApprovals =
+    useQuery(
+      api.events.approvals.listPendingForSponsor,
+      hydrated && !!user ? {} : 'skip',
+    ) ?? [];
 
   const availableClubs = [
     ...((myClubs?.memberOf || []).filter((club) => !!club.role)),
@@ -106,49 +102,82 @@ export default function EventsPage() {
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
 
-  const createMutation = useMutation({
-    mutationFn: (d: any) => eventsApi.create(d),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['events'] });
-      qc.invalidateQueries({ queryKey: ['pending-approvals'] });
+  const createEvent = useMutation(api.events.events.create);
+  const approveEvent = useMutation(api.events.approvals.approveEvent);
+  const rejectEvent = useMutation(api.events.approvals.rejectEvent);
+  const cancelEvent = useMutation(api.events.events.cancel);
+
+  const [createPending, setCreatePending] = useState(false);
+
+  const handleCreate = async () => {
+    if (!form.startAt) {
+      toast({ title: 'Start date is required', variant: 'destructive' });
+      return;
+    }
+    setCreatePending(true);
+    try {
+      await createEvent({
+        title: form.title,
+        description: form.description || undefined,
+        location: form.location || undefined,
+        startAt: new Date(form.startAt).getTime(),
+        endAt: form.endAt ? new Date(form.endAt).getTime() : undefined,
+        clubId: form.clubId ? (form.clubId as Id<'clubs'>) : undefined,
+      });
       setShowNew(false);
       toast({ title: 'Event created' });
-    },
-    onError: (e: any) => toast({ title: e.response?.data?.message || 'Failed', variant: 'destructive' }),
-  });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatePending(false);
+    }
+  };
 
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => eventsApi.approve(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['events'] });
-      qc.invalidateQueries({ queryKey: ['pending-approvals'] });
+  const handleApprove = async (eventId: Id<'events'>) => {
+    try {
+      await approveEvent({ eventId });
       toast({ title: 'Approved' });
-    },
-  });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed',
+        variant: 'destructive',
+      });
+    }
+  };
 
-  const rejectMutation = useMutation({
-    mutationFn: (id: string) => eventsApi.reject(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['events'] });
-      qc.invalidateQueries({ queryKey: ['pending-approvals'] });
+  const handleReject = async (eventId: Id<'events'>) => {
+    try {
+      await rejectEvent({ eventId });
       toast({ title: 'Rejected' });
-    },
-  });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed',
+        variant: 'destructive',
+      });
+    }
+  };
 
-  const cancelMutation = useMutation({
-    mutationFn: (id: string) => eventsApi.cancel(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['events'] });
-      qc.invalidateQueries({ queryKey: ['pending-approvals'] });
+  const handleCancel = async (eventId: Id<'events'>) => {
+    try {
+      await cancelEvent({ eventId });
       toast({ title: 'Cancelled' });
-    },
-  });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const now = hydrated ? new Date() : null;
-  const upcoming = (events || []).filter((e: any) => e.status === 'PUBLISHED' && (!now || new Date(e.startAt) >= now));
+  const eventList = events ?? [];
+  const upcoming = eventList.filter((e) => e.status === 'PUBLISHED' && (!now || e.startAt >= now.getTime()));
   const pending = pendingApprovals;
   const past = now
-    ? (events || []).filter((e: any) => e.status === 'PUBLISHED' && new Date(e.startAt) < now)
+    ? eventList.filter((e) => e.status === 'PUBLISHED' && e.startAt < now.getTime())
     : [];
 
   const filterEvents = (list: any[]) => {
@@ -202,11 +231,7 @@ export default function EventsPage() {
                     toast({ title: 'Start date is required', variant: 'destructive' });
                     return;
                   }
-                  createMutation.mutate({
-                    ...form,
-                    clubId: form.clubId || undefined,
-                    endAt: form.endAt || undefined,
-                  });
+                  void handleCreate();
                 }}
                 className="space-y-4"
               >
@@ -273,7 +298,7 @@ export default function EventsPage() {
                   </div>
                 ) : null}
                 <div className="flex gap-2 pt-4 border-t border-border mt-4">
-                  <Button type="submit" disabled={createMutation.isPending}>Create Event</Button>
+                  <Button type="submit" disabled={createPending}>Create Event</Button>
                   <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>Cancel</Button>
                 </div>
               </form>
@@ -298,7 +323,7 @@ export default function EventsPage() {
                   <AlertCircle size={16} className="text-amber-500" /> Pending Approval ({filteredPending.length})
                 </h2>
                 <div className="space-y-4">
-                  {filteredPending.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}
+                  {filteredPending.map((ev) => <EventCard key={ev._id} event={ev} user={user} hydrated={hydrated} onApprove={handleApprove} onReject={handleReject} onCancel={handleCancel} />)}
                 </div>
               </div>
             )}
@@ -313,14 +338,14 @@ export default function EventsPage() {
                     </CardContent>
                   </Card>
                 ) :
-                  <div className="space-y-4">{filteredUpcoming.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={(id: string) => approveMutation.mutate(id)} onReject={(id: string) => rejectMutation.mutate(id)} onCancel={(id: string) => cancelMutation.mutate(id)} />)}</div>}
+                  <div className="space-y-4">{filteredUpcoming.map((ev) => <EventCard key={ev._id} event={ev} user={user} hydrated={hydrated} onApprove={handleApprove} onReject={handleReject} onCancel={handleCancel} />)}</div>}
             </div>
 
             {filteredPast.length > 0 && (
               <div>
                 <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Past Events</h2>
                 <div className="space-y-4">
-                  {filteredPast.map((ev: any) => <EventCard key={ev.id} event={ev} user={user} hydrated={hydrated} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
+                  {filteredPast.map((ev) => <EventCard key={ev._id} event={ev} user={user} hydrated={hydrated} onApprove={() => { }} onReject={() => { }} onCancel={() => { }} />)}
                 </div>
               </div>
             )}
