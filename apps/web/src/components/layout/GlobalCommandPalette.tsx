@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { useQuery as useRestQuery } from '@tanstack/react-query';
 import { useQuery } from 'convex/react';
 import {
   Bell,
@@ -23,9 +22,6 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import {
-  announcementsApi,
-} from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, type AppUser } from '@/lib/auth';
 import {
@@ -99,11 +95,7 @@ export function GlobalCommandPalette({
   const shouldLoad = open && !!user;
   const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
-  const { data: announcements = [] } = useRestQuery<any[]>({
-    queryKey: ['command-announcements'],
-    queryFn: () => announcementsApi.getAll().then((response) => response.data),
-    enabled: shouldLoad,
-  });
+  const announcements = useQuery(api.announcements.feed.list, shouldLoad ? {} : 'skip') ?? [];
   const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip') ?? [];
   const myClubs = useQuery(api.clubs.management.getMyClubs, shouldLoad ? {} : 'skip');
   const events = useQuery(api.events.events.list, shouldLoad ? {} : 'skip') ?? [];
@@ -171,23 +163,27 @@ export function GlobalCommandPalette({
       .filter((announcement) => !announcement.isRead)
       .slice(0, 8)
       .map((announcement) => ({
-        id: `unread-announcement-${announcement.id}`,
+        id: `unread-announcement-${announcement._id}`,
         label: announcement.title,
         detail: announcement.club?.name || announcement.targetType?.replace(/_/g, ' ') || 'Announcement',
-        href: `/announcements/${announcement.id}`,
+        href: `/announcements/${announcement._id}`,
         Icon: Megaphone,
         badge: 'Unread',
-        keywords: ['unread', 'announcement', announcement.body, announcement.club?.name],
+        keywords: ['unread', 'announcement', announcement.body, announcement.club?.name].filter(
+          (value): value is string => !!value,
+        ),
       }));
 
     const announcementActions: CommandAction[] = announcements.slice(0, 18).map((announcement) => ({
-      id: `announcement-${announcement.id}`,
+      id: `announcement-${announcement._id}`,
       label: announcement.title,
       detail: announcement.club?.name || announcement.targetType?.replace(/_/g, ' ') || 'Announcement',
-      href: `/announcements/${announcement.id}`,
+      href: `/announcements/${announcement._id}`,
       Icon: Megaphone,
       badge: announcement.isRead ? undefined : 'Unread',
-      keywords: ['announcement', announcement.body, announcement.club?.name],
+      keywords: ['announcement', announcement.body, announcement.club?.name].filter(
+        (value): value is string => !!value,
+      ),
     }));
 
     const eventActions: CommandAction[] = events.slice(0, 25).map((event) => ({
@@ -207,7 +203,9 @@ export function GlobalCommandPalette({
       detail: [course.department, course.pathway?.replace(/_/g, ' ')].filter(Boolean).join(' · ') || 'Course',
       href: `/courses/${course.slug}`,
       Icon: BookOpen,
-      keywords: ['course', course.department, course.courseNumbers?.join(' ')],
+      keywords: ['course', course.department, course.courseNumbers?.join(' ')].filter(
+        (value): value is string => !!value,
+      ),
     }));
 
     const notificationActions: CommandAction[] = notifications.slice(0, 15).map((notification) => ({

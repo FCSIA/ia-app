@@ -26,7 +26,6 @@ import { useQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
 import { authClient } from '@/lib/auth-client';
-import { announcementsApi } from '@/lib/api';
 import { api } from '~/apps/convex/src/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
@@ -163,7 +162,6 @@ export function AppShell({
   const handlePrefetch = (href: string) => {
     switch (href) {
       case '/announcements':
-        queryClient.prefetchQuery({ queryKey: ['announcements'], queryFn: () => announcementsApi.getAll().then((r) => r.data) });
         break;
       case '/clubs':
         break;

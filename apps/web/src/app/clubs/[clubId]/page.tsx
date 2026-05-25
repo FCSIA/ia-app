@@ -3,9 +3,9 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation as useRestMutation, useQuery as useRestQuery } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   KeyRound,
   Megaphone,
@@ -23,7 +23,7 @@ import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dial
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
-import { formatClubRole, fullName, type AnnouncementSummary } from '@/components/clubs/types';
+import { formatClubRole, fullName } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +31,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { announcementsApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -387,11 +386,13 @@ export default function ClubOverviewPage() {
     }
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
-  const { data: announcements = [] } = useRestQuery<AnnouncementSummary[]>({
-    queryKey: ['club-announcements', clubId],
-    queryFn: () => announcementsApi.getAll(false, clubId).then((r) => r.data),
-    enabled: !!club?.viewer.canAccessWorkspace,
-  });
+  const announcements =
+    useQuery(
+      api.announcements.feed.list,
+      club?.viewer.canAccessWorkspace
+        ? { clubId: clubId as Id<'clubs'> }
+        : 'skip',
+    ) ?? [];
 
   const filteredAnnouncements = useMemo(() => {
     return filterBySearchQuery(announcements, deferredSearch, (announcement) => [

@@ -23,7 +23,7 @@ export interface AnnouncementSummary {
   _id: string;
   title: string;
   body: string;
-  createdAt: string;
+  createdAt: number | string;
   allowComments: boolean;
   author?: Pick<ClubPerson, '_id' | 'firstName' | 'lastName'>;
   _count?: {

@@ -37,11 +37,11 @@ export const ANNOUNCEMENT_TAG_LABELS: Record<string, string> = {
 };
 
 export type AnnouncementCardRecord = {
-  id: string;
+  _id: string;
   title: string;
   body: string;
-  createdAt: string;
-  expiresAt?: string | null;
+  createdAt: number | string;
+  expiresAt?: number | string | null;
   isRead: boolean;
   isAdminGeneral?: boolean;
   isBookmarked?: boolean;
@@ -50,14 +50,15 @@ export type AnnouncementCardRecord = {
   status: string;
   targetType: string;
   author?: {
-    id?: string;
+    _id?: string;
     firstName?: string | null;
     lastName?: string | null;
   } | null;
   club?: {
-    id: string;
+    _id: string;
     name: string;
   } | null;
+  clubId?: string;
   _count?: {
     comments?: number;
   } | null;
@@ -69,7 +70,7 @@ type AnnouncementCardProps = {
   canArchive?: boolean;
   className?: string;
   footer?: ReactNode;
-  onArchive?: (id: string) => void;
+  onArchive?: (announcementId: string) => void;
   onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
   onTagClick?: (tag: string) => void;
   onClubClick?: (clubId: string) => void;
@@ -189,7 +190,11 @@ export function AnnouncementCard({
               {announcement.club?.name ? (
                 <InteractiveBadge
                   ariaLabel={`Filter announcements by ${announcement.club.name}`}
-                  onClick={onClubClick ? () => onClubClick(announcement.club!.id) : undefined}
+                  onClick={
+                    onClubClick
+                      ? () => onClubClick(announcement.club?._id ?? announcement.clubId!)
+                      : undefined
+                  }
                 >
                   <Badge
                     variant="dot"
@@ -206,7 +211,7 @@ export function AnnouncementCard({
               ) : null}
             </div>
 
-            <Link href={`/announcements/${announcement.id}`}>
+            <Link href={`/announcements/${announcement._id}`}>
               <h3
                 className={cn(
                   'font-semibold text-foreground/90 transition-colors hover:text-accent-500',
@@ -239,7 +244,7 @@ export function AnnouncementCard({
                 <MessageCircle size={14} /> {announcement._count?.comments || 0}
               </span>
             ) : null}
-            <AnnouncementReadToggle announcementId={announcement.id} isRead={announcement.isRead} />
+            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} />
             {onBookmarkToggle ? (
               <Button
                 variant="ghost"
@@ -255,7 +260,7 @@ export function AnnouncementCard({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => onArchive(announcement.id)}
+                onClick={() => onArchive(announcement._id)}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 title="Archive"
               >

@@ -54,10 +54,10 @@ import type {
 type ClubChannelMessageRichBody = NonNullable<ClubChannelMessage['bodyRich']>;
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 type ChatAttachmentUploadResponse = {
-  originalName: string;
+  fileName: string;
   url: string;
-  mimeType?: string;
-  size?: number;
+  mimeType: string;
+  size: number;
 };
 import {
   ChannelMessageComposer,
@@ -83,7 +83,8 @@ import {
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
-import { toApiUrl, uploadsApi } from '@/lib/api';
+import { toApiUrl } from '@/lib/api';
+import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -511,6 +512,8 @@ export default function ClubChannelPage({
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const messages = useQuery(api.clubs.channels.getMessages, { channelId }) ?? [];
 
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
@@ -529,9 +532,18 @@ export default function ClubChannelPage({
   }: ComposerSubmitArgs) => {
     try {
       const uploadedAttachments = await Promise.all(
-        files.map((file) =>
-          uploadsApi.uploadChatAttachment(file).then((response) => response.data),
-        ),
+        files.map(async (file) => {
+          const storageId = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({}) },
+            file,
+          );
+          return finalizeChatAttachment({
+            storageId,
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+          });
+        }),
       );
       await postMessage({
         channelId,
@@ -541,7 +553,7 @@ export default function ClubChannelPage({
         pollQuestion,
         pollOptions,
         attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
-          fileName: a.originalName,
+          fileName: a.fileName,
           fileUrl: a.url,
           mimeType: a.mimeType,
           size: a.size,

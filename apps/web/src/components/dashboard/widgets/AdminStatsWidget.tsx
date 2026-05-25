@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { ArrowRight, AlertTriangle, Flag, Shield, Users } from 'lucide-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { moderationApi, auditApi } from '@/lib/api';
 
 function Stat({
   label,
@@ -43,24 +43,13 @@ function Stat({
 }
 
 export function AdminStatsWidget() {
-  const { data: reports = [] } = useQuery({
-    queryKey: ['moderation', 'reports'],
-    queryFn: () => moderationApi.getReports().then((r) => r.data),
-  });
+  const reports = useQuery(api.moderation.reports.list, {}) ?? [];
+  const keywords = useQuery(api.moderation.keywords.list, {}) ?? [];
+  const audit = useQuery(api.audit.events.list, { limit: 10 }) ?? [];
 
-  const { data: keywords = [] } = useQuery({
-    queryKey: ['moderation', 'keywords'],
-    queryFn: () => moderationApi.getKeywords().then((r) => r.data),
-  });
-
-  const { data: audit = [] } = useQuery({
-    queryKey: ['audit', 'recent'],
-    queryFn: () => auditApi.getAll({ limit: 10, offset: 0 }).then((r) => r.data),
-  });
-
-  const pendingReports = (reports as any[]).filter((r) => r.status === 'PENDING').length;
-  const activeKeywords = (keywords as any[]).filter((k) => k.isActive).length;
-  const auditCount = (audit as any[]).length;
+  const pendingReports = reports.filter((r) => r.status === 'PENDING').length;
+  const activeKeywords = keywords.filter((k) => k.isActive).length;
+  const auditCount = audit.length;
 
   return (
     <Panel

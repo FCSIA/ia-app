@@ -11,7 +11,9 @@ import {
   MessageSquare,
   Send,
 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
 import {
   ANNOUNCEMENT_BADGE_TEXT_CLASS,
@@ -24,33 +26,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { announcementsApi, moderationApi } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type AnnouncementComment = {
-  id: string;
-  authorId: string;
-  body: string;
-  createdAt: string;
-  author?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null;
-};
-
 type AnnouncementDetail = AnnouncementCardRecord & {
   targetGrade?: number | null;
   targetPathway?: string | null;
-  readAt?: string | null;
-  comments?: AnnouncementComment[];
-  author?: {
-    id?: string;
-    firstName?: string | null;
-    lastName?: string | null;
-  } | null;
+  readAt?: number | null;
+  comments?: Array<{
+    _id: string;
+    authorId: string;
+    body: string;
+    createdAt: number;
+    author?: {
+      _id?: string;
+      firstName?: string | null;
+      lastName?: string | null;
+    } | null;
+  }>;
 };
 
 function formatPathway(pathway?: string | null) {
@@ -136,71 +130,35 @@ function AnnouncementDetailSkeleton() {
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const user = useCurrentUser();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [commentPending, setCommentPending] = useState(false);
+  const [deleteCommentPending, setDeleteCommentPending] = useState<string | null>(null);
+  const [reportPending, setReportPending] = useState(false);
+  const [markedRead, setMarkedRead] = useState(false);
 
-  const { data: announcement, isLoading } = useQuery<AnnouncementDetail>({
-    queryKey: ['announcement', id],
-    queryFn: () => announcementsApi.getOne(id).then((response) => response.data),
+  const detail = useQuery(api.announcements.feed.get, {
+    announcementId: id as Id<'announcements'>,
   });
+  const isLoading = detail === undefined;
+  const announcement: AnnouncementDetail | null = detail
+    ? { ...detail.announcement, comments: detail.comments }
+    : null;
 
-  const autoReadMutation = useMutation({
-    mutationFn: () => announcementsApi.markRead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement', id] });
-    },
-  });
+  const markRead = useMutation(api.announcements.engagement.markRead);
+  const addComment = useMutation(api.announcements.comments.add);
+  const removeComment = useMutation(api.announcements.comments.remove);
+  const submitReport = useMutation(api.moderation.reports.submit);
 
   useEffect(() => {
-    if (!announcement || announcement.isRead || autoReadMutation.isPending) return;
-    autoReadMutation.mutate();
-  }, [announcement, autoReadMutation]);
-
-  const addCommentMutation = useMutation({
-    mutationFn: (body: string) => announcementsApi.addComment(id, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcement', id] });
-      setComment('');
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to post comment',
-        variant: 'destructive',
-      }),
-  });
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: (commentId: string) => announcementsApi.deleteComment(commentId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['announcement', id] }),
-    onError: () =>
-      toast({
-        title: 'Failed to delete comment',
-        variant: 'destructive',
-      }),
-  });
-
-  const reportMutation = useMutation({
-    mutationFn: () =>
-      moderationApi.submitReport({
-        contentType: 'ANNOUNCEMENT',
-        contentId: id,
-        reason: reportReason,
-      }),
-    onSuccess: () => {
-      setShowReport(false);
-      setReportReason('');
-      toast({ title: 'Report submitted' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to submit report',
-        variant: 'destructive',
-      }),
-  });
+    if (!announcement || announcement.isRead || markedRead) return;
+    setMarkedRead(true);
+    void markRead({ announcementId: id as Id<'announcements'> }).catch(() => {
+      setMarkedRead(false);
+    });
+  }, [announcement, id, markRead, markedRead]);
 
   if (isLoading) {
     return (
@@ -341,7 +299,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             {commentCount > 0 ? (
               <div className="space-y-4">
                 {announcement.comments?.map((entry) => (
-                  <div key={entry.id} className="rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm">
+                  <div key={entry._id} className="rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm">
                     <div className="flex items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
                         {getInitials(entry.author)}
@@ -364,8 +322,18 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                               variant="ghost"
                               size="sm"
                               className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                              disabled={deleteCommentMutation.isPending}
-                              onClick={() => deleteCommentMutation.mutate(entry.id)}
+                              disabled={deleteCommentPending === entry._id}
+                              onClick={() => {
+                                setDeleteCommentPending(entry._id);
+                                void removeComment({ commentId: entry._id as Id<'comments'> })
+                                  .catch(() =>
+                                    toast({
+                                      title: 'Failed to delete comment',
+                                      variant: 'destructive',
+                                    }),
+                                  )
+                                  .finally(() => setDeleteCommentPending(null));
+                              }}
                             >
                               Delete
                             </Button>
@@ -394,7 +362,19 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!comment.trim()) return;
-                addCommentMutation.mutate(comment.trim());
+                setCommentPending(true);
+                void addComment({
+                  announcementId: id as Id<'announcements'>,
+                  body: comment.trim(),
+                })
+                  .then(() => setComment(''))
+                  .catch((error: unknown) =>
+                    toast({
+                      title: error instanceof Error ? error.message : 'Failed to post comment',
+                      variant: 'destructive',
+                    }),
+                  )
+                  .finally(() => setCommentPending(false));
               }}
             >
               <Textarea
@@ -405,9 +385,9 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                 className="min-h-24 resize-y"
               />
               <div className="flex justify-end">
-                <Button type="submit" disabled={!comment.trim() || addCommentMutation.isPending}>
+                <Button type="submit" disabled={!comment.trim() || commentPending}>
                   <Send className="mr-2 size-4" />
-                  {addCommentMutation.isPending ? 'Posting…' : 'Post comment'}
+                  {commentPending ? 'Posting…' : 'Post comment'}
                 </Button>
               </div>
             </form>
@@ -425,7 +405,24 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!reportReason.trim()) return;
-                reportMutation.mutate();
+                setReportPending(true);
+                void submitReport({
+                  contentType: 'ANNOUNCEMENT',
+                  contentId: id,
+                  reason: reportReason,
+                })
+                  .then(() => {
+                    setShowReport(false);
+                    setReportReason('');
+                    toast({ title: 'Report submitted' });
+                  })
+                  .catch((error: unknown) =>
+                    toast({
+                      title: error instanceof Error ? error.message : 'Failed to submit report',
+                      variant: 'destructive',
+                    }),
+                  )
+                  .finally(() => setReportPending(false));
               }}
             >
               <Textarea
@@ -441,9 +438,9 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!reportReason.trim() || reportMutation.isPending}
+                  disabled={!reportReason.trim() || reportPending}
                 >
-                  {reportMutation.isPending ? 'Submitting…' : 'Submit report'}
+                  {reportPending ? 'Submitting…' : 'Submit report'}
                 </Button>
               </DialogFooter>
             </form>

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { uploadsApi } from '@/lib/api';
+import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,8 @@ function resolveMediaUrl(url?: string | null) {
 export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean }) {
   const { toast } = useToast();
   const updateClub = useMutation(api.clubs.management.update);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const finalizeClubImage = useMutation(api.uploads.files.finalizeClubImage);
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
@@ -38,17 +40,30 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const quickLogoInputRef = useRef<HTMLInputElement | null>(null);
 
+  const uploadClubImage = async (file: File) => {
+    const storageId = await uploadFileToConvex(
+      { generateUploadUrl: () => generateUploadUrl({}) },
+      file,
+    );
+    return finalizeClubImage({
+      storageId,
+      originalName: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+    });
+  };
+
   const handleQuickLogoUpload = async (file: File) => {
     setUploadingLogo(true);
     try {
-      const { data } = await uploadsApi.uploadClubImage(file);
-      await updateClub({ clubId: club._id, logoUrl: data.url });
+      const uploaded = await uploadClubImage(file);
+      await updateClub({ clubId: club._id, logoUrl: uploaded.url });
       toast({ title: 'Club logo updated' });
 
-      setForm((c) => ({ ...c, logoUrl: data.url }));
-    } catch (e: any) {
+      setForm((c) => ({ ...c, logoUrl: uploaded.url }));
+    } catch (e: unknown) {
       toast({
-        title: e.response?.data?.message || 'Upload failed',
+        title: e instanceof Error ? e.message : 'Upload failed',
         variant: 'destructive',
       });
     } finally {
@@ -71,11 +86,14 @@ export function ClubHero({ club, canEdit }: { club: ClubDetail; canEdit: boolean
     const setBusy = kind === 'logo' ? setUploadingLogo : setUploadingBanner;
     setBusy(true);
     try {
-      const { data } = await uploadsApi.uploadClubImage(file);
-      setForm((c) => ({ ...c, [kind === 'logo' ? 'logoUrl' : 'bannerUrl']: data.url }));
-    } catch (e: any) {
+      const uploaded = await uploadClubImage(file);
+      setForm((c) => ({
+        ...c,
+        [kind === 'logo' ? 'logoUrl' : 'bannerUrl']: uploaded.url,
+      }));
+    } catch (e: unknown) {
       toast({
-        title: e.response?.data?.message || 'Upload failed',
+        title: e instanceof Error ? e.message : 'Upload failed',
         variant: 'destructive',
       });
     } finally {

@@ -2,11 +2,9 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery as useRestQuery } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { auditApi } from '@/lib/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import { Plus, Users, MapPin, CheckCircle, Ticket, ChevronRight, Clock, Pencil, Trash2, History } from 'lucide-react';
@@ -130,11 +128,12 @@ export default function FlexFridayPage() {
 
   const myRegs = useQuery(api.flexFriday.registration.getMyRegistrations, mounted ? {} : 'skip') ?? [];
 
-  const { data: auditEvents = [], isLoading: auditLoading } = useRestQuery({
-    queryKey: ['flex-audit'],
-    queryFn: () => auditApi.getAll({ query: 'Flex', limit: 5 }).then((r) => r.data),
-    enabled: !!canManage && activeView === 'audit',
-  });
+  const auditQuery = useQuery(
+    api.audit.events.list,
+    canManage && activeView === 'audit' ? { query: 'Flex', limit: 5 } : 'skip',
+  );
+  const auditEvents = auditQuery ?? [];
+  const auditLoading = canManage && activeView === 'audit' && auditQuery === undefined;
 
   const credits = useQuery(
     api.flexFriday.credits.getMyCredits,
