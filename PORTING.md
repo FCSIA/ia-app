@@ -146,7 +146,7 @@ No. File-by-file porting is the wrong Phase A for this project.
 The current files are shaped by NestJS dependency injection and Prisma. Convex
 code should be shaped by tables, indexes, auth identity, function visibility,
 transaction boundaries, and client subscriptions. Translating
-`announcements.service.ts` into `apps/convex/src/announcements.ts` line by line would
+`announcements.service.ts` into `apps/convex/src/announcements/` line by line would
 carry over the wrong abstractions: Prisma includes, HTTP exceptions,
 controller/service splits, N+1 preference checks, and in-memory filters that
 Convex specifically warns against.

@@ -51,7 +51,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
 
   const searchResults =
     useQuery(
-      api.schedule.searchPeople,
+      api.schedule.friends.searchPeople,
       deferredQuery.length >= 2 && !selected
         ? { query: deferredQuery, limit: 20 }
         : 'skip',

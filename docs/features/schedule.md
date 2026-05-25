@@ -43,7 +43,7 @@ Private schedules stay hidden from friends, but the owner still sees their own l
 
 ## Data Model
 
-During the Convex port, `/schedule` is backed by `apps/convex/src/schedule.ts`
+During the Convex port, `/schedule` is backed by `apps/convex/src/schedule/`
 and these Convex tables:
 
 - `studentSchedules` (one schedule container per student)
@@ -56,16 +56,16 @@ and these Convex tables:
 
 ## Convex Surface
 
-- `api.schedule.dashboard` (Dashboard with entries, blocks, and friends)
-- `api.schedule.saveMine` (Update my schedule)
-- `api.schedule.searchPeople` (Search students through the users search index)
-- `api.schedule.sendFriendRequest`
-- `api.schedule.acceptFriendRequest`
-- `api.schedule.removeFriend`
-- `api.schedule.createBlock`
-- `api.schedule.updateBlock`
-- `api.schedule.deleteBlock`
-- `api.schedule.seedFromStaticData` (secret-protected fixture loader)
+- `api.schedule.dashboard.dashboard` (Dashboard with entries, blocks, and friends)
+- `api.schedule.dashboard.saveMine` (Update my schedule)
+- `api.schedule.friends.searchPeople` (Search students through the users search index)
+- `api.schedule.friends.sendFriendRequest`
+- `api.schedule.friends.acceptFriendRequest`
+- `api.schedule.friends.removeFriend`
+- `api.schedule.blocks.createBlock`
+- `api.schedule.blocks.updateBlock`
+- `api.schedule.blocks.deleteBlock`
+- `api.schedule.seed.seedFromStaticData` (secret-protected fixture loader)
 
 The old REST endpoints are legacy reference only while the remaining API app is
 being removed.
@@ -82,13 +82,13 @@ They create:
 - 5 weekday entries for each selected period/course
 - accepted schedule friendships for the first 180 sorted student pairs
 
-Run `api.schedule.seedFromStaticData` after users and courses are seeded. The
+Run `api.schedule.seed.seedFromStaticData` after users and courses are seeded. The
 mutation is cursor-based because the full fixture writes thousands of entry
 documents:
 
 ```bash
 cd apps/convex
-PATH=../../node_modules/.bin:$PATH convex run schedule:seedFromStaticData \
+PATH=../../node_modules/.bin:$PATH convex run schedule/seed:seedFromStaticData \
   '{"secret":"<SCHEDULE_SEED_SECRET_OR_BOOTSTRAP_SECRET>","reset":true,"batchSize":20}'
 ```
 

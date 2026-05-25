@@ -20,7 +20,7 @@ Login form
   → authClient.signIn.username(...)
   → Better Auth sets the session cookie
   → ConvexBetterAuthProvider fetches Convex auth tokens
-  → useCurrentUser() reads api.users.me
+  → useCurrentUser() reads api.users.me.me
 ```
 
 The old `ia_token` JWT localStorage key is transitional only. It remains so
@@ -71,7 +71,7 @@ if (hasRole(user, 'ADMIN', 'SUPER_ADMIN')) {
 }
 ```
 
-`useCurrentUser()` reads `api.users.me` from Convex and caches the public user in
+`useCurrentUser()` reads `api.users.me.me` from Convex and caches the public user in
 `ia_user` only as a temporary compatibility layer for old synchronous UI code.
 
 ---

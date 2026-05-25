@@ -168,7 +168,7 @@ function DragGhost({ widget }: { widget: WidgetDefinition }) {
 export function DashboardLayout() {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const updateDashboardLayout = useMutation(api.users.updateDashboardLayout);
+  const updateDashboardLayout = useMutation(api.users.me.updateDashboardLayout);
   const [layout, setLayout] = useState<string[] | null>(null);
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);

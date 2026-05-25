@@ -27,13 +27,13 @@ linked app user and check its app roles.
   plugin, and the Convex auth plugin.
 - `apps/convex/src/http.ts` registers the Better Auth HTTP routes.
 - `apps/convex/src/auth.config.ts` exposes Better Auth JWT discovery to Convex.
-- `apps/convex/src/users.ts` owns app-user lookup, admin-created users, password changes,
+- `apps/convex/src/users/` owns app-user lookup, admin-created users, password changes,
   front-office password resets, activation, deactivation, role assignment, and
   user listing.
 - `apps/convex/src/lib/currentUser.ts` derives the current app user from the Better Auth
   auth user. Convex functions must use this instead of accepting a caller
   supplied user id for authorization.
-- `apps/convex/src/lib/audit.ts` records audit events for sensitive user-management
+- `apps/convex/src/audit/lib.ts` records audit events for sensitive user-management
   actions.
 
 ---
@@ -68,7 +68,7 @@ Convex.
 ## User Listing
 
 Admin user listing uses Convex indexes/search instead of SQL offset pagination.
-The frontend uses cursor pagination from `api.users.list`. The `users` table
+The frontend uses cursor pagination from `api.users.admin.list`. The `users` table
 stores role-group booleans and `searchText` to keep common admin filters indexed.
 
 ---

@@ -14,7 +14,7 @@ Notifications alert users to relevant activity. In the Convex port, the
 frontend subscribes to Convex queries instead of polling REST endpoints.
 
 **Files:**
-- Convex: `apps/convex/src/notifications.ts`
+- Convex: `apps/convex/src/notifications/`
 - Web: `apps/web/src/app/notifications/`
 - Database: [[schema#NotificationDelivery]], [[schema#NotificationPreference]]
 
@@ -90,13 +90,13 @@ production answer for `PUSH` or `TIME_SENSITIVE` levels.
 
 ## Convex Surface
 
-- `api.notifications.list` (bounded preview reads)
-- `api.notifications.listPage` (cursor-paginated inbox)
-- `api.notifications.unreadCount`
-- `api.notifications.markRead`
-- `api.notifications.markAllRead`
-- `api.notifications.preferences`
-- `api.notifications.upsertPreference`
+- `api.notifications.inbox.list` (bounded preview reads)
+- `api.notifications.inbox.listPage` (cursor-paginated inbox)
+- `api.notifications.inbox.unreadCount`
+- `api.notifications.inbox.markRead`
+- `api.notifications.inbox.markAllRead`
+- `api.notifications.preferences.preferences`
+- `api.notifications.preferences.upsertPreference`
 
 Unread counts currently read a bounded recent set, which is fine for alpha and
 seeded data. Before production scale, replace exact large unread counts with an

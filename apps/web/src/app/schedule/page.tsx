@@ -105,9 +105,9 @@ function SchedulePageContent() {
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
-  const data = useQuery(api.schedule.dashboard);
+  const data = useQuery(api.schedule.dashboard.dashboard);
   const isLoading = data === undefined;
-  const courses = useQuery(api.courses.list, { limit: 200 }) ?? [];
+  const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? [];
 
   useEffect(() => {
     setScheduleEntries(data?.mySchedule?.entries ?? []);
@@ -127,7 +127,7 @@ function SchedulePageContent() {
 
   const searchResults =
     useQuery(
-      api.schedule.searchPeople,
+      api.schedule.friends.searchPeople,
       canEditOwnSchedule && normalizedDeferredSearch.length >= 2
         ? { query: normalizedDeferredSearch, limit: 20 }
         : 'skip',
@@ -138,13 +138,13 @@ function SchedulePageContent() {
   const searchIsDeferred =
     canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
 
-  const saveSchedule = useMutation(api.schedule.saveMine);
-  const sendFriendRequest = useMutation(api.schedule.sendFriendRequest);
-  const acceptFriendRequest = useMutation(api.schedule.acceptFriendRequest);
-  const removeFriend = useMutation(api.schedule.removeFriend);
-  const createBlock = useMutation(api.schedule.createBlock);
-  const updateBlock = useMutation(api.schedule.updateBlock);
-  const deleteBlock = useMutation(api.schedule.deleteBlock);
+  const saveSchedule = useMutation(api.schedule.dashboard.saveMine);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendFriendRequest);
+  const acceptFriendRequest = useMutation(api.schedule.friends.acceptFriendRequest);
+  const removeFriend = useMutation(api.schedule.friends.removeFriend);
+  const createBlock = useMutation(api.schedule.blocks.createBlock);
+  const updateBlock = useMutation(api.schedule.blocks.updateBlock);
+  const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);
 
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 

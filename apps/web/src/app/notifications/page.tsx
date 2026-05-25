@@ -38,17 +38,17 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const markAllRead = useMutation(api.notifications.markAllRead);
-  const markRead = useMutation(api.notifications.markRead);
+  const markAllRead = useMutation(api.notifications.inbox.markAllRead);
+  const markRead = useMutation(api.notifications.inbox.markRead);
 
   const {
     results: notifications,
     status: notificationsStatus,
     loadMore: loadMoreNotifications,
-  } = usePaginatedQuery(api.notifications.listPage, {}, { initialNumItems: 50 });
+  } = usePaginatedQuery(api.notifications.inbox.listPage, {}, { initialNumItems: 50 });
   const isLoading = notificationsStatus === 'LoadingFirstPage';
 
-  const preferences = useQuery(api.notifications.preferences) ?? [];
+  const preferences = useQuery(api.notifications.preferences.preferences) ?? [];
 
   const { data: myClubs } = useRestQuery<any>({
     queryKey: ['my-clubs'],

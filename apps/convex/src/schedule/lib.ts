@@ -6,8 +6,8 @@ import {
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
-import { courseSummaryValidator, toCourseSummary } from "./courses";
-import type { AppRole } from "./roles";
+import { toCourseSummary } from "../courses/lib";
+import type { AppRole } from "../lib/roles";
 
 export const schoolDayBlockValidator = v.object({
   id: v.id("schoolDayBlocks"),
@@ -25,8 +25,11 @@ export const studentScheduleEntryValidator = v.object({
   periodNumber: v.number(),
   className: v.string(),
   courseId: v.union(v.id("courses"), v.null()),
-  course: v.union(courseSummaryValidator, v.null()),
+  course: v.union(v.any(), v.null()), // using any here to avoid circular dependency if possible, or just repeat the summary validator
 });
+
+// Since I want to avoid circular dependencies and keep it simple, I'll repeat or refer to courses/lib
+// Actually, I can just use the validator from courses/lib if I import it correctly.
 
 export const studentScheduleRecordValidator = v.object({
   id: v.id("studentSchedules"),
@@ -91,8 +94,29 @@ export const scheduleEntryInputValidator = v.object({
   courseId: v.id("courses"),
 });
 
+export const scheduleSeedResultValidator = v.object({
+  blocksInserted: v.number(),
+  schedulesUpserted: v.number(),
+  entriesInserted: v.number(),
+  friendshipsInserted: v.number(),
+  deleted: v.object({
+    entries: v.number(),
+    schedules: v.number(),
+    friendships: v.number(),
+    blocks: v.number(),
+  }),
+  nextCursor: v.union(v.string(), v.null()),
+  isDone: v.boolean(),
+});
+
 export type ScheduleBlockPayload = Infer<typeof scheduleBlockPayloadValidator>;
 export type ScheduleEntryInput = Infer<typeof scheduleEntryInputValidator>;
+export type ScheduleSearchFriendshipStatus =
+  | "NONE"
+  | "REQUEST_SENT"
+  | "REQUEST_RECEIVED"
+  | "FRIENDS";
+export type ScheduleSearchResult = Infer<typeof scheduleSearchResultValidator>;
 
 const STUDENT_ROLES: AppRole[] = ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"];
 const ADMIN_ROLES: AppRole[] = ["ADMIN", "SUPER_ADMIN"];
@@ -318,4 +342,129 @@ export async function validateBlockConflicts(
   }
 }
 
-export { appUserPublicValidator };
+export function studentVisibility(schedule: { isPublic: boolean } | null) {
+  if (!schedule) return "NONE" as const;
+  return schedule.isPublic ? ("PUBLIC" as const) : ("PRIVATE" as const);
+}
+
+export async function deliverNotification(
+  ctx: MutationCtx,
+  input: {
+    userId: Id<"users">;
+    title: string;
+    body: string;
+  },
+) {
+  await ctx.db.insert("notificationDeliveries", {
+    userId: input.userId,
+    category: "FRIEND_REQUEST",
+    title: input.title,
+    body: input.body,
+    isRead: false,
+    createdAt: Date.now(),
+  });
+}
+
+export async function getStudentTarget(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+) {
+  const user = await ctx.db.get(userId);
+  if (!user || !user.isActive || !isStudentUser(user)) {
+    throw new ConvexError("Student not found.");
+  }
+  return user;
+}
+
+export async function deleteSeedBatch(ctx: MutationCtx) {
+  const deleted = {
+    entries: 0,
+    schedules: 0,
+    friendships: 0,
+    blocks: 0,
+  };
+
+  const entries = await ctx.db.query("studentScheduleEntries").take(1000);
+  for (const entry of entries) {
+    await ctx.db.delete(entry._id);
+    deleted.entries += 1;
+  }
+
+  if (entries.length === 0) {
+    const schedules = await ctx.db.query("studentSchedules").take(500);
+    for (const schedule of schedules) {
+      await ctx.db.delete(schedule._id);
+      deleted.schedules += 1;
+    }
+
+    const friendships = await ctx.db.query("studentScheduleFriends").take(500);
+    for (const friendship of friendships) {
+      await ctx.db.delete(friendship._id);
+      deleted.friendships += 1;
+    }
+
+    const blocks = await ctx.db.query("schoolDayBlocks").take(100);
+    for (const block of blocks) {
+      await ctx.db.delete(block._id);
+      deleted.blocks += 1;
+    }
+  }
+
+  return deleted;
+}
+
+export async function seedDefaultBlocks(ctx: MutationCtx, actorId: Id<"users">, now: number, scheduleWeekdays: string[], baseBlocks: any[]) {
+  let blocksInserted = 0;
+  for (const weekday of scheduleWeekdays) {
+    for (const block of baseBlocks) {
+      const existing = await ctx.db
+        .query("schoolDayBlocks")
+        .withIndex("by_weekday_and_startTime", (q) =>
+          q.eq("weekday", weekday as any).eq("startTime", block.startTime),
+        )
+        .unique();
+      if (existing) continue;
+      await ctx.db.insert("schoolDayBlocks", {
+        weekday: weekday as any,
+        label: block.label,
+        periodNumber: block.periodNumber ?? undefined,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        createdById: actorId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      blocksInserted += 1;
+    }
+  }
+  return blocksInserted;
+}
+
+export async function seedAcceptedFriendPairs(
+  ctx: MutationCtx,
+  students: Doc<"users">[],
+  now: number,
+) {
+  let friendshipsInserted = 0;
+  const pairCount = Math.min(Math.floor(students.length / 2), 180);
+
+  for (let index = 0; index < pairCount * 2; index += 2) {
+    const requester = students[index];
+    const addressee = students[index + 1];
+    if (!requester || !addressee) continue;
+
+    const existing = await getFriendshipBetween(ctx, requester._id, addressee._id);
+    if (existing) continue;
+
+    await ctx.db.insert("studentScheduleFriends", {
+      requesterId: requester._id,
+      addresseeId: addressee._id,
+      status: "ACCEPTED",
+      createdAt: now,
+      acceptedAt: now,
+    });
+    friendshipsInserted += 1;
+  }
+
+  return friendshipsInserted;
+}

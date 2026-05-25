@@ -105,8 +105,8 @@ export function ChannelNotificationSettings({
   channelId,
   channelName,
 }: ChannelNotificationSettingsProps) {
-  const upsertPreference = useMutation(api.notifications.upsertPreference);
-  const preferences = useQuery(api.notifications.preferences) ?? [];
+  const upsertPreference = useMutation(api.notifications.preferences.upsertPreference);
+  const preferences = useQuery(api.notifications.preferences.preferences) ?? [];
 
   const messagePreference = scopePreference(preferences, MESSAGE_CATEGORY, channelId);
   const messageLevel: PreferenceLevel = messagePreference?.enabled

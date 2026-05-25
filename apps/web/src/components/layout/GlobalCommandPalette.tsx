@@ -122,9 +122,9 @@ export function GlobalCommandPalette({
     enabled: shouldLoad,
   });
   const courses =
-    useQuery(api.courses.list, shouldLoad ? { limit: 40 } : 'skip') ?? [];
+    useQuery(api.courses.catalog.list, shouldLoad ? { limit: 40 } : 'skip') ?? [];
   const notifications = useQuery(
-    api.notifications.list,
+    api.notifications.inbox.list,
     shouldLoad ? { unreadOnly: true, limit: 20 } : 'skip',
   ) ?? [];
   const { data: flexFridays = [] } = useRestQuery<any[]>({
@@ -133,7 +133,7 @@ export function GlobalCommandPalette({
     enabled: shouldLoad,
   });
   const schedule = useQuery(
-    api.schedule.dashboard,
+    api.schedule.dashboard.dashboard,
     shouldLoad && !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN', 'ADMIN', 'SUPER_ADMIN')
       ? {}
       : 'skip',

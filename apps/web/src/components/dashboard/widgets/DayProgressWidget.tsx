@@ -16,7 +16,7 @@ export function DayProgressWidget() {
     return () => clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(api.schedule.dashboard);
+  const scheduleData = useQuery(api.schedule.dashboard.dashboard);
 
   const progress = useMemo(() => {
     if (!scheduleData?.blocks || scheduleData.blocks.length === 0) return null;

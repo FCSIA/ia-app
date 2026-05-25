@@ -14,7 +14,7 @@ The Course feature provides a centralized, searchable catalog of every academic 
 
 **Files:**
 - Legacy Backend: `apps/api/src/courses/`
-- Convex: `apps/convex/src/courses.ts`
+- Convex: `apps/convex/src/courses/`
 - Seed fixtures: `apps/convex/seed-data/courses.ts`
 - Web: `apps/web/src/app/courses/`
 - Database: [[schema#Course]]
@@ -58,10 +58,10 @@ to `search_courses` and keep department/pathway filters indexed.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| Convex | `api.courses.list` | List courses with search and filters |
-| Convex | `api.courses.listPage` | Cursor-paginated course catalog for browse/search screens |
-| Convex | `api.courses.getOne` | Detailed course profile by slug |
-| Convex | `api.courses.seedFromStaticData` | Seed/reset the Convex course catalog from app fixtures |
+| Convex | `api.courses.catalog.list` | List courses with search and filters |
+| Convex | `api.courses.catalog.listPage` | Cursor-paginated course catalog for browse/search screens |
+| Convex | `api.courses.catalog.getOne` | Detailed course profile by slug |
+| Convex | `api.courses.seed.seedFromStaticData` | Seed/reset the Convex course catalog from app fixtures |
 
 ---
 

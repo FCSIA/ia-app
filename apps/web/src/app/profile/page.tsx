@@ -25,11 +25,11 @@ export default function ProfilePage() {
   useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
-  const changePassword = useMutation(api.users.changePassword);
-  const upsertPreference = useMutation(api.notifications.upsertPreference);
+  const changePassword = useMutation(api.users.auth.changePassword);
+  const upsertPreference = useMutation(api.notifications.preferences.upsertPreference);
 
-  const prefs = useQuery(api.notifications.preferences) ?? [];
-  const moderationAlerts = (useQuery(api.notifications.list, { unreadOnly: true }) ?? [])
+  const prefs = useQuery(api.notifications.preferences.preferences) ?? [];
+  const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
 

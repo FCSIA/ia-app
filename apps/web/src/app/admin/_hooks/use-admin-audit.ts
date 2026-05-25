@@ -61,7 +61,7 @@ export function useAdminAudit(activeTab: AdminTabId) {
     status: auditStatus,
     loadMore: loadMoreAuditEvents,
   } = usePaginatedQuery(
-    api.audit.listPage,
+    api.audit.events.listPage,
     activeTab === 'audit' ? auditQueryParams : 'skip',
     { initialNumItems: AUDIT_FETCH_LIMIT },
   );
@@ -76,12 +76,12 @@ export function useAdminAudit(activeTab: AdminTabId) {
 
   const auditFilterSource =
     (useQuery(
-      api.audit.list,
+      api.audit.events.list,
       activeTab === 'audit' ? { limit: 500 } : 'skip',
     )) ?? [];
 
   const auditEventDetail = useQuery(
-    api.audit.getOne,
+    api.audit.events.getOne,
     selectedAuditEventId
       ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
       : 'skip',

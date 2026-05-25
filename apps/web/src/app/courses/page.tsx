@@ -58,7 +58,7 @@ export default function CoursesPage() {
     status: coursesStatus,
     loadMore: loadMoreCourses,
   } = usePaginatedQuery(
-    api.courses.listPage,
+    api.courses.catalog.listPage,
     {
       q: deferredSearch.trim() || undefined,
       department: department === 'ALL' ? undefined : department,
@@ -68,7 +68,7 @@ export default function CoursesPage() {
     { initialNumItems: 40 },
   );
   const isLoading = coursesStatus === 'LoadingFirstPage';
-  const filterCourses = useQuery(api.courses.list, { limit: 500 }) ?? [];
+  const filterCourses = useQuery(api.courses.catalog.list, { limit: 500 }) ?? [];
 
   const departments = useMemo(
     () => Array.from(new Set(filterCourses.map((course) => course.department))).sort(),

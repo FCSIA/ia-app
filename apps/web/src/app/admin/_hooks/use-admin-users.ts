@@ -69,7 +69,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
   }, [search, userRoleGroup, usersPageSize]);
 
   const usersPage = useQuery(
-    api.users.list,
+    api.users.admin.list,
     activeTab === 'users'
       ? {
           paginationOpts: {
@@ -82,9 +82,9 @@ export function useAdminUsers(activeTab: AdminTabId) {
       : 'skip',
   );
 
-  const deactivateUser = useMutation(api.users.deactivate);
-  const activateUser = useMutation(api.users.activate);
-  const assignRoles = useMutation(api.users.assignRoles);
+  const deactivateUser = useMutation(api.users.admin.deactivate);
+  const activateUser = useMutation(api.users.admin.activate);
+  const assignRoles = useMutation(api.users.admin.assignRoles);
 
   const runUserMutation = async (action: () => Promise<unknown>, successTitle: string) => {
     try {

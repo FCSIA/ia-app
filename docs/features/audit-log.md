@@ -13,7 +13,7 @@ tags: [feature, audit, admin]
 The audit log is an immutable record of every significant action taken in the system. It gives admins full visibility into who did what and when.
 
 **Files:**
-- Convex: `apps/convex/src/audit.ts`, `apps/convex/src/lib/audit.ts`
+- Convex: `apps/convex/src/audit/`
 - Web: `apps/web/src/app/admin/` (Audit Log tab)
 - Database: [[schema#AuditEvent]]
 
@@ -53,7 +53,7 @@ Convex stores audit rows in `auditEvents`:
 
 ## How Audit Events Are Created
 
-Convex mutations call `logAuditEvent`:
+Convex mutations call `logAuditEvent` in `audit/lib.ts`:
 
 ```ts
 await logAuditEvent(ctx, {
@@ -80,9 +80,9 @@ Only admins can view the audit log — it's in the Admin Panel under the "Audit 
 
 The frontend reads audit rows with Convex functions:
 
-- `api.audit.list`
-- `api.audit.listPage`
-- `api.audit.getOne`
+- `api.audit.events.list`
+- `api.audit.events.listPage`
+- `api.audit.events.getOne`
 
 The admin table uses Convex cursor pagination for newest-first browsing. Some
 filters still apply after each page is hydrated because actor names and freeform

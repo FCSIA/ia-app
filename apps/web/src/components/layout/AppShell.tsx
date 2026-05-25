@@ -158,7 +158,7 @@ export function AppShell({
     setMobileOpen(false);
   }, [safePathname]);
 
-  const unreadData = useQuery(api.notifications.unreadCount);
+  const unreadData = useQuery(api.notifications.inbox.unreadCount);
 
   const handlePrefetch = (href: string) => {
     switch (href) {

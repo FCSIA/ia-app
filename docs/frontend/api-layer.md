@@ -112,17 +112,17 @@ Now handles join requests and codes:
 Schedule and course catalog screens now call Convex directly through generated
 function references:
 
-- `api.schedule.dashboard`
-- `api.schedule.saveMine`
-- `api.schedule.searchPeople`
-- `api.schedule.sendFriendRequest`
-- `api.schedule.acceptFriendRequest`
-- `api.schedule.removeFriend`
-- `api.schedule.createBlock`
-- `api.schedule.updateBlock`
-- `api.schedule.deleteBlock`
-- `api.courses.list`
-- `api.courses.getOne`
+- `api.schedule.dashboard.dashboard`
+- `api.schedule.dashboard.saveMine`
+- `api.schedule.friends.searchPeople`
+- `api.schedule.friends.sendFriendRequest`
+- `api.schedule.friends.acceptFriendRequest`
+- `api.schedule.friends.removeFriend`
+- `api.schedule.blocks.createBlock`
+- `api.schedule.blocks.updateBlock`
+- `api.schedule.blocks.deleteBlock`
+- `api.courses.catalog.list`
+- `api.courses.catalog.getOne`
 
 Do not add `scheduleApi`, `coursesApi`, or replacement package-contract DTOs for
 these domains. Use generated Convex hook return types instead.
@@ -152,7 +152,7 @@ these domains. Use generated Convex hook return types instead.
 | Method | Used for | Example |
 |--------|----------|---------|
 | `GET` | Fetching data | `api.get('/clubs')` |
-| `POST` | Creating new data | `api.post('/clubs', data)` |
+| `POST` | Creating new data | `api.post('/clubs', data) ` |
 | `PATCH` | Partial update | `api.patch('/clubs/1/role', data)` |
 | `PUT` | Full replace | `api.put('/schedule/me', data)` |
 | `DELETE` | Removing data | `api.delete('/notifications/1/read')` |

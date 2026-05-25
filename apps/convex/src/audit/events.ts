@@ -1,75 +1,14 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import type { Doc } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
-import { query } from "./_generated/server";
-import { getCurrentAppUser, requireAnyRole } from "./lib/currentUser";
-
-const actorValidator = v.union(
-  v.object({
-    id: v.id("users"),
-    firstName: v.string(),
-    lastName: v.string(),
-    uniqueId: v.string(),
-  }),
-  v.null(),
-);
-
-const auditEventValidator = v.object({
-  id: v.id("auditEvents"),
-  action: v.string(),
-  entityType: v.string(),
-  entityId: v.union(v.string(), v.null()),
-  createdAt: v.string(),
-  meta: v.union(v.any(), v.null()),
-  actor: actorValidator,
-});
-
-const auditPageValidator = v.object({
-  page: v.array(auditEventValidator),
-  isDone: v.boolean(),
-  continueCursor: v.string(),
-  pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
-  splitCursor: v.optional(v.union(v.string(), v.null())),
-});
-
-async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
-  const actor = event.actorId ? await ctx.db.get(event.actorId) : null;
-
-  return {
-    id: event._id,
-    action: event.action,
-    entityType: event.entityType,
-    entityId: event.entityId ?? null,
-    createdAt: new Date(event.createdAt).toISOString(),
-    meta: event.meta ?? null,
-    actor: actor
-      ? {
-          id: actor._id,
-          firstName: actor.firstName,
-          lastName: actor.lastName,
-          uniqueId: actor.uniqueId,
-        }
-      : null,
-  };
-}
-
-function includes(value: string | null | undefined, needle: string) {
-  return value?.toLowerCase().includes(needle) ?? false;
-}
-
-function matchesDateRange(
-  createdAt: number,
-  startDate?: string,
-  endDate?: string,
-) {
-  const start = startDate ? Date.parse(`${startDate}T00:00:00.000`) : null;
-  const end = endDate ? Date.parse(`${endDate}T23:59:59.999`) : null;
-  return (
-    (start == null || Number.isNaN(start) || createdAt >= start) &&
-    (end == null || Number.isNaN(end) || createdAt <= end)
-  );
-}
+import { query } from "../_generated/server";
+import { getCurrentAppUser, requireAnyRole } from "../lib/currentUser";
+import {
+  auditEventValidator,
+  auditPageValidator,
+  includes,
+  matchesDateRange,
+  toAuditEvent,
+} from "./lib";
 
 export const list = query({
   args: {
@@ -207,7 +146,7 @@ export const listPage = query({
   },
 });
 
-export const getOne = query({
+export const get = query({
   args: {
     auditEventId: v.id("auditEvents"),
   },
@@ -219,7 +158,7 @@ export const getOne = query({
       entityId: v.union(v.string(), v.null()),
       createdAt: v.string(),
       meta: v.union(v.any(), v.null()),
-      actor: actorValidator,
+      actor: auditEventValidator.fields.actor,
       entityPreview: v.null(),
     }),
     v.null(),
