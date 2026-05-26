@@ -1072,4 +1072,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    dev: {
+      clearAuthData: FunctionReference<
+        "mutation",
+        "internal",
+        {},
+        Record<string, number>,
+        Name
+      >;
+    };
   };

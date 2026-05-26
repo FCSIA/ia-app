@@ -1,10 +1,6 @@
 import { v } from "convex/values";
-import { internalMutation, type MutationCtx } from "./_generated/server";
-import { COURSE_SEEDS } from "./seeddata/courses";
-import { BASE_BLOCKS, SCHEDULE_WEEKDAYS, buildScheduleCourses, compareStudents, stableScheduleVisibility } from "./seeddata/schedule";
-import { seedDefaultBlocks, seedAcceptedFriendPairs, deleteSeedBatch } from "./schedule/_lib";
-import { courseSeedToDocument } from "./courses/_lib";
-import { isStudentUser, createLinkedUser } from "./users/_lib";
+import { internalMutation } from "./_generated/server";
+import { createLinkedUser } from "./users/_lib";
 import { type AppRole } from "./lib/roles";
 import { type Pathway } from "./validators";
 
@@ -82,77 +78,67 @@ const SEED_STUDENTS = [
   },
 ];
 
+const SEED_USERS = [...SEED_STAFF, ...SEED_STUDENTS];
+
 export const run = internalMutation({
   args: {
     secret: v.string(),
     reset: v.optional(v.boolean()),
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
   },
+  returns: v.object({
+    deleted: v.number(),
+    upserted: v.number(),
+    nextCursor: v.union(v.string(), v.null()),
+    isDone: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const expectedSecret = process.env.BOOTSTRAP_SECRET;
     if (!expectedSecret || args.secret !== expectedSecret) {
       throw new Error("Invalid bootstrap secret.");
     }
-    const now = Date.now();
+    const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
+    const batchSize = Math.min(Math.max(Math.floor(args.batchSize ?? 1), 1), 3);
     
-    // 1. Reset if requested
-    if (args.reset) {
-       await deleteSeedBatch(ctx);
-       const usersToDelete = await ctx.db.query("users").take(1000);
-       for (const u of usersToDelete) {
-         await ctx.db.delete(u._id);
-       }
-    }
-
-    // 2. Seed Courses
-    for (const seed of COURSE_SEEDS) {
-        const existing = await ctx.db
-          .query("courses")
-          .withIndex("by_slug", (q) => q.eq("slug", seed.slug))
-          .unique();
-        const value = courseSeedToDocument(seed, now);
-        if (existing) {
-          await ctx.db.patch(existing._id, value);
-        } else {
-          await ctx.db.insert("courses", { ...value, createdAt: now });
-        }
-    }
-
-    // 3. Seed Users/Auth
-    for (const staff of SEED_STAFF) {
-      const existing = await ctx.db
-        .query("users")
-        .withIndex("by_uniqueId", (q) => q.eq("uniqueId", staff.uniqueId))
-        .unique();
-      if (!existing) {
-        await createLinkedUser(ctx, {
-          ...staff,
-          mustResetPassword: false,
-        });
+    if (args.reset && cursor === 0) {
+      const usersToDelete = await ctx.db.query("users").take(100);
+      for (const user of usersToDelete) {
+        await ctx.db.delete(user._id);
+      }
+      if (usersToDelete.length > 0) {
+        return {
+          deleted: usersToDelete.length,
+          upserted: 0,
+          nextCursor: "0",
+          isDone: false,
+        };
       }
     }
 
-    for (const student of SEED_STUDENTS) {
+    let upserted = 0;
+    for (const student of SEED_USERS.slice(cursor, cursor + batchSize)) {
       const existing = await ctx.db
         .query("users")
         .withIndex("by_uniqueId", (q) => q.eq("uniqueId", student.uniqueId))
         .unique();
-      if (!existing) {
-        await createLinkedUser(ctx, {
-          ...student,
-          mustResetPassword: false,
-        });
+      if (existing) {
+        upserted += 1;
+        continue;
       }
+      await createLinkedUser(ctx, {
+        ...student,
+        mustResetPassword: false,
+      });
+      upserted += 1;
     }
-    
-    // 4. Seed Schedule
-    const users = await ctx.db.query("users").take(5000);
-    const students = users
-      .filter((u) => u.isActive && isStudentUser(u))
-      .sort(compareStudents);
-      
-    if (users.length > 0) {
-      await seedDefaultBlocks(ctx, users[0]._id, now, SCHEDULE_WEEKDAYS, BASE_BLOCKS as unknown as any[]);
-      await seedAcceptedFriendPairs(ctx, students, now);
-    }
+
+    const nextIndex = cursor + batchSize;
+    return {
+      deleted: 0,
+      upserted,
+      nextCursor: nextIndex < SEED_USERS.length ? String(nextIndex) : null,
+      isDone: nextIndex >= SEED_USERS.length,
+    };
   },
 });
