@@ -45,13 +45,17 @@
 - Web `tsc --noEmit` — pass
 - `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
   failures; Convex/web checks above pass.
+- Docs cleanup pass completed: active docs now route through `docs/index.md`,
+  cover Convex-era architecture/backend/database/frontend/features, and have a
+  clean stale-reference grep for old backend terms outside historical
+  `PORTING.md`.
 
 ## Next Work
 
 1. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-2. Continue docs cleanup for legacy reference pages (`docs/backend/*`,
-   `docs/database/*`) if/when the old API is removed.
+2. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
+   historical, while `docs/` is now the active operating manual.
 3. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
    blocking check again.
 

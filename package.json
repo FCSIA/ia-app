@@ -11,6 +11,7 @@
     "db:generate": "pnpm --filter convex-backend codegen",
     "db:migrate": "echo 'Schema changes deploy via: pnpm convex:dev (Convex push)'",
     "db:reset": "node scripts/convex-db.mjs reset",
+    "db:clear": "convex run devAuth:clearAuthData",
     "db:seed": "node scripts/convex-db.mjs seed",
     "db:seed:bootstrap": "node scripts/convex-db.mjs bootstrap",
     "db:seed:courses": "cd apps/convex && PATH=../../node_modules/.bin:$PATH convex run courses/seed:run \"{\\\"secret\\\":\\\"$BOOTSTRAP_SECRET\\\",\\\"reset\\\":true}\"",
@@ -34,11 +35,7 @@
       "@types/react-dom": "19.0.3"
     },
     "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@prisma/client",
-      "@prisma/engines",
       "bcrypt",
-      "prisma",
       "sharp"
     ]
   },
