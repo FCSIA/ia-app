@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { clubValidator } from "./_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryWithCounts } from "./serialize";
@@ -194,7 +194,8 @@ export const removeMember = mutation({
 export const getMyClubs = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { memberOf: [], sponsoring: [] };
     const memberships = await ctx.db
       .query("clubMembers")
       .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
@@ -230,7 +231,8 @@ export const getMyClubs = query({
 export const listMyInvites = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const invites = await ctx.db
       .query("clubInvites")
       .filter((q) =>

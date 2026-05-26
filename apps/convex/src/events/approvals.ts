@@ -1,12 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { serializeEvent } from "./serialize";
 
 export const listPendingForSponsor = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const approvals = await ctx.db
       .query("eventApprovals")
       .filter((q) =>

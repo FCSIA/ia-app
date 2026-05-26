@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import {
   isStudentUser,
   serializeScheduleForUser,
@@ -20,11 +20,11 @@ export const get = query({
   args: {},
   returns: scheduleDashboardValidator,
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
-    const isStudent = isStudentUser(user);
+    const user = await getMaybeCurrentAppUser(ctx);
+    const isStudent = user ? isStudentUser(user) : false;
 
     const [mySchedule, blocks] = await Promise.all([
-      isStudent ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
+      isStudent && user ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
       ctx.db.query("schoolDayBlocks").take(250),
     ]);
 
@@ -32,7 +32,7 @@ export const get = query({
     const incomingRequests = [];
     const outgoingRequests = [];
 
-    if (isStudent) {
+    if (isStudent && user) {
       const outgoing = await ctx.db
         .query("studentScheduleFriends")
         .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>

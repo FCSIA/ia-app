@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { flexSessionTypeValidator } from "../validators";
 
 function canManageSessions(user: { roles: string[] }) {
@@ -14,7 +14,8 @@ function canManageSessions(user: { roles: string[] }) {
 export const listByFriday = query({
   args: { flexFridayId: v.id("flexFridays") },
   handler: async (ctx, args) => {
-    await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     return ctx.db
       .query("flexSessions")
       .withIndex("by_flexFridayId", (q) => q.eq("flexFridayId", args.flexFridayId))

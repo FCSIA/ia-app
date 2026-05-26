@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { flexFridayValidator } from "./_lib";
 import { flexSessionTypeValidator } from "../validators";
 
@@ -12,7 +12,8 @@ function parseFridayDate(date: string | number): number {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const fridays = await ctx.db.query("flexFridays").order("desc").take(50);
 
     return Promise.all(

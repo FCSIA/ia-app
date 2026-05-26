@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { pathwayValidator } from "../validators";
 
 function canManageWorkshops(user: { roles: string[] }) {
@@ -17,7 +17,7 @@ async function serializeWorkshopForSession(
   ctx: QueryCtx,
   workshopId: Id<"flexWorkshops">,
   sessionId: Id<"flexSessions">,
-  viewerId: Id<"users">,
+  viewerId: Id<"users"> | null,
 ) {
   const workshop = await ctx.db.get(workshopId);
   if (!workshop) return null;
@@ -53,10 +53,10 @@ async function serializeWorkshopForSession(
     ...workshop,
     _count: { registrations: registrations.length },
     registrations: registrations
-      .filter((r) => r.studentId === viewerId)
+      .filter((r) => viewerId && r.studentId === viewerId)
       .map((r) => ({ _id: r._id })),
     assignments: assignments
-      .filter((a) => a.studentId === viewerId)
+      .filter((a) => viewerId && a.studentId === viewerId)
       .map((a) => ({ _id: a._id })),
     linkedSessions: linkedSessions.filter(
       (s): s is NonNullable<typeof s> => s !== null,
@@ -71,7 +71,7 @@ export const listBySession = query({
     sessionId: v.id("flexSessions"),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
     const session = await ctx.db.get(args.sessionId);
     if (!session || session.flexFridayId !== args.flexFridayId) {
       throw new Error("Session not found");
@@ -84,7 +84,7 @@ export const listBySession = query({
 
     const workshops = await Promise.all(
       links.map((link) =>
-        serializeWorkshopForSession(ctx, link.workshopId, args.sessionId, user._id),
+        serializeWorkshopForSession(ctx, link.workshopId, args.sessionId, user?._id ?? null),
       ),
     );
 

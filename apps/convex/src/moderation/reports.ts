@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, requireAnyRole } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 
 const userRefValidator = v.object({
@@ -73,8 +73,10 @@ export const list = query({
   },
   returns: v.array(reportValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"]);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"])) {
+      return [];
+    }
 
     let reports = await ctx.db.query("moderationReports").order("desc").take(200);
 

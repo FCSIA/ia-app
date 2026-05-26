@@ -49,7 +49,11 @@ export async function getMaybeCurrentAppUser(ctx: Ctx): Promise<Doc<"users"> | n
 }
 
 export function requireAnyRole(user: Doc<"users">, allowed: AppRole[]) {
-  if (!user.roles.some((role) => allowed.includes(role))) {
+  if (!requireAnyRoleSafe(user, allowed)) {
     throw new ConvexError("Forbidden");
   }
+}
+
+export function requireAnyRoleSafe(user: Doc<"users">, allowed: AppRole[]): boolean {
+  return user.roles.some((role) => allowed.includes(role));
 }

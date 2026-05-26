@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
-import { getCurrentAppUser, requireAnyRole } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../lib/currentUser";
 import {
   auditEventValidator,
   auditPageValidator,
@@ -24,8 +24,10 @@ export const list = query({
   },
   returns: v.array(auditEventValidator),
   handler: async (ctx, args) => {
-    const viewer = await getCurrentAppUser(ctx);
-    requireAnyRole(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+      return [];
+    }
 
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
     const queryText = args.query?.trim().toLowerCase();
@@ -91,8 +93,14 @@ export const listPage = query({
   },
   returns: auditPageValidator,
   handler: async (ctx, args) => {
-    const viewer = await getCurrentAppUser(ctx);
-    requireAnyRole(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
 
     const queryText = args.query?.trim().toLowerCase();
     const actorText = args.actor?.trim().toLowerCase();
@@ -164,8 +172,10 @@ export const get = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const viewer = await getCurrentAppUser(ctx);
-    requireAnyRole(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+      return null;
+    }
 
     const row = await ctx.db.get(args.auditEventId);
     if (!row) return null;

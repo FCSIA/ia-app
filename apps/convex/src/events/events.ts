@@ -1,11 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { serializeEvent, serializeEventDetail } from "./serialize";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
 
-function isAdmin(user: { roles: string[] }) {
+function isAdmin(user: { roles: string[] } | null) {
+  if (!user) return false;
   return user.roles.some((role) =>
     (ADMIN_ROLES as readonly string[]).includes(role),
   );
@@ -14,7 +15,7 @@ function isAdmin(user: { roles: string[] }) {
 export const list = query({
   args: { clubId: v.optional(v.id("clubs")) },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
     const admin = isAdmin(user);
 
     let events = await ctx.db.query("events").order("desc").take(200);

@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, requireAnyRole } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 
 const keywordRuleValidator = v.object({
@@ -15,8 +15,10 @@ export const list = query({
   args: {},
   returns: v.array(keywordRuleValidator),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !requireAnyRoleSafe(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+      return [];
+    }
 
     const rules = await ctx.db
       .query("moderationKeywordRules")
