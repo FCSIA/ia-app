@@ -4,7 +4,9 @@ import { mutation, query } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
 import {
   getCurrentAppUser,
+  getMaybeCurrentAppUser,
   requireAnyRole,
+  requireAnyRoleSafe,
   toPublicUser,
 } from "../lib/currentUser";
 import { USER_MANAGEMENT_ROLES } from "../lib/roles";
@@ -49,8 +51,14 @@ export const list = query({
   },
   returns: listUsersResultValidator,
   handler: async (ctx, args) => {
-    const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"]);
+    const actor = await getMaybeCurrentAppUser(ctx);
+    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
 
     const roleGroup = args.roleGroup ?? "all";
     const search = args.search?.trim().toLowerCase();

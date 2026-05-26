@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 export const announcementListItemValidator = v.object({
   _id: v.id("announcements"),
+  _creationTime: v.optional(v.number()),
   authorId: v.id("users"),
   title: v.string(),
   body: v.string(),
