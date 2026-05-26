@@ -41,5 +41,8 @@
       "prisma",
       "sharp"
     ]
+  },
+  "dependencies": {
+    "convex": "1.39.1"
   }
 }
