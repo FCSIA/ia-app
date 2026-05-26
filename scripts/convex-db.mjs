@@ -87,12 +87,12 @@ function runBootstrap({ reset }) {
   let isDone = false;
   let resetPending = reset;
   let guard = 0;
-  while (!isDone && guard < 50) {
+  while (!isDone && guard < 600) {
     const result = runJson("bootstrap:resetAndSeed", {
       secret,
       reset: resetPending,
       cursor: cursor ?? "0",
-      batchSize: 1,
+      batchSize: 3,
     });
     resetPending = result.deleted > 0;
     isDone = result.isDone === true;
@@ -128,9 +128,11 @@ const command = process.argv[2] ?? "seed";
 if (command === "reset") {
   requireSecret();
   requireDeployment();
-  console.log("Resetting Convex demo data (users, courses, schedule blocks/friends)...");
+  console.log("Resetting Convex demo data (users, courses, clubs, announcements, schedule blocks/friends)...");
   run("courses/seed:run", { secret, reset: true });
   runBootstrap({ reset: true });
+  run("clubs/seed:run", { secret, reset: true });
+  run("announcements/seed:run", { secret, reset: true });
   console.log("Seeding student schedules (batched)...");
   let cursor = undefined;
   let isDone = false;
@@ -155,9 +157,11 @@ if (command === "reset") {
 } else if (command === "seed") {
   requireSecret();
   requireDeployment();
-  console.log("Running full Convex seed (bootstrap + courses + schedule)...");
+  console.log("Running full Convex seed (bootstrap + courses + clubs + announcements + schedule)...");
   runBootstrap({ reset: false });
   run("courses/seed:run", { secret, reset: false });
+  run("clubs/seed:run", { secret, reset: false });
+  run("announcements/seed:run", { secret, reset: false });
   let cursor = undefined;
   let isDone = false;
   let guard = 0;

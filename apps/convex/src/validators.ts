@@ -72,12 +72,16 @@ export const notificationCategoryValidator = v.union(
   v.literal("FRIEND_REQUEST"),
 );
 
+export type NotificationCategory = Infer<typeof notificationCategoryValidator>;
+
 export const notificationPreferenceLevelValidator = v.union(
   v.literal("OFF"),
   v.literal("IN_APP"),
   v.literal("PUSH"),
   v.literal("TIME_SENSITIVE"),
 );
+
+export type NotificationPreferenceLevel = Infer<typeof notificationPreferenceLevelValidator>;
 
 export const appUserPublicValidator = v.object({
   id: v.id("users"),
