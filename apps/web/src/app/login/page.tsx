@@ -30,7 +30,6 @@ export default function LoginPage() {
         throw new Error(result.error.message ?? 'Login failed');
       }
 
-      queryClient.clear();
       toast({ title: 'Logged in successfully' });
       router.replace('/dashboard');
     } catch (err: unknown) {

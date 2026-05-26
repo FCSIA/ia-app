@@ -51,17 +51,16 @@ export function NotificationScopeSwitch({
   );
   const enabled = locked || preference?.enabled !== false;
 
-    mutationFn: () =>
-      upsertPreference({
-        category: category as any,
-        enabled: !enabled,
-        clubId,
-        channelId,
-        announcementId,
-        eventId,
-        scopeKey: resolvedScopeKey,
-      }),
-  });
+  const togglePreference = () =>
+    upsertPreference({
+      category: category as any,
+      enabled: !enabled,
+      clubId,
+      channelId,
+      announcementId,
+      eventId,
+      scopeKey: resolvedScopeKey,
+    });
 
   return (
     <div
@@ -76,8 +75,8 @@ export function NotificationScopeSwitch({
       <Switch
         label={compact ? (enabled ? 'On' : 'Off') : label}
         checked={enabled}
-        onToggle={() => mutation.mutate()}
-        disabled={locked || mutation.isPending}
+        onToggle={() => void togglePreference()}
+        disabled={locked}
         className="min-w-0 flex-1 px-0 py-0"
       />
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}

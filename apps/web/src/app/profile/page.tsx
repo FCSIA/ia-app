@@ -32,23 +32,23 @@ export default function ProfilePage() {
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
 
-    mutationFn: (d: { currentPassword: string; newPassword: string }) =>
-      changePassword(d),
-    onSuccess: () => {
+  async function handleChangePassword(d: { currentPassword: string; newPassword: string }) {
+    try {
+      await changePassword(d);
       toast({ title: 'Password changed' });
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-    },
-    onError: (e: unknown) =>
+    } catch (e: unknown) {
       toast({
         title: e instanceof Error ? e.message : 'Failed to change password',
         variant: 'destructive',
-      }),
-  });
+      });
+    }
+  }
 
-    mutationFn: ({ category, enabled }: { category: any; enabled: boolean }) =>
-      upsertPreference({ category, enabled }),
-  });
+  function handlePreferenceToggle({ category, enabled }: { category: any; enabled: boolean }) {
+    void upsertPreference({ category, enabled });
+  }
 
   const prefMap = Object.fromEntries(
     prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
@@ -162,7 +162,7 @@ export default function ProfilePage() {
                     toast({ title: 'Passwords do not match', variant: 'destructive' });
                     return;
                   }
-                  changePwMutation.mutate({
+                  void handleChangePassword({
                     currentPassword: pwForm.currentPassword,
                     newPassword: pwForm.newPassword,
                   });
@@ -192,7 +192,7 @@ export default function ProfilePage() {
                   required
                 />
                 <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
-                  <Button type="submit" disabled={changePwMutation.isPending}>
+                  <Button type="submit">
                     Update Password
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setChanging(false)}>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
                   <Switch label=""
                     id={`pref-${key}`}
                     checked={enabled}
-                    onToggle={() => prefMutation.mutate({ category: key, enabled: !enabled })}
+                    onToggle={() => handlePreferenceToggle({ category: key, enabled: !enabled })}
                   />
                 </div>
               );

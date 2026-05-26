@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { ClubChannelMessageRichBody } from '@ia/contracts/clubs';
 import { Bold, AtSign, BarChart3, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
@@ -13,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   createEmptyClubChannelMessageValue,
   serializeClubChannelMessagePlainText,
+  type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
 import {
   MentionElement,

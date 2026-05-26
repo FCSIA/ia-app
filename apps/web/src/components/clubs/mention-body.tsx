@@ -1,9 +1,10 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
-import type { ClubChannelMessageRichBody } from '@ia/contracts/clubs';
 import type { Value } from 'platejs';
 import { cn } from '@/lib/utils';
+
+export type ClubChannelMessageRichBody = Value;
 
 type MentionBodyProps = {
   body: string;

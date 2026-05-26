@@ -119,7 +119,7 @@ export function ChannelNotificationSettings({
     return 'Mentions';
   }, [messageLevel]);
 
-    mutationFn: ({
+  const setPreference = ({
       category,
       level,
     }: {
@@ -132,8 +132,7 @@ export function ChannelNotificationSettings({
         clubId,
         channelId,
         level,
-      }),
-  });
+      });
 
   return (
     <Sheet>
@@ -172,9 +171,7 @@ export function ChannelNotificationSettings({
                     'flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60',
                     selected ? 'bg-muted/70 text-foreground' : 'text-muted-foreground',
                   )}
-                  onClick={() =>
-                    mutation.mutate({ category: MESSAGE_CATEGORY, level: option.value })
-                  }
+                  onClick={() => setPreference({ category: MESSAGE_CATEGORY, level: option.value })}
                 >
                   <span
                     className={cn(
@@ -216,7 +213,7 @@ export function ChannelNotificationSettings({
                     enabled ? 'text-foreground' : 'text-muted-foreground',
                   )}
                   onClick={() =>
-                    mutation.mutate({
+                    setPreference({
                       category: option.category,
                       level: enabled ? 'OFF' : 'PUSH',
                     })

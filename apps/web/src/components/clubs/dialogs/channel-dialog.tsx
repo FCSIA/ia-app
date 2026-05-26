@@ -5,10 +5,10 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
+  type ClubChannelVisibility,
   getClubChannelVisibilityDescription,
   getClubChannelVisibilityLabel,
 } from '@/components/clubs/channel-visibility';
-import type { ClubChannelVisibility } from '@ia/contracts/clubs';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

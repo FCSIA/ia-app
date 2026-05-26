@@ -9,7 +9,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { getDynamicUsersPageSize, getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
-import type { AppRole } from '@ia/contracts/auth';
+import type { AppRole } from '~/apps/convex/src/lib/roles';
 
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();

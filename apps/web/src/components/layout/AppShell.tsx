@@ -162,7 +162,6 @@ export function AppShell({
       await authClient.signOut();
     } catch { }
     clearAuth();
-    queryClient.clear();
     router.replace('/login');
     toast({ title: 'Logged out' });
   };

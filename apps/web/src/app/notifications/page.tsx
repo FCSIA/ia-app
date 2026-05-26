@@ -121,15 +121,21 @@ export default function NotificationsPage() {
     });
   }, [notifications, deferredSearch]);
 
-    mutationFn: () => markAllRead(),
-    onSuccess: () => {
-      toast({ title: 'All marked as read' });
-    },
-  });
+  const [markingAll, setMarkingAll] = useState(false);
 
-    mutationFn: (id: string) =>
-      markRead({ ids: [id as Id<'notificationDeliveries'>] }),
-  });
+  async function handleMarkAllRead() {
+    setMarkingAll(true);
+    try {
+      await markAllRead();
+      toast({ title: 'All marked as read' });
+    } finally {
+      setMarkingAll(false);
+    }
+  }
+
+  function handleMarkRead(id: string) {
+    void markRead({ ids: [id as Id<'notificationDeliveries'>] });
+  }
 
   function getNotificationHref(notification: any) {
     if (notification.channelId && notification.clubId) {
@@ -148,7 +154,7 @@ export default function NotificationsPage() {
 
   function openNotification(notification: any) {
     const href = getNotificationHref(notification);
-    if (!notification.isRead) markReadMutation.mutate(notification.id);
+    if (!notification.isRead) handleMarkRead(notification.id);
     if (href) router.push(href);
   }
 
@@ -172,8 +178,8 @@ export default function NotificationsPage() {
               <Button
                 variant="tertiary"
                 size="sm"
-                onClick={() => markAllMutation.mutate()}
-                disabled={markAllMutation.isPending}
+                onClick={handleMarkAllRead}
+                disabled={markingAll}
                 className="rounded-full"
               >
                 <CheckCheck className="size-4" />
