@@ -19,150 +19,99 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 | Layer | Technology |
 |-------|------------|
 | Web | Next.js 15, React 19, Tailwind CSS, shadcn/ui |
-| API | NestJS, TypeScript, Swagger |
-| Database | PostgreSQL 16, Prisma |
+| Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
 | Tooling | pnpm workspaces, Turborepo |
 
 ## Project Structure
 
 ```text
 ia-app/
-├── apps/api/       # NestJS API, Prisma schema, seed data
-├── apps/web/       # Next.js web app
-├── docs/           # Product, architecture, setup, and reference docs
-├── infra/          # Infrastructure helpers
+├── apps/web/       # Next.js 15 web app
+├── apps/convex/    # Convex backend (schema, query/mutation functions, custom auth)
+├── docs/           # Product and feature documentation
+├── packages/       # Shared utility packages and contracts
 ├── AGENTS.md       # Agent workflow rules
-├── SETUP.md        # Full new-machine setup guide
-└── .env.example    # Environment variable template
+├── SETUP.md        # Full developer setup guide
+└── PORTING.md      # Detailed backend-to-Convex replatform guide
 ```
 
 ## Quick Start
 
-For a full setup walkthrough, use [SETUP.md](./SETUP.md). Technical setup details live in [docs/reference/getting-started.md](./docs/reference/getting-started.md), [docs/reference/environment.md](./docs/reference/environment.md), and [docs/database/database-overview.md](./docs/database/database-overview.md).
+For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
 cp .env.example .env
-cp .env.example apps/api/.env
 pnpm install
 ```
 
-Start PostgreSQL, then prepare the database:
-
-```bash
-pnpm infra:up       # macOS/Homebrew
-pnpm infra:up:win   # Windows
-
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-```
-
-Optional Nix + direnv users can run `direnv allow` instead of the Homebrew/Windows database startup path. See [SETUP.md](./SETUP.md#nix--direnv-setup).
-
-Start the app:
+Start the application (Next.js frontend and Convex dev server in parallel):
 
 ```bash
 pnpm dev
 ```
 
+Seed the database with demo accounts and data (requires `BOOTSTRAP_SECRET` set in `.env`):
+
+```bash
+pnpm db:seed
+```
+
 | Service | URL |
 |---------|-----|
-| Web | http://localhost:3000 |
-| API | http://localhost:3001 |
-| Swagger | http://localhost:3001/docs |
+| Web App | http://localhost:3000 |
+| Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
 
-Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [docs/database/seed.md](./docs/database/seed.md) for the seed data.
+Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [SETUP.md](./SETUP.md#5-test-accounts) for a complete list of demo logins.
 
 ## Common Commands
 
 ```bash
-pnpm dev          # Start web + API
+pnpm dev          # Start web app and Convex dev server in parallel
+pnpm db:seed      # Seed Convex database (requires BOOTSTRAP_SECRET)
+pnpm db:reset     # Reset and re-seed database (requires BOOTSTRAP_SECRET)
+pnpm db:studio    # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
-pnpm build        # Build all workspaces
-pnpm test         # Run tests
-pnpm db:migrate   # Apply Prisma migrations
-pnpm db:reset     # Reset and reseed local database
-pnpm db:studio    # Open Prisma Studio
+pnpm build        # Build all workspaces for production
+pnpm test         # Run test suites
 ```
 
-More commands are documented in [docs/reference/commands.md](./docs/reference/commands.md).
+---
 
 ## Deployment
 
-The deployment shape should stay boring and maintainable. This app is not a static site: the web app is a Next.js server, the API is a NestJS server, and the database is PostgreSQL. Uploaded files are currently stored on disk by the API, so production backups must include both PostgreSQL and the upload directory.
-
-The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Use that doc when explaining what belongs in a system diagram, including the baseline server/database version and the hypothetical Azure version.
-
-### React Server Components
-
-Next.js App Router and React Server Components are compatible with all server-based scenarios below as long as the Next.js app runs as a Node server or container. RSC does **not** mean the app can be deployed as static files.
-
-The current app is mostly client-rendered and stores auth in browser `localStorage`. That is simple, but it limits useful RSC adoption because server components cannot read a browser-only JWT. A serious RSC migration should first decide whether auth moves to secure HttpOnly cookies, then migrate read-heavy pages gradually.
-
-### Scenario 1: Generic Single Server
-
-This is the simplest private-school deployment model:
+With the replatform to **Convex**, the deployment model is highly streamlined, secure, and modern. 
 
 ```text
-Users
-  -> HTTPS reverse proxy
-  -> Next.js web app
-  -> NestJS API
-  -> PostgreSQL database
-  -> Upload directory on persistent disk
+Users -> Next.js Web App (Vercel / Azure App Service)
+           └─> [React Hooks / Subscriptions] ──> Convex Cloud (Managed Serverless Backend)
 ```
 
-This can run on one Linux server or VM with Docker Compose. It is the easiest option to understand and operate, but the school or project owner is responsible for OS patching, backups, monitoring, and recovery.
-
-RSC: The server already has to run Node for Next.js, so RSC does not materially change this scenario. The important requirement is that the reverse proxy forwards requests to the Next.js server instead of serving static build files.
-
-### Scenario 2: Azure VM
-
-If the school closes on Azure but wants to avoid many separate cloud services, the most practical Azure version is still a single-server design:
-
-```text
-Azure Linux VM
-  -> reverse proxy container
-  -> Next.js container
-  -> NestJS API container
-  -> PostgreSQL container or attached database
-  -> persistent upload volume
+### 1. Backend Deployment (Convex)
+Convex manages database hosting, file storage, serverless functions, and scaling automatically. To deploy backend changes to production:
+```bash
+pnpm deploy
 ```
+This pushes your schema, indexes, and server functions to your production Convex deployment. All secrets (like `BOOTSTRAP_SECRET` and auth credentials) are configured securely via the Convex Dashboard.
 
-This keeps the architecture close to the generic server model while giving the school Azure billing, access controls, networking, backups, and administrative ownership. For this project, that is probably the best balance between privacy, cost, and maintainability.
+### 2. Frontend Deployment (Next.js)
+The Next.js frontend can be deployed anywhere that supports Node.js or edge runtimes:
+- **Vercel**: The native hosting environment for Next.js, offering optimal performance and automatic zero-config deployments.
+- **Azure App Service / Azure Container Apps**: Suitable for school environments that require hosting within an enterprise cloud subscription. The web app runs as a lightweight Docker container.
+- **Generic Single Server**: A simple Linux virtual machine running the Next.js server behind a reverse proxy.
 
-RSC: This scenario is essentially the generic single-server setup running inside Azure. The Next.js container can serve App Router/RSC pages normally.
+### React Server Components (RSC)
+Next.js App Router and React Server Components are fully supported. Since database operations and reactive subscriptions go directly from the client and server to Convex's real-time API, the web app scales horizontally without maintaining stateful database connection pools.
 
-### Scenario 3: More Managed Azure
-
-A more managed Azure setup can split responsibilities across services:
-
-- Azure App Service or Container Apps for the web/API containers.
-- Azure Database for PostgreSQL for managed database backups and patching.
-- Azure Blob Storage for uploaded files.
-- Azure Key Vault for secrets.
-- Azure Monitor/Application Insights for logs and metrics.
-
-This is more sustainable if the app becomes important school infrastructure, because less operational risk sits on one VM. The tradeoff is complexity: more Azure services, more configuration, more security review, and more things for someone to own long-term.
-
-RSC: Azure App Service or Container Apps can run the Next.js server/container, but Azure Static Web Apps or static blob hosting are not a fit for full RSC/App Router runtime behavior. Managed Azure also makes cookie/session, API origin, and private networking choices more important.
-
-### Sustainability Recommendation
-
-For a school-private app, the best starting point is usually **Azure VM + Docker Compose + managed backups**. It keeps the system small enough for students/staff to reason about while giving the school an official cloud environment and recovery path.
-
-If the app becomes production-critical, the first upgrade should be moving PostgreSQL to managed Azure Database for PostgreSQL. The second upgrade should be moving uploaded files to Azure Blob Storage. Those two changes reduce the biggest long-term risks: database loss and file backup mistakes.
+---
 
 ## Documentation
 
-- [docs/index.md](./docs/index.md) — Documentation map
-- [docs/architecture/overview.md](./docs/architecture/overview.md) — System overview
-- [docs/architecture/tech-stack.md](./docs/architecture/tech-stack.md) — Tooling and framework details
-- [docs/reference/roles-and-permissions.md](./docs/reference/roles-and-permissions.md) — Role capability reference
-- [docs/backend/backend-overview.md](./docs/backend/backend-overview.md) — API overview
-- [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Web overview
+- [SETUP.md](./SETUP.md) — Step-by-step developer environment setup.
+- [PORTING.md](./PORTING.md) — Comprehensive reference of architecture decisions and data mapping during the NestJS-to-Convex port.
+- [docs/features/notifications.md](./docs/features/notifications.md) — Scoped notification preference systems.
+- [docs/features/clubs.md](./docs/features/clubs.md) — Club roles, invite systems, and visibility rules.
 
 ## License
 
