@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { calendarSourceValidator } from "../validators";
 
 export const list = query({
@@ -10,7 +10,7 @@ export const list = query({
     sources: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
 
     const entries = await ctx.db
       .query("calendarEntries")
@@ -30,7 +30,7 @@ export const list = query({
     return entries.filter((entry) => {
       if (!allowed.has(entry.source)) return false;
       if (entry.source === "PERSONAL") {
-        return includePersonal && entry.createdById === user._id;
+        return includePersonal && user && entry.createdById === user._id;
       }
       return true;
     });

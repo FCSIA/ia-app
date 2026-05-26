@@ -1,14 +1,15 @@
 import { v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, toPublicUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, toPublicUser } from "../lib/currentUser";
 import { appUserPublicValidator } from "../validators";
 import { ConvexError } from "convex/values";
 
 export const me = query({
   args: {},
-  returns: appUserPublicValidator,
+  returns: v.union(appUserPublicValidator, v.null()),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
     return toPublicUser(user);
   },
 });

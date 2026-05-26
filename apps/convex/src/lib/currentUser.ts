@@ -23,18 +23,26 @@ export const toPublicUser = (user: Doc<"users">) => ({
 });
 
 export async function getCurrentAppUser(ctx: Ctx): Promise<Doc<"users">> {
-  const authUser = await authComponent.getAuthUser(ctx);
+  const user = await getMaybeCurrentAppUser(ctx);
+  if (!user) {
+    throw new ConvexError("Unauthenticated");
+  }
+  return user;
+}
+
+export async function getMaybeCurrentAppUser(ctx: Ctx): Promise<Doc<"users"> | null> {
+  const authUser = await authComponent.safeGetAuthUser(ctx);
+  if (!authUser) {
+    return null;
+  }
+
   const user = await ctx.db
     .query("users")
     .withIndex("by_authUserId", (q) => q.eq("authUserId", authUser._id))
     .unique();
 
-  if (!user) {
-    throw new ConvexError("No app user is linked to this auth account.");
-  }
-
-  if (!user.isActive) {
-    throw new ConvexError("User account is inactive.");
+  if (!user || !user.isActive) {
+    return null;
   }
 
   return user;

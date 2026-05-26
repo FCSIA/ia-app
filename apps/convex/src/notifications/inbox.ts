@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import {
   notificationValidator,
   toNotification,
@@ -14,7 +14,8 @@ export const list = query({
   },
   returns: v.array(notificationValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 100);
     const queryBase = args.unreadOnly
       ? ctx.db
@@ -44,7 +45,14 @@ export const listPage = query({
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+      };
+    }
     const queryBase = args.unreadOnly
       ? ctx.db
           .query("notificationDeliveries")
@@ -67,7 +75,8 @@ export const unreadCount = query({
   args: {},
   returns: v.object({ count: v.number() }),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { count: 0 };
     const rows = await ctx.db
       .query("notificationDeliveries")
       .withIndex("by_userId_and_isRead_and_createdAt", (q) =>

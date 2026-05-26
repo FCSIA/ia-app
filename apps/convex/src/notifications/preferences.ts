@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
@@ -11,7 +11,8 @@ export const list = query({
   args: {},
   returns: v.array(preferenceValidator),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const rows = await ctx.db
       .query("notificationPreferences")
       .withIndex("by_userId_and_category_and_scopeKey", (q) =>

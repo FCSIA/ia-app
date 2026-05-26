@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import {
   announcementListItemValidator,
@@ -25,7 +25,8 @@ export const list = query({
   },
   returns: v.array(announcementListItemValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const now = Date.now();
 
     const viewer = await getViewerAudience(ctx, user._id);
