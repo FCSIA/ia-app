@@ -4,78 +4,56 @@ tags: [feature, calendar]
 
 # Calendar
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+The calendar shows school, club, Flex Friday, district, and personal entries on
+a monthly grid.
 
-## Overview
+## What It Does
 
-The calendar displays school events and custom entries on a monthly grid. Users can click days to see what's scheduled and navigate between months.
+- Lists entries within the visible month range.
+- Filters by source.
+- Searches title, description, and location on the client for the current range.
+- Lets users create and delete their own personal entries.
+- Shows published events and Flex Friday rows through linked calendar entries.
 
-**Files:**
-- Backend: `apps/api/src/calendar/`
-- Web: `apps/web/src/app/calendar/`
-- Database: [[schema#CalendarEntry]]
+## Source Files
 
----
+- Backend: `apps/convex/src/events/calendar.ts`
+- Web page: `apps/web/src/app/calendar/page.tsx`
+- Create dialog: `apps/web/src/components/calendar/AddCalendarEntryDialog.tsx`
 
-## Two Sources of Data
+## Convex Surface
 
-The calendar shows entries from two places:
+- `api.events.calendar.list`
+- `api.events.calendar.create`
+- `api.events.calendar.remove`
 
-1. **CalendarEntry records** — standalone entries created directly (e.g., school holidays, testing days, non-event dates)
-2. **Published Events** — when an event reaches `PUBLISHED` status, it automatically creates a linked `CalendarEntry`
+## Data Model
 
-Both appear the same on the calendar grid.
+`calendarEntries` stores:
 
----
+- optional `eventId`
+- optional `flexFridayId`
+- title, description, location
+- `startAt`, `endAt`
+- `source`: `SCHOOL`, `CLUB`, `FLEX_FRIDAY`, `PERSONAL`, or `DISTRICT`
+- optional `createdById`
+- tags
 
-## CalendarEntry Model
+Personal entries are only returned to the user who created them.
 
-```prisma
-model CalendarEntry {
-  id          String    @id
-  eventId     String?   // null for standalone entries
-  title       String
-  description String?
-  location    String?
-  startAt     DateTime
-  endAt       DateTime
-  tags        String[]  // e.g. ["holiday", "club", "academic"]
-}
-```
+## Permissions
 
-`tags` allow filtering: show only academic events, hide PD days, etc.
+Authenticated users can read allowed calendar entries and manage their own
+personal entries. Deleting non-personal entries is rejected by the mutation.
 
----
+## Side Effects
 
-## The Calendar Grid
-
-The web calendar page:
-- Renders a monthly grid (6 rows × 7 columns)
-- Highlights today's date with an orange glow
-- Shows event chips (small colored pills) on each day
-- Clicking a day shows the selected day's events in a panel below
-- Previous/Next month navigation
-
----
-
-## API Surface
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/calendar` | All entries in a date range |
-| POST | `/calendar` | Create manual entry (restricted roles) |
-
-### Query Parameters (GET)
-- `startDate` — filter entries after this UTC date
-- `endDate` — filter entries before this UTC date
-- `tags` — comma-separated tag filter (e.g. `?tags=holiday,academic`)
-
----
+Events and Flex Friday creation can create linked calendar entries. Event
+cancellation deletes linked event calendar rows.
 
 ## Related
 
-- [[events]] — Published events create calendar entries automatically
-- [[flex-friday]] — Flex Friday dates appear on the calendar grid
-
+- [Events](events.md)
+- [Flex Friday](flex-friday.md)

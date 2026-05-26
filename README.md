@@ -8,7 +8,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 ## What It Includes
 
-- Authentication with JWT sessions and role-based access
+- Authentication with Better Auth on Convex and role-based access
 - Announcements, comments, moderation, and notification preferences
 - Clubs, channels, invites, membership, and leader/sponsor workflows
 - Events, calendar entries, Flex Friday sessions, and student schedules
@@ -27,12 +27,12 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 ```text
 ia-app/
 ├── apps/web/       # Next.js 15 web app
-├── apps/convex/    # Convex backend (schema, query/mutation functions, custom auth)
-├── docs/           # Product and feature documentation
-├── packages/       # Shared utility packages and contracts
+├── apps/convex/    # Convex backend (schema, functions, auth, storage)
+├── docs/           # Current product, architecture, backend, frontend docs
+├── packages/       # Transitional shared packages
 ├── AGENTS.md       # Agent workflow rules
 ├── SETUP.md        # Full developer setup guide
-└── PORTING.md      # Detailed backend-to-Convex replatform guide
+└── PORTING.md      # Historical backend-to-Convex migration context
 ```
 
 ## Quick Start
@@ -52,7 +52,15 @@ Start the application (Next.js frontend and Convex dev server in parallel):
 pnpm dev
 ```
 
-Seed the database with demo accounts and data (requires `BOOTSTRAP_SECRET` set in `.env`):
+On a new checkout, run `pnpm convex:dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`. Seed/reset commands also require `BOOTSTRAP_SECRET` to be set on the Convex deployment, not only in local `.env`:
+
+```bash
+cd apps/convex
+convex env set BOOTSTRAP_SECRET 42
+cd ../..
+```
+
+Seed the database with demo accounts and data:
 
 ```bash
 pnpm db:seed
@@ -81,7 +89,7 @@ pnpm test         # Run test suites
 
 ## Deployment
 
-With the replatform to **Convex**, the deployment model is highly streamlined, secure, and modern. 
+The active deployment model is a Next.js frontend plus Convex backend.
 
 ```text
 Users -> Next.js Web App (Vercel / Azure App Service)
@@ -91,7 +99,7 @@ Users -> Next.js Web App (Vercel / Azure App Service)
 ### 1. Backend Deployment (Convex)
 Convex manages database hosting, file storage, serverless functions, and scaling automatically. To deploy backend changes to production:
 ```bash
-pnpm deploy
+pnpm --filter convex-backend deploy
 ```
 This pushes your schema, indexes, and server functions to your production Convex deployment. All secrets (like `BOOTSTRAP_SECRET` and auth credentials) are configured securely via the Convex Dashboard.
 
@@ -109,9 +117,11 @@ Next.js App Router and React Server Components are fully supported. Since databa
 ## Documentation
 
 - [SETUP.md](./SETUP.md) — Step-by-step developer environment setup.
-- [PORTING.md](./PORTING.md) — Comprehensive reference of architecture decisions and data mapping during the NestJS-to-Convex port.
-- [docs/features/notifications.md](./docs/features/notifications.md) — Scoped notification preference systems.
-- [docs/features/clubs.md](./docs/features/clubs.md) — Club roles, invite systems, and visibility rules.
+- [docs/index.md](./docs/index.md) — Current documentation hub.
+- [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.
+- [docs/backend/convex-overview.md](./docs/backend/convex-overview.md) — Backend function layout and rules.
+- [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Frontend structure and conventions.
+- [PORTING.md](./PORTING.md) — Historical migration context, not the active operating manual.
 
 ## License
 

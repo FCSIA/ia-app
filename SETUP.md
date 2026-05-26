@@ -1,7 +1,8 @@
 # IA School App - Setup Guide
 
 > [!NOTE]
-> The application has been fully migrated to Convex. Legacy dependencies like local PostgreSQL, Redis, NestJS, and Prisma are no longer required for local development.
+> Active web flows use Convex. Old local backend services are not required for
+> current local development.
 
 ---
 
@@ -9,7 +10,7 @@
 
 Ensure you have the following tools installed on your development machine[^1]:
 - **Node.js**: v24
-- **pnpm**: v9
+- **pnpm**: v10.29.3, matching `packageManager` in `package.json`
 
 ---
 
@@ -20,10 +21,22 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 1. Clone the repository
 2. Configure environment variables: `cp .env.example .env`
 3. Install dependencies: `pnpm install`
-4. Start the development server: `pnpm dev`. This command starts:
+4. Configure your Convex dev deployment:
+   ```bash
+   pnpm convex:dev
+   ```
+   Run this once interactively so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
+5. Set the seed secret on that Convex deployment:
+   ```bash
+   cd apps/convex
+   convex env set BOOTSTRAP_SECRET 42
+   cd ../..
+   ```
+   The local `.env` value is only the client-side argument passed to the seed command; the Convex deployment must have the same value configured.
+6. Start the development server: `pnpm dev`. This command starts:
   - The Next.js frontend at `http://localhost:3000`
   - The Convex dev server in the background, which auto-provisions schema and functions.
-5. Run the seeding script to populate your database with demo accounts, clubs, courses, and schedules: `pnpm db:seed`
+7. Run the seeding script to populate your database with demo accounts, clubs, courses, and schedules: `pnpm db:seed`
 
 ---
 
@@ -72,7 +85,8 @@ If you need to wipe all data and re-seed from scratch:
 ```bash
 pnpm db:reset
 ```
-*Requires `BOOTSTRAP_SECRET` to match the value configured in your `.env`.*
+Requires `BOOTSTRAP_SECRET` to be present locally and configured on the selected
+Convex deployment.
 
 ### Missing Secret Error
 If you receive the error:
@@ -81,6 +95,17 @@ Double-check that your project-root `.env` exists and contains:
 ```env
 BOOTSTRAP_SECRET="42"
 ```
+
+### Missing Convex Deployment Error
+If you receive the error:
+`Convex is not configured for this checkout.`
+
+Run:
+```bash
+pnpm convex:dev
+```
+
+Convex writes the selected dev deployment to `apps/convex/.env.local`. The seed/reset commands cannot run until that deployment exists.
 
 ### Stale Client or Build Issues
 If Turborepo has stale caches or dependencies have drifted, clean and rebuild:
@@ -92,7 +117,9 @@ pnpm build
 
 ## 7. Relevant Resources
 
-- [PORTING.md](./PORTING.md) — Technical deep-dive on the Convex architecture decisions and migration mappings.
+- [docs/index.md](./docs/index.md) — Current documentation hub.
+- [docs/architecture/overview.md](./docs/architecture/overview.md) — Current architecture.
+- [PORTING.md](./PORTING.md) — Historical migration notes from the Convex port.
 - [AGENTS.md](./AGENTS.md) — Mandatory guide and rules of engagement for coding agents.
 
 [^1]: For Nix & direnv-based setups, Node.js and pnpm will be loaded automatically when you enter the directory. Running `direnv allow` handles everything.

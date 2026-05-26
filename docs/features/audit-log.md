@@ -4,102 +4,59 @@ tags: [feature, audit, admin]
 
 # Audit Log
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+The audit log records significant system actions for admin review.
 
-## Overview
+## What It Does
 
-The audit log is an immutable record of every significant action taken in the system. It gives admins full visibility into who did what and when.
+- Stores actor, action, entity, metadata, and timestamp for important writes.
+- Shows newest-first audit rows in the Admin Panel.
+- Supports cursor pagination and a detail view for individual rows.
 
-**Files:**
-- Convex: `apps/convex/src/audit/`
-- Web: `apps/web/src/app/admin/` (Audit Log tab)
-- Database: [[schema#AuditEvent]]
+## Source Files
 
----
+- Backend: `apps/convex/src/audit/`
+- Shared logger: `apps/convex/src/audit/_lib.ts`
+- Web admin hooks/components: `apps/web/src/app/admin/_hooks/use-admin-audit.ts`
+  and `apps/web/src/app/admin/_components/audit/`
 
-## Audit Event Table
-
-Convex stores audit rows in `auditEvents`:
-
-- `actorId` — optional `users` id; missing means system/bootstrap action
-- `action` — event code, currently lower-case dot notation for Convex writes
-- `entityType` — affected domain/table kind
-- `entityId` — affected document id when available
-- `meta` — structured context
-- `createdAt` — numeric timestamp
-
----
-
-## Example Actions Logged
-
-| Action | Entity Type | Context |
-|--------|-------------|---------|
-| `user.deactivated` | `user` | Account deactivation |
-| `user.roles_assigned` | `user` | Manual role assignment |
-| `user.password_reset` | `user` | Front-office/admin password reset |
-| `SCHEDULE_UPDATED` | `StudentSchedule` | Every time a student saves their classes |
-| `SCHEDULE_FRIEND_REQUESTED` | `User` | Friend request sent to another user |
-| `CLUB_CREATED` | `Club` | Manual or bulk club creation |
-| `CLUB_INVITE_SENT` | `ClubInvite` | Direct invitation issued |
-| `CLUB_JOIN_REQUEST_APPROVED`| `Club` | Leader/Sponsor approving a request |
-| `KEYWORD_ADDED` | `KeywordRule` | New moderation rule added |
-| `REPORT_RESOLVED` | `Report` | Closing a moderation case |
-| `EVENT_PUBLISHED` | `Event` | Making an event visible on the calendar |
-
-
----
-
-## How Audit Events Are Created
-
-Convex mutations call `logAuditEvent` in `audit/lib.ts`:
-
-```ts
-await logAuditEvent(ctx, {
-  actorId: actor._id,
-  action: 'user.deactivated',
-  entityType: 'user',
-  entityId: target._id,
-});
-```
-
----
-
-## Viewing the Audit Log
-
-Only admins can view the audit log — it's in the Admin Panel under the "Audit Log" tab. Entries are displayed newest-first with:
-- Timestamp (formatted as `Mar 5 14:23:01`)
-- Actor name (who performed the action)
-- Action code (in monospace, colored accent)
-- Entity type + first 8 chars of the entity ID
-
----
-
-## API Endpoints
-
-The frontend reads audit rows with Convex functions:
+## Convex Surface
 
 - `api.audit.events.list`
 - `api.audit.events.listPage`
-- `api.audit.events.getOne`
+- `api.audit.events.get`
 
-The admin table uses Convex cursor pagination for newest-first browsing. Some
-filters still apply after each page is hydrated because actor names and freeform
-metadata are not indexed fields yet. Before production scale, move
-high-cardinality audit search to explicit search/index fields.
+## Data Model
 
----
+`auditEvents` stores:
+
+- `actorId`
+- `action`
+- `entityType`
+- `entityId`
+- `meta`
+- `createdAt`
 
 ## Permissions
 
-| Action | Who can |
-|--------|---------|
-| View audit log | ADMIN, SUPER_ADMIN, SUPPORT_STAFF |
+Admin-facing audit reads are restricted to elevated roles in the Convex query
+layer. Normal users do not read audit rows.
 
----
+## Side Effects
+
+Domain mutations call `logAuditEvent(ctx, ...)` after meaningful writes such as
+user changes, schedule saves, friend requests, announcement changes,
+moderation updates, event approvals, and Flex Friday changes.
+
+## Known Limits
+
+Some admin filters still happen after page hydration because actor names and
+free-form metadata are not all indexed. Add dedicated indexed/search fields
+before large production audit search.
 
 ## Related
 
-- [[moderation]] — Moderation actions logged here
-- [[roles-and-permissions]] — Admin roles
+- [Users and admin](users-admin.md)
+- [Moderation](moderation.md)
+- [Indexes and search](../database/indexes-and-search.md)

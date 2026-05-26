@@ -4,46 +4,37 @@ tags: [frontend, auth, convex, better-auth]
 
 # Frontend Authentication
 
-← [[index|Home]] / [[frontend-overview]]
+[Home](../index.md) / [Frontend overview](frontend-overview.md)
 
----
+The web app uses Better Auth on Convex. Authentication is cookie/session based,
+and Convex receives auth through `ConvexBetterAuthProvider`.
 
-## Current Model
+## Flow
 
-The Convex port uses **Better Auth on Convex** as the identity/session system.
-The browser authenticates through the Next route at `/api/auth/*`, which proxies
-to the Convex HTTP auth routes. Convex queries and mutations receive the Better
-Auth token through `ConvexBetterAuthProvider`.
-
-```
-Login form
-  → authClient.signIn.username(...)
-  → Better Auth sets the session cookie
-  → ConvexBetterAuthProvider fetches Convex auth tokens
-  → useCurrentUser() reads api.users.me.me
+```text
+Login page
+  -> authClient.signIn.username(...)
+  -> Better Auth sets a session cookie
+  -> ConvexBetterAuthProvider fetches Convex auth tokens
+  -> useCurrentUser() reads api.users.me.me
 ```
 
-The old `ia_token` JWT localStorage key should not be used by new code. Web
-data flows now use Better Auth sessions and Convex auth tokens.
-
----
+The old `ia_token` localStorage key is not the auth mechanism for new code.
+`ia_user` remains as a temporary cached public user for synchronous UI reads.
 
 ## Files
 
-- `apps/web/src/lib/auth-client.ts` creates the Better Auth client with the
-  username and Convex client plugins.
-- `apps/web/src/lib/convex.ts` creates the `ConvexReactClient`.
-- `apps/web/src/app/api/auth/[...all]/route.ts` exposes the Better Auth proxy
-  route for Next.
-- `apps/web/src/app/providers.tsx` wraps the app in `ConvexBetterAuthProvider`.
-- `apps/web/src/lib/auth.ts` exposes role helpers and `useCurrentUser()`.
+| File | Purpose |
+| --- | --- |
+| `apps/web/src/lib/auth-client.ts` | Better Auth browser client |
+| `apps/web/src/lib/convex.ts` | `ConvexReactClient` |
+| `apps/web/src/app/api/auth/[...all]/route.ts` | Next auth route proxy |
+| `apps/web/src/app/providers.tsx` | Convex and theme providers |
+| `apps/web/src/lib/auth.ts` | `useCurrentUser`, role helpers, compatibility cache |
 
----
+## Login
 
-## Login Flow
-
-`apps/web/src/app/login/page.tsx` signs in with the school `uniqueId` as the
-Better Auth username:
+The login page signs in with the school unique ID as the Better Auth username:
 
 ```tsx
 await authClient.signIn.username({
@@ -52,46 +43,35 @@ await authClient.signIn.username({
 });
 ```
 
-Students and staff do not self-register. Admin/front-office workflows create
-accounts and issue temporary passwords. The first successful password change
-clears `mustResetPassword`.
+Students and staff do not self-register. Admin workflows create accounts and
+issue/reset passwords.
 
----
+## Current User
 
-## Logged-In User
-
-Use `useCurrentUser()` for UI decisions:
+Use `useCurrentUser()` for UI gating:
 
 ```tsx
 const user = useCurrentUser();
 
 if (hasRole(user, 'ADMIN', 'SUPER_ADMIN')) {
-  // show admin UI
+  // show admin-only UI
 }
 ```
 
-`useCurrentUser()` reads `api.users.me.me` from Convex and caches the public user
-in `ia_user` only as a temporary compatibility layer for old synchronous UI
-code.
+Backend functions still enforce permissions. Frontend checks are for navigation
+and user experience, not security.
 
----
+## Environment
 
-## Required Environment
+Local defaults work outside CI, but deployments should set:
 
-For local development:
-
-```bash
-NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
-NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:3211
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```env
+NEXT_PUBLIC_CONVEX_URL=https://...
+NEXT_PUBLIC_CONVEX_SITE_URL=https://...
+NEXT_PUBLIC_SITE_URL=https://...
 ```
-
-Alpha cloud deploys must set the Convex Cloud equivalents. Missing Convex envs
-should fail CI/deploy builds; local builds fall back to the local Convex URLs.
-
----
 
 ## Related
 
-- [[backend-auth]] — Better Auth and Convex server-side auth
-- [[api-layer]] — Convex React hooks and generated API types
+- [Auth and roles](../backend/auth-and-roles.md)
+- [Data flow](../architecture/data-flow.md)

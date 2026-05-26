@@ -1,5 +1,10 @@
 # IA Backend -> Convex Porting Guide
 
+> [!IMPORTANT]
+> This file is historical migration context. Use `docs/index.md` and the
+> current source under `apps/convex/src` and `apps/web/src` for active operating
+> instructions. Keep this file for rationale and old-backend comparison only.
+
 This guide is for planning a backend replatform from the current NestJS,
 Prisma, PostgreSQL, local-upload architecture to Convex.
 
