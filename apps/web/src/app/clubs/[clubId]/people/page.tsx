@@ -2,7 +2,6 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useQuery as useRestQuery } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import {
   Crown,

@@ -127,7 +127,6 @@ export function ChannelMessageComposer({
     editor.tf.setValue(emptyValue);
   }, [editor, resetKey]);
 
-  const builtInMentions = suggestionEntries.filter((entry) => entry.kind === 'built-in');
   const mentionables = useMemo<MentionableItem[]>(
     () =>
       suggestionEntries.map((entry) => ({
@@ -158,21 +157,6 @@ export function ChannelMessageComposer({
       pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
       pollOptions: hasPoll ? normalizedPollOptions : undefined,
     });
-  };
-
-  const insertMention = (token: string) => {
-    const insert = (
-      editor.tf.insert as unknown as {
-        mention?: (options: { key: string; search?: string; value: string }) => void;
-      }
-    ).mention;
-
-    if (!insert) return;
-
-    insert({ key: token, search: '', value: token });
-    editor.tf.move({ unit: 'offset' });
-    editor.tf.insertText(' ');
-    editor.tf.focus();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

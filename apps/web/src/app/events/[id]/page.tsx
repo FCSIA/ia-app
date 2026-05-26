@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { use, useState } from 'react';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -22,11 +22,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = useCurrentUser();
+  useCurrentUser();
   const { toast } = useToast();
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');

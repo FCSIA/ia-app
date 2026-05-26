@@ -42,7 +42,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
@@ -83,7 +82,6 @@ import {
 } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
-import { toApiUrl } from '@/lib/api';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
@@ -134,7 +132,7 @@ function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAtt
   return (
     <div className="mt-2 space-y-2">
       {attachments.map((attachment) => {
-        const href = toApiUrl(attachment.fileUrl);
+        const href = attachment.fileUrl;
         const sizeLabel = formatBytes(attachment.size);
 
         if (isImageAttachment(attachment)) {
@@ -505,6 +503,8 @@ export default function ClubChannelPage({
   const [editingMessageId, setEditingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [reportReason, setReportReason] = useState('');
   const deferredSearch = useDeferredValue(search);
 
   const user = useCurrentUser();
@@ -520,6 +520,7 @@ export default function ClubChannelPage({
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
+  const submitReport = useMutation(api.moderation.reports.submit);
 
   const submitMessage = async ({
     body,
@@ -639,6 +640,25 @@ export default function ClubChannelPage({
     return messages.find((m) => m._id === selectedThreadId) ?? null;
   }, [messages, selectedThreadId]);
 
+  const reportingMessage = useMemo(
+    () => flattenedMessages.find((message) => message._id === reportingMessageId) ?? null,
+    [flattenedMessages, reportingMessageId],
+  );
+
+  const handleSubmitReport = async () => {
+    if (!reportingMessage || !reportReason.trim()) return;
+    await submitReport({
+      contentType: 'CLUB_CHANNEL_MESSAGE',
+      contentId: reportingMessage._id,
+      clubId,
+      reportedUserId: reportingMessage.author._id,
+      reason: reportReason.trim(),
+    });
+    toast({ title: 'Report submitted' });
+    setReportingMessageId(null);
+    setReportReason('');
+  };
+
   const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
     const isEditing = editingMessageId === message._id;
 
@@ -674,6 +694,7 @@ export default function ClubChannelPage({
               toast({ title: 'Message deleted' }),
             )
           }
+          onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
           isEditing={isEditing}
           isReactionPending={false}
           isPinPending={false}
@@ -885,6 +906,45 @@ export default function ClubChannelPage({
           </p>
         </div>
       </div>
+      <Dialog
+        open={!!reportingMessageId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReportingMessageId(null);
+            setReportReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report message</DialogTitle>
+            <DialogDescription>
+              Reports go to school staff for review. Include enough context to understand the issue.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={reportReason}
+            onChange={(event) => setReportReason(event.target.value)}
+            className="min-h-28 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Why are you reporting this message?"
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setReportingMessageId(null);
+                setReportReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={() => void handleSubmitReport()} disabled={!reportReason.trim()}>
+              Submit report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ClubWorkspace>
         );
         }

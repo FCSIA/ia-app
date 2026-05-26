@@ -64,21 +64,6 @@ const accountNav: NavItem[] = [
 
 const adminNav: NavItem[] = [{ href: '/admin', label: 'Admin Panel', icon: Shield }];
 
-const pageMeta: Record<string, { label: string; detail: string }> = {
-  '/dashboard': { label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
-  '/announcements': { label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
-  '/clubs': { label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
-  '/courses': { label: 'Courses', detail: 'Catalog, prerequisites, and class details.' },
-  '/schedule': { label: 'Schedule', detail: 'View and manage your daily periods.' },
-  '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
-  '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
-  '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
-  '/wrapped': { label: 'Wrapped', detail: 'Your year at a glance.' },
-  '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
-  '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
-  '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },
-};
-
 function NavIcon({
   item,
   active,
@@ -115,8 +100,6 @@ function NavIcon({
     </Tooltip>
   );
 }
-
-const sortedPageMeta = Object.entries(pageMeta).sort(([a], [b]) => b.length - a.length);
 
 export function AppShell({
   children,
@@ -205,14 +188,6 @@ export function AppShell({
         return true;
       }),
     [showSchedule, showWrapped],
-  );
-
-  const currentMeta = useMemo(
-    () =>
-      sortedPageMeta.find(
-        ([href]) => safePathname === href || (href !== '/dashboard' && safePathname.startsWith(href)),
-      )?.[1] ?? pageMeta['/dashboard'],
-    [safePathname],
   );
 
   const unreadBadge = unreadData?.count

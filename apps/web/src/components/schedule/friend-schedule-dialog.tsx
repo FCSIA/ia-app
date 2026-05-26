@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Calendar, X } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

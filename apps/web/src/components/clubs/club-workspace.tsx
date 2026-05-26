@@ -41,11 +41,6 @@ function resolveMediaUrl(url?: string | null) {
   return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-type MyClubsResponse = {
-  memberOf: ClubSummary[];
-  sponsoring: ClubSummary[];
-};
-
 function ClubPickerItem({
   club,
   active,

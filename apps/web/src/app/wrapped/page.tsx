@@ -38,7 +38,6 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import type { WrappedSummary } from '@/lib/api';
 import { getUser, hasRole } from '@/lib/auth';
 import {
   computeWrappedAvailability,
@@ -63,6 +62,8 @@ type Slide = {
   /** Optional tag chips shown under the caption (e.g. pathway badges). */
   chips?: string[];
 };
+
+type WrappedSummary = NonNullable<FunctionReturnType<typeof api.wrapped.snapshots.getMine>>;
 
 function shortYear(startYear: number) {
   return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
@@ -1142,7 +1143,7 @@ export default function WrappedPage() {
   const data = useConvexQuery(
     api.wrapped.snapshots.getMine,
     mounted && !gated ? {} : 'skip',
-  ) as WrappedSummary | undefined;
+  );
   const isLoading = mounted && !gated && data === undefined;
   const error = null;
 

@@ -1088,7 +1088,6 @@ export default function FlexFridayPage() {
                                 roster={rosterData as any}
                                 isLoading={rosterLoading}
                                 error={rosterError as Error | null}
-                                workshopId={w._id}
                                 onMark={(studentId, status) =>
                                   void markAttendanceMut({
                                     workshopId: w._id,
@@ -1201,7 +1200,6 @@ function AttendancePanel({
   roster,
   isLoading,
   error,
-  workshopId,
   onMark,
   onClear,
   isMarking,
@@ -1209,7 +1207,6 @@ function AttendancePanel({
   roster: RosterResponse | undefined;
   isLoading: boolean;
   error: Error | null;
-  workshopId: string;
   onMark: (studentId: string, status: AttendanceStatus) => void;
   onClear: (studentId: string) => void;
   isMarking: boolean;

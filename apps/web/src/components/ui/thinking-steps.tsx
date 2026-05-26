@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useRef,
   forwardRef,
   type ReactNode,
   type HTMLAttributes,
@@ -131,8 +130,6 @@ function ThinkingStep({
   label,
   description,
   status = "complete",
-  index,
-  delay = 0,
   isLast = false,
   children,
   className,
@@ -332,6 +329,7 @@ function ThinkingStepImage({ src, alt = "", caption, delay = 0, className }: Thi
         filter: { duration: 0.15, delay },
       }}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}

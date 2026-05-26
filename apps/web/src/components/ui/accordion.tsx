@@ -237,14 +237,12 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
     const shape = useShape();
 
     // Strip non-HTML props before spreading
-    const {
-      value: _value,
-      defaultValue: _defaultValue,
-      onValueChange: _onValueChange,
-      collapsible: _collapsible,
-      type: _type,
-      ...htmlProps
-    } = rest as Record<string, unknown>;
+    const htmlProps = { ...(rest as Record<string, unknown>) };
+    delete htmlProps.value;
+    delete htmlProps.defaultValue;
+    delete htmlProps.onValueChange;
+    delete htmlProps.collapsible;
+    delete htmlProps.type;
 
     // Build Radix root props
     const radixProps =
