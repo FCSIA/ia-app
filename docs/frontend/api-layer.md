@@ -1,196 +1,87 @@
 ---
-tags: [frontend, api, axios]
+tags: [frontend, api, convex]
 ---
 
-# API Layer — Axios
+# API Layer — Convex
 
 ← [[index|Home]] / [[frontend-overview]]
 
 ---
 
-## What Is the API Layer?
+## Current Model
 
-`src/lib/api.ts` is the single file that contains every HTTP call the web app makes to the backend. It uses **Axios** — a library for making HTTP requests.
+The web app now calls Convex functions directly through generated function
+references from `apps/convex/src/_generated/api`.
 
-Having all API calls in one place means:
-- Easy to find any endpoint
-- Consistent error handling
-- One place to change the base URL
-
----
-
-## The Axios Instance
-
-```typescript
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
-  headers: { 'Content-Type': 'application/json' },
-});
-```
-
-`axios.create()` makes a configured instance. All calls made through `api` inherit these settings — you never need to repeat the base URL.
-
----
-
-## Request Interceptor — Attaching the JWT
-
-Every request automatically gets the JWT attached:
-
-```typescript
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ia_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-```
-
-An **interceptor** runs before/after every request. This one reads the token from `localStorage` and adds it to the `Authorization` header. You never need to manually attach the token anywhere.
-
----
-
-## Response Interceptor — Handling 401
-
-```typescript
-api.interceptors.response.use(
-  (response) => response,  // success: pass through
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid — log the user out
-      localStorage.removeItem('ia_token');
-      localStorage.removeItem('ia_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error); // pass error to the caller
-  }
-);
-```
-
-If any request returns `401 Unauthorized` (token expired, invalid, or missing), the user is immediately logged out and redirected to the login page.
-
----
-
-## Convex port (in progress)
-
-Many screens now call **Convex** directly via `useQuery` / `useMutation` and `api` from `apps/convex/src/_generated/api`. The Axios groups below remain for domains not yet ported.
-
-**On Convex today (web):** clubs, events, calendar, Flex Friday, notifications, schedule dashboard, announcements, moderation, uploads (chat attachments + club images), audit (admin + Flex Friday audit tab).
-
-**Still on REST (`api.ts`):** admin user CSV import, legacy auth token helpers, and any straggler not listed above.
-
-Prefer adding new behavior in `apps/convex/src/` rather than new Nest routes.
-
----
-
-## API Groups
-
-All endpoints are grouped by feature into exported objects:
-
-### authApi
-```typescript
-export const authApi = {
-  login: (uniqueId, password) => api.post('/auth/login', { uniqueId, password }),
-  logout: () => api.post('/auth/logout'),
-  me: () => api.get('/auth/me'),
-  changePassword: (cur, next) => api.post('/auth/change-password', { cur, next }),
-};
-```
-
-### announcementsApi
-Supports read tracking and unread filtering:
-- `getAll(archived, clubId, unreadOnly)`
-- `markRead(id)` / `markUnread(id)`
-- `addComment(id, body)` / `deleteComment(id)`
-
-### clubsApi
-Now handles join requests and codes:
-- `join(id)`
-- `requestToJoin(id)`
-- `redeemJoinCode(id, code)`
-- `generateJoinCode(id)`
-- `respondToJoinRequest(id, reqId, accept)`
-- `createChannel(clubId, data)` // Supports PRIVATE and MEMBER_READONLY
-- `setMemberRole(clubId, mid, role)`
-
-### eventsApi
-- `getAll(clubId)`
-- `approve(id, note)` / `reject(id, note)`
-- `getPendingApprovals()`
-
-### Schedule And Courses
-Schedule and course catalog screens now call Convex directly through generated
-function references:
-
-- `api.schedule.dashboard.dashboard`
-- `api.schedule.dashboard.saveMine`
-- `api.schedule.friends.searchPeople`
-- `api.schedule.friends.sendFriendRequest`
-- `api.schedule.friends.acceptFriendRequest`
-- `api.schedule.friends.removeFriend`
-- `api.schedule.blocks.createBlock`
-- `api.schedule.blocks.updateBlock`
-- `api.schedule.blocks.deleteBlock`
-- `api.courses.catalog.list`
-- `api.courses.catalog.getOne`
-
-Do not add `scheduleApi`, `coursesApi`, or replacement package-contract DTOs for
-these domains. Use generated Convex hook return types instead.
-
-### flexFridayApi
-- `createFriday(data)`
-- `createSession(fid, data)`
-- `createWorkshop(fid, sid, data)`
-- `register(wid)` / `unregister(wid)`
-- `assign(wid, studentId)`
-- `getRoster(wid)`
-
-### notificationsApi
-- `getAll(unreadOnly)`
-- `getUnreadCount()` // Polled every 30s
-- `upsertPreference(category, enabled, clubId)`
-
-### moderationApi
-- `getKeywords()` / `addKeyword(kw)`
-- `getReports(status)` / `submitReport(data)`
-- `updateReport(id, data)`
-
----
-
-## HTTP Methods in REST
-
-| Method | Used for | Example |
-|--------|----------|---------|
-| `GET` | Fetching data | `api.get('/clubs')` |
-| `POST` | Creating new data | `api.post('/clubs', data) ` |
-| `PATCH` | Partial update | `api.patch('/clubs/1/role', data)` |
-| `PUT` | Full replace | `api.put('/schedule/me', data)` |
-| `DELETE` | Removing data | `api.delete('/notifications/1/read')` |
-
----
-
-## Using the API in Components
-
-The app uses **TanStack Query** to wrap these API calls, providing caching, loading states, and automatic refetching.
+Use Convex React hooks for app data:
 
 ```tsx
-import { clubsApi } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 
-const { data: clubs } = useQuery({
-  queryKey: ['clubs'],
-  queryFn: () => clubsApi.getAll().then(r => r.data),
-});
+const courses = useQuery(api.courses.catalog.list, { limit: 40 }) ?? [];
+const save = useMutation(api.schedule.dashboard.save);
 ```
 
-`r.data` extracts the actual response body from Axios's response wrapper.
+Do not add new Axios wrappers, REST DTOs, or package-contract response types for
+ported domains. Use generated Convex return types:
+
+```ts
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
+
+type Course = FunctionReturnType<typeof api.courses.catalog.list>[number];
+```
+
+---
+
+## Function Layout
+
+Convex function references mirror files under `apps/convex/src/`:
+
+- `api.users.admin.*`
+- `api.users.me.*`
+- `api.courses.catalog.*`
+- `api.schedule.dashboard.*`
+- `api.notifications.inbox.*`
+- `api.announcements.feed.*`
+- `api.clubs.channels.*`
+- `api.events.events.*`
+- `api.flexFriday.*`
+- `api.moderation.*`
+- `api.uploads.files.*`
+- `api.wrapped.snapshots.*`
+
+Growable screens should use `usePaginatedQuery` with Convex functions that
+accept `paginationOptsValidator`.
+
+---
+
+## Uploads
+
+Browser uploads use Convex storage:
+
+1. Call `api.uploads.files.generateUploadUrl`.
+2. `POST` the file to the returned upload URL.
+3. Call the relevant finalize mutation, such as
+   `api.uploads.files.finalizeChatAttachment` or
+   `api.uploads.files.finalizeClubImage`.
+
+The helper lives at `apps/web/src/lib/convex-upload.ts`.
+
+---
+
+## Legacy REST Status
+
+`apps/web/src/lib/api.ts` has been removed. The default app path should not add
+new REST calls. If a future external client needs HTTP access, add a deliberate
+Convex HTTP action with explicit auth and docs rather than reviving the old
+Axios layer.
 
 ---
 
 ## Related
 
-- [[state-management]] — TanStack Query patterns
-- [[frontend-auth]] — The token interceptor
-- [[data-flow]] — Full request lifecycle
+- [[state-management]] — client state patterns
+- [[frontend-auth]] — Better Auth + Convex provider
+- [[data-flow]] — request lifecycle

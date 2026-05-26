@@ -167,10 +167,10 @@ edge cases, but it should not drive the code layout.
 
 ## Current Backend Inventory
 
-Runtime today:
+Original runtime at the start of the port:
 
 - Next.js 15 / React 19 frontend.
-- Axios API client in `apps/web/src/lib/api.ts`.
+- Axios API client in `apps/web/src/lib/api.ts` (now removed from the web app).
 - JWT and user profile stored in browser localStorage as `ia_token` and
   `ia_user`.
 - NestJS API with global validation, global exception filter, global JWT guard,
@@ -811,8 +811,9 @@ Deliver artifacts only, no porting:
   covering global roles, multi-role users, active/inactive users, club members,
   leaders, sponsors, private channel members, front-office/helpdesk staff, and
   admins.
-- Product behavior map from existing feature flows and `apps/web/src/lib/api.ts`
-  to Convex functions. Preserve behavior, not old response shapes.
+- Product behavior map from existing feature flows and the removed legacy
+  `apps/web/src/lib/api.ts` to Convex functions. Preserve behavior, not old
+  response shapes.
 - Contracts decision for the frontend API layer and any remaining non-Convex
   shared product types.
 - Component decision map: which domains use Aggregate, Sharded Counter, Rate

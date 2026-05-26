@@ -23,9 +23,8 @@ Login form
   → useCurrentUser() reads api.users.me.me
 ```
 
-The old `ia_token` JWT localStorage key is transitional only. It remains so
-unported REST screens can still be identified and removed deliberately as their
-domains move to Convex. New Convex code must not depend on it.
+The old `ia_token` JWT localStorage key should not be used by new code. Web
+data flows now use Better Auth sessions and Convex auth tokens.
 
 ---
 
@@ -71,8 +70,9 @@ if (hasRole(user, 'ADMIN', 'SUPER_ADMIN')) {
 }
 ```
 
-`useCurrentUser()` reads `api.users.me.me` from Convex and caches the public user in
-`ia_user` only as a temporary compatibility layer for old synchronous UI code.
+`useCurrentUser()` reads `api.users.me.me` from Convex and caches the public user
+in `ia_user` only as a temporary compatibility layer for old synchronous UI
+code.
 
 ---
 
@@ -94,4 +94,4 @@ should fail CI/deploy builds; local builds fall back to the local Convex URLs.
 ## Related
 
 - [[backend-auth]] — Better Auth and Convex server-side auth
-- [[api-layer]] — Transitional REST client that still attaches `ia_token`
+- [[api-layer]] — Convex React hooks and generated API types

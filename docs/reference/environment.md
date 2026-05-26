@@ -90,14 +90,13 @@ Port and host the NestJS API listens on. In development, `pnpm --filter api dev`
 
 ### Web App URL (exposed to browser)
 ```bash
-NEXT_PUBLIC_API_URL="http://localhost:3001"
 WEB_PORT=3000
 ```
-The URL the Next.js web app uses to call the API. The `NEXT_PUBLIC_` prefix is required by Next.js to expose a variable to the browser — without it, the variable is server-only.
+`WEB_PORT` controls the preferred local Next.js port.
 
-In development, `pnpm --filter web dev` treats `WEB_PORT` as the preferred starting port and falls back if busy. When run through `pnpm dev`, the web app reads the API dev port selected by the API launcher and sets `NEXT_PUBLIC_API_URL` automatically.
-
-Used by: Axios in `apps/web/src/lib/api.ts`
+The old `NEXT_PUBLIC_API_URL` Axios path is no longer used by the Convex port.
+Browser data calls use `NEXT_PUBLIC_CONVEX_URL` plus Better Auth session
+cookies/tokens.
 
 ---
 

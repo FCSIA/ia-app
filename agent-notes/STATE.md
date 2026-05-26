@@ -12,10 +12,10 @@
 | Domain | Status |
 |--------|--------|
 | Users, audit, courses, schedule, notifications | **Done** |
-| Clubs, events, Flex Friday | **Schema + partial APIs** (`6845f48`) |
+| Clubs, events, Flex Friday | **Done for current web flows** |
 | Wrapped | **Done** — `wrapped/snapshots.ts`, `wrappedSnapshots` table |
-| Announcements | Partial (`feed`, `comments`) |
-| Moderation, uploads | Not started |
+| Announcements | **Done for current web flows** (`feed`, `engagement`, `comments`) |
+| Moderation, uploads | **Done for current web flows** |
 
 ### Frontend on Convex
 
@@ -26,7 +26,8 @@
 | Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
 | Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
 | Events, calendar, flex-friday UI | **Convex** (`api.events.*`, `api.flexFriday.*`) |
-| Announcements UI | **Still REST** (`@/lib/api`) |
+| Announcements, moderation, uploads | **Convex** |
+| Admin student CSV import/export | **Convex** (`api.users.admin.importStudents`, `api.users.admin.exportStudents`) |
 
 ### Dev data commands (`package.json`)
 
@@ -42,15 +43,17 @@
 - `pnpm --filter convex-backend codegen` + `typecheck` — pass
 - `pnpm --filter web build` — pass
 - Web `tsc --noEmit` — pass
+- `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
+  failures; Convex/web checks above pass.
 
 ## Next Work
 
-1. Port **message report/history** if still needed.
-2. Wire **announcements** UI; complete bookmark/archive/mark-read mutations.
-3. Wire **announcements** UI; complete bookmark/archive/mark-read mutations.
-4. Port **moderation** + **uploads** (Convex storage).
-5. Docs sweep (`docs/index.md`, architecture, seed docs).
-6. Remove Nest/Prisma from default dev path when no REST callers remain.
+1. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+   deleted now or retained temporarily for reference.
+2. Continue docs cleanup for legacy reference pages (`docs/backend/*`,
+   `docs/database/*`) if/when the old API is removed.
+3. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
+   blocking check again.
 
 ## Handoff Commands
 

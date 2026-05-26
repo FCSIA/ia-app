@@ -16,29 +16,29 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[data-flow]] — A request traced end-to-end through every layer
 - [[diagram-inventory]] — Detailed list of runtime pieces, features, data domains, flows, and Azure changes
 
-### Backend (API)
-- [[backend-overview]] — NestJS, Node.js, and how the server works
-- [[convex]] — Convex backend app layout, commands, and generated types
-- [[modules]] — The NestJS module system
-- [[controllers]] — HTTP endpoints and routing
-- [[services]] — Business logic layer
-- [[dtos]] — Data validation and transfer objects
-- [[backend-auth]] — JWT authentication and guards
-- [[prisma]] — Database ORM and queries
+### Backend
+- [[convex]] — Convex backend app layout, commands, generated types, and seed flow
+- [[backend-auth]] — Better Auth, Convex auth, roles, and account lifecycle
+- [[backend-overview]] — Legacy NestJS backend reference during the Convex port
+- [[modules]] — Legacy NestJS module reference
+- [[controllers]] — Legacy HTTP endpoint reference
+- [[services]] — Legacy service-layer reference
+- [[dtos]] — Legacy DTO reference
+- [[prisma]] — Legacy Prisma reference
 
-### Database
-- [[database-overview]] — PostgreSQL and Prisma explained
-- [[schema]] — Every model and field in the database
-- [[migrations]] — How schema changes are applied
-- [[seed]] — Demo data and test accounts
+### Data
+- [[schema]] — Convex schema plus legacy Prisma reference while the old API remains
+- [[seed]] — Convex demo data and test accounts
+- [[database-overview]] — Legacy PostgreSQL and Prisma background
+- [[migrations]] — Legacy Prisma migration background
 
 ### Frontend (Web)
 - [[frontend-overview]] — Next.js 15, React 19, and the App Router
 - [[routing]] — File-based routing and dynamic segments
 - [[components]] — React components, hooks, and AppShell
-- [[api-layer]] — Axios instance and all API calls
-- [[frontend-auth]] — localStorage, tokens, and auth helpers
-- [[state-management]] — TanStack Query for data fetching
+- [[api-layer]] — Convex React hooks, generated API types, uploads, and legacy REST policy
+- [[frontend-auth]] — Better Auth, Convex tokens, and auth helpers
+- [[state-management]] — Convex subscriptions plus remaining local UI state
 - [[styling]] — Tailwind CSS and the glassmorphic design system
 
 ### Features
@@ -69,29 +69,21 @@ git clone https://github.com/virajdas/ia-app.git && cd ia-app
 cp .env.example .env && cp .env.example apps/api/.env
 pnpm install
 
-# Start PostgreSQL before migrations:
-# macOS/Linux Homebrew: pnpm infra:up
-# Optional Nix + direnv: direnv allow
-# Windows: pnpm infra:up:win
-
-pnpm db:generate && pnpm db:migrate && pnpm db:seed
+direnv allow
+pnpm db:generate && pnpm db:seed
 
 # Start
-# macOS/Linux Homebrew: brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
-# Optional Nix + direnv: direnv allow && pnpm db:migrate && pnpm dev
-# Windows: pnpm infra:up:win && pnpm dev
+pnpm dev
 
 # Stop
-# Nix + direnv PostgreSQL: pg_ctl stop -D .pgdata
-# macOS/Linux Homebrew: lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
-# Windows: Stop the pnpm dev process (Ctrl+C) and run .\pgsql\bin\pg_ctl.exe -D .\pgsql\data stop
+# Stop the pnpm dev process (Ctrl+C)
 ```
 
 | URL | What |
 |-----|------|
 | http://localhost:3000 | Web app, unless the dev launcher falls back |
-| http://localhost:3001 | API, unless the dev launcher falls back |
-| http://localhost:3001/docs | Swagger API docs, unless the API port falls back |
+| http://127.0.0.1:3210 | Local Convex API, when `convex dev` is running locally |
+| http://127.0.0.1:3211 | Local Convex site/HTTP actions, when configured locally |
 
 ---
 

@@ -119,15 +119,16 @@ apps/web/src/
 │   ├── admin/page.tsx
 │   ├── profile/page.tsx
 │   ├── globals.css         ← global styles + utility classes
-│   └── providers.tsx       ← React Query provider
+│   └── providers.tsx       ← Convex, Better Auth, and app providers
 │
 ├── components/
 │   └── layout/
 │       └── AppShell.tsx    ← sidebar + layout wrapper
 │
 └── lib/
-    ├── api.ts              ← all API calls
-    └── auth.ts             ← token storage helpers
+    ├── auth-client.ts      ← Better Auth client
+    ├── convex.ts           ← Convex React client
+    └── auth.ts             ← current-user and role helpers
 ```
 
 ---

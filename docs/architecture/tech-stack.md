@@ -14,13 +14,12 @@ tags: [architecture, tech-stack]
 | ------------------- | -------------------------------- | ------------------------------------------- |
 | **Node.js**         | JavaScript runtime on the server | Lets JS run outside the browser             |
 | **TypeScript**      | Typed superset of JavaScript     | Catches bugs at write-time, not runtime     |
-| **NestJS 10**       | Backend framework                | Structure, dependency injection, decorators |
-| **Prisma 6**        | Database ORM                     | Type-safe database queries in TypeScript    |
-| **PostgreSQL 16**   | Relational database              | Robust, open source, excellent with Prisma  |
-| **Passport.js**     | Authentication middleware        | JWT strategy integration                    |
-| **bcrypt**          | Password hashing                 | Secure one-way password storage             |
-| **class-validator** | DTO validation                   | Decorator-based request validation          |
-| **Swagger**         | API documentation                | Auto-generated docs at `/docs`              |
+| **Convex**          | Backend, database, functions, storage | Reactive TypeScript backend with generated API types |
+| **Better Auth**     | Authentication and sessions      | Username/password auth integrated with Convex |
+| **TypeScript**      | Backend language                 | Shared language across backend and web      |
+| **NestJS 10**       | Legacy backend reference         | Retained temporarily during the Convex port |
+| **Prisma 6**        | Legacy ORM reference             | Retained temporarily while old API code exists |
+| **PostgreSQL 16**   | Legacy local database            | Not the default product data path after Convex cutover |
 
 ---
 
@@ -31,8 +30,8 @@ tags: [architecture, tech-stack]
 | **Next.js 15** | React framework | File routing, SSR, PWA support |
 | **React 19** | UI library | Component-based, reactive UI |
 | **TypeScript** | Types | Same as backend — safety |
-| **TanStack Query** | Data fetching/caching | Handles loading states, caching, refetching |
-| **Axios** | HTTP client | Makes API calls with interceptors |
+| **Convex React** | Data subscriptions and mutations | Generated typed hooks for backend reads/writes |
+| **TanStack Query** | Legacy REST cache / local async helper | Remove as REST domains disappear |
 | **Tailwind CSS v4** | Styling | Utility-first CSS classes with CSS-variable driven theming |
 | **shadcn/ui (new-york)** | Component primitives | High-quality Radix-based building blocks customized in our orange theme |
 | **date-fns** | Date formatting | Lightweight date utilities |
@@ -47,9 +46,9 @@ tags: [architecture, tech-stack]
 |-----------|------|
 | **pnpm** | Package manager (faster than npm/yarn) |
 | **Turbo** | Monorepo task runner with caching |
-| **Nix + direnv** | Optional macOS/Linux dev shell; provides Node, pnpm, PostgreSQL, OpenSSL, and pkg-config |
-| **PostgreSQL 16** | Local database; repo-local via Nix/direnv or manually managed via Homebrew/Windows script |
-| **Prisma Migrate** | Database migration system |
+| **Nix + direnv** | Optional macOS/Linux dev shell; provides a consistent Node/pnpm/dev toolchain |
+| **Convex CLI** | Local/cloud backend development, codegen, and deploys |
+| **Prisma Migrate** | Legacy database migration system while old API code remains |
 
 ---
 
@@ -70,9 +69,9 @@ function greet(user: { firstName: string; lastName: string }): string {
 ```
 
 Benefits in this codebase:
-- The same `Role` enum is used everywhere — impossible to misspell
-- Prisma generates TypeScript types from the schema — database models are always accurate
-- API responses have known shapes — no guessing what fields exist
+- Convex generates API and document types from backend functions/schema.
+- Product enums use validators and TypeScript unions so invalid values fail at the function boundary.
+- Frontend components can derive prop types with `FunctionReturnType<typeof api.domain.function>`.
 
 ---
 
@@ -87,6 +86,6 @@ Benefits in this codebase:
 ## Related
 
 - [[overview]] — How all these pieces fit together
-- [[backend-overview]] — Deep dive on NestJS
+- [[convex]] — Deep dive on the active Convex backend
 - [[frontend-overview]] — Deep dive on Next.js
-- [[database-overview]] — Deep dive on PostgreSQL + Prisma
+- [[database-overview]] — Legacy PostgreSQL + Prisma background

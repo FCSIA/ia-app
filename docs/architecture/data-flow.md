@@ -58,45 +58,35 @@ TanStack Query invalidates cache
 In `apps/web/src/app/announcements/[id]/page.tsx`:
 
 ```tsx
-const [comment, setComment] = useState('');
+const addComment = useMutation(api.announcements.comments.add);
 
-const addCommentMutation = useMutation({
-  mutationFn: (body: string) => announcementsApi.addComment(id, body),
-  onSuccess: () => {
-    qc.invalidateQueries({ queryKey: ['announcement', id] });
-    setComment('');
-  },
-});
-
-// When user presses Enter:
-addCommentMutation.mutate(comment.trim());
+await addComment({ announcementId, body: comment.trim() });
 ```
 
-`useState` holds the text currently typed. `useMutation` wraps the API call and handles loading/success/error states automatically. See [[state-management]].
+`useState` holds the text currently typed. Convex mutations update the backend
+transactionally and subscribed queries refresh reactively. See
+[[state-management]].
 
 ---
 
-## Step 2 — HTTP Request (Axios)
+## Step 2 — Convex Mutation
 
-In `apps/web/src/lib/api.ts`:
+In `apps/convex/src/announcements/comments.ts`:
 
 ```typescript
-export const announcementsApi = {
-  addComment: (id: string, body: string) =>
-    api.post(`/announcements/${id}/comments`, { body }),
-};
+export const add = mutation({
+  args: { announcementId: v.id('announcements'), body: v.string() },
+  handler: async (ctx, args) => { /* permission checks + insert */ },
+});
 ```
 
-Axios sends:
-```http
-POST http://localhost:3001/announcements/abc-123/comments
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
-Content-Type: application/json
+The Convex client sends the authenticated function call to the deployment.
+Authorization is derived server-side from Better Auth/Convex identity, not from
+client-supplied user IDs. See [[api-layer]].
 
-{ "body": "Great announcement!" }
-```
-
-The `Authorization` header is attached automatically by the Axios request interceptor — it reads the JWT from `localStorage` before every request. See [[api-layer]].
+The older NestJS/Axios flow below is retained as historical reference while the
+legacy API app remains in the repo. It is no longer the default web-app data
+path for ported domains.
 
 ---
 

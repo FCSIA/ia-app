@@ -182,7 +182,9 @@ export default function ClubsPage() {
 }
 ```
 
-The `@/` prefix is a path alias configured in `tsconfig.json` — it maps to `src/`, so `@/lib/api` = `src/lib/api.ts`.
+The `@/` prefix is a web-source alias configured in `tsconfig.json`; the `~/`
+prefix points at the repo root for generated Convex imports such as
+`~/apps/convex/src/_generated/api`.
 
 ---
 
