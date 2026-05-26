@@ -16,12 +16,7 @@
     "db:seed:courses": "cd apps/convex && PATH=../../node_modules/.bin:$PATH convex run courses/seed:run \"{\\\"secret\\\":\\\"$BOOTSTRAP_SECRET\\\",\\\"reset\\\":true}\"",
     "db:seed:schedule": "cd apps/convex && PATH=../../node_modules/.bin:$PATH convex run schedule/seed:seedFromStaticData \"{\\\"secret\\\":\\\"$BOOTSTRAP_SECRET\\\",\\\"reset\\\":true,\\\"batchSize\\\":20}\"",
     "db:studio": "pnpm convex:dev",
-    "convex:dev": "pnpm --filter convex-backend dev",
-    "infra:up": "brew services start postgresql@16 && echo 'PostgreSQL started'",
-    "infra:up:win": "powershell -ExecutionPolicy Bypass -File setup_pg.ps1",
-    "infra:down": "brew services stop postgresql@16 && echo 'PostgreSQL stopped'",
-    "setup:win": "pnpm infra:up:win && pnpm install && pnpm db:generate && pnpm db:migrate && pnpm db:seed && start pnpm db:studio",
-    "up:win": "pnpm infra:up:win && pnpm install && pnpm db:migrate && pnpm dev"
+    "convex:dev": "pnpm --filter convex-backend dev"
   },
   "devDependencies": {
     "turbo": "^2.8.14",
