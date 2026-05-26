@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMutation as useRestMutation } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,7 +119,6 @@ export function ChannelNotificationSettings({
     return 'Mentions';
   }, [messageLevel]);
 
-  const mutation = useRestMutation({
     mutationFn: ({
       category,
       level,

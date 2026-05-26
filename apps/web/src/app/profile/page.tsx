@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
-import { useMutation as useRestMutation } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +32,6 @@ export default function ProfilePage() {
     .filter((row) => row.category === 'CONTENT_MODERATED')
     .slice(0, 5);
 
-  const changePwMutation = useRestMutation({
     mutationFn: (d: { currentPassword: string; newPassword: string }) =>
       changePassword(d),
     onSuccess: () => {
@@ -48,7 +46,6 @@ export default function ProfilePage() {
       }),
   });
 
-  const prefMutation = useRestMutation({
     mutationFn: ({ category, enabled }: { category: any; enabled: boolean }) =>
       upsertPreference({ category, enabled }),
   });

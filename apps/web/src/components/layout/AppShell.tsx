@@ -21,7 +21,6 @@ import {
   Search,
   type LucideIcon,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from 'convex/react';
 
 import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
@@ -117,7 +116,6 @@ export function AppShell({
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const safePathname = pathname ?? '/dashboard';
 
   useEffect(() => {

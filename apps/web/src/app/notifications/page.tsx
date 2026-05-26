@@ -3,7 +3,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation as useRestMutation } from '@tanstack/react-query';
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -122,14 +121,12 @@ export default function NotificationsPage() {
     });
   }, [notifications, deferredSearch]);
 
-  const markAllMutation = useRestMutation({
     mutationFn: () => markAllRead(),
     onSuccess: () => {
       toast({ title: 'All marked as read' });
     },
   });
 
-  const markReadMutation = useRestMutation({
     mutationFn: (id: string) =>
       markRead({ ids: [id as Id<'notificationDeliveries'>] }),
   });

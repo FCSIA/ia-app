@@ -1,7 +1,6 @@
 'use client';
 
 import { Lock } from 'lucide-react';
-import { useMutation as useRestMutation } from '@tanstack/react-query';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -52,7 +51,6 @@ export function NotificationScopeSwitch({
   );
   const enabled = locked || preference?.enabled !== false;
 
-  const mutation = useRestMutation({
     mutationFn: () =>
       upsertPreference({
         category: category as any,
