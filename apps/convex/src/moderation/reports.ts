@@ -2,8 +2,9 @@ import { ConvexError, v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
+import { docs } from "../../lib/docs";
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -12,19 +13,7 @@ const userRefValidator = v.object({
   uniqueId: v.string(),
 });
 
-const reportValidator = v.object({
-  _id: v.id("moderationReports"),
-  submitterId: v.id("users"),
-  contentType: v.string(),
-  contentId: v.string(),
-  clubId: v.optional(v.id("clubs")),
-  reportedUserId: v.optional(v.id("users")),
-  reason: v.string(),
-  status: v.string(),
-  isEscalated: v.boolean(),
-  reviewNote: v.optional(v.string()),
-  reviewedAt: v.optional(v.number()),
-  createdAt: v.number(),
+const reportValidator = docs.moderationReports.extend({
   submitter: v.union(userRefValidator, v.null()),
   reportedUser: v.union(userRefValidator, v.null()),
   club: v.union(
@@ -67,7 +56,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
 
 export const list = query({
   args: {
-    status: v.optional(v.string()),
+    status: v.optional(docs.moderationReports.fields.status),
     clubId: v.optional(v.id("clubs")),
     isEscalated: v.optional(v.boolean()),
   },
@@ -135,7 +124,7 @@ export const submit = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: v.string(),
+    status: docs.moderationReports.fields.status,
     reviewNote: v.string(),
   },
   returns: v.object({ success: v.boolean() }),

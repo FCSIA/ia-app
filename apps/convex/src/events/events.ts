@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializeEventDetail } from "./serialize";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
@@ -36,7 +36,7 @@ export const list = query({
 export const get = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
     const event = await ctx.db.get(args.eventId);
     if (!event) return null;
 
@@ -44,9 +44,9 @@ export const get = query({
     if (
       event.status !== "PUBLISHED" &&
       !admin &&
-      event.authorId !== user._id
+      event.authorId !== user?._id
     ) {
-      throw new Error("Event not yet published");
+      return null;
     }
 
     return serializeEventDetail(ctx, event);

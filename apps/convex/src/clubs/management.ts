@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { clubValidator } from "./_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryWithCounts } from "./serialize";
@@ -19,11 +19,11 @@ export const getAll = query({
 export const getOne = query({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    const context = await getViewerContext(ctx, args.clubId, user);
-
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
     const club = await ctx.db.get(args.clubId);
-    if (!club) throw new Error("Club not found");
+    if (!club) return null;
+    const context = await getViewerContext(ctx, args.clubId, user);
 
     const members = await ctx.db
       .query("clubMembers")

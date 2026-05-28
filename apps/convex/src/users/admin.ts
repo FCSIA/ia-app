@@ -8,8 +8,8 @@ import {
   requireAnyRole,
   requireAnyRoleSafe,
   toPublicUser,
-} from "../lib/currentUser";
-import { USER_MANAGEMENT_ROLES } from "../lib/roles";
+} from "../../lib/currentUser";
+import { USER_MANAGEMENT_ROLES } from "../../lib/roles";
 import {
   appRoleValidator,
   appUserPublicValidator,
@@ -271,8 +271,8 @@ export const exportStudents = query({
   args: {},
   returns: v.array(studentExportRowValidator),
   handler: async (ctx) => {
-    const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    const actor = await getMaybeCurrentAppUser(ctx);
+    if (!actor || !requireAnyRoleSafe(actor, ["SUPER_ADMIN"])) return [];
 
     const students = await ctx.db
       .query("users")

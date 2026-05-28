@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query, type QueryCtx } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
-import { getClubContext, canReadChannel, canPostInChannel } from "./access";
+import { getClubContext, getViewerContext, canReadChannel, canPostInChannel } from "./access";
 import { toClubUserRef } from "./serialize";
 import type { Id } from "../_generated/dataModel";
 
@@ -10,8 +10,12 @@ export const list = query({
   args: { clubId: v.id("clubs") },
   returns: v.array(channelValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+    const club = await ctx.db.get(args.clubId);
+    if (!club) return [];
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return [];
 
     const channels = await ctx.db
       .query("clubChannels")
@@ -295,19 +299,22 @@ async function serializeMessage(
 export const getMessages = query({
   args: { channelId: v.id("clubChannels") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const channel = await ctx.db.get(args.channelId);
 
-    if (!channel) throw new Error("Channel not found");
+    if (!channel) return [];
 
-    const context = await getClubContext(ctx, channel.clubId, user);
+    const club = await ctx.db.get(channel.clubId);
+    if (!club) return [];
+    const context = await getViewerContext(ctx, channel.clubId, user);
     const memberships = await ctx.db
       .query("clubChannelMemberships")
       .filter((q) => q.eq(q.field("channelId"), channel._id))
       .collect();
 
     if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
-      throw new Error("Cannot read this channel");
+      return [];
     }
 
     const roots = await ctx.db

@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
-import { authComponent } from "../auth";
-import type { Doc } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { authComponent } from "../src/auth";
+import type { Doc } from "../src/_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../src/_generated/server";
 import type { AppRole } from "./roles";
 
 type Ctx = QueryCtx | MutationCtx;

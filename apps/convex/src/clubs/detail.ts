@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
-import { getViewerContext } from "./access";
+import { getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { anonymousClubContext, getViewerContext } from "./access";
 import {
   clubSummaryWithCounts,
   getVisibleChannels,
@@ -12,11 +12,13 @@ import {
 export const get = query({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
     const club = await ctx.db.get(args.clubId);
-    if (!club || !club.isActive) throw new Error("Club not found");
+    if (!club || !club.isActive) return null;
 
-    const context = await getViewerContext(ctx, args.clubId, user);
+    const context = user
+      ? await getViewerContext(ctx, args.clubId, user)
+      : anonymousClubContext(club);
 
     const [memberships, sponsorsRows, tags, pendingRequests] = await Promise.all([
       ctx.db
@@ -43,8 +45,17 @@ export const get = query({
         : Promise.resolve([]),
     ]);
 
+    // Deduplicate memberships by userId to prevent duplicate entries
+    const uniqueMemberships = Array.from(
+      new Map(memberships.map((m) => [m.userId, m])).values(),
+    );
+    // Deduplicate sponsors by userId to prevent duplicate entries
+    const uniqueSponsors = Array.from(
+      new Map(sponsorsRows.map((s) => [s.userId, s])).values(),
+    );
+
     const members = await Promise.all(
-      memberships.map(async (m) => {
+      uniqueMemberships.map(async (m) => {
         const memberUser = await ctx.db.get(m.userId);
         if (!memberUser) return null;
         return {
@@ -56,7 +67,7 @@ export const get = query({
     );
 
     const sponsors = await Promise.all(
-      sponsorsRows.map(async (s) => {
+      uniqueSponsors.map(async (s) => {
         const sponsorUser = await ctx.db.get(s.userId);
         if (!sponsorUser) return null;
         return { userId: s.userId, user: toClubUserRef(sponsorUser) };
@@ -110,7 +121,7 @@ export const get = query({
         kind: "MEMBER" as const,
         clubRole: m.role,
         joinedAt: new Date(
-          memberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
+          uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
         ).toISOString(),
       })),
     ];
@@ -120,7 +131,7 @@ export const get = query({
       club,
       context.membership?.role ?? null,
     );
-    const channels = context.canAccessWorkspace
+    const channels = user && context.canAccessWorkspace
       ? await getVisibleChannels(ctx, args.clubId, context, user._id)
       : [];
 

@@ -25,7 +25,7 @@ import {
   flexAttendanceStatusValidator,
 } from "./validators";
 
-export default defineSchema({
+export const schema = defineSchema({
   users: defineTable({
     authUserId: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
@@ -232,14 +232,26 @@ export default defineSchema({
     authorId: v.id("users"),
     title: v.string(),
     body: v.string(),
-    targetType: v.string(),
+    targetType: v.union(
+      v.literal("SCHOOL_WIDE"),
+      v.literal("GRADE"),
+      v.literal("PATHWAY"),
+      v.literal("CLUB"),
+      v.literal("INTERSECTION"),
+    ),
     targetGrade: v.optional(v.number()),
     targetGrades: v.array(v.number()),
     targetPathway: v.optional(v.string()),
     targetMajorPathways: v.array(v.string()),
     targetMinorPathways: v.array(v.string()),
     clubId: v.optional(v.id("clubs")),
-    status: v.string(),
+    status: v.union(
+      v.literal("PENDING_APPROVAL"),
+      v.literal("ACTIVE"),
+      v.literal("EXPIRED"),
+      v.literal("ARCHIVED"),
+      v.literal("REJECTED"),
+    ),
     allowComments: v.boolean(),
     isAdminGeneral: v.boolean(),
     createdAt: v.number(),
@@ -571,7 +583,11 @@ export default defineSchema({
     clubId: v.optional(v.id("clubs")),
     reportedUserId: v.optional(v.id("users")),
     reason: v.string(),
-    status: v.string(),
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("RESOLVED"),
+      v.literal("DISMISSED"),
+    ),
     isEscalated: v.boolean(),
     reviewNote: v.optional(v.string()),
     reviewedAt: v.optional(v.number()),
@@ -609,3 +625,5 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 });
+
+export default schema;

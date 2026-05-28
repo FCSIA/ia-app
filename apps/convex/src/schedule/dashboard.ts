@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   isStudentUser,
   serializeScheduleForUser,

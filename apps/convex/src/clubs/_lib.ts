@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import { 
   clubMemberRoleValidator,
   clubJoinPolicyValidator,
-  clubChannelVisibilityValidator
 } from "../validators";
+import { docs } from "../../lib/docs";
 
 export const clubValidator = v.object({
   _id: v.id("clubs"),
@@ -30,13 +30,4 @@ export const memberValidator = v.object({
   joinedAt: v.number(),
 });
 
-export const channelValidator = v.object({
-  _id: v.id("clubChannels"),
-  clubId: v.id("clubs"),
-  name: v.string(),
-  description: v.optional(v.string()),
-  visibility: clubChannelVisibilityValidator,
-  createdById: v.id("users"),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-});
+export const channelValidator = docs.clubChannels;

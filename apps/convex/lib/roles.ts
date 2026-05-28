@@ -1,5 +1,5 @@
 import type { Infer } from "convex/values";
-import { appRoleValidator } from "../validators";
+import { appRoleValidator } from "../src/validators";
 
 export type AppRole = Infer<typeof appRoleValidator>;
 

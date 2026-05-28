@@ -1,10 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   getFriendshipBetween,
   getStudentTarget,
   deliverNotification,
+  isStudentUser,
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
@@ -22,8 +23,8 @@ export const search = query({
   },
   returns: v.array(scheduleSearchResultValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    requireStudentUser(user);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !isStudentUser(user)) return [];
     const search = args.query.trim().toLowerCase();
     if (search.length < 2) return [];
     const limit = Math.min(Math.max(args.limit ?? 20, 1), 50);

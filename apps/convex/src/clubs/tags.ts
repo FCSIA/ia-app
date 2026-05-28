@@ -1,14 +1,18 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
-import { getClubContext } from "./access";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { getClubContext, getViewerContext } from "./access";
 import { toClubUserRef } from "./serialize";
 
 export const list = query({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    await getClubContext(ctx, args.clubId, user);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+    const club = await ctx.db.get(args.clubId);
+    if (!club) return [];
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return [];
 
     const tags = await ctx.db
       .query("clubTags")

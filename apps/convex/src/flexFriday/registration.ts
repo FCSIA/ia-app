@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 
 function isStudent(user: { roles: string[] }) {
   return (
@@ -13,7 +13,8 @@ function isStudent(user: { roles: string[] }) {
 export const getMyRegistrations = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const registrations = await ctx.db
       .query("flexRegistrations")
       .withIndex("by_studentId", (q) => q.eq("studentId", user._id))
@@ -62,7 +63,8 @@ export const getMyRegistrations = query({
 export const getMyAssignments = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const assignments = await ctx.db
       .query("flexAssignments")
       .withIndex("by_studentId", (q) => q.eq("studentId", user._id))

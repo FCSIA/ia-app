@@ -1,10 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import {
   announcementListItemValidator,
-  assertAnnouncementAccess,
   canViewAnnouncement,
   commentWithAuthorValidator,
   getAccessibleClubIds,
@@ -96,16 +95,24 @@ export const list = query({
 
 export const get = query({
   args: { announcementId: v.id("announcements") },
-  returns: v.object({
-    announcement: announcementListItemValidator,
-    comments: v.array(commentWithAuthorValidator),
-  }),
+  returns: v.union(
+    v.object({
+      announcement: announcementListItemValidator,
+      comments: v.array(commentWithAuthorValidator),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
 
     const ann = await ctx.db.get(args.announcementId);
-    if (!ann) throw new ConvexError("Announcement not found");
-    await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
+    if (!ann) return null;
+    const viewer = await getViewerAudience(ctx, user._id);
+    const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
+    if (!canViewAnnouncement(ann, user._id, user.roles, accessibleClubIds, viewer)) {
+      return null;
+    }
 
     const comments = await ctx.db
       .query("comments")

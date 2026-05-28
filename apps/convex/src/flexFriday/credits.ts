@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getMaybeCurrentAppUser } from "../../lib/currentUser";
 
 export const FLEX_CREDITS_REQUIRED_PER_YEAR = 12;
 export const FLEX_CREDITS_REQUIRED_PER_SEMESTER = 6;
@@ -35,7 +35,8 @@ function semesterRanges(startYear: number) {
 export const getMyCredits = query({
   args: { schoolYearStart: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
     const start = args.schoolYearStart ?? schoolYearStart(new Date());
     const { start: rangeStart, end: rangeEnd } = schoolYearRange(start);
 

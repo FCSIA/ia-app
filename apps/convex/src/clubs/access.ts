@@ -21,6 +21,23 @@ export interface ClubContext {
   hasPendingJoinRequest: boolean;
 }
 
+export function anonymousClubContext(club: Doc<"clubs">): ClubContext {
+  return {
+    club,
+    membership: null,
+    isMember: false,
+    hasClubRole: false,
+    isSponsor: false,
+    isAdmin: false,
+    canAccessWorkspace: false,
+    canManageChannels: false,
+    canManageMembership: false,
+    canApproveJoinRequests: false,
+    canSeePrivateChannels: false,
+    hasPendingJoinRequest: false,
+  };
+}
+
 export function isAdmin(roles: string[]) {
   return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
 }

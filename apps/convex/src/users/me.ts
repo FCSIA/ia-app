@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser, toPublicUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, toPublicUser } from "../../lib/currentUser";
 import { appUserPublicValidator } from "../validators";
 import { ConvexError } from "convex/values";
 

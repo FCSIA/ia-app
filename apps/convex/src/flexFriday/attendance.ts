@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexAttendanceStatusValidator } from "../validators";
 
 function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string, actorId?: string) {
@@ -16,12 +16,13 @@ function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string
 export const getRoster = query({
   args: { workshopId: v.id("flexWorkshops") },
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
     const workshop = await ctx.db.get(args.workshopId);
-    if (!workshop) throw new Error("Workshop not found");
+    if (!workshop) return null;
 
     if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
-      throw new Error("Cannot view this roster");
+      return null;
     }
 
     const links = await ctx.db

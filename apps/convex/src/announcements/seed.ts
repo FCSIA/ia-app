@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import type { WithoutSystemFields } from "convex/server";
 import { internalMutation } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { type NotificationCategory } from "../validators";
 
 export const run = internalMutation({
@@ -108,7 +110,7 @@ export const run = internalMutation({
       }
     }
 
-    const announcements = [
+    const announcements: Array<WithoutSystemFields<Doc<"announcements">>> = [
       {
         authorId: adminId,
         submittedById: adminId,

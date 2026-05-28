@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
-import type { AppRole } from '~/apps/convex/src/lib/roles';
+import type { AppRole } from '~/apps/convex/lib/roles';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;

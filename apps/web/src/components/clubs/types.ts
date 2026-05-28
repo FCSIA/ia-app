@@ -17,7 +17,7 @@ export type ClubChannelMessage = FunctionReturnType<
   typeof api.clubs.channels.getMessages
 >[number];
 
-export type { AppRole } from '~/apps/convex/src/lib/roles';
+export type { AppRole } from '~/apps/convex/lib/roles';
 
 export interface AnnouncementSummary {
   _id: string;

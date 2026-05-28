@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { commentWithAuthorValidator } from "./_lib";
 import { serializeComment } from "./serialize";
@@ -9,7 +9,8 @@ export const list = query({
   args: { announcementId: v.id("announcements") },
   returns: v.array(commentWithAuthorValidator),
   handler: async (ctx, args) => {
-    await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))

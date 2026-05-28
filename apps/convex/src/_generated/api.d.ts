@@ -43,8 +43,6 @@ import type * as flexFriday_registration from "../flexFriday/registration.js";
 import type * as flexFriday_sessions from "../flexFriday/sessions.js";
 import type * as flexFriday_workshops from "../flexFriday/workshops.js";
 import type * as http from "../http.js";
-import type * as lib_currentUser from "../lib/currentUser.js";
-import type * as lib_roles from "../lib/roles.js";
 import type * as moderation_keywords from "../moderation/keywords.js";
 import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
@@ -107,8 +105,6 @@ declare const fullApi: ApiFromModules<{
   "flexFriday/sessions": typeof flexFriday_sessions;
   "flexFriday/workshops": typeof flexFriday_workshops;
   http: typeof http;
-  "lib/currentUser": typeof lib_currentUser;
-  "lib/roles": typeof lib_roles;
   "moderation/keywords": typeof moderation_keywords;
   "moderation/reports": typeof moderation_reports;
   "notifications/_lib": typeof notifications__lib;

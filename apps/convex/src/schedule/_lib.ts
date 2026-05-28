@@ -2,12 +2,11 @@ import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
-  appUserPublicValidator,
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
 import { toCourseSummary } from "../courses/_lib";
-import type { AppRole } from "../lib/roles";
+import type { AppRole } from "../../lib/roles";
 
 export const schoolDayBlockValidator = v.object({
   id: v.id("schoolDayBlocks"),

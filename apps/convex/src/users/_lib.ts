@@ -2,8 +2,8 @@ import { ConvexError, v } from "convex/values";
 import { authComponent, createAuth } from "../auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { toPublicUser } from "../lib/currentUser";
-import { type AppRole } from "../lib/roles";
+import { toPublicUser } from "../../lib/currentUser";
+import { type AppRole } from "../../lib/roles";
 import {
   appUserPublicValidator,
 } from "../validators";

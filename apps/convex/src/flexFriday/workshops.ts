@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { pathwayValidator } from "../validators";
 
 function canManageWorkshops(user: { roles: string[] }) {
@@ -74,7 +74,7 @@ export const listBySession = query({
     const user = await getMaybeCurrentAppUser(ctx);
     const session = await ctx.db.get(args.sessionId);
     if (!session || session.flexFridayId !== args.flexFridayId) {
-      throw new Error("Session not found");
+      return [];
     }
 
     const links = await ctx.db

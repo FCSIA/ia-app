@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   WRAPPED_SCHEMA_VERSION,
   WRAPPED_STUDENT_ROLES,
@@ -383,9 +383,10 @@ export const availability = query({
 
 export const getMine = query({
   args: { schoolYear: v.optional(v.number()) },
-  returns: wrappedSummaryValidator,
+  returns: v.union(wrappedSummaryValidator, v.null()),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
     const now = new Date();
     const window = wrappedAvailability(now);
     const isAdminUser = isAdmin(user.roles);
@@ -429,9 +430,17 @@ export const snapshotStatus = query({
     latestGeneratedAt: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
-    if (!isAdmin(user.roles)) {
-      throw new ConvexError("Admin access required");
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !isAdmin(user.roles)) {
+      return {
+        schoolYear: args.schoolYear,
+        schemaVersion: WRAPPED_SCHEMA_VERSION,
+        eligibleUsers: 0,
+        generated: 0,
+        stale: 0,
+        missing: 0,
+        latestGeneratedAt: null,
+      };
     }
 
     const students = await ctx.db

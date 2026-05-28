@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { createLinkedUser } from "./users/_lib";
-import { type AppRole } from "./lib/roles";
+import { type AppRole } from "../lib/roles";
 import { type Pathway } from "./validators";
 
 const FIRST_NAMES = [

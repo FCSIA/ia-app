@@ -32,18 +32,6 @@ export async function serializeAnnouncement(
 
   return {
     ...ann,
-    status: ann.status as
-      | "PENDING_APPROVAL"
-      | "ACTIVE"
-      | "EXPIRED"
-      | "ARCHIVED"
-      | "REJECTED",
-    targetType: ann.targetType as
-      | "SCHOOL_WIDE"
-      | "GRADE"
-      | "PATHWAY"
-      | "CLUB"
-      | "INTERSECTION",
     isRead: !!read,
     readAt: read?.readAt,
     isBookmarked: !!bookmark,

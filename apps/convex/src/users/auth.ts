@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { authComponent, createAuth } from "../auth";
 import { mutation } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
-import { getCurrentAppUser } from "../lib/currentUser";
+import { getCurrentAppUser } from "../../lib/currentUser";
 
 export const changePassword = mutation({
   args: {

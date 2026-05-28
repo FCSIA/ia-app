@@ -1,38 +1,9 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { docs } from "../../lib/docs";
 
-export const announcementListItemValidator = v.object({
-  _id: v.id("announcements"),
-  _creationTime: v.optional(v.number()),
-  authorId: v.id("users"),
-  title: v.string(),
-  body: v.string(),
-  targetType: v.union(
-    v.literal("SCHOOL_WIDE"),
-    v.literal("GRADE"),
-    v.literal("PATHWAY"),
-    v.literal("CLUB"),
-    v.literal("INTERSECTION"),
-  ),
-  targetGrade: v.optional(v.number()),
-  targetGrades: v.array(v.number()),
-  targetPathway: v.optional(v.string()),
-  targetMajorPathways: v.array(v.string()),
-  targetMinorPathways: v.array(v.string()),
-  clubId: v.optional(v.id("clubs")),
-  status: v.union(
-    v.literal("PENDING_APPROVAL"),
-    v.literal("ACTIVE"),
-    v.literal("EXPIRED"),
-    v.literal("ARCHIVED"),
-    v.literal("REJECTED"),
-  ),
-  allowComments: v.boolean(),
-  isAdminGeneral: v.boolean(),
-  createdAt: v.number(),
-  expiresAt: v.optional(v.number()),
-  promotedUntil: v.optional(v.number()),
+export const announcementListItemValidator = docs.announcements.extend({
   isRead: v.boolean(),
   readAt: v.optional(v.number()),
   isBookmarked: v.boolean(),
@@ -55,12 +26,7 @@ export const announcementListItemValidator = v.object({
   commentCount: v.number(),
 });
 
-export const commentWithAuthorValidator = v.object({
-  _id: v.id("comments"),
-  announcementId: v.id("announcements"),
-  authorId: v.id("users"),
-  body: v.string(),
-  createdAt: v.number(),
+export const commentWithAuthorValidator = docs.comments.extend({
   author: v.union(
     v.object({
       _id: v.id("users"),

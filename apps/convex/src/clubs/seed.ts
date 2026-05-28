@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { type Id } from "../_generated/dataModel";
-import { type AppRole } from "../lib/roles";
+import { type AppRole } from "../../lib/roles";
 import {
   CLUB_DEFINITIONS,
   type SeedClubCategory,
