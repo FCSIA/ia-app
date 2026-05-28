@@ -8,9 +8,7 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:generate": "pnpm --filter cvx codegen",
-    "db:studio": "pnpm convex:dev",
-    "convex:dev": "pnpm --filter cvx dev"
+    "cvx:dev": "pnpm --filter cvx dev"
   },
   "devDependencies": {
     "turbo": "^2.8.14",
