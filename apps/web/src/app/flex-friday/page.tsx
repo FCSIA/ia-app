@@ -226,7 +226,7 @@ export default function FlexFridayPage() {
         onOpenChange={setSessionFormOpen}
         editingSessionId={editingSessionId}
         initialData={sessionForm}
-        flexFridayId={flex.selectedFriday?._id}
+        flexFridayId={flex.selectedFriday!._id}
         runAction={actions.runAction}
         mutations={actions.mutations}
       />
@@ -237,7 +237,7 @@ export default function FlexFridayPage() {
         editingWorkshopId={editingWorkshopId}
         initialData={workshopForm}
         sessions={flex.sessions}
-        flexFridayId={flex.selectedFriday?._id}
+        flexFridayId={flex.selectedFriday!._id}
         runAction={actions.runAction}
         mutations={actions.mutations}
       />
