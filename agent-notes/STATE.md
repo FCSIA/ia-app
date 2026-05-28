@@ -29,18 +29,17 @@
 | Announcements, moderation, uploads | **Convex** |
 | Admin student CSV import/export | **Convex** (`api.users.admin.importStudents`, `api.users.admin.exportStudents`) |
 
-### Dev data commands (`package.json`)
+### Dev data reset
 
-- `pnpm db:reset` → `node scripts/convex-db.mjs reset` (bootstrap + batched schedule seed)
-- `pnpm db:seed` → `node scripts/convex-db.mjs seed`
-- `pnpm db:generate` → `pnpm --filter convex-backend codegen`
-- `pnpm db:studio` → `pnpm convex:dev`
-- Requires `BOOTSTRAP_SECRET` on the Convex deployment
-- Public entry: `bootstrap:resetAndSeed` → `internal.seed.run`
+- No local seed/reset/clear CLI commands.
+- Run dashboard-only internal Convex function `bootstrap:resetAndSeed` to
+  destructively recreate demo data.
+- No `BOOTSTRAP_SECRET`; seed/reset functions are internal rather than public
+  secret-gated functions.
 
 ### Verification (latest)
 
-- `pnpm --filter convex-backend codegen` + `typecheck` — pass
+- `pnpm --filter cvx codegen` + `typecheck` — pass
 - `pnpm --filter web build` — pass
 - Web `tsc --noEmit` — pass
 - `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
@@ -62,11 +61,11 @@
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter convex-backend codegen
-direnv exec . pnpm --filter convex-backend typecheck
+direnv exec . pnpm --filter cvx codegen
+direnv exec . pnpm --filter cvx typecheck
 direnv exec . pnpm lint
 direnv exec . pnpm --filter web build
-BOOTSTRAP_SECRET=dev-secret pnpm db:reset   # example; use your deployment secret
+# Demo data reset: run internal Convex function bootstrap:resetAndSeed in the dashboard.
 ```
 
 ## Stash

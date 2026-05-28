@@ -23,7 +23,7 @@ detection.
 - Backend: `apps/convex/src/schedule/`
 - Web page: `apps/web/src/app/schedule/page.tsx`
 - Schedule components: `apps/web/src/components/schedule/`
-- Seed fixtures: `apps/convex/src/seeddata/schedule.ts`
+- Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
 ## Convex Surface
 
@@ -36,7 +36,7 @@ detection.
 - `api.schedule.blocks.createBlock`
 - `api.schedule.blocks.updateBlock`
 - `api.schedule.blocks.deleteBlock`
-- `api.schedule.seed.seedFromStaticData`
+- `internal.schedule.seed.seedFromStaticData`
 
 ## Data Model
 
@@ -62,18 +62,9 @@ requests create notification deliveries.
 
 ## Seed Data
 
-`pnpm db:seed` and `pnpm db:reset` run the schedule seed in batches after users
-and courses exist.
-
-Manual run:
-
-```bash
-cd apps/convex
-PATH=../../node_modules/.bin:$PATH convex run schedule/seed:seedFromStaticData \
-  '{"secret":"<BOOTSTRAP_SECRET>","reset":true,"batchSize":20}'
-```
-
-Continue with the returned `nextCursor` until `isDone` is true.
+The dashboard-only `bootstrap:resetAndSeed` action runs the schedule seed in
+batches after users and courses exist. The schedule seed function is internal and
+is not a local CLI entrypoint.
 
 ## Related
 

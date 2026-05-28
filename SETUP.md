@@ -9,6 +9,7 @@
 ## 1. Prerequisites
 
 Ensure you have the following tools installed on your development machine[^1]:
+
 - **Node.js**: v24
 - **pnpm**: v10.29.3, matching `packageManager` in `package.json`
 
@@ -26,17 +27,12 @@ Follow these steps to bootstrap your local environment after cloning the reposit
    pnpm convex:dev
    ```
    Run this once interactively so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
-5. Set the seed secret on that Convex deployment:
-   ```bash
-   cd apps/convex
-   convex env set BOOTSTRAP_SECRET 42
-   cd ../..
-   ```
-   The local `.env` value is only the client-side argument passed to the seed command; the Convex deployment must have the same value configured.
-6. Start the development server: `pnpm dev`. This command starts:
-  - The Next.js frontend at `http://localhost:3000`
-  - The Convex dev server in the background, which auto-provisions schema and functions.
-7. Run the seeding script to populate your database with demo accounts, clubs, courses, and schedules: `pnpm db:seed`
+5. Start the development server: `pnpm dev`. This command starts:
+
+- The Next.js frontend at `http://localhost:3000`
+- The Convex dev server in the background, which auto-provisions schema and functions.
+
+6. To populate demo accounts, clubs, courses, and schedules, open the Convex Dashboard and run the internal function `bootstrap:resetAndSeed`, then check `bootstrap:seedStatus` for progress.
 
 ---
 
@@ -45,17 +41,23 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 Once the first-time setup is complete, your daily workflow is extremely lightweight.
 
 ### Start Developing
+
 Simply run:
+
 ```bash
 pnpm dev
 ```
+
 This will automatically launch the Next.js app and the Convex background compiler.
 
 ### Inspect the Database
+
 To view live documents, indexes, and Convex logs:
+
 ```bash
 pnpm db:studio
 ```
+
 This opens the Convex Dev Console in your web browser.
 
 ---
@@ -65,7 +67,9 @@ This opens the Convex Dev Console in your web browser.
 Because the app is fully serverless/reactive on Convex, local database setups are highly simplified. The following outlines an optional method for environment management.
 
 ### Nix + direnv (macOS / Linux)
+
 If you prefer a fully managed development environment:
+
 1. Ensure [Nix](https://nixos.org/download.html) and [direnv](https://direnv.net/) are installed.
 2. Run `direnv allow` in the project root.
 3. This automatically installs the correct versions of Node.js and pnpm, and loads environment variables.
@@ -81,26 +85,19 @@ All demo accounts use their user ID as both the username and the password; e.g. 
 ## 6. Troubleshooting & Common Tasks
 
 ### Reset the Database
-If you need to wipe all data and re-seed from scratch:
-```bash
-pnpm db:reset
-```
-Requires `BOOTSTRAP_SECRET` to be present locally and configured on the selected
-Convex deployment.
 
-### Missing Secret Error
-If you receive the error:
-`Set BOOTSTRAP_SECRET (or COURSE_SEED_SECRET) before running db commands.`
-Double-check that your project-root `.env` exists and contains:
-```env
-BOOTSTRAP_SECRET="42"
-```
+If you need to wipe all demo data and re-seed from scratch, open the Convex
+Dashboard and run the internal function `bootstrap:resetAndSeed`, then check
+`bootstrap:seedStatus` for progress. There is no local `pnpm db:reset` command
+and no seed secret.
 
 ### Missing Convex Deployment Error
+
 If you receive the error:
 `Convex is not configured for this checkout.`
 
 Run:
+
 ```bash
 pnpm convex:dev
 ```
@@ -108,7 +105,9 @@ pnpm convex:dev
 Convex writes the selected dev deployment to `apps/convex/.env.local`. The seed/reset commands cannot run until that deployment exists.
 
 ### Stale Client or Build Issues
+
 If Turborepo has stale caches or dependencies have drifted, clean and rebuild:
+
 ```bash
 pnpm build
 ```

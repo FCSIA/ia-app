@@ -24,11 +24,12 @@ Convex deploys schema, indexes, functions, HTTP routes, storage integration, and
 component configuration.
 
 ```bash
-pnpm --filter convex-backend deploy
+pnpm --filter cvx deploy
 ```
 
-Secrets such as `BOOTSTRAP_SECRET` live in the Convex deployment environment,
-not only in local `.env` files.
+Runtime secrets such as auth credentials live in the Convex deployment
+environment, not only in local `.env` files. Demo seed/reset no longer uses a
+bootstrap secret.
 
 ## Frontend Deployment
 
@@ -46,8 +47,8 @@ NEXT_PUBLIC_SITE_URL=https://...
 Run the narrow checks first while developing:
 
 ```bash
-pnpm --filter convex-backend codegen
-pnpm --filter convex-backend typecheck
+pnpm --filter cvx codegen
+pnpm --filter cvx typecheck
 pnpm --filter web build
 ```
 

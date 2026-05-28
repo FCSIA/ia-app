@@ -16,11 +16,11 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Web | Next.js 15, React 19, Tailwind CSS, shadcn/ui |
+| Layer              | Technology                                                  |
+| ------------------ | ----------------------------------------------------------- |
+| Web                | Next.js 15, React 19, Tailwind CSS, shadcn/ui               |
 | Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
-| Tooling | pnpm workspaces, Turborepo |
+| Tooling            | pnpm workspaces, Turborepo                                  |
 
 ## Project Structure
 
@@ -52,23 +52,15 @@ Start the application (Next.js frontend and Convex dev server in parallel):
 pnpm dev
 ```
 
-On a new checkout, run `pnpm convex:dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`. Seed/reset commands also require `BOOTSTRAP_SECRET` to be set on the Convex deployment, not only in local `.env`:
+On a new checkout, run `pnpm convex:dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
 
-```bash
-cd apps/convex
-convex env set BOOTSTRAP_SECRET 42
-cd ../..
-```
+Demo seed/reset is intentionally dashboard-only. In the Convex Dashboard, run
+the internal function `bootstrap:resetAndSeed` to schedule a destructive reset,
+then run `bootstrap:seedStatus` to watch progress.
 
-Seed the database with demo accounts and data:
-
-```bash
-pnpm db:seed
-```
-
-| Service | URL |
-|---------|-----|
-| Web App | http://localhost:3000 |
+| Service          | URL                                                    |
+| ---------------- | ------------------------------------------------------ |
+| Web App          | http://localhost:3000                                  |
 | Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
 
 Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [SETUP.md](./SETUP.md#5-test-accounts) for a complete list of demo logins.
@@ -77,8 +69,6 @@ Demo accounts are seeded with their ID as the password, for example `STU001` / `
 
 ```bash
 pnpm dev          # Start web app and Convex dev server in parallel
-pnpm db:seed      # Seed Convex database (requires BOOTSTRAP_SECRET)
-pnpm db:reset     # Reset and re-seed database (requires BOOTSTRAP_SECRET)
 pnpm db:studio    # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
 pnpm build        # Build all workspaces for production
@@ -97,19 +87,25 @@ Users -> Next.js Web App (Vercel / Azure App Service)
 ```
 
 ### 1. Backend Deployment (Convex)
+
 Convex manages database hosting, file storage, serverless functions, and scaling automatically. To deploy backend changes to production:
+
 ```bash
-pnpm --filter convex-backend deploy
+pnpm --filter cvx deploy
 ```
-This pushes your schema, indexes, and server functions to your production Convex deployment. All secrets (like `BOOTSTRAP_SECRET` and auth credentials) are configured securely via the Convex Dashboard.
+
+This pushes your schema, indexes, and server functions to your production Convex deployment. Auth credentials and other runtime secrets are configured securely via the Convex Dashboard.
 
 ### 2. Frontend Deployment (Next.js)
+
 The Next.js frontend can be deployed anywhere that supports Node.js or edge runtimes:
+
 - **Vercel**: The native hosting environment for Next.js, offering optimal performance and automatic zero-config deployments.
 - **Azure App Service / Azure Container Apps**: Suitable for school environments that require hosting within an enterprise cloud subscription. The web app runs as a lightweight Docker container.
 - **Generic Single Server**: A simple Linux virtual machine running the Next.js server behind a reverse proxy.
 
 ### React Server Components (RSC)
+
 Next.js App Router and React Server Components are fully supported. Since database operations and reactive subscriptions go directly from the client and server to Convex's real-time API, the web app scales horizontally without maintaining stateful database connection pools.
 
 ---

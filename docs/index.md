@@ -22,14 +22,14 @@ same change.
 
 ## Current Stack
 
-| Area | Current source of truth |
-| --- | --- |
-| Web app | `apps/web/src` |
-| Backend functions | `apps/convex/src` |
-| Data model | `apps/convex/src/schema.ts` |
-| Auth | Better Auth component under `apps/convex/src/betterAuth` |
-| Generated Convex API | `apps/convex/src/_generated` |
-| Seed/reset commands | `scripts/convex-db.mjs` and `apps/convex/src/seed.ts` |
+| Area                 | Current source of truth                                  |
+| -------------------- | -------------------------------------------------------- |
+| Web app              | `apps/web/src`                                           |
+| Backend functions    | `apps/convex/src`                                        |
+| Data model           | `apps/convex/src/schema.ts`                              |
+| Auth                 | Better Auth component under `apps/convex/src/betterAuth` |
+| Generated Convex API | `apps/convex/src/_generated`                             |
+| Seed/reset           | Internal Convex function `bootstrap:resetAndSeed`        |
 
 ## Architecture
 

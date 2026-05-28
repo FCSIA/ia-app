@@ -28,7 +28,6 @@ User management is handled through Convex functions and the Admin Panel.
 - `api.users.me.me`
 - `api.users.me.updateDashboardLayout`
 - `api.users.auth.changePassword`
-- `api.users.auth.bootstrapFirstSuperAdmin`
 - `api.users.admin.list`
 - `api.users.admin.createUser`
 - `api.users.admin.importStudents`

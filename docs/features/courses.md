@@ -19,7 +19,7 @@ course browsing pages.
 ## Source Files
 
 - Backend: `apps/convex/src/courses/`
-- Seed fixtures: `apps/convex/src/seeddata/courses.ts`
+- Seed fixtures: `apps/convex/seed-data/courses.ts`
 - Web routes: `apps/web/src/app/courses/`
 - Course picker: `apps/web/src/components/courses/course-picker.tsx`
 
@@ -28,7 +28,7 @@ course browsing pages.
 - `api.courses.catalog.list`
 - `api.courses.catalog.listPage`
 - `api.courses.catalog.get`
-- `api.courses.seed.run`
+- `internal.courses.seed.run`
 
 ## Data Model
 

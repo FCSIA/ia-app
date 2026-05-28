@@ -26,14 +26,14 @@ notifications, seed/reset, and file storage metadata.
 
 ## Main Directories
 
-| Directory | Purpose |
-| --- | --- |
-| `apps/web/src/app` | Next.js App Router pages and route handlers |
-| `apps/web/src/components` | Shared UI, layout, feature components |
-| `apps/web/src/lib` | Web clients, helpers, parsing, search, upload helpers |
-| `apps/convex/src` | Convex schema, queries, mutations, HTTP routes, auth |
-| `apps/convex/src/_generated` | Generated API/data model types |
-| `scripts/convex-db.mjs` | Local seed/reset orchestration |
+| Directory                      | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `apps/web/src/app`             | Next.js App Router pages and route handlers           |
+| `apps/web/src/components`      | Shared UI, layout, feature components                 |
+| `apps/web/src/lib`             | Web clients, helpers, parsing, search, upload helpers |
+| `apps/convex/src`              | Convex schema, queries, mutations, HTTP routes, auth  |
+| `apps/convex/src/_generated`   | Generated API/data model types                        |
+| `apps/convex/src/bootstrap.ts` | Dashboard-only demo reset orchestration               |
 
 ## Current Backend Model
 

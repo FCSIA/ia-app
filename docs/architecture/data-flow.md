@@ -63,9 +63,9 @@ helpers.
 
 ## Seed/Reset Flow
 
-`pnpm db:seed` and `pnpm db:reset` call `scripts/convex-db.mjs`, which runs
-secret-protected Convex mutations. The Convex deployment must have
-`BOOTSTRAP_SECRET` configured.
+Demo reset runs from the Convex Dashboard through the internal function
+`bootstrap:resetAndSeed`. The app does not expose local seed/reset CLI commands
+or a bootstrap secret.
 
 ## Related
 
