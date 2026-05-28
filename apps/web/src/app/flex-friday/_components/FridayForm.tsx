@@ -118,13 +118,11 @@ export function FridayForm({
             )}
 
             <div className="py-2">
-              <Label className="flex items-center gap-2 cursor-pointer">
-                <Switch 
-                  checked={form.isSchoolDay} 
-                  onToggle={() => setForm(f => ({ ...f, isSchoolDay: !f.isSchoolDay }))} 
-                />
-                <span className="text-sm font-medium">Is School Day?</span>
-              </Label>
+              <Switch 
+                label="Is School Day?"
+                checked={form.isSchoolDay} 
+                onToggle={() => setForm(f => ({ ...f, isSchoolDay: !f.isSchoolDay }))} 
+              />
             </div>
 
             <div className="space-y-2">
