@@ -1,20 +1,14 @@
-import { ConvexError, v } from "convex/values";
-import { mutation } from "../_generated/server";
-import { COURSE_SEEDS } from "../seeddata/courses";
+import { v } from "convex/values";
+import { internalMutation } from "../_generated/server";
+import { COURSE_SEEDS } from "../../seed-data/courses";
 import { courseSeedResultValidator, courseSeedToDocument } from "./_lib";
 
-export const run = mutation({
+export const run = internalMutation({
   args: {
-    secret: v.string(),
     reset: v.optional(v.boolean()),
   },
   returns: courseSeedResultValidator,
   handler: async (ctx, args) => {
-    const expectedSecret = process.env.COURSE_SEED_SECRET ?? process.env.BOOTSTRAP_SECRET;
-    if (!expectedSecret || args.secret !== expectedSecret) {
-      throw new ConvexError("Invalid seed secret.");
-    }
-
     let deleted = 0;
     if (args.reset) {
       const existing = await ctx.db.query("courses").take(1000);

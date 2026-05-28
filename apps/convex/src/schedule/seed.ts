@@ -1,12 +1,12 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import {
   BASE_BLOCKS,
   SCHEDULE_WEEKDAYS,
   buildScheduleCourses,
   compareStudents,
   stableScheduleVisibility,
-} from "../seeddata/schedule";
+} from "../../seed-data/schedule";
 import {
   isStudentUser,
   scheduleSeedResultValidator,
@@ -15,28 +15,31 @@ import {
   seedAcceptedFriendPairs,
 } from "./_lib";
 
-export const seedFromStaticData = mutation({
+export const seedFromStaticData = internalMutation({
   args: {
-    secret: v.string(),
     reset: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
   },
   returns: scheduleSeedResultValidator,
   handler: async (ctx, args) => {
-    const expectedSecret = process.env.SCHEDULE_SEED_SECRET ?? process.env.BOOTSTRAP_SECRET;
-    if (!expectedSecret || args.secret !== expectedSecret) {
-      throw new ConvexError("Invalid seed secret.");
-    }
-
     const now = Date.now();
     const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
-    const batchSize = Math.min(Math.max(Math.floor(args.batchSize ?? 20), 1), 25);
-    const deleted = args.reset && cursor === 0
-      ? await deleteSeedBatch(ctx)
-      : { entries: 0, schedules: 0, friendships: 0, blocks: 0 };
+    const batchSize = Math.min(
+      Math.max(Math.floor(args.batchSize ?? 20), 1),
+      25,
+    );
+    const deleted =
+      args.reset && cursor === 0
+        ? await deleteSeedBatch(ctx)
+        : { entries: 0, schedules: 0, friendships: 0, blocks: 0 };
 
-    if (deleted.entries > 0 || deleted.schedules > 0 || deleted.friendships > 0 || deleted.blocks > 0) {
+    if (
+      deleted.entries > 0 ||
+      deleted.schedules > 0 ||
+      deleted.friendships > 0 ||
+      deleted.blocks > 0
+    ) {
       return {
         blocksInserted: 0,
         schedulesUpserted: 0,
@@ -59,19 +62,31 @@ export const seedFromStaticData = mutation({
           user.minor,
       )
       .sort(compareStudents);
-    const actor = users.find(
-      (user) => user.roles.includes("SUPER_ADMIN") || user.roles.includes("ADMIN"),
-    )
-      ?? users[0];
+    const actor =
+      users.find(
+        (user) =>
+          user.roles.includes("SUPER_ADMIN") || user.roles.includes("ADMIN"),
+      ) ?? users[0];
     if (!actor) throw new ConvexError("Seed users before schedule fixtures.");
 
     const courses = await ctx.db.query("courses").take(1000);
-    if (courses.length === 0) throw new ConvexError("Seed courses before schedule fixtures.");
+    if (courses.length === 0)
+      throw new ConvexError("Seed courses before schedule fixtures.");
     const courseMap = new Map(courses.map((course) => [course.slug, course]));
 
     const isFirstPage = cursor === 0;
-    const blocksInserted = isFirstPage ? await seedDefaultBlocks(ctx, actor._id, now, SCHEDULE_WEEKDAYS, BASE_BLOCKS as unknown as any[]) : 0;
-    const friendshipsInserted = isFirstPage ? await seedAcceptedFriendPairs(ctx, students, now) : 0;
+    const blocksInserted = isFirstPage
+      ? await seedDefaultBlocks(
+          ctx,
+          actor._id,
+          now,
+          SCHEDULE_WEEKDAYS,
+          BASE_BLOCKS as unknown as any[],
+        )
+      : 0;
+    const friendshipsInserted = isFirstPage
+      ? await seedAcceptedFriendPairs(ctx, students, now)
+      : 0;
 
     let schedulesUpserted = 0;
     let entriesInserted = 0;
@@ -84,13 +99,14 @@ export const seedFromStaticData = mutation({
         .query("studentSchedules")
         .withIndex("by_userId", (q) => q.eq("userId", student._id))
         .unique();
-      const scheduleId = existingSchedule?._id
-        ?? await ctx.db.insert("studentSchedules", {
+      const scheduleId =
+        existingSchedule?._id ??
+        (await ctx.db.insert("studentSchedules", {
           userId: student._id,
           isPublic: stableScheduleVisibility(student.uniqueId),
           createdAt: now,
           updatedAt: now,
-        });
+        }));
 
       if (existingSchedule) {
         await ctx.db.patch(existingSchedule._id, {

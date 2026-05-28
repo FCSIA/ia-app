@@ -8,16 +8,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:generate": "pnpm --filter convex-backend codegen",
-    "db:migrate": "echo 'Schema changes deploy via: pnpm convex:dev (Convex push)'",
-    "db:reset": "node scripts/convex-db.mjs reset",
-    "db:clear": "convex run devAuth:clearAuthData",
-    "db:seed": "node scripts/convex-db.mjs seed",
-    "db:seed:bootstrap": "node scripts/convex-db.mjs bootstrap",
-    "db:seed:courses": "cd apps/convex && PATH=../../node_modules/.bin:$PATH convex run courses/seed:run \"{\\\"secret\\\":\\\"$BOOTSTRAP_SECRET\\\",\\\"reset\\\":true}\"",
-    "db:seed:schedule": "cd apps/convex && PATH=../../node_modules/.bin:$PATH convex run schedule/seed:seedFromStaticData \"{\\\"secret\\\":\\\"$BOOTSTRAP_SECRET\\\",\\\"reset\\\":true,\\\"batchSize\\\":20}\"",
+    "db:generate": "pnpm --filter cvx codegen",
     "db:studio": "pnpm convex:dev",
-    "convex:dev": "pnpm --filter convex-backend dev"
+    "convex:dev": "pnpm --filter cvx dev"
   },
   "devDependencies": {
     "turbo": "^2.8.14",

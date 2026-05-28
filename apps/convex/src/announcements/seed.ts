@@ -1,10 +1,9 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { type NotificationCategory } from "../validators";
 
-export const run = mutation({
+export const run = internalMutation({
   args: {
-    secret: v.string(),
     reset: v.optional(v.boolean()),
   },
   returns: v.object({
@@ -14,11 +13,6 @@ export const run = mutation({
     preferencesSeeded: v.number(),
   }),
   handler: async (ctx, args) => {
-    const expectedSecret = process.env.BOOTSTRAP_SECRET;
-    if (!expectedSecret || args.secret !== expectedSecret) {
-      throw new ConvexError("Invalid bootstrap secret.");
-    }
-
     const now = Date.now();
     const oneMonth = 30 * 24 * 60 * 60 * 1000;
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
@@ -28,7 +22,9 @@ export const run = mutation({
     const lastWeek = now - oneWeek;
 
     if (args.reset) {
-      const oldBookmarks = await ctx.db.query("announcementBookmarks").take(5000);
+      const oldBookmarks = await ctx.db
+        .query("announcementBookmarks")
+        .take(5000);
       for (const b of oldBookmarks) await ctx.db.delete(b._id);
 
       const oldReads = await ctx.db.query("announcementReads").take(5000);
@@ -40,11 +36,20 @@ export const run = mutation({
       const oldAnnouncements = await ctx.db.query("announcements").take(5000);
       for (const a of oldAnnouncements) await ctx.db.delete(a._id);
 
-      const oldKeywords = await ctx.db.query("moderationKeywordRules").take(100);
+      const oldKeywords = await ctx.db
+        .query("moderationKeywordRules")
+        .take(100);
       for (const k of oldKeywords) await ctx.db.delete(k._id);
 
-      const oldPreferences = await ctx.db.query("notificationPreferences").take(20000);
+      const oldPreferences = await ctx.db
+        .query("notificationPreferences")
+        .take(20000);
       for (const p of oldPreferences) await ctx.db.delete(p._id);
+
+      const oldDeliveries = await ctx.db
+        .query("notificationDeliveries")
+        .take(20000);
+      for (const delivery of oldDeliveries) await ctx.db.delete(delivery._id);
     }
 
     // Load necessary users
@@ -350,7 +355,8 @@ export const run = mutation({
         isAdminGeneral: false,
         allowComments: false,
         status: "REJECTED",
-        rejectionNote: "Please confirm the travel date and remove unapproved cost language.",
+        rejectionNote:
+          "Please confirm the travel date and remove unapproved cost language.",
         createdAt: now,
         updatedAt: now,
       },
@@ -387,20 +393,32 @@ export const run = mutation({
     if (stu1) {
       const aId = annIdByTitle.get("Welcome to IA School App");
       if (aId) {
-        await ctx.db.insert("announcementBookmarks", { announcementId: aId, userId: stu1._id, createdAt: now });
+        await ctx.db.insert("announcementBookmarks", {
+          announcementId: aId,
+          userId: stu1._id,
+          createdAt: now,
+        });
         bookmarksSeeded++;
       }
     }
     if (stu3) {
       const aId = annIdByTitle.get("Robotics Club Scrimmage Build Saturday");
       if (aId) {
-        await ctx.db.insert("announcementBookmarks", { announcementId: aId, userId: stu3._id, createdAt: now });
+        await ctx.db.insert("announcementBookmarks", {
+          announcementId: aId,
+          userId: stu3._id,
+          createdAt: now,
+        });
         bookmarksSeeded++;
       }
     }
     const aId2 = annIdByTitle.get("Innovation Showcase Night This Thursday");
     if (aId2) {
-      await ctx.db.insert("announcementBookmarks", { announcementId: aId2, userId: teacherId, createdAt: now });
+      await ctx.db.insert("announcementBookmarks", {
+        announcementId: aId2,
+        userId: teacherId,
+        createdAt: now,
+      });
       bookmarksSeeded++;
     }
 
@@ -430,7 +448,9 @@ export const run = mutation({
     if (roboticsClub) {
       const chan = await ctx.db
         .query("clubChannels")
-        .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", roboticsClub._id))
+        .withIndex("by_clubId_and_visibility", (q) =>
+          q.eq("clubId", roboticsClub._id),
+        )
         .filter((q) => q.eq(q.field("name"), "general"))
         .first();
       if (chan) {
@@ -446,9 +466,14 @@ export const run = mutation({
       : [];
     const roboticsMemberIds = new Set(roboticsClubMembers.map((m) => m.userId));
 
-
     for (const u of allUsers) {
-      const basePrefs: Array<{ category: NotificationCategory; scopeKey: string; clubId?: string; channelId?: string; locked?: boolean }> = [
+      const basePrefs: Array<{
+        category: NotificationCategory;
+        scopeKey: string;
+        clubId?: string;
+        channelId?: string;
+        locked?: boolean;
+      }> = [
         { category: "SCHOOL_ANNOUNCEMENT", scopeKey: "global", locked: true },
         { category: "EVENT", scopeKey: "global" },
         { category: "FLEX_FRIDAY", scopeKey: "global" },
@@ -534,7 +559,7 @@ export const run = mutation({
         .query("clubMembers")
         .withIndex("by_clubId", (q) => q.eq("clubId", roboticsClub._id))
         .take(18);
-      
+
       for (let i = 0; i < clubMembers.length; i++) {
         const m = clubMembers[i]!;
         await ctx.db.insert("clubChannelMessagePollVotes", {

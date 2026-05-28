@@ -325,8 +325,7 @@ export default defineSchema({
     status: clubJoinRequestStatusValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_clubId_and_status", ["clubId", "status"]),
+  }).index("by_clubId_and_status", ["clubId", "status"]),
 
   clubChannels: defineTable({
     clubId: v.id("clubs"),
@@ -336,8 +335,7 @@ export default defineSchema({
     createdById: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_clubId_and_visibility", ["clubId", "visibility"]),
+  }).index("by_clubId_and_visibility", ["clubId", "visibility"]),
 
   clubChannelMemberships: defineTable({
     channelId: v.id("clubChannels"),
@@ -372,18 +370,29 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_channelId_and_parentMessageId_and_createdAt", ["channelId", "parentMessageId", "createdAt"])
-    .index("by_channelId_and_isPinned_and_pinnedAt", ["channelId", "isPinned", "pinnedAt"])
+    .index("by_channelId_and_parentMessageId_and_createdAt", [
+      "channelId",
+      "parentMessageId",
+      "createdAt",
+    ])
+    .index("by_channelId_and_isPinned_and_pinnedAt", [
+      "channelId",
+      "isPinned",
+      "pinnedAt",
+    ])
     .index("by_authorId_and_createdAt", ["authorId", "createdAt"])
-    .index("by_authorId_and_channelId_and_createdAt", ["authorId", "channelId", "createdAt"]),
+    .index("by_authorId_and_channelId_and_createdAt", [
+      "authorId",
+      "channelId",
+      "createdAt",
+    ]),
 
   clubChannelMessagePollVotes: defineTable({
     messageId: v.id("clubChannelMessages"),
     userId: v.id("users"),
     optionId: v.string(),
     createdAt: v.number(),
-  })
-    .index("by_messageId_and_optionId", ["messageId", "optionId"]),
+  }).index("by_messageId_and_optionId", ["messageId", "optionId"]),
 
   clubChannelMessageAttachments: defineTable({
     messageId: v.id("clubChannelMessages"),
@@ -392,8 +401,7 @@ export default defineSchema({
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     createdAt: v.number(),
-  })
-    .index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+  }).index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
 
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
@@ -458,8 +466,7 @@ export default defineSchema({
     note: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
     createdAt: v.number(),
-  })
-    .index("by_eventId_and_sponsorId", ["eventId", "sponsorId"]),
+  }).index("by_eventId_and_sponsorId", ["eventId", "sponsorId"]),
 
   calendarEntries: defineTable({
     eventId: v.optional(v.id("events")),
@@ -486,8 +493,7 @@ export default defineSchema({
     isSchoolDay: v.boolean(),
     notes: v.optional(v.string()),
     createdAt: v.number(),
-  })
-    .index("by_date", ["date"]),
+  }).index("by_date", ["date"]),
 
   flexSessions: defineTable({
     flexFridayId: v.id("flexFridays"),
@@ -498,8 +504,7 @@ export default defineSchema({
     sessionType: flexSessionTypeValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_flexFridayId", ["flexFridayId"]),
+  }).index("by_flexFridayId", ["flexFridayId"]),
 
   flexWorkshops: defineTable({
     teacherId: v.optional(v.id("users")),
@@ -595,4 +600,12 @@ export default defineSchema({
   })
     .index("by_userId_and_schoolYearStart", ["userId", "schoolYearStart"])
     .index("by_schoolYearStart", ["schoolYearStart"]),
+
+  seedRuns: defineTable({
+    key: v.string(),
+    runId: v.string(),
+    phase: v.string(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

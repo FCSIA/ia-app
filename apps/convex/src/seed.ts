@@ -5,21 +5,129 @@ import { type AppRole } from "./lib/roles";
 import { type Pathway } from "./validators";
 
 const FIRST_NAMES = [
-  "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", "William", "Elizabeth",
-  "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen",
-  "Christopher", "Lisa", "Daniel", "Nancy", "Matthew", "Betty", "Anthony", "Sandra", "Mark", "Margaret",
-  "Donald", "Ashley", "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
-  "Kenneth", "Carol", "Kevin", "Amanda", "Brian", "Dorothy", "George", "Melissa", "Timothy", "Deborah",
-  "Ronald", "Stephanie", "Edward", "Rebecca", "Jason", "Sharon", "Jeffrey", "Cynthia", "Ryan", "Kathleen"
+  "James",
+  "Mary",
+  "John",
+  "Patricia",
+  "Robert",
+  "Jennifer",
+  "Michael",
+  "Linda",
+  "William",
+  "Elizabeth",
+  "David",
+  "Barbara",
+  "Richard",
+  "Susan",
+  "Joseph",
+  "Jessica",
+  "Thomas",
+  "Sarah",
+  "Charles",
+  "Karen",
+  "Christopher",
+  "Lisa",
+  "Daniel",
+  "Nancy",
+  "Matthew",
+  "Betty",
+  "Anthony",
+  "Sandra",
+  "Mark",
+  "Margaret",
+  "Donald",
+  "Ashley",
+  "Steven",
+  "Kimberly",
+  "Paul",
+  "Emily",
+  "Andrew",
+  "Donna",
+  "Joshua",
+  "Michelle",
+  "Kenneth",
+  "Carol",
+  "Kevin",
+  "Amanda",
+  "Brian",
+  "Dorothy",
+  "George",
+  "Melissa",
+  "Timothy",
+  "Deborah",
+  "Ronald",
+  "Stephanie",
+  "Edward",
+  "Rebecca",
+  "Jason",
+  "Sharon",
+  "Jeffrey",
+  "Cynthia",
+  "Ryan",
+  "Kathleen",
 ];
 
 const LAST_NAMES = [
-  "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
-  "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
-  "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson",
-  "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
-  "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell", "Carter", "Roberts",
-  "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker", "Cruz", "Edwards", "Collins", "Reyes"
+  "Smith",
+  "Johnson",
+  "Williams",
+  "Brown",
+  "Jones",
+  "Garcia",
+  "Miller",
+  "Davis",
+  "Rodriguez",
+  "Martinez",
+  "Hernandez",
+  "Lopez",
+  "Gonzalez",
+  "Wilson",
+  "Anderson",
+  "Thomas",
+  "Taylor",
+  "Moore",
+  "Jackson",
+  "Martin",
+  "Lee",
+  "Perez",
+  "Thompson",
+  "White",
+  "Harris",
+  "Sanchez",
+  "Clark",
+  "Ramirez",
+  "Lewis",
+  "Robinson",
+  "Walker",
+  "Young",
+  "Allen",
+  "King",
+  "Wright",
+  "Scott",
+  "Torres",
+  "Nguyen",
+  "Hill",
+  "Flores",
+  "Green",
+  "Adams",
+  "Nelson",
+  "Baker",
+  "Hall",
+  "Rivera",
+  "Campbell",
+  "Mitchell",
+  "Carter",
+  "Roberts",
+  "Gomez",
+  "Phillips",
+  "Evans",
+  "Turner",
+  "Diaz",
+  "Parker",
+  "Cruz",
+  "Edwards",
+  "Collins",
+  "Reyes",
 ];
 
 const ANCHOR_STUDENTS = [
@@ -161,7 +269,7 @@ function nextKeyWithRemaining<T extends string | number>(
   remaining: Map<T, number>,
 ): T {
   const sorted = [...values].sort(
-    (left, right) => (remaining.get(right) ?? 0) - (remaining.get(left) ?? 0)
+    (left, right) => (remaining.get(right) ?? 0) - (remaining.get(left) ?? 0),
   );
   return sorted.find((value) => (remaining.get(value) ?? 0) > 0)!;
 }
@@ -243,15 +351,22 @@ function generateAllUsers() {
 
   const sponsorUniqueIds = new Set<string>([
     "TCH001",
-    ...staffSeeds.filter((user) => user.uniqueId.startsWith("TCH")).slice(1, 29).map((user) => user.uniqueId),
-    ...staffSeeds.filter((user) => user.uniqueId.startsWith("STF")).slice(0, 4).map((user) => user.uniqueId),
+    ...staffSeeds
+      .filter((user) => user.uniqueId.startsWith("TCH"))
+      .slice(1, 29)
+      .map((user) => user.uniqueId),
+    ...staffSeeds
+      .filter((user) => user.uniqueId.startsWith("STF"))
+      .slice(0, 4)
+      .map((user) => user.uniqueId),
   ]);
 
   const normalizedStaffSeeds = staffSeeds.map((user) => ({
     ...user,
-    roles: sponsorUniqueIds.has(user.uniqueId) && !user.roles.includes("SPONSOR")
-      ? [...user.roles, "SPONSOR"] as AppRole[]
-      : user.roles,
+    roles:
+      sponsorUniqueIds.has(user.uniqueId) && !user.roles.includes("SPONSOR")
+        ? ([...user.roles, "SPONSOR"] as AppRole[])
+        : user.roles,
   }));
 
   const gradeRemaining = new Map<number, number>([
@@ -263,9 +378,20 @@ function generateAllUsers() {
 
   const PATHWAYS = ["ENGINEERING", "INFORMATION_TECHNOLOGY", "HEALTH_SCIENCE"];
   const majorRemaining = new Map<string, number>([
-    ["ENGINEERING", 500 - ANCHOR_STUDENTS.filter((s) => s.major === "ENGINEERING").length],
-    ["INFORMATION_TECHNOLOGY", 500 - ANCHOR_STUDENTS.filter((s) => s.major === "INFORMATION_TECHNOLOGY").length],
-    ["HEALTH_SCIENCE", 500 - ANCHOR_STUDENTS.filter((s) => s.major === "HEALTH_SCIENCE").length],
+    [
+      "ENGINEERING",
+      500 - ANCHOR_STUDENTS.filter((s) => s.major === "ENGINEERING").length,
+    ],
+    [
+      "INFORMATION_TECHNOLOGY",
+      500 -
+        ANCHOR_STUDENTS.filter((s) => s.major === "INFORMATION_TECHNOLOGY")
+          .length,
+    ],
+    [
+      "HEALTH_SCIENCE",
+      500 - ANCHOR_STUDENTS.filter((s) => s.major === "HEALTH_SCIENCE").length,
+    ],
   ]);
 
   const generatedStudents: any[] = [];
@@ -277,8 +403,12 @@ function generateAllUsers() {
     majorRemaining.set(major, (majorRemaining.get(major) ?? 0) - 1);
 
     const minorChoices = PATHWAYS.filter((p) => p !== major);
-    const minor = minorChoices[(studentNumber + gradeLevel) % minorChoices.length];
-    const { firstName, lastName } = getDeterministicName(studentNumber + 200, usedNames);
+    const minor =
+      minorChoices[(studentNumber + gradeLevel) % minorChoices.length];
+    const { firstName, lastName } = getDeterministicName(
+      studentNumber + 200,
+      usedNames,
+    );
     const uniqueId = `STU${String(studentNumber).padStart(3, "0")}`;
 
     generatedStudents.push({
@@ -301,7 +431,6 @@ const SEED_USERS = generateAllUsers();
 
 export const run = internalMutation({
   args: {
-    secret: v.string(),
     reset: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
@@ -313,13 +442,9 @@ export const run = internalMutation({
     isDone: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const expectedSecret = process.env.BOOTSTRAP_SECRET;
-    if (!expectedSecret || args.secret !== expectedSecret) {
-      throw new Error("Invalid bootstrap secret.");
-    }
     const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
     const batchSize = Math.min(Math.max(Math.floor(args.batchSize ?? 1), 1), 8);
-    
+
     if (args.reset && cursor === 0) {
       const usersToDelete = await ctx.db.query("users").take(100);
       for (const user of usersToDelete) {
