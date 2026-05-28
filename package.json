@@ -11,7 +11,7 @@
     "cvx:dev": "pnpm --filter cvx dev"
   },
   "devDependencies": {
-    "turbo": "^2.8.14",
+    "turbo": "^2.9.16",
     "typescript": "^5.9.3",
     "vercel": "^54.5.1"
   },

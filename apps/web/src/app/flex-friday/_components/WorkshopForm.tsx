@@ -43,8 +43,7 @@ export function WorkshopForm({
     }
   }, [isOpen, initialData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (form.sessionIds.length === 0) {
       toast({ title: 'Pick at least one session', variant: 'destructive' });
       return;
@@ -84,7 +83,7 @@ export function WorkshopForm({
         toast({ title: 'Workshop created' });
       }
       onOpenChange(false);
-    } catch (e) {
+    } catch {
       // Error handled by runAction
     }
   };
@@ -96,7 +95,7 @@ export function WorkshopForm({
           <SheetTitle>{editingWorkshopId ? 'Edit Workshop' : 'New Workshop'}</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={() => handleSubmit()} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Workshop Title *</Label>

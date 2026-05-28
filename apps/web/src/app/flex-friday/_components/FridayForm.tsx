@@ -34,8 +34,7 @@ export function FridayForm({
     isSchoolDay: true,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!form.date) {
       toast({ title: 'Pick a date', variant: 'destructive' });
       return;
@@ -56,7 +55,7 @@ export function FridayForm({
       });
       onOpenChange(false);
       toast({ title: 'Friday Scheduled' });
-    } catch (e) {
+    } catch {
       // Error handled by runAction
     }
   };
@@ -68,7 +67,7 @@ export function FridayForm({
           <SheetTitle>Schedule Flex Friday</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={() => handleSubmit()} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date *</Label>

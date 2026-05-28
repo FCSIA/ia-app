@@ -1,10 +1,11 @@
-import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
+import type { Doc } from '~/apps/convex/src/_generated/dataModel';
 
 export type FlexFridayDoc = Doc<'flexFridays'>;
 export type FlexSessionDoc = Doc<'flexSessions'>;
-export type FlexWorkshopDoc = Doc<'flexWorkshops'> & { 
+
+export type FlexWorkshopDoc = Omit<Doc<'flexWorkshops'>, 'sessionIds'> & { 
   _count?: { registrations: number };
-  linkedSessions?: FlexSessionDoc[]; 
+  linkedSessions?: { _id: any; title: string; startTime: string; endTime: string }[];
 };
 
 export type SessionType = 'STUDENT_CHOICE' | 'TEACHER_ASSIGNED';

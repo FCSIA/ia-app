@@ -40,9 +40,8 @@ export function SessionForm({
     }
   }, [isOpen, initialData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
+
     const payload: any = {
       title: form.title.trim(),
       sessionType: form.sessionType,
@@ -70,7 +69,7 @@ export function SessionForm({
         toast({ title: 'Session created' });
       }
       onOpenChange(false);
-    } catch (e) {
+    } catch {
       // Error handled by runAction
     }
   };
@@ -82,7 +81,7 @@ export function SessionForm({
           <SheetTitle>{editingSessionId ? 'Edit Session' : 'New Session'}</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={() => handleSubmit()} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Session Title *</Label>

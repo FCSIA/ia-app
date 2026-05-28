@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, TabsList, TabItem, TabPanel } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import { History, CalendarDays } from 'lucide-react';
 
 interface Props {
