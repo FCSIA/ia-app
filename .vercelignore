@@ -1,0 +1,38 @@
+# Dependencies and package-manager state
+node_modules
+.pnpm-store
+
+# Local build outputs and caches
+.turbo
+.next
+out
+dist
+coverage
+*.tsbuildinfo
+apps/*/.next
+apps/*/dist
+apps/*/coverage
+
+# Local env and tool state
+.env
+*.env
+.env.*
+!.env.example
+.direnv
+.vercel
+
+# Repo-local handoff and editor/system files
+agent-notes/
+.DS_Store
+Thumbs.db
+.idea
+*.swp
+*.swo
+
+# Logs and local databases
+*.log
+logs/
+*.db
+*.db-journal
+pgsql/
+.pgdata/
