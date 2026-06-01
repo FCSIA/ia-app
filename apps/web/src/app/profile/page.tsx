@@ -482,7 +482,7 @@ function CustomBackgroundPanel() {
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="tertiary"
           onClick={() => fileRef.current?.click()}
           className="rounded-full"
         >
