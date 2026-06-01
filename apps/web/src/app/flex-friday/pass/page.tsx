@@ -1,8 +1,9 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from '@tanstack/react-query';
-import { flexFridayApi } from '@/lib/api';
+import { useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
 import { getUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import {
@@ -21,26 +22,11 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 
-type LinkedSession = {
-  id: string;
-  title: string;
-  startTime?: string | null;
-  endTime?: string | null;
-  flexFriday?: { id: string; date: string; type?: string } | null;
-};
-
-type PassRecord = {
-  id: string;
-  workshopId: string;
-  kind: 'REGISTERED' | 'ASSIGNED';
-  workshop: {
-    id: string;
-    title: string;
-    description?: string | null;
-    location?: string | null;
-    sessions?: Array<{ session: LinkedSession }>;
-  };
-};
+type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
+type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
+type PassRecord =
+  | (RegistrationRecord & { kind: 'REGISTERED' })
+  | (AssignmentRecord & { kind: 'ASSIGNED' });
 
 type FridayGroup = {
   fridayId: string;
@@ -61,7 +47,7 @@ function formatTimeRange(start?: string | null, end?: string | null) {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-function fridayForPass(pass: PassRecord): LinkedSession['flexFriday'] | null {
+function fridayForPass(pass: PassRecord) {
   const links = pass.workshop?.sessions ?? [];
   for (const link of links) {
     if (link.session?.flexFriday) return link.session.flexFriday;
@@ -98,17 +84,18 @@ function FlexFridayPassContent() {
   const searchParams = useSearchParams();
   const requestedFridayId = searchParams?.get('fridayId') ?? null;
 
-  const { data: myRegs = [], isLoading: loadingRegs } = useQuery({
-    queryKey: ['my-flex-registrations'],
-    queryFn: () => flexFridayApi.getMyRegistrations().then((r) => r.data),
-  });
-
-  const { data: myAssignments = [], isLoading: loadingAssignments } = useQuery({
-    queryKey: ['my-flex-assignments'],
-    queryFn: () => flexFridayApi.getMyAssignments().then((r) => r.data),
-  });
-
-  const isLoading = loadingRegs || loadingAssignments;
+  const myRegsRaw = useQuery(
+    api.flexFriday.registration.getMyRegistrations,
+    mounted ? {} : 'skip',
+  );
+  const myAssignmentsRaw = useQuery(
+    api.flexFriday.registration.getMyAssignments,
+    mounted ? {} : 'skip',
+  );
+  const myRegs = myRegsRaw ?? [];
+  const myAssignments = myAssignmentsRaw ?? [];
+  const isLoading =
+    mounted && (myRegsRaw === undefined || myAssignmentsRaw === undefined);
 
   const allPasses = useMemo<PassRecord[]>(
     () => [
@@ -124,12 +111,13 @@ function FlexFridayPassContent() {
     for (const pass of allPasses) {
       const friday = fridayForPass(pass);
       if (!friday) continue;
-      const existing = byFriday.get(friday.id);
+      const fridayId = friday._id;
+      const existing = byFriday.get(fridayId);
       if (existing) {
         existing.passes.push(pass);
       } else {
-        byFriday.set(friday.id, {
-          fridayId: friday.id,
+        byFriday.set(fridayId, {
+          fridayId,
           date: new Date(friday.date),
           type: friday.type,
           passes: [pass],
@@ -245,8 +233,8 @@ function PassCard({
 }) {
   // Sort workshops by earliest session start time
   const sortedPasses = group.passes.slice().sort((a, b) => {
-    const aStart = a.workshop.sessions?.[0]?.session.startTime ?? '99:99';
-    const bStart = b.workshop.sessions?.[0]?.session.startTime ?? '99:99';
+    const aStart = a.workshop?.sessions?.[0]?.session.startTime ?? '99:99';
+    const bStart = b.workshop?.sessions?.[0]?.session.startTime ?? '99:99';
     return aStart.localeCompare(bStart);
   });
 
@@ -282,7 +270,7 @@ function PassCard({
             {sortedPasses.length} workshop{sortedPasses.length === 1 ? '' : 's'}
           </p>
           {sortedPasses.map((pass) => (
-            <WorkshopRow key={`${pass.kind}-${pass.id}`} pass={pass} />
+            <WorkshopRow key={`${pass.kind}-${pass._id}`} pass={pass} />
           ))}
         </div>
 
@@ -371,7 +359,7 @@ function WorkshopRow({ pass }: { pass: PassRecord }) {
         <div className="mt-3 space-y-1 border-t border-border/60 pt-2">
           {linkedSessions.map((session) => (
             <div
-              key={session.id}
+              key={session._id}
               className="flex items-center justify-between text-xs text-muted-foreground"
             >
               <span className="truncate">{session.title}</span>

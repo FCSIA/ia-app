@@ -26,20 +26,16 @@ import { UserPermissionsPopover } from './user-permissions-popover';
 
 export function UsersPaginationControls({
   page,
-  total,
-  pageSize,
+  hasNext,
   onPrev,
   onNext,
 }: {
   page: number;
-  total: number;
-  pageSize: number;
+  hasNext: boolean;
   onPrev: () => void;
   onNext: () => void;
 }) {
-  const totalPages = Math.ceil(total / pageSize);
-
-  if (totalPages <= 1) return null;
+  if (page <= 1 && !hasNext) return null;
 
   return (
     <div className="flex items-center justify-center gap-3 border-t px-4 py-2.5">
@@ -47,9 +43,9 @@ export function UsersPaginationControls({
         Prev
       </Button>
       <span className="text-xs text-muted-foreground">
-        Page {page} of {totalPages}
+        Page {page}
       </span>
-      <Button variant="tertiary" size="sm" disabled={page >= totalPages} onClick={onNext}>
+      <Button variant="tertiary" size="sm" disabled={!hasNext} onClick={onNext}>
         Next
       </Button>
     </div>
@@ -238,7 +234,7 @@ export function AdminUsersTab({
   onUserRoleGroupChange: (value: AdminUserRoleGroup) => void;
   isSuperAdmin: boolean;
   viewportRef: RefObject<HTMLDivElement | null>;
-  usersData?: { users?: AdminUserRecord[]; total?: number };
+  usersData?: { users?: AdminUserRecord[]; isDone?: boolean };
   isUsersLoading: boolean;
   isUsersError: boolean;
   usersError: unknown;
@@ -292,7 +288,7 @@ export function AdminUsersTab({
               <div>
                 <p className="font-medium text-foreground">Could not load users.</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
+                  {(usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
                 </p>
               </div>
               <Button type="button" variant="tertiary" size="sm" onClick={refetchUsers}>
@@ -311,7 +307,6 @@ export function AdminUsersTab({
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
-            totalCount={usersData?.total}
             showGrade={selectedUserRoleMeta.showGrade}
             currentUserId={currentUserId}
             isSuperAdmin={isSuperAdmin}
@@ -330,4 +325,3 @@ export function AdminUsersTab({
     </div>
   );
 }
-

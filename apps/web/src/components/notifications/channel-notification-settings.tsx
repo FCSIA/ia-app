@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,10 +13,11 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tooltip } from '@/components/ui/tooltip';
-import { notificationsApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
 
-type PreferenceLevel = 'OFF' | 'IN_APP' | 'PUSH' | 'TIME_SENSITIVE';
+type PreferenceLevel = NotificationPreferenceLevel;
 
 type ChannelNotificationSettingsProps = {
   clubId: string;
@@ -24,10 +25,10 @@ type ChannelNotificationSettingsProps = {
   channelName: string;
 };
 
-const MESSAGE_CATEGORY = 'CLUB_CHANNEL_MESSAGE';
-const DIRECT_CATEGORY = 'CLUB_CHANNEL_MENTION';
-const TAG_CATEGORY = 'CLUB_CHANNEL_TAG_MENTION';
-const THREAD_CATEGORY = 'CLUB_CHANNEL_THREAD';
+const MESSAGE_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_MESSAGE';
+const DIRECT_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_MENTION';
+const TAG_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_TAG_MENTION';
+const THREAD_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_THREAD';
 
 const messageOptions: Array<{
   value: PreferenceLevel;
@@ -62,7 +63,7 @@ const messageOptions: Array<{
 ];
 
 const mentionOptions: Array<{
-  category: string;
+  category: NotificationCategory;
   label: string;
   detail: string;
   icon: typeof Bell;
@@ -87,14 +88,29 @@ const mentionOptions: Array<{
   },
 ];
 
-function scopePreference(preferences: any[], category: string, channelId: string) {
+type NotificationPreference = {
+  category: NotificationCategory;
+  scopeKey: string;
+  enabled: boolean;
+  level: PreferenceLevel;
+};
+
+function scopePreference(
+  preferences: NotificationPreference[],
+  category: NotificationCategory,
+  channelId: string,
+) {
   return preferences.find(
     (preference) =>
       preference.category === category && preference.scopeKey === `channel:${channelId}`,
   );
 }
 
-function preferenceEnabled(preferences: any[], category: string, channelId: string) {
+function preferenceEnabled(
+  preferences: NotificationPreference[],
+  category: NotificationCategory,
+  channelId: string,
+) {
   const preference = scopePreference(preferences, category, channelId);
   return preference ? preference.enabled && preference.level !== 'OFF' : true;
 }
@@ -104,11 +120,8 @@ export function ChannelNotificationSettings({
   channelId,
   channelName,
 }: ChannelNotificationSettingsProps) {
-  const queryClient = useQueryClient();
-  const { data: preferences = [] } = useQuery<any[]>({
-    queryKey: ['notification-preferences'],
-    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
-  });
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
+  const preferences = useQuery(api.notifications.preferences.list) ?? [];
 
   const messagePreference = scopePreference(preferences, MESSAGE_CATEGORY, channelId);
   const messageLevel: PreferenceLevel = messagePreference?.enabled
@@ -122,23 +135,20 @@ export function ChannelNotificationSettings({
     return 'Mentions';
   }, [messageLevel]);
 
-  const mutation = useMutation({
-    mutationFn: ({
+  const setPreference = ({
       category,
       level,
     }: {
-      category: string;
+      category: NotificationCategory;
       level: PreferenceLevel;
     }) =>
-      notificationsApi.upsertPreference(category, level !== 'OFF', {
+      upsertPreference({
+        category,
+        enabled: level !== 'OFF',
         clubId,
         channelId,
         level,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
-    },
-  });
+      });
 
   return (
     <Sheet>
@@ -177,9 +187,7 @@ export function ChannelNotificationSettings({
                     'flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60',
                     selected ? 'bg-muted/70 text-foreground' : 'text-muted-foreground',
                   )}
-                  onClick={() =>
-                    mutation.mutate({ category: MESSAGE_CATEGORY, level: option.value })
-                  }
+                  onClick={() => setPreference({ category: MESSAGE_CATEGORY, level: option.value })}
                 >
                   <span
                     className={cn(
@@ -221,7 +229,7 @@ export function ChannelNotificationSettings({
                     enabled ? 'text-foreground' : 'text-muted-foreground',
                   )}
                   onClick={() =>
-                    mutation.mutate({
+                    setPreference({
                       category: option.category,
                       level: enabled ? 'OFF' : 'PUSH',
                     })

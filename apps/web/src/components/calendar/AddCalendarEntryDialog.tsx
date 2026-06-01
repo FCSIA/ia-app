@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { calendarApi } from '@/lib/api';
+import { useMutation } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -29,7 +29,6 @@ interface AddCalendarEntryDialogProps {
 export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntryDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     title: '',
@@ -39,11 +38,23 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
     time: '08:00',
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof calendarApi.createEntry>[0]) =>
-      calendarApi.createEntry(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+  const createEntry = useMutation(api.events.calendar.create);
+  const [pending, setPending] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.date || !form.time) return;
+
+    const startAt = new Date(`${form.date}T${form.time}:00`).getTime();
+    setPending(true);
+    try {
+      await createEntry({
+        title: form.title,
+        description: form.description || undefined,
+        location: form.location || undefined,
+        startAt,
+        source: 'PERSONAL',
+      });
       setOpen(false);
       setForm({
         title: '',
@@ -53,27 +64,14 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
         time: '08:00',
       });
       toast({ title: 'Reminder added to your calendar' });
-    },
-    onError: (error: any) => {
+    } catch (error) {
       toast({
-        title: error.response?.data?.message || 'Failed to add reminder',
+        title: error instanceof Error ? error.message : 'Failed to add reminder',
         variant: 'destructive',
       });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title || !form.date || !form.time) return;
-
-    const startAt = new Date(`${form.date}T${form.time}:00`);
-
-    createMutation.mutate({
-      title: form.title,
-      description: form.description || undefined,
-      location: form.location || undefined,
-      startAt: startAt.toISOString(),
-    });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -188,10 +186,10 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
           <DialogFooter className="pt-2">
             <Button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={pending}
               className="w-full rounded-2xl h-12 text-base font-semibold"
             >
-              {createMutation.isPending ? 'Saving...' : 'Add to My Calendar'}
+              {pending ? 'Saving...' : 'Add to My Calendar'}
             </Button>
           </DialogFooter>
         </form>

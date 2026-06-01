@@ -2,21 +2,18 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { ArrowRight, Megaphone } from 'lucide-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
-import { announcementsApi } from '@/lib/api';
 
 export function AnnouncementsWidget() {
-  const { data: announcementsData = [] } = useQuery({
-    queryKey: ['announcements', 'dashboard', 'unread'],
-    queryFn: () => announcementsApi.getAll(false, undefined, true).then((response) => response.data),
-  });
-
-  const unreadAnnouncements = (announcementsData as any[]).slice(0, 3);
+  const announcementsData =
+    useQuery(api.announcements.feed.list, { unreadOnly: true }) ?? [];
+  const unreadAnnouncements = announcementsData.slice(0, 3);
 
   return (
     <Panel
@@ -32,9 +29,9 @@ export function AnnouncementsWidget() {
     >
       {unreadAnnouncements.length > 0 ? (
         <div className="space-y-3">
-          {unreadAnnouncements.map((announcement: any) => (
+          {unreadAnnouncements.map((announcement) => (
             <div
-              key={announcement.id}
+              key={announcement._id}
               className="rounded-[1.4rem] border border-border/70 bg-background/85 px-4 py-4"
             >
               <div className="flex items-start justify-between gap-3">
@@ -45,7 +42,7 @@ export function AnnouncementsWidget() {
                       <Badge variant="dot">{announcement.club.name}</Badge>
                     ) : null}
                   </div>
-                  <Link href={`/announcements/${announcement.id}`}>
+                  <Link href={`/announcements/${announcement._id}`}>
                     <p className="line-clamp-1 text-sm font-semibold text-foreground hover:text-primary">
                       {announcement.title}
                     </p>
@@ -61,15 +58,15 @@ export function AnnouncementsWidget() {
               </div>
               <div className="mt-4 flex justify-end">
                 <AnnouncementReadToggle
-                  announcementId={announcement.id}
+                  announcementId={announcement._id}
                   isRead={announcement.isRead}
                 />
               </div>
             </div>
           ))}
-          {(announcementsData as any[]).length > unreadAnnouncements.length ? (
+          {announcementsData.length > unreadAnnouncements.length ? (
             <p className="px-1 text-xs text-muted-foreground">
-              Showing {unreadAnnouncements.length} of {(announcementsData as any[]).length} unread.
+              Showing {unreadAnnouncements.length} of {announcementsData.length} unread.
             </p>
           ) : null}
         </div>

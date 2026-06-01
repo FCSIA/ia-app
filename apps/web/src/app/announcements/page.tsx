@@ -2,8 +2,9 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { announcementsApi } from '@/lib/api';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -22,7 +23,6 @@ import {
 } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FeatureFilterBar } from '@/components/filters/feature-filter-bar';
 import {
@@ -50,7 +50,6 @@ type ClubFilterOption = {
 
 export default function AnnouncementsPage() {
   const user = useCurrentUser();
-  const qc = useQueryClient();
   const { toast } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -110,10 +109,15 @@ export default function AnnouncementsPage() {
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['announcements', showArchived],
-    queryFn: () => announcementsApi.getAll(showArchived).then((response) => response.data),
-  });
+  const data = useQuery(api.announcements.feed.list, { archived: showArchived });
+  const isLoading = data === undefined;
+
+  const createAnnouncement = useMutation(api.announcements.feed.create);
+  const archiveAnnouncement = useMutation(api.announcements.engagement.archive);
+  const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
+  const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
+  const approveAnnouncement = useMutation(api.announcements.feed.approve);
+  const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
   const availableTags = useMemo(() => {
     if (!data) return [];
@@ -127,9 +131,9 @@ export default function AnnouncementsPage() {
     const clubsById = new Map<string, ClubFilterOption>();
 
     data.forEach((announcement: any) => {
-      if (announcement.club?.id && announcement.club?.name) {
-        clubsById.set(announcement.club.id, {
-          id: announcement.club.id,
+      if (announcement.club?._id && announcement.club?.name) {
+        clubsById.set(announcement.club._id, {
+          id: announcement.club._id,
           name: announcement.club.name,
         });
       }
@@ -208,84 +212,56 @@ export default function AnnouncementsPage() {
     setActiveTag((current) => (current === tag ? null : tag));
   };
 
-  const createMutation = useMutation({
-    mutationFn: (payload: any) => announcementsApi.create(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements'] });
-      setShowNew(false);
-      setForm({
-        title: '',
-        body: '',
-        targetType: 'SCHOOL_WIDE',
-        targetGrades: [],
-        targetMajorPathways: [],
-        targetMinorPathways: [],
-        allowComments: false,
-        isAdminGeneral: false,
-        promoted: false,
-        expiresAt: '',
-      });
-      toast({ title: 'Announcement created' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to create',
-        variant: 'destructive',
-      }),
-  });
-
-  const archiveMutation = useMutation({
-    mutationFn: (id: string) => announcementsApi.archive(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements', false] });
-      qc.invalidateQueries({ queryKey: ['announcements', true] });
-      toast({ title: 'Archived' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to archive',
-        variant: 'destructive',
-      }),
-  });
-
-  const bookmarkMutation = useMutation({
-    mutationFn: (announcement: any) =>
-      announcement.isBookmarked
-        ? announcementsApi.unbookmark(announcement.id)
-        : announcementsApi.bookmark(announcement.id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements'] });
-    },
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => announcementsApi.approve(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements'] });
-      toast({ title: 'Announcement published' });
-    },
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: (id: string) => announcementsApi.reject(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['announcements'] });
-      toast({ title: 'Announcement sent back' });
-    },
-  });
+  const [createPending, setCreatePending] = useState(false);
+  const [approvePending, setApprovePending] = useState<string | null>(null);
+  const [rejectPending, setRejectPending] = useState<string | null>(null);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const isIntersection = form.targetType === 'INTERSECTION';
-    createMutation.mutate({
-      ...form,
-      expiresAt: form.expiresAt || undefined,
+    setCreatePending(true);
+    void createAnnouncement({
+      title: form.title,
+      body: form.body,
+      targetType: form.targetType as
+        | 'SCHOOL_WIDE'
+        | 'GRADE'
+        | 'PATHWAY'
+        | 'CLUB'
+        | 'INTERSECTION',
+      allowComments: form.allowComments,
+      isAdminGeneral: form.isAdminGeneral,
+      promoted: form.promoted,
+      expiresAt: form.expiresAt ? Date.parse(form.expiresAt) : undefined,
       targetGrades: form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
       targetMajorPathways:
         form.targetType === 'PATHWAY' || isIntersection ? form.targetMajorPathways : [],
       targetMinorPathways:
         form.targetType === 'PATHWAY' || isIntersection ? form.targetMinorPathways : [],
-    });
+    })
+      .then(() => {
+        setShowNew(false);
+        setForm({
+          title: '',
+          body: '',
+          targetType: 'SCHOOL_WIDE',
+          targetGrades: [],
+          targetMajorPathways: [],
+          targetMinorPathways: [],
+          allowComments: false,
+          isAdminGeneral: false,
+          promoted: false,
+          expiresAt: '',
+        });
+        toast({ title: 'Announcement created' });
+      })
+      .catch((error: unknown) =>
+        toast({
+          title: error instanceof Error ? error.message : 'Failed to create',
+          variant: 'destructive',
+        }),
+      )
+      .finally(() => setCreatePending(false));
   };
 
   const hasActiveFilters =
@@ -632,8 +608,8 @@ export default function AnnouncementsPage() {
                   ) : null}
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-border pt-4">
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? 'Posting…' : 'Post Announcement'}
+                  <Button type="submit" disabled={createPending}>
+                    {createPending ? 'Posting…' : 'Post Announcement'}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>
                     Cancel
@@ -678,14 +654,31 @@ export default function AnnouncementsPage() {
             <div className="space-y-4">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement =
-                  canArchiveAny || announcement.author?.id === user?.id;
+                  canArchiveAny || announcement.author?._id === user?.id;
+                const announcementId = announcement._id as Id<'announcements'>;
                 return (
                   <AnnouncementCard
-                    key={announcement.id}
+                    key={announcement._id}
                     announcement={announcement}
                     canArchive={canArchiveAnnouncement}
-                    onArchive={(id: string) => archiveMutation.mutate(id)}
-                    onBookmarkToggle={(announcement) => bookmarkMutation.mutate(announcement)}
+                    onArchive={(id: string) => {
+                      void archiveAnnouncement({ announcementId: id as Id<'announcements'> })
+                        .then(() => toast({ title: 'Archived' }))
+                        .catch((error: unknown) =>
+                          toast({
+                            title: error instanceof Error ? error.message : 'Failed to archive',
+                            variant: 'destructive',
+                          }),
+                        );
+                    }}
+                    onBookmarkToggle={(entry) => {
+                      const toggle = entry.isBookmarked
+                        ? unbookmarkAnnouncement
+                        : bookmarkAnnouncement;
+                      void toggle({ announcementId: entry._id as Id<'announcements'> }).catch(
+                        () => undefined,
+                      );
+                    }}
                     onTagClick={handleTagClick}
                     onClubClick={(clubId: string) => {
                       setActiveTag('CLUB');
@@ -699,7 +692,20 @@ export default function AnnouncementsPage() {
                           </span>
                           <Button
                             size="sm"
-                            onClick={() => approveMutation.mutate(announcement.id)}
+                            disabled={approvePending === announcement._id}
+                            onClick={() => {
+                              setApprovePending(announcement._id);
+                              void approveAnnouncement({ announcementId })
+                                .then(() => toast({ title: 'Announcement published' }))
+                                .catch((error: unknown) =>
+                                  toast({
+                                    title:
+                                      error instanceof Error ? error.message : 'Failed to publish',
+                                    variant: 'destructive',
+                                  }),
+                                )
+                                .finally(() => setApprovePending(null));
+                            }}
                           >
                             <Check className="mr-1.5 size-4" />
                             Publish
@@ -707,7 +713,20 @@ export default function AnnouncementsPage() {
                           <Button
                             size="sm"
                             variant="tertiary"
-                            onClick={() => rejectMutation.mutate(announcement.id)}
+                            disabled={rejectPending === announcement._id}
+                            onClick={() => {
+                              setRejectPending(announcement._id);
+                              void rejectAnnouncement({ announcementId })
+                                .then(() => toast({ title: 'Announcement sent back' }))
+                                .catch((error: unknown) =>
+                                  toast({
+                                    title:
+                                      error instanceof Error ? error.message : 'Failed to reject',
+                                    variant: 'destructive',
+                                  }),
+                                )
+                                .finally(() => setRejectPending(null));
+                            }}
                           >
                             <X className="mr-1.5 size-4" />
                             Send back

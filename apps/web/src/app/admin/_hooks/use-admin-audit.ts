@@ -2,11 +2,12 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { auditApi } from '@/lib/api';
+import { usePaginatedQuery, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AUDIT_FETCH_LIMIT } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
-import type { AuditActorScope, AuditEventDetail, AuditEventRecord } from '../_lib/types';
+import type { AuditActorScope } from '../_lib/types';
 
 const FLEX_ENTITY_TYPES = [
   'FlexFriday',
@@ -34,7 +35,6 @@ export function useAdminAudit(activeTab: AdminTabId) {
 
   const auditQueryParams = useMemo(
     () => ({
-      limit: AUDIT_FETCH_LIMIT,
       query: deferredAuditSearch.trim() || undefined,
       actor: deferredAuditActor.trim() || undefined,
       entityId: deferredAuditEntityId.trim() || undefined,
@@ -56,11 +56,16 @@ export function useAdminAudit(activeTab: AdminTabId) {
     ],
   );
 
-  const { data: auditEvents = [], isLoading: isAuditLoading } = useQuery<AuditEventRecord[]>({
-    queryKey: ['audit', auditQueryParams],
-    queryFn: () => auditApi.getAll(auditQueryParams).then((r) => r.data),
-    enabled: activeTab === 'audit',
-  });
+  const {
+    results: auditEvents,
+    status: auditStatus,
+    loadMore: loadMoreAuditEvents,
+  } = usePaginatedQuery(
+    api.audit.events.listPage,
+    activeTab === 'audit' ? auditQueryParams : 'skip',
+    { initialNumItems: AUDIT_FETCH_LIMIT },
+  );
+  const isAuditLoading = activeTab === 'audit' && auditStatus === 'LoadingFirstPage';
 
   const displayedAuditEvents = useMemo(() => {
     if (auditSubView === 'flex') {
@@ -69,17 +74,19 @@ export function useAdminAudit(activeTab: AdminTabId) {
     return auditEvents.filter((e) => !FLEX_ENTITY_TYPES.includes(e.entityType));
   }, [auditEvents, auditSubView]);
 
-  const { data: auditFilterSource = [] } = useQuery<AuditEventRecord[]>({
-    queryKey: ['audit', 'filter-source'],
-    queryFn: () => auditApi.getAll({ limit: 500 }).then((r) => r.data),
-    enabled: activeTab === 'audit',
-  });
+  const auditFilterSource =
+    (useQuery(
+      api.audit.events.list,
+      activeTab === 'audit' ? { limit: 500 } : 'skip',
+    )) ?? [];
 
-  const { data: auditEventDetail, isLoading: isAuditDetailLoading } = useQuery<AuditEventDetail>({
-    queryKey: ['audit', 'entry', selectedAuditEventId],
-    queryFn: () => auditApi.getOne(selectedAuditEventId!).then((r) => r.data),
-    enabled: !!selectedAuditEventId,
-  });
+  const auditEventDetail = useQuery(
+    api.audit.events.get,
+    selectedAuditEventId
+      ? { auditEventId: selectedAuditEventId as Id<'auditEvents'> }
+      : 'skip',
+  );
+  const isAuditDetailLoading = !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
     () => Array.from(new Set(auditFilterSource.map((event) => event.action))).sort(),
@@ -165,12 +172,14 @@ export function useAdminAudit(activeTab: AdminTabId) {
     displayedAuditEvents,
     auditEvents,
     isAuditLoading,
+    auditStatus,
+    loadMoreAuditEvents,
     auditActionOptions,
     auditEntityTypeOptions,
     hasActiveAuditFilters,
     clearAuditFilters,
     auditFilterChips,
-    auditEventDetail,
+    auditEventDetail: auditEventDetail ?? undefined,
     isAuditDetailLoading,
   };
 }

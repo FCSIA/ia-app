@@ -2,7 +2,6 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { Check, ChevronsUpDown, Search, X } from 'lucide-react';
-import type { CourseSummary } from '@ia/contracts/courses';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -15,6 +14,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { CourseMeta, formatCourseNumbers } from './course-meta';
+import type { CourseSummary } from './types';
 
 type CoursePickerProps = {
   courses: CourseSummary[];

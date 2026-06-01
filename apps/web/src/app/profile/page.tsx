@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser } from '@/lib/auth';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi, notificationsApi, getApiErrorMessage } from '@/lib/api';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -23,54 +23,53 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
-  const qc = useQueryClient();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
+  const changePassword = useMutation(api.users.auth.changePassword);
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
 
-  const { data: prefs = [] } = useQuery({
-    queryKey: ['notification-prefs'],
-    queryFn: () => notificationsApi.getPreferences().then((r) => r.data),
-  });
-  const { data: moderationAlerts = [] } = useQuery({
-    queryKey: ['profile-moderation-alerts'],
-    queryFn: () =>
-      notificationsApi
-        .getAll(true)
-        .then((r) => r.data)
-        .then((rows: any[]) => rows.filter((row) => row.category === 'CONTENT_MODERATED').slice(0, 5)),
-  });
+  const prefs = useQuery(api.notifications.preferences.list) ?? [];
+  const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
+    .filter((row) => row.category === 'CONTENT_MODERATED')
+    .slice(0, 5);
 
-  const changePwMutation = useMutation({
-    mutationFn: (d: any) => authApi.changePassword(d.currentPassword, d.newPassword),
-    onSuccess: () => {
+  async function handleChangePassword(d: { currentPassword: string; newPassword: string }) {
+    try {
+      await changePassword(d);
       toast({ title: 'Password changed' });
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-    },
-    onError: (e: unknown) =>
+    } catch (e: unknown) {
       toast({
-        title: getApiErrorMessage(e, 'Could not change your password. Please try again.'),
+        title: e instanceof Error ? e.message : 'Failed to change password',
         variant: 'destructive',
-      }),
-  });
+      });
+    }
+  }
 
-  const prefMutation = useMutation({
-    mutationFn: ({ category, enabled }: any) => notificationsApi.upsertPreference(category, enabled),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-prefs'] }),
-  });
+  function handlePreferenceToggle({
+    category,
+    enabled,
+  }: {
+    category: NotificationCategory;
+    enabled: boolean;
+  }) {
+    void upsertPreference({ category, enabled });
+  }
 
   const prefMap = Object.fromEntries(
-    (prefs as any[]).map((p: any) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
+    prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
   );
 
-  const categories = [
+  const categories: Array<{ key: NotificationCategory; label: string }> = [
     { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
     { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
     { key: 'EVENT', label: 'Events' },
@@ -185,7 +184,7 @@ export default function ProfilePage() {
                     toast({ title: 'Passwords do not match', variant: 'destructive' });
                     return;
                   }
-                  changePwMutation.mutate({
+                  void handleChangePassword({
                     currentPassword: pwForm.currentPassword,
                     newPassword: pwForm.newPassword,
                   });
@@ -214,7 +213,7 @@ export default function ProfilePage() {
                   required
                 />
                 <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
-                  <Button type="submit" disabled={changePwMutation.isPending}>
+                  <Button type="submit">
                     Update Password
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setChanging(false)}>
@@ -249,7 +248,7 @@ export default function ProfilePage() {
                   <Switch label=""
                     id={`pref-${key}`}
                     checked={enabled}
-                    onToggle={() => prefMutation.mutate({ category: key, enabled: !enabled })}
+                    onToggle={() => handlePreferenceToggle({ category: key, enabled: !enabled })}
                   />
                 </div>
               );
@@ -310,10 +309,10 @@ export default function ProfilePage() {
             <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
-            {(moderationAlerts as any[]).length === 0 ? (
+            {moderationAlerts.length === 0 ? (
               <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
             ) : (
-              (moderationAlerts as any[]).map((alert) => (
+              moderationAlerts.map((alert) => (
                 <div key={alert.id} className="rounded-md border p-3">
                   <p className="text-sm font-medium">{alert.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{alert.body}</p>
@@ -483,7 +482,7 @@ function CustomBackgroundPanel() {
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="tertiary"
           onClick={() => fileRef.current?.click()}
           className="rounded-full"
         >

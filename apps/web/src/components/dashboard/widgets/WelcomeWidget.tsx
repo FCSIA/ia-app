@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
-import { scheduleApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { getCurrentScheduleStatus } from '@/components/schedule/schedule-utils';
-import type { ScheduleDashboardResponse } from '@/components/schedule/types';
 import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
 
@@ -20,11 +19,7 @@ export function WelcomeWidget() {
     return () => window.clearInterval(interval);
   }, []);
 
-  const { data: scheduleData } = useQuery<ScheduleDashboardResponse>({
-    queryKey: ['schedule-dashboard'],
-    queryFn: () => scheduleApi.getDashboard().then((response) => response.data),
-    enabled: isStudent,
-  });
+  const scheduleData = useQuery(api.schedule.dashboard.get, isStudent ? {} : 'skip');
 
   const currentStatus = useMemo(
     () =>

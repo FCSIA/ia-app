@@ -2,26 +2,72 @@
 
 ## Active Focus
 
-- **Agent**: Codex
-- **Focus**: Club UI cleanup, channel notification preferences, announcement archive permissions, and agent docs consolidation.
-- **Status**: In progress on `main`.
+- **Branch**: `codex/convex-port` (includes `6845f48` clubs/events/flex backend + ongoing frontend/db work)
+- **Goal**: Finish Convex port — Wrapped done; migrate remaining web domains off REST; Convex-only `db:*`.
 
 ## Current Truth
 
-- `AGENTS.md` is the agent-facing workflow guide. Keep `README.md` for humans.
-- Fluid/shadcn primitive drift should be fixed at the component or call-site level; broad lint/build ignores are not acceptable as a long-term fix.
-- Channel notification preferences are moving from boolean mention-only toggles to scoped preference levels for all messages, direct mentions, tag mentions, and thread replies.
-- Club announcement posting should be role-aware: admins and sponsors post directly; student leaders submit for sponsor approval.
-- Theme selection has been relocated from the global navbar to the Profile & Settings page.
+### Backend on Convex
 
-## Next Verification
+| Domain | Status |
+|--------|--------|
+| Users, audit, courses, schedule, notifications | **Done** |
+| Clubs, events, Flex Friday | **Done for current web flows** |
+| Wrapped | **Done** — `wrapped/snapshots.ts`, `wrappedSnapshots` table |
+| Announcements | **Done for current web flows** (`feed`, `engagement`, `comments`) |
+| Moderation, uploads | **Done for current web flows** |
 
-- Run `pnpm db:generate` after Prisma notification schema edits.
-- Run focused API tests for announcements and notifications.
-- Run `pnpm lint` and `pnpm build` before committing.
+### Frontend on Convex
 
-## Handoff Notes
+| Area | Status |
+|------|--------|
+| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.) |
+| Wrapped page + admin wrapped tab | **Convex** |
+| Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
+| Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
+| Events, calendar, flex-friday UI | **Convex** (`api.events.*`, `api.flexFriday.*`) |
+| Announcements, moderation, uploads | **Convex** |
+| Admin student CSV import/export | **Convex** (`api.users.admin.importStudents`, `api.users.admin.exportStudents`) |
 
-- Consult `docs/features/notifications.md` for notification category/preference behavior.
-- Consult `docs/features/clubs.md` for club roles, announcements, channels, and visibility behavior.
-- Use `gh issue view 7` for the channel notification flexibility request.
+### Dev data reset
+
+- No local seed/reset/clear CLI commands.
+- Run dashboard-only internal Convex function `bootstrap:resetAndSeed` to
+  destructively recreate demo data.
+- No `BOOTSTRAP_SECRET`; seed/reset functions are internal rather than public
+  secret-gated functions.
+
+### Verification (latest)
+
+- `pnpm --filter cvx codegen` + `typecheck` — pass
+- `pnpm --filter web build` — pass
+- Web `tsc --noEmit` — pass
+- `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
+  failures; Convex/web checks above pass.
+- Docs cleanup pass completed: active docs now route through `docs/index.md`,
+  cover Convex-era architecture/backend/database/frontend/features, and have a
+  clean stale-reference grep for old backend terms outside historical
+  `PORTING.md`.
+
+## Next Work
+
+1. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+   deleted now or retained temporarily for reference.
+2. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
+   historical, while `docs/` is now the active operating manual.
+3. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
+   blocking check again.
+
+## Handoff Commands
+
+```bash
+direnv exec . pnpm --filter cvx codegen
+direnv exec . pnpm --filter cvx typecheck
+direnv exec . pnpm lint
+direnv exec . pnpm --filter web build
+# Demo data reset: run internal Convex function bootstrap:resetAndSeed in the dashboard.
+```
+
+## Stash
+
+`agent-wip-convex-port` — largely superseded by fixes on branch; safe to drop after review (`git stash drop`).

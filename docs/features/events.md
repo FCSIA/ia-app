@@ -4,96 +4,68 @@ tags: [feature, events, approval-workflow]
 
 # Events
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+Events are school or club activities that can appear in event lists and the
+calendar.
 
-## Overview
+## What It Does
 
-Events go through a multi-step approval workflow before becoming publicly visible. They can be general school events or club-specific.
+- Lists published events for normal users and broader event sets for admins.
+- Creates general or club-scoped events.
+- Sends club events through sponsor approval when required.
+- Publishes approved events to the calendar.
+- Lets event authors or admins cancel events.
 
-**Files:**
-- Backend: `apps/api/src/events/`
-- Web: `apps/web/src/app/events/`
-- Database: [[schema#Event]], [[schema#EventApproval]]
+## Source Files
 
----
+- Backend: `apps/convex/src/events/`
+- Event list/detail routes: `apps/web/src/app/events/`
+- Calendar page: `apps/web/src/app/calendar/page.tsx`
 
-## Approval Workflow
+## Convex Surface
 
-```
-DRAFT
-  ↓ (submit for review)
-PENDING_APPROVAL
-  ↓ (sponsor/admin approves)
-APPROVED
-  ↓ (admin publishes)
-PUBLISHED ← visible on calendar and events list
-  ↓ (optional)
-CANCELLED
-```
+- `api.events.events.list`
+- `api.events.events.get`
+- `api.events.events.create`
+- `api.events.events.cancel`
+- `api.events.approvals.listPendingForSponsor`
+- `api.events.approvals.approveEvent`
+- `api.events.approvals.rejectEvent`
+- `api.events.calendar.list`
+- `api.events.calendar.create`
+- `api.events.calendar.remove`
 
-Or:
-```
-PENDING_APPROVAL
-  ↓ (sponsor/admin rejects)
-REJECTED → back to DRAFT for editing
-```
+## Data Model
 
----
+- `events`
+- `eventApprovals`
+- `eventCategories`
+- `calendarEntries`
 
-## Event Types
-
-| Type | Created by | Requires |
-|------|-----------|---------|
-| `GENERAL` | ADMIN, SUPER_ADMIN | No club |
-| `CLUB` | Sponsor, Leader, ADMIN | Must have a `clubId` |
-
----
-
-## Flyer Upload
-
-Events can have an uploaded flyer image (`flyerUrl`). File uploads go through `/uploads` and return a URL stored on the event record.
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/events` | All events (status filter optional) |
-| GET | `/events/:id` | Single event with approvals |
-| POST | `/events` | Create (starts as DRAFT) |
-| POST | `/events/:id/submit` | Submit for approval |
-| POST | `/events/:id/approve` | Approve |
-| POST | `/events/:id/reject` | Reject with note |
-| POST | `/events/:id/cancel` | Cancel |
-| POST | `/events/:id/publish` | Publish (ADMIN only) |
-| GET | `/events/pending-approvals` | Events awaiting sponsor approval |
-
----
+Event status is one of `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `PUBLISHED`, or
+`CANCELLED`, though the current create/approval flow primarily uses
+`PENDING_APPROVAL`, `PUBLISHED`, and `CANCELLED`.
 
 ## Permissions
 
-| Action | Who can |
-|--------|---------|
-| View published events | All authenticated |
-| Create | TEACHER, SPONSOR, LEADER, ADMIN, SUPER_ADMIN |
-| Submit for approval | Event creator, ADMIN |
-| Approve/Reject | Club Sponsor, ADMIN, SUPER_ADMIN |
-| Publish | ADMIN, SUPER_ADMIN |
-| Cancel | Event creator, ADMIN, SUPER_ADMIN |
+Admins can create and view broader event data. Sponsors can create club events
+and approve pending club events assigned to them. Event creators and admins can
+cancel events.
 
----
+## Side Effects
 
-## Calendar Integration
+Publishing creates a linked `calendarEntries` row. Cancelling removes linked
+event calendar entries. Creates, approvals, rejections, and cancellations write
+audit events.
 
-When an event is published, a `CalendarEntry` is automatically created (or updated) linked to the event. This is what appears on the calendar view. See [[calendar]].
+## Known Limits
 
----
+Flyer upload fields exist on event documents, but current active upload
+finalization is implemented for club images and channel attachments first.
 
 ## Related
 
-- [[calendar]] — Where published events appear
-- [[clubs]] — Club events require a clubId
-- [[notifications]] — Notifications sent when events are published
+- [Calendar](calendar.md)
+- [Clubs](clubs.md)
+- [Uploads](uploads.md)

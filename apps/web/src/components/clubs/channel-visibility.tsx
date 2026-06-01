@@ -1,8 +1,10 @@
 'use client';
 
-import type { ClubChannelVisibility } from '@ia/contracts/clubs';
+import type { ClubChannel } from '@/components/clubs/types';
 import { Hash, Lock, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+export type ClubChannelVisibility = ClubChannel['visibility'];
 
 export function getClubChannelVisibilityLabel(visibility: ClubChannelVisibility) {
   switch (visibility) {

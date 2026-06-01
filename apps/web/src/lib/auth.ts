@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AppRole, AppUser } from '@ia/contracts/auth';
+import { useConvexAuth, useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
+import type { AppRole } from '~/apps/convex/lib/roles';
+import { api } from '~/apps/convex/src/_generated/api';
 
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('ia_token');
-}
+export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 
 export function getUser(): AppUser | null {
   if (typeof window === 'undefined') return null;
@@ -19,14 +19,18 @@ export function getUser(): AppUser | null {
   }
 }
 
-export function setAuth(token: string, user: AppUser) {
-  localStorage.setItem('ia_token', token);
-  localStorage.setItem('ia_user', JSON.stringify(user));
+export function cacheUser(user: AppUser | null) {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem('ia_user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('ia_user');
+  }
 }
 
 export function clearAuth() {
-  localStorage.removeItem('ia_token');
   localStorage.removeItem('ia_user');
+  localStorage.removeItem('ia_token');
 }
 
 export function hasRole(user: AppUser | null, ...roles: AppRole[]): boolean {
@@ -42,10 +46,29 @@ export function isSuperAdmin(user: AppUser | null): boolean {
   return hasRole(user, 'SUPER_ADMIN');
 }
 
+/**
+ * Hook to access the current user.
+ * Since Next.js 16 proxy.ts handles initial auth redirect, 
+ * this hook focuses on providing the full user profile from Convex.
+ */
 export function useCurrentUser(): AppUser | null {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
+  const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
+
   useEffect(() => {
-    setUser(getUser());
+    setCachedUser(getUser());
   }, []);
-  return user;
+
+  useEffect(() => {
+    if (user) {
+      cacheUser(user);
+      setCachedUser(user);
+    } else if (!isLoading && !isAuthenticated) {
+      cacheUser(null);
+      setCachedUser(null);
+    }
+  }, [isAuthenticated, isLoading, user]);
+
+  return user ?? cachedUser;
 }

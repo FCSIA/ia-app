@@ -1,56 +1,48 @@
 ---
-tags: [home, overview]
+tags: [docs, index]
 ---
 
-# IA App — Documentation
+# IA App Documentation
 
-Welcome to the IA App developer documentation. This is a school communication platform built as a full-stack monorepo.
+This documentation describes the current Convex-era IA School App. Treat code as
+the source of truth when it disagrees with docs, then update the docs in the
+same change.
 
----
+## Start Here
 
-## 🗺️ Navigation
+- [Developer setup](../SETUP.md) - local environment, Convex dev deployment,
+  seed/reset, and demo accounts.
+- [Architecture overview](architecture/overview.md) - how the web app, Convex
+  backend, auth, storage, and deployment fit together.
+- [Frontend overview](frontend/frontend-overview.md) - Next.js app structure and
+  browser-side conventions.
+- [Convex backend overview](backend/convex-overview.md) - function layout,
+  generated API types, public/internal boundaries, and coding rules.
+- [Schema map](database/schema-map.md) - active Convex tables grouped by domain.
 
-### Architecture
-- [[overview]] — What the app is, how the pieces connect
-- [[tech-stack]] — Every technology used and why
-- [[data-flow]] — A request traced end-to-end through every layer
-- [[diagram-inventory]] — Detailed list of runtime pieces, features, data domains, flows, and Azure changes
+## Current Stack
 
-### Backend (API)
-- [[backend-overview]] — NestJS, Node.js, and how the server works
-- [[modules]] — The NestJS module system
-- [[controllers]] — HTTP endpoints and routing
-- [[services]] — Business logic layer
-- [[dtos]] — Data validation and transfer objects
-- [[backend-auth]] — JWT authentication and guards
-- [[prisma]] — Database ORM and queries
+| Area                 | Current source of truth                                  |
+| -------------------- | -------------------------------------------------------- |
+| Web app              | `apps/web/src`                                           |
+| Backend functions    | `apps/convex/src`                                        |
+| Data model           | `apps/convex/src/schema.ts`                              |
+| Auth                 | Better Auth component under `apps/convex/src/betterAuth` |
+| Generated Convex API | `apps/convex/src/_generated`                             |
+| Seed/reset           | Internal Convex function `bootstrap:resetAndSeed`        |
 
-### Database
-- [[database-overview]] — PostgreSQL and Prisma explained
-- [[schema]] — Every model and field in the database
-- [[migrations]] — How schema changes are applied
-- [[seed]] — Demo data and test accounts
+## Architecture
 
-### Frontend (Web)
-- [[frontend-overview]] — Next.js 15, React 19, and the App Router
-- [[routing]] — File-based routing and dynamic segments
-- [[components]] — React components, hooks, and AppShell
-- [[api-layer]] — Axios instance and all API calls
-- [[frontend-auth]] — localStorage, tokens, and auth helpers
-- [[state-management]] — TanStack Query for data fetching
-- [[styling]] — Tailwind CSS and the glassmorphic design system
+- [Overview](architecture/overview.md)
+- [Data flow](architecture/data-flow.md)
+- [Deployment](architecture/deployment.md)
 
-### Features
-- [[announcements]] — School-wide and club announcements with comments
-- [[clubs]] — Club management, membership, and invites
-- [[events]] — Event creation, approval workflow, and publishing
-- [[calendar]] — Calendar entries and event display
-- [[schedule]] — Student schedules, friend comparison, and admin day blocks
-- [[flex-friday]] — Session scheduling, registration, and assignments
-- [[notifications]] — In-app notification delivery and preferences
-- [[moderation]] — Keyword filtering and content reports
-- [[audit-log]] — Admin activity tracking
-- [[wrapped]] — Spotify Wrapped-style school-year activity recap
+## Backend
+
+- [Convex overview](backend/convex-overview.md)
+- [Auth and roles](backend/auth-and-roles.md)
+- [Storage and uploads](backend/storage-and-uploads.md)
+- [Seed and reset](backend/seed-and-reset.md)
 
 ### Reference
 - [[getting-started]] — New machine setup and local dev environment
@@ -59,51 +51,44 @@ Welcome to the IA App developer documentation. This is a school communication pl
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do
 
----
+## Database
 
-## 🚀 Quick Start
+- [Schema map](database/schema-map.md)
+- [Indexes and search](database/indexes-and-search.md)
+- [Data evolution](database/data-evolution.md)
 
-```bash
-# First time setup — see [[getting-started]]
-git clone https://github.com/virajdas/ia-app.git && cd ia-app
-cp .env.example .env && cp .env.example apps/api/.env
-pnpm install
+## Frontend
 
-# Start PostgreSQL before migrations:
-# macOS/Linux Homebrew: pnpm infra:up
-# Optional Nix + direnv: direnv allow
-# Windows: pnpm infra:up:win
+- [Frontend overview](frontend/frontend-overview.md)
+- [Components and hooks](frontend/components.md)
+- [Authentication](frontend/frontend-auth.md)
+- [Routing](frontend/routing.md)
+- [Styling](frontend/styling.md)
 
-pnpm db:generate && pnpm db:migrate && pnpm db:seed
+## Features
 
-# Start
-# macOS/Linux Homebrew: brew services start postgresql@16 && sleep 2 && pnpm db:migrate && pnpm dev
-# Optional Nix + direnv: direnv allow && pnpm db:migrate && pnpm dev
-# Windows: pnpm infra:up:win && pnpm dev
+- [Announcements](features/announcements.md)
+- [Audit log](features/audit-log.md)
+- [Calendar](features/calendar.md)
+- [Clubs](features/clubs.md)
+- [Courses](features/courses.md)
+- [Events](features/events.md)
+- [Flex Friday](features/flex-friday.md)
+- [Moderation](features/moderation.md)
+- [Notifications](features/notifications.md)
+- [Schedule](features/schedule.md)
+- [Uploads](features/uploads.md)
+- [Users and admin](features/users-admin.md)
+- [Wrapped](features/wrapped.md)
 
-# Stop
-# Nix + direnv PostgreSQL: pg_ctl stop -D .pgdata
-# macOS/Linux Homebrew: lsof -ti:3000,3001 | xargs kill -9 2>/dev/null; brew services stop postgresql@16
-# Windows: Stop the pnpm dev process (Ctrl+C) and run .\pgsql\bin\pg_ctl.exe -D .\pgsql\data stop
-```
+## Product Reference
 
-| URL | What |
-|-----|------|
-| http://localhost:3000 | Web app, unless the dev launcher falls back |
-| http://localhost:3001 | API, unless the dev launcher falls back |
-| http://localhost:3001/docs | Swagger API docs, unless the API port falls back |
+- [IA FAQ](reference/ia-faq.md) - school context used by product copy and seed
+  data decisions. Verify policy-sensitive details with school staff before
+  treating them as final.
 
----
+## Historical Notes
 
-## 🗂️ Project Structure
-
-```
-ia-app/
-├── apps/
-│   ├── api/        → NestJS backend (port 3001)
-│   └── web/        → Next.js web app (port 3000)
-├── docs/           → This documentation vault
-├── infra/          → Docker / infrastructure config
-├── SETUP.md        → New machine setup guide
-└── .env.example    → Environment variable template
-```
+[PORTING.md](../PORTING.md) is historical migration context. It is useful for
+understanding why the app moved from the old backend shape to Convex, but it is
+not the current operating manual.

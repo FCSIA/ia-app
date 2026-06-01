@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ClubChannelVisibility, ClubDetail } from '@ia/contracts/clubs';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
+  type ClubChannelVisibility,
   getClubChannelVisibilityDescription,
   getClubChannelVisibilityLabel,
 } from '@/components/clubs/channel-visibility';
@@ -26,24 +28,17 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker } from '@/components/clubs/people-picker';
-import { clubsApi } from '@/lib/api';
+import { type ClubChannel, type ClubDetail } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
 
 type Props = {
-  clubId: string;
-  channel?: {
-    id: string;
-    name: string;
-    description?: string | null;
-    visibility: ClubChannelVisibility;
-    memberships?: Array<{ userId: string }>;
-  } | null;
+  clubId: Id<'clubs'>;
+  channel?: ClubChannel | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -51,6 +46,8 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
   const [memberIds, setMemberIds] = useState<string[]>([]);
 
   const isEdit = !!channel;
+  const createChannel = useMutation(api.clubs.channels.create);
+  const updateChannel = useMutation(api.clubs.channels.update);
 
   useEffect(() => {
     if (open) {
@@ -61,47 +58,12 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
     }
   }, [open, channel]);
 
-  const { data: club } = useQuery<ClubDetail>({
-    queryKey: ['club', clubId],
-    queryFn: () => clubsApi.getOne(clubId).then((r) => r.data),
-    enabled: open,
-  });
+  const club = useQuery(api.clubs.detail.get, open ? { clubId } : 'skip') as ClubDetail | undefined;
 
   const memberOptions = useMemo(
     () => (club?.directory ?? []).filter((person) => person.kind === 'MEMBER'),
     [club?.directory],
   );
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      const payload = {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        visibility,
-        memberIds: visibility === 'PRIVATE' ? memberIds : [],
-      };
-      return isEdit
-        ? clubsApi.updateChannel(clubId, channel.id, payload)
-        : clubsApi.createChannel(clubId, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: isEdit ? 'Channel updated' : 'Channel created' });
-      if (!isEdit) {
-        setName('');
-        setDescription('');
-        setVisibility('PUBLIC');
-        setMemberIds([]);
-      }
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} channel`,
-        variant: 'destructive',
-      });
-    },
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -148,9 +110,15 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
             >
               <SelectTrigger id="channel-visibility" placeholder="Choose a visibility" />
               <SelectContent>
-                <SelectItem index={0} value="PUBLIC">Public</SelectItem>
-                <SelectItem index={0} value="MEMBER_READONLY">Member read only</SelectItem>
-                <SelectItem index={0} value="PRIVATE">Private</SelectItem>
+                <SelectItem index={0} value="PUBLIC">
+                  Public
+                </SelectItem>
+                <SelectItem index={0} value="MEMBER_READONLY">
+                  Member read only
+                </SelectItem>
+                <SelectItem index={0} value="PRIVATE">
+                  Private
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -176,10 +144,31 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
             Cancel
           </Button>
           <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !name.trim()}
+            onClick={() => {
+              const payload = {
+                name: name.trim(),
+                description: description.trim() || undefined,
+                visibility,
+              };
+              if (isEdit && channel) {
+                void updateChannel({ channelId: channel._id, ...payload }).then(() => {
+                  toast({ title: 'Channel updated' });
+                  onOpenChange(false);
+                });
+              } else {
+                void createChannel({ clubId, ...payload }).then(() => {
+                  toast({ title: 'Channel created' });
+                  setName('');
+                  setDescription('');
+                  setVisibility('PUBLIC');
+                  setMemberIds([]);
+                  onOpenChange(false);
+                });
+              }
+            }}
+            disabled={!name.trim()}
           >
-            {mutation.isPending ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save changes' : 'Create channel')}
+            {isEdit ? 'Save changes' : 'Create channel'}
           </Button>
         </DialogFooter>
       </DialogContent>

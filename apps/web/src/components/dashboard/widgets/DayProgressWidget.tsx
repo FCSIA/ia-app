@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { parse, isAfter, isBefore, differenceInMinutes } from 'date-fns';
 import { Timer, CheckCircle2 } from 'lucide-react';
-import { scheduleApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
 import { Progress } from '@/components/ui/progress';
 
@@ -16,10 +16,7 @@ export function DayProgressWidget() {
     return () => clearInterval(interval);
   }, []);
 
-  const { data: scheduleData } = useQuery({
-    queryKey: ['schedule-dashboard'],
-    queryFn: () => scheduleApi.getDashboard().then((res) => res.data),
-  });
+  const scheduleData = useQuery(api.schedule.dashboard.get);
 
   const progress = useMemo(() => {
     if (!scheduleData?.blocks || scheduleData.blocks.length === 0) return null;
@@ -29,10 +26,10 @@ export function DayProgressWidget() {
 
     // Find first block start and last block end
     const startTimes = blocks
-      .map((b: any) => parse(`${todayStr} ${b.startTime}`, 'yyyy-MM-dd h:mm a', new Date()))
+      .map((b) => parse(`${todayStr} ${b.startTime}`, 'yyyy-MM-dd HH:mm', new Date()))
       .filter((d: Date) => !isNaN(d.getTime()));
     const endTimes = blocks
-      .map((b: any) => parse(`${todayStr} ${b.endTime}`, 'yyyy-MM-dd h:mm a', new Date()))
+      .map((b) => parse(`${todayStr} ${b.endTime}`, 'yyyy-MM-dd HH:mm', new Date()))
       .filter((d: Date) => !isNaN(d.getTime()));
 
     if (startTimes.length === 0 || endTimes.length === 0) return null;

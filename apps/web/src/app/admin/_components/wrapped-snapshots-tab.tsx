@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import type { UseMutationResult } from '@tanstack/react-query';
 import { RefreshCw, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import type { WrappedSnapshotGenerationResult, WrappedSnapshotStatus } from '@/lib/api';
+import type { WrappedSnapshotStatus } from '../_hooks/use-admin-wrapped';
 import { cn } from '@/lib/utils';
 import { formatDateTime, schoolYearLabel } from '../_lib/admin-utils';
 
@@ -28,7 +27,7 @@ export function WrappedSnapshotsTab({
   isLoading: boolean;
   isError: boolean;
   error: unknown;
-  generateMutation: UseMutationResult<WrappedSnapshotGenerationResult, unknown, boolean>;
+  generateMutation: { isPending: boolean; mutate: (refresh: boolean) => void };
 }) {
   const coveragePercent = status?.eligibleUsers
     ? Math.round((status.generated / status.eligibleUsers) * 100)

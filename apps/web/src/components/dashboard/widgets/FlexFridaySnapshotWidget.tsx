@@ -1,27 +1,23 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 import { format } from 'date-fns';
 import { Sparkles, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { flexFridayApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 export function FlexFridaySnapshotWidget() {
-  const { data: myRegistrations = [] } = useQuery({
-    queryKey: ['flex-friday', 'my', 'registrations'],
-    queryFn: () => flexFridayApi.getMyRegistrations().then((res) => res.data),
-  });
-
-  // Find the registration for the upcoming Friday. For simplicity, we just take the first un-passed one,
-  // or the overall first one.
+  const myRegistrations = useQuery(api.flexFriday.registration.getMyRegistrations, {}) ?? [];
   const activeRegistration = myRegistrations[0];
+  const firstSession = activeRegistration?.workshop?.sessions?.[0]?.session;
+  const fridayDate = firstSession?.flexFriday?.date;
 
   return (
-    <Panel 
-      title="Flex Friday" 
+    <Panel
+      title="Flex Friday"
       action={
         <Button asChild variant="ghost" size="icon" className="size-8 rounded-full">
           <Link href="/flex-friday">
@@ -42,7 +38,7 @@ export function FlexFridaySnapshotWidget() {
         <div className="flex flex-col rounded-[1.5rem] border border-border/70 bg-muted/30 p-5">
           <div className="flex items-start justify-between">
             <Badge variant="solid" className="rounded-full">
-              {activeRegistration.workshop?.pathway || 'General'}
+              General
             </Badge>
             <Sparkles className="size-4 text-muted-foreground" />
           </div>
@@ -56,11 +52,9 @@ export function FlexFridaySnapshotWidget() {
               <MapPin className="size-3.5 text-muted-foreground" />
               {activeRegistration.workshop?.location ?? 'TBD'}
             </div>
-            {activeRegistration.workshop?.session?.friday?.date && (
-              <span>
-                {format(new Date(activeRegistration.workshop.session.friday.date), 'MMM d, yyyy')}
-              </span>
-            )}
+            {fridayDate ? (
+              <span>{format(new Date(fridayDate), 'MMM d, yyyy')}</span>
+            ) : null}
           </div>
         </div>
       )}

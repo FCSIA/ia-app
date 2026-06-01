@@ -1,9 +1,12 @@
 import {
   ScheduleWeekday,
   SchoolDayBlock,
-  StudentScheduleEntry,
-  StudentScheduleRecord,
+  StudentScheduleDraftEntry,
 } from './types';
+
+type ScheduleEntryContainer = {
+  entries: StudentScheduleDraftEntry[];
+};
 
 export const WEEKDAYS: Array<{ value: ScheduleWeekday; shortLabel: string; label: string }> = [
   { value: 'MONDAY', shortLabel: 'Mon', label: 'Monday' },
@@ -58,7 +61,7 @@ export function getPeriodNumbersForDay(blocks: SchoolDayBlock[], weekday: Schedu
 }
 
 export function findScheduleEntry(
-  schedule: StudentScheduleRecord | null,
+  schedule: ScheduleEntryContainer | null,
   weekday: ScheduleWeekday,
   periodNumber: number,
 ) {
@@ -68,7 +71,7 @@ export function findScheduleEntry(
 }
 
 export function getCurrentScheduleStatus(
-  schedule: StudentScheduleRecord | null,
+  schedule: ScheduleEntryContainer | null,
   blocks: SchoolDayBlock[],
   now: Date = new Date(),
 ) {
@@ -109,7 +112,7 @@ export function getCurrentScheduleStatus(
 }
 
 export function copyDayEntries(
-  entries: StudentScheduleEntry[],
+  entries: StudentScheduleDraftEntry[],
   sourceDay: ScheduleWeekday,
   targetDays: ScheduleWeekday[],
 ) {

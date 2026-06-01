@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import type { ClubChannelMessageRichBody } from '@ia/contracts/clubs';
 import { Bold, AtSign, BarChart3, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
@@ -13,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   createEmptyClubChannelMessageValue,
   serializeClubChannelMessagePlainText,
+  type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
 import {
   MentionElement,
@@ -127,7 +127,6 @@ export function ChannelMessageComposer({
     editor.tf.setValue(emptyValue);
   }, [editor, resetKey]);
 
-  const builtInMentions = suggestionEntries.filter((entry) => entry.kind === 'built-in');
   const mentionables = useMemo<MentionableItem[]>(
     () =>
       suggestionEntries.map((entry) => ({
@@ -158,21 +157,6 @@ export function ChannelMessageComposer({
       pollQuestion: hasPoll ? pollQuestion.trim() : undefined,
       pollOptions: hasPoll ? normalizedPollOptions : undefined,
     });
-  };
-
-  const insertMention = (token: string) => {
-    const insert = (
-      editor.tf.insert as unknown as {
-        mention?: (options: { key: string; search?: string; value: string }) => void;
-      }
-    ).mention;
-
-    if (!insert) return;
-
-    insert({ key: token, search: '', value: token });
-    editor.tf.move({ unit: 'offset' });
-    editor.tf.insertText(' ');
-    editor.tf.focus();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

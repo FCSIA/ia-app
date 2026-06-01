@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "~/apps/convex/src/_generated/api";
 import {
   AtSign,
   Check,
@@ -13,36 +14,39 @@ import {
   Pencil,
   Trash2,
   Users2,
-} from 'lucide-react';
-import { ClubChannelVisibilityIcon } from '@/components/clubs/channel-visibility';
-import { AppShell } from '@/components/layout/AppShell';
-import { Button } from '@/components/ui/button';
+} from "lucide-react";
+import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
+import { AppShell } from "@/components/layout/AppShell";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Dropdown, DropdownLabel, DropdownSeparator, useDropdown } from '@/components/ui/dropdown';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChannelDialog } from '@/components/clubs/dialogs/channel-dialog';
-import { clubsApi } from '@/lib/api';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import type { ClubDetail, ClubSummary } from '@ia/contracts/clubs';
-
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+} from "@/components/ui/dropdown-menu";
+import {
+  Dropdown,
+  DropdownLabel,
+  DropdownSeparator,
+  useDropdown,
+} from "@/components/ui/dropdown";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
+import { useClubId } from "@/app/clubs/club-route";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import { hasRole, useCurrentUser } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import type {
+  ClubChannel,
+  ClubDetail,
+  ClubSummary,
+} from "@/components/clubs/types";
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+  if (url.startsWith("http")) return url;
+  return url;
 }
-
-type MyClubsResponse = {
-  memberOf: ClubSummary[];
-  sponsoring: ClubSummary[];
-};
 
 function ClubPickerItem({
   club,
@@ -65,24 +69,35 @@ function ClubPickerItem({
   return (
     <Link
       ref={ref}
-      href={`/clubs/${club.id}`}
+      href={`/clubs/${club._id}`}
       data-proximity-index={index}
       role="menuitemradio"
       aria-checked={active}
       className={cn(
-        'relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none transition-colors',
-        active ? 'bg-muted/70 text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+        "relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none transition-colors",
+        active
+          ? "bg-muted/70 text-foreground"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
       )}
     >
       <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
         {club.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full bg-background object-cover" />
+          <img
+            src={resolveMediaUrl(club.logoUrl)}
+            alt={club.name}
+            className="size-full bg-background object-cover"
+          />
         ) : (
           club.name.charAt(0).toUpperCase()
         )}
       </div>
-      <span className={cn('min-w-0 flex-1 truncate text-sm font-medium', isHovered || active ? 'text-foreground' : 'text-muted-foreground')}>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm font-medium",
+          isHovered || active ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
         {club.name}
       </span>
       {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
@@ -91,7 +106,6 @@ function ClubPickerItem({
 }
 
 type ClubWorkspaceProps = {
-  clubId: string;
   children: ReactNode;
   rightPane?: ReactNode;
   title?: ReactNode;
@@ -100,42 +114,22 @@ type ClubWorkspaceProps = {
 };
 
 export function ClubWorkspace({
-  clubId,
   children,
   rightPane,
   title,
   actions,
   contentClassName,
 }: ClubWorkspaceProps) {
-  const pathname = usePathname() ?? '';
+  const pathname = usePathname() ?? "";
   const user = useCurrentUser();
+  const clubId = useClubId();
 
-  const { data: club } = useQuery<ClubDetail>({
-    queryKey: ['club', clubId],
-    queryFn: () => clubsApi.getOne(clubId).then((response) => response.data),
-  });
-
-  const queryClient = useQueryClient();
+  const club = useQuery(api.clubs.detail.get, { clubId }) as
+    | ClubDetail
+    | undefined;
   const { toast } = useToast();
-
-  const deleteChannelMutation = useMutation({
-    mutationFn: (channelId: string) => clubsApi.deleteChannel(clubId, channelId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: 'Channel deleted' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to delete channel',
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const { data: myData } = useQuery<MyClubsResponse>({
-    queryKey: ['my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((response) => response.data),
-  });
+  const deleteChannel = useMutation(api.clubs.channels.remove);
+  const myData = useQuery(api.clubs.management.getMyClubs);
 
   const channels = club?.channels ?? [];
   const myClubs = useMemo(() => {
@@ -145,35 +139,46 @@ export function ClubWorkspace({
     ];
     const seen = new Set<string>();
     return entries.filter((entry) => {
-      if (seen.has(entry.id)) return false;
-      seen.add(entry.id);
+      if (seen.has(entry._id)) return false;
+      seen.add(entry._id);
       return true;
     });
   }, [myData]);
 
-  const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
-  const myMembership = club?.members?.find((member) => member.userId === user?.id);
+  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const isSponsor = club?.sponsors?.some(
+    (sponsor) => sponsor.userId === user?.id,
+  );
+  const myMembership = club?.members?.find(
+    (member) => member.userId === user?.id,
+  );
   const canManageChannels = isSponsor || !!myMembership?.role || isAdmin;
 
-  const activeChannelId = pathname.match(/\/clubs\/[^/]+\/channels\/([^/]+)/)?.[1];
+  const activeChannelId = pathname.match(
+    /\/clubs\/[^/]+\/channels\/([^/]+)/,
+  )?.[1];
 
-  const nav: Array<{ href: string; label: string; icon: typeof Home; match: (p: string) => boolean }> = [
+  const nav: Array<{
+    href: string;
+    label: string;
+    icon: typeof Home;
+    match: (p: string) => boolean;
+  }> = [
     {
       href: `/clubs/${clubId}`,
-      label: 'Overview',
+      label: "Overview",
       icon: Home,
       match: (p) => p === `/clubs/${clubId}`,
     },
     {
       href: `/clubs/${clubId}/people`,
-      label: 'People',
+      label: "People",
       icon: Users2,
       match: (p) => p.startsWith(`/clubs/${clubId}/people`),
     },
     {
       href: `/clubs/${clubId}/tags`,
-      label: 'Tags',
+      label: "Tags",
       icon: AtSign,
       match: (p) => p.startsWith(`/clubs/${clubId}/tags`),
     },
@@ -184,16 +189,21 @@ export function ClubWorkspace({
       <div className="min-w-0 flex-1">
         {title ?? (
           <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-            {club?.name ?? 'Club'}
+            {club?.name ?? "Club"}
           </h1>
         )}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 
   return (
-    <AppShell headerSlot={headerSlot} mainClassName="flex h-[calc(100vh-4rem)] min-h-0">
+    <AppShell
+      headerSlot={headerSlot}
+      mainClassName="flex h-[calc(100vh-4rem)] min-h-0"
+    >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 flex-col border-r bg-background md:flex">
           <div className="border-b p-3">
@@ -206,30 +216,43 @@ export function ClubWorkspace({
                   <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/50">
                     {club?.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover bg-background" />
+                      <img
+                        src={resolveMediaUrl(club.logoUrl)}
+                        alt={club.name}
+                        className="size-full object-cover bg-background"
+                      />
                     ) : (
-                      club?.name?.charAt(0).toUpperCase() ?? 'C'
+                      (club?.name?.charAt(0).toUpperCase() ?? "C")
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {club?.name ?? 'Loading…'}
+                      {club?.name ?? "Loading…"}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {club?._count?.members ?? club?.members?.length ?? 0} members
+                      {club?._count?.members ?? club?.members?.length ?? 0}{" "}
+                      members
                     </p>
                   </div>
                   <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="border-0 bg-transparent p-0 shadow-none">
+              <DropdownMenuContent
+                align="start"
+                className="border-0 bg-transparent p-0 shadow-none"
+              >
                 <Dropdown checkedIndex={-1} className="w-64">
                   <DropdownLabel className="text-xs font-normal text-muted-foreground">
                     Your clubs
                   </DropdownLabel>
                   {myClubs.length > 0 ? (
                     myClubs.map((entry, index) => (
-                      <ClubPickerItem key={entry.id} club={entry} active={entry.id === clubId} index={index} />
+                      <ClubPickerItem
+                        key={entry._id}
+                        club={entry}
+                        active={entry._id === clubId}
+                        index={index}
+                      />
                     ))
                   ) : (
                     <div className="px-2 py-1.5 text-xs text-muted-foreground">
@@ -259,10 +282,10 @@ export function ClubWorkspace({
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
                         active
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                          ? "bg-muted font-medium text-foreground"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                       )}
                     >
                       <Icon className="size-4" />
@@ -284,33 +307,46 @@ export function ClubWorkspace({
                 <div className="space-y-0.5">
                   {channels.length > 0 ? (
                     channels.map((channel) => {
-                      const active = channel.id === activeChannelId;
+                      const active = channel._id === activeChannelId;
                       return (
                         <Link
-                          key={channel.id}
-                          href={`/clubs/${clubId}/channels/${channel.id}`}
+                          key={channel._id}
+                          href={`/clubs/${clubId}/channels/${channel._id}`}
                           className={cn(
-                            'group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+                            "group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors",
                             active
-                              ? 'bg-muted font-medium text-foreground'
-                              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                              ? "bg-muted font-medium text-foreground"
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                           )}
                         >
                           <ClubChannelVisibilityIcon
                             visibility={channel.visibility}
                             className="size-3.5 text-muted-foreground"
                           />
-                          <span className="flex-1 truncate">{channel.name}</span>
+                          <span className="flex-1 truncate">
+                            {channel.name}
+                          </span>
                           {canManageChannels && (
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <ChannelActionsTrigger clubId={clubId} channel={channel} />
+                              <ChannelActionsTrigger
+                                clubId={clubId}
+                                channel={channel}
+                              />
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  if (confirm(`Are you sure you want to delete #${channel.name}?`)) {
-                                    deleteChannelMutation.mutate(channel.id);
+                                  if (
+                                    confirm(
+                                      `Are you sure you want to delete #${channel.name}?`,
+                                    )
+                                  ) {
+                                    void deleteChannel({
+                                      channelId: channel._id,
+                                    }).then(() =>
+                                      toast({ title: "Channel deleted" }),
+                                    );
                                   }
                                 }}
                                 className="p-1 hover:bg-destructive/10 hover:text-destructive rounded transition-all"
@@ -335,7 +371,9 @@ export function ClubWorkspace({
         </aside>
 
         <div className="flex min-w-0 flex-1">
-          <div className={cn('min-w-0 flex-1 overflow-y-auto', contentClassName)}>
+          <div
+            className={cn("min-w-0 flex-1 overflow-y-auto", contentClassName)}
+          >
             {children}
           </div>
           {rightPane ? (
@@ -349,7 +387,7 @@ export function ClubWorkspace({
   );
 }
 
-function CreateChannelTrigger({ clubId }: { clubId: string }) {
+function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -367,7 +405,13 @@ function CreateChannelTrigger({ clubId }: { clubId: string }) {
   );
 }
 
-function ChannelActionsTrigger({ clubId, channel }: { clubId: string; channel: any }) {
+function ChannelActionsTrigger({
+  clubId,
+  channel,
+}: {
+  clubId: Id<"clubs">;
+  channel: ClubChannel;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>

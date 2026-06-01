@@ -1,35 +1,32 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { moderationApi } from '@/lib/api';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 import type { AdminTabId } from './use-admin-tab';
 
 export function useAdminModeration(activeTab: AdminTabId) {
   const { toast } = useToast();
-  const qc = useQueryClient();
 
   const [keyword, setKeyword] = useState('');
   const [moderationSearch, setModerationSearch] = useState('');
   const deferredModerationSearch = useDeferredValue(moderationSearch);
 
-  const { data: keywords = [] } = useQuery({
-    queryKey: ['keywords'],
-    queryFn: () => moderationApi.getKeywords().then((r) => r.data),
-    enabled: activeTab === 'moderation',
-  });
+  const keywords =
+    useQuery(api.moderation.keywords.list, activeTab === 'moderation' ? {} : 'skip') ?? [];
+  const reports =
+    useQuery(api.moderation.reports.list, activeTab === 'moderation' ? {} : 'skip') ?? [];
 
-  const { data: reports = [] } = useQuery({
-    queryKey: ['reports'],
-    queryFn: () => moderationApi.getReports().then((r) => r.data),
-    enabled: activeTab === 'moderation',
-  });
+  const addKeyword = useMutation(api.moderation.keywords.add);
+  const removeKeyword = useMutation(api.moderation.keywords.remove);
+  const updateReport = useMutation(api.moderation.reports.update);
 
   const filteredReports = useMemo(() => {
     const query = deferredModerationSearch.trim().toLowerCase();
     if (!query) return reports;
-    return (reports as any[]).filter((r) => {
+    return reports.filter((r) => {
       const searchable = [
         r.reason,
         r.contentType,
@@ -44,36 +41,67 @@ export function useAdminModeration(activeTab: AdminTabId) {
     });
   }, [reports, deferredModerationSearch]);
 
-  const addKeywordMutation = useMutation({
-    mutationFn: (kw: string) => moderationApi.addKeyword(kw),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keywords'] });
-      setKeyword('');
-      toast({ title: 'Keyword added' });
+  const addKeywordMutation = {
+    mutate: (kw: string) => {
+      void addKeyword({ keyword: kw })
+        .then(() => {
+          setKeyword('');
+          toast({ title: 'Keyword added' });
+        })
+        .catch((error: unknown) =>
+          toast({
+            title: error instanceof Error ? error.message : 'Failed to add keyword',
+            variant: 'destructive',
+          }),
+        );
     },
-  });
+    isPending: false,
+  };
 
-  const removeKeywordMutation = useMutation({
-    mutationFn: (id: string) => moderationApi.removeKeyword(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keywords'] });
-      toast({ title: 'Removed' });
+  const removeKeywordMutation = {
+    mutate: (ruleId: string) => {
+      void removeKeyword({ ruleId: ruleId as Id<'moderationKeywordRules'> })
+        .then(() => toast({ title: 'Removed' }))
+        .catch((error: unknown) =>
+          toast({
+            title: error instanceof Error ? error.message : 'Failed to remove keyword',
+            variant: 'destructive',
+          }),
+        );
     },
-  });
+    isPending: false,
+  };
 
-  const reportMutation = useMutation({
-    mutationFn: ({ id, status, reviewNote }: any) =>
-      moderationApi.updateReport(id, { status, reviewNote }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reports'] });
-      toast({ title: 'Report updated' });
+  const reportMutation = {
+    mutate: ({
+      id,
+      status,
+      reviewNote,
+    }: {
+      id: string;
+      status: string;
+      reviewNote: string;
+    }) => {
+      void updateReport({
+        reportId: id as Id<'moderationReports'>,
+        status,
+        reviewNote,
+      })
+        .then(() => toast({ title: 'Report updated' }))
+        .catch((error: unknown) =>
+          toast({
+            title: error instanceof Error ? error.message : 'Failed to update report',
+            variant: 'destructive',
+          }),
+        );
     },
-  });
+    isPending: false,
+  };
 
   return {
     keyword,
     setKeyword,
-    keywords: keywords as any[],
+    keywords,
     addKeywordMutation,
     removeKeywordMutation,
     moderationSearch,

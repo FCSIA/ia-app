@@ -1,7 +1,8 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
 import { Send, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,14 +23,16 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { clubsApi, scheduleApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import { parseInviteCsv } from '@/lib/parse-invite-csv';
 import { useToast } from '@/hooks/use-toast';
 import { fullName } from '@/components/clubs/types';
 
-type StudentResult = { id: string; uniqueId: string; firstName: string; lastName: string };
+type StudentResult = FunctionReturnType<typeof api.clubs.invitations.searchInviteCandidates>[number];
 
 type Props = {
-  clubId: string;
+  clubId: Id<'clubs'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -37,60 +40,50 @@ type Props = {
 export function InviteDialog({ clubId, open, onOpenChange }: Props) {
   const { toast } = useToast();
 
-  // Single invite state
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
   const [selected, setSelected] = useState<StudentResult | null>(null);
 
-  // CSV state
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
+  const [csvPending, setCsvPending] = useState(false);
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ['student-search', deferredQuery],
-    queryFn: () =>
-      scheduleApi.searchPeople(deferredQuery).then((res) => res.data as StudentResult[]),
-    // Only search while no student is selected
-    enabled: deferredQuery.length >= 2 && !selected,
-  });
+  const searchResults =
+    useQuery(
+      api.clubs.invitations.searchInviteCandidates,
+      deferredQuery.length >= 2 && !selected
+        ? { clubId, query: deferredQuery, limit: 20 }
+        : 'skip',
+    ) ?? [];
+  const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
 
-  const inviteMutation = useMutation({
-    mutationFn: (id: string) => clubsApi.sendInvite(clubId, id),
-    onSuccess: () => {
-      setSelected(null);
-      setQuery('');
-      toast({ title: 'Invite sent!' });
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to send invite',
-        variant: 'destructive',
-      });
-    },
-  });
+  const sendInvite = useMutation(api.clubs.invitations.sendInvite);
+  const bulkInvite = useMutation(api.clubs.invitations.bulkInvite);
 
-  const csvMutation = useMutation({
-    mutationFn: () => {
-      if (!csvFile) throw new Error('CSV required');
-      return clubsApi.bulkInviteCsv(clubId, csvFile);
-    },
-    onSuccess: (response) => {
-      setResult(response.data);
+  const handleCsvUpload = async () => {
+    if (!csvFile) return;
+    setCsvPending(true);
+    try {
+      const text = await csvFile.text();
+      const uniqueIds = parseInviteCsv(text);
+      const response = await bulkInvite({ clubId, uniqueIds });
+      setResult(response);
       setCsvFile(null);
-      setCsvKey((k: number) => k + 1);
+      setCsvKey((k) => k + 1);
       toast({
         title: 'CSV processed',
-        description: `${response.data.invited} invited, ${response.data.skipped} skipped`,
+        description: `${response.invited} invited, ${response.skipped} skipped`,
       });
-    },
-    onError: (error: any) => {
+    } catch (error) {
       toast({
-        title: error.response?.data?.message || 'Failed to import CSV',
+        title: error instanceof Error ? error.message : 'Failed to import CSV',
         variant: 'destructive',
       });
-    },
-  });
+    } finally {
+      setCsvPending(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,12 +96,10 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="space-y-5">
-          {/* ── Single invite ── */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Single invite</Label>
 
             {selected ? (
-              /* Selected student card — one action, no ambiguity */
               <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
                   {selected.firstName[0]}{selected.lastName[0]}
@@ -127,16 +118,23 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                 </button>
                 <Button
                   size="sm"
-                  disabled={inviteMutation.isPending}
-                  onClick={() => inviteMutation.mutate(selected.uniqueId)}
+                  onClick={() =>
+                    void sendInvite({
+                      clubId,
+                      recipientUniqueId: selected.uniqueId,
+                    }).then(() => {
+                      setSelected(null);
+                      setQuery('');
+                      toast({ title: 'Invite sent!' });
+                    })
+                  }
                   className="shrink-0"
                 >
                   <Send className="mr-1.5 size-3.5" />
-                  {inviteMutation.isPending ? 'Sending…' : 'Send'}
+                  Send
                 </Button>
               </div>
             ) : (
-              /* Search picker — shown until a student is chosen */
               <Command className="rounded-xl border shadow-sm" shouldFilter={false}>
                 <CommandInput
                   placeholder="Search by name or student ID…"
@@ -159,7 +157,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                     <CommandGroup heading="Results">
                       {searchResults?.map((student) => (
                         <CommandItem
-                          key={student.id}
+                          key={student._id}
                           onSelect={() => setSelected(student)}
                           className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                         >
@@ -179,7 +177,6 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             )}
           </div>
 
-          {/* ── Divider ── */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -189,7 +186,6 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             </div>
           </div>
 
-          {/* ── Bulk CSV ── */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground" htmlFor="invite-csv">Bulk upload</Label>
             <Input
@@ -202,11 +198,11 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             <Button
               variant="tertiary"
               className="w-full"
-              disabled={!csvFile || csvMutation.isPending}
-              onClick={() => csvMutation.mutate()}
+              disabled={!csvFile || csvPending}
+              onClick={() => void handleCsvUpload()}
             >
               <Upload className="mr-2 size-4" />
-              {csvMutation.isPending ? 'Uploading…' : 'Upload CSV'}
+              {csvPending ? 'Uploading…' : 'Upload CSV'}
             </Button>
           </div>
 

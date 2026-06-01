@@ -21,11 +21,11 @@ import {
   Search,
   type LucideIcon,
 } from 'lucide-react';
-import type { AppUser } from '@ia/contracts/auth';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from 'convex/react';
 
-import { clearAuth, getUser, hasRole } from '@/lib/auth';
-import { authApi, notificationsApi, announcementsApi, clubsApi, eventsApi, scheduleApi, flexFridayApi } from '@/lib/api';
+import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
+import { api } from '~/apps/convex/src/_generated/api';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -64,21 +64,6 @@ const accountNav: NavItem[] = [
 
 const adminNav: NavItem[] = [{ href: '/admin', label: 'Admin Panel', icon: Shield }];
 
-const pageMeta: Record<string, { label: string; detail: string }> = {
-  '/dashboard': { label: 'Dashboard', detail: 'Signals, priorities, and fast paths.' },
-  '/announcements': { label: 'Announcements', detail: 'Official voice, updates, and follow-up.' },
-  '/clubs': { label: 'Clubs', detail: 'Team spaces, channels, and sponsor oversight.' },
-  '/courses': { label: 'Courses', detail: 'Catalog, prerequisites, and class details.' },
-  '/schedule': { label: 'Schedule', detail: 'View and manage your daily periods.' },
-  '/events': { label: 'Events', detail: 'What is next and what needs attention.' },
-  '/calendar': { label: 'Calendar', detail: 'Shared planning across the week.' },
-  '/flex-friday': { label: 'Flex Friday', detail: 'Sign-ups and sections for Friday.' },
-  '/wrapped': { label: 'Wrapped', detail: 'Your year at a glance.' },
-  '/notifications': { label: 'Notifications', detail: 'Unread mentions and direct follow-up.' },
-  '/profile': { label: 'Profile', detail: 'Identity, preferences, account settings.' },
-  '/admin': { label: 'Admin', detail: 'Controls, permissions, operational views.' },
-};
-
 function NavIcon({
   item,
   active,
@@ -116,8 +101,6 @@ function NavIcon({
   );
 }
 
-const sortedPageMeta = Object.entries(pageMeta).sort(([a], [b]) => b.length - a.length);
-
 export function AppShell({
   children,
   headerSlot,
@@ -129,18 +112,13 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<AppUser | null>(null);
+  const user = useCurrentUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? '/dashboard';
-
-  useEffect(() => {
-    setUser(getUser());
-  }, []);
 
   useEffect(() => {
     setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
@@ -162,43 +140,30 @@ export function AppShell({
     setMobileOpen(false);
   }, [safePathname]);
 
-  const { data: unreadData } = useQuery({
-    queryKey: ['unread-count'],
-    queryFn: () => notificationsApi.getUnreadCount().then((response) => response.data),
-    refetchInterval: 60_000,
-    staleTime: 30_000,
-  });
+  const unreadData = useQuery(api.notifications.inbox.unreadCount);
 
   const handlePrefetch = (href: string) => {
     switch (href) {
       case '/announcements':
-        queryClient.prefetchQuery({ queryKey: ['announcements'], queryFn: () => announcementsApi.getAll().then((r) => r.data) });
         break;
       case '/clubs':
-        queryClient.prefetchQuery({ queryKey: ['my-clubs'], queryFn: () => clubsApi.getMyClubs().then((r) => r.data) });
-        queryClient.prefetchQuery({ queryKey: ['clubs'], queryFn: () => clubsApi.getAll().then((r) => r.data) });
         break;
       case '/events':
-        queryClient.prefetchQuery({ queryKey: ['events'], queryFn: () => eventsApi.getAll().then((r) => r.data) });
         break;
       case '/schedule':
-        queryClient.prefetchQuery({ queryKey: ['schedule-dashboard'], queryFn: () => scheduleApi.getDashboard().then((r) => r.data) });
         break;
       case '/flex-friday':
-        queryClient.prefetchQuery({ queryKey: ['flex-friday'], queryFn: () => flexFridayApi.getAll().then((r) => r.data) });
         break;
       case '/notifications':
-        queryClient.prefetchQuery({ queryKey: ['notifications'], queryFn: () => notificationsApi.getAll().then((r) => r.data) });
         break;
     }
   };
 
   const handleLogout = async () => {
     try {
-      await authApi.logout();
+      await authClient.signOut();
     } catch { }
     clearAuth();
-    queryClient.clear();
     router.replace('/login');
     toast({ title: 'Logged out' });
   };
@@ -222,14 +187,6 @@ export function AppShell({
         return true;
       }),
     [showSchedule, showWrapped],
-  );
-
-  const currentMeta = useMemo(
-    () =>
-      sortedPageMeta.find(
-        ([href]) => safePathname === href || (href !== '/dashboard' && safePathname.startsWith(href)),
-      )?.[1] ?? pageMeta['/dashboard'],
-    [safePathname],
   );
 
   const unreadBadge = unreadData?.count

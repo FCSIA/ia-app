@@ -4,70 +4,70 @@ tags: [feature, schedule, students, admin]
 
 # Schedule
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+The schedule workspace gives students a class grid, friend comparison, and live
+school-day context. Admins define the bell schedule that powers current block
+detection.
 
 ## What It Does
 
-The schedule workspace gives students a Saturn-style class grid and lets admins define the bell schedule that powers live class detection.
+- Students build a 5-day schedule from official courses.
+- Students choose public/private schedule visibility.
+- Students search classmates and send friend requests.
+- Accepted friends can compare public schedules.
+- Admins create, edit, and delete weekday bell schedule blocks.
 
----
+## Source Files
 
-## Student Flow
+- Backend: `apps/convex/src/schedule/`
+- Web page: `apps/web/src/app/schedule/page.tsx`
+- Schedule components: `apps/web/src/components/schedule/`
+- Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
-- Students open `/schedule` from the left navigation.
-- They build their 5-day schedule by selecting official **Courses** for each period.
-- They choose whether their schedule is public or private.
-- They can search classmates by first name, last name, or `uniqueId`.
-- **Friend Requests**:
-    - Students send a friend request to a classmate.
-    - The classmate must **Accept** the request before schedules can be compared.
-    - Once accepted, if a friend has a public schedule, it becomes viewable in the comparison panel.
+## Convex Surface
 
-Private schedules stay hidden from friends, but the owner still sees their own live class state.
-
----
-
-## Admin Flow
-
-- Admins use the `Admin Blocks` tab inside `/schedule`.
-- They define the **Bell Schedule** by adding blocks for each weekday.
-- A block can be:
-  - a period block (`Period 1` through `Period 8`)
-  - a custom block such as Lunch, Advisory, Assembly, or Dismissal
-- Blocks cannot overlap on the same day.
-- When a period block is active, students see their saved course for that period. When a custom block is active, students see the custom label instead.
-
----
+- `api.schedule.dashboard.get`
+- `api.schedule.dashboard.save`
+- `api.schedule.friends.search`
+- `api.schedule.friends.sendRequest`
+- `api.schedule.friends.acceptRequest`
+- `api.schedule.friends.remove`
+- `api.schedule.blocks.createBlock`
+- `api.schedule.blocks.updateBlock`
+- `api.schedule.blocks.deleteBlock`
+- `internal.schedule.seed.seedFromStaticData`
 
 ## Data Model
 
-- `student_schedules` (The container)
-- `student_schedule_entries` (Links to `courses`)
-- `student_schedule_friends` (Request/Accept workflow)
-- `school_day_blocks` (The bell schedule)
-- `courses` (The source of truth for class names)
+- `studentSchedules`
+- `studentScheduleEntries`
+- `studentScheduleFriends`
+- `schoolDayBlocks`
+- `courses`
 
----
+Schedule entries are child documents keyed by weekday and period instead of an
+unbounded array on the schedule document.
 
-## API Surface
+## Permissions
 
-- `GET /schedule` (Dashboard with entries, blocks, and friends)
-- `PUT /schedule/me` (Update my schedule)
-- `GET /schedule/search?q=...` (Search students)
-- `POST /schedule/friends` (Send friend request)
-- `POST /schedule/friends/:id/respond` (Accept/Decline)
-- `DELETE /schedule/friends/:id` (Remove friend)
-- `POST /schedule/blocks` (Admin: create block)
-- `PATCH /schedule/blocks/:id` (Admin: update block)
+Students manage their own schedule and friend relationships. Admin roles manage
+school-day blocks. Friend schedule visibility depends on accepted friendship and
+the owner's public/private setting.
 
----
+## Side Effects
+
+Schedule saves, block changes, and friend actions write audit events. Friend
+requests create notification deliveries.
 
 ## Seed Data
 
-The seed script creates:
-- A default Monday-Friday bell schedule.
-- 1,500 student schedules (every student gets one).
-- ~180 pre-accepted friend pairs for testing.
+The dashboard-only `bootstrap:resetAndSeed` action runs the schedule seed in
+batches after users and courses exist. The schedule seed function is internal and
+is not a local CLI entrypoint.
 
+## Related
+
+- [Courses](courses.md)
+- [Notifications](notifications.md)
+- [Seed and reset](../backend/seed-and-reset.md)

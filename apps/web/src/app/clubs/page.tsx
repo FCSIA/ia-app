@@ -2,37 +2,29 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { Check, Hash, Plus, Shield, Users2, X } from 'lucide-react';
-import type { ClubInvite, ClubSummary } from '@ia/contracts/clubs';
+import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
+import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
-import { clubsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
-
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;
-  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+  return url;
 }
-
-type MyClubsResponse = {
-  memberOf: ClubSummary[];
-  sponsoring: ClubSummary[];
-};
 
 export default function ClubsLandingPage() {
   const user = useCurrentUser();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -40,30 +32,10 @@ export default function ClubsLandingPage() {
 
   const canCreate = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
-  const { data: allClubs = [], isLoading } = useQuery<ClubSummary[]>({
-    queryKey: ['clubs'],
-    queryFn: () => clubsApi.getAll().then((r) => r.data),
-  });
-
-  const { data: myData } = useQuery<MyClubsResponse>({
-    queryKey: ['my-clubs'],
-    queryFn: () => clubsApi.getMyClubs().then((r) => r.data),
-  });
-
-  const { data: invites = [] } = useQuery<ClubInvite[]>({
-    queryKey: ['club-invites'],
-    queryFn: () => clubsApi.getMyInvites().then((r) => r.data),
-  });
-
-  const respondMutation = useMutation({
-    mutationFn: ({ inviteId, accept }: { inviteId: string; accept: boolean }) =>
-      clubsApi.respondToInvite(inviteId, accept),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club-invites'] });
-      queryClient.invalidateQueries({ queryKey: ['my-clubs'] });
-      toast({ title: 'Response sent' });
-    },
-  });
+  const allClubs = useQuery(api.clubs.management.getAll) ?? [];
+  const myData = useQuery(api.clubs.management.getMyClubs);
+  const invites = useQuery(api.clubs.management.listMyInvites) ?? [];
+  const respondToInvite = useMutation(api.clubs.invitations.respondToInvite);
 
   const myClubs = useMemo(() => {
     const entries = [
@@ -71,11 +43,11 @@ export default function ClubsLandingPage() {
       ...(myData?.sponsoring ?? []).map((c) => ({ ...c, kind: 'sponsor' as const })),
     ];
     const map = new Map<string, (typeof entries)[number]>();
-    for (const entry of entries) map.set(entry.id, entry);
+    for (const entry of entries) map.set(entry._id, entry);
     return Array.from(map.values());
   }, [myData]);
 
-  const myClubIds = useMemo(() => new Set(myClubs.map((c) => c.id)), [myClubs]);
+  const myClubIds = useMemo(() => new Set(myClubs.map((c) => c._id)), [myClubs]);
 
   const filteredClubs = useMemo(() => {
     return filterBySearchQuery(allClubs, deferredSearch, (club) => [
@@ -83,6 +55,8 @@ export default function ClubsLandingPage() {
       club.description,
     ]);
   }, [allClubs, deferredSearch]);
+
+  const isLoading = allClubs.length === 0 && myData === undefined;
 
   const headerSlot = (
     <div className="min-w-0">
@@ -98,7 +72,7 @@ export default function ClubsLandingPage() {
             <h3 className="text-sm font-semibold text-foreground">Pending invites</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {invites.map((invite) => (
-                <Card key={invite.id} className="border-amber-500/30 bg-amber-500/5">
+                <Card key={invite._id} className="border-amber-500/30 bg-amber-500/5">
                   <CardContent className="flex items-center gap-3 p-4">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{invite.club.name}</p>
@@ -109,7 +83,10 @@ export default function ClubsLandingPage() {
                     <Button
                       size="sm"
                       onClick={() =>
-                        respondMutation.mutate({ inviteId: invite.id, accept: true })
+                        void respondToInvite({
+                          inviteId: invite._id,
+                          accept: true,
+                        }).then(() => toast({ title: 'Response sent' }))
                       }
                     >
                       <Check className="size-4" />
@@ -118,7 +95,10 @@ export default function ClubsLandingPage() {
                       size="sm"
                       variant="tertiary"
                       onClick={() =>
-                        respondMutation.mutate({ inviteId: invite.id, accept: false })
+                        void respondToInvite({
+                          inviteId: invite._id,
+                          accept: false,
+                        }).then(() => toast({ title: 'Response sent' }))
                       }
                     >
                       <X className="size-4" />
@@ -136,7 +116,7 @@ export default function ClubsLandingPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {myClubs.map((club) => (
                 <ClubCard
-                  key={club.id}
+                  key={club._id}
                   club={club}
                   badge={
                     club.kind === 'sponsor' ? (
@@ -180,11 +160,7 @@ export default function ClubsLandingPage() {
           ) : filteredClubs.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredClubs.map((club) => (
-                <ClubTile
-                  key={club.id}
-                  club={club}
-                  joined={myClubIds.has(club.id)}
-                />
+                <ClubTile key={club._id} club={club} joined={myClubIds.has(club._id)} />
               ))}
             </div>
           ) : (
@@ -202,7 +178,7 @@ export default function ClubsLandingPage() {
 
 function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
   return (
-    <Link href={`/clubs/${club.id}`} className="group block">
+    <Link href={`/clubs/${club._id}`} className="group block">
       <Card className="relative h-full transition-colors hover:border-border hover:bg-muted/50">
         <CardContent className="flex h-full flex-col items-center gap-2 p-5 text-center">
           {joined ? (
@@ -210,7 +186,7 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
               Joined
             </Badge>
           ) : null}
-          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-base font-semibold text-primary border border-border/40">
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/40 bg-primary/10 text-base font-semibold text-primary">
             {club.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
@@ -240,11 +216,11 @@ function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
 
 function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode }) {
   return (
-    <Link href={`/clubs/${club.id}`} className="block">
+    <Link href={`/clubs/${club._id}`} className="block">
       <Card className={cn('h-full transition-colors hover:border-border hover:bg-muted/50')}>
         <CardContent className="space-y-3 p-4">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/40">
+            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/40 bg-primary/10 text-sm font-semibold text-primary">
               {club.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />

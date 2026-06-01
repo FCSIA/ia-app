@@ -1,0 +1,139 @@
+import { v } from "convex/values";
+import { mutation, query } from "../_generated/server";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { serializeEvent } from "./serialize";
+
+export const listPendingForSponsor = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+    const approvals = await ctx.db
+      .query("eventApprovals")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("sponsorId"), user._id),
+          q.eq(q.field("status"), "PENDING"),
+        ),
+      )
+      .collect();
+
+    const events = await Promise.all(
+      approvals.map(async (approval) => {
+        const event = await ctx.db.get(approval.eventId);
+        if (!event) return null;
+        return serializeEvent(ctx, event);
+      }),
+    );
+
+    return events.filter((event): event is NonNullable<typeof event> => !!event);
+  },
+});
+
+export const approveEvent = mutation({
+  args: {
+    eventId: v.id("events"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const approval = await ctx.db
+      .query("eventApprovals")
+      .withIndex("by_eventId_and_sponsorId", (q) =>
+        q.eq("eventId", args.eventId).eq("sponsorId", user._id),
+      )
+      .first();
+
+    if (!approval || approval.status !== "PENDING") {
+      throw new Error("Approval not found");
+    }
+
+    await ctx.db.patch(approval._id, {
+      status: "APPROVED",
+      note: args.note,
+      decidedAt: Date.now(),
+    });
+
+    const pending = await ctx.db
+      .query("eventApprovals")
+      .withIndex("by_eventId_and_sponsorId", (q) => q.eq("eventId", args.eventId))
+      .filter((q) => q.eq(q.field("status"), "PENDING"))
+      .collect();
+
+    if (pending.length === 0) {
+      const event = await ctx.db.get(args.eventId);
+      if (event) {
+        await ctx.db.patch(args.eventId, {
+          status: "PUBLISHED",
+          publishedAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        const existingCalendar = await ctx.db
+          .query("calendarEntries")
+          .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+          .first();
+        if (!existingCalendar) {
+          await ctx.db.insert("calendarEntries", {
+            eventId: args.eventId,
+            title: event.title,
+            description: event.description,
+            location: event.location,
+            startAt: event.startAt,
+            endAt: event.endAt,
+            tags: ["event"],
+            source: event.clubId ? "CLUB" : "SCHOOL",
+            createdById: event.authorId,
+            createdAt: Date.now(),
+          });
+        }
+      }
+    }
+
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "EVENT_APPROVED",
+      entityId: args.eventId,
+      entityType: "EVENT",
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const rejectEvent = mutation({
+  args: {
+    eventId: v.id("events"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const approval = await ctx.db
+      .query("eventApprovals")
+      .withIndex("by_eventId_and_sponsorId", (q) =>
+        q.eq("eventId", args.eventId).eq("sponsorId", user._id),
+      )
+      .first();
+
+    if (!approval || approval.status !== "PENDING") {
+      throw new Error("Approval not found");
+    }
+
+    await ctx.db.patch(approval._id, {
+      status: "DECLINED",
+      note: args.note,
+      decidedAt: Date.now(),
+    });
+
+    await ctx.db.patch(args.eventId, {
+      status: "CANCELLED",
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.insert("auditEvents", {
+      actorId: user._id,
+      action: "EVENT_REJECTED",
+      entityId: args.eventId,
+      entityType: "EVENT",
+      createdAt: Date.now(),
+    });
+  },
+});

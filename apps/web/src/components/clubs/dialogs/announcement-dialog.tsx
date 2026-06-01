@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -15,7 +17,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { announcementsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 type Props = {
@@ -26,37 +27,41 @@ type Props = {
 };
 
 export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = false }: Props) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [allowComments, setAllowComments] = useState(false);
+  const [pending, setPending] = useState(false);
+  const createAnnouncement = useMutation(api.announcements.feed.create);
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      announcementsApi.create({
-        title: title.trim(),
-        body: body.trim(),
-        allowComments,
-        targetType: 'CLUB',
-        clubId,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['club-announcements', clubId] });
-      queryClient.invalidateQueries({ queryKey: ['club', clubId] });
-      toast({ title: directPost ? 'Announcement posted' : 'Announcement submitted' });
-      setTitle('');
-      setBody('');
-      setAllowComments(false);
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Failed to post announcement',
-        variant: 'destructive',
-      });
-    },
-  });
+  const handleSubmit = () => {
+    setPending(true);
+    void createAnnouncement({
+      title: title.trim(),
+      body: body.trim(),
+      allowComments,
+      targetType: 'CLUB',
+      clubId: clubId as Id<'clubs'>,
+      targetGrades: [],
+      targetMajorPathways: [],
+      targetMinorPathways: [],
+      isAdminGeneral: false,
+    })
+      .then(() => {
+        toast({ title: directPost ? 'Announcement posted' : 'Announcement submitted' });
+        setTitle('');
+        setBody('');
+        setAllowComments(false);
+        onOpenChange(false);
+      })
+      .catch((error: unknown) => {
+        toast({
+          title: error instanceof Error ? error.message : 'Failed to post announcement',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => setPending(false));
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,10 +111,10 @@ export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = fa
             Cancel
           </Button>
           <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !title.trim() || !body.trim()}
+            onClick={handleSubmit}
+            disabled={pending || !title.trim() || !body.trim()}
           >
-            {mutation.isPending
+            {pending
               ? directPost
                 ? 'Posting…'
                 : 'Submitting…'

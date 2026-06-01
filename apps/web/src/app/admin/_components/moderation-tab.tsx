@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus, Trash2, Info } from 'lucide-react';
-import type { UseMutationResult } from '@tanstack/react-query';
+import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,18 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
+
+type ModerationMutation<TArgs> = {
+  mutate: (args: TArgs) => void;
+  isPending: boolean;
+};
+
+type ModerationKeyword = Doc<'moderationKeywordRules'>;
+type ModerationReport = Doc<'moderationReports'> & {
+  submitter: { firstName: string; lastName: string } | null;
+  reportedUser: { firstName: string; lastName: string } | null;
+};
+type ModerationReportStatus = ModerationReport['status'];
 
 export function ModerationTab({
   keyword,
@@ -31,15 +43,15 @@ export function ModerationTab({
 }: {
   keyword: string;
   onKeywordChange: (value: string) => void;
-  keywords: any[];
-  addKeywordMutation: UseMutationResult<any, unknown, string>;
-  removeKeywordMutation: UseMutationResult<any, unknown, string>;
+  keywords: ModerationKeyword[];
+  addKeywordMutation: ModerationMutation<string>;
+  removeKeywordMutation: ModerationMutation<string>;
   moderationSearch: string;
   onModerationSearchChange: (value: string) => void;
   deferredModerationSearch: string;
-  filteredReports: any[];
+  filteredReports: ModerationReport[];
   pendingReports: number;
-  reportMutation: UseMutationResult<any, unknown, any>;
+  reportMutation: ModerationMutation<{ id: Id<'moderationReports'>; status: ModerationReportStatus; reviewNote: string }>;
 }) {
   return (
     <div className="grid gap-6">
@@ -103,11 +115,11 @@ export function ModerationTab({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {keywords.map((kw: any) => (
-                        <Badge key={kw.id} variant="solid" color="red" className="gap-1.5 px-3 py-1.5">
+                      {keywords.map((kw: ModerationKeyword) => (
+                        <Badge key={kw._id} variant="solid" color="red" className="gap-1.5 px-3 py-1.5">
                           {kw.keyword}
                           <button
-                            onClick={() => removeKeywordMutation.mutate(kw.id)}
+                            onClick={() => removeKeywordMutation.mutate(kw._id)}
                             className="ml-1 rounded-full p-0.5 transition-colors hover:bg-red-500/15 hover:text-red-500"
                             aria-label={`Remove ${kw.keyword}`}
                           >
@@ -139,8 +151,8 @@ export function ModerationTab({
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredReports.map((r: any) => (
-                <div key={r.id} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/30">
+              {filteredReports.map((r: ModerationReport) => (
+                <div key={r._id} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/30">
                   <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                     <div>
                       <div className="mb-2 flex items-center gap-2">
@@ -159,10 +171,10 @@ export function ModerationTab({
                     </div>
                     {r.status === 'PENDING' ? (
                       <div className="flex shrink-0 gap-2">
-                        <Button size="sm" onClick={() => reportMutation.mutate({ id: r.id, status: 'RESOLVED', reviewNote: 'Reviewed' })}>
+                        <Button size="sm" onClick={() => reportMutation.mutate({ id: r._id, status: 'RESOLVED', reviewNote: 'Reviewed' })}>
                           Resolve
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => reportMutation.mutate({ id: r.id, status: 'DISMISSED', reviewNote: 'Dismissed' })}>
+                        <Button size="sm" variant="secondary" onClick={() => reportMutation.mutate({ id: r._id, status: 'DISMISSED', reviewNote: 'Dismissed' })}>
                           Dismiss
                         </Button>
                       </div>
@@ -177,4 +189,3 @@ export function ModerationTab({
     </div>
   );
 }
-

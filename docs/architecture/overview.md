@@ -1,98 +1,63 @@
 ---
-tags: [architecture, overview]
+tags: [architecture, convex]
 ---
 
 # Architecture Overview
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+The app is a Next.js web app backed by Convex. The browser talks to Convex
+through generated function references and reactive hooks; the old REST/API
+shape is not the active app data path.
 
-## What Is Full Stack?
+## Runtime Topology
 
-"Full stack" means the project contains two separate programs that communicate with each other over the network:
-
-| Layer | What it is | Technology |
-|-------|-----------|------------|
-| **Backend** | Server program. Handles logic, talks to database, has no UI | [[backend-overview\|NestJS]] |
-| **Frontend** | Browser program. Shows the UI, calls the backend for data | [[frontend-overview\|Next.js]] |
-| **Database** | Stores all data permanently | [[database-overview\|PostgreSQL]] |
-
-```
-Browser (Next.js)  ──→  Backend (NestJS API)  ──→  PostgreSQL
+```text
+Browser
+  -> Next.js app in apps/web
+  -> Better Auth route proxy at /api/auth/*
+  -> Convex React hooks and generated api references
+  -> Convex functions, database, auth component, and storage
 ```
 
-The backend is the **single source of truth**. The browser never touches the database directly — all data flows through the API.
+The web app owns UI, routing, client state, and upload form handling. Convex owns
+app data, authorization checks, side effects such as audit rows and
+notifications, seed/reset, and file storage metadata.
 
----
+## Main Directories
 
-## The Monorepo
+| Directory                      | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `apps/web/src/app`             | Next.js App Router pages and route handlers           |
+| `apps/web/src/components`      | Shared UI, layout, feature components                 |
+| `apps/web/src/lib`             | Web clients, helpers, parsing, search, upload helpers |
+| `apps/convex/src`              | Convex schema, queries, mutations, HTTP routes, auth  |
+| `apps/convex/src/_generated`   | Generated API/data model types                        |
+| `apps/convex/src/bootstrap.ts` | Dashboard-only demo reset orchestration               |
 
-A **monorepo** (mono = one) puts all apps in a single git repository so they're easier to manage together.
+## Current Backend Model
 
-```
-ia-app/                     ← one git repo
-├── apps/
-│   ├── api/                ← backend
-│   └── web/                ← web frontend
-├── package.json            ← root configuration
-├── pnpm-workspace.yaml     ← declares all apps as one workspace
-└── turbo.json              ← task runner config
-```
+Convex functions are grouped by product domain:
 
-- Share code and types between apps (the `packages/contracts/` folder)
-- Run all dev servers with one command (`pnpm dev`)
-- Manage all dependencies from one place
+- `users`, `audit`, `notifications`
+- `announcements`, `clubs`, `events`, `calendar`
+- `courses`, `schedule`, `flexFriday`, `wrapped`
+- `moderation`, `uploads`
 
-### pnpm
+Each domain exposes public queries/mutations where the web app needs them.
+Private helpers stay in `_lib.ts` files or internal functions.
 
-**pnpm** is the package manager — it downloads third-party code (called "packages" or "dependencies") that your apps rely on. When you run `pnpm install`, it reads every `package.json` and downloads everything listed.
+## Important Conventions
 
-Think of it like an app store for code libraries.
-
-### Turbo
-
-**Turbo** is a task runner. It reads `turbo.json` and can run the same command (`dev`, `build`, `lint`) across all apps simultaneously, in the right order, with intelligent caching.
-
-```bash
-pnpm dev  # Turbo starts api and web dev servers in parallel
-```
-
----
-
-## How the Apps Communicate
-
-All communication happens over **HTTP** — the same protocol browsers use to load web pages.
-
-The frontend makes a **request** to a specific URL on the backend:
-```
-POST http://localhost:3001/auth/login
-{ "uniqueId": "STU001", "password": "STU001" }
-```
-
-The backend processes it and sends a **response**:
-```json
-{ "token": "eyJhbG...", "user": { "id": "...", "firstName": "...", "roles": ["STUDENT"], "role": "STUDENT" } }
-```
-
-The frontend stores the token and attaches it to every future request. See [[data-flow]] for a full trace.
-
----
-
-## Port Map
-
-| Port | Service |
-|------|---------|
-| 3000 | Next.js web app |
-| 3001 | NestJS API |
-| 5432 | PostgreSQL database |
-
----
+- Read `apps/convex/src/_generated/ai/guidelines.md` before touching Convex code.
+- Use generated Convex types instead of handwritten transport DTOs.
+- Derive authorization server-side from the current Better Auth user.
+- Store relationships as Convex IDs, not legacy IDs.
+- Add indexes for hot query paths before relying on large in-memory filtering.
+- Keep active docs free of stale old-backend instructions.
 
 ## Related
 
-- [[diagram-inventory]] — Detailed list of runtime pieces, features, data domains, flows, and Azure changes
-- [[tech-stack]] — Every library and why it was chosen
-- [[data-flow]] — A request traced through every layer
-- [[backend-overview]] — How the NestJS API is structured
-- [[frontend-overview]] — How the Next.js app is structured
+- [Data flow](data-flow.md)
+- [Convex overview](../backend/convex-overview.md)
+- [Schema map](../database/schema-map.md)

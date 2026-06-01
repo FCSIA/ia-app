@@ -1,1 +1,0 @@
-ALTER TABLE "club_members" ALTER COLUMN "role" DROP NOT NULL;

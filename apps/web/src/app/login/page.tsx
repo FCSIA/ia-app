@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { authApi, getApiErrorMessage } from '@/lib/api';
-import { setAuth } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
+import { clearAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,19 +16,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await authApi.login(uniqueId, password);
-      setAuth(res.data.token, res.data.user);
-      queryClient.clear();
+      const result = await authClient.signIn.username({
+        username: uniqueId.trim().toUpperCase(),
+        password,
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message ?? 'Login failed');
+      }
+
       toast({ title: 'Logged in successfully' });
       router.replace('/dashboard');
-    } catch (err: any) {
-      toast({ title: getApiErrorMessage(err, 'Login failed. Check your ID and password.'), variant: 'destructive' });
+    } catch (err: unknown) {
+      clearAuth();
+      toast({
+        title: err instanceof Error ? err.message : 'Login failed',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -78,7 +86,7 @@ export default function LoginPage() {
                 required
               />
               <p className="text-xs text-muted-foreground mt-1 text-center">
-                First login: use your Student/Staff ID as password
+                First login: use the temporary password from your school
               </p>
             </div>
 

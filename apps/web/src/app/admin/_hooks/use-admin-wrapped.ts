@@ -1,15 +1,19 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { wrappedApi, type WrappedSnapshotStatus } from '@/lib/api';
+import { useMutation, useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
+import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { refreshWrappedResultTitle, schoolYearLabel } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 
+export type WrappedSnapshotStatus = FunctionReturnType<
+  typeof api.wrapped.snapshots.snapshotStatus
+>;
+
 export function useAdminWrapped(activeTab: AdminTabId, canManageWrapped: boolean) {
   const { toast } = useToast();
-  const qc = useQueryClient();
 
   const currentWrappedSchoolYear = useMemo(() => {
     const now = new Date();
@@ -19,43 +23,46 @@ export function useAdminWrapped(activeTab: AdminTabId, canManageWrapped: boolean
   const [wrappedSchoolYear, setWrappedSchoolYear] = useState(currentWrappedSchoolYear);
   const wrappedYearOptions = Array.from({ length: 5 }, (_, index) => currentWrappedSchoolYear - index);
 
-  const {
-    data: wrappedSnapshotStatus,
-    isLoading: isWrappedStatusLoading,
-    isError: isWrappedStatusError,
-    error: wrappedStatusError,
-  } = useQuery<WrappedSnapshotStatus>({
-    queryKey: ['wrapped', 'admin', 'snapshots', wrappedSchoolYear],
-    queryFn: () => wrappedApi.getSnapshotStatus(wrappedSchoolYear).then((r) => r.data),
-    enabled: activeTab === 'wrapped' && canManageWrapped,
-  });
+  const wrappedSnapshotStatus = useQuery(
+    api.wrapped.snapshots.snapshotStatus,
+    activeTab === 'wrapped' && canManageWrapped ? { schoolYear: wrappedSchoolYear } : 'skip',
+  );
 
-  const generateWrappedSnapshotsMutation = useMutation({
-    mutationFn: (refresh: boolean) =>
-      wrappedApi.generateSnapshots({ schoolYear: wrappedSchoolYear, refresh }).then((r) => r.data),
-    onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['wrapped', 'admin', 'snapshots', wrappedSchoolYear] });
-      toast({
-        title: refreshWrappedResultTitle(result.generated, result.skipped),
-        description: `${result.requested} eligible students checked for ${schoolYearLabel(result.schoolYear)}.`,
-      });
+  const runGenerateSnapshots = useMutation(api.wrapped.snapshots.generateSnapshots);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateMutation = {
+    isPending: isGenerating,
+    mutate: (refresh: boolean) => {
+      setIsGenerating(true);
+      void runGenerateSnapshots({
+        schoolYear: wrappedSchoolYear,
+        refresh,
+      })
+        .then((result) => {
+          toast({
+            title: refreshWrappedResultTitle(result.generated, result.skipped),
+            description: `${result.requested} eligible students checked for ${schoolYearLabel(result.schoolYear)}.`,
+          });
+        })
+        .catch((err: Error) => {
+          toast({
+            title: err.message || 'Wrapped snapshot run failed',
+            variant: 'destructive',
+          });
+        })
+        .finally(() => setIsGenerating(false));
     },
-    onError: (err: any) => {
-      toast({
-        title: err.response?.data?.message || err.message || 'Wrapped snapshot run failed',
-        variant: 'destructive',
-      });
-    },
-  });
+  };
 
   return {
     wrappedSchoolYear,
     setWrappedSchoolYear,
     wrappedYearOptions,
     status: wrappedSnapshotStatus,
-    isLoading: isWrappedStatusLoading,
-    isError: isWrappedStatusError,
-    error: wrappedStatusError,
-    generateMutation: generateWrappedSnapshotsMutation,
+    isLoading: wrappedSnapshotStatus === undefined && activeTab === 'wrapped' && canManageWrapped,
+    isError: false,
+    error: null,
+    generateMutation,
   };
 }

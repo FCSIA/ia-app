@@ -1,9 +1,11 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Suspense, useEffect } from 'react';
+import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from 'next-themes';
-import { Suspense, useEffect, useState } from 'react';
+import { authClient } from '@/lib/auth-client';
+import { convex } from '@/lib/convex';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 
 export const CUSTOM_BG_STORAGE_KEY = 'ia_custom_bg_image';
@@ -184,22 +186,8 @@ function CustomThemeBootstrap() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: 1,
-            staleTime: 30_000,
-            refetchOnWindowFocus: false,
-            refetchOnMount: false,
-          },
-        },
-      }),
-  );
-
   return (
-    <QueryClientProvider client={queryClient}>
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
@@ -212,6 +200,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </Suspense>
         <Toaster position="top-right" />
       </ThemeProvider>
-    </QueryClientProvider>
+    </ConvexBetterAuthProvider>
   );
 }

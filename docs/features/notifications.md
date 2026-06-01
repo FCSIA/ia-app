@@ -4,99 +4,67 @@ tags: [feature, notifications]
 
 # Notifications
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+Notifications provide an in-app inbox, unread count, and user preferences for
+future delivery controls.
 
-## Overview
+## What It Does
 
-Notifications alert users to relevant activity. The system uses **polling** (regular API checks) rather than WebSockets, making it simpler but slightly less real-time.
+- Lists recent notification deliveries.
+- Supports cursor pagination for the inbox.
+- Tracks unread count.
+- Marks one or many notifications as read.
+- Stores per-category and scoped preferences.
 
-**Files:**
-- Backend: `apps/api/src/notifications/`
-- Web: `apps/web/src/app/notifications/`
-- Database: [[schema#NotificationDelivery]], [[schema#NotificationPreference]]
+## Source Files
 
----
+- Backend: `apps/convex/src/notifications/`
+- Inbox page: `apps/web/src/app/notifications/page.tsx`
+- Preference controls: `apps/web/src/components/notifications/`
+- Unread nav badge: `apps/web/src/components/layout/AppShell.tsx`
 
-## How Notifications Are Created
+## Convex Surface
 
-When something happens on the backend (new announcement, event published, etc.), the `NotificationsService` creates `NotificationDelivery` rows for each affected user:
+- `api.notifications.inbox.list`
+- `api.notifications.inbox.listPage`
+- `api.notifications.inbox.unreadCount`
+- `api.notifications.inbox.markRead`
+- `api.notifications.inbox.markAllRead`
+- `api.notifications.preferences.list`
+- `api.notifications.preferences.upsert`
 
-```typescript
-// When a school-wide announcement is published:
-const users = await prisma.user.findMany({ where: { isActive: true } });
-await prisma.notificationDelivery.createMany({
-  data: users.map(user => ({
-    userId: user.id,
-    category: 'SCHOOL_ANNOUNCEMENT',
-    title: announcement.title,
-    body: announcement.body.substring(0, 100),
-  })),
-});
-```
+## Data Model
 
----
+- `notificationDeliveries`
+- `notificationPreferences`
 
-## Notification Categories
+Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
+also supports category and scope keys such as global, club, and channel scopes.
 
-| Category | Triggered by | Deep-links to |
-|----------|-------------|---------------|
-| `SCHOOL_ANNOUNCEMENT` | New school/grade/pathway announcement | `/announcements/:id` |
-| `CLUB_ANNOUNCEMENT` | New club announcement | `/clubs/:id` |
-| `CLUB_JOIN_REQUEST` | Student requests to join a club | `/clubs/:id?tab=management` |
-| `CLUB_CHANNEL_MESSAGE` | User opted into all messages for a channel | `/clubs/:id/channels/:channelId` |
-| `CLUB_CHANNEL_MENTION` | Direct user mention in chat | `/clubs/:id/channels/:channelId` |
-| `CLUB_CHANNEL_TAG_MENTION` | Built-in or custom tag mention in chat | `/clubs/:id/channels/:channelId` |
-| `CLUB_CHANNEL_THREAD` | Reply to a user's thread | `/clubs/:id/channels/:channelId` |
-| `EVENT` | Event published | `/events/:id` |
-| `FLEX_FRIDAY` | New Friday or Assignment | `/flex-friday` |
-| `FRIEND_REQUEST` | Coworker wants to share schedules | `/schedule` (friends tab) |
+## Categories
 
----
+The validator includes school announcements, club announcements, club join
+requests, club channel messages, mentions, thread replies, events, Flex Friday,
+content moderation, and friend requests.
 
-## Data Model and Deep-Linking
+## Current Delivery
 
-The `NotificationDelivery` model stores nullable foreign keys to provide a high-performance deep-link experience:
-- `announcementId`, `eventId`, `clubId`, `channelId`, `messageId`
+The inbox and preference system are active. Current Convex delivery rows are
+created in the implemented friend-request flow. Other categories are modeled for
+domain fanout and should be verified when each domain starts delivering rows.
 
-The frontend uses these fields to construct the correct URL and application state upon clicking a notification.
+## Known Limits
 
----
+Unread count is currently a bounded read suitable for alpha/demo data. Use a
+counter-backed design before production-scale exact counts.
 
-## Notification Preferences
-
-Users can disable any category and tune more specific entities where the product exposes them. For club work, preferences can be stored per club and per channel. Forced admin **push notifications to everyone** remain locked on.
-
-```
-userId + category + scopeKey → enabled + level
-```
-
-- `scopeKey: "global"`: Global preference for that category.
-- `scopeKey: "club:<id>"`: Override for a specific club.
-- `scopeKey: "channel:<id>"`: Override for a specific club channel.
-- Entity ids are also stored when available to support contextual controls.
-- `level: OFF | IN_APP | PUSH | TIME_SENSITIVE`: stores current delivery intent. Push escalation is modeled now even though delivery remains in-app polling.
-
-Channel all-message alerts are opt-in: if no `CLUB_CHANNEL_MESSAGE` preference exists for a channel, messages do not create all-message deliveries. Mentions and thread replies remain on by default unless a user disables that scoped category.
-
----
-
-## API Surface
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/notifications` | All notifications for current user |
-| GET | `/notifications/unread-count` | Polled every 30s by the sidebar |
-| POST | `/notifications/mark-read` | Mark specific IDs as read |
-| POST | `/notifications/mark-all-read` | Clear all badges |
-| POST | `/notifications/preferences` | Update a global, club, channel, announcement, or event preference |
-
----
+Web Push is not the current closed-tab delivery implementation. `PUSH` and
+`TIME_SENSITIVE` represent intended delivery levels, not a completed browser
+push pipeline.
 
 ## Related
 
-- [[announcements]] — Trigger school/club announcements
-- [[clubs]] — Trigger mentions and join requests
-- [[schedule]] — Trigger friend requests
-- [[flex-friday]] — Trigger registration/assignment alerts
+- [Schedule](schedule.md)
+- [Clubs](clubs.md)
+- [Indexes and search](../database/indexes-and-search.md)

@@ -1,0 +1,24 @@
+{
+  "name": "cvx",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PATH=../../node_modules/.bin:$PATH convex dev",
+    "codegen": "PATH=../../node_modules/.bin:$PATH convex dev --once --typecheck disable --codegen enable",
+    "typecheck": "PATH=../../node_modules/.bin:$PATH tsc -p src/tsconfig.json",
+    "deploy": "PATH=../../node_modules/.bin:$PATH convex deploy",
+    "auth:generate": "cd src/betterAuth && PATH=../../../../node_modules/.bin:$PATH auth generate -y"
+  },
+  "dependencies": {
+    "@convex-dev/better-auth": "0.12.2",
+    "better-auth": "1.6.11",
+    "convex": "1.39.1"
+  },
+  "devDependencies": {
+    "auth": "1.6.11",
+    "convex-test": "0.0.53",
+    "edge-runtime": "4.0.1",
+    "typescript": "^5.9.3"
+  }
+}

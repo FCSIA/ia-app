@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { use, useState } from 'react';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -11,49 +11,30 @@ import {
   MapPin,
   Share2,
 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { eventsApi, moderationApi } from '@/lib/api';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = useCurrentUser();
-  const queryClient = useQueryClient();
+  useCurrentUser();
   const { toast } = useToast();
   const [showReport, setShowReport] = useState(false);
   const [reportReason, setReportReason] = useState('');
 
-  const { data: event, isLoading } = useQuery({
-    queryKey: ['event', id],
-    queryFn: () => eventsApi.getOne(id).then((response) => response.data),
-  });
+  const event = useQuery(api.events.events.get, { eventId: id as Id<'events'> });
+  const isLoading = event === undefined;
 
-  const reportMutation = useMutation({
-    mutationFn: () =>
-      moderationApi.submitReport({
-        contentType: 'EVENT',
-        contentId: id,
-        reason: reportReason,
-      }),
-    onSuccess: () => {
-      setShowReport(false);
-      setReportReason('');
-      toast({ title: 'Report submitted' });
-    },
-    onError: (error: any) =>
-      toast({
-        title: error.response?.data?.message || 'Failed to submit report',
-        variant: 'destructive',
-      }),
-  });
+  const [reportPending, setReportPending] = useState(false);
+  const submitReport = useMutation(api.moderation.reports.submit);
 
   if (isLoading) {
     return (
@@ -193,7 +174,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!reportReason.trim()) return;
-                reportMutation.mutate();
+                setReportPending(true);
+                void submitReport({
+                  contentType: 'EVENT',
+                  contentId: id,
+                  reason: reportReason,
+                })
+                  .then(() => {
+                    setShowReport(false);
+                    setReportReason('');
+                    toast({ title: 'Report submitted' });
+                  })
+                  .catch((error: unknown) =>
+                    toast({
+                      title: error instanceof Error ? error.message : 'Failed to submit report',
+                      variant: 'destructive',
+                    }),
+                  )
+                  .finally(() => setReportPending(false));
               }}
             >
               <Textarea
@@ -209,9 +207,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!reportReason.trim() || reportMutation.isPending}
+                  disabled={!reportReason.trim() || reportPending}
                 >
-                  {reportMutation.isPending ? 'Submitting…' : 'Submit report'}
+                  {reportPending ? 'Submitting…' : 'Submit report'}
                 </Button>
               </DialogFooter>
             </form>

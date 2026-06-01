@@ -1,7 +1,9 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { announcementsApi } from '@/lib/api';
+import { useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 
 type AnnouncementReadToggleProps = {
@@ -21,16 +23,9 @@ export function AnnouncementReadToggle({
   className,
   onClick,
 }: AnnouncementReadToggleProps) {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      isRead ? announcementsApi.markUnread(announcementId) : announcementsApi.markRead(announcementId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcement', announcementId] });
-    },
-  });
+  const markRead = useMutation(api.announcements.engagement.markRead);
+  const markUnread = useMutation(api.announcements.engagement.markUnread);
+  const [pending, setPending] = useState(false);
 
   return (
     <Button
@@ -38,14 +33,18 @@ export function AnnouncementReadToggle({
       size={size}
       variant={variant}
       className={className}
-      disabled={mutation.isPending}
+      disabled={pending}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        mutation.mutate();
+        setPending(true);
+        const action = isRead ? markUnread : markRead;
+        void action({ announcementId: announcementId as Id<'announcements'> })
+          .catch(() => undefined)
+          .finally(() => setPending(false));
       }}
     >
-      {mutation.isPending ? 'Saving…' : isRead ? 'Mark unread' : 'Mark read'}
+      {pending ? 'Saving…' : isRead ? 'Mark unread' : 'Mark read'}
     </Button>
   );
 }

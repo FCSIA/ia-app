@@ -1,13 +1,14 @@
 'use client';
 
 import { Lock } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
-import { notificationsApi } from '@/lib/api';
+import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 type NotificationScopeSwitchProps = {
-  category: string;
+  category: NotificationCategory;
   label: string;
   clubId?: string;
   channelId?: string;
@@ -31,7 +32,7 @@ export function NotificationScopeSwitch({
   compact = false,
   className,
 }: NotificationScopeSwitchProps) {
-  const queryClient = useQueryClient();
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const resolvedScopeKey =
     scopeKey ??
     (channelId
@@ -44,29 +45,23 @@ export function NotificationScopeSwitch({
             ? `club:${clubId}`
             : 'global');
 
-  const { data: preferences = [] } = useQuery<any[]>({
-    queryKey: ['notification-preferences'],
-    queryFn: () => notificationsApi.getPreferences().then((response) => response.data),
-  });
+  const preferences = useQuery(api.notifications.preferences.list) ?? [];
 
   const preference = preferences.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   );
   const enabled = locked || preference?.enabled !== false;
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      notificationsApi.upsertPreference(category, !enabled, {
-        clubId,
-        channelId,
-        announcementId,
-        eventId,
-        scopeKey: resolvedScopeKey,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
-    },
-  });
+  const togglePreference = () =>
+    upsertPreference({
+      category,
+      enabled: !enabled,
+      clubId,
+      channelId,
+      announcementId,
+      eventId,
+      scopeKey: resolvedScopeKey,
+    });
 
   return (
     <div
@@ -81,8 +76,8 @@ export function NotificationScopeSwitch({
       <Switch
         label={compact ? (enabled ? 'On' : 'Off') : label}
         checked={enabled}
-        onToggle={() => mutation.mutate()}
-        disabled={locked || mutation.isPending}
+        onToggle={() => void togglePreference()}
+        disabled={locked}
         className="min-w-0 flex-1 px-0 py-0"
       />
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}

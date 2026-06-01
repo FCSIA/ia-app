@@ -2,262 +2,146 @@
 tags: [frontend, react, components, hooks]
 ---
 
-# Components & Hooks
+# Components and Hooks
 
-← [[index|Home]] / [[frontend-overview]]
+[Home](../index.md) / [Frontend overview](frontend-overview.md)
 
----
+This page is both a short React primer and a guide to the app's current frontend
+patterns.
 
-## React Hooks
+## React State
 
-Hooks are functions that let you add features to functional components. They always start with `use`.
-
-### useState — Local State
+Use `useState` for local UI state:
 
 ```tsx
-const [comment, setComment] = useState('');
-const [tab, setTab] = useState<'members' | 'announcements'>('announcements');
-const [showModal, setShowModal] = useState(false);
+const [search, setSearch] = useState('');
+const [open, setOpen] = useState(false);
+const [tab, setTab] = useState<'members' | 'settings'>('members');
 ```
 
-`useState` returns `[currentValue, setterFunction]`. Calling the setter triggers a re-render with the new value.
+State should stay close to the component that owns the interaction. Move it up
+only when multiple children need to coordinate.
 
-The TypeScript type annotation `useState<'members' | 'announcements'>` means `tab` can only ever be one of those two exact strings.
+## Effects
 
-### useEffect — Side Effects
+Use `useEffect` for browser side effects, not for data fetching from Convex:
 
 ```tsx
 useEffect(() => {
-  // Runs after render
-  if (user && !hasRole(user, 'ADMIN')) {
-    router.replace('/dashboard');
-  }
-}, [user, router]); // dependency array — re-runs when these change
+  const onKeyDown = (event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      setCommandOpen((open) => !open);
+    }
+  };
+
+  window.addEventListener('keydown', onKeyDown);
+  return () => window.removeEventListener('keydown', onKeyDown);
+}, []);
 ```
 
-`useEffect` runs after the component renders. The dependency array controls when it re-runs:
-- `[]` — runs once on mount
-- `[user, router]` — re-runs when `user` or `router` changes
-- No array — runs after every render (rarely used)
+## Convex Reads
 
-### useQuery and useMutation
-
-From TanStack Query — see [[state-management]].
-
-### useRouter
-
-From Next.js — see [[routing]].
-
----
-
-## AppShell — The Layout Component
-
-`src/components/layout/AppShell.tsx` is the most important component. It wraps every authenticated page and renders the navigation sidebar.
-
-### Structure
+Use `useQuery` from `convex/react`:
 
 ```tsx
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const user = getUser();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar — fixed on desktop, toggled on mobile */}
-      <Sidebar user={user} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Mobile header with hamburger menu */}
-      <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
-
-      {/* Page content */}
-      <main className="flex-1 p-4 md:p-8 page-enter">
-        {children}
-      </main>
-    </div>
-  );
-}
+const clubs = useQuery(api.clubs.management.getAll) ?? [];
 ```
 
-### Sidebar Contents
+Pass `'skip'` when the query should not run yet:
 
 ```tsx
-function Sidebar({ user }: { user: any }) {
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['unread-count'],
-    queryFn: () => notificationsApi.getUnreadCount().then(r => r.data.count),
-    refetchInterval: 30_000, // poll every 30 seconds
-  });
-
-  return (
-    <aside style={{ /* glass styling */ }}>
-      {/* Logo */}
-      <div className="logo">IA</div>
-
-      {/* Main navigation */}
-      <nav>
-        <NavLink href="/dashboard" icon={<Home />}>Dashboard</NavLink>
-        <NavLink href="/announcements" icon={<Megaphone />}>Announcements</NavLink>
-        <NavLink href="/clubs" icon={<Users />}>Clubs</NavLink>
-        <NavLink href="/events" icon={<Calendar />}>Events</NavLink>
-        <NavLink href="/calendar" icon={<CalendarDays />}>Calendar</NavLink>
-        <NavLink href="/flex-friday" icon={<Zap />}>Flex Friday</NavLink>
-      </nav>
-
-      {/* Admin section — conditional */}
-      {hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF') && (
-        <NavLink href="/admin" icon={<Shield />}>Admin Panel</NavLink>
-      )}
-
-      {/* Bottom: notifications + profile + sign out */}
-      <NavLink href="/notifications" icon={<Bell />}>
-        Notifications
-        {unreadCount > 0 && (
-          <span className="badge animate-pulse">{unreadCount}</span>
-        )}
-      </NavLink>
-    </aside>
-  );
-}
+const club = useQuery(api.clubs.detail.get, clubId ? { clubId } : 'skip');
 ```
 
-### NavLink
-
-A wrapper around Next.js `Link` that applies active styling:
+Use `usePaginatedQuery` for large lists:
 
 ```tsx
-function NavLink({ href, icon, children }: NavLinkProps) {
-  const pathname = usePathname(); // current URL
-  const isActive = pathname === href || pathname.startsWith(href + '/');
-
-  return (
-    <Link
-      href={href}
-      className={`nav-item ${isActive ? 'bg-white/[0.08] border-l-2 border-accent-500 text-white' : 'text-white/50'}`}
-    >
-      {icon}
-      {children}
-    </Link>
-  );
-}
+const { results, loadMore, status } = usePaginatedQuery(
+  api.notifications.inbox.listPage,
+  {},
+  { initialNumItems: 50 },
+);
 ```
 
-`usePathname()` is a Next.js hook that returns the current URL path.
+## Convex Writes
 
----
-
-## Page Component Pattern
-
-Every page follows this structure:
+Use `useMutation` from `convex/react`:
 
 ```tsx
-'use client';
+const markRead = useMutation(api.notifications.inbox.markRead);
 
-import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from '@tanstack/react-query';
-import { clubsApi } from '@/lib/api';
-
-export default function ClubsPage() {
-  // 1. Fetch data
-  const { data: clubs = [], isLoading } = useQuery({
-    queryKey: ['clubs'],
-    queryFn: () => clubsApi.getAll().then(r => r.data),
-  });
-
-  // 2. Handle loading state
-  if (isLoading) return <AppShell><div>Loading...</div></AppShell>;
-
-  // 3. Render with AppShell
-  return (
-    <AppShell>
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-white">Clubs</h1>
-        {clubs.map(club => (
-          <div key={club.id} className="card">
-            {club.name}
-          </div>
-        ))}
-      </div>
-    </AppShell>
-  );
-}
+await markRead({ notificationId });
 ```
 
-The `@/` prefix is a path alias configured in `tsconfig.json` — it maps to `src/`, so `@/lib/api` = `src/lib/api.ts`.
+Mutations are the place where backend permissions and side effects happen. The
+frontend should not try to duplicate authorization decisions beyond hiding UI
+that the current user obviously cannot use.
 
----
+## Generated Types
 
-## Conditional Rendering
+Prefer generated Convex types for props that depend on backend return values:
 
 ```tsx
-// Simple boolean
-{isAdmin && <AdminPanel />}
-
-// Ternary (if/else)
-{isLoading ? <Spinner /> : <Content />}
-
-// Nullish / empty state
-{clubs.length === 0 ? (
-  <div>No clubs yet</div>
-) : (
-  clubs.map(c => <ClubCard key={c.id} club={c} />)
-)}
+type ClubDetail = NonNullable<FunctionReturnType<typeof api.clubs.detail.get>>;
 ```
 
----
+This avoids stale DTOs and keeps component props aligned with the active Convex
+surface.
 
-## Lists with .map()
+## Layout Components
 
-React renders lists with the `.map()` array method. Every item needs a unique `key` prop so React can efficiently update individual items:
+`AppShell` renders authenticated navigation, unread notification count, profile
+menu, admin links, and the global command palette.
+
+For normal pages, prefer the layout wrappers:
+
+- `ScrollPageLayout` for standard scrolling list/detail pages.
+- `FillPageLayout` for viewport-height panes, tables, and split views.
+- `PageFrame`, `HeroBand`, `HeroStat`, and `Panel` for page structure.
+
+These wrappers keep spacing and responsive constraints consistent.
+
+## Component Guidelines
+
+- Prefer shadcn/ui and local components under `apps/web/src/components/ui`.
+- Keep feature-specific components under `components/<feature>` or the route's
+  local `_components` folder.
+- Use `children`, slots, or small composed components instead of prop drilling.
+- Keep loading, empty, and error states near the data read.
+- Use `id`, `_id`, and route params carefully: Convex documents use `_id`.
+
+## Lists
+
+Every mapped item needs a stable key:
 
 ```tsx
-{announcements.map((ann) => (
-  <div key={ann.id} className="card">   {/* key = unique id */}
-    <h3>{ann.title}</h3>
-    <p>{ann.body}</p>
-  </div>
+{clubs.map((club) => (
+  <ClubCard key={club._id} club={club} />
 ))}
 ```
 
----
+## Forms
 
-## Forms and Controlled Inputs
-
-Inputs whose value is controlled by React state (rather than the DOM):
+Use controlled inputs for simple forms:
 
 ```tsx
 const [title, setTitle] = useState('');
 
-<input
-  value={title}                             // controlled by state
-  onChange={(e) => setTitle(e.target.value)} // update state on change
-  className="input"
-  placeholder="Title"
-/>
+<Input value={title} onChange={(event) => setTitle(event.target.value)} />
 ```
 
----
+For larger validated forms, prefer the app's existing `react-hook-form` and
+shadcn form primitives.
 
-## Modals
+## Modals and Drawers
 
-Modals are rendered conditionally and use a fixed-position overlay:
-
-```tsx
-{showReport && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center"
-    style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}>
-    <div className="card w-full max-w-md">
-      {/* modal content */}
-      <button onClick={() => setShowReport(false)}>Close</button>
-    </div>
-  </div>
-)}
-```
-
----
+Use the existing dialog/sheet/drawer primitives. Avoid custom fixed overlays
+unless the primitive cannot support the interaction.
 
 ## Related
 
-- [[frontend-overview]] — React and Next.js overview
-- [[state-management]] — useQuery and useMutation
-- [[styling]] — Tailwind classes used in components
-- [[routing]] — usePathname, Link, useRouter
+- [Frontend overview](frontend-overview.md)
+- [Routing](routing.md)
+- [Styling](styling.md)
+- [Frontend authentication](frontend-auth.md)

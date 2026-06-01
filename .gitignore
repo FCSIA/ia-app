@@ -27,6 +27,7 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+**/tsc_output.txt
 
 # Turbo cache
 .turbo

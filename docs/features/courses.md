@@ -2,70 +2,46 @@
 tags: [feature, courses, academics]
 ---
 
-# Courses (Academic Catalog)
+# Courses
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+Courses provide the official academic catalog used by the schedule builder and
+course browsing pages.
 
-## Overview
+## What It Does
 
-The Course feature provides a centralized, searchable catalog of every academic class offered at the school. It replaces the disparate PDF course catalogs and integrates directly into the student schedule builder.
+- Lists and searches catalog courses.
+- Supports grade, department, pathway, and course-number filtering.
+- Provides detail pages by slug.
+- Seeds demo catalog data from Convex-owned fixtures.
 
-**Files:**
-- Backend: `apps/api/src/courses/`
-- Web: `apps/web/src/app/courses/`
-- Database: [[schema#Course]]
+## Source Files
 
----
+- Backend: `apps/convex/src/courses/`
+- Seed fixtures: `apps/convex/seed-data/courses.ts`
+- Web routes: `apps/web/src/app/courses/`
+- Course picker: `apps/web/src/components/courses/course-picker.tsx`
 
-## Catalog Sources
+## Convex Surface
 
-Courses are imported from two primary sources (indicated by the `catalogSource` enum):
-- `COURSE_CATALOG`: Standard high school course offerings.
-- `AP_CATALOG`: Specialized Advanced Placement courses.
-- `MERGED`: Cases where the same course exists in both systems.
-
----
+- `api.courses.catalog.list`
+- `api.courses.catalog.listPage`
+- `api.courses.catalog.get`
+- `internal.courses.seed.run`
 
 ## Data Model
 
-Key fields on the `Course` model:
-- `slug`: URL-friendly identifier (e.g., `ap-computer-science-a`).
-- `courseNumbers`: Array of school-specific course codes (e.g. `1234567`).
-- `pathway`: Links the course to one of the 3 academic pathways.
-- `minGrade` / `maxGrade`: Controls eligibility in the search UI.
-- `prerequisitesText`: Descriptive text for student requirements.
+`courses` stores title, slug, department, course numbers, pathway, term,
+eligibility grades, prerequisites text, and source metadata.
 
----
+## Search
 
-## Searching and Filtering
-
-The `CoursesService` provides a high-performance fuzzy search and filtering engine:
-- **Search**: Matches against title, department, slug, and course numbers.
-- **Grade Filtering**: Automatically hides courses the student is ineligible for.
-- **Pathway Filtering**: Allows students to see what specific classes fulfill their diploma requirements.
-
----
-
-## API Surface
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/courses` | List courses with fuzzy search and filters |
-| GET | `/courses/:slug` | Detailed course profile |
-
----
-
-## Integration
-
-The Course catalog is a fundamental dependency for:
-1. **Schedule Builder**: Students select from the official `Course` list to build their timetable.
-2. **Pathways View**: (Future) Tracking graduation progress.
-
----
+The schema includes `search_courses`. Current UI paths also use bounded reads
+and TypeScript filtering for seeded/demo data. Use the search index for larger
+real catalogs.
 
 ## Related
 
-- [[schedule]] — Where courses are used to build student calendars
-- [[schema]] — The Course database model
+- [Schedule](schedule.md)
+- [Schema map](../database/schema-map.md)

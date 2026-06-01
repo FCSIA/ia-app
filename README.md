@@ -8,7 +8,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 ## What It Includes
 
-- Authentication with JWT sessions and role-based access
+- Authentication with Better Auth on Convex and role-based access
 - Announcements, comments, moderation, and notification preferences
 - Clubs, channels, invites, membership, and leader/sponsor workflows
 - Events, calendar entries, Flex Friday sessions, and student schedules
@@ -16,78 +16,73 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Web | Next.js 15, React 19, Tailwind CSS, shadcn/ui |
-| API | NestJS, TypeScript, Swagger |
-| Database | PostgreSQL 16, Prisma |
-| Tooling | pnpm workspaces, Turborepo |
+| Layer              | Technology                                                  |
+| ------------------ | ----------------------------------------------------------- |
+| Web                | Next.js 16, React 19, Tailwind CSS, shadcn/ui               |
+| Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
+| Tooling            | pnpm workspaces, Turborepo                                  |
 
 ## Project Structure
 
 ```text
 ia-app/
-├── apps/api/       # NestJS API, Prisma schema, seed data
-├── apps/web/       # Next.js web app
-├── docs/           # Product, architecture, setup, and reference docs
-├── infra/          # Infrastructure helpers
+├── apps/web/       # Next.js 16 web app
+├── apps/convex/    # Convex backend (schema, functions, auth, storage)
+├── docs/           # Current product, architecture, backend, frontend docs
+├── packages/       # Transitional shared packages
 ├── AGENTS.md       # Agent workflow rules
-├── SETUP.md        # Full new-machine setup guide
-└── .env.example    # Environment variable template
+├── SETUP.md        # Full developer setup guide
+└── PORTING.md      # Historical backend-to-Convex migration context
 ```
 
 ## Quick Start
 
-For a full setup walkthrough, use [SETUP.md](./SETUP.md). Technical setup details live in [docs/reference/getting-started.md](./docs/reference/getting-started.md), [docs/reference/environment.md](./docs/reference/environment.md), and [docs/database/database-overview.md](./docs/database/database-overview.md).
+For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
-cp .env.example .env
-cp .env.example apps/api/.env
+cp .env.example .env.local
 pnpm install
 ```
 
-Start PostgreSQL, then prepare the database:
-
-```bash
-pnpm infra:up       # macOS/Homebrew
-pnpm infra:up:win   # Windows
-
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-```
-
-Optional Nix + direnv users can run `direnv allow` instead of the Homebrew/Windows database startup path. See [SETUP.md](./SETUP.md#nix--direnv-setup).
-
-Start the app:
+Start the application (Next.js frontend and Convex dev server in parallel):
 
 ```bash
 pnpm dev
 ```
 
-| Service | URL |
-|---------|-----|
-| Web | http://localhost:3000 |
-| API | http://localhost:3001 |
-| Swagger | http://localhost:3001/docs |
+Open Convex dashboard:
 
-Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [docs/database/seed.md](./docs/database/seed.md) for the seed data.
+```bash
+pnpx convex dash
+pnpx convex dashboard
+```
+
+On a new checkout, run `pnpx convex dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
+
+Demo seed/reset is intentionally dashboard-only. In the Convex Dashboard, run
+the internal function `bootstrap:resetAndSeed` to schedule a destructive reset,
+then run `bootstrap:seedStatus` to watch progress.
+
+| Service          | URL                                                    |
+| ---------------- | ------------------------------------------------------ |
+| Web App          | http://localhost:3000                                  |
+| Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
+
+Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [SETUP.md](./SETUP.md#5-test-accounts) for a complete list of demo logins.
 
 ## Common Commands
 
 ```bash
-pnpm dev          # Start web + API
+pnpm dev          # Start web app and Convex dev server in parallel
+pnpm db:studio    # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
-pnpm build        # Build all workspaces
-pnpm test         # Run tests
-pnpm db:migrate   # Apply Prisma migrations
-pnpm db:reset     # Reset and reseed local database
-pnpm db:studio    # Open Prisma Studio
+pnpm build        # Build all workspaces for production
+pnpm test         # Run test suites
 ```
 
-More commands are documented in [docs/reference/commands.md](./docs/reference/commands.md).
+---
 
 ## Deployment
 
@@ -101,12 +96,12 @@ The detailed architecture and feature list lives in [docs/architecture/diagram-i
 
 ## Documentation
 
-- [docs/index.md](./docs/index.md) — Documentation map
-- [docs/architecture/overview.md](./docs/architecture/overview.md) — System overview
-- [docs/architecture/tech-stack.md](./docs/architecture/tech-stack.md) — Tooling and framework details
-- [docs/reference/roles-and-permissions.md](./docs/reference/roles-and-permissions.md) — Role capability reference
-- [docs/backend/backend-overview.md](./docs/backend/backend-overview.md) — API overview
-- [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Web overview
+- [SETUP.md](./SETUP.md) — Step-by-step developer environment setup.
+- [docs/index.md](./docs/index.md) — Current documentation hub.
+- [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.
+- [docs/backend/convex-overview.md](./docs/backend/convex-overview.md) — Backend function layout and rules.
+- [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Frontend structure and conventions.
+- [PORTING.md](./PORTING.md) — Historical migration context, not the active operating manual.
 
 ## License
 

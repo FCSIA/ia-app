@@ -1,4 +1,4 @@
-import type { AppRole } from '@ia/contracts/auth';
+import type { AppRole } from '~/apps/convex/lib/roles';
 import { WelcomeWidget } from './widgets/WelcomeWidget';
 import { CalendarWidget } from './widgets/CalendarWidget';
 import { UpcomingEventsWidget } from './widgets/UpcomingEventsWidget';

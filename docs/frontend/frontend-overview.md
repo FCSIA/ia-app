@@ -2,184 +2,94 @@
 tags: [frontend, nextjs, react]
 ---
 
-# Frontend Overview — Next.js
+# Frontend Overview
 
-← [[index|Home]]
+[Home](../index.md)
 
----
+The frontend is the Next.js app in `apps/web`. It runs on port 3000 in local
+development and talks to Convex through generated function references.
 
-## What Is the Frontend?
+## Stack
 
-The frontend is the program that runs in the browser. It:
-- Shows the user interface (buttons, text, forms, lists)
-- Responds to user actions (clicks, typing, form submissions)
-- Fetches data from the backend API
-- Has no direct access to the database
+- Next.js 15 App Router
+- React 19
+- Tailwind CSS v4
+- shadcn/ui and local Fluid-style primitives
+- Convex React hooks
+- Better Auth through `ConvexBetterAuthProvider`
 
-It runs on **port 3000**: `http://localhost:3000`
+## Directory Map
 
----
+```text
+apps/web/src/
+  app/                  Next.js routes, layouts, error/loading pages
+  components/           shared UI, layout, feature components
+  hooks/                local web hooks
+  lib/                  auth, Convex client, upload, search, parsing helpers
+```
 
-## React
+Generated Convex imports use the repo-root alias:
 
-**React** is a JavaScript library for building user interfaces. The key idea: instead of manually updating the HTML when data changes, you describe *what the UI should look like* based on the current state, and React figures out the minimal changes needed to update the browser.
+```tsx
+import { api } from '~/apps/convex/src/_generated/api';
+```
 
-### Components
+## Providers
 
-Everything in React is a **component** — a function that returns what should be displayed:
+`apps/web/src/app/providers.tsx` wraps the app with:
+
+- `ConvexBetterAuthProvider`
+- `ThemeProvider`
+- `react-hot-toast` toaster
+
+`apps/web/src/app/layout.tsx` sets metadata, the Work Sans font, app manifest,
+viewport values, and the shadcn toast renderer.
+
+## React Basics Worth Knowing
+
+A component is a function that returns UI:
 
 ```tsx
 function WelcomeCard({ firstName }: { firstName: string }) {
-  return (
-    <div className="card">
-      <h2>Hello, {firstName}!</h2>
-      <p>Welcome back.</p>
-    </div>
-  );
+  return <h2>Hello, {firstName}</h2>;
 }
 ```
 
-JSX is the HTML-like syntax inside the function. The curly braces `{}` let you embed JavaScript expressions. Components are composable — you use them like HTML tags:
+Props are values passed from parent to child:
 
 ```tsx
-<WelcomeCard firstName="John" />
+<WelcomeCard firstName={user.firstName} />
 ```
 
-### Props
-
-Data passed into a component from its parent. In the example above, `firstName` is a prop.
-
-```tsx
-// Parent passes props:
-<WelcomeCard firstName={user.firstName} isAdmin={true} />
-
-// Child receives them:
-function WelcomeCard({ firstName, isAdmin }: { firstName: string; isAdmin: boolean }) {
-  // ...
-}
-```
-
-### children
-
-A special prop that represents whatever you put between opening/closing tags:
+`children` is the content placed between a component's tags:
 
 ```tsx
 <AppShell>
-  <div>This is the page content</div>  ← this is children
+  <DashboardPage />
 </AppShell>
 ```
 
-```tsx
-function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div>
-      <Sidebar />
-      <main>{children}</main>  ← renders whatever was passed in
-    </div>
-  );
-}
-```
+## Composition Rule
 
----
+Prefer composition over long prop chains. If a parent only passes data through
+several layers, move the shared UI boundary or pass `children`/slots instead.
+This keeps pages easier for future students to reason about.
 
-## Next.js
+## Client Components
 
-**Next.js** is a framework on top of React that adds:
+Next.js server components are the default. Use `'use client'` when a file needs:
 
-- **File-based routing** — `app/clubs/page.tsx` = the `/clubs` page
-- **Server-side rendering** — pages can render on the server before the browser receives them
-- **App Router** — the modern routing system used in this project
-- **PWA support** — the web app can be installed like a native app
+- React state or effects,
+- Convex React hooks,
+- browser APIs,
+- event handlers.
 
-### PWA (Progressive Web App)
-
-The web app has a `public/manifest.json` and service worker (`sw.js`) that allows users to install it on their home screen and use some features offline. The icons are in `public/icons/`.
-
----
-
-## Folder Structure
-
-```
-apps/web/src/
-├── app/                    ← Next.js App Router pages
-│   ├── layout.tsx          ← root layout (wraps every page)
-│   ├── page.tsx            ← / (redirects to /dashboard)
-│   ├── login/page.tsx      ← /login
-│   ├── dashboard/page.tsx  ← /dashboard
-│   ├── announcements/
-│   │   ├── page.tsx        ← /announcements (list)
-│   │   └── [id]/page.tsx   ← /announcements/:id (detail)
-│   ├── clubs/
-│   │   ├── page.tsx
-│   │   └── [id]/page.tsx
-│   ├── events/page.tsx
-│   ├── calendar/page.tsx
-│   ├── flex-friday/page.tsx
-│   ├── notifications/page.tsx
-│   ├── admin/page.tsx
-│   ├── profile/page.tsx
-│   ├── globals.css         ← global styles + utility classes
-│   └── providers.tsx       ← React Query provider
-│
-├── components/
-│   └── layout/
-│       └── AppShell.tsx    ← sidebar + layout wrapper
-│
-└── lib/
-    ├── api.ts              ← all API calls
-    └── auth.ts             ← token storage helpers
-```
-
----
-
-## 'use client' vs Server Components
-
-Next.js 15 has two types of components:
-
-| Type | Default | Can use hooks? | Can use browser APIs? |
-|------|---------|----------------|----------------------|
-| Server Component | ✅ | ❌ | ❌ |
-| Client Component (`'use client'`) | ❌ | ✅ | ✅ |
-
-All pages in this app start with `'use client'` because they:
-- Use `useState` to track local state (open/closed, selected tab, etc.)
-- Use `useQuery` to fetch data dynamically
-- Respond to user events (clicks, form submissions)
-
-The `BackgroundBlobs` component in `layout.tsx` is a Server Component because it's purely visual with no interactivity.
-
----
-
-## The Root Layout
-
-`app/layout.tsx` wraps every single page. It:
-- Sets the HTML `lang` and dark background
-- Renders the `BackgroundBlobs` (decorative blur orbs)
-- Wraps everything in `providers.tsx` (which sets up TanStack Query)
-- Applies global styles
-
-```tsx
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en" className="bg-[#0c0a09]">
-      <body>
-        <BackgroundBlobs />
-        <div className="relative z-10">
-          <Providers>{children}</Providers>
-        </div>
-      </body>
-    </html>
-  );
-}
-```
-
----
+Most interactive pages in this app are client components because they subscribe
+to Convex and respond to user actions.
 
 ## Related
 
-- [[routing]] — File-based routing and dynamic segments
-- [[components]] — React components, hooks, and AppShell
-- [[api-layer]] — How the frontend calls the backend
-- [[state-management]] — TanStack Query
-- [[styling]] — Tailwind CSS and the glassmorphic design
-- [[frontend-auth]] — Token storage and auth helpers
+- [Components and hooks](components.md)
+- [Frontend authentication](frontend-auth.md)
+- [Routing](routing.md)
+- [Styling](styling.md)
