@@ -28,7 +28,9 @@
     },
     "onlyBuiltDependencies": [
       "bcrypt",
-      "sharp"
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
     ]
   },
   "dependencies": {

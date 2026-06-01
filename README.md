@@ -42,7 +42,7 @@ For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
-cp .env.example .env
+cp .env.example .env.local
 pnpm install
 ```
 
@@ -52,7 +52,14 @@ Start the application (Next.js frontend and Convex dev server in parallel):
 pnpm dev
 ```
 
-On a new checkout, run `pnpm convex:dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
+Open Convex dashboard:
+
+```bash
+pnpx convex dash
+pnpx convex dashboard
+```
+
+On a new checkout, run `pnpx convex dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
 
 Demo seed/reset is intentionally dashboard-only. In the Convex Dashboard, run
 the internal function `bootstrap:resetAndSeed` to schedule a destructive reset,
