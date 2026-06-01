@@ -18,7 +18,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 | Layer              | Technology                                                  |
 | ------------------ | ----------------------------------------------------------- |
-| Web                | Next.js 15, React 19, Tailwind CSS, shadcn/ui               |
+| Web                | Next.js 16, React 19, Tailwind CSS, shadcn/ui               |
 | Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
 | Tooling            | pnpm workspaces, Turborepo                                  |
 
@@ -26,7 +26,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 
 ```text
 ia-app/
-├── apps/web/       # Next.js 15 web app
+├── apps/web/       # Next.js 16 web app
 ├── apps/convex/    # Convex backend (schema, functions, auth, storage)
 ├── docs/           # Current product, architecture, backend, frontend docs
 ├── packages/       # Transitional shared packages
@@ -86,36 +86,13 @@ pnpm test         # Run test suites
 
 ## Deployment
 
-The active deployment model is a Next.js frontend plus Convex backend.
+The deployment shape should stay boring and maintainable. Production is modeled as **Next.js** plus **Convex Cloud** (data, real-time, and file storage). The app is not a static site.
 
-```text
-Users -> Next.js Web App (Vercel / Azure App Service)
-           └─> [React Hooks / Subscriptions] ──> Convex Cloud (Managed Serverless Backend)
-```
+**Full guide:** [docs/reference/deployment-options.md](./docs/reference/deployment-options.md) — Vercel vs Azure hosting options, Convex CI/CD, and scale planning (~1,600 students, few hundred online at peak).
 
-### 1. Backend Deployment (Convex)
+The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
 
-Convex manages database hosting, file storage, serverless functions, and scaling automatically. To deploy backend changes to production:
-
-```bash
-pnpm --filter cvx deploy
-```
-
-This pushes your schema, indexes, and server functions to your production Convex deployment. Auth credentials and other runtime secrets are configured securely via the Convex Dashboard.
-
-### 2. Frontend Deployment (Next.js)
-
-The Next.js frontend can be deployed anywhere that supports Node.js or edge runtimes:
-
-- **Vercel**: The native hosting environment for Next.js, offering optimal performance and automatic zero-config deployments.
-- **Azure App Service / Azure Container Apps**: Suitable for school environments that require hosting within an enterprise cloud subscription. The web app runs as a lightweight Docker container.
-- **Generic Single Server**: A simple Linux virtual machine running the Next.js server behind a reverse proxy.
-
-### React Server Components (RSC)
-
-Next.js App Router and React Server Components are fully supported. Since database operations and reactive subscriptions go directly from the client and server to Convex's real-time API, the web app scales horizontally without maintaining stateful database connection pools.
-
----
+**Typical choices:** Vercel + Convex (simplest ops), or **Azure Container Apps + Convex** if the frontend must stay in the school Azure subscription.
 
 ## Documentation
 

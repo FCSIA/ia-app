@@ -9,6 +9,17 @@ import { Empty, EmptyTitle } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { UserPermissionsPopover } from './user-permissions-popover';
@@ -50,8 +61,11 @@ function UserTableSection({
   currentUserId,
   isSuperAdmin,
   canDeactivate,
+  canResetPassword,
   onDeactivate,
   onActivate,
+  onResetPassword,
+  isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
   pagination,
@@ -64,8 +78,11 @@ function UserTableSection({
   currentUserId?: string;
   isSuperAdmin: boolean;
   canDeactivate: (user: AdminUserRecord) => boolean;
+  canResetPassword: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  onResetPassword: (user: AdminUserRecord) => void;
+  isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
@@ -136,6 +153,35 @@ function UserTableSection({
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
                     />
+                    {canResetPassword(user) && user.id !== currentUserId ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7"
+                            disabled={isResetPasswordPending}
+                          >
+                            Reset password
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Reset password?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will set {user.firstName} {user.lastName}&apos;s password to their user ID (
+                              <span className="font-mono">{user.uniqueId}</span>).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onResetPassword(user)}>
+                              Reset password
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : null}
                     {user.isActive ? (
                       canDeactivate(user) && user.id !== currentUserId ? (
                         <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -173,8 +219,11 @@ export function AdminUsersTab({
   selectedUserRoleMeta,
   currentUserId,
   canDeactivate,
+  canResetPassword,
   onDeactivate,
   onActivate,
+  onResetPassword,
+  isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
   pagination,
@@ -193,8 +242,11 @@ export function AdminUsersTab({
   selectedUserRoleMeta: typeof USER_ROLE_GROUP_META[AdminUserRoleGroup];
   currentUserId?: string;
   canDeactivate: (user: AdminUserRecord) => boolean;
+  canResetPassword: (user: AdminUserRecord) => boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
+  onResetPassword: (user: AdminUserRecord) => void;
+  isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
   pagination?: ReactNode;
@@ -259,8 +311,11 @@ export function AdminUsersTab({
             currentUserId={currentUserId}
             isSuperAdmin={isSuperAdmin}
             canDeactivate={canDeactivate}
+            canResetPassword={canResetPassword}
             onDeactivate={onDeactivate}
             onActivate={onActivate}
+            onResetPassword={onResetPassword}
+            isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
             onAssignRoles={onAssignRoles}
             pagination={pagination}

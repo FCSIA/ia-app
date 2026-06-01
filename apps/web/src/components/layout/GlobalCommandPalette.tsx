@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, type AppUser } from '@/lib/auth';
+import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
   CommandDialog,
   CommandEmpty,
@@ -269,8 +270,11 @@ export function GlobalCommandPalette({
     return [...unreadNotifications, ...unreadAnnouncements, ...joinedClubs, ...primaryPages].slice(0, 10);
   }, [entityGroups, navActions]);
 
+  const navigationLoading = useNavigationLoadingOptional();
+
   const run = (href: string) => {
     onOpenChange(false);
+    navigationLoading?.startNavigation(href);
     router.push(href);
   };
 

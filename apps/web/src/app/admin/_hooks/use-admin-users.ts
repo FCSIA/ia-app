@@ -23,13 +23,16 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const [usersPageSize, setUsersPageSize] = useState(10);
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
 
-  const canDeactivate = (targetUser: AdminUserRecord) => {
+  const canManageUser = (targetUser: AdminUserRecord) => {
     if (!user) return false;
     const targetRoles = getUserRoles(targetUser);
     const isTargetPrivileged = targetRoles.includes('ADMIN') || targetRoles.includes('SUPER_ADMIN');
     if (isTargetPrivileged) return hasRole(user, 'SUPER_ADMIN');
     return hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   };
+
+  const canDeactivate = canManageUser;
+  const canResetPassword = canManageUser;
 
   useEffect(() => {
     if (activeTab !== 'users') return;
@@ -85,6 +88,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const deactivateUser = useMutation(api.users.admin.deactivate);
   const activateUser = useMutation(api.users.admin.activate);
   const assignRoles = useMutation(api.users.admin.assignRoles);
+  const resetPassword = useMutation(api.users.admin.resetPassword);
 
   const runUserMutation = async (action: () => Promise<unknown>, successTitle: string) => {
     try {
@@ -145,6 +149,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
     selectedUserRoleMeta,
     currentUserId: user?.id,
     canDeactivate,
+    canResetPassword,
     onDeactivate: (userId: string) =>
       void runUserMutation(
         () => deactivateUser({ userId: userId as Id<'users'> }),
@@ -155,6 +160,13 @@ export function useAdminUsers(activeTab: AdminTabId) {
         () => activateUser({ userId: userId as Id<'users'> }),
         'Activated',
       ),
+    onResetPassword: (targetUser: AdminUserRecord) =>
+      void runUserMutation(async () => {
+        const result = await resetPassword({ userId: targetUser.id as Id<'users'> });
+        // The Convex version returns the temporary password
+        console.log(`Temporary password for ${targetUser.uniqueId}: ${result.temporaryPassword}`);
+      }, 'Password reset'),
+    isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
     isAssignRolesPending: isUserMutationPending,
     onAssignRoles: (payload: { id: string; roles: string[] }) =>

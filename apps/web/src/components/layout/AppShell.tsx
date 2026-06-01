@@ -42,6 +42,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
+import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -116,6 +117,7 @@ export function AppShell({
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const { toast } = useToast();
+  const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? '/dashboard';
 
   useEffect(() => {
@@ -195,7 +197,7 @@ export function AppShell({
 
   return (
     <Fragment>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="app-root flex min-h-screen w-full bg-background">
         {/* Narrow dark sidebar (icon-only, sticky).
             z-40 creates a stacking context above all sibling content (including
             the clubs workspace secondary sidebar at bg-background / z-auto), so
@@ -241,8 +243,6 @@ export function AppShell({
                 <NavIcon key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
               ))
               : null}
-            <div className="my-2 h-px w-8 bg-white/10" />
-
           </div>
         </aside>
 
@@ -296,8 +296,8 @@ export function AppShell({
         </Sheet>
 
         {/* Main */}
-        <div className="flex min-w-0 flex-1 flex-col bg-card">
-          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 lg:px-8">
+        <div className="app-main-surface flex min-w-0 flex-1 flex-col bg-card">
+          <header className="app-main-header sticky top-0 z-20 flex h-16 shrink-0 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur md:px-6 lg:px-8">
             <Button
               type="button"
               variant="ghost"
@@ -364,7 +364,10 @@ export function AppShell({
                       icon={Settings}
                       label="Settings"
                       index={0}
-                      onSelect={() => router.push('/profile')}
+                      onSelect={() => {
+                        navigationLoading?.startNavigation('/profile');
+                        router.push('/profile');
+                      }}
                     />
                     <DropdownSeparator />
                     <MenuItem

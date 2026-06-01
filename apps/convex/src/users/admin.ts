@@ -405,6 +405,24 @@ export const assignRoles = mutation({
       throw new ConvexError("Only super admins can change admin roles.");
     }
 
+    // Check for STUDENT_ADMIN limit (max 5)
+    const isAddingStudentAdmin = nextRoles.includes("STUDENT_ADMIN");
+    const alreadyIsStudentAdmin = target.roles.includes("STUDENT_ADMIN");
+
+    if (isAddingStudentAdmin && !alreadyIsStudentAdmin) {
+      const currentStudentAdmins = await ctx.db
+        .query("users")
+        .withIndex("by_isStudentAdmin_and_lastName_and_firstName", (q) =>
+          q.eq("isStudentAdmin", true),
+        )
+        .collect();
+      if (currentStudentAdmins.length >= 5) {
+        throw new ConvexError(
+          "Maximum of 5 students can have the Student Admin role.",
+        );
+      }
+    }
+
     await ctx.db.patch(target._id, {
       roles: nextRoles as any,
       ...classifyRoles(nextRoles as any),
