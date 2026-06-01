@@ -8,13 +8,6 @@ import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  // Transitional only: old REST screens still read this until their domains move
-  // to Convex. Better Auth sessions are cookie-based and do not use this token.
-  return localStorage.getItem('ia_token');
-}
-
 export function getUser(): AppUser | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem('ia_user');
@@ -24,11 +17,6 @@ export function getUser(): AppUser | null {
   } catch {
     return null;
   }
-}
-
-export function setAuth(token: string, user: AppUser) {
-  localStorage.setItem('ia_token', token);
-  localStorage.setItem('ia_user', JSON.stringify(user));
 }
 
 export function cacheUser(user: AppUser | null) {
@@ -41,8 +29,8 @@ export function cacheUser(user: AppUser | null) {
 }
 
 export function clearAuth() {
-  localStorage.removeItem('ia_token');
   localStorage.removeItem('ia_user');
+  localStorage.removeItem('ia_token');
 }
 
 export function hasRole(user: AppUser | null, ...roles: AppRole[]): boolean {
@@ -58,6 +46,11 @@ export function isSuperAdmin(user: AppUser | null): boolean {
   return hasRole(user, 'SUPER_ADMIN');
 }
 
+/**
+ * Hook to access the current user.
+ * Since Next.js 16 proxy.ts handles initial auth redirect, 
+ * this hook focuses on providing the full user profile from Convex.
+ */
 export function useCurrentUser(): AppUser | null {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
