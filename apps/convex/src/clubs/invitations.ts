@@ -1,9 +1,65 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
+
+export const searchInviteCandidates = query({
+  args: {
+    clubId: v.id("clubs"),
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      uniqueId: v.string(),
+      firstName: v.string(),
+      lastName: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+
+    if (!context.hasClubRole && !context.isSponsor && !context.isAdmin) {
+      return [];
+    }
+
+    const search = args.query.trim().toLowerCase();
+    if (search.length < 2) return [];
+    const limit = Math.min(Math.max(args.limit ?? 20, 1), 50);
+
+    const candidates = await ctx.db
+      .query("users")
+      .withSearchIndex("search_users", (q) =>
+        q.search("searchText", search).eq("isStudent", true),
+      )
+      .take(limit + 20);
+
+    const results = [];
+    for (const candidate of candidates) {
+      if (!candidate.isActive) continue;
+      const existingMember = await ctx.db
+        .query("clubMembers")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .filter((q) => q.eq(q.field("userId"), candidate._id))
+        .first();
+      if (existingMember) continue;
+
+      results.push({
+        _id: candidate._id,
+        uniqueId: candidate.uniqueId,
+        firstName: candidate.firstName,
+        lastName: candidate.lastName,
+      });
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  },
+});
 
 async function inviteRecipientByUniqueId(
   ctx: MutationCtx,

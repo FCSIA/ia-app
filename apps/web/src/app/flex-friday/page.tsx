@@ -17,7 +17,7 @@ import { AuditView } from './_components/AuditView';
 import { FridayForm } from './_components/FridayForm';
 import { SessionForm } from './_components/SessionForm';
 import { WorkshopForm } from './_components/WorkshopForm';
-import { AttendancePanel, AttendanceStatus } from './_components/AttendancePanel';
+import { AttendancePanel } from './_components/AttendancePanel';
 
 // Constants & Types
 import { EMPTY_SESSION_FORM, EMPTY_WORKSHOP_FORM } from './_constants';
@@ -42,8 +42,6 @@ export default function FlexFridayPage() {
   const [workshopFormOpen, setWorkshopFormOpen] = useState(false);
   const [editingWorkshopId, setEditingWorkshopId] = useState<string | null>(null);
   const [workshopForm, setWorkshopForm] = useState<WorkshopFormType>(EMPTY_WORKSHOP_FORM);
-
-  const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<Id<'flexWorkshops'> | null>(null);
 
   // ── Session Handlers ──────────────────────────────────────────────────────
   const openNewSessionForm = () => {
@@ -171,7 +169,11 @@ export default function FlexFridayPage() {
                 onDeleteWorkshop={handleDeleteWorkshop}
                 onRegister={handleRegister}
                 onUnregister={handleUnregister}
-                onAttendance={(id) => setAttendanceWorkshopId(curr => curr === id ? null : id as Id<'flexWorkshops'>)}
+                onAttendance={(id) =>
+                  flex.setAttendanceWorkshopId((current) =>
+                    current === id ? null : (id as Id<'flexWorkshops'>),
+                  )
+                }
                 canManage={flex.canCreateSession}
                 isStudent={flex.isStudent}
                 search={flex.workshopSearch}
@@ -181,26 +183,26 @@ export default function FlexFridayPage() {
               />
 
               {/* Attendance Overlay/Panel */}
-              {attendanceWorkshopId && (
+              {flex.attendanceWorkshopId && (
                 <div className="mt-8 animate-in fade-in slide-in-from-top-4 duration-300">
                   <AttendancePanel
-                    roster={flex.rosterData as any}
+                    roster={flex.rosterData}
                     isLoading={flex.rosterLoading}
                     error={null}
                     onMark={(studentId, status) => 
                       void actions.runAction('attendance-mark', () => 
                         actions.mutations.markAttendance({
-                          workshopId: attendanceWorkshopId,
-                          studentId: studentId as Id<'users'>,
-                          status: status as AttendanceStatus,
+                          workshopId: flex.attendanceWorkshopId!,
+                          studentId,
+                          status,
                         })
                       )
                     }
                     onClear={(studentId) => 
                       void actions.runAction('attendance-clear', () => 
                         actions.mutations.clearAttendance({
-                          workshopId: attendanceWorkshopId,
-                          studentId: studentId as Id<'users'>,
+                          workshopId: flex.attendanceWorkshopId!,
+                          studentId,
                         })
                       )
                     }
@@ -221,26 +223,30 @@ export default function FlexFridayPage() {
         mutations={actions.mutations}
       />
 
-      <SessionForm
-        isOpen={sessionFormOpen}
-        onOpenChange={setSessionFormOpen}
-        editingSessionId={editingSessionId}
-        initialData={sessionForm}
-        flexFridayId={flex.selectedFriday!._id}
-        runAction={actions.runAction}
-        mutations={actions.mutations}
-      />
+      {flex.selectedFriday ? (
+        <>
+          <SessionForm
+            isOpen={sessionFormOpen}
+            onOpenChange={setSessionFormOpen}
+            editingSessionId={editingSessionId}
+            initialData={sessionForm}
+            flexFridayId={flex.selectedFriday._id}
+            runAction={actions.runAction}
+            mutations={actions.mutations}
+          />
 
-      <WorkshopForm
-        isOpen={workshopFormOpen}
-        onOpenChange={setWorkshopFormOpen}
-        editingWorkshopId={editingWorkshopId}
-        initialData={workshopForm}
-        sessions={flex.sessions}
-        flexFridayId={flex.selectedFriday!._id}
-        runAction={actions.runAction}
-        mutations={actions.mutations}
-      />
+          <WorkshopForm
+            isOpen={workshopFormOpen}
+            onOpenChange={setWorkshopFormOpen}
+            editingWorkshopId={editingWorkshopId}
+            initialData={workshopForm}
+            sessions={flex.sessions}
+            flexFridayId={flex.selectedFriday._id}
+            runAction={actions.runAction}
+            mutations={actions.mutations}
+          />
+        </>
+      ) : null}
     </AppShell>
   );
 }

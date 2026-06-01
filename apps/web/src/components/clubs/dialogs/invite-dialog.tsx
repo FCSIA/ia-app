@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
 import { Send, Upload, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,7 @@ import { parseInviteCsv } from '@/lib/parse-invite-csv';
 import { useToast } from '@/hooks/use-toast';
 import { fullName } from '@/components/clubs/types';
 
-type StudentResult = { id: string; uniqueId: string; firstName: string; lastName: string };
+type StudentResult = FunctionReturnType<typeof api.clubs.invitations.searchInviteCandidates>[number];
 
 type Props = {
   clubId: Id<'clubs'>;
@@ -50,9 +51,9 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
 
   const searchResults =
     useQuery(
-      api.schedule.friends.search,
+      api.clubs.invitations.searchInviteCandidates,
       deferredQuery.length >= 2 && !selected
-        ? { query: deferredQuery, limit: 20 }
+        ? { clubId, query: deferredQuery, limit: 20 }
         : 'skip',
     ) ?? [];
   const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
@@ -156,7 +157,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                     <CommandGroup heading="Results">
                       {searchResults?.map((student) => (
                         <CommandItem
-                          key={student.id}
+                          key={student._id}
                           onSelect={() => setSelected(student)}
                           className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                         >

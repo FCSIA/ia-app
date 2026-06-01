@@ -16,6 +16,7 @@ import { SearchInput } from '@/components/ui/search';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import { cn } from '@/lib/utils';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 function ClubNotificationChannels({
   clubId,
@@ -66,7 +67,7 @@ function ClubNotificationChannels({
   );
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
+const CATEGORY_LABEL: Record<NotificationCategory, string> = {
   SCHOOL_ANNOUNCEMENT: 'School',
   CLUB_ANNOUNCEMENT: 'Club',
   CLUB_JOIN_REQUEST: 'Club',
@@ -79,6 +80,14 @@ const CATEGORY_LABEL: Record<string, string> = {
   CONTENT_MODERATED: 'Moderation',
   FRIEND_REQUEST: 'Friends',
 };
+
+const globalPreferenceCategories: Array<[NotificationCategory, string]> = [
+  ['SCHOOL_ANNOUNCEMENT', 'School announcements'],
+  ['EVENT', 'Events'],
+  ['FLEX_FRIDAY', 'Flex Friday'],
+  ['FRIEND_REQUEST', 'Friend schedules'],
+  ['CONTENT_MODERATED', 'Moderation notices'],
+];
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -133,30 +142,32 @@ export default function NotificationsPage() {
     }
   }
 
-  function handleMarkRead(id: string) {
-    void markRead({ ids: [id as Id<'notificationDeliveries'>] });
+  function handleMarkRead(id: Id<'notificationDeliveries'>) {
+    void markRead({ ids: [id] });
   }
 
-  function getNotificationHref(notification: any) {
-    if (notification.channelId && notification.clubId) {
-      return `/clubs/${notification.clubId}/channels/${notification.channelId}`;
-    }
-    if (notification.announcementId) return `/announcements/${notification.announcementId}`;
-    if (notification.eventId) return '/events';
-    if (notification.category === 'FRIEND_REQUEST') {
-      return '/schedule?tab=friends&section=requests';
-    }
-    if (notification.category === 'CONTENT_MODERATED') return '/profile';
-    if (notification.category === 'FLEX_FRIDAY') return '/flex-friday';
-    if (notification.clubId) return `/clubs/${notification.clubId}`;
-    return null;
-  }
+type Notification = typeof notifications[number];
 
-  function openNotification(notification: any) {
-    const href = getNotificationHref(notification);
-    if (!notification.isRead) handleMarkRead(notification.id);
-    if (href) router.push(href);
+function getNotificationHref(notification: Notification) {
+  if (notification.channelId && notification.clubId) {
+    return `/clubs/${notification.clubId}/channels/${notification.channelId}`;
   }
+  if (notification.announcementId) return `/announcements/${notification.announcementId}`;
+  if (notification.eventId) return '/events';
+  if (notification.category === 'FRIEND_REQUEST') {
+    return '/schedule?tab=friends&section=requests';
+  }
+  if (notification.category === 'CONTENT_MODERATED') return '/profile';
+  if (notification.category === 'FLEX_FRIDAY') return '/flex-friday';
+  if (notification.clubId) return `/clubs/${notification.clubId}`;
+  return null;
+}
+
+function openNotification(notification: Notification) {
+  const href = getNotificationHref(notification);
+  if (!notification.isRead) handleMarkRead(notification.id);
+  if (href) router.push(href);
+}
 
   const hasUnread = notifications.some((n) => !n.isRead);
 
@@ -229,7 +240,7 @@ export default function NotificationsPage() {
           ) : (
             <Panel contentClassName="p-0">
               <ul className="divide-y divide-border">
-                {filteredNotifications.map((n: any) => {
+                {filteredNotifications.map((n: typeof notifications[number]) => {
                   const href = getNotificationHref(n);
                   const isClickable = !!href;
                   const categoryLabel =
@@ -301,13 +312,7 @@ export default function NotificationsPage() {
                 <section className="flex flex-col gap-3">
                   <h2 className="text-sm font-semibold">Global</h2>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {[
-                      ['SCHOOL_ANNOUNCEMENT', 'School announcements'],
-                      ['EVENT', 'Events'],
-                      ['FLEX_FRIDAY', 'Flex Friday'],
-                      ['FRIEND_REQUEST', 'Friend schedules'],
-                      ['CONTENT_MODERATED', 'Moderation notices'],
-                    ].map(([category, label]) => (
+                    {globalPreferenceCategories.map(([category, label]) => (
                       <NotificationScopeSwitch
                         key={category}
                         category={category}

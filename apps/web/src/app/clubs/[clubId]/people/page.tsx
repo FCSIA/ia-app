@@ -3,6 +3,7 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
+import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
   Copy,
@@ -51,7 +52,7 @@ import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
-type StudentResult = { id: string; uniqueId: string; firstName: string; lastName: string };
+type StudentResult = FunctionReturnType<typeof api.clubs.invitations.searchInviteCandidates>[number];
 
 function ManagePeopleDialog({
   club,
@@ -75,9 +76,9 @@ function ManagePeopleDialog({
 
   const searchResults =
     useQuery(
-      api.schedule.friends.search,
+      api.clubs.invitations.searchInviteCandidates,
       deferredQuery.length >= 2 && !selected
-        ? { query: deferredQuery, limit: 20 }
+        ? { clubId, query: deferredQuery, limit: 20 }
         : 'skip',
     ) ?? [];
   const isSearching = deferredQuery.length >= 2 && !selected && searchResults.length === 0;
@@ -261,7 +262,7 @@ function ManagePeopleDialog({
                       <CommandGroup heading="Results">
                         {searchResults?.map((student) => (
                           <CommandItem
-                            key={student.id}
+                            key={student._id}
                             onSelect={() => setSelected(student)}
                             className="flex cursor-pointer items-center gap-3 px-3 py-2.5"
                           >
