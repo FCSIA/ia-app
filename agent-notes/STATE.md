@@ -2,72 +2,45 @@
 
 ## Active Focus
 
-- **Branch**: `codex/convex-port` (includes `6845f48` clubs/events/flex backend + ongoing frontend/db work)
-- **Goal**: Finish Convex port — Wrapped done; migrate remaining web domains off REST; Convex-only `db:*`.
+- **Branch**: `main`
+- **Goal**: Post-Convex port feature development and stability.
 
 ## Current Truth
 
-### Backend on Convex
+### Architecture: Next.js 16 + Convex
 
 | Domain | Status |
 |--------|--------|
-| Users, audit, courses, schedule, notifications | **Done** |
-| Clubs, events, Flex Friday | **Done for current web flows** |
-| Wrapped | **Done** — `wrapped/snapshots.ts`, `wrappedSnapshots` table |
-| Announcements | **Done for current web flows** (`feed`, `engagement`, `comments`) |
-| Moderation, uploads | **Done for current web flows** |
+| **Backend** | **Convex Only**. Legacy NestJS (`apps/api`) and Prisma deleted. |
+| **Frontend** | **Next.js 16 (Node Runtime)**. Legacy `middleware.ts` replaced by `proxy.ts`. |
+| **Auth** | **Better Auth**. Integrated with Convex. Managed at network layer via `proxy.ts`. |
 
-### Frontend on Convex
+### Feature Coverage on Convex
 
-| Area | Status |
-|------|--------|
-| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.) |
-| Wrapped page + admin wrapped tab | **Convex** |
-| Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
-| Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
-| Events, calendar, flex-friday UI | **Convex** (`api.events.*`, `api.flexFriday.*`) |
-| Announcements, moderation, uploads | **Convex** |
-| Admin student CSV import/export | **Convex** (`api.users.admin.importStudents`, `api.users.admin.exportStudents`) |
+All core domains (Users, Clubs, Events, Announcements, Schedule, Wrapped, Notifications, Moderation, Audit) are now 100% on Convex.
 
 ### Dev data reset
 
 - No local seed/reset/clear CLI commands.
-- Run dashboard-only internal Convex function `bootstrap:resetAndSeed` to
-  destructively recreate demo data.
-- No `BOOTSTRAP_SECRET`; seed/reset functions are internal rather than public
-  secret-gated functions.
+- Run dashboard-only internal Convex function `bootstrap:resetAndSeed` to destructively recreate demo data.
 
 ### Verification (latest)
 
-- `pnpm --filter cvx codegen` + `typecheck` — pass
-- `pnpm --filter web build` — pass
-- Web `tsc --noEmit` — pass
-- `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
-  failures; Convex/web checks above pass.
-- Docs cleanup pass completed: active docs now route through `docs/index.md`,
-  cover Convex-era architecture/backend/database/frontend/features, and have a
-  clean stale-reference grep for old backend terms outside historical
-  `PORTING.md`.
+- `pnpm codegen` — pass
+- `pnpm lint` — pass (Legacy `apps/api` errors removed by deletion)
+- `pnpm build` — pass (`ƒ Proxy (Middleware)` active)
 
 ## Next Work
 
-1. Decide whether the legacy `apps/api` app and `packages/contracts` should be
-   deleted now or retained temporarily for reference.
-2. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
-   historical, while `docs/` is now the active operating manual.
-3. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
-   blocking check again.
+1. Update any remaining stale documentation references to the old backend.
+2. Monitor Vercel deployments for any routing issues related to the Next.js 16 `proxy.ts` shift.
+3. Enhance `proxy.ts` to handle more granular route-level permissions if needed.
 
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
+direnv exec . pnpm codegen
 direnv exec . pnpm lint
-direnv exec . pnpm --filter web build
-# Demo data reset: run internal Convex function bootstrap:resetAndSeed in the dashboard.
+direnv exec . pnpm build
+# Migration Guide: agent-notes/MIGRATION_GUIDE.md
 ```
-
-## Stash
-
-`agent-wip-convex-port` — largely superseded by fixes on branch; safe to drop after review (`git stash drop`).
