@@ -5,9 +5,10 @@ import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 type NotificationScopeSwitchProps = {
-  category: string;
+  category: NotificationCategory;
   label: string;
   clubId?: string;
   channelId?: string;
@@ -53,7 +54,7 @@ export function NotificationScopeSwitch({
 
   const togglePreference = () =>
     upsertPreference({
-      category: category as any,
+      category,
       enabled: !enabled,
       clubId,
       channelId,

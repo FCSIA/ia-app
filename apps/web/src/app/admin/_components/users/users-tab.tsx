@@ -236,7 +236,7 @@ export function AdminUsersTab({
               <div>
                 <p className="font-medium text-foreground">Could not load users.</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {(usersError as any)?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
+                  {(usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
                 </p>
               </div>
               <Button type="button" variant="tertiary" size="sm" onClick={refetchUsers}>

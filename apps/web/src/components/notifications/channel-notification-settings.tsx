@@ -15,8 +15,9 @@ import {
 import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
 
-type PreferenceLevel = 'OFF' | 'IN_APP' | 'PUSH' | 'TIME_SENSITIVE';
+type PreferenceLevel = NotificationPreferenceLevel;
 
 type ChannelNotificationSettingsProps = {
   clubId: string;
@@ -24,10 +25,10 @@ type ChannelNotificationSettingsProps = {
   channelName: string;
 };
 
-const MESSAGE_CATEGORY = 'CLUB_CHANNEL_MESSAGE';
-const DIRECT_CATEGORY = 'CLUB_CHANNEL_MENTION';
-const TAG_CATEGORY = 'CLUB_CHANNEL_TAG_MENTION';
-const THREAD_CATEGORY = 'CLUB_CHANNEL_THREAD';
+const MESSAGE_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_MESSAGE';
+const DIRECT_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_MENTION';
+const TAG_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_TAG_MENTION';
+const THREAD_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_THREAD';
 
 const messageOptions: Array<{
   value: PreferenceLevel;
@@ -62,7 +63,7 @@ const messageOptions: Array<{
 ];
 
 const mentionOptions: Array<{
-  category: string;
+  category: NotificationCategory;
   label: string;
   detail: string;
   icon: typeof Bell;
@@ -87,14 +88,29 @@ const mentionOptions: Array<{
   },
 ];
 
-function scopePreference(preferences: any[], category: string, channelId: string) {
+type NotificationPreference = {
+  category: NotificationCategory;
+  scopeKey: string;
+  enabled: boolean;
+  level: PreferenceLevel;
+};
+
+function scopePreference(
+  preferences: NotificationPreference[],
+  category: NotificationCategory,
+  channelId: string,
+) {
   return preferences.find(
     (preference) =>
       preference.category === category && preference.scopeKey === `channel:${channelId}`,
   );
 }
 
-function preferenceEnabled(preferences: any[], category: string, channelId: string) {
+function preferenceEnabled(
+  preferences: NotificationPreference[],
+  category: NotificationCategory,
+  channelId: string,
+) {
   const preference = scopePreference(preferences, category, channelId);
   return preference ? preference.enabled && preference.level !== 'OFF' : true;
 }
@@ -123,11 +139,11 @@ export function ChannelNotificationSettings({
       category,
       level,
     }: {
-      category: string;
+      category: NotificationCategory;
       level: PreferenceLevel;
     }) =>
       upsertPreference({
-        category: category as any,
+        category,
         enabled: level !== 'OFF',
         clubId,
         channelId,

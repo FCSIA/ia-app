@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
@@ -46,7 +47,13 @@ export default function ProfilePage() {
     }
   }
 
-  function handlePreferenceToggle({ category, enabled }: { category: any; enabled: boolean }) {
+  function handlePreferenceToggle({
+    category,
+    enabled,
+  }: {
+    category: NotificationCategory;
+    enabled: boolean;
+  }) {
     void upsertPreference({ category, enabled });
   }
 
@@ -54,7 +61,7 @@ export default function ProfilePage() {
     prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
   );
 
-  const categories = [
+  const categories: Array<{ key: NotificationCategory; label: string }> = [
     { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
     { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
     { key: 'EVENT', label: 'Events' },

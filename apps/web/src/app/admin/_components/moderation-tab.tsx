@@ -1,10 +1,7 @@
 'use client';
 
 import { Plus, Trash2, Info } from 'lucide-react';
-type ModerationMutation<TArgs> = {
-  mutate: (args: TArgs) => void;
-  isPending: boolean;
-};
+import type { Id, Doc } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +15,18 @@ import {
   DialogDescription,
   DialogTrigger,
 } from '@/components/ui/dialog';
+
+type ModerationMutation<TArgs> = {
+  mutate: (args: TArgs) => void;
+  isPending: boolean;
+};
+
+type ModerationKeyword = Doc<'moderationKeywordRules'>;
+type ModerationReport = Doc<'moderationReports'> & {
+  submitter: { firstName: string; lastName: string } | null;
+  reportedUser: { firstName: string; lastName: string } | null;
+};
+type ModerationReportStatus = ModerationReport['status'];
 
 export function ModerationTab({
   keyword,
@@ -34,15 +43,15 @@ export function ModerationTab({
 }: {
   keyword: string;
   onKeywordChange: (value: string) => void;
-  keywords: any[];
+  keywords: ModerationKeyword[];
   addKeywordMutation: ModerationMutation<string>;
   removeKeywordMutation: ModerationMutation<string>;
   moderationSearch: string;
   onModerationSearchChange: (value: string) => void;
   deferredModerationSearch: string;
-  filteredReports: any[];
+  filteredReports: ModerationReport[];
   pendingReports: number;
-  reportMutation: ModerationMutation<{ id: string; status: string; reviewNote: string }>;
+  reportMutation: ModerationMutation<{ id: Id<'moderationReports'>; status: ModerationReportStatus; reviewNote: string }>;
 }) {
   return (
     <div className="grid gap-6">
@@ -106,7 +115,7 @@ export function ModerationTab({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {keywords.map((kw: any) => (
+                      {keywords.map((kw: ModerationKeyword) => (
                         <Badge key={kw._id} variant="solid" color="red" className="gap-1.5 px-3 py-1.5">
                           {kw.keyword}
                           <button
@@ -142,7 +151,7 @@ export function ModerationTab({
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredReports.map((r: any) => (
+              {filteredReports.map((r: ModerationReport) => (
                 <div key={r._id} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/30">
                   <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
                     <div>
@@ -180,4 +189,3 @@ export function ModerationTab({
     </div>
   );
 }
-
