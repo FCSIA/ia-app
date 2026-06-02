@@ -203,13 +203,16 @@ export const seedStatus = internalQuery({
     notificationPreferences: v.number(),
   }),
   handler: async (ctx) => {
-    const users = await ctx.db.query("users").take(5000);
+    const userCounts = await ctx.db
+      .query("appStats")
+      .withIndex("by_key", (q) => q.eq("key", "user-counts"))
+      .unique();
     const announcements = await ctx.db.query("announcements").take(5000);
 
     return {
-      users: users.length,
-      students: users.filter((user) => user.roles.includes("STUDENT")).length,
-      staff: users.filter((user) => !user.roles.includes("STUDENT")).length,
+      users: userCounts?.users ?? 0,
+      students: userCounts?.students ?? 0,
+      staff: userCounts?.staff ?? 0,
       courses: (await ctx.db.query("courses").take(1000)).length,
       clubs: (await ctx.db.query("clubs").take(1000)).length,
       announcements: announcements.filter(

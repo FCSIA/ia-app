@@ -7,6 +7,7 @@ import { type AppRole } from "../../lib/roles";
 import {
   appUserPublicValidator,
 } from "../validators";
+import { incrementUserCounts } from "../stats";
 
 export const temporaryPasswordAlphabet =
   "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -215,6 +216,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
   if (!user) {
     throw new ConvexError("Failed to create user.");
   }
+  await incrementUserCounts(ctx, user, 1);
 
   return {
     user: toPublicUser(user),

@@ -10,6 +10,9 @@ Demo data is managed inside Convex. There are no local `pnpm db:seed`,
 `pnpm db:reset`, or `pnpm db:clear` commands, and seeding does not use a
 bootstrap secret.
 
+Seeding is not automatic on a new deployment. A fresh deployment has schema and
+functions only until an operator runs the reset action below.
+
 ## Dashboard Reset
 
 Open the Convex Dashboard for the selected deployment and run the internal
@@ -23,6 +26,10 @@ The function is destructive. It clears demo auth/app data and recreates the full
 demo environment. The dashboard call returns after scheduling the reset work.
 Use the internal query `bootstrap:seedStatus` to watch progress until the
 expected counts are reached.
+
+`seedStatus` reads user totals from the `appStats` counter table instead of
+loading every user document. The counter is updated when users are created or
+deleted and rebuilt after the demo user seed completes.
 
 ## Seed Flow
 
