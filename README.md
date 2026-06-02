@@ -55,11 +55,16 @@ pnpm dev
 Open Convex dashboard:
 
 ```bash
-pnpx convex dash
-pnpx convex dashboard
+pnpm --filter cvx exec convex dash
+pnpm --filter cvx exec convex dashboard
 ```
 
-On a new checkout, run `pnpx convex dev` once first so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
+> [!IMPORTANT]
+> Do not run `pnpx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `pnpm --filter cvx ...` from the root instead.
+
+On a new checkout, run `pnpm --filter cvx dev` once first so Convex can select
+or create a dev deployment and write `CONVEX_DEPLOYMENT` to
+`apps/convex/.env.local`.
 
 Demo seed/reset is intentionally dashboard-only. In the Convex Dashboard, run
 the internal function `bootstrap:resetAndSeed` to schedule a destructive reset,
@@ -76,7 +81,7 @@ Demo accounts are seeded with their ID as the password, for example `STU001` / `
 
 ```bash
 pnpm dev          # Start web app and Convex dev server in parallel
-pnpm db:studio    # Open local/dev Convex Dashboard console
+pnpm --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
 pnpm build        # Build all workspaces for production
 pnpm test         # Run test suites
