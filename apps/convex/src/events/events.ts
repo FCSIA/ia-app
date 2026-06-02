@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializeEventDetail } from "./serialize";
+import { deliverMany, eventAudience } from "../notifications/delivery";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
 
@@ -127,6 +128,20 @@ export const create = mutation({
         createdById: user._id,
         createdAt: Date.now(),
       });
+      const event = await ctx.db.get(eventId);
+      if (event) {
+        await deliverMany(ctx, await eventAudience(ctx, event), {
+          category: "EVENT",
+          title: event.title,
+          body: event.description ?? "New event published.",
+          href: `/events/${event._id}`,
+          subject: {
+            kind: "event",
+            eventId: event._id,
+            ...(event.clubId ? { clubId: event.clubId } : {}),
+          },
+        });
+      }
     }
 
     if (args.clubId && status === "PENDING_APPROVAL") {

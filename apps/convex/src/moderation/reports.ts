@@ -5,6 +5,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { docs } from "../../lib/docs";
+import { activeAdmins, deliverMany } from "../notifications/delivery";
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -107,6 +108,14 @@ export const submit = mutation({
       status: "PENDING",
       isEscalated: false,
       createdAt: Date.now(),
+    });
+
+    await deliverMany(ctx, (await activeAdmins(ctx)).map((admin) => admin._id), {
+      category: "CONTENT_MODERATED",
+      title: "Moderation report submitted",
+      body: `${user.firstName} ${user.lastName} submitted a moderation report.`,
+      href: "/admin?tab=moderation",
+      subject: { kind: "moderationReport", reportId },
     });
 
     await logAuditEvent(ctx, {

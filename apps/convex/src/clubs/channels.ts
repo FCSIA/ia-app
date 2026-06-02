@@ -5,6 +5,7 @@ import { channelValidator } from "./_lib";
 import { getClubContext, getViewerContext, canReadChannel, canPostInChannel } from "./access";
 import { toClubUserRef } from "./serialize";
 import type { Id } from "../_generated/dataModel";
+import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
 
 export const list = query({
   args: { clubId: v.id("clubs") },
@@ -94,6 +95,10 @@ const pollOptionInputValidator = v.object({
   label: v.string(),
 });
 
+function mentionTokens(body: string) {
+  return Array.from(new Set(body.match(/@[A-Za-z0-9_-]+/g)?.map((token) => token.slice(1)) ?? []));
+}
+
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -147,6 +152,73 @@ export const postMessage = mutation({
         size: attachment.size,
         createdAt: Date.now(),
       });
+    }
+
+    const href = `/clubs/${channel.clubId}/channels/${channel._id}`;
+    const subject = {
+      kind: "clubMessage" as const,
+      clubId: channel.clubId,
+      channelId: channel._id,
+      messageId,
+    };
+    const preview = trimmedBody || "New channel message.";
+    const allAudience = (await channelAudience(ctx, channel)).filter((id) => id !== user._id);
+
+    await deliverMany(ctx, allAudience, {
+      category: "CLUB_CHANNEL_MESSAGE",
+      title: `#${channel.name}`,
+      body: preview,
+      href,
+      subject,
+    });
+
+    if (args.parentMessageId) {
+      const parent = await ctx.db.get(args.parentMessageId);
+      if (parent && parent.authorId !== user._id) {
+        await deliverNotification(ctx, {
+          userId: parent.authorId,
+          category: "CLUB_CHANNEL_THREAD",
+          title: `Reply in #${channel.name}`,
+          body: preview,
+          href,
+          subject,
+        });
+      }
+    }
+
+    const tokens = mentionTokens(trimmedBody);
+    if (tokens.includes("all")) {
+      await deliverMany(ctx, allAudience, {
+        category: "CLUB_CHANNEL_TAG_MENTION",
+        title: `@all in #${channel.name}`,
+        body: preview,
+        href,
+        subject,
+      });
+    }
+
+    for (const token of tokens.filter((token) => token !== "all")) {
+      const mentioned = await ctx.db
+        .query("users")
+        .withIndex("by_uniqueId", (q) => q.eq("uniqueId", token))
+        .unique();
+      if (mentioned && mentioned._id !== user._id && allAudience.includes(mentioned._id)) {
+        await ctx.db.insert("clubChannelMessageMentions", {
+          messageId,
+          userId: mentioned._id,
+          kind: "USER",
+          token,
+          createdAt: Date.now(),
+        });
+        await deliverNotification(ctx, {
+          userId: mentioned._id,
+          category: "CLUB_CHANNEL_MENTION",
+          title: `Mention in #${channel.name}`,
+          body: preview,
+          href,
+          subject,
+        });
+      }
     }
 
     return messageId;

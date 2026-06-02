@@ -40,3 +40,22 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 Runtime secrets such as Better Auth credentials belong in the Convex deployment
 environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; reset is available
 only as the internal dashboard function `bootstrap:resetAndSeed`.
+
+## Web Push
+
+Browser push notifications require VAPID keys. The public key is needed by the
+web client and Convex; the private key belongs only in the Convex deployment
+environment.
+
+```env
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:admin@example.com
+```
+
+Generate keys with:
+
+```bash
+direnv exec . pnpm --filter cvx exec web-push generate-vapid-keys
+```

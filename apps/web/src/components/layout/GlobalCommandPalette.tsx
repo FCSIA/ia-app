@@ -213,15 +213,7 @@ export function GlobalCommandPalette({
       id: `notification-${notification.id}`,
       label: notification.title,
       detail: notification.body || notification.category?.replace(/_/g, ' '),
-      href: notification.channelId && notification.clubId
-        ? `/clubs/${notification.clubId}/channels/${notification.channelId}`
-        : notification.announcementId
-          ? `/announcements/${notification.announcementId}`
-          : notification.eventId
-            ? `/events/${notification.eventId}`
-            : notification.clubId
-              ? `/clubs/${notification.clubId}`
-              : '/notifications',
+      href: notification.href,
       Icon: Bell,
       badge: 'Unread',
       keywords: ['notification', notification.category, notification.body],
