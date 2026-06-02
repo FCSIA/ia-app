@@ -108,12 +108,50 @@ export const schema = defineSchema({
     category: notificationCategoryValidator,
     title: v.string(),
     body: v.string(),
+    href: v.string(),
+    subject: v.union(
+      v.object({
+        kind: v.literal("announcement"),
+        announcementId: v.id("announcements"),
+        clubId: v.optional(v.id("clubs")),
+      }),
+      v.object({
+        kind: v.literal("event"),
+        eventId: v.id("events"),
+        clubId: v.optional(v.id("clubs")),
+      }),
+      v.object({
+        kind: v.literal("club"),
+        clubId: v.id("clubs"),
+      }),
+      v.object({
+        kind: v.literal("clubChannel"),
+        clubId: v.id("clubs"),
+        channelId: v.id("clubChannels"),
+      }),
+      v.object({
+        kind: v.literal("clubMessage"),
+        clubId: v.id("clubs"),
+        channelId: v.id("clubChannels"),
+        messageId: v.id("clubChannelMessages"),
+      }),
+      v.object({
+        kind: v.literal("flexFriday"),
+        flexFridayId: v.id("flexFridays"),
+      }),
+      v.object({
+        kind: v.literal("moderationReport"),
+        reportId: v.id("moderationReports"),
+      }),
+      v.object({
+        kind: v.literal("friendRequest"),
+        friendshipId: v.id("studentScheduleFriends"),
+      }),
+      v.object({
+        kind: v.literal("system"),
+      }),
+    ),
     isRead: v.boolean(),
-    announcementId: v.optional(v.string()),
-    eventId: v.optional(v.string()),
-    clubId: v.optional(v.string()),
-    channelId: v.optional(v.string()),
-    messageId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
@@ -141,6 +179,23 @@ export const schema = defineSchema({
     "category",
     "scopeKey",
   ]),
+
+  notificationPushSubscriptions: defineTable({
+    userId: v.id("users"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    userAgent: v.optional(v.string()),
+    enabled: v.boolean(),
+    failureCount: v.number(),
+    lastError: v.optional(v.string()),
+    lastSentAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_endpoint", ["userId", "endpoint"])
+    .index("by_endpoint", ["endpoint"])
+    .index("by_userId_and_enabled", ["userId", "enabled"]),
 
   courses: defineTable({
     slug: v.string(),

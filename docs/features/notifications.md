@@ -6,8 +6,8 @@ tags: [feature, notifications]
 
 [Home](../index.md)
 
-Notifications provide an in-app inbox, unread count, and user preferences for
-future delivery controls.
+Notifications provide an in-app inbox, unread count, user preferences, and
+browser push delivery for subscribed devices.
 
 ## What It Does
 
@@ -16,12 +16,15 @@ future delivery controls.
 - Tracks unread count.
 - Marks one or many notifications as read.
 - Stores per-category and scoped preferences.
+- Stores per-user browser push subscriptions.
+- Sends Web Push for categories configured at `PUSH` or `TIME_SENSITIVE`.
 
 ## Source Files
 
 - Backend: `apps/convex/src/notifications/`
 - Inbox page: `apps/web/src/app/notifications/page.tsx`
 - Preference controls: `apps/web/src/components/notifications/`
+- Service worker: `apps/web/public/sw.js`
 - Unread nav badge: `apps/web/src/components/layout/AppShell.tsx`
 
 ## Convex Surface
@@ -33,11 +36,16 @@ future delivery controls.
 - `api.notifications.inbox.markAllRead`
 - `api.notifications.preferences.list`
 - `api.notifications.preferences.upsert`
+- `api.notifications.push.getPublicKey`
+- `api.notifications.push.listMine`
+- `api.notifications.push.upsertSubscription`
+- `api.notifications.push.removeSubscription`
 
 ## Data Model
 
 - `notificationDeliveries`
 - `notificationPreferences`
+- `notificationPushSubscriptions`
 
 Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
 also supports category and scope keys such as global, club, and channel scopes.
@@ -48,20 +56,36 @@ The validator includes school announcements, club announcements, club join
 requests, club channel messages, mentions, thread replies, events, Flex Friday,
 content moderation, and friend requests.
 
+## Browser Push
+
+Closed-tab delivery uses the browser Push API and the app service worker.
+Environment variables must include `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and
+`VAPID_SUBJECT` for Convex delivery, plus `NEXT_PUBLIC_VAPID_PUBLIC_KEY` for the
+web client. Generate keys with:
+
+```bash
+direnv exec . pnpm --filter cvx exec web-push generate-vapid-keys
+```
+
+Push is a best-effort delivery channel. Expired browser subscriptions are
+disabled when push services return a permanent failure.
+
 ## Current Delivery
 
-The inbox and preference system are active. Current Convex delivery rows are
-created in the implemented friend-request flow. Other categories are modeled for
-domain fanout and should be verified when each domain starts delivering rows.
+The inbox, preference system, and Web Push subscription flow are active. Current
+Convex delivery rows are created in the implemented friend-request flow and can
+fan out to browser push when the target user has an active subscription and a
+push-enabled preference. Other categories are modeled for domain fanout and
+should be verified when each domain starts delivering rows.
 
 ## Known Limits
 
 Unread count is currently a bounded read suitable for alpha/demo data. Use a
 counter-backed design before production-scale exact counts.
 
-Web Push is not the current closed-tab delivery implementation. `PUSH` and
-`TIME_SENSITIVE` represent intended delivery levels, not a completed browser
-push pipeline.
+Browsers may throttle or drop push events, and users can revoke notification
+permission outside the app. Keep in-app deliveries as the durable source of
+truth.
 
 ## Related
 

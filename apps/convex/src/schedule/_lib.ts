@@ -7,6 +7,7 @@ import {
 } from "../validators";
 import { toCourseSummary } from "../courses/_lib";
 import type { AppRole } from "../../lib/roles";
+import { deliverNotification as deliverNotificationRow } from "../notifications/delivery";
 
 export const schoolDayBlockValidator = v.object({
   id: v.id("schoolDayBlocks"),
@@ -350,17 +351,19 @@ export async function deliverNotification(
   ctx: MutationCtx,
   input: {
     userId: Id<"users">;
+    friendshipId: Id<"studentScheduleFriends">;
     title: string;
     body: string;
+    href?: string;
   },
 ) {
-  await ctx.db.insert("notificationDeliveries", {
+  await deliverNotificationRow(ctx, {
     userId: input.userId,
     category: "FRIEND_REQUEST",
     title: input.title,
     body: input.body,
-    isRead: false,
-    createdAt: Date.now(),
+    href: input.href ?? "/schedule?tab=friends",
+    subject: { kind: "friendRequest", friendshipId: input.friendshipId },
   });
 }
 

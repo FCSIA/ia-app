@@ -13,9 +13,11 @@
   "dependencies": {
     "@convex-dev/better-auth": "0.12.2",
     "better-auth": "1.6.11",
-    "convex": "1.39.1"
+    "convex": "1.39.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@types/web-push": "^3.6.4",
     "auth": "1.6.11",
     "convex-test": "0.0.53",
     "edge-runtime": "4.0.1",

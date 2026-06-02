@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
+import { announcementAudience, deliverMany } from "../notifications/delivery";
 import {
   announcementListItemValidator,
   canViewAnnouncement,
@@ -210,6 +211,23 @@ export const create = mutation({
       meta: { title: args.title },
     });
 
+    if (status === "ACTIVE") {
+      const ann = await ctx.db.get(annId);
+      if (ann) {
+        await deliverMany(ctx, await announcementAudience(ctx, ann), {
+          category: ann.clubId ? "CLUB_ANNOUNCEMENT" : "SCHOOL_ANNOUNCEMENT",
+          title: ann.title,
+          body: ann.body,
+          href: `/announcements/${ann._id}`,
+          subject: {
+            kind: "announcement",
+            announcementId: ann._id,
+            ...(ann.clubId ? { clubId: ann.clubId } : {}),
+          },
+        });
+      }
+    }
+
     return annId;
   },
 });
@@ -232,6 +250,21 @@ export const approve = mutation({
       approvedById: user._id,
       updatedAt: Date.now(),
     });
+
+    const activeAnn = await ctx.db.get(args.announcementId);
+    if (activeAnn) {
+      await deliverMany(ctx, await announcementAudience(ctx, activeAnn), {
+        category: activeAnn.clubId ? "CLUB_ANNOUNCEMENT" : "SCHOOL_ANNOUNCEMENT",
+        title: activeAnn.title,
+        body: activeAnn.body,
+        href: `/announcements/${activeAnn._id}`,
+        subject: {
+          kind: "announcement",
+          announcementId: activeAnn._id,
+          ...(activeAnn.clubId ? { clubId: activeAnn.clubId } : {}),
+        },
+      });
+    }
 
     await logAuditEvent(ctx, {
       actorId: user._id,
