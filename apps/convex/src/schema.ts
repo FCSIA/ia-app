@@ -26,6 +26,14 @@ import {
 } from "./validators";
 
 export const schema = defineSchema({
+  appStats: defineTable({
+    key: v.string(),
+    users: v.number(),
+    students: v.number(),
+    staff: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   users: defineTable({
     authUserId: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
