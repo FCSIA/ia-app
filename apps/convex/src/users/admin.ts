@@ -121,6 +121,58 @@ export const list = query({
   },
 });
 
+export const count = query({
+  args: {
+    roleGroup: v.optional(userRoleGroupValidator),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const actor = await getMaybeCurrentAppUser(ctx);
+    if (!actor || !requireAnyRoleSafe(actor, [...USER_MANAGEMENT_ROLES, "SUPPORT_STAFF"])) {
+      return 0;
+    }
+
+    const roleGroup = args.roleGroup ?? "all";
+
+    const users =
+      roleGroup === "students"
+        ? await ctx.db
+            .query("users")
+            .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
+              q.eq("isStudent", true),
+            )
+            .take(10000)
+        : roleGroup === "teachers"
+          ? await ctx.db
+              .query("users")
+              .withIndex("by_isTeacherStaff_and_lastName_and_firstName", (q) =>
+                q.eq("isTeacherStaff", true),
+              )
+              .take(10000)
+          : roleGroup === "student-admin"
+            ? await ctx.db
+                .query("users")
+                .withIndex(
+                  "by_isStudentAdmin_and_lastName_and_firstName",
+                  (q) => q.eq("isStudentAdmin", true),
+                )
+                .take(10000)
+            : roleGroup === "other"
+              ? await ctx.db
+                  .query("users")
+                  .withIndex("by_isOtherRole_and_lastName_and_firstName", (q) =>
+                    q.eq("isOtherRole", true),
+                  )
+                  .take(10000)
+              : await ctx.db
+                  .query("users")
+                  .withIndex("by_lastName_and_firstName")
+                  .take(10000);
+
+    return users.length;
+  },
+});
+
 export const createUser = mutation({
   args: {
     uniqueId: v.string(),

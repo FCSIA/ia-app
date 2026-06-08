@@ -1,26 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useDeferredValue, useState } from 'react';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { getDynamicUsersPageSize, getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
+import { getUserRoles, USER_ROLE_GROUP_META } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
 import type { AppRole } from '~/apps/convex/lib/roles';
 
+/** Number of users to load in each batch when scrolling. */
+const USERS_PAGE_SIZE = 30;
+
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageCursors, setPageCursors] = useState<Array<string | null>>([null]);
+  const deferredSearch = useDeferredValue(search);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
-  const [usersPageSize, setUsersPageSize] = useState(10);
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
 
   const canManageUser = (targetUser: AdminUserRecord) => {
@@ -34,54 +34,27 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const canDeactivate = canManageUser;
   const canResetPassword = canManageUser;
 
-  useEffect(() => {
-    if (activeTab !== 'users') return;
-
-    const updateUsersPageSize = () => {
-      const availableHeight = viewportRef.current?.clientHeight ?? 0;
-      if (availableHeight <= 0) return;
-
-      const nextPageSize = getDynamicUsersPageSize(availableHeight);
-      setUsersPageSize((currentPageSize) =>
-        currentPageSize === nextPageSize ? currentPageSize : nextPageSize,
-      );
-    };
-
-    const frameId = window.requestAnimationFrame(updateUsersPageSize);
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined' && viewportRef.current
-        ? new ResizeObserver(updateUsersPageSize)
-        : null;
-
-    if (resizeObserver && viewportRef.current) {
-      resizeObserver.observe(viewportRef.current);
-    }
-
-    window.addEventListener('resize', updateUsersPageSize);
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', updateUsersPageSize);
-      resizeObserver?.disconnect();
-    };
-  }, [activeTab]);
-
-  useEffect(() => {
-    setPage(1);
-    setPageCursors([null]);
-  }, [search, userRoleGroup, usersPageSize]);
-
-  const usersPage = useQuery(
+  // Infinite-scroll pagination via Convex's usePaginatedQuery.
+  const {
+    results: users,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
     api.users.admin.list,
     activeTab === 'users'
       ? {
-          paginationOpts: {
-            numItems: usersPageSize,
-            cursor: pageCursors[page - 1] ?? null,
-          },
-          search: search || undefined,
+          search: deferredSearch || undefined,
           roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
         }
+      : 'skip',
+    { initialNumItems: USERS_PAGE_SIZE },
+  );
+
+  // Actual total count for the selected role group (shown in the header badge).
+  const totalCount = useQuery(
+    api.users.admin.count,
+    activeTab === 'users'
+      ? { roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup }
       : 'skip',
   );
 
@@ -109,14 +82,6 @@ export function useAdminUsers(activeTab: AdminTabId) {
     }
   };
 
-  const usersData = usersPage
-    ? {
-        users: usersPage.page,
-        isDone: usersPage.isDone,
-        continueCursor: usersPage.continueCursor,
-      }
-    : undefined;
-
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
 
@@ -125,28 +90,15 @@ export function useAdminUsers(activeTab: AdminTabId) {
     setSearch: (value: string) => {
       setSearch(value);
     },
-    page,
-    setPage: (updater: (page: number) => number) => {
-      setPage((current) => {
-        const next = Math.max(1, updater(current));
-        if (next > current && usersData?.continueCursor) {
-          setPageCursors((currentCursors) => {
-            const copy = [...currentCursors];
-            copy[current] = usersData.continueCursor;
-            return copy;
-          });
-        }
-        return next;
-      });
-    },
     userRoleGroup,
     setUserRoleGroup: (value: AdminUserRoleGroup) => {
       setUserRoleGroup(value);
     },
-    usersPageSize,
-    viewportRef,
-    usersData,
-    isUsersLoading: activeTab === 'users' && usersPage === undefined,
+    users,
+    totalCount: totalCount ?? undefined,
+    status,
+    loadMore: () => loadMore(USERS_PAGE_SIZE),
+    isUsersLoading: activeTab === 'users' && status === 'LoadingFirstPage',
     isUsersError: false,
     usersError: null,
     refetchUsers: () => undefined,

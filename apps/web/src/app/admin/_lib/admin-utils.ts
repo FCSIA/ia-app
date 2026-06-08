@@ -2,10 +2,6 @@ import { format } from 'date-fns';
 import type { AdminUserRecord, AdminUserRoleGroup } from './types';
 
 export const AUDIT_FETCH_LIMIT = 250;
-export const MIN_USERS_PAGE_SIZE = 6;
-export const MAX_USERS_PAGE_SIZE = 20;
-export const USER_TABLE_CHROME_HEIGHT = 112;
-export const USER_TABLE_ROW_HEIGHT = 29;
 
 export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; emptyMessage: string; showGrade: boolean }> = {
   students: {
@@ -58,10 +54,6 @@ export function refreshWrappedResultTitle(generated: number, skipped: number) {
   return `Generated ${generated} Wrapped snapshot${generated === 1 ? '' : 's'}`;
 }
 
-export function getDynamicUsersPageSize(availableHeight: number) {
-  const computedPageSize = Math.floor((availableHeight - USER_TABLE_CHROME_HEIGHT) / USER_TABLE_ROW_HEIGHT);
-  return Math.max(MIN_USERS_PAGE_SIZE, Math.min(MAX_USERS_PAGE_SIZE, computedPageSize));
-}
 
 function escapeCsvCell(value: unknown) {
   const stringValue = String(value ?? '');

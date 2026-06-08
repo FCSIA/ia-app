@@ -1,6 +1,6 @@
 'use client';
 
-import type { RefObject, ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,34 +24,6 @@ import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { UserPermissionsPopover } from './user-permissions-popover';
 
-export function UsersPaginationControls({
-  page,
-  hasNext,
-  onPrev,
-  onNext,
-}: {
-  page: number;
-  hasNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
-}) {
-  if (page <= 1 && !hasNext) return null;
-
-  return (
-    <div className="flex items-center justify-center gap-3 border-t px-4 py-2.5">
-      <Button variant="tertiary" size="sm" disabled={page === 1} onClick={onPrev}>
-        Prev
-      </Button>
-      <span className="text-xs text-muted-foreground">
-        Page {page}
-      </span>
-      <Button variant="tertiary" size="sm" disabled={!hasNext} onClick={onNext}>
-        Next
-      </Button>
-    </div>
-  );
-}
-
 function UserTableSection({
   title,
   emptyMessage,
@@ -68,7 +40,8 @@ function UserTableSection({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
-  pagination,
+  status,
+  loadMore,
 }: {
   title: string;
   emptyMessage: string;
@@ -85,20 +58,60 @@ function UserTableSection({
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
-  pagination?: ReactNode;
+  status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
+  loadMore: () => void;
 }) {
   const d = dataTableClasses('compact');
   const headers = showGrade
     ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
     : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
 
+  // Infinite scroll sentinel — triggers loadMore when visible.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const handleIntersect = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0]?.isIntersecting && status === 'CanLoadMore') {
+        loadMore();
+      }
+    },
+    [status, loadMore],
+  );
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(handleIntersect, {
+      rootMargin: '200px',
+    });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleIntersect]);
+
+  const footer = (
+    <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground">
+      {status === 'LoadingMore' && <span>Loading more users…</span>}
+      {status === 'Exhausted' && users.length > 0 && (
+        <span>
+          Showing all {users.length} user{users.length === 1 ? '' : 's'}
+        </span>
+      )}
+      {status === 'CanLoadMore' && (
+        <Button variant="tertiary" size="sm" onClick={loadMore}>
+          Load more
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <DataTablePanel
       title={title}
-      count={totalCount ?? users.length}
+      count={totalCount}
       density="compact"
       fillHeight
-      footer={pagination}
+      footer={footer}
     >
       <Table className={d.table}>
         <TableHeader className="bg-muted/50">
@@ -200,6 +213,9 @@ function UserTableSection({
           )}
         </TableBody>
       </Table>
+
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-1" aria-hidden />
     </DataTablePanel>
   );
 }
@@ -210,8 +226,10 @@ export function AdminUsersTab({
   userRoleGroup,
   onUserRoleGroupChange,
   isSuperAdmin,
-  viewportRef,
-  usersData,
+  users,
+  totalCount,
+  status,
+  loadMore,
   isUsersLoading,
   isUsersError,
   usersError,
@@ -226,15 +244,16 @@ export function AdminUsersTab({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
-  pagination,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
   userRoleGroup: AdminUserRoleGroup;
   onUserRoleGroupChange: (value: AdminUserRoleGroup) => void;
   isSuperAdmin: boolean;
-  viewportRef: RefObject<HTMLDivElement | null>;
-  usersData?: { users?: AdminUserRecord[]; isDone?: boolean };
+  users: AdminUserRecord[];
+  totalCount?: number;
+  status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
+  loadMore: () => void;
   isUsersLoading: boolean;
   isUsersError: boolean;
   usersError: unknown;
@@ -249,10 +268,7 @@ export function AdminUsersTab({
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { id: string; roles: string[] }) => void;
-  pagination?: ReactNode;
 }) {
-  const users = usersData?.users ?? [];
-
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -275,8 +291,8 @@ export function AdminUsersTab({
         </Select>
       </div>
 
-      <div ref={viewportRef} className="flex min-h-0 flex-1 flex-col">
-        {isUsersLoading && !usersData ? (
+      <div className="flex min-h-0 flex-1 flex-col">
+        {isUsersLoading ? (
           <Card className="flex min-h-0 flex-1">
             <CardContent className="flex flex-1 items-center justify-center py-8 text-center text-sm text-muted-foreground">
               Loading users...
@@ -296,7 +312,7 @@ export function AdminUsersTab({
               </Button>
             </CardContent>
           </Card>
-        ) : users.length === 0 ? (
+        ) : users.length === 0 && status === 'Exhausted' ? (
           <Empty className="flex-1">
             <EmptyTitle className="text-sm font-medium text-muted-foreground">
               {selectedUserRoleMeta.emptyMessage}
@@ -307,6 +323,7 @@ export function AdminUsersTab({
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
+            totalCount={totalCount}
             showGrade={selectedUserRoleMeta.showGrade}
             currentUserId={currentUserId}
             isSuperAdmin={isSuperAdmin}
@@ -318,7 +335,8 @@ export function AdminUsersTab({
             isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
             onAssignRoles={onAssignRoles}
-            pagination={pagination}
+            status={status}
+            loadMore={loadMore}
           />
         )}
       </div>
