@@ -169,8 +169,8 @@ function UserTableSection({
                           <AlertDialogHeader>
                             <AlertDialogTitle>Reset password?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will set {user.firstName} {user.lastName}&apos;s password to their user ID (
-                              <span className="font-mono">{user.uniqueId}</span>).
+                              This will generate a temporary password for {user.firstName} {user.lastName} and mark
+                              their account to change it after signing in.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

@@ -90,11 +90,15 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const assignRoles = useMutation(api.users.admin.assignRoles);
   const resetPassword = useMutation(api.users.admin.resetPassword);
 
-  const runUserMutation = async (action: () => Promise<unknown>, successTitle: string) => {
+  const runUserMutation = async <T,>(
+    action: () => Promise<T>,
+    successTitle: string,
+    successDescription?: (result: T) => string,
+  ) => {
     try {
       setIsUserMutationPending(true);
-      await action();
-      toast({ title: successTitle });
+      const result = await action();
+      toast({ title: successTitle, description: successDescription?.(result) });
     } catch (e: unknown) {
       toast({
         title: e instanceof Error ? e.message : 'Request failed',
@@ -161,11 +165,11 @@ export function useAdminUsers(activeTab: AdminTabId) {
         'Activated',
       ),
     onResetPassword: (targetUser: AdminUserRecord) =>
-      void runUserMutation(async () => {
-        const result = await resetPassword({ userId: targetUser.id as Id<'users'> });
-        // The Convex version returns the temporary password
-        console.log(`Temporary password for ${targetUser.uniqueId}: ${result.temporaryPassword}`);
-      }, 'Password reset'),
+      void runUserMutation(
+        () => resetPassword({ userId: targetUser.id as Id<'users'> }),
+        'Temporary password generated',
+        (result) => `${targetUser.uniqueId}: ${result.temporaryPassword}`,
+      ),
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
     isAssignRolesPending: isUserMutationPending,
