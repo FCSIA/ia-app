@@ -43,6 +43,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
+import { PageTransition } from '@/components/layout/page-transition';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -383,7 +384,9 @@ export function AppShell({
             ) : null}
           </header>
 
-          <main className={mainClassName ?? 'flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8'}>{children}</main>
+          <main className={mainClassName ?? 'flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8'}>
+            <PageTransition>{children}</PageTransition>
+          </main>
         </div>
       </div>
       <GlobalCommandPalette user={user} open={commandOpen} onOpenChange={setCommandOpen} />

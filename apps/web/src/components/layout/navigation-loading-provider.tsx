@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { pickNavigationLoadingMessage } from '@/lib/navigation-loading-messages';
 import { NavigationLoadingOverlay } from '@/components/layout/navigation-loading-overlay';
 
 /** Wait this long before showing overlay — fast navigations stay invisible. */
@@ -18,7 +17,6 @@ const SHOW_DELAY_MS = 400;
 /** Minimum time overlay stays up once shown, so it does not flash away. */
 const MIN_VISIBLE_MS = 250;
 const MAX_VISIBLE_MS = 30_000;
-const MESSAGE_ROTATE_MS = 3_200;
 
 type NavigationLoadingContextValue = {
   startNavigation: (targetHref?: string) => void;
@@ -67,7 +65,7 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
   const currentKey = routeKey(pathname, search);
 
   const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState(pickNavigationLoadingMessage);
+  const [pending, setPending] = useState(false);
 
   const pendingRef = useRef(false);
   const visibleRef = useRef(false);
@@ -89,11 +87,13 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
   const resetNavigation = useCallback(() => {
     pendingRef.current = false;
     visibleRef.current = false;
+    setPending(false);
     setVisible(false);
   }, []);
 
   const finishNavigation = useCallback(() => {
     pendingRef.current = false;
+    setPending(false);
 
     if (showDelayTimerRef.current) {
       clearTimeout(showDelayTimerRef.current);
@@ -123,8 +123,8 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     routeAtStartRef.current = currentKey;
     pendingRef.current = true;
     visibleRef.current = false;
+    setPending(true);
     setVisible(false);
-    setMessage(pickNavigationLoadingMessage());
 
     showDelayTimerRef.current = setTimeout(() => {
       showDelayTimerRef.current = null;
@@ -190,18 +190,14 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     };
   }, [currentKey, finishNavigation]);
 
-  useEffect(() => {
-    if (!visible) return;
-    const id = setInterval(() => setMessage(pickNavigationLoadingMessage()), MESSAGE_ROTATE_MS);
-    return () => clearInterval(id);
-  }, [visible]);
-
   useEffect(() => clearTimers, [clearTimers]);
 
+  const isNavigating = pending || visible;
+
   return (
-    <NavigationLoadingContext.Provider value={{ startNavigation, isNavigating: visible }}>
+    <NavigationLoadingContext.Provider value={{ startNavigation, isNavigating }}>
       {children}
-      <NavigationLoadingOverlay visible={visible} message={message} />
+      <NavigationLoadingOverlay visible={visible} />
     </NavigationLoadingContext.Provider>
   );
 }

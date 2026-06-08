@@ -4,21 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "083071da2884f04e",
+        "id": "7f987ae3dec18dee",
         "type": "tabs",
         "children": [
           {
-            "id": "f5d2a3f7fa409931",
+            "id": "91a80aab4fea0b2a",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "features/uploads.md",
+                "file": "architecture/deployment.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "uploads"
+              "title": "deployment"
             }
           }
         ]
@@ -180,15 +180,19 @@
       "bases:Create new base": false
     }
   },
-  "active": "f5d2a3f7fa409931",
+  "active": "91a80aab4fea0b2a",
   "lastOpenFiles": [
+    "index.md",
+    "reference/APCourseCatalogPowerpoint2627.pdf",
+    "features/audit-log.md",
+    "features/moderation.md",
+    "features/uploads.md",
     "features/schedule.md",
     "backend/convex-overview.md",
     "database/schema-map.md",
     "database/indexes-and-search.md",
     "database/data-evolution.md",
     "reference/ia-faq.md",
-    "index.md",
     "features/flex-friday.md",
     "backend/auth-and-roles.md",
     "features/users-admin.md",
@@ -196,7 +200,6 @@
     "architecture/overview.md",
     "frontend/routing.md",
     "features/wrapped.md",
-    "features/uploads.md",
     "database",
     "backend/storage-and-uploads.md",
     "backend/seed-and-reset.md",
@@ -206,11 +209,8 @@
     "architecture",
     "frontend/styling.md",
     "features/notifications.md",
-    "features/moderation.md",
     "features/events.md",
     "features/courses.md",
-    "features/clubs.md",
-    "frontend/frontend-auth.md",
     "reference",
     "features",
     "frontend",
