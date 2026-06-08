@@ -1,7 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
-
 const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MAX_CLUB_IMAGE_BYTES = 5 * 1024 * 1024;
 

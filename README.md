@@ -62,13 +62,26 @@ pnpm --filter cvx exec convex dashboard
 > [!IMPORTANT]
 > Do not run `pnpx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `pnpm --filter cvx ...` from the root instead.
 
-On a new checkout, run `pnpm --filter cvx dev` once first so Convex can select
-or create a dev deployment and write `CONVEX_DEPLOYMENT` to
-`apps/convex/.env.local`.
+On a new checkout or new Convex project:
 
-Demo seed/reset is intentionally dashboard-only. In the Convex Dashboard, run
-the internal function `bootstrap:resetAndSeed` to schedule a destructive reset,
-then run `bootstrap:seedStatus` to watch progress.
+```bash
+pnpm --filter cvx dev          # link/create deployment → apps/convex/.env.local
+pnpm sync:convex-env           # copy Convex URLs into apps/web/.env.local
+```
+
+Then set required secrets on the **new** deployment (once):
+
+```bash
+cd apps/convex
+npx convex env set BETTER_AUTH_SECRET "<long-random-string>"
+npx convex env set SITE_URL http://localhost:3000
+npx convex run bootstrap:resetAndSeed
+npx convex run bootstrap:seedStatus   # repeat until users/clubs are populated
+```
+
+Run **both** `pnpm --filter cvx dev` and `pnpm --filter web dev` (or `pnpm dev` from the repo root) so localhost talks to the same deployment.
+
+Demo seed/reset can also be run from the Convex Dashboard via internal function `bootstrap:resetAndSeed`.
 
 | Service          | URL                                                    |
 | ---------------- | ------------------------------------------------------ |

@@ -97,6 +97,8 @@ export const appUserPublicValidator = v.object({
   isActive: v.boolean(),
   mustResetPassword: v.boolean(),
   dashboardLayout: v.array(v.string()),
+  avatarUrl: v.union(v.string(), v.null()),
+  customBackgroundUrl: v.union(v.string(), v.null()),
 });
 
 export const clubMemberRoleValidator = v.union(

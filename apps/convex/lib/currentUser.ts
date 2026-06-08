@@ -20,6 +20,8 @@ export const toPublicUser = (user: Doc<"users">) => ({
   isActive: user.isActive,
   mustResetPassword: user.mustResetPassword,
   dashboardLayout: user.dashboardLayout,
+  avatarUrl: user.avatarUrl ?? null,
+  customBackgroundUrl: user.customBackgroundUrl ?? null,
 });
 
 export async function getCurrentAppUser(ctx: Ctx): Promise<Doc<"users">> {

@@ -12,6 +12,7 @@ export function toClubUserRef(user: Doc<"users">) {
     lastName: user.lastName,
     email: user.email ?? null,
     roles: user.roles,
+    avatarUrl: user.avatarUrl ?? null,
   };
 }
 

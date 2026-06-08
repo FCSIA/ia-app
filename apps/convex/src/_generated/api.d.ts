@@ -55,6 +55,7 @@ import type * as schedule_friends from "../schedule/friends.js";
 import type * as schedule_seed from "../schedule/seed.js";
 import type * as seed from "../seed.js";
 import type * as uploads_files from "../uploads/files.js";
+import type * as uploads_limits from "../uploads/limits.js";
 import type * as users__lib from "../users/_lib.js";
 import type * as users_admin from "../users/admin.js";
 import type * as users_auth from "../users/auth.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   "schedule/seed": typeof schedule_seed;
   seed: typeof seed;
   "uploads/files": typeof uploads_files;
+  "uploads/limits": typeof uploads_limits;
   "users/_lib": typeof users__lib;
   "users/admin": typeof users_admin;
   "users/auth": typeof users_auth;

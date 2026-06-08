@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
+import { useConvexAuth, useQuery } from 'convex/react';
 import { Toaster } from 'react-hot-toast';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider, useTheme } from 'next-themes';
 import { authClient } from '@/lib/auth-client';
 import { convex } from '@/lib/convex';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
+import { api } from '~/apps/convex/src/_generated/api';
 
 export const CUSTOM_BG_STORAGE_KEY = 'ia_custom_bg_image';
 export const CUSTOM_COLORS_STORAGE_KEY = 'ia_custom_colors';
@@ -136,30 +138,29 @@ export function applyCustomColors(colors: CustomColors) {
 }
 
 /**
- * On mount, restore the user's saved custom background image AND palette by
- * setting CSS variables on <html>. The `.custom` theme uses these.
- *
- * Listens for storage events so a change made in one tab flows to the others.
+ * On mount, restore the user's saved custom background image from their account
+ * and palette from localStorage by setting CSS variables on <html>.
  */
 function CustomThemeBootstrap() {
+  const { theme } = useTheme();
+  const { isAuthenticated } = useConvexAuth();
+  const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const applyImage = () => {
-      try {
-        const value = localStorage.getItem(CUSTOM_BG_STORAGE_KEY);
-        if (value) {
-          document.documentElement.style.setProperty(
-            '--custom-bg-image',
-            `url("${value}")`,
-          );
-        } else {
-          document.documentElement.style.removeProperty('--custom-bg-image');
-        }
-      } catch {
-        // ignore quota / private-mode errors
-      }
-    };
+    if (theme === 'custom' && user?.customBackgroundUrl) {
+      document.documentElement.style.setProperty(
+        '--custom-bg-image',
+        `url("${user.customBackgroundUrl}")`,
+      );
+    } else {
+      document.documentElement.style.removeProperty('--custom-bg-image');
+    }
+  }, [theme, user?.customBackgroundUrl]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
     const applyColors = () => {
       try {
@@ -171,11 +172,9 @@ function CustomThemeBootstrap() {
       }
     };
 
-    applyImage();
     applyColors();
 
     const onStorage = (e: StorageEvent) => {
-      if (e.key === CUSTOM_BG_STORAGE_KEY) applyImage();
       if (e.key === CUSTOM_COLORS_STORAGE_KEY) applyColors();
     };
     window.addEventListener('storage', onStorage);

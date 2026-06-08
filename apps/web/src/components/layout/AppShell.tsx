@@ -44,6 +44,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import { PageTransition } from '@/components/layout/page-transition';
+import { UserAvatar } from '@/components/ui/user-avatar';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -331,12 +332,13 @@ export function AppShell({
                     type="button"
                     className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
                   >
-                    <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <span className="text-xs font-semibold">
-                        {user.firstName.charAt(0)}
-                        {user.lastName.charAt(0)}
-                      </span>
-                    </div>
+                    <UserAvatar
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      avatarUrl={user.avatarUrl}
+                      className="size-8"
+                      fallbackClassName="text-xs"
+                    />
                     <div className="hidden min-w-0 leading-tight sm:block">
                       <p className="truncate text-left text-sm font-medium text-foreground">
                         {user.firstName} {user.lastName}

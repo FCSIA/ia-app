@@ -1,13 +1,3 @@
 {
-  "buildCommand": "pnpm run build",
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_CONVEX_URL": "https://neighborly-gnat-827.convex.cloud",
-      "NEXT_PUBLIC_CONVEX_SITE_URL": "https://neighborly-gnat-827.convex.site"
-    }
-  },
-  "env": {
-    "NEXT_PUBLIC_CONVEX_URL": "https://neighborly-gnat-827.convex.cloud",
-    "NEXT_PUBLIC_CONVEX_SITE_URL": "https://neighborly-gnat-827.convex.site"
-  }
+  "buildCommand": "pnpm run build"
 }

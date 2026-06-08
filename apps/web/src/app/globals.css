@@ -271,21 +271,26 @@
     --sidebar-ring: 22 99% 55%;
   }
 
-  /* Custom-theme body background: the user-uploaded image sits behind every
+  /* Custom-theme background: the user-uploaded image sits behind every
      surface. The image URL is injected as a CSS variable by the client
      bootstrap script (apps/web/src/app/providers.tsx). */
-  .custom body {
+  .custom body,
+  .custom .app-root {
     background-image: var(--custom-bg-image, none);
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
   }
 
-  /* Under the Custom theme, the AppShell main wrapper is normally `bg-card`,
-     which would completely cover the body image. Make it transparent so the
-     image shows through behind page content. Real cards/panels inside the
-     page keep their solid `--card` background so text stays readable. The
-     header turns into frosted glass via backdrop-blur. */
+  @supports (-webkit-touch-callout: none) {
+    .custom body,
+    .custom .app-root {
+      background-attachment: scroll;
+    }
+  }
+
+  /* Under the Custom theme, shell surfaces are transparent so the wallpaper
+     shows through. Real cards/panels keep their solid `--card` background. */
   .custom .app-root,
   .custom .app-main-surface {
     background-color: transparent !important;
@@ -293,6 +298,11 @@
 
   .custom .app-main-header {
     background-color: hsl(var(--card) / 0.55) !important;
+  }
+
+  .custom aside[aria-label='Primary navigation'] {
+    background-color: hsl(var(--sidebar) / 0.72) !important;
+    backdrop-filter: blur(12px);
   }
 
   .dark {

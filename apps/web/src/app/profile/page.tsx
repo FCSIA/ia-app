@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useCurrentUser } from '@/lib/auth';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw, Camera, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { HexColorPicker } from 'react-colorful';
 import {
@@ -24,6 +24,9 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import { uploadUserImage } from '@/lib/upload-user-image';
+import { compressImageForUpload } from '@/lib/compress-image';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
@@ -77,10 +80,6 @@ export default function ProfilePage() {
     { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
   ];
 
-  const initials = user
-    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
-    : '??';
-
   return (
     <AppShell>
       <div className="max-w-xl mx-auto space-y-5">
@@ -88,15 +87,7 @@ export default function ProfilePage() {
         {/* Profile hero */}
         <Card>
           <CardContent className="flex items-center gap-5 p-6">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #f97316, #ea580c)',
-                boxShadow: '0 8px 24px rgba(249,115,22,0.3)',
-              }}
-            >
-              {initials}
-            </div>
+            {user ? <ProfileAvatarEditor user={user} /> : null}
             <div>
               <h1 className="text-xl font-bold text-foreground">
                 {user?.firstName} {user?.lastName}
@@ -327,8 +318,93 @@ export default function ProfilePage() {
   );
 }
 
-const MAX_CUSTOM_BG_BYTES = 4 * 1024 * 1024; // 4MB — keeps the data URL under the
-// typical localStorage 5MB quota with headroom.
+function ProfileAvatarEditor({ user }: { user: AppUser }) {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const saveUserImage = useMutation(api.users.me.saveUserImage);
+  const clearUserImage = useMutation(api.users.me.clearUserImage);
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Not an image', description: 'Pick a JPG, PNG, or WebP file.', variant: 'destructive' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await uploadUserImage(
+        { generateUploadUrl: () => generateUploadUrl({}) },
+        (args) => saveUserImage(args),
+        'avatar',
+        file,
+      );
+      toast({ title: 'Profile picture updated' });
+    } catch (e: unknown) {
+      toast({
+        title: e instanceof Error ? e.message : 'Upload failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleRemove() {
+    try {
+      await clearUserImage({ kind: 'avatar' });
+      toast({ title: 'Profile picture removed' });
+    } catch (e: unknown) {
+      toast({
+        title: e instanceof Error ? e.message : 'Failed to remove picture',
+        variant: 'destructive',
+      });
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <UserAvatar
+        firstName={user.firstName}
+        lastName={user.lastName}
+        avatarUrl={user.avatarUrl}
+        className="size-16 rounded-2xl"
+        fallbackClassName="text-xl rounded-2xl"
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+          e.target.value = '';
+        }}
+      />
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border bg-background shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
+        aria-label="Change profile picture"
+      >
+        {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+      </button>
+      {user.avatarUrl ? (
+        <button
+          type="button"
+          onClick={() => void handleRemove()}
+          className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-destructive"
+          aria-label="Remove profile picture"
+        >
+          <Trash2 className="size-3" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 const PALETTE_SLOTS: Array<{ key: CustomColorKey; label: string; help: string }> = [
   { key: 'background', label: 'Background', help: 'Outer page backdrop.' },
@@ -378,59 +454,77 @@ function CustomThemeEditor() {
 
 function CustomBackgroundPanel() {
   const { toast } = useToast();
+  const user = useCurrentUser();
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const saveUserImage = useMutation(api.users.me.saveUserImage);
+  const clearUserImage = useMutation(api.users.me.clearUserImage);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setPreview(localStorage.getItem(CUSTOM_BG_STORAGE_KEY));
-  }, []);
+  const preview = user?.customBackgroundUrl ?? null;
 
-  function applyDataUrl(dataUrl: string | null) {
-    if (typeof window === 'undefined') return;
-    try {
-      if (dataUrl) {
-        localStorage.setItem(CUSTOM_BG_STORAGE_KEY, dataUrl);
-        document.documentElement.style.setProperty(
-          '--custom-bg-image',
-          `url("${dataUrl}")`,
-        );
-      } else {
-        localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
-        document.documentElement.style.removeProperty('--custom-bg-image');
-      }
-      setPreview(dataUrl);
-    } catch {
-      toast({
-        title: 'Couldn’t save background',
-        description: 'The image is too large for your browser to store locally. Try a smaller file.',
-        variant: 'destructive',
-      });
-    }
+  async function uploadAndSave(file: File) {
+    await uploadUserImage(
+      { generateUploadUrl: () => generateUploadUrl({}) },
+      (args) => saveUserImage(args),
+      'background',
+      file,
+    );
+    localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
   }
 
-  function handleFile(file: File) {
+  useEffect(() => {
+    if (!user || user.customBackgroundUrl || migrating) return;
+    const legacy = localStorage.getItem(CUSTOM_BG_STORAGE_KEY);
+    if (!legacy || !legacy.startsWith('data:image/')) return;
+
+    setMigrating(true);
+    void (async () => {
+      try {
+        const response = await fetch(legacy);
+        const blob = await response.blob();
+        const file = new File([blob], 'background.jpg', { type: blob.type || 'image/jpeg' });
+        const compressed = await compressImageForUpload(file, 'background');
+        await uploadAndSave(compressed);
+      } catch {
+        // ignore migration failures
+      } finally {
+        setMigrating(false);
+      }
+    })();
+  }, [user, migrating]);
+
+  async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Not an image', description: 'Pick a JPG, PNG, or WebP file.', variant: 'destructive' });
       return;
     }
-    if (file.size > MAX_CUSTOM_BG_BYTES) {
+    setUploading(true);
+    try {
+      await uploadAndSave(file);
+      toast({ title: 'Background image updated' });
+    } catch (e: unknown) {
       toast({
-        title: 'Image too large',
-        description: 'Max size is 4 MB. Try a smaller or more compressed image.',
+        title: e instanceof Error ? e.message : 'Upload failed',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setUploading(false);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : null;
-      if (result) applyDataUrl(result);
-    };
-    reader.onerror = () => {
-      toast({ title: 'Couldn’t read file', variant: 'destructive' });
-    };
-    reader.readAsDataURL(file);
+  }
+
+  async function handleRemove() {
+    try {
+      await clearUserImage({ kind: 'background' });
+      localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
+      toast({ title: 'Background image removed' });
+    } catch (e: unknown) {
+      toast({
+        title: e instanceof Error ? e.message : 'Failed to remove background',
+        variant: 'destructive',
+      });
+    }
   }
 
   return (
@@ -451,17 +545,21 @@ function CustomBackgroundPanel() {
         >
           {!preview && (
             <div className="flex h-full items-center justify-center text-muted-foreground/60">
-              <ImageIcon size={20} />
+              {uploading || migrating ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <ImageIcon size={20} />
+              )}
             </div>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">Background image</p>
           <p className="text-xs text-muted-foreground">
-            Upload a picture and it’ll sit behind every page. Saved on this device.
+            Upload a picture and it will sit behind every page. Saved to your account.
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/70">
-            JPG, PNG, or WebP. Max 4 MB.
+            JPG, PNG, or WebP. Compressed automatically before upload.
           </p>
         </div>
       </div>
@@ -473,7 +571,7 @@ function CustomBackgroundPanel() {
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) void handleFile(f);
           e.target.value = '';
         }}
       />
@@ -483,10 +581,11 @@ function CustomBackgroundPanel() {
           type="button"
           size="sm"
           variant="tertiary"
+          disabled={uploading || migrating}
           onClick={() => fileRef.current?.click()}
           className="rounded-full"
         >
-          <ImageIcon className="size-4" />
+          {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
           {preview ? 'Replace image' : 'Upload image'}
         </Button>
         {preview && (
@@ -494,7 +593,8 @@ function CustomBackgroundPanel() {
             type="button"
             size="sm"
             variant="ghost"
-            onClick={() => applyDataUrl(null)}
+            disabled={uploading}
+            onClick={() => void handleRemove()}
             className="rounded-full text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="size-4" />
@@ -505,7 +605,6 @@ function CustomBackgroundPanel() {
     </div>
   );
 }
-
 function CustomColorsPanel() {
   const { toast } = useToast();
   const [colors, setColors] = useState<CustomColors>({});

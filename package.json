@@ -4,11 +4,12 @@
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=web --filter=cvx",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "cvx:dev": "pnpm --filter cvx dev"
+    "cvx:dev": "pnpm --filter cvx dev",
+    "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {
     "turbo": "^2.9.16",
