@@ -77,6 +77,7 @@ export const get = query({
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const leaders = hydratedMembers.filter((m) => !!m.role?.trim());
+    const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
     const serializedTags = await Promise.all(
       tags.map(async (tag) => {
@@ -116,14 +117,16 @@ export const get = query({
         clubRole: "SPONSOR" as const,
         joinedAt: new Date(0).toISOString(),
       })),
-      ...hydratedMembers.map((m) => ({
-        ...m.user,
-        kind: "MEMBER" as const,
-        clubRole: m.role,
-        joinedAt: new Date(
-          uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
-        ).toISOString(),
-      })),
+      ...hydratedMembers
+        .filter((m) => !sponsorUserIds.has(m.userId))
+        .map((m) => ({
+          ...m.user,
+          kind: "MEMBER" as const,
+          clubRole: m.role,
+          joinedAt: new Date(
+            uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
+          ).toISOString(),
+        })),
     ];
 
     const summary = await clubSummaryWithCounts(

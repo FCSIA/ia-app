@@ -107,10 +107,12 @@ export function AppShell({
   children,
   headerSlot,
   mainClassName,
+  pageTransitionClassName,
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
   mainClassName?: string;
+  pageTransitionClassName?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -387,7 +389,9 @@ export function AppShell({
           </header>
 
           <main className={mainClassName ?? 'flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8'}>
-            <PageTransition>{children}</PageTransition>
+            <PageTransition className={pageTransitionClassName}>
+              {children}
+            </PageTransition>
           </main>
         </div>
       </div>

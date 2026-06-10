@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { AppShell } from "@/components/layout/AppShell";
+import { mergeAppMainClassName } from "@/components/layout/app-main";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -202,7 +203,10 @@ export function ClubWorkspace({
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName="flex h-[calc(100vh-4rem)] min-h-0"
+      mainClassName={mergeAppMainClassName(
+        "flex h-[calc(100vh-4rem)] min-h-0 overflow-hidden p-0",
+      )}
+      pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 flex-col border-r bg-background md:flex">
