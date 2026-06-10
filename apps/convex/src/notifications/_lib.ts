@@ -5,17 +5,57 @@ import {
   notificationPreferenceLevelValidator,
 } from "../validators";
 
+export const notificationSubjectValidator = v.union(
+  v.object({
+    kind: v.literal("announcement"),
+    announcementId: v.id("announcements"),
+    clubId: v.union(v.id("clubs"), v.null()),
+  }),
+  v.object({
+    kind: v.literal("event"),
+    eventId: v.id("events"),
+    clubId: v.union(v.id("clubs"), v.null()),
+  }),
+  v.object({
+    kind: v.literal("club"),
+    clubId: v.id("clubs"),
+  }),
+  v.object({
+    kind: v.literal("clubChannel"),
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+  }),
+  v.object({
+    kind: v.literal("clubMessage"),
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    messageId: v.id("clubChannelMessages"),
+  }),
+  v.object({
+    kind: v.literal("flexFriday"),
+    flexFridayId: v.id("flexFridays"),
+  }),
+  v.object({
+    kind: v.literal("moderationReport"),
+    reportId: v.id("moderationReports"),
+  }),
+  v.object({
+    kind: v.literal("friendRequest"),
+    friendshipId: v.id("studentScheduleFriends"),
+  }),
+  v.object({
+    kind: v.literal("system"),
+  }),
+);
+
 export const notificationValidator = v.object({
   id: v.id("notificationDeliveries"),
   category: notificationCategoryValidator,
   title: v.string(),
   body: v.string(),
+  href: v.string(),
+  subject: notificationSubjectValidator,
   isRead: v.boolean(),
-  announcementId: v.union(v.string(), v.null()),
-  eventId: v.union(v.string(), v.null()),
-  clubId: v.union(v.string(), v.null()),
-  channelId: v.union(v.string(), v.null()),
-  messageId: v.union(v.string(), v.null()),
   createdAt: v.string(),
 });
 
@@ -53,14 +93,17 @@ export function toNotification(row: Doc<"notificationDeliveries">) {
     category: row.category,
     title: row.title,
     body: row.body,
+    href: row.href,
+    subject: normalizeSubject(row.subject),
     isRead: row.isRead,
-    announcementId: row.announcementId ?? null,
-    eventId: row.eventId ?? null,
-    clubId: row.clubId ?? null,
-    channelId: row.channelId ?? null,
-    messageId: row.messageId ?? null,
     createdAt: new Date(row.createdAt).toISOString(),
   };
+}
+
+function normalizeSubject(row: Doc<"notificationDeliveries">["subject"]) {
+  if (row.kind === "announcement") return { ...row, clubId: row.clubId ?? null };
+  if (row.kind === "event") return { ...row, clubId: row.clubId ?? null };
+  return row;
 }
 
 export function toPreference(row: Doc<"notificationPreferences">) {

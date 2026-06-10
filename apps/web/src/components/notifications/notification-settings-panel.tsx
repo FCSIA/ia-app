@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
+import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
@@ -25,6 +26,7 @@ export function NotificationSettingsPanel() {
 
   return (
     <Panel contentClassName="flex flex-col gap-5 p-5">
+      <PushNotificationSettings />
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold">Global</h2>
         <div className="grid gap-2 sm:grid-cols-2">

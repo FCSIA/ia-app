@@ -4,6 +4,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
+import { clubAudience, deliverMany, deliverNotification } from "../notifications/delivery";
 
 export const searchInviteCandidates = query({
   args: {
@@ -174,6 +175,14 @@ export const requestToJoin = mutation({
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+      const managers = await clubAudience(ctx, args.clubId);
+      await deliverMany(ctx, managers.filter((id) => id !== user._id), {
+        category: "CLUB_JOIN_REQUEST",
+        title: "New club join request",
+        body: `${user.firstName} ${user.lastName} requested to join ${club.name}.`,
+        href: `/clubs/${args.clubId}/people`,
+        subject: { kind: "club", clubId: args.clubId },
+      });
     }
   },
 });
@@ -210,6 +219,15 @@ export const respondToJoinRequest = mutation({
         joinedAt: Date.now(),
       });
     }
+    const club = await ctx.db.get(args.clubId);
+    await deliverNotification(ctx, {
+      userId: request.requesterId,
+      category: "CLUB_JOIN_REQUEST",
+      title: args.accept ? "Club request approved" : "Club request declined",
+      body: `${club?.name ?? "Club"} ${args.accept ? "approved" : "declined"} your join request.`,
+      href: `/clubs/${args.clubId}`,
+      subject: { kind: "club", clubId: args.clubId },
+    });
 
     await ctx.db.insert("auditEvents", {
       action: args.accept ? "CLUB_JOIN_REQUEST_APPROVED" : "CLUB_JOIN_REQUEST_DECLINED",

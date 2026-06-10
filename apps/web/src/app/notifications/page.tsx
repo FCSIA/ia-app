@@ -77,25 +77,9 @@ export default function NotificationsPage() {
 
   type Notification = typeof notifications[number];
 
-  function getNotificationHref(notification: Notification) {
-    if (notification.channelId && notification.clubId) {
-      return `/clubs/${notification.clubId}/channels/${notification.channelId}`;
-    }
-    if (notification.announcementId) return `/announcements/${notification.announcementId}`;
-    if (notification.eventId) return '/events';
-    if (notification.category === 'FRIEND_REQUEST') {
-      return '/schedule?tab=friends&section=requests';
-    }
-    if (notification.category === 'CONTENT_MODERATED') return '/profile';
-    if (notification.category === 'FLEX_FRIDAY') return '/flex-friday';
-    if (notification.clubId) return `/clubs/${notification.clubId}`;
-    return null;
-  }
-
   function openNotification(notification: Notification) {
-    const href = getNotificationHref(notification);
     if (!notification.isRead) handleMarkRead(notification.id);
-    if (href) router.push(href);
+    router.push(notification.href);
   }
 
   const hasUnread = notifications.some((n) => !n.isRead);
@@ -170,8 +154,6 @@ export default function NotificationsPage() {
                 <Panel contentClassName="p-0">
                   <ul className="divide-y divide-border">
                     {filteredNotifications.map((n) => {
-                      const href = getNotificationHref(n);
-                      const isClickable = !!href;
                       const categoryLabel =
                         CATEGORY_LABEL[n.category] ?? n.category?.replace(/_/g, ' ') ?? 'Update';
                       return (
@@ -179,10 +161,9 @@ export default function NotificationsPage() {
                           <button
                             type="button"
                             onClick={() => openNotification(n)}
-                            disabled={!isClickable && n.isRead}
                             className={cn(
                               'flex w-full items-start gap-4 px-6 py-4 text-left transition-colors',
-                              isClickable ? 'hover:bg-muted/40' : 'cursor-default',
+                              'hover:bg-muted/40',
                               !n.isRead ? 'bg-primary/[0.04]' : '',
                             )}
                           >

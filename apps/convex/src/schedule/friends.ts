@@ -90,6 +90,7 @@ export const sendRequest = mutation({
         });
         await deliverNotification(ctx, {
           userId: target._id,
+          friendshipId: existing._id,
           title: "Friend request accepted",
           body: `${user.firstName} ${user.lastName} accepted your friend request.`,
         });
@@ -112,6 +113,7 @@ export const sendRequest = mutation({
     });
     await deliverNotification(ctx, {
       userId: target._id,
+      friendshipId: id,
       title: "New friend request",
       body: `${user.firstName} ${user.lastName} wants to be your friend.`,
     });
@@ -147,6 +149,7 @@ export const acceptRequest = mutation({
     });
     await deliverNotification(ctx, {
       userId: args.requesterId,
+      friendshipId: request._id,
       title: "Friend request accepted",
       body: `${user.firstName} ${user.lastName} accepted your friend request.`,
     });

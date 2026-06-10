@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { createLinkedUser } from "./users/_lib";
+import { incrementUserCounts } from "./stats";
 import { type AppRole } from "../lib/roles";
 import { type Pathway } from "./validators";
 
@@ -448,6 +450,7 @@ export const run = internalMutation({
     if (args.reset && cursor === 0) {
       const usersToDelete = await ctx.db.query("users").take(100);
       for (const user of usersToDelete) {
+        await incrementUserCounts(ctx, user, -1);
         await ctx.db.delete(user._id);
       }
       if (usersToDelete.length > 0) {
@@ -478,6 +481,9 @@ export const run = internalMutation({
     }
 
     const nextIndex = cursor + batchSize;
+    if (nextIndex >= SEED_USERS.length) {
+      await ctx.runMutation(internal.stats.rebuildUserCounts, {});
+    }
     return {
       deleted: 0,
       upserted,

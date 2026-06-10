@@ -3,6 +3,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexFridayValidator } from "./_lib";
 import { flexSessionTypeValidator } from "../validators";
+import { deliverMany, flexFridayAudience } from "../notifications/delivery";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -97,6 +98,17 @@ export const create = mutation({
       entityType: "FLEX_FRIDAY",
       createdAt: Date.now(),
     });
+
+    const friday = await ctx.db.get(fridayId);
+    if (friday) {
+      await deliverMany(ctx, await flexFridayAudience(ctx, friday), {
+        category: "FLEX_FRIDAY",
+        title: "Flex Friday scheduled",
+        body: args.notes?.trim() || "A new Flex Friday has been added.",
+        href: "/flex-friday",
+        subject: { kind: "flexFriday", flexFridayId: friday._id },
+      });
+    }
 
     return fridayId;
   },
