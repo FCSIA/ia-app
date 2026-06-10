@@ -21,7 +21,7 @@
 
 | Area | Status |
 |------|--------|
-| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.) |
+| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.); login lockout via `@convex-dev/rate-limiter` |
 | Wrapped page + admin wrapped tab | **Convex** |
 | Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
 | Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
@@ -51,11 +51,13 @@
 
 ## Next Work
 
-1. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+1. Deploy Convex changes so the `rateLimiter` component is live in the target
+   deployment before production student/staff data.
+2. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-2. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
+3. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
    historical, while `docs/` is now the active operating manual.
-3. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
+4. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
    blocking check again.
 
 ## Handoff Commands

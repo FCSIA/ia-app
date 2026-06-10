@@ -17,6 +17,8 @@ import type * as announcements_serialize from "../announcements/serialize.js";
 import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
+import type * as authLoginRateLimit from "../authLoginRateLimit.js";
+import type * as auth_loginRateLimitPlugin from "../auth/loginRateLimitPlugin.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as clubs__lib from "../clubs/_lib.js";
 import type * as clubs_access from "../clubs/access.js";
@@ -51,6 +53,7 @@ import type * as notifications_inbox from "../notifications/inbox.js";
 import type * as notifications_preferences from "../notifications/preferences.js";
 import type * as notifications_push from "../notifications/push.js";
 import type * as notifications_pushNode from "../notifications/pushNode.js";
+import type * as rateLimits from "../rateLimits.js";
 import type * as schedule__lib from "../schedule/_lib.js";
 import type * as schedule_blocks from "../schedule/blocks.js";
 import type * as schedule_dashboard from "../schedule/dashboard.js";
@@ -84,6 +87,8 @@ declare const fullApi: ApiFromModules<{
   "audit/_lib": typeof audit__lib;
   "audit/events": typeof audit_events;
   auth: typeof auth;
+  authLoginRateLimit: typeof authLoginRateLimit;
+  "auth/loginRateLimitPlugin": typeof auth_loginRateLimitPlugin;
   bootstrap: typeof bootstrap;
   "clubs/_lib": typeof clubs__lib;
   "clubs/access": typeof clubs_access;
@@ -118,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/preferences": typeof notifications_preferences;
   "notifications/push": typeof notifications_push;
   "notifications/pushNode": typeof notifications_pushNode;
+  rateLimits: typeof rateLimits;
   "schedule/_lib": typeof schedule__lib;
   "schedule/blocks": typeof schedule_blocks;
   "schedule/dashboard": typeof schedule_dashboard;
@@ -164,4 +170,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
+  rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
 };
