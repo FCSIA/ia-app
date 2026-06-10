@@ -81,7 +81,7 @@ Users → Vercel (Next.js) → Convex Cloud
 - Vercel project linked to `apps/web` (or monorepo root with correct root directory).
 - Production env: `NEXT_PUBLIC_CONVEX_URL` → prod Convex deployment.
 - Preview deployments → Convex **staging** deployment.
-- CI: `npx convex deploy` on merge to main (deploy key in Vercel/GitHub secrets).
+- CI: `pnpm --filter cvx deploy` on merge to main (deploy key in Vercel/GitHub secrets).
 
 ---
 
@@ -242,6 +242,7 @@ Convex auth on the server (e.g. `fetchQuery` in Server Components with a valid s
 
 - [ ] Prod vs staging Convex deployments isolated
 - [ ] `NEXT_PUBLIC_CONVEX_URL` correct per environment
+- [ ] Browser push VAPID keys set: public key in web env, public/private/subject in Convex env
 - [ ] Auth provider production keys in Key Vault / secret manager
 - [ ] School domains only in auth redirect URLs and Convex settings
 - [ ] HTTPS and HSTS at the edge

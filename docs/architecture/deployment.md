@@ -31,6 +31,15 @@ Runtime secrets such as auth credentials live in the Convex deployment
 environment, not only in local `.env` files. Demo seed/reset no longer uses a
 bootstrap secret.
 
+Browser push needs VAPID keys in the Convex deployment:
+
+```bash
+pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
+
 ## Frontend Deployment
 
 The Next.js app can run on Vercel, Azure App Service, Azure Container Apps, or a
@@ -40,6 +49,7 @@ Node-compatible host. The frontend must receive the public Convex URLs:
 NEXT_PUBLIC_CONVEX_URL=https://...
 NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 NEXT_PUBLIC_SITE_URL=https://...
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
 ```
 
 ## Build Checks

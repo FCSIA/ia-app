@@ -17,6 +17,7 @@ development.
 | `.env`                   | Local root defaults                                          |
 | `.env.example`           | Template for local defaults                                  |
 | `apps/convex/.env.local` | Convex-selected deployment URLs written by `pnpm convex:dev` |
+| `apps/web/.env.local`    | Local web-only public values such as Convex URLs and VAPID public key |
 
 ## Convex Variables
 
@@ -57,5 +58,20 @@ VAPID_SUBJECT=mailto:admin@example.com
 Generate keys with:
 
 ```bash
-direnv exec . pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec web-push generate-vapid-keys
 ```
+
+Then set the same public key in the web app and Convex, and keep the private
+key only in Convex:
+
+```bash
+# apps/web/.env.local
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
+
+If `pnpm` is only available through the repo's Nix/direnv shell, run the same
+commands as `direnv exec . pnpm ...`.

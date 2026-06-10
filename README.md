@@ -42,7 +42,7 @@ For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
-cp .env.example .env.local
+cp .env.example .env
 pnpm install
 ```
 
@@ -72,12 +72,23 @@ pnpm sync:convex-env           # copy Convex URLs into apps/web/.env.local
 Then set required secrets on the **new** deployment (once):
 
 ```bash
-cd apps/convex
-npx convex env set BETTER_AUTH_SECRET "<long-random-string>"
-npx convex env set SITE_URL http://localhost:3000
-npx convex run bootstrap:resetAndSeed
-npx convex run bootstrap:seedStatus   # repeat until users/clubs are populated
+pnpm --filter cvx exec convex env set BETTER_AUTH_SECRET "<long-random-string>"
+pnpm --filter cvx exec convex env set SITE_URL http://localhost:3000
 ```
+
+Browser push also needs VAPID keys. Generate one key pair, put the public key in
+`apps/web/.env.local`, and set the matching Convex deployment values:
+
+```bash
+pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
+
+Then seed demo data from the Convex Dashboard by running the internal function
+`bootstrap:resetAndSeed`, and check `bootstrap:seedStatus` until users and clubs
+are populated.
 
 Run **both** `pnpm --filter cvx dev` and `pnpm --filter web dev` (or `pnpm dev` from the repo root) so localhost talks to the same deployment.
 
