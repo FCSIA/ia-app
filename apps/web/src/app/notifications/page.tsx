@@ -8,29 +8,51 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, CheckCheck, Settings } from 'lucide-react';
-import { PageFrame, Panel } from '@/components/layout/page-frame';
+import { Bell, BellDot, CheckCheck, Clock3, Inbox, SearchX, Settings } from 'lucide-react';
+import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeColor } from '@/components/ui/badge';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { cn } from '@/lib/utils';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
-const CATEGORY_LABEL: Record<NotificationCategory, string> = {
-  SCHOOL_ANNOUNCEMENT: 'School',
-  CLUB_ANNOUNCEMENT: 'Club',
-  CLUB_JOIN_REQUEST: 'Club',
-  CLUB_CHANNEL_MESSAGE: 'Channel',
-  CLUB_CHANNEL_MENTION: 'Mention',
-  CLUB_CHANNEL_TAG_MENTION: 'Tag mention',
-  CLUB_CHANNEL_THREAD: 'Thread',
-  EVENT: 'Event',
-  FLEX_FRIDAY: 'Flex Friday',
-  CONTENT_MODERATED: 'Moderation',
-  FRIEND_REQUEST: 'Friends',
+const CATEGORY_META: Record<NotificationCategory, { label: string; color: BadgeColor }> = {
+  SCHOOL_ANNOUNCEMENT: { label: 'School', color: 'blue' },
+  CLUB_ANNOUNCEMENT: { label: 'Club', color: 'orange' },
+  CLUB_JOIN_REQUEST: { label: 'Join request', color: 'amber' },
+  CLUB_CHANNEL_MESSAGE: { label: 'Channel', color: 'teal' },
+  CLUB_CHANNEL_MENTION: { label: 'Mention', color: 'violet' },
+  CLUB_CHANNEL_TAG_MENTION: { label: 'Tag mention', color: 'purple' },
+  CLUB_CHANNEL_THREAD: { label: 'Thread', color: 'indigo' },
+  EVENT: { label: 'Event', color: 'green' },
+  FLEX_FRIDAY: { label: 'Flex Friday', color: 'pink' },
+  CONTENT_MODERATED: { label: 'Moderation', color: 'red' },
+  FRIEND_REQUEST: { label: 'Friends', color: 'cyan' },
 };
+
+function NotificationListSkeleton() {
+  return (
+    <div>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={index} className="flex gap-4 border-b border-border/60 py-4 last:border-b-0">
+          <Skeleton className="mt-1 size-8 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex items-center gap-2">
+              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="mb-2 h-4 w-3/4" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -82,144 +104,180 @@ export default function NotificationsPage() {
     router.push(notification.href);
   }
 
-  const hasUnread = notifications.some((n) => !n.isRead);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const hasUnread = unreadCount > 0;
+  const readCount = notifications.length - unreadCount;
+  const hasQuery = deferredSearch.trim().length > 0;
+  const latestNotification = notifications[0];
 
   return (
     <AppShell>
       <PageFrame className="pt-0">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          {/* Header */}
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Notifications
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Everything that needs your attention, in one place.
-              </p>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 flex items-center gap-2">
+                <Badge variant="dot" size="sm" color={hasUnread ? 'blue' : 'green'}>
+                  {hasUnread ? `${unreadCount} unread` : 'Clear'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{notifications.length} total</span>
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Notifications</h1>
             </div>
-            {hasUnread && (
-              <Button
-                variant="tertiary"
-                size="sm"
-                onClick={handleMarkAllRead}
-                disabled={markingAll}
-                className="rounded-full"
-              >
-                <CheckCheck className="size-4" />
-                Mark all read
-              </Button>
-            )}
+            <Button
+              variant="tertiary"
+              size="sm"
+              onClick={handleMarkAllRead}
+              loading={markingAll}
+              disabled={!hasUnread}
+              leadingIcon={CheckCheck}
+              className="w-full sm:w-fit"
+            >
+              Mark all read
+            </Button>
           </div>
 
           <Tabs defaultValue="inbox" className="w-full">
-            <TabsList>
+            <TabsList className="w-full sm:w-auto">
               <TabItem value="inbox" icon={Bell} label="Inbox" />
               <TabItem value="settings" icon={Settings} label="Settings" />
             </TabsList>
-            <TabPanel value="inbox" className="mt-4">
-              <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search notifications..."
-              />
+            <TabPanel value="inbox" className="mt-5">
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <section className="min-w-0">
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <SearchInput
+                      value={search}
+                      onValueChange={setSearch}
+                      placeholder="Search notifications..."
+                      className="w-full sm:max-w-md"
+                    />
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {hasQuery
+                        ? `${filteredNotifications.length} of ${notifications.length}`
+                        : `${notifications.length} notifications`}
+                    </span>
+                  </div>
 
-              {isLoading ? (
-                <div className="rounded-3xl border bg-card px-6 py-16 text-center text-sm text-muted-foreground">
-                  Loading…
-                </div>
-              ) : filteredNotifications.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-border/70 bg-muted/20 px-6 py-16 text-center">
-                  <Bell className="mx-auto mb-3 size-8 text-muted-foreground/60" />
-                  <p className="text-sm font-medium text-foreground">
-                    {search.trim() ? 'No results found' : 'You’re all caught up'}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {search.trim()
-                      ? 'Try a different search term.'
-                      : 'New notifications will appear here.'}
-                  </p>
-                  {search.trim() && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSearch('')}
-                      className="mt-3 rounded-full"
-                    >
-                      Clear search
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Panel contentClassName="p-0">
-                  <ul className="divide-y divide-border">
-                    {filteredNotifications.map((n) => {
-                      const categoryLabel =
-                        CATEGORY_LABEL[n.category] ?? n.category?.replace(/_/g, ' ') ?? 'Update';
-                      return (
-                        <li key={n.id}>
-                          <button
-                            type="button"
-                            onClick={() => openNotification(n)}
-                            className={cn(
-                              'flex w-full items-start gap-4 px-6 py-4 text-left transition-colors',
-                              'hover:bg-muted/40',
-                              !n.isRead ? 'bg-primary/[0.04]' : '',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'mt-2 size-2 shrink-0 rounded-full',
-                                n.isRead ? 'bg-muted-foreground/30' : 'bg-primary',
-                              )}
-                              aria-hidden
-                            />
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="solid" className="rounded-full text-[10px]">
-                                  {categoryLabel}
-                                </Badge>
-                                <span className="text-[11px] text-muted-foreground">
-                                  {formatDistanceToNow(new Date(n.createdAt), {
-                                    addSuffix: true,
-                                  })}
-                                </span>
-                              </div>
-                              <p
+                  {isLoading ? (
+                    <NotificationListSkeleton />
+                  ) : filteredNotifications.length === 0 ? (
+                    <Empty className="py-14">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          {hasQuery ? <SearchX /> : <Inbox />}
+                        </EmptyMedia>
+                        <EmptyTitle>{hasQuery ? 'No matching notifications' : "You're all caught up"}</EmptyTitle>
+                        <EmptyDescription>
+                          {hasQuery
+                            ? 'Try a different title, message, or category.'
+                            : 'New updates will appear here when they need attention.'}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                      {hasQuery ? (
+                        <Button variant="ghost" size="sm" onClick={() => setSearch('')}>
+                          Clear search
+                        </Button>
+                      ) : null}
+                    </Empty>
+                  ) : (
+                    <div>
+                      <ul className="divide-y divide-border/60">
+                        {filteredNotifications.map((n) => {
+                          const categoryMeta = CATEGORY_META[n.category] ?? { label: 'Update', color: 'gray' as const };
+                          return (
+                            <li key={n.id}>
+                              <button
+                                type="button"
+                                onClick={() => openNotification(n)}
                                 className={cn(
-                                  'text-sm font-medium',
-                                  n.isRead ? 'text-muted-foreground' : 'text-foreground',
+                                  'group flex w-full items-start gap-3 py-4 text-left transition-colors',
+                                  'hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
+                                  !n.isRead && 'bg-primary/[0.035]',
                                 )}
                               >
-                                {n.title}
-                              </p>
-                              {n.body && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {n.body}
-                                </p>
-                              )}
-                            </div>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </Panel>
-              )}
-              {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="tertiary"
-                    onClick={() => loadMoreNotifications(50)}
-                    disabled={notificationsStatus !== 'CanLoadMore'}
-                    className="rounded-full"
-                  >
-                    {notificationsStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}
-                  </Button>
-                </div>
-              ) : null}
+                                <span
+                                  className={cn(
+                                    'mt-1.5 flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors',
+                                    n.isRead
+                                      ? 'border-border bg-muted/25 text-muted-foreground'
+                                      : 'border-primary/20 bg-primary/10 text-primary',
+                                  )}
+                                  aria-hidden
+                                >
+                                  {n.isRead ? <Bell className="size-4" /> : <BellDot className="size-4" />}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="mb-1.5 flex flex-wrap items-center gap-2">
+                                    <Badge variant="solid" size="sm" color={categoryMeta.color}>
+                                      {categoryMeta.label}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatDistanceToNow(new Date(n.createdAt), {
+                                        addSuffix: true,
+                                      })}
+                                    </span>
+                                    {!n.isRead ? (
+                                      <span className="size-1.5 rounded-full bg-primary" aria-label="Unread" />
+                                    ) : null}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'block text-sm font-medium leading-5',
+                                      n.isRead ? 'text-muted-foreground' : 'text-foreground',
+                                    )}
+                                  >
+                                    {n.title}
+                                  </span>
+                                  {n.body ? (
+                                    <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">
+                                      {n.body}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
+                  {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="tertiary"
+                        onClick={() => loadMoreNotifications(50)}
+                        loading={notificationsStatus === 'LoadingMore'}
+                        disabled={notificationsStatus !== 'CanLoadMore'}
+                      >
+                        Load more
+                      </Button>
+                    </div>
+                  ) : null}
+                </section>
+
+                <aside className="grid gap-3 sm:grid-cols-3 lg:block lg:space-y-3">
+                  <div className="flex items-center justify-between gap-3" title="Unread">
+                    <BellDot className="size-4 text-primary" aria-hidden />
+                    <p className="text-2xl font-semibold tabular-nums text-foreground">{unreadCount}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3" title="Read">
+                    <CheckCheck className="size-4 text-muted-foreground" aria-hidden />
+                    <p className="text-2xl font-semibold tabular-nums text-foreground">{readCount}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3" title={latestNotification?.title ?? 'Latest'}>
+                    <Clock3 className="size-4 text-muted-foreground" aria-hidden />
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {latestNotification
+                        ? formatDistanceToNow(new Date(latestNotification.createdAt), { addSuffix: true })
+                        : '--'}
+                    </p>
+                  </div>
+                </aside>
+              </div>
             </TabPanel>
-            <TabPanel value="settings" className="mt-4">
+            <TabPanel value="settings" className="mt-5 max-w-4xl">
               <NotificationSettingsPanel />
             </TabPanel>
           </Tabs>

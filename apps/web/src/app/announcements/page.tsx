@@ -213,11 +213,14 @@ export default function AnnouncementsPage() {
   };
 
   const [createPending, setCreatePending] = useState(false);
-  const [approvePending, setApprovePending] = useState<string | null>(null);
-  const [rejectPending, setRejectPending] = useState<string | null>(null);
+  const [reviewPending, setReviewPending] = useState<{
+    id: string;
+    action: 'approve' | 'reject';
+  } | null>(null);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    if (createPending) return;
     const isIntersection = form.targetType === 'INTERSECTION';
     setCreatePending(true);
     void createAnnouncement({
@@ -608,10 +611,15 @@ export default function AnnouncementsPage() {
                   ) : null}
                 </div>
                 <div className="mt-4 flex gap-2 border-t border-border pt-4">
-                  <Button type="submit" disabled={createPending}>
-                    {createPending ? 'Posting…' : 'Post Announcement'}
+                  <Button type="submit" loading={createPending}>
+                    Post Announcement
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setShowNew(false)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={createPending}
+                    onClick={() => setShowNew(false)}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -656,6 +664,9 @@ export default function AnnouncementsPage() {
                 const canArchiveAnnouncement =
                   canArchiveAny || announcement.author?._id === user?.id;
                 const announcementId = announcement._id as Id<'announcements'>;
+                const isReviewPending = reviewPending?.id === announcement._id;
+                const approving = isReviewPending && reviewPending?.action === 'approve';
+                const rejecting = isReviewPending && reviewPending?.action === 'reject';
                 return (
                   <AnnouncementCard
                     key={announcement._id}
@@ -692,9 +703,10 @@ export default function AnnouncementsPage() {
                           </span>
                           <Button
                             size="sm"
-                            disabled={approvePending === announcement._id}
+                            loading={approving}
+                            disabled={isReviewPending}
                             onClick={() => {
-                              setApprovePending(announcement._id);
+                              setReviewPending({ id: announcement._id, action: 'approve' });
                               void approveAnnouncement({ announcementId })
                                 .then(() => toast({ title: 'Announcement published' }))
                                 .catch((error: unknown) =>
@@ -704,7 +716,7 @@ export default function AnnouncementsPage() {
                                     variant: 'destructive',
                                   }),
                                 )
-                                .finally(() => setApprovePending(null));
+                                .finally(() => setReviewPending(null));
                             }}
                           >
                             <Check className="mr-1.5 size-4" />
@@ -713,9 +725,10 @@ export default function AnnouncementsPage() {
                           <Button
                             size="sm"
                             variant="tertiary"
-                            disabled={rejectPending === announcement._id}
+                            loading={rejecting}
+                            disabled={isReviewPending}
                             onClick={() => {
-                              setRejectPending(announcement._id);
+                              setReviewPending({ id: announcement._id, action: 'reject' });
                               void rejectAnnouncement({ announcementId })
                                 .then(() => toast({ title: 'Announcement sent back' }))
                                 .catch((error: unknown) =>
@@ -725,7 +738,7 @@ export default function AnnouncementsPage() {
                                     variant: 'destructive',
                                   }),
                                 )
-                                .finally(() => setRejectPending(null));
+                                .finally(() => setReviewPending(null));
                             }}
                           >
                             <X className="mr-1.5 size-4" />

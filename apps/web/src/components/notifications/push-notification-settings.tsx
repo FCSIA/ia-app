@@ -45,13 +45,24 @@ export function PushNotificationSettings() {
 
   const serverHasThisDevice = serverSubscriptions.some((subscription) => subscription.endpoint === localEndpoint);
   const enabled = permission === 'granted' && !!localEndpoint && serverHasThisDevice;
-  const unavailableReason = !browserSupportsPush()
-    ? 'This browser does not support Web Push.'
-    : configuredPublicKey === null
-      ? 'Web Push is not configured for this environment.'
-      : permission === 'denied'
-        ? 'Notifications are blocked in your browser settings.'
-        : null;
+  const unsupported = !browserSupportsPush();
+  const keysLoading = publicKey === undefined && configuredPublicKey === null;
+  const keysMissing = !keysLoading && configuredPublicKey === null;
+  const blocked = permission === 'denied';
+  const disabledReason = unsupported
+    ? 'Unsupported browser'
+    : keysMissing
+      ? 'Set NEXT_PUBLIC_VAPID_PUBLIC_KEY in web env and VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT in Convex.'
+      : blocked
+        ? 'Blocked in browser settings'
+        : undefined;
+  const statusLabel = enabled
+    ? 'On'
+    : keysLoading
+      ? '...'
+      : disabledReason
+        ? 'Off'
+        : 'Ready';
 
   async function enablePush() {
     if (!configuredPublicKey) return;
@@ -91,36 +102,31 @@ export function PushNotificationSettings() {
   }
 
   return (
-    <section className="rounded-lg border p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {enabled ? (
-              <BellRing className="size-4 text-primary" />
-            ) : (
-              <BellOff className="size-4 text-muted-foreground" />
-            )}
-            <h2 className="text-sm font-semibold">Browser push</h2>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {enabled
-              ? 'This browser can receive notifications after the tab is closed.'
-              : 'Enable browser push to receive allowed notifications after closing the tab.'}
-          </p>
-          {unavailableReason ? <p className="mt-2 text-xs text-muted-foreground">{unavailableReason}</p> : null}
-          {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
+    <section className="flex flex-col gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2" title={disabledReason}>
+          {enabled ? (
+            <BellRing className="size-4 shrink-0 text-primary" aria-hidden />
+          ) : (
+            <BellOff className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          )}
+          <h2 className="truncate text-sm font-semibold">Browser push</h2>
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{statusLabel}</span>
         </div>
         <Button
           type="button"
           size="sm"
-          variant={enabled ? 'secondary' : 'primary'}
-          disabled={busy || !!unavailableReason || (publicKey === undefined && !configuredPublicKey)}
+          variant={enabled ? 'tertiary' : 'primary'}
+          loading={busy}
+          disabled={!!disabledReason || keysLoading}
+          title={disabledReason}
           onClick={() => void (enabled ? disablePush() : enablePush())}
           className="shrink-0"
         >
-          {busy ? 'Saving...' : enabled ? 'Disable push' : 'Enable push'}
+          {enabled ? 'Disable push' : 'Enable push'}
         </Button>
       </div>
+      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
     </section>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
@@ -33,6 +34,8 @@ export function NotificationScopeSwitch({
   className,
 }: NotificationScopeSwitchProps) {
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
+  const [pending, setPending] = useState(false);
+  const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
   const resolvedScopeKey =
     scopeKey ??
     (channelId
@@ -45,39 +48,68 @@ export function NotificationScopeSwitch({
             ? `club:${clubId}`
             : 'global');
 
-  const preferences = useQuery(api.notifications.preferences.list) ?? [];
+  const preferences = useQuery(api.notifications.preferences.list);
 
-  const preference = preferences.find(
+  const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   );
-  const enabled = locked || preference?.enabled !== false;
+  const storedEnabled = locked || preferences === undefined || preference?.enabled !== false;
+  const enabled = optimisticEnabled ?? storedEnabled;
+  const disabled = locked || pending || preferences === undefined;
+  const stateLabel = pending ? 'Saving' : preferences === undefined ? '...' : enabled ? 'On' : 'Off';
 
-  const togglePreference = () =>
-    upsertPreference({
-      category,
-      enabled: !enabled,
-      clubId,
-      channelId,
-      announcementId,
-      eventId,
-      scopeKey: resolvedScopeKey,
-    });
+  useEffect(() => {
+    if (optimisticEnabled === null || preferences === undefined) return;
+    if (storedEnabled === optimisticEnabled) {
+      setOptimisticEnabled(null);
+    }
+  }, [optimisticEnabled, preferences, storedEnabled]);
+
+  const togglePreference = async () => {
+    if (disabled) return;
+    const nextEnabled = !enabled;
+    setPending(true);
+    setOptimisticEnabled(nextEnabled);
+    try {
+      await upsertPreference({
+        category,
+        enabled: nextEnabled,
+        clubId,
+        channelId,
+        announcementId,
+        eventId,
+        scopeKey: resolvedScopeKey,
+      });
+    } catch {
+      setOptimisticEnabled(null);
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/20 px-3 py-2',
-        compact && 'rounded-xl px-2 py-1.5',
+        'flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-3 py-2 transition-colors hover:bg-muted/25',
+        compact && 'border-transparent bg-transparent px-0 py-0 hover:bg-transparent',
         locked && 'opacity-80',
         className,
       )}
-      title={locked ? 'Push notifications to everyone cannot be disabled' : undefined}
+      title={
+        locked
+          ? 'Required'
+          : preferences === undefined
+            ? 'Loading'
+            : pending
+              ? 'Saving'
+              : undefined
+      }
     >
       <Switch
-        label={compact ? (enabled ? 'On' : 'Off') : label}
+        label={compact ? stateLabel : label}
         checked={enabled}
         onToggle={() => void togglePreference()}
-        disabled={locked}
+        disabled={disabled}
         className="min-w-0 flex-1 px-0 py-0"
       />
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
