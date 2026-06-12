@@ -10,8 +10,10 @@ export function mergeAppMainClassName(...classes: Array<string | false | null | 
 /** Standard scrollable page body inside AppShell. */
 export const SCROLL_MAIN_CLASS = mergeAppMainClassName();
 
-/** Viewport-filling body: keeps padding, contains overflow to inner panes. */
-export const FILL_MAIN_CLASS = mergeAppMainClassName('flex min-h-0 flex-col overflow-hidden');
+/** Viewport-filling body: keeps side padding, contains overflow to inner panes. */
+export const FILL_MAIN_CLASS = mergeAppMainClassName(
+  'flex h-[calc(100vh-4rem)] min-h-0 flex-col overflow-hidden pb-0 pt-3 md:pt-4 lg:pt-4',
+);
 
 /** PageFrame extension for fill layouts (pairs with FILL_MAIN_CLASS). */
-export const FILL_PAGE_FRAME_CLASS = 'flex min-h-0 flex-1 flex-col pt-2';
+export const FILL_PAGE_FRAME_CLASS = 'flex h-full min-h-0 flex-1 flex-col gap-4 pb-0 pt-0';

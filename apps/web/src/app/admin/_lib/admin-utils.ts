@@ -3,31 +3,26 @@ import type { AdminUserRecord, AdminUserRoleGroup } from './types';
 
 export const AUDIT_FETCH_LIMIT = 250;
 
-export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; emptyMessage: string; showGrade: boolean }> = {
+export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; emptyMessage: string }> = {
   students: {
     label: 'Students',
     emptyMessage: 'No students found.',
-    showGrade: true,
   },
   teachers: {
     label: 'Teachers',
     emptyMessage: 'No teachers found.',
-    showGrade: false,
   },
   other: {
     label: 'Other Roles',
     emptyMessage: 'No admin or staff accounts found.',
-    showGrade: false,
   },
   'student-admin': {
     label: 'Student Admins',
     emptyMessage: 'No student admins found.',
-    showGrade: true,
   },
   all: {
     label: 'All Users',
     emptyMessage: 'No users found.',
-    showGrade: false,
   },
 };
 

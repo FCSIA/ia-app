@@ -20,7 +20,7 @@ export function AdminPageContent() {
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
   const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
-  const { activeTab, setActiveTab, isUsersTab } = useAdminTab(isSuperAdmin, canManageWrapped);
+  const { activeTab, setActiveTab } = useAdminTab(isSuperAdmin, canManageWrapped);
   const pendingReports = useAdminModerationPending();
 
   useEffect(() => {
@@ -29,12 +29,9 @@ export function AdminPageContent() {
     }
   }, [user, router]);
 
-  const layout = isUsersTab ? 'fill' : 'scroll';
-
   return (
-    <AdminPageLayout layout={layout}>
+    <AdminPageLayout>
       <AdminShell
-        layout={layout}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isSuperAdmin={isSuperAdmin}

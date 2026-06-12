@@ -1,7 +1,7 @@
 'use client';
 
-import { useDeferredValue, useState } from 'react';
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useDeferredValue, useEffect, useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -11,8 +11,15 @@ import type { AdminTabId } from './use-admin-tab';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../_lib/types';
 import type { AppRole } from '~/apps/convex/lib/roles';
 
-/** Number of users to load in each batch when scrolling. */
 const USERS_PAGE_SIZE = 30;
+
+type UsersPage = {
+  page: AdminUserRecord[];
+  isDone: boolean;
+  continueCursor: string;
+};
+
+type UsersPageStatus = 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
 
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();
@@ -22,6 +29,9 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const deferredSearch = useDeferredValue(search);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [previousCursors, setPreviousCursors] = useState<(string | null)[]>([]);
+  const [displayedPage, setDisplayedPage] = useState<UsersPage | undefined>(undefined);
 
   const canManageUser = (targetUser: AdminUserRecord) => {
     if (!user) return false;
@@ -34,21 +44,29 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const canDeactivate = canManageUser;
   const canResetPassword = canManageUser;
 
-  // Infinite-scroll pagination via Convex's usePaginatedQuery.
-  const {
-    results: users,
-    status,
-    loadMore,
-  } = usePaginatedQuery(
+  const usersPage = useQuery(
     api.users.admin.list,
     activeTab === 'users'
       ? {
           search: deferredSearch || undefined,
           roleGroup: userRoleGroup === 'all' ? undefined : userRoleGroup,
+          paginationOpts: {
+            numItems: USERS_PAGE_SIZE,
+            cursor: currentCursor,
+          },
         }
       : 'skip',
-    { initialNumItems: USERS_PAGE_SIZE },
   );
+
+  useEffect(() => {
+    setDisplayedPage(undefined);
+  }, [deferredSearch, userRoleGroup]);
+
+  useEffect(() => {
+    if (usersPage) {
+      setDisplayedPage(usersPage);
+    }
+  }, [usersPage]);
 
   // Actual total count for the selected role group (shown in the header badge).
   const totalCount = useQuery(
@@ -84,21 +102,47 @@ export function useAdminUsers(activeTab: AdminTabId) {
 
   const selectedUserRoleMeta = USER_ROLE_GROUP_META[userRoleGroup];
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const status: UsersPageStatus = displayedPage
+    ? usersPage
+      ? usersPage.isDone
+        ? 'Exhausted'
+        : 'CanLoadMore'
+      : 'LoadingMore'
+    : usersPage
+      ? usersPage.isDone
+        ? 'Exhausted'
+        : 'CanLoadMore'
+      : 'LoadingFirstPage';
 
   return {
     search,
     setSearch: (value: string) => {
       setSearch(value);
+      setCurrentCursor(null);
+      setPreviousCursors([]);
     },
     userRoleGroup,
     setUserRoleGroup: (value: AdminUserRoleGroup) => {
       setUserRoleGroup(value);
+      setCurrentCursor(null);
+      setPreviousCursors([]);
     },
-    users,
+    users: displayedPage?.page ?? [],
     totalCount: totalCount ?? undefined,
     status,
-    loadMore: () => loadMore(USERS_PAGE_SIZE),
-    isUsersLoading: activeTab === 'users' && status === 'LoadingFirstPage',
+    canLoadPrevious: previousCursors.length > 0,
+    pageIndex: previousCursors.length,
+    loadNextPage: () => {
+      if (!displayedPage || displayedPage.isDone || !usersPage) return;
+      setPreviousCursors((cursors) => [...cursors, currentCursor]);
+      setCurrentCursor(displayedPage.continueCursor);
+    },
+    loadPreviousPage: () => {
+      if (previousCursors.length === 0) return;
+      setCurrentCursor(previousCursors[previousCursors.length - 1] ?? null);
+      setPreviousCursors((cursors) => cursors.slice(0, -1));
+    },
+    isUsersLoading: activeTab === 'users' && !displayedPage && !usersPage,
     isUsersError: false,
     usersError: null,
     refetchUsers: () => undefined,

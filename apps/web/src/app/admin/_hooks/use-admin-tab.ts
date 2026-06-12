@@ -84,6 +84,5 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
   return {
     activeTab: selectedTab,
     setActiveTab: setTab,
-    isUsersTab: selectedTab === 'users',
   };
 }

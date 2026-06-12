@@ -16,7 +16,10 @@ export function UsersTabPanel() {
       users={users.users}
       totalCount={users.totalCount}
       status={users.status}
-      loadMore={users.loadMore}
+      canLoadPrevious={users.canLoadPrevious}
+      pageIndex={users.pageIndex}
+      loadNextPage={users.loadNextPage}
+      loadPreviousPage={users.loadPreviousPage}
       isUsersLoading={users.isUsersLoading}
       isUsersError={users.isUsersError}
       usersError={users.usersError}
