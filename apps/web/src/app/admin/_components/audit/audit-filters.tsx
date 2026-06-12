@@ -58,7 +58,7 @@ export function AuditFilters({
 }: AuditFiltersProps) {
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground">Search</label>
           <SearchInput
@@ -67,9 +67,6 @@ export function AuditFilters({
             placeholder="Action, actor, entity…"
           />
         </div>
-
-        
-
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground">Actor</label>
           <Input
@@ -173,7 +170,7 @@ export function AuditFilters({
       {auditFilterChips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           {auditFilterChips.map((chip) => (
-            <Badge key={chip} variant="solid" className="rounded-full px-3 py-1 text-[11px]">
+            <Badge key={chip} variant="solid" size="sm">
               {chip}
             </Badge>
           ))}
