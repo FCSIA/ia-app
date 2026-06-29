@@ -113,7 +113,7 @@ export async function clubAudience(ctx: MutationCtx, clubId: Id<"clubs">) {
     .collect();
   const sponsors = await ctx.db
     .query("clubSponsors")
-    .filter((q) => q.eq(q.field("clubId"), clubId))
+    .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
     .collect();
   return uniqueIds([...members.map((row) => row.userId), ...sponsors.map((row) => row.userId)]);
 }
@@ -122,7 +122,7 @@ export async function channelAudience(ctx: MutationCtx, channel: Doc<"clubChanne
   if (channel.visibility === "PRIVATE") {
     const members = await ctx.db
       .query("clubChannelMemberships")
-      .filter((q) => q.eq(q.field("channelId"), channel._id))
+      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
       .collect();
     return uniqueIds(members.map((row) => row.userId));
   }

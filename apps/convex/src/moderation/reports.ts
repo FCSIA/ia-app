@@ -14,6 +14,12 @@ const userRefValidator = v.object({
   uniqueId: v.string(),
 });
 
+const reportStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("RESOLVED"),
+  v.literal("DISMISSED"),
+);
+
 const reportValidator = docs.moderationReports.extend({
   submitter: v.union(userRefValidator, v.null()),
   reportedUser: v.union(userRefValidator, v.null()),
@@ -57,7 +63,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
 
 export const list = query({
   args: {
-    status: v.optional(docs.moderationReports.fields.status),
+    status: v.optional(reportStatusValidator),
     clubId: v.optional(v.id("clubs")),
     isEscalated: v.optional(v.boolean()),
   },
@@ -68,12 +74,30 @@ export const list = query({
       return [];
     }
 
-    let reports = await ctx.db.query("moderationReports").order("desc").take(200);
-
+    let reports: Doc<"moderationReports">[];
     if (args.status) {
-      reports = reports.filter((r) => r.status === args.status);
+      const status: Doc<"moderationReports">["status"] = args.status;
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_status_and_createdAt", (q) => q.eq("status", status))
+        .order("desc")
+        .take(200);
+    } else if (args.clubId) {
+      const clubId = args.clubId;
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", clubId))
+        .order("desc")
+        .take(200);
+    } else {
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_createdAt")
+        .order("desc")
+        .take(200);
     }
-    if (args.clubId) {
+
+    if (args.clubId && args.status) {
       reports = reports.filter((r) => r.clubId === args.clubId);
     }
     if (args.isEscalated !== undefined) {
@@ -133,7 +157,7 @@ export const submit = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: docs.moderationReports.fields.status,
+    status: reportStatusValidator,
     reviewNote: v.string(),
   },
   returns: v.object({ success: v.boolean() }),

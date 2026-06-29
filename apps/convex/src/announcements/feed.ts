@@ -34,24 +34,30 @@ export const list = query({
     const elevated = isElevatedReader(user.roles);
     const archived = args.archived ?? false;
 
-    let announcements = await ctx.db
-      .query("announcements")
-      .withIndex("by_createdAt")
-      .order("desc")
-      .collect();
+    let announcements = args.clubId
+      ? await ctx.db
+          .query("announcements")
+          .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+          .order("desc")
+          .take(500)
+      : await ctx.db
+          .query("announcements")
+          .withIndex("by_createdAt")
+          .order("desc")
+          .take(500);
 
     if (args.clubId) {
-      const isMember = accessibleClubIds.includes(args.clubId);
+      const clubId = args.clubId;
+      const isMember = accessibleClubIds.includes(clubId);
       const isSponsor = await ctx.db
         .query("clubSponsors")
-        .filter((q) =>
-          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
       if (!isMember && !isSponsor && !elevated) {
         throw new ConvexError("Not a club member");
       }
-      announcements = announcements.filter((ann) => ann.clubId === args.clubId);
     }
 
     announcements = announcements.filter((ann) => {
@@ -163,10 +169,11 @@ export const create = mutation({
 
     let status: "ACTIVE" | "PENDING_APPROVAL" = "ACTIVE";
     if (args.clubId) {
+      const clubId = args.clubId;
       const isSponsor = await ctx.db
         .query("clubSponsors")
-        .filter((q) =>
-          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
       if (!isSponsor && !isAdmin) {

@@ -25,10 +25,7 @@ export const list = query({
 
     const filtered = [];
     for (const channel of channels) {
-      const memberships = await ctx.db
-        .query("clubChannelMemberships")
-        .filter((q) => q.eq(q.field("channelId"), channel._id))
-        .collect();
+      const memberships = await getChannelMemberships(ctx, channel._id);
 
       if (canReadChannel({ ...channel, memberships }, context, user._id)) {
         filtered.push(channel);
@@ -99,6 +96,36 @@ function mentionTokens(body: string) {
   return Array.from(new Set(body.match(/@[A-Za-z0-9_-]+/g)?.map((token) => token.slice(1)) ?? []));
 }
 
+async function getChannelMemberships(ctx: QueryCtx, channelId: Id<"clubChannels">) {
+  return await ctx.db
+    .query("clubChannelMemberships")
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+    .collect();
+}
+
+async function assertCanReadMessage(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  messageId: Id<"clubChannelMessages">,
+) {
+  const message = await ctx.db.get(messageId);
+  if (!message) throw new Error("Message not found");
+
+  const channel = await ctx.db.get(message.channelId);
+  if (!channel) throw new Error("Channel not found");
+
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error("User not found");
+
+  const context = await getClubContext(ctx, channel.clubId, user);
+  const memberships = await getChannelMemberships(ctx, channel._id);
+  if (!canReadChannel({ ...channel, memberships }, context, userId)) {
+    throw new Error("Not authorized");
+  }
+
+  return { message, channel };
+}
+
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -116,10 +143,7 @@ export const postMessage = mutation({
     if (!channel) throw new Error("Channel not found");
 
     const context = await getClubContext(ctx, channel.clubId, user);
-    const memberships = await ctx.db
-      .query("clubChannelMemberships")
-      .filter((q) => q.eq(q.field("channelId"), channel._id))
-      .collect();
+    const memberships = await getChannelMemberships(ctx, channel._id);
 
     if (!canPostInChannel({ ...channel, memberships }, context, user._id)) {
       throw new Error("Cannot post in this channel");
@@ -380,10 +404,7 @@ export const getMessages = query({
     const club = await ctx.db.get(channel.clubId);
     if (!club) return [];
     const context = await getViewerContext(ctx, channel.clubId, user);
-    const memberships = await ctx.db
-      .query("clubChannelMemberships")
-      .filter((q) => q.eq(q.field("channelId"), channel._id))
-      .collect();
+    const memberships = await getChannelMemberships(ctx, channel._id);
 
     if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
       return [];
@@ -479,12 +500,12 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    await assertCanReadMessage(ctx, user._id, args.messageId);
     const existing = await ctx.db
       .query("clubChannelMessageReactions")
-      .withIndex("by_messageId_and_emoji", (q) =>
-        q.eq("messageId", args.messageId).eq("emoji", args.emoji),
+      .withIndex("by_messageId_and_emoji_and_userId", (q) =>
+        q.eq("messageId", args.messageId).eq("emoji", args.emoji).eq("userId", user._id),
       )
-      .filter((q) => q.eq(q.field("userId"), user._id))
       .first();
     if (existing) {
       await ctx.db.delete(existing._id);
@@ -506,13 +527,14 @@ export const votePoll = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const message = await ctx.db.get(args.messageId);
+    const { message } = await assertCanReadMessage(ctx, user._id, args.messageId);
     if (!message?.pollQuestion) throw new Error("Poll not found");
 
     const existing = await ctx.db
       .query("clubChannelMessagePollVotes")
-      .withIndex("by_messageId_and_optionId", (q) => q.eq("messageId", args.messageId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_messageId_and_userId", (q) =>
+        q.eq("messageId", args.messageId).eq("userId", user._id),
+      )
       .first();
 
     if (existing) {

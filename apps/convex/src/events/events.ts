@@ -19,12 +19,21 @@ export const list = query({
     const user = await getMaybeCurrentAppUser(ctx);
     const admin = isAdmin(user);
 
-    let events = await ctx.db.query("events").order("desc").take(200);
+    let events = args.clubId
+      ? await ctx.db
+          .query("events")
+          .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+          .order("desc")
+          .take(200)
+      : admin
+        ? await ctx.db.query("events").order("desc").take(200)
+        : await ctx.db
+            .query("events")
+            .withIndex("by_status", (q) => q.eq("status", "PUBLISHED"))
+            .order("desc")
+            .take(200);
 
-    if (args.clubId) {
-      events = events.filter((event) => event.clubId === args.clubId);
-    }
-    if (!admin) {
+    if (args.clubId && !admin) {
       events = events.filter((event) => event.status === "PUBLISHED");
     }
 
@@ -70,14 +79,16 @@ export const create = mutation({
     let isSponsor = false;
     let hasClubRole = false;
     if (args.clubId) {
+      const clubId = args.clubId;
       const sponsors = await ctx.db
         .query("clubSponsors")
-        .filter((q) => q.eq(q.field("clubId"), args.clubId))
+        .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
         .collect();
       const members = await ctx.db
         .query("clubMembers")
-        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId!))
-        .filter((q) => q.eq(q.field("userId"), user._id))
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", clubId).eq("userId", user._id),
+        )
         .first();
       isSponsor = sponsors.some((s) => s.userId === user._id);
       hasClubRole = !!members?.role;
@@ -145,9 +156,10 @@ export const create = mutation({
     }
 
     if (args.clubId && status === "PENDING_APPROVAL") {
+      const clubId = args.clubId;
       const sponsors = await ctx.db
         .query("clubSponsors")
-        .filter((q) => q.eq(q.field("clubId"), args.clubId))
+        .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
         .collect();
       for (const sponsor of sponsors) {
         await ctx.db.insert("eventApprovals", {

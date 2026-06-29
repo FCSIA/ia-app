@@ -467,7 +467,7 @@ export const assignRoles = mutation({
         .withIndex("by_isStudentAdmin_and_lastName_and_firstName", (q) =>
           q.eq("isStudentAdmin", true),
         )
-        .collect();
+        .take(5);
       if (currentStudentAdmins.length >= 5) {
         throw new ConvexError(
           "Maximum of 5 students can have the Student Admin role.",

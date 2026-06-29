@@ -62,7 +62,7 @@ export async function getAccessibleClubIds(ctx: QueryCtx | MutationCtx, userId: 
     .collect();
   const sponsors = await ctx.db
     .query("clubSponsors")
-    .filter((q) => q.eq(q.field("userId"), userId))
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
     .collect();
 
   const ids = new Set<Id<"clubs">>();
