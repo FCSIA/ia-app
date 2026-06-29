@@ -203,7 +203,7 @@ export function DashboardLayout() {
   // Load persisted layout once user is known
   useEffect(() => {
     if (!user) {
-      setLayout(getDefaultLayout(undefined));
+      setLayout(getDefaultLayout());
       return;
     }
 
@@ -217,7 +217,7 @@ export function DashboardLayout() {
     }
 
     const persisted = loadLayout(user.id);
-    setLayout(persisted ?? getDefaultLayout(user.roles));
+    setLayout(persisted ?? getDefaultLayout());
   }, [user]);
 
   const availableWidgets = useMemo(
@@ -236,7 +236,7 @@ export function DashboardLayout() {
 
   const handleReset = useCallback(() => {
     if (!user) return;
-    const fresh = getDefaultLayout(user.roles);
+    const fresh = getDefaultLayout();
     setLayout(fresh);
     saveLayout(user.id, fresh);
     toast({ title: 'Dashboard reset to default' });

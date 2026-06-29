@@ -3,9 +3,11 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 import type { AdminTabId } from './use-admin-tab';
+
+type ModerationReportStatus = Doc<'moderationReports'>['status'];
 
 export function useAdminModeration(activeTab: AdminTabId) {
   const { toast } = useToast();
@@ -79,7 +81,7 @@ export function useAdminModeration(activeTab: AdminTabId) {
       reviewNote,
     }: {
       id: string;
-      status: string;
+      status: ModerationReportStatus;
       reviewNote: string;
     }) => {
       void updateReport({

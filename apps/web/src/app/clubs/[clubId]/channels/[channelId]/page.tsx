@@ -108,9 +108,10 @@ function formatBytes(size?: number | null) {
 }
 
 function isImageAttachment(attachment: ClubChannelMessageAttachment) {
+  if (attachment.mimeType?.toLowerCase() === 'image/svg+xml') return false;
   return (
     attachment.mimeType?.startsWith('image/') ||
-    /\.(png|jpe?g|gif|webp|svg)$/i.test(attachment.fileName)
+    /\.(png|jpe?g|gif|webp)$/i.test(attachment.fileName)
   );
 }
 
@@ -294,7 +295,6 @@ function MessageRow({
   compact?: boolean;
 }) {
   const isAuthor = message.author._id === currentUserId;
-  const isFiltered = message.body.includes('***'); // Simple heuristic for rule-breaking messages - TODO: NEEDS TO BE UPDATED THOUGH as users can type asterisks for fun.
   const isEdited = message.updatedAt !== message.createdAt;
 
   return (
@@ -393,7 +393,7 @@ function MessageRow({
                   Reply
                 </Button>
               ) : null}
-              {isAuthor && !isFiltered && (
+              {isAuthor && (
                 <Button
                   variant="ghost"
                   size="sm"
