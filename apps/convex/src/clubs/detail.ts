@@ -27,12 +27,12 @@ export const get = query({
         .collect(),
       ctx.db
         .query("clubSponsors")
-        .filter((q) => q.eq(q.field("clubId"), args.clubId))
+        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId))
         .collect(),
       context.canAccessWorkspace
         ? ctx.db
             .query("clubTags")
-            .filter((q) => q.eq(q.field("clubId"), args.clubId))
+            .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
             .collect()
         : Promise.resolve([]),
       context.canApproveJoinRequests
@@ -83,7 +83,7 @@ export const get = query({
       tags.map(async (tag) => {
         const tagMembers = await ctx.db
           .query("clubTagMembers")
-          .filter((q) => q.eq(q.field("tagId"), tag._id))
+          .withIndex("by_tagId_and_userId", (q) => q.eq("tagId", tag._id))
           .collect();
         const membersWithUsers = await Promise.all(
           tagMembers.map(async (tm) => {

@@ -2,8 +2,11 @@
 
 ## Active Focus
 
-- **Branch**: `codex/convex-port` (includes `6845f48` clubs/events/flex backend + ongoing frontend/db work)
-- **Goal**: Finish Convex port — Wrapped done; migrate remaining web domains off REST; Convex-only `db:*`.
+- **Branch**: `main`
+- **Goal**: Convex-first IA app; broad backend/data/routing hardening pass completed.
+- **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
+  and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
+  asked.
 
 ## Current Truth
 
@@ -12,64 +15,80 @@
 | Domain | Status |
 |--------|--------|
 | Users, audit, courses, schedule, notifications | **Done** |
-| Clubs, events, Flex Friday | **Done for current web flows** |
-| Wrapped | **Done** — `wrapped/snapshots.ts`, `wrappedSnapshots` table |
-| Announcements | **Done for current web flows** (`feed`, `engagement`, `comments`) |
+| Clubs, events, calendar, Flex Friday | **Done for current web flows** |
+| Wrapped | **Done** |
+| Announcements | **Done for current web flows** |
 | Moderation, uploads | **Done for current web flows** |
 
-### Frontend on Convex
+### Hardening Completed
 
-| Area | Status |
-|------|--------|
-| Auth, profile, admin users/audit, notifications, courses, schedule | **Convex** (API paths: `get`, `list`, `search`, `sendRequest`, etc.); login lockout via `@convex-dev/rate-limiter` |
-| Wrapped page + admin wrapped tab | **Convex** |
-| Clubs (directory, workspace, channels, dialogs, widgets) | **Convex** — `useClubId()` / `useRouteChannelId()`; types from `api.clubs.*`; `_id` not REST `id` |
-| Clubs CSV bulk invite | **Convex** (`parse-invite-csv` + `api.clubs.invitations.bulkInvite`) |
-| Events, calendar, flex-friday UI | **Convex** (`api.events.*`, `api.flexFriday.*`) |
-| Announcements, moderation, uploads | **Convex** |
-| Admin student CSV import/export | **Convex** (`api.users.admin.importStudents`, `api.users.admin.exportStudents`) |
+- Club access now distinguishes ordinary members from `LEADER`/`SPONSOR`
+  management roles and uses indexed membership/sponsor lookups.
+- Club management create/deactivate paths require admin roles; workspace detail
+  data is hidden from authenticated users who cannot access the club workspace.
+- Channel reads/writes/reactions/polls now validate channel access, parent
+  message channel ownership, and poll option membership.
+- General events require an event-manager role; club events require admin,
+  sponsor, or club leader authority.
+- Calendar creation no longer lets regular users create non-personal calendar
+  sources.
+- Announcement comments require announcement read access; announcement approval
+  is limited to global approvers or the relevant club sponsor.
+- Flex Friday attendance and assignment paths validate active student targets,
+  workshop/session conflicts, existing registration/assignment state, and
+  capacity.
+- Upload finalizers verify storage metadata instead of trusting caller-provided
+  size or MIME type.
+- Convex schema now has relationship indexes for the hot club/event/channel/
+  notification/Flex paths; codegen has been run.
 
-### Dev data reset
+### Frontend and Routing
 
-- No local seed/reset/clear CLI commands.
-- Run dashboard-only internal Convex function `bootstrap:resetAndSeed` to
-  destructively recreate demo data.
-- No `BOOTSTRAP_SECRET`; seed/reset functions are internal rather than public
-  secret-gated functions.
+- `/courses` is included in protected route middleware.
+- Club channel message queries include both `clubId` and `channelId`.
+- Event creation UI only offers eligible clubs to non-general creators and
+  blocks club-scoped submissions without an eligible club.
+- Event author cancellation checks both current user id shapes used by the app.
+
+### Remaining Debt
+
+- Channel delete is still a direct row delete and does not cascade related
+  messages/reactions/memberships.
+- Announcement feed still has pagination/read-amplification room for improvement.
+- `bodyRich` and poll option payloads are still `v.any()` shaped data.
+- Web still has a localStorage-backed user cache that may need a privacy pass.
+- Legacy `apps/api` and `packages/contracts` references should be deleted or
+  formally retained once the team decides their fate.
 
 ### Verification (latest)
 
-- `pnpm --filter cvx codegen` + `typecheck` — pass
-- `pnpm --filter web build` — pass
-- Web `tsc --noEmit` — pass
-- `pnpm lint` — blocked by legacy `apps/api` `no-explicit-any`/unused-var
-  failures; Convex/web checks above pass.
-- Docs cleanup pass completed: active docs now route through `docs/index.md`,
-  cover Convex-era architecture/backend/database/frontend/features, and have a
-  clean stale-reference grep for old backend terms outside historical
-  `PORTING.md`.
+- `pnpm --filter cvx codegen` - pass
+- `pnpm --filter cvx typecheck` - pass
+- `pnpm --filter web build` - pass
+- `pnpm lint` - pass with one warning in
+  `apps/web/src/components/dashboard/widget-registry.ts`
+- `pnpm build` - pass
+- `pnpm test` - no package test tasks are registered, so Turbo executed none
+- `git diff --check` - pass; Git only reported CRLF normalization warnings
+
+Convex also reported that optional Convex AI guidance files are behind upstream.
 
 ## Next Work
 
-1. Deploy Convex changes so the `rateLimiter` component is live in the target
-   deployment before production student/staff data.
-2. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+1. Deploy the Convex schema/index/function changes to the target deployment
+   before production student/staff use.
+2. Coordinate with the FERPA session before touching `docs/compliance/` or the
+   FERPA entry in `docs/index.md`.
+3. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-3. Keep docs synchronized as remaining legacy code is deleted; `PORTING.md` is
-   historical, while `docs/` is now the active operating manual.
-4. Fix or remove legacy `apps/api` lint failures before making `pnpm lint` a
-   blocking check again.
+4. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm --filter web build
-# Demo data reset: run internal Convex function bootstrap:resetAndSeed in the dashboard.
+pnpm --filter cvx codegen
+pnpm --filter cvx typecheck
+pnpm lint
+pnpm build
+pnpm test
 ```
-
-## Stash
-
-`agent-wip-convex-port` — largely superseded by fixes on branch; safe to drop after review (`git stash drop`).

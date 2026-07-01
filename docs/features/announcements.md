@@ -52,9 +52,10 @@ announcement document.
 
 ## Permissions
 
-Teachers and admins can create announcements. Admins and elevated readers can
-approve or reject pending announcements. Comment and archive permissions are
-enforced inside the Convex mutations.
+Teachers and admins can create announcements. Global announcement approval is
+limited to admin/support roles; club-scoped pending announcements can also be
+approved or rejected by that club's sponsors. Comment and archive permissions
+are enforced inside the Convex mutations.
 
 ## Side Effects
 

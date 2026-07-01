@@ -16,9 +16,9 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 
 Run the narrowest useful checks first, then broader checks before committing:
 
-- API behavior: `pnpm --filter api test`
-- Web and type safety: `pnpm lint`, `pnpm build`
-- Database changes: `pnpm db:generate` after Prisma schema edits
+- Convex behavior and generated types: `pnpm --filter cvx codegen`, then `pnpm --filter cvx typecheck`
+- Web and type safety: `pnpm lint`, then `pnpm build`
+- Schema changes: run `pnpm db:generate` after Convex schema/function signature edits
 
 Document any skipped check in the final handoff.
 

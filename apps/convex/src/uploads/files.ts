@@ -1,8 +1,16 @@
 import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MAX_CLUB_IMAGE_BYTES = 5 * 1024 * 1024;
+
+async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const metadata = await ctx.db.system.get("_storage", storageId);
+  if (!metadata) throw new ConvexError("Upload not found");
+  return metadata;
+}
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -28,8 +36,10 @@ export const finalizeChatAttachment = mutation({
   }),
   handler: async (ctx, args) => {
     await getCurrentAppUser(ctx);
+    const metadata = await getUploadedMetadata(ctx, args.storageId);
+    const mimeType = metadata.contentType ?? "application/octet-stream";
 
-    if (args.size > MAX_CHAT_ATTACHMENT_BYTES) {
+    if (metadata.size > MAX_CHAT_ATTACHMENT_BYTES) {
       throw new ConvexError("File too large");
     }
 
@@ -38,9 +48,9 @@ export const finalizeChatAttachment = mutation({
 
     return {
       url,
-      fileName: args.fileName,
-      mimeType: args.mimeType,
-      size: args.size,
+      fileName: args.fileName.trim(),
+      mimeType,
+      size: metadata.size,
     };
   },
 });
@@ -69,10 +79,13 @@ export const finalizeClubImage = mutation({
       user.roles.includes("STUDENT_ADMIN");
     if (!canUpload) throw new ConvexError("Unauthorized");
 
-    if (args.size > MAX_CLUB_IMAGE_BYTES) {
+    const metadata = await getUploadedMetadata(ctx, args.storageId);
+    const mimeType = metadata.contentType;
+
+    if (metadata.size > MAX_CLUB_IMAGE_BYTES) {
       throw new ConvexError("Image too large");
     }
-    if (!args.mimeType.startsWith("image/")) {
+    if (!mimeType?.startsWith("image/")) {
       throw new ConvexError("Only image uploads are allowed");
     }
 
@@ -82,9 +95,9 @@ export const finalizeClubImage = mutation({
     return {
       url,
       filename: args.storageId,
-      originalName: args.originalName,
-      mimeType: args.mimeType,
-      size: args.size,
+      originalName: args.originalName.trim(),
+      mimeType,
+      size: metadata.size,
     };
   },
 });

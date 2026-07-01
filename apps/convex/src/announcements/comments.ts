@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { commentWithAuthorValidator } from "./_lib";
+import { assertAnnouncementAccess, commentWithAuthorValidator } from "./_lib";
 import { serializeComment } from "./serialize";
 
 export const list = query({
@@ -11,6 +11,10 @@ export const list = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
+    const ann = await ctx.db.get(args.announcementId);
+    if (!ann) return [];
+    await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
+
     const comments = await ctx.db
       .query("comments")
       .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
@@ -29,6 +33,7 @@ export const add = mutation({
     const user = await getCurrentAppUser(ctx);
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
+    await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
     if (!ann.allowComments) throw new ConvexError("Comments disabled");
 
     const id = await ctx.db.insert("comments", {

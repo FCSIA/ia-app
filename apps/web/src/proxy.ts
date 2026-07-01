@@ -17,6 +17,7 @@ export async function proxy(request: NextRequest) {
     '/admin',
     '/announcements',
     '/clubs',
+    '/courses',
     '/schedule',
     '/events',
     '/calendar',

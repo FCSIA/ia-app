@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 
@@ -8,6 +8,10 @@ function isStudent(user: { roles: string[] }) {
     user.roles.includes("STUDENT_LEADER") ||
     user.roles.includes("STUDENT_ADMIN")
   );
+}
+
+function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
+  return user.isActive && (user.isStudent || isStudent(user));
 }
 
 export const getMyRegistrations = query({
@@ -148,11 +152,15 @@ export const register = mutation({
       .query("flexRegistrations")
       .withIndex("by_studentId", (q) => q.eq("studentId", user._id))
       .collect();
+    const myAssignments = await ctx.db
+      .query("flexAssignments")
+      .withIndex("by_studentId", (q) => q.eq("studentId", user._id))
+      .collect();
 
-    for (const reg of myRegs) {
+    for (const row of [...myRegs, ...myAssignments]) {
       const otherLinks = await ctx.db
         .query("flexWorkshopSessions")
-        .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", reg.workshopId))
+        .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", row.workshopId))
         .collect();
       if (otherLinks.some((l) => sessionIds.includes(l.sessionId))) {
         throw new Error("Already registered for a workshop in one of these sessions");
@@ -234,11 +242,25 @@ export const assign = mutation({
       !user.roles.includes("ADMIN") &&
       !user.roles.includes("SUPER_ADMIN")
     ) {
-      throw new Error("Unauthorized to assign students");
+      throw new ConvexError("Unauthorized to assign students");
     }
 
     const workshop = await ctx.db.get(args.workshopId);
-    if (!workshop) throw new Error("Workshop not found");
+    if (!workshop) throw new ConvexError("Workshop not found");
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || !isActiveStudent(student)) {
+      throw new ConvexError("Student not found");
+    }
+
+    const workshopLinks = await ctx.db
+      .query("flexWorkshopSessions")
+      .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", args.workshopId))
+      .collect();
+    const sessionIds = workshopLinks.map((link) => link.sessionId);
+    if (sessionIds.length === 0) {
+      throw new ConvexError("Workshop is not attached to any sessions");
+    }
 
     const existingRegistration = await ctx.db
       .query("flexRegistrations")
@@ -248,7 +270,7 @@ export const assign = mutation({
       .first();
 
     if (existingRegistration) {
-      throw new Error("Student is already registered for this workshop");
+      throw new ConvexError("Student is already registered for this workshop");
     }
 
     const existingAssignment = await ctx.db
@@ -259,7 +281,47 @@ export const assign = mutation({
       .first();
 
     if (existingAssignment) {
-      throw new Error("Student is already assigned to this workshop");
+      throw new ConvexError("Student is already assigned to this workshop");
+    }
+
+    const [studentRegistrations, studentAssignments] = await Promise.all([
+      ctx.db
+        .query("flexRegistrations")
+        .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+        .collect(),
+      ctx.db
+        .query("flexAssignments")
+        .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+        .collect(),
+    ]);
+
+    for (const row of [...studentRegistrations, ...studentAssignments]) {
+      if (row.workshopId === args.workshopId) continue;
+      const otherLinks = await ctx.db
+        .query("flexWorkshopSessions")
+        .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", row.workshopId))
+        .collect();
+      if (otherLinks.some((link) => sessionIds.includes(link.sessionId))) {
+        throw new ConvexError("Student already has a workshop in one of these sessions");
+      }
+    }
+
+    if (workshop.capacity !== undefined) {
+      const currentRegistrations = await ctx.db
+        .query("flexRegistrations")
+        .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
+        .collect();
+      const currentAssignments = await ctx.db
+        .query("flexAssignments")
+        .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
+        .collect();
+
+      if (
+        currentRegistrations.length + currentAssignments.length >=
+        workshop.capacity
+      ) {
+        throw new ConvexError("Workshop is at full capacity");
+      }
     }
 
     const assignmentId = await ctx.db.insert("flexAssignments", {

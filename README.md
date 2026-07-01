@@ -29,7 +29,6 @@ ia-app/
 ├── apps/web/       # Next.js 16 web app
 ├── apps/convex/    # Convex backend (schema, functions, auth, storage)
 ├── docs/           # Current product, architecture, backend, frontend docs
-├── packages/       # Transitional shared packages
 ├── AGENTS.md       # Agent workflow rules
 ├── SETUP.md        # Full developer setup guide
 └── PORTING.md      # Historical backend-to-Convex migration context
@@ -119,7 +118,7 @@ The deployment shape should stay boring and maintainable. Production is modeled 
 
 **Full guide:** [docs/reference/deployment-options.md](./docs/reference/deployment-options.md) — Vercel vs Azure hosting options, Convex CI/CD, and scale planning (~1,600 students, few hundred online at peak).
 
-The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
+The detailed architecture and feature list starts in [docs/architecture/overview.md](./docs/architecture/overview.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
 
 **Typical choices:** Vercel + Convex (simplest ops), or **Azure Container Apps + Convex** if the frontend must stay in the school Azure subscription.
 

@@ -8,7 +8,7 @@ tags: [reference, deployment, operations, convex, azure]
 
 This page describes how to run the IA School App in production **after Convex is the application backend** — data, mutations, real-time subscriptions, and server functions live in **Convex Cloud**; the web app is **Next.js**.
 
-For feature-level runtime detail, see [[diagram-inventory]] (update that page when the Convex cutover is reflected in code). For local development env vars, see [[environment]].
+For feature-level runtime detail, see [[overview]] and [[data-flow]]. For local development env vars, see [[environment]].
 
 ---
 
@@ -282,7 +282,7 @@ Update [[environment]] when the repo’s `.env.example` matches this layout.
 ## Related documentation
 
 - Root `README.md` — short deployment pointer
-- [[diagram-inventory]] — update runtime diagram to Next.js + Convex when code matches
+- [[overview]] and [[data-flow]] — current Next.js + Convex runtime shape
 - [[overview]] — monorepo layout
 - [[notifications]] — delivery model (subscriptions vs polling after Convex)
 - [[environment]] — env var reference
@@ -297,4 +297,4 @@ Update this page when:
 - Convex auth provider or deploy commands in the repo change
 - The school selects or changes Azure vs Vercel hosting
 - Peak usage assumptions change materially (e.g. district-wide mandatory use during class)
-- `diagram-inventory` and `environment` are aligned with the Convex production stack
+- `overview`, `data-flow`, and `environment` are aligned with the Convex production stack

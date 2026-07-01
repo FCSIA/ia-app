@@ -5,6 +5,7 @@ import { logAuditEvent } from "../audit/_lib";
 import { announcementAudience, deliverMany } from "../notifications/delivery";
 import {
   announcementListItemValidator,
+  assertCanApproveAnnouncement,
   canViewAnnouncement,
   commentWithAuthorValidator,
   getAccessibleClubIds,
@@ -44,8 +45,8 @@ export const list = query({
       const isMember = accessibleClubIds.includes(args.clubId);
       const isSponsor = await ctx.db
         .query("clubSponsors")
-        .filter((q) =>
-          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", args.clubId!).eq("userId", user._id),
         )
         .first();
       if (!isMember && !isSponsor && !elevated) {
@@ -165,8 +166,8 @@ export const create = mutation({
     if (args.clubId) {
       const isSponsor = await ctx.db
         .query("clubSponsors")
-        .filter((q) =>
-          q.and(q.eq(q.field("clubId"), args.clubId), q.eq(q.field("userId"), user._id)),
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", args.clubId!).eq("userId", user._id),
         )
         .first();
       if (!isSponsor && !isAdmin) {
@@ -237,12 +238,10 @@ export const approve = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isElevatedReader(user.roles)) {
-      throw new ConvexError("Unauthorized");
-    }
 
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
+    await assertCanApproveAnnouncement(ctx, ann, user);
 
     await ctx.db.patch(args.announcementId, {
       status: "ACTIVE",
@@ -283,12 +282,10 @@ export const reject = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isElevatedReader(user.roles)) {
-      throw new ConvexError("Unauthorized");
-    }
 
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
+    await assertCanApproveAnnouncement(ctx, ann, user);
 
     await ctx.db.patch(args.announcementId, {
       status: "REJECTED",

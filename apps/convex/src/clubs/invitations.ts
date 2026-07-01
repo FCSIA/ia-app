@@ -44,8 +44,9 @@ export const searchInviteCandidates = query({
       if (!candidate.isActive) continue;
       const existingMember = await ctx.db
         .query("clubMembers")
-        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-        .filter((q) => q.eq(q.field("userId"), candidate._id))
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", args.clubId).eq("userId", candidate._id),
+        )
         .first();
       if (existingMember) continue;
 
@@ -70,7 +71,7 @@ async function inviteRecipientByUniqueId(
 ) {
   const recipient = await ctx.db
     .query("users")
-    .filter((q) => q.eq(q.field("uniqueId"), recipientUniqueId))
+    .withIndex("by_uniqueId", (q) => q.eq("uniqueId", recipientUniqueId))
     .first();
 
   if (!recipient || !recipient.isActive) {
@@ -79,8 +80,9 @@ async function inviteRecipientByUniqueId(
 
   const existingMember = await ctx.db
     .query("clubMembers")
-    .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-    .filter((q) => q.eq(q.field("userId"), recipient._id))
+    .withIndex("by_clubId_and_userId", (q) =>
+      q.eq("clubId", clubId).eq("userId", recipient._id),
+    )
     .first();
 
   if (existingMember) {
@@ -89,8 +91,9 @@ async function inviteRecipientByUniqueId(
 
   const existingInvite = await ctx.db
     .query("clubInvites")
-    .filter((q) => q.eq(q.field("clubId"), clubId))
-    .filter((q) => q.eq(q.field("recipientId"), recipient._id))
+    .withIndex("by_clubId_and_recipientId", (q) =>
+      q.eq("clubId", clubId).eq("recipientId", recipient._id),
+    )
     .first();
 
   if (!existingInvite) {
@@ -126,8 +129,9 @@ export const joinOpenClub = mutation({
 
     const existingMember = await ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", args.clubId).eq("userId", user._id),
+      )
       .first();
 
     if (!existingMember) {
@@ -161,10 +165,9 @@ export const requestToJoin = mutation({
 
     const existingRequest = await ctx.db
       .query("clubJoinRequests")
-      .withIndex("by_clubId_and_status", (q) =>
-        q.eq("clubId", args.clubId).eq("status", "PENDING")
+      .withIndex("by_clubId_and_status_and_requesterId", (q) =>
+        q.eq("clubId", args.clubId).eq("status", "PENDING").eq("requesterId", user._id),
       )
-      .filter((q) => q.eq(q.field("requesterId"), user._id))
       .first();
 
     if (!existingRequest) {
@@ -371,8 +374,9 @@ export const redeemJoinCode = mutation({
 
     const existingMember = await ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", args.clubId).eq("userId", user._id),
+      )
       .first();
 
     if (!existingMember) {
