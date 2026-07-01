@@ -14,12 +14,6 @@ const userRefValidator = v.object({
   uniqueId: v.string(),
 });
 
-const reportStatusValidator = v.union(
-  v.literal("PENDING"),
-  v.literal("RESOLVED"),
-  v.literal("DISMISSED"),
-);
-
 const reportValidator = docs.moderationReports.extend({
   submitter: v.union(userRefValidator, v.null()),
   reportedUser: v.union(userRefValidator, v.null()),
@@ -63,7 +57,7 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
 
 export const list = query({
   args: {
-    status: v.optional(reportStatusValidator),
+    status: v.optional(docs.moderationReports.fields.status),
     clubId: v.optional(v.id("clubs")),
     isEscalated: v.optional(v.boolean()),
   },
@@ -157,7 +151,7 @@ export const submit = mutation({
 export const update = mutation({
   args: {
     reportId: v.id("moderationReports"),
-    status: reportStatusValidator,
+    status: docs.moderationReports.fields.status,
     reviewNote: v.string(),
   },
   returns: v.object({ success: v.boolean() }),

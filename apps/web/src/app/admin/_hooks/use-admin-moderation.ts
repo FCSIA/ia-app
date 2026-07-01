@@ -7,8 +7,6 @@ import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
 import type { AdminTabId } from './use-admin-tab';
 
-type ModerationReportStatus = Doc<'moderationReports'>['status'];
-
 export function useAdminModeration(activeTab: AdminTabId) {
   const { toast } = useToast();
 
@@ -81,7 +79,7 @@ export function useAdminModeration(activeTab: AdminTabId) {
       reviewNote,
     }: {
       id: string;
-      status: ModerationReportStatus;
+      status: Doc<'moderationReports'>['status'];
       reviewNote: string;
     }) => {
       void updateReport({
