@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { useMutation, useQuery } from 'convex/react';
@@ -29,26 +29,192 @@ import { uploadUserImage } from '@/lib/upload-user-image';
 import { compressImageForUpload } from '@/lib/compress-image';
 import { useIsClient } from '@/lib/use-is-client';
 
+const NOTIFICATION_CATEGORIES: Array<{ key: NotificationCategory; label: string }> = [
+  { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
+  { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
+  { key: 'EVENT', label: 'Events' },
+  { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
+  { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
+];
+
+const THEME_OPTIONS = [
+  { id: 'light', label: 'Light', icon: Sun },
+  { id: 'dark', label: 'Dark', icon: Moon },
+  { id: 'system', label: 'System', icon: Monitor },
+  { id: 'high-contrast', label: 'Contrast', icon: Contrast },
+  { id: 'bubblegum', label: 'Bubblegum', icon: Heart },
+  { id: 'custom', label: 'Custom', icon: ImageIcon },
+] as const;
+
+type PasswordForm = {
+  currentPassword: string;
+  newPassword: string;
+  confirm: string;
+};
+
 export default function ProfilePage() {
   const user = useCurrentUser();
+
+  return (
+    <AppShell>
+      <div className="max-w-xl mx-auto space-y-5">
+        <ProfileHeroCard user={user} />
+        <AccountInfoCard user={user} />
+        <PrivacyCard user={user} />
+        <ChangePasswordCard />
+        <NotificationPreferencesCard />
+        <AppearanceCard />
+        <ModerationAlertsCard />
+      </div>
+    </AppShell>
+  );
+}
+
+function ProfileHeroCard({ user }: { user: AppUser | null }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-5 p-6">
+        {user ? <ProfileAvatarEditor user={user} /> : null}
+        <div>
+          <h1 className="text-xl font-bold text-foreground">
+            {user?.firstName} {user?.lastName}
+          </h1>
+          <p className="text-muted-foreground text-sm font-mono mt-0.5">{user?.uniqueId}</p>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {user?.roles?.map((r: string) => (
+              <Badge key={r} variant="solid" className="text-[10px]">
+                {r.replace(/_/g, ' ')}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountInfoCard({ user }: { user: AppUser | null }) {
+  const rows = [
+    { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
+    ...(user?.roles?.includes('STUDENT')
+      ? [
+          { label: 'Grade', value: user?.gradeLevel || '-' },
+          {
+            label: 'Major Pathway',
+            value: user?.major ? user.major.replace(/_/g, ' ') : '-',
+          },
+          {
+            label: 'Minor Pathway',
+            value: user?.minor ? user.minor.replace(/_/g, ' ') : '-',
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <div className="flex items-center gap-2">
+          <User size={16} className="text-accent-500" />
+          <CardTitle className="text-base font-semibold">Account Info</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {rows.map(({ label, value, mono }) => (
+          <div
+            key={label}
+            className="flex justify-between items-center py-3 border-b border-foreground/[0.06] last:border-0"
+          >
+            <span className="text-sm text-muted-foreground">{label}</span>
+            <span
+              className={`text-sm ${mono ? 'font-mono text-accent-500 dark:text-accent-400 font-medium' : 'text-foreground'}`}
+            >
+              {value}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PrivacyCard({ user }: { user: AppUser | null }) {
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
-  const mounted = useIsClient();
-  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
-  const [changing, setChanging] = useState(false);
-  const [savingDirectoryOptOut, setSavingDirectoryOptOut] = useState(false);
-  const changePassword = useMutation(api.users.auth.changePassword);
+  const [saving, setSaving] = useState(false);
   const updateDirectoryOptOut = useMutation(api.users.me.updateDirectoryOptOut);
-  const upsertPreference = useMutation(api.notifications.preferences.upsert);
 
-  const prefs = useQuery(api.notifications.preferences.list) ?? [];
-  const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
-    .filter((row) => row.category === 'CONTENT_MODERATED')
-    .slice(0, 5);
-
-  async function handleChangePassword(d: { currentPassword: string; newPassword: string }) {
+  async function handleDirectoryOptOutToggle(nextValue: boolean) {
+    setSaving(true);
     try {
-      await changePassword(d);
+      await updateDirectoryOptOut({ directoryOptOut: nextValue });
+      toast({ title: nextValue ? 'Directory opt-out enabled' : 'Directory opt-out disabled' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to update privacy setting',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={16} className="text-accent-500" />
+          <CardTitle className="text-base font-semibold">Privacy</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Hide me from club directories</p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Club managers can still see your membership for operations.
+            </p>
+          </div>
+          <Switch
+            label=""
+            checked={user?.directoryOptOut ?? false}
+            disabled={!user || saving}
+            onToggle={() => void handleDirectoryOptOutToggle(!(user?.directoryOptOut ?? false))}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [pwForm, setPwForm] = useState<PasswordForm>({
+    currentPassword: '',
+    newPassword: '',
+    confirm: '',
+  });
+  const [changing, setChanging] = useState(false);
+  const changePassword = useMutation(api.users.auth.changePassword);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (pwForm.newPassword.length < 8) {
+      toast({
+        title: 'Your new password must be at least 8 characters long.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (pwForm.newPassword !== pwForm.confirm) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      await changePassword({
+        currentPassword: pwForm.currentPassword,
+        newPassword: pwForm.newPassword,
+      });
       toast({ title: 'Password changed' });
       setChanging(false);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
@@ -60,307 +226,170 @@ export default function ProfilePage() {
     }
   }
 
-  function handlePreferenceToggle({
-    category,
-    enabled,
-  }: {
-    category: NotificationCategory;
-    enabled: boolean;
-  }) {
-    void upsertPreference({ category, enabled });
-  }
-
-  async function handleDirectoryOptOutToggle(nextValue: boolean) {
-    setSavingDirectoryOptOut(true);
-    try {
-      await updateDirectoryOptOut({ directoryOptOut: nextValue });
-      toast({ title: nextValue ? 'Directory opt-out enabled' : 'Directory opt-out disabled' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed to update privacy setting',
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingDirectoryOptOut(false);
-    }
-  }
-
-  const prefMap = Object.fromEntries(
-    prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
-  );
-
-  const categories: Array<{ key: NotificationCategory; label: string }> = [
-    { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
-    { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
-    { key: 'EVENT', label: 'Events' },
-    { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
-    { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
-  ];
-
   return (
-    <AppShell>
-      <div className="max-w-xl mx-auto space-y-5">
-
-        {/* Profile hero */}
-        <Card>
-          <CardContent className="flex items-center gap-5 p-6">
-            {user ? <ProfileAvatarEditor user={user} /> : null}
-            <div>
-              <h1 className="text-xl font-bold text-foreground">
-                {user?.firstName} {user?.lastName}
-              </h1>
-              <p className="text-muted-foreground text-sm font-mono mt-0.5">{user?.uniqueId}</p>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {user?.roles?.map((r: string) => (
-                  <Badge key={r} variant="solid" className="text-[10px]">
-                    {r.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Lock size={16} className="text-accent-500" />
+            <CardTitle className="text-base font-semibold">Change Password</CardTitle>
+          </div>
+          {!changing && (
+            <Button variant="tertiary" size="sm" onClick={() => setChanging(true)}>
+              Change
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {changing ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              type="password"
+              placeholder="Current password"
+              value={pwForm.currentPassword}
+              onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="New password (at least 8 characters)"
+              value={pwForm.newPassword}
+              onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Confirm new password"
+              value={pwForm.confirm}
+              onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+              required
+            />
+            <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
+              <Button type="submit">Update Password</Button>
+              <Button type="button" variant="ghost" onClick={() => setChanging(false)}>
+                Cancel
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Account Info */}
-        <Card>
-          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <div className="flex items-center gap-2">
-              <User size={16} className="text-accent-500" />
-              <CardTitle className="text-base font-semibold">Account Info</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {[
-              { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
-              ...(user?.roles?.includes('STUDENT')
-                ? [
-                    { label: 'Grade', value: user?.gradeLevel || '—' },
-                    {
-                      label: 'Major Pathway',
-                      value: user?.major ? user.major.replace(/_/g, ' ') : '—',
-                    },
-                    {
-                      label: 'Minor Pathway',
-                      value: user?.minor ? user.minor.replace(/_/g, ' ') : '—',
-                    },
-                  ]
-                : []),
-            ].map(({ label, value, mono }) => (
-              <div
-                key={label}
-                className="flex justify-between items-center py-3 border-b border-foreground/[0.06] last:border-0"
-              >
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <span
-                  className={`text-sm ${mono ? 'font-mono text-accent-500 dark:text-accent-400 font-medium' : 'text-foreground'}`}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Privacy */}
-        <Card>
-          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-accent-500" />
-              <CardTitle className="text-base font-semibold">Privacy</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Hide me from club directories</p>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  Club managers can still see your membership for operations.
-                </p>
-              </div>
-              <Switch
-                label=""
-                checked={user?.directoryOptOut ?? false}
-                disabled={!user || savingDirectoryOptOut}
-                onToggle={() => void handleDirectoryOptOutToggle(!(user?.directoryOptOut ?? false))}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Change Password */}
-        <Card>
-          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Lock size={16} className="text-accent-500" />
-                <CardTitle className="text-base font-semibold">Change Password</CardTitle>
-              </div>
-              {!changing && (
-                <Button variant="tertiary" size="sm" onClick={() => setChanging(true)}>
-                  Change
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {changing ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (pwForm.newPassword.length < 8) {
-                    toast({
-                      title: 'Your new password must be at least 8 characters long.',
-                      variant: 'destructive',
-                    });
-                    return;
-                  }
-                  if (pwForm.newPassword !== pwForm.confirm) {
-                    toast({ title: 'Passwords do not match', variant: 'destructive' });
-                    return;
-                  }
-                  void handleChangePassword({
-                    currentPassword: pwForm.currentPassword,
-                    newPassword: pwForm.newPassword,
-                  });
-                }}
-                className="space-y-4"
-              >
-                <Input
-                  type="password"
-                  placeholder="Current password"
-                  value={pwForm.currentPassword}
-                  onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
-                  required
-                />
-                <Input
-                  type="password"
-                  placeholder="New password (at least 8 characters)"
-                  value={pwForm.newPassword}
-                  onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
-                  required
-                />
-                <Input
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={pwForm.confirm}
-                  onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-                  required
-                />
-                <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
-                  <Button type="submit">
-                    Update Password
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={() => setChanging(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
-                ••••••••
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Notification Preferences */}
-        <Card>
-          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <div className="flex items-center gap-2">
-              <Bell size={16} className="text-accent-500" />
-              <CardTitle className="text-base font-semibold">Notification Preferences</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            {categories.map(({ key, label }) => {
-              const enabled = prefMap[`${key}:null`] !== false;
-              return (
-                <div key={key} className="flex items-center justify-between gap-4">
-                  <Label htmlFor={`pref-${key}`} className="text-sm font-medium cursor-pointer">
-                    {label}
-                  </Label>
-                  <Switch label=""
-                    id={`pref-${key}`}
-                    checked={enabled}
-                    onToggle={() => handlePreferenceToggle({ category: key, enabled: !enabled })}
-                  />
-                </div>
-              );
-            })}
-            <p className="text-xs text-muted-foreground pt-3 mt-1 border-t border-foreground/[0.06]">
-              Admin-general announcements always notify you regardless of preferences.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Appearance */}
-        {mounted && (
-          <Card>
-            <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-              <div className="flex items-center gap-2">
-                <Palette size={16} className="text-accent-500" />
-                <CardTitle className="text-base font-semibold">Appearance</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
-                {[
-                  { id: 'light', label: 'Light', icon: Sun },
-                  { id: 'dark', label: 'Dark', icon: Moon },
-                  { id: 'system', label: 'System', icon: Monitor },
-                  { id: 'high-contrast', label: 'Contrast', icon: Contrast },
-                  { id: 'bubblegum', label: 'Bubblegum', icon: Heart },
-                  { id: 'custom', label: 'Custom', icon: ImageIcon },
-                ].map(({ id, label, icon: Icon }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setTheme(id)}
-                    className={cn(
-                      'flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-200 outline-none',
-                      theme === id
-                        ? 'border-primary bg-primary/[0.03] text-primary ring-1 ring-primary'
-                        : 'border-foreground/[0.06] hover:border-foreground/[0.12] hover:bg-foreground/[0.02] text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Icon size={20} className={cn(
-                      'transition-transform duration-300',
-                      theme === id && 'scale-110'
-                    )} />
-                    <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {theme === 'custom' && <CustomThemeEditor />}
-            </CardContent>
-          </Card>
+          </form>
+        ) : (
+          <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
+            ********
+          </p>
         )}
-
-        {/* Content moderation alerts */}
-        <Card>
-          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
-            <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-3">
-            {moderationAlerts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
-            ) : (
-              moderationAlerts.map((alert) => (
-                <div key={alert.id} className="rounded-md border p-3">
-                  <p className="text-sm font-medium">{alert.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{alert.body}</p>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
-    </AppShell>
+      </CardContent>
+    </Card>
   );
 }
 
+function NotificationPreferencesCard() {
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
+  const prefs = useQuery(api.notifications.preferences.list) ?? [];
+  const prefMap = Object.fromEntries(
+    prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
+  ) as Record<string, boolean | undefined>;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <div className="flex items-center gap-2">
+          <Bell size={16} className="text-accent-500" />
+          <CardTitle className="text-base font-semibold">Notification Preferences</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4">
+        {NOTIFICATION_CATEGORIES.map(({ key, label }) => {
+          const enabled = prefMap[`${key}:null`] !== false;
+          return (
+            <div key={key} className="flex items-center justify-between gap-4">
+              <Label htmlFor={`pref-${key}`} className="text-sm font-medium cursor-pointer">
+                {label}
+              </Label>
+              <Switch
+                label=""
+                id={`pref-${key}`}
+                checked={enabled}
+                onToggle={() => void upsertPreference({ category: key, enabled: !enabled })}
+              />
+            </div>
+          );
+        })}
+        <p className="text-xs text-muted-foreground pt-3 mt-1 border-t border-foreground/[0.06]">
+          Admin-general announcements always notify you regardless of preferences.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AppearanceCard() {
+  const { theme, setTheme } = useTheme();
+  const mounted = useIsClient();
+
+  if (!mounted) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <div className="flex items-center gap-2">
+          <Palette size={16} className="text-accent-500" />
+          <CardTitle className="text-base font-semibold">Appearance</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-4">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
+          {THEME_OPTIONS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTheme(id)}
+              className={cn(
+                'flex flex-col items-center gap-2.5 p-4 rounded-2xl border transition-all duration-200 outline-none',
+                theme === id
+                  ? 'border-primary bg-primary/[0.03] text-primary ring-1 ring-primary'
+                  : 'border-foreground/[0.06] hover:border-foreground/[0.12] hover:bg-foreground/[0.02] text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Icon
+                size={20}
+                className={cn('transition-transform duration-300', theme === id && 'scale-110')}
+              />
+              <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {theme === 'custom' && <CustomThemeEditor />}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ModerationAlertsCard() {
+  const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
+    .filter((row) => row.category === 'CONTENT_MODERATED')
+    .slice(0, 5);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+        <CardTitle className="text-base font-semibold">Recent Content Moderation Alerts</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-4 space-y-3">
+        {moderationAlerts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent flagged content notices.</p>
+        ) : (
+          moderationAlerts.map((alert) => (
+            <div key={alert.id} className="rounded-md border p-3">
+              <p className="text-sm font-medium">{alert.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">{alert.body}</p>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 function ProfileAvatarEditor({ user }: { user: AppUser }) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -671,13 +700,13 @@ function CustomColorsPanel() {
       } else {
         localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(next));
       }
-      // Writes a `.custom { ... }` rule to a managed <style> tag — scoped, so
+      // Writes a `.custom { ... }` rule to a managed <style> tag, scoped so
       // these picks never apply to other themes.
       applyCustomColors(next);
     } catch {
       toast({
-        title: 'Couldn’t save colors',
-        description: 'Your browser blocked localStorage. Changes won’t persist.',
+        title: "Couldn't save colors",
+        description: "Your browser blocked localStorage. Changes won't persist.",
         variant: 'destructive',
       });
     }
@@ -703,7 +732,7 @@ function CustomColorsPanel() {
       <div>
         <p className="text-sm font-medium text-foreground">Color palette</p>
         <p className="text-xs text-muted-foreground">
-          Pick any color for each slot — text contrast adjusts automatically. Saved on this device.
+          Pick any color for each slot - text contrast adjusts automatically. Saved on this device.
         </p>
       </div>
 
