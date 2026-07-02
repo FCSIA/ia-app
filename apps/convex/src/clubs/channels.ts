@@ -113,6 +113,7 @@ export const create = mutation({
 });
 
 const attachmentInputValidator = v.object({
+  storageId: v.optional(v.id("_storage")),
   fileName: v.string(),
   fileUrl: v.string(),
   mimeType: v.optional(v.string()),
@@ -179,6 +180,8 @@ export const postMessage = mutation({
     for (const attachment of args.attachments ?? []) {
       await ctx.db.insert("clubChannelMessageAttachments", {
         messageId,
+        storageId: attachment.storageId,
+        uploadedById: user._id,
         fileName: attachment.fileName,
         fileUrl: attachment.fileUrl,
         mimeType: attachment.mimeType,
@@ -230,30 +233,6 @@ export const postMessage = mutation({
       });
     }
 
-    for (const token of tokens.filter((token) => token !== "all")) {
-      const mentioned = await ctx.db
-        .query("users")
-        .withIndex("by_uniqueId", (q) => q.eq("uniqueId", token))
-        .unique();
-      if (mentioned && mentioned._id !== user._id && allAudience.includes(mentioned._id)) {
-        await ctx.db.insert("clubChannelMessageMentions", {
-          messageId,
-          userId: mentioned._id,
-          kind: "USER",
-          token,
-          createdAt: Date.now(),
-        });
-        await deliverNotification(ctx, {
-          userId: mentioned._id,
-          category: "CLUB_CHANNEL_MENTION",
-          title: `Mention in #${channel.name}`,
-          body: preview,
-          href,
-          subject,
-        });
-      }
-    }
-
     return messageId;
   },
 });
@@ -277,6 +256,8 @@ type SerializedClubMessage = {
     _id: Id<"clubChannelMessageAttachments">;
     _creationTime: number;
     messageId: Id<"clubChannelMessages">;
+    storageId?: Id<"_storage">;
+    uploadedById?: Id<"users">;
     fileName: string;
     fileUrl: string;
     mimeType?: string;
@@ -401,6 +382,102 @@ async function serializeMessage(
   };
 }
 
+async function deleteStoredFile(ctx: MutationCtx, storageId: Id<"_storage"> | undefined) {
+  if (!storageId) return;
+  try {
+    await ctx.storage.delete(storageId);
+  } catch {
+    // The storage object may have already been removed by a retention job or admin action.
+  }
+}
+
+async function deleteMessageArtifacts(
+  ctx: MutationCtx,
+  message: Doc<"clubChannelMessages">,
+) {
+  const attachments = await ctx.db
+    .query("clubChannelMessageAttachments")
+    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
+    .collect();
+  for (const attachment of attachments) {
+    await deleteStoredFile(ctx, attachment.storageId);
+    await ctx.db.delete(attachment._id);
+  }
+
+  const reactions = await ctx.db
+    .query("clubChannelMessageReactions")
+    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
+    .collect();
+  for (const reaction of reactions) {
+    await ctx.db.delete(reaction._id);
+  }
+
+  const pollVotes = await ctx.db
+    .query("clubChannelMessagePollVotes")
+    .withIndex("by_messageId_and_userId", (q) => q.eq("messageId", message._id))
+    .collect();
+  for (const vote of pollVotes) {
+    await ctx.db.delete(vote._id);
+  }
+
+  const mentions = await ctx.db
+    .query("clubChannelMessageMentions")
+    .withIndex("by_messageId_and_userId", (q) => q.eq("messageId", message._id))
+    .collect();
+  for (const mention of mentions) {
+    await ctx.db.delete(mention._id);
+  }
+}
+
+async function deleteMessageTree(
+  ctx: MutationCtx,
+  message: Doc<"clubChannelMessages">,
+) {
+  const replies = await ctx.db
+    .query("clubChannelMessages")
+    .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+      q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
+    )
+    .collect();
+
+  for (const reply of replies) {
+    await deleteMessageTree(ctx, reply);
+  }
+
+  await deleteMessageArtifacts(ctx, message);
+  await ctx.db.delete(message._id);
+}
+
+async function deleteChannelData(ctx: MutationCtx, channelId: Id<"clubChannels">) {
+  const roots = await ctx.db
+    .query("clubChannelMessages")
+    .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+      q.eq("channelId", channelId).eq("parentMessageId", undefined),
+    )
+    .collect();
+  for (const message of roots) {
+    await deleteMessageTree(ctx, message);
+  }
+
+  const remainingMessages = await ctx.db
+    .query("clubChannelMessages")
+    .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+      q.eq("channelId", channelId),
+    )
+    .collect();
+  for (const message of remainingMessages) {
+    await deleteMessageTree(ctx, message);
+  }
+
+  const memberships = await ctx.db
+    .query("clubChannelMemberships")
+    .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channelId))
+    .collect();
+  for (const membership of memberships) {
+    await ctx.db.delete(membership._id);
+  }
+}
+
 export const getMessages = query({
   args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
   handler: async (ctx, args) => {
@@ -464,6 +541,7 @@ export const remove = mutation({
     if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
     if (!context.canManageChannels) throw new ConvexError("Not authorized");
+    await deleteChannelData(ctx, args.channelId);
     await ctx.db.delete(args.channelId);
   },
 });
@@ -494,7 +572,7 @@ export const deleteMessage = mutation({
     if (message.authorId !== user._id && !context.canManageChannels) {
       throw new ConvexError("Not authorized");
     }
-    await ctx.db.delete(args.messageId);
+    await deleteMessageTree(ctx, message);
   },
 });
 
@@ -575,7 +653,7 @@ export const setPinned = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
-    if (!context.canManageChannels && message.authorId !== user._id) {
+    if (!context.canManageChannels) {
       throw new ConvexError("Not authorized");
     }
     await ctx.db.patch(args.messageId, {

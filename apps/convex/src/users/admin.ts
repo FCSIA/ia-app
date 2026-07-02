@@ -1,7 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { logAuditEvent } from "../audit/_lib";
+import { logAuditEvent, logDisclosureEvent } from "../audit/_lib";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
@@ -271,9 +271,7 @@ export const importStudents = mutation({
         }
 
         const email = row.email?.trim() || buildStudentEmail(uniqueId);
-        const temporaryPassword = args.generatePasswords
-          ? generateTemporaryPassword(10)
-          : uniqueId;
+        const temporaryPassword = generateTemporaryPassword();
 
         await createLinkedUser(ctx, {
           uniqueId,
@@ -288,15 +286,13 @@ export const importStudents = mutation({
         });
 
         results.created += 1;
-        if (args.generatePasswords) {
-          results.generatedCredentials.push({
-            firstName,
-            lastName,
-            uniqueId,
-            email,
-            temporaryPassword,
-          });
-        }
+        results.generatedCredentials.push({
+          firstName,
+          lastName,
+          uniqueId,
+          email,
+          temporaryPassword,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         results.errors.push(`Row ${index + 2}: ${message}`);
@@ -311,7 +307,7 @@ export const importStudents = mutation({
       meta: {
         created: results.created,
         skipped: results.skipped,
-        generatedPasswords: args.generatePasswords ?? false,
+        generatedPasswords: true,
       },
     });
 
@@ -319,12 +315,12 @@ export const importStudents = mutation({
   },
 });
 
-export const exportStudents = query({
+export const exportStudents = mutation({
   args: {},
   returns: v.array(studentExportRowValidator),
   handler: async (ctx) => {
-    const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, ["SUPER_ADMIN"])) return [];
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
 
     const students = await ctx.db
       .query("users")
@@ -333,7 +329,7 @@ export const exportStudents = query({
       )
       .take(5000);
 
-    return students.map((student) => ({
+    const rows = students.map((student) => ({
       firstName: student.firstName,
       lastName: student.lastName,
       uniqueId: student.uniqueId,
@@ -342,6 +338,26 @@ export const exportStudents = query({
       major: student.major ?? null,
       minor: student.minor ?? null,
     }));
+
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_CSV_EXPORT",
+      entityType: "User",
+      meta: { rowCount: rows.length, roleGroup: "students" },
+    });
+
+    await logDisclosureEvent(ctx, {
+      actorId: actor._id,
+      action: "STUDENT_EXPORT",
+      recordCategory: "student_directory_export",
+      recipientType: "internal_school_official",
+      recipient: "IA admin CSV export",
+      legalBasis: "FERPA school official / legitimate educational interest",
+      legitimateInterest: "Student administration export requested from admin UI",
+      meta: { rowCount: rows.length },
+    });
+
+    return rows;
   },
 });
 

@@ -20,6 +20,10 @@ const configuredTrustedOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter((origin): origin is string => Boolean(origin));
 
+const allowVercelPreviewAuth =
+  process.env.ALLOW_VERCEL_PREVIEW_AUTH === "true" ||
+  process.env.NODE_ENV !== "production";
+
 const configuredSiteHostname = (() => {
   try {
     return new URL(siteUrl).hostname;
@@ -33,7 +37,7 @@ const authBaseURL: BetterAuthOptions["baseURL"] = {
     configuredSiteHostname,
     "localhost",
     "127.0.0.1",
-    "*-sreyassabbanis-projects.vercel.app",
+    ...(allowVercelPreviewAuth ? ["*-sreyassabbanis-projects.vercel.app"] : []),
   ],
   fallback: siteUrl,
   protocol: "auto",
@@ -43,6 +47,7 @@ function isTrustedVercelPreviewOrigin(origin: string) {
   try {
     const { hostname, protocol } = new URL(origin);
     return (
+      allowVercelPreviewAuth &&
       protocol === "https:" &&
       hostname.endsWith("-sreyassabbanis-projects.vercel.app")
     );

@@ -7,11 +7,9 @@ import { canReadChannel } from "./access";
 export function toClubUserRef(user: Doc<"users">) {
   return {
     _id: user._id,
-    uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
-    email: user.email ?? null,
-    roles: user.roles,
+    directoryOptOut: user.directoryOptOut ?? false,
     avatarUrl: user.avatarUrl ?? null,
   };
 }

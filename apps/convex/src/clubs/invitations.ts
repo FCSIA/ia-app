@@ -15,7 +15,6 @@ export const searchInviteCandidates = query({
   returns: v.array(
     v.object({
       _id: v.id("users"),
-      uniqueId: v.string(),
       firstName: v.string(),
       lastName: v.string(),
     }),
@@ -52,7 +51,6 @@ export const searchInviteCandidates = query({
 
       results.push({
         _id: candidate._id,
-        uniqueId: candidate.uniqueId,
         firstName: candidate.firstName,
         lastName: candidate.lastName,
       });
@@ -73,6 +71,54 @@ async function inviteRecipientByUniqueId(
     .query("users")
     .withIndex("by_uniqueId", (q) => q.eq("uniqueId", recipientUniqueId))
     .first();
+
+  if (!recipient || !recipient.isActive) {
+    throw new Error("User not found");
+  }
+
+  const existingMember = await ctx.db
+    .query("clubMembers")
+    .withIndex("by_clubId_and_userId", (q) =>
+      q.eq("clubId", clubId).eq("userId", recipient._id),
+    )
+    .first();
+
+  if (existingMember) {
+    throw new Error("User is already a member");
+  }
+
+  const existingInvite = await ctx.db
+    .query("clubInvites")
+    .withIndex("by_clubId_and_recipientId", (q) =>
+      q.eq("clubId", clubId).eq("recipientId", recipient._id),
+    )
+    .first();
+
+  if (!existingInvite) {
+    await ctx.db.insert("clubInvites", {
+      clubId,
+      senderId,
+      recipientId: recipient._id,
+      status: "PENDING",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  } else if (existingInvite.status !== "PENDING") {
+    await ctx.db.patch(existingInvite._id, {
+      status: "PENDING",
+      senderId,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
+async function inviteRecipientById(
+  ctx: MutationCtx,
+  clubId: Id<"clubs">,
+  senderId: Id<"users">,
+  recipientId: Id<"users">,
+) {
+  const recipient = await ctx.db.get(recipientId);
 
   if (!recipient || !recipient.isActive) {
     throw new Error("User not found");
@@ -242,7 +288,7 @@ export const respondToJoinRequest = mutation({
 });
 
 export const sendInvite = mutation({
-  args: { clubId: v.id("clubs"), recipientUniqueId: v.string() },
+  args: { clubId: v.id("clubs"), recipientId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
@@ -251,7 +297,7 @@ export const sendInvite = mutation({
       throw new Error("Not authorized to invite");
     }
 
-    await inviteRecipientByUniqueId(ctx, args.clubId, user._id, args.recipientUniqueId);
+    await inviteRecipientById(ctx, args.clubId, user._id, args.recipientId);
   },
 });
 

@@ -67,7 +67,6 @@ export const getRoster = query({
         firstName: student.firstName,
         lastName: student.lastName,
         gradeLevel: student.gradeLevel,
-        uniqueId: student.uniqueId,
       };
     };
 

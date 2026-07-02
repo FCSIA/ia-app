@@ -95,6 +95,7 @@ export const appUserPublicValidator = v.object({
   minor: v.union(pathwayValidator, v.null()),
   email: v.union(v.string(), v.null()),
   isActive: v.boolean(),
+  directoryOptOut: v.boolean(),
   mustResetPassword: v.boolean(),
   dashboardLayout: v.array(v.string()),
   avatarUrl: v.union(v.string(), v.null()),

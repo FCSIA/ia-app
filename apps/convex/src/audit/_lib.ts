@@ -87,3 +87,31 @@ export async function logAuditEvent(
     createdAt: Date.now(),
   });
 }
+
+export async function logDisclosureEvent(
+  ctx: MutationCtx,
+  input: {
+    actorId?: Id<"users">;
+    studentId?: Id<"users">;
+    action: string;
+    recordCategory: string;
+    recipientType: string;
+    recipient: string;
+    legalBasis: string;
+    legitimateInterest: string;
+    meta?: unknown;
+  },
+) {
+  await ctx.db.insert("disclosureEvents", {
+    actorId: input.actorId,
+    studentId: input.studentId,
+    action: input.action,
+    recordCategory: input.recordCategory,
+    recipientType: input.recipientType,
+    recipient: input.recipient,
+    legalBasis: input.legalBasis,
+    legitimateInterest: input.legitimateInterest,
+    meta: input.meta,
+    createdAt: Date.now(),
+  });
+}

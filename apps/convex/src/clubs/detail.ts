@@ -78,6 +78,13 @@ export const get = query({
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const leaders = hydratedMembers.filter((m) => !!m.role?.trim());
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
+    const canSeeDirectoryUser = (userRef: ReturnType<typeof toClubUserRef>) =>
+      context.canManageMembership ||
+      userRef._id === user?._id ||
+      !userRef.directoryOptOut;
+    const visibleMembers = hydratedMembers.filter((m) => canSeeDirectoryUser(m.user));
+    const visibleSponsors = hydratedSponsors.filter((s) => canSeeDirectoryUser(s.user));
+    const visibleLeaders = leaders.filter((m) => canSeeDirectoryUser(m.user));
 
     const serializedTags = await Promise.all(
       tags.map(async (tag) => {
@@ -93,7 +100,9 @@ export const get = query({
         );
         return {
           ...tag,
-          members: membersWithUsers.filter((m): m is NonNullable<typeof m> => !!m),
+          members: membersWithUsers.filter(
+            (m): m is NonNullable<typeof m> => !!m && canSeeDirectoryUser(m.user),
+          ),
         };
       }),
     );
@@ -111,13 +120,13 @@ export const get = query({
     );
 
     const directory = [
-      ...hydratedSponsors.map((s) => ({
+      ...visibleSponsors.map((s) => ({
         ...s.user,
         kind: "SPONSOR" as const,
         clubRole: "SPONSOR" as const,
         joinedAt: new Date(0).toISOString(),
       })),
-      ...hydratedMembers
+      ...visibleMembers
         .filter((m) => !sponsorUserIds.has(m.userId))
         .map((m) => ({
           ...m.user,
@@ -140,9 +149,9 @@ export const get = query({
 
     return {
       ...summary,
-      members: context.canAccessWorkspace ? hydratedMembers : [],
-      leaders,
-      sponsors: hydratedSponsors,
+      members: context.canAccessWorkspace ? visibleMembers : [],
+      leaders: visibleLeaders,
+      sponsors: visibleSponsors,
       channels,
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],

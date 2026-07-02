@@ -29,6 +29,7 @@ export const finalizeChatAttachment = mutation({
     size: v.number(),
   },
   returns: v.object({
+    storageId: v.id("_storage"),
     url: v.string(),
     fileName: v.string(),
     mimeType: v.string(),
@@ -47,6 +48,7 @@ export const finalizeChatAttachment = mutation({
     if (!url) throw new ConvexError("Upload failed");
 
     return {
+      storageId: args.storageId,
       url,
       fileName: args.fileName.trim(),
       mimeType,

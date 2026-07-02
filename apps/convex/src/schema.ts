@@ -50,6 +50,7 @@ export const schema = defineSchema({
     isStudentAdmin: v.boolean(),
     isOtherRole: v.boolean(),
     isActive: v.boolean(),
+    directoryOptOut: v.optional(v.boolean()),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
     avatarUrl: v.optional(v.string()),
@@ -111,6 +112,22 @@ export const schema = defineSchema({
       "entityId",
       "createdAt",
     ]),
+
+  disclosureEvents: defineTable({
+    actorId: v.optional(v.id("users")),
+    studentId: v.optional(v.id("users")),
+    action: v.string(),
+    recordCategory: v.string(),
+    recipientType: v.string(),
+    recipient: v.string(),
+    legalBasis: v.string(),
+    legitimateInterest: v.string(),
+    meta: v.optional(v.any()),
+    createdAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
+    .index("by_studentId_and_createdAt", ["studentId", "createdAt"]),
 
   notificationDeliveries: defineTable({
     userId: v.id("users"),
@@ -502,6 +519,8 @@ export const schema = defineSchema({
 
   clubChannelMessageAttachments: defineTable({
     messageId: v.id("clubChannelMessages"),
+    storageId: v.optional(v.id("_storage")),
+    uploadedById: v.optional(v.id("users")),
     fileName: v.string(),
     fileUrl: v.string(),
     mimeType: v.optional(v.string()),
@@ -696,7 +715,8 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_clubId_and_createdAt", ["clubId", "createdAt"]),
 
   wrappedSnapshots: defineTable({
     userId: v.id("users"),

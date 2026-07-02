@@ -5,6 +5,7 @@ import { appUserPublicValidator } from "../validators";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { logAuditEvent } from "../audit/_lib";
 import {
   MAX_USER_AVATAR_BYTES,
   MAX_USER_BACKGROUND_BYTES,
@@ -44,6 +45,34 @@ export const updateDashboardLayout = mutation({
     await ctx.db.patch(user._id, {
       dashboardLayout: args.layout,
       updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(user._id);
+    if (!updated) {
+      throw new ConvexError("User not found.");
+    }
+    return toPublicUser(updated);
+  },
+});
+
+export const updateDirectoryOptOut = mutation({
+  args: {
+    directoryOptOut: v.boolean(),
+  },
+  returns: appUserPublicValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(user._id, {
+      directoryOptOut: args.directoryOptOut,
+      updatedAt: Date.now(),
+    });
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "USER_DIRECTORY_OPT_OUT_UPDATED",
+      entityType: "User",
+      entityId: user._id,
+      meta: { directoryOptOut: args.directoryOptOut },
     });
 
     const updated = await ctx.db.get(user._id);

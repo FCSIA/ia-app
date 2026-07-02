@@ -18,6 +18,7 @@ export const toPublicUser = (user: Doc<"users">) => ({
   minor: user.minor ?? null,
   email: user.email ?? null,
   isActive: user.isActive,
+  directoryOptOut: user.directoryOptOut ?? false,
   mustResetPassword: user.mustResetPassword,
   dashboardLayout: user.dashboardLayout,
   avatarUrl: user.avatarUrl ?? null,

@@ -68,6 +68,7 @@ export type CreateLinkedUserArgs = {
   email?: string;
   password?: string;
   roles?: AppRole[];
+  directoryOptOut?: boolean;
   mustResetPassword?: boolean;
 };
 
@@ -200,6 +201,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
     roles,
     ...classifyRoles(roles),
     isActive: true,
+    directoryOptOut: args.directoryOptOut ?? false,
     mustResetPassword: args.mustResetPassword ?? true,
     dashboardLayout: [],
     searchText: searchText({
