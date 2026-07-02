@@ -666,7 +666,7 @@ export default function ClubChannelPage({
       <div key={message._id}>
         <MessageRow
           message={message}
-          currentUserId={user?.id}
+          currentUserId={user?._id}
           onOpenThread={(threadId) => setSelectedThreadId(threadId as Id<'clubChannelMessages'>)}
           onToggleReaction={(messageId, emoji) =>
             void toggleReaction({

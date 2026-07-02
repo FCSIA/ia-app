@@ -16,7 +16,7 @@ type UserPermissionsPopoverProps = {
   user: AdminUserRecord;
   isSuperAdmin: boolean;
   isPending: boolean;
-  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
+  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
 };
 
 export function UserPermissionsPopover({
@@ -61,7 +61,7 @@ export function UserPermissionsPopover({
                 onClick={() => {
                   if (!canEdit) return;
                   const next = active ? roles.filter((r) => r !== role) : [...roles, role];
-                  onAssignRoles({ id: user.id, roles: next });
+                  onAssignRoles({ _id: user._id, roles: next });
                 }}
                 className={cn(
                   'inline-flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors',

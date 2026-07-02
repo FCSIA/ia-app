@@ -425,7 +425,7 @@ export default function ClubPeoplePage() {
                   <PersonRow
                     key={person._id}
                     person={person}
-                    isCurrentUser={person._id === user?.id}
+                    isCurrentUser={person._id === user?._id}
                     canManage={canManage && person.kind === 'MEMBER'}
                     onSetRole={setRoleTarget}
                     onRemove={(memberId) =>

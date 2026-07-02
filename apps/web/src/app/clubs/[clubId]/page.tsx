@@ -411,8 +411,8 @@ export default function ClubOverviewPage() {
     );
   }
 
-  const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?.id);
-  const myMembership = club.members?.find((member) => member.userId === user?.id);
+  const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?._id);
+  const myMembership = club.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canPost = isSponsor || !!myMembership?.role || isAdmin;

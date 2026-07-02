@@ -216,7 +216,7 @@ export function DashboardLayout() {
       return;
     }
 
-    const persisted = loadLayout(user.id);
+    const persisted = loadLayout(user._id);
     setLayout(persisted ?? getDefaultLayout());
   }, [user]);
 
@@ -228,7 +228,7 @@ export function DashboardLayout() {
   const handleSave = useCallback(() => {
     if (user && layout) {
       void updateDashboardLayout({ layout });
-      saveLayout(user.id, layout);
+      saveLayout(user._id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
     setEditing(false);
@@ -238,7 +238,7 @@ export function DashboardLayout() {
     if (!user) return;
     const fresh = getDefaultLayout();
     setLayout(fresh);
-    saveLayout(user.id, fresh);
+    saveLayout(user._id, fresh);
     toast({ title: 'Dashboard reset to default' });
   }, [toast, user]);
 

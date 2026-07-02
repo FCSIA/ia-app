@@ -173,7 +173,7 @@ function UserTableSection({
   onResetPassword: (user: AdminUserRecord) => void;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
-  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
+  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   canLoadPrevious: boolean;
   pageIndex: number;
@@ -269,7 +269,7 @@ function UserTableSection({
             </TableRow>
           ) : (
             users.map((user, index) => (
-              <TableRow key={user.id} index={index} className="h-10">
+              <TableRow key={user._id} index={index} className="h-10">
                 <TableCell className={`${d.cell} overflow-hidden`}>
                   <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
                 </TableCell>
@@ -295,7 +295,7 @@ function UserTableSection({
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
                     />
-                    {canResetPassword(user) && user.id !== currentUserId ? (
+                    {canResetPassword(user) && user._id !== currentUserId ? (
                       <ResetPasswordAction
                         user={user}
                         disabled={isResetPasswordPending}
@@ -305,10 +305,10 @@ function UserTableSection({
                       <span aria-hidden className="size-8" />
                     )}
                     {user.isActive ? (
-                      canDeactivate(user) && user.id !== currentUserId ? (
+                      canDeactivate(user) && user._id !== currentUserId ? (
                         <IconActionButton
                           label={`Deactivate ${user.firstName} ${user.lastName}`}
-                          onClick={() => onDeactivate(user.id)}
+                          onClick={() => onDeactivate(user._id)}
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
                           <UserX className="size-4" />
@@ -319,7 +319,7 @@ function UserTableSection({
                     ) : (
                       <IconActionButton
                         label={`Activate ${user.firstName} ${user.lastName}`}
-                        onClick={() => onActivate(user.id)}
+                        onClick={() => onActivate(user._id)}
                         className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
                       >
                         <UserCheck className="size-4" />
@@ -389,7 +389,7 @@ export function AdminUsersTab({
   onResetPassword: (user: AdminUserRecord) => void;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
-  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
+  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
