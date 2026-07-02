@@ -11,11 +11,11 @@ The app deploys as a web frontend plus a Convex backend deployment.
 ## Local Development
 
 ```bash
-pnpm convex:dev
+pnpm cvx:dev
 pnpm dev
 ```
 
-Run `pnpm convex:dev` once on a fresh checkout so Convex can select or create a
+Run `pnpm cvx:dev` once on a fresh checkout so Convex can select or create a
 dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
 
 ## Backend Deployment

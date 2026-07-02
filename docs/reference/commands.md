@@ -11,7 +11,7 @@ tags: [commands, development]
 | Command                 | What it does                                              |
 | ----------------------- | --------------------------------------------------------- |
 | `pnpm dev`              | Start the web app and Convex dev server through Turborepo |
-| `pnpm convex:dev`       | Start only the Convex dev server                          |
+| `pnpm cvx:dev`       | Start only the Convex dev server                          |
 | `pnpm --filter web dev` | Start only the Next.js web app                            |
 | `pnpm lint`             | Lint all workspaces                                       |
 | `pnpm build`            | Build all workspaces                                      |

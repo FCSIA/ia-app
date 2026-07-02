@@ -180,14 +180,14 @@ Convex has two practical local-development modes for this repo.
 This is the normal developer workflow when the developer has Convex access.
 
 ```bash
-pnpm convex:dev
+pnpm cvx:dev
 pnpm sync:convex-env
 pnpm dev
 ```
 
 What happens:
 
-1. `pnpm convex:dev` runs `convex dev` in `apps/convex`.
+1. `pnpm cvx:dev` runs `convex dev` in `apps/convex`.
 2. The Convex CLI selects or creates the developer's cloud dev deployment.
 3. Convex writes deployment settings to `apps/convex/.env.local`.
 4. `pnpm sync:convex-env` copies `CONVEX_URL` and `CONVEX_SITE_URL` into
@@ -233,7 +233,7 @@ To switch back to the normal cloud dev deployment:
 
 ```bash
 pnpm --filter cvx exec convex deployment select dev
-pnpm convex:dev
+pnpm cvx:dev
 pnpm sync:convex-env
 ```
 
