@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCsv } from '../_lib/admin-utils';
@@ -88,12 +88,11 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
 
   const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
   const [studentCsvInputKey, setStudentCsvInputKey] = useState(0);
-  const [generatePasswords, setGeneratePasswords] = useState(true);
   const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const importStudents = useMutation(api.users.admin.importStudents);
-  const exportRows = useQuery(api.users.admin.exportStudents, activeTab === 'schedule' ? {} : 'skip') ?? [];
+  const exportStudents = useMutation(api.users.admin.exportStudents);
 
   const importStudentsMutation = {
     isPending: isImporting,
@@ -102,7 +101,7 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
       setIsImporting(true);
       try {
         const rows = parseStudentCsv(await studentCsvFile.text());
-        const data = await importStudents({ rows, generatePasswords });
+        const data = await importStudents({ rows, generatePasswords: true });
         setLastStudentImport(data);
         setStudentCsvFile(null);
         setStudentCsvInputKey((current) => current + 1);
@@ -123,23 +122,32 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
 
   const exportStudentsMutation = {
     isPending: isExporting,
-    mutate: () => {
+    mutate: async () => {
       setIsExporting(true);
-      downloadCsv(
-        'students.csv',
-        exportRows.map((student) => [
-          student.firstName,
-          student.lastName,
-          student.uniqueId,
-          student.email,
-          student.gradeLevel ?? '',
-          student.major ?? '',
-          student.minor ?? '',
-        ]),
-        ['first_name', 'last_name', 'student_id', 'email', 'grade_level', 'major_pathway', 'minor_pathway'],
-      );
-      toast({ title: 'Student CSV exported' });
-      setIsExporting(false);
+      try {
+        const exportRows = await exportStudents({});
+        downloadCsv(
+          'students.csv',
+          exportRows.map((student) => [
+            student.firstName,
+            student.lastName,
+            student.uniqueId,
+            student.email,
+            student.gradeLevel ?? '',
+            student.major ?? '',
+            student.minor ?? '',
+          ]),
+          ['first_name', 'last_name', 'student_id', 'email', 'grade_level', 'major_pathway', 'minor_pathway'],
+        );
+        toast({ title: 'Student CSV exported' });
+      } catch (err) {
+        toast({
+          title: err instanceof Error ? err.message : 'Export failed',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsExporting(false);
+      }
     },
   };
 
@@ -165,8 +173,6 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
     enabled: activeTab === 'schedule',
     studentCsvInputKey,
     setStudentCsvFile,
-    generatePasswords,
-    setGeneratePasswords,
     canImport: !!studentCsvFile,
     isImporting: importStudentsMutation.isPending,
     onImport: () => importStudentsMutation.mutate(),

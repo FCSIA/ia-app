@@ -433,9 +433,6 @@ function SchedulePageContent() {
                               <p className="text-sm font-medium text-foreground truncate">
                                 {person.firstName} {person.lastName}
                               </p>
-                              <span className="font-mono text-[10px] text-muted-foreground">
-                                {person.uniqueId}
-                              </span>
                             </div>
                             {status === 'FRIENDS' ? (
                               <span className="text-[10px] text-muted-foreground">Added</span>

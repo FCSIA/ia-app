@@ -55,7 +55,6 @@ export function PeoplePicker({
         person.firstName,
         person.lastName,
         fullName(person),
-        person.uniqueId,
         person.kind,
         person.clubRole,
       ];
@@ -96,7 +95,7 @@ export function PeoplePicker({
             <CommandInput
               value={query}
               onValueChange={setQuery}
-              placeholder="Search by name or unique ID"
+              placeholder="Search by name"
             />
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
@@ -107,7 +106,7 @@ export function PeoplePicker({
                   return (
                     <CommandItem
                       key={person._id}
-                      value={`${fullName(person)} ${person.uniqueId ?? ''}`}
+                      value={fullName(person)}
                       onSelect={() => togglePerson(person._id)}
                       className="rounded-xl px-3 py-2"
                     >
@@ -128,7 +127,6 @@ export function PeoplePicker({
                           )}
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          {person.uniqueId ? <span className="font-mono">{person.uniqueId}</span> : null}
                           {person.clubRole ? <span>{formatClubRole(person.clubRole)}</span> : null}
                         </div>
                       </div>
@@ -151,7 +149,6 @@ export function PeoplePicker({
               className="h-auto rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1.5 text-[11px] text-orange-900 dark:text-orange-100"
             >
               <span>{fullName(person)}</span>
-              {person.uniqueId ? <span className="ml-1 font-mono opacity-75">{person.uniqueId}</span> : null}
               <button
                 type="button"
                 onClick={() => togglePerson(person._id)}

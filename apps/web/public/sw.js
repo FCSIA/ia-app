@@ -1,6 +1,6 @@
 // Basic service worker for PWA install support
-const CACHE_NAME = 'ia-school-v1';
-const STATIC_ASSETS = ['/', '/dashboard', '/manifest.json'];
+const CACHE_NAME = 'ia-school-v2';
+const STATIC_ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,13 +19,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first strategy; fall back to cache for navigation
+  // Protected app pages can contain education records, so navigations stay network-only.
   if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match('/').then((r) => r || fetch(event.request))
-      )
-    );
     return;
   }
   // API calls: always network

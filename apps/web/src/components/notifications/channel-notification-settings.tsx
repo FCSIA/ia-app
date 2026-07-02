@@ -71,7 +71,7 @@ const mentionOptions: Array<{
   {
     category: DIRECT_CATEGORY,
     label: 'Direct mentions',
-    detail: 'When someone mentions your unique ID.',
+    detail: 'When someone mentions you directly.',
     icon: Bell,
   },
   {

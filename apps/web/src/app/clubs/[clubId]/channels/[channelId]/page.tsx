@@ -53,6 +53,7 @@ import type {
 type ClubChannelMessageRichBody = NonNullable<ClubChannelMessage['bodyRich']>;
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 type ChatAttachmentUploadResponse = {
+  storageId: Id<'_storage'>;
   fileName: string;
   url: string;
   mimeType: string;
@@ -70,7 +71,7 @@ import {
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { MentionBody } from '@/components/clubs/mention-body';
-import { formatClubRole, fullName } from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -118,7 +119,6 @@ function getSearchableText(message: ClubChannelMessage) {
   return [
     message.body,
     fullName(message.author),
-    message.author.uniqueId,
     ...message.attachments.map((a) => a.fileName),
   ]
     .filter(Boolean)
@@ -555,6 +555,7 @@ export default function ClubChannelPage({
         pollQuestion,
         pollOptions,
         attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
+          storageId: a.storageId,
           fileName: a.fileName,
           fileUrl: a.url,
           mimeType: a.mimeType,
@@ -596,18 +597,8 @@ export default function ClubChannelPage({
       detail: `${tag.members.length} member${tag.members.length === 1 ? '' : 's'}`,
       kind: 'tag' as const,
     })) ?? [];
-    const people = audience
-      .filter((person) => !!person.uniqueId)
-      .map((person) => ({
-        token: person.uniqueId!,
-        label: fullName(person),
-        detail: person.clubRole
-          ? `${person.kind} · ${formatClubRole(person.clubRole)}`
-          : person.kind,
-        kind: 'person' as const,
-      }));
-    return [...builtIns, ...tags, ...people];
-  }, [audience, club?.tags, club?.viewer?.canManageChannels]);
+    return [...builtIns, ...tags];
+  }, [club?.tags, club?.viewer?.canManageChannels]);
 
   const flattenedMessages = useMemo(
     () =>

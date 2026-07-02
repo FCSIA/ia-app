@@ -6,7 +6,7 @@ import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
-import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw, Camera, Loader2 } from 'lucide-react';
+import { User, Lock, Bell, Sun, Moon, Monitor, Palette, Contrast, Heart, Image as ImageIcon, Trash2, Droplet, RotateCcw, Camera, Loader2, ShieldCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { HexColorPicker } from 'react-colorful';
 import {
@@ -36,7 +36,9 @@ export default function ProfilePage() {
   useEffect(() => setMounted(true), []);
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
+  const [savingDirectoryOptOut, setSavingDirectoryOptOut] = useState(false);
   const changePassword = useMutation(api.users.auth.changePassword);
+  const updateDirectoryOptOut = useMutation(api.users.me.updateDirectoryOptOut);
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
 
   const prefs = useQuery(api.notifications.preferences.list) ?? [];
@@ -66,6 +68,21 @@ export default function ProfilePage() {
     enabled: boolean;
   }) {
     void upsertPreference({ category, enabled });
+  }
+
+  async function handleDirectoryOptOutToggle(nextValue: boolean) {
+    setSavingDirectoryOptOut(true);
+    try {
+      await updateDirectoryOptOut({ directoryOptOut: nextValue });
+      toast({ title: nextValue ? 'Directory opt-out enabled' : 'Directory opt-out disabled' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to update privacy setting',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDirectoryOptOut(false);
+    }
   }
 
   const prefMap = Object.fromEntries(
@@ -141,6 +158,32 @@ export default function ProfilePage() {
                 </span>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Privacy */}
+        <Card>
+          <CardHeader className="pb-3 border-b border-foreground/[0.07]">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-accent-500" />
+              <CardTitle className="text-base font-semibold">Privacy</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Hide me from club directories</p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Club managers can still see your membership for operations.
+                </p>
+              </div>
+              <Switch
+                label=""
+                checked={user?.directoryOptOut ?? false}
+                disabled={!user || savingDirectoryOptOut}
+                onToggle={() => void handleDirectoryOptOutToggle(!(user?.directoryOptOut ?? false))}
+              />
+            </div>
           </CardContent>
         </Card>
 

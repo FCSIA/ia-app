@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import type { AppRole } from '~/apps/convex/lib/roles';
@@ -10,22 +10,13 @@ export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 
 export function getUser(): AppUser | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem('ia_user');
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AppUser;
-  } catch {
-    return null;
-  }
+  localStorage.removeItem('ia_user');
+  return null;
 }
 
-export function cacheUser(user: AppUser | null) {
+export function cacheUser() {
   if (typeof window === 'undefined') return;
-  if (user) {
-    localStorage.setItem('ia_user', JSON.stringify(user));
-  } else {
-    localStorage.removeItem('ia_user');
-  }
+  localStorage.removeItem('ia_user');
 }
 
 export function clearAuth() {
@@ -54,21 +45,12 @@ export function isSuperAdmin(user: AppUser | null): boolean {
 export function useCurrentUser(): AppUser | null {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
-  const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
-    setCachedUser(getUser());
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      cacheUser(user);
-      setCachedUser(user);
-    } else if (!isLoading && !isAuthenticated) {
-      cacheUser(null);
-      setCachedUser(null);
+    if (user || (!isLoading && !isAuthenticated)) {
+      cacheUser();
     }
   }, [isAuthenticated, isLoading, user]);
 
-  return user ?? cachedUser;
+  return user ?? null;
 }

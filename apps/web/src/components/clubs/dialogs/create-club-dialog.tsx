@@ -55,6 +55,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         email: user.email,
         roles: user.roles,
         avatarUrl: user.avatarUrl,
+        directoryOptOut: false,
       }))
       .filter(isSponsorEligible)
       .sort((a, b) => fullName(a).localeCompare(fullName(b)));

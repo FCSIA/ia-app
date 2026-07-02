@@ -10,8 +10,6 @@ import { AdminMetric, AdminPanel } from './admin-ui';
 export function AdminScheduleTab({
   studentCsvInputKey,
   onStudentCsvFileChange,
-  generatePasswords,
-  onGeneratePasswordsChange,
   canImport,
   isImporting,
   onImport,
@@ -22,8 +20,6 @@ export function AdminScheduleTab({
 }: {
   studentCsvInputKey: number;
   onStudentCsvFileChange: (file: File | null) => void;
-  generatePasswords: boolean;
-  onGeneratePasswordsChange: (value: boolean) => void;
   canImport: boolean;
   isImporting: boolean;
   onImport: () => void;
@@ -58,13 +54,6 @@ export function AdminScheduleTab({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant={generatePasswords ? 'primary' : 'tertiary'}
-              onClick={() => onGeneratePasswordsChange(!generatePasswords)}
-            >
-              {generatePasswords ? 'Temp passwords on' : 'Temp passwords off'}
-            </Button>
-            <Button
-              type="button"
               onClick={onImport}
               disabled={!canImport}
               loading={isImporting}
@@ -83,9 +72,7 @@ export function AdminScheduleTab({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            {generatePasswords
-              ? 'New students will receive a random temporary password that you can export after import.'
-              : 'If disabled, new students default to their student ID as the initial password.'}
+            New students receive random temporary passwords that can be exported once after import.
           </p>
         </div>
       </AdminPanel>
