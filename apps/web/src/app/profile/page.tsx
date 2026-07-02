@@ -27,13 +27,13 @@ import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { uploadUserImage } from '@/lib/upload-user-image';
 import { compressImageForUpload } from '@/lib/compress-image';
+import { useIsClient } from '@/lib/use-is-client';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [changing, setChanging] = useState(false);
   const [savingDirectoryOptOut, setSavingDirectoryOptOut] = useState(false);

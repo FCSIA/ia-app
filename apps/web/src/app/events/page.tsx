@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -18,6 +18,7 @@ import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { filterBySearchQuery } from '@/lib/search';
+import { useIsClient } from '@/lib/use-is-client';
 
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
@@ -70,17 +71,13 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 
 export default function EventsPage() {
   const user = useCurrentUser();
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useIsClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   const events = useQuery(api.events.events.list, hydrated && !!user ? {} : 'skip');
   const isLoading = events === undefined;
@@ -111,13 +108,8 @@ export default function EventsPage() {
   );
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
-
-  useEffect(() => {
-    if (!showNew || canCreateGeneral || form.clubId || availableClubs.length === 0) {
-      return;
-    }
-    setForm((current) => ({ ...current, clubId: availableClubs[0]!._id }));
-  }, [availableClubs, canCreateGeneral, form.clubId, showNew]);
+  const selectedClubId =
+    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? '') : '');
 
   const createEvent = useMutation(api.events.events.create);
   const approveEvent = useMutation(api.events.approvals.approveEvent);
@@ -131,7 +123,7 @@ export default function EventsPage() {
       toast({ title: 'Start date is required', variant: 'destructive' });
       return;
     }
-    if (!canCreateGeneral && !form.clubId) {
+    if (!canCreateGeneral && !selectedClubId) {
       toast({ title: 'Choose a club for this event', variant: 'destructive' });
       return;
     }
@@ -143,7 +135,7 @@ export default function EventsPage() {
         location: form.location || undefined,
         startAt: new Date(form.startAt).getTime(),
         endAt: form.endAt ? new Date(form.endAt).getTime() : undefined,
-        clubId: form.clubId ? (form.clubId as Id<'clubs'>) : undefined,
+        clubId: selectedClubId ? (selectedClubId as Id<'clubs'>) : undefined,
       });
       setShowNew(false);
       toast({ title: 'Event created' });
@@ -297,7 +289,7 @@ export default function EventsPage() {
                       {canCreateGeneral ? (
                         <Button
                           type="button"
-                          variant={form.clubId ? 'tertiary' : 'primary'}
+                          variant={selectedClubId ? 'tertiary' : 'primary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: '' })}
                         >
@@ -308,7 +300,7 @@ export default function EventsPage() {
                         <Button
                           key={club._id}
                           type="button"
-                          variant={form.clubId === club._id ? 'primary' : 'tertiary'}
+                          variant={selectedClubId === club._id ? 'primary' : 'tertiary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: club._id })}
                         >

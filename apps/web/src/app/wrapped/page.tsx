@@ -5,6 +5,7 @@ import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { computeWrappedAvailability } from '@/lib/wrapped';
+import { useIsClient } from '@/lib/use-is-client';
 
 import { buildSlides } from './_lib/utils';
 import { SlideView } from './_components/slide/SlideView';
@@ -16,8 +17,7 @@ import { LoadingState } from './_components/feedback/LoadingState';
 import { ErrorState } from './_components/feedback/ErrorState';
 
 export default function WrappedPage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
 
   const user = useCurrentUser();
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'You';

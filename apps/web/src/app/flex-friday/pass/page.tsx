@@ -19,8 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/lib/use-is-client';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -74,10 +75,7 @@ export default function FlexFridayPassPage() {
 }
 
 function FlexFridayPassContent() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsClient();
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const requestedFridayId = searchParams?.get('fridayId') ?? null;
