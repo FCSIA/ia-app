@@ -111,13 +111,8 @@ export default function EventsPage() {
   );
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
-
-  useEffect(() => {
-    if (!showNew || canCreateGeneral || form.clubId || availableClubs.length === 0) {
-      return;
-    }
-    setForm((current) => ({ ...current, clubId: availableClubs[0]!._id }));
-  }, [availableClubs, canCreateGeneral, form.clubId, showNew]);
+  const selectedClubId =
+    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? '') : '');
 
   const createEvent = useMutation(api.events.events.create);
   const approveEvent = useMutation(api.events.approvals.approveEvent);
@@ -131,7 +126,7 @@ export default function EventsPage() {
       toast({ title: 'Start date is required', variant: 'destructive' });
       return;
     }
-    if (!canCreateGeneral && !form.clubId) {
+    if (!canCreateGeneral && !selectedClubId) {
       toast({ title: 'Choose a club for this event', variant: 'destructive' });
       return;
     }
@@ -143,7 +138,7 @@ export default function EventsPage() {
         location: form.location || undefined,
         startAt: new Date(form.startAt).getTime(),
         endAt: form.endAt ? new Date(form.endAt).getTime() : undefined,
-        clubId: form.clubId ? (form.clubId as Id<'clubs'>) : undefined,
+        clubId: selectedClubId ? (selectedClubId as Id<'clubs'>) : undefined,
       });
       setShowNew(false);
       toast({ title: 'Event created' });
@@ -297,7 +292,7 @@ export default function EventsPage() {
                       {canCreateGeneral ? (
                         <Button
                           type="button"
-                          variant={form.clubId ? 'tertiary' : 'primary'}
+                          variant={selectedClubId ? 'tertiary' : 'primary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: '' })}
                         >
@@ -308,7 +303,7 @@ export default function EventsPage() {
                         <Button
                           key={club._id}
                           type="button"
-                          variant={form.clubId === club._id ? 'primary' : 'tertiary'}
+                          variant={selectedClubId === club._id ? 'primary' : 'tertiary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: club._id })}
                         >
