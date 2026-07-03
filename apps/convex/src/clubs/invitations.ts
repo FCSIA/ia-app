@@ -72,7 +72,7 @@ async function inviteRecipientByUniqueId(
   const recipient = await ctx.db
     .query("users")
     .withIndex("by_uniqueId", (q) => q.eq("uniqueId", recipientUniqueId))
-    .first();
+    .unique();
 
   if (!recipient || !recipient.isActive) {
     throw new Error("User not found");
@@ -165,8 +165,8 @@ export const requestToJoin = mutation({
 
     const existingRequest = await ctx.db
       .query("clubJoinRequests")
-      .withIndex("by_clubId_and_status_and_requesterId", (q) =>
-        q.eq("clubId", args.clubId).eq("status", "PENDING").eq("requesterId", user._id),
+      .withIndex("by_clubId_and_requesterId_and_status", (q) =>
+        q.eq("clubId", args.clubId).eq("requesterId", user._id).eq("status", "PENDING")
       )
       .first();
 

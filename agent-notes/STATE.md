@@ -24,8 +24,9 @@
 
 - Club access now distinguishes ordinary members from `LEADER`/`SPONSOR`
   management roles and uses indexed membership/sponsor lookups.
-- Club management create/deactivate paths require admin roles; workspace detail
-  data is hidden from authenticated users who cannot access the club workspace.
+- Club creation uses the staff/admin allowlist; club deactivation requires admin
+  roles; workspace detail data is hidden from authenticated users who cannot
+  access the club workspace.
 - Channel reads/writes/reactions/polls now validate channel access, parent
   message channel ownership, and poll option membership.
 - General events require an event-manager role; club events require admin,
@@ -64,11 +65,10 @@
 
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter web build` - pass
-- `pnpm lint` - pass with one warning in
-  `apps/web/src/components/dashboard/widget-registry.ts`
+- `pnpm --filter cvx test` - pass (3 files, 14 tests)
+- `pnpm lint` - pass
 - `pnpm build` - pass
-- `pnpm test` - no package test tasks are registered, so Turbo executed none
+- `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex also reported that optional Convex AI guidance files are behind upstream.

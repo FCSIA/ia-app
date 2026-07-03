@@ -9,10 +9,13 @@ import { channelAudience, deliverMany, deliverNotification } from "../notificati
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
-async function channelMemberships(ctx: ChannelDbCtx, channelId: Id<"clubChannels">) {
+async function getChannelMemberships(
+  ctx: ChannelDbCtx,
+  channelId: Id<"clubChannels">,
+) {
   return await ctx.db
     .query("clubChannelMemberships")
-    .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channelId))
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
     .collect();
 }
 
@@ -28,7 +31,7 @@ async function assertMessageAccess(
   if (!channel) throw new ConvexError("Channel not found");
 
   const context = await getClubContext(ctx, channel.clubId, user);
-  const memberships = await channelMemberships(ctx, channel._id);
+  const memberships = await getChannelMemberships(ctx, channel._id);
   if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
     throw new ConvexError("Not authorized");
   }
@@ -54,10 +57,7 @@ export const list = query({
 
     const filtered = [];
     for (const channel of channels) {
-      const memberships = await ctx.db
-        .query("clubChannelMemberships")
-        .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channel._id))
-        .collect();
+      const memberships = await getChannelMemberships(ctx, channel._id);
 
       if (canReadChannel({ ...channel, memberships }, context, user._id)) {
         filtered.push(channel);
@@ -145,7 +145,7 @@ export const postMessage = mutation({
     if (!channel) throw new ConvexError("Channel not found");
 
     const context = await getClubContext(ctx, channel.clubId, user);
-    const memberships = await channelMemberships(ctx, channel._id);
+    const memberships = await getChannelMemberships(ctx, channel._id);
 
     if (!canPostInChannel({ ...channel, memberships }, context, user._id)) {
       throw new ConvexError("Cannot post in this channel");
@@ -413,8 +413,8 @@ export const getMessages = query({
 
     const club = await ctx.db.get(args.clubId);
     if (!club) return [];
-    const context = await getViewerContext(ctx, args.clubId, user);
-    const memberships = await channelMemberships(ctx, channel._id);
+    const context = await getViewerContext(ctx, channel.clubId, user);
+    const memberships = await getChannelMemberships(ctx, channel._id);
 
     if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
       return [];

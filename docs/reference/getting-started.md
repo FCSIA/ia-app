@@ -14,11 +14,11 @@ longer part of the active local setup.
 ```bash
 cp .env.example .env
 pnpm install
-pnpm convex:dev
+pnpm cvx:dev
 pnpm dev
 ```
 
-Run `pnpm convex:dev` once interactively so Convex can select or create a dev
+Run `pnpm cvx:dev` once interactively so Convex can select or create a dev
 deployment and write the deployment settings.
 
 ## Browser Push Keys

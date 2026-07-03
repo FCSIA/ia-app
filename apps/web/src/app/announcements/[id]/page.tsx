@@ -193,7 +193,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const audienceLabel = formatAudience(announcement);
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
-    commentAuthorId === user?.id ||
+    commentAuthorId === user?._id ||
     !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
 
   return (

@@ -34,11 +34,16 @@ export function SessionForm({
   const { toast } = useToast();
   const [form, setForm] = useState<SessionFormType>(initialData);
 
+  // Reset the form when the sheet opens or the edit target changes. We
+  // intentionally do NOT depend on `initialData`: if a caller ever passes a
+  // fresh object identity per render, depending on it here re-runs setForm on
+  // every render → "Maximum update depth exceeded" while the sheet is open.
   useEffect(() => {
     if (isOpen) {
       setForm(initialData);
     }
-  }, [isOpen, initialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editingSessionId]);
 
   const handleSubmit = async () => {
 

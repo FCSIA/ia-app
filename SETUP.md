@@ -24,7 +24,7 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 3. Install dependencies: `pnpm install`
 4. Configure your Convex dev deployment:
    ```bash
-   pnpm convex:dev
+   pnpm cvx:dev
    ```
    Run this once interactively so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
 5. Start the development server: `pnpm dev`. This command starts:
@@ -113,7 +113,7 @@ If you receive the error:
 Run:
 
 ```bash
-pnpm convex:dev
+pnpm cvx:dev
 ```
 
 Convex writes the selected dev deployment to `apps/convex/.env.local`. The seed/reset commands cannot run until that deployment exists.

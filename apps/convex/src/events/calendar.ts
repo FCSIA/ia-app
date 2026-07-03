@@ -3,6 +3,8 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { calendarSourceValidator } from "../validators";
 
+const MAX_CALENDAR_RANGE_MS = 92 * 24 * 60 * 60 * 1000;
+
 export const list = query({
   args: {
     startDate: v.number(),
@@ -11,6 +13,12 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
+    if (args.endDate < args.startDate) {
+      throw new Error("Calendar end date must be after start date");
+    }
+    if (args.endDate - args.startDate > MAX_CALENDAR_RANGE_MS) {
+      throw new Error("Calendar range cannot exceed 92 days");
+    }
 
     const entries = await ctx.db
       .query("calendarEntries")

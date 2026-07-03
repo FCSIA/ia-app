@@ -23,7 +23,7 @@ export const list = query({
       tags.map(async (tag) => {
         const tagMembers = await ctx.db
           .query("clubTagMembers")
-          .withIndex("by_tagId_and_userId", (q) => q.eq("tagId", tag._id))
+          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
           .collect();
         const members = await Promise.all(
           tagMembers.map(async (tm) => {

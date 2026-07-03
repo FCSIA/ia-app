@@ -73,8 +73,8 @@ export async function getViewerContext(
       .first(),
     ctx.db
       .query("clubJoinRequests")
-      .withIndex("by_clubId_and_status_and_requesterId", (q) =>
-        q.eq("clubId", clubId).eq("status", "PENDING").eq("requesterId", user._id)
+      .withIndex("by_clubId_and_requesterId_and_status", (q) =>
+        q.eq("clubId", clubId).eq("requesterId", user._id).eq("status", "PENDING")
       )
       .first(),
   ]);

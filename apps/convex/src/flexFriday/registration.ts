@@ -168,14 +168,18 @@ export const register = mutation({
     }
 
     if (workshop.capacity !== undefined) {
+      if (workshop.capacity < 1) {
+        throw new Error("Workshop is at full capacity");
+      }
+      const capacityCheckLimit = workshop.capacity + 1;
       const currentRegistrations = await ctx.db
         .query("flexRegistrations")
         .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
-        .collect();
+        .take(capacityCheckLimit);
       const currentAssignments = await ctx.db
         .query("flexAssignments")
         .withIndex("by_workshopId_and_studentId", (q) => q.eq("workshopId", args.workshopId))
-        .collect();
+        .take(capacityCheckLimit);
 
       if (
         currentRegistrations.length + currentAssignments.length >=

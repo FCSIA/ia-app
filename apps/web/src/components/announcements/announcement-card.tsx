@@ -121,7 +121,7 @@ export function AnnouncementCard({
       className={cn(
         'relative transition-all duration-200 hover:-translate-y-0.5',
         !announcement.isRead &&
-          'border-primary/50 shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]',
+          'border-foreground/40 shadow-[0_0_0_1px_hsl(var(--foreground)/0.2)]',
         announcement.isPinned && 'bg-primary/[0.025]',
         className,
       )}

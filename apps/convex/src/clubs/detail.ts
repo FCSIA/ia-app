@@ -27,7 +27,7 @@ export const get = query({
         .collect(),
       ctx.db
         .query("clubSponsors")
-        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId))
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
         .collect(),
       context.canAccessWorkspace
         ? ctx.db
@@ -83,7 +83,7 @@ export const get = query({
       tags.map(async (tag) => {
         const tagMembers = await ctx.db
           .query("clubTagMembers")
-          .withIndex("by_tagId_and_userId", (q) => q.eq("tagId", tag._id))
+          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
           .collect();
         const membersWithUsers = await Promise.all(
           tagMembers.map(async (tm) => {

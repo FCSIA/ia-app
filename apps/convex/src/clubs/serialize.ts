@@ -69,7 +69,7 @@ export async function getVisibleChannels(
   for (const channel of channels) {
     const memberships = await ctx.db
       .query("clubChannelMemberships")
-      .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channel._id))
+      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
       .collect();
     const channelDoc = { ...channel, memberships };
     if (!canReadChannel(channelDoc, context, userId)) continue;

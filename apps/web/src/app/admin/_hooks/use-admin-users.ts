@@ -147,7 +147,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
     usersError: null,
     refetchUsers: () => undefined,
     selectedUserRoleMeta,
-    currentUserId: user?.id,
+    currentUserId: user?._id,
     canDeactivate,
     canResetPassword,
     onDeactivate: (userId: string) =>
@@ -162,18 +162,18 @@ export function useAdminUsers(activeTab: AdminTabId) {
       ),
     onResetPassword: (targetUser: AdminUserRecord) =>
       void runUserMutation(
-        () => resetPassword({ userId: targetUser.id as Id<'users'> }),
+        () => resetPassword({ userId: targetUser._id as Id<'users'> }),
         'Temporary password generated',
         (result) => `${targetUser.uniqueId}: ${result.temporaryPassword}`,
       ),
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
     isAssignRolesPending: isUserMutationPending,
-    onAssignRoles: (payload: { id: string; roles: string[] }) =>
+    onAssignRoles: (payload: { _id: string; roles: string[] }) =>
       void runUserMutation(
         () =>
           assignRoles({
-            userId: payload.id as Id<'users'>,
+            userId: payload._id as Id<'users'>,
             roles: payload.roles as AppRole[],
           }),
         'Permissions updated',

@@ -36,11 +36,11 @@ export function FunFactWidget() {
         </Button>
       }
     >
-      <div className="flex gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5">
+      <div className="flex min-h-[4.5rem] items-center gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lightbulb className="size-5" aria-hidden />
         </div>
-        <p className="min-h-[3rem] text-sm leading-relaxed text-muted-foreground">{message}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{message}</p>
       </div>
     </Panel>
   );
