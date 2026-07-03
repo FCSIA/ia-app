@@ -2,11 +2,11 @@
 
 ## Active Focus
 
-- **Branch**: `codex/ferpa-compliance-hardening`
-- **Goal**: FERPA/student-data compliance hardening for the Convex-first IA app.
-- **Coordination note**: `docs/compliance/ferpa-compliance-audit.md` now includes
-  both the original audit and the 2026-07-01 implementation update for this
-  branch.
+- **Branch**: `main`
+- **Goal**: Convex-first IA app; broad backend/data/routing hardening pass completed.
+- **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
+  and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
+  asked.
 
 ## Current Truth
 
@@ -24,8 +24,9 @@
 
 - Club access now distinguishes ordinary members from `LEADER`/`SPONSOR`
   management roles and uses indexed membership/sponsor lookups.
-- Club management create/deactivate paths require admin roles; workspace detail
-  data is hidden from authenticated users who cannot access the club workspace.
+- Club creation uses the staff/admin allowlist; club deactivation requires admin
+  roles; workspace detail data is hidden from authenticated users who cannot
+  access the club workspace.
 - Channel reads/writes/reactions/polls now validate channel access, parent
   message channel ownership, and poll option membership.
 - General events require an event-manager role; club events require admin,
@@ -41,20 +42,6 @@
   size or MIME type.
 - Convex schema now has relationship indexes for the hot club/event/channel/
   notification/Flex paths; codegen has been run.
-- Student-facing club/schedule/Flex surfaces no longer expose student
-  `uniqueId` in ordinary directory, invite, roster, channel search, or command
-  palette flows.
-- Club channel pinning is manager-only; message/channel deletion cascades
-  replies, reactions, poll votes, mentions, attachment rows, and owned storage
-  objects where possible.
-- Moderation report listing is scoped to admin/support globally or club
-  managers for their own club, and report submission validates target access.
-- Student import always generates random temporary passwords; super-admin CSV
-  export logs both audit and disclosure events.
-- Disclosure events, directory opt-out, scoped notification preference
-  validation, generic push payloads, protected-route service-worker cache
-  removal, production security headers, and opt-in preview auth origins are
-  implemented.
 
 ### Frontend and Routing
 
@@ -63,24 +50,14 @@
 - Event creation UI only offers eligible clubs to non-general creators and
   blocks club-scoped submissions without an eligible club.
 - Event author cancellation checks both current user id shapes used by the app.
-- The browser no longer persists the full `AppUser` object in `localStorage`;
-  old `ia_user` values are cleared.
-- The external QR-code image service was removed from club invite UI.
-- A profile privacy control lets users toggle directory opt-out.
 
 ### Remaining Debt
 
+- Channel delete is still a direct row delete and does not cascade related
+  messages/reactions/memberships.
 - Announcement feed still has pagination/read-amplification room for improvement.
 - `bodyRich` and poll option payloads are still `v.any()` shaped data.
-- Flex Friday staff assignment authority still needs a stricter coordinator or
-  workshop-owner policy.
-- Uploads still need a dedicated metadata table and scheduled cleanup for
-  unfinalized/rejected files.
-- The FERPA controls added here need Convex regression tests and FCS
-  policy/legal review before production student data use.
-- Vendor governance, retention/destruction schedules, incident response, parent
-  rights workflows, and directory notice/opt-out import from FCS remain
-  operational requirements outside this code branch.
+- Web still has a localStorage-backed user cache that may need a privacy pass.
 - Legacy `apps/api` and `packages/contracts` references should be deleted or
   formally retained once the team decides their fate.
 
@@ -88,12 +65,10 @@
 
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter web build` - pass
-- `pnpm lint` - pass with one warning in
-  `apps/web/src/components/dashboard/widget-registry.ts`
-- `pnpm build` - attempted through Turbo, but the tool timed out without a
-  captured result; the equivalent package checks were run directly and passed.
-- `pnpm test` - no package test tasks are registered, so Turbo executed none
+- `pnpm --filter cvx test` - pass (3 files, 14 tests)
+- `pnpm lint` - pass
+- `pnpm build` - pass
+- `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex also reported that optional Convex AI guidance files are behind upstream.
@@ -102,11 +77,11 @@ Convex also reported that optional Convex AI guidance files are behind upstream.
 
 1. Deploy the Convex schema/index/function changes to the target deployment
    before production student/staff use.
-2. Add Convex regression tests for the access-control boundaries changed in this
-   branch.
+2. Coordinate with the FERPA session before touching `docs/compliance/` or the
+   FERPA entry in `docs/index.md`.
 3. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-4. Address the remaining hardening and governance debt listed above.
+4. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 

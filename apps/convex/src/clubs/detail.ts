@@ -27,7 +27,7 @@ export const get = query({
         .collect(),
       ctx.db
         .query("clubSponsors")
-        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId))
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
         .collect(),
       context.canAccessWorkspace
         ? ctx.db
@@ -78,19 +78,12 @@ export const get = query({
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const leaders = hydratedMembers.filter((m) => !!m.role?.trim());
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
-    const canSeeDirectoryUser = (userRef: ReturnType<typeof toClubUserRef>) =>
-      context.canManageMembership ||
-      userRef._id === user?._id ||
-      !userRef.directoryOptOut;
-    const visibleMembers = hydratedMembers.filter((m) => canSeeDirectoryUser(m.user));
-    const visibleSponsors = hydratedSponsors.filter((s) => canSeeDirectoryUser(s.user));
-    const visibleLeaders = leaders.filter((m) => canSeeDirectoryUser(m.user));
 
     const serializedTags = await Promise.all(
       tags.map(async (tag) => {
         const tagMembers = await ctx.db
           .query("clubTagMembers")
-          .withIndex("by_tagId_and_userId", (q) => q.eq("tagId", tag._id))
+          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
           .collect();
         const membersWithUsers = await Promise.all(
           tagMembers.map(async (tm) => {
@@ -100,9 +93,7 @@ export const get = query({
         );
         return {
           ...tag,
-          members: membersWithUsers.filter(
-            (m): m is NonNullable<typeof m> => !!m && canSeeDirectoryUser(m.user),
-          ),
+          members: membersWithUsers.filter((m): m is NonNullable<typeof m> => !!m),
         };
       }),
     );
@@ -120,13 +111,13 @@ export const get = query({
     );
 
     const directory = [
-      ...visibleSponsors.map((s) => ({
+      ...hydratedSponsors.map((s) => ({
         ...s.user,
         kind: "SPONSOR" as const,
         clubRole: "SPONSOR" as const,
         joinedAt: new Date(0).toISOString(),
       })),
-      ...visibleMembers
+      ...hydratedMembers
         .filter((m) => !sponsorUserIds.has(m.userId))
         .map((m) => ({
           ...m.user,
@@ -149,9 +140,9 @@ export const get = query({
 
     return {
       ...summary,
-      members: context.canAccessWorkspace ? visibleMembers : [],
-      leaders: visibleLeaders,
-      sponsors: visibleSponsors,
+      members: context.canAccessWorkspace ? hydratedMembers : [],
+      leaders,
+      sponsors: hydratedSponsors,
       channels,
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],

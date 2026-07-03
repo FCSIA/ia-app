@@ -6,17 +6,10 @@ import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryWithCounts } from "./serialize";
 import type { AppRole } from "../../lib/roles";
 
-const CLUB_CREATION_ROLES = [
-  "ADMIN",
-  "SUPER_ADMIN",
-  "SUPPORT_STAFF",
-  "TEACHER",
-] as const satisfies readonly AppRole[];
+const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
 
 export function canCreateClub(roles: readonly AppRole[]) {
-  return roles.some((role) =>
-    (CLUB_CREATION_ROLES as readonly AppRole[]).includes(role),
-  );
+  return roles.some((role) => (CLUB_CREATION_ROLES as readonly AppRole[]).includes(role));
 }
 
 export const getAll = query({
@@ -63,9 +56,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canCreateClub(user.roles)) {
-      throw new ConvexError("Not authorized to create clubs");
-    }
+    requireAnyRole(user, [...CLUB_CREATION_ROLES]);
 
     const name = args.name.trim();
     if (!name) throw new ConvexError("Club name is required");
@@ -121,12 +112,12 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
+    const { clubId, ...updates } = args;
+    const context = await getClubContext(ctx, clubId, user);
     if (!context.canManageMembership) {
       throw new ConvexError("Not authorized to update this club");
     }
 
-    const { clubId, ...updates } = args;
     const cleanUpdates = {
       ...updates,
       ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),

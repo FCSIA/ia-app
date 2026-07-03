@@ -27,6 +27,12 @@ const reportValidator = docs.moderationReports.extend({
   ),
 });
 
+const moderationReportStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("RESOLVED"),
+  v.literal("DISMISSED"),
+);
+
 async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) {
   const submitter = await ctx.db.get(report.submitterId);
   const reportedUser = report.reportedUserId
@@ -132,7 +138,7 @@ async function validateReportTarget(
 
 export const list = query({
   args: {
-    status: v.optional(docs.moderationReports.fields.status),
+    status: v.optional(moderationReportStatusValidator),
     clubId: v.optional(v.id("clubs")),
     isEscalated: v.optional(v.boolean()),
   },

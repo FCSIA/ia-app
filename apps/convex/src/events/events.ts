@@ -86,16 +86,17 @@ export const create = mutation({
     let isSponsor = false;
     let hasClubRole = false;
     if (args.clubId) {
+      const clubId = args.clubId;
       const sponsors = await ctx.db
         .query("clubSponsors")
         .withIndex("by_clubId_and_userId", (q) =>
-          q.eq("clubId", args.clubId!).eq("userId", user._id),
+          q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
       const members = await ctx.db
         .query("clubMembers")
         .withIndex("by_clubId_and_userId", (q) =>
-          q.eq("clubId", args.clubId!).eq("userId", user._id),
+          q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
       isSponsor = !!sponsors;
@@ -164,9 +165,10 @@ export const create = mutation({
     }
 
     if (args.clubId && status === "PENDING_APPROVAL") {
+      const clubId = args.clubId;
       const sponsors = await ctx.db
         .query("clubSponsors")
-        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId!))
+        .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
         .collect();
       for (const sponsor of sponsors) {
         await ctx.db.insert("eventApprovals", {

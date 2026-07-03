@@ -52,7 +52,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         uniqueId: user.uniqueId,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email,
+        email: user.email ?? null,
         roles: user.roles,
         avatarUrl: user.avatarUrl ?? null,
         directoryOptOut: false,

@@ -7,9 +7,11 @@ import { canReadChannel } from "./access";
 export function toClubUserRef(user: Doc<"users">) {
   return {
     _id: user._id,
+    uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
-    directoryOptOut: user.directoryOptOut ?? false,
+    email: user.email ?? null,
+    roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
   };
 }
@@ -67,7 +69,7 @@ export async function getVisibleChannels(
   for (const channel of channels) {
     const memberships = await ctx.db
       .query("clubChannelMemberships")
-      .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channel._id))
+      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
       .collect();
     const channelDoc = { ...channel, memberships };
     if (!canReadChannel(channelDoc, context, userId)) continue;

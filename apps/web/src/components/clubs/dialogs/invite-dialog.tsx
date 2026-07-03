@@ -120,7 +120,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                   onClick={() =>
                     void sendInvite({
                       clubId,
-                      recipientId: selected._id,
+                      recipientUniqueId: selected.uniqueId,
                     }).then(() => {
                       setSelected(null);
                       setQuery('');

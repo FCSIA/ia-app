@@ -233,7 +233,7 @@ function ManagePeopleDialog({
                   <Button
                     size="sm"
                     onClick={() =>
-                      void sendInvite({ clubId, recipientId: selected._id }).then(() => {
+                      void sendInvite({ clubId, recipientUniqueId: selected.uniqueId }).then(() => {
                         setSelected(null);
                         setQuery('');
                         toast({ title: 'Invite sent' });
