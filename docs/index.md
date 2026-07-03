@@ -16,10 +16,15 @@ same change.
   privacy findings, legal baseline, vendor checklist, and remediation plan.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.
+- [Azure portability review](architecture/azure-portability.md) - backend
+  modularity, Convex migration risks, and district Azure deployment planning.
 - [Frontend overview](frontend/frontend-overview.md) - Next.js app structure and
   browser-side conventions.
 - [Convex backend overview](backend/convex-overview.md) - function layout,
   generated API types, public/internal boundaries, and coding rules.
+- [Convex local and production runtime](backend/convex-local-production.md) -
+  how dev deployments, local backends, production Convex, and Azure web hosting
+  fit together.
 - [Schema map](database/schema-map.md) - active Convex tables grouped by domain.
 
 ## Current Stack
@@ -38,10 +43,12 @@ same change.
 - [Overview](architecture/overview.md)
 - [Data flow](architecture/data-flow.md)
 - [Deployment](architecture/deployment.md)
+- [Azure portability review](architecture/azure-portability.md)
 
 ## Backend
 
 - [Convex overview](backend/convex-overview.md)
+- [Convex local and production runtime](backend/convex-local-production.md)
 - [Auth and roles](backend/auth-and-roles.md)
 - [Storage and uploads](backend/storage-and-uploads.md)
 - [Seed and reset](backend/seed-and-reset.md)

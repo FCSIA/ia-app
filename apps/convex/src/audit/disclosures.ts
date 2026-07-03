@@ -2,10 +2,16 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser, requireAnyRoleSafe } from "../../lib/currentUser";
 import { matchesDateRange } from "./_lib";
+import {
+  disclosureActionValidator,
+  disclosureLegalBasisValidator,
+  disclosureRecipientTypeValidator,
+  disclosureRecordCategoryValidator,
+} from "../validators";
 
 const disclosureUserRefValidator = v.union(
   v.object({
-    id: v.id("users"),
+    _id: v.id("users"),
     firstName: v.string(),
     lastName: v.string(),
     uniqueId: v.string(),
@@ -14,12 +20,12 @@ const disclosureUserRefValidator = v.union(
 );
 
 const disclosureEventValidator = v.object({
-  id: v.id("disclosureEvents"),
-  action: v.string(),
-  recordCategory: v.string(),
-  recipientType: v.string(),
+  _id: v.id("disclosureEvents"),
+  action: disclosureActionValidator,
+  recordCategory: disclosureRecordCategoryValidator,
+  recipientType: disclosureRecipientTypeValidator,
   recipient: v.string(),
-  legalBasis: v.string(),
+  legalBasis: disclosureLegalBasisValidator,
   legitimateInterest: v.string(),
   createdAt: v.string(),
   meta: v.union(v.any(), v.null()),
@@ -30,7 +36,7 @@ const disclosureEventValidator = v.object({
 export const list = query({
   args: {
     limit: v.optional(v.number()),
-    action: v.optional(v.string()),
+    action: v.optional(disclosureActionValidator),
     studentId: v.optional(v.id("users")),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
@@ -72,7 +78,7 @@ export const list = query({
         const toUserRef = (user: typeof actor) =>
           user
             ? {
-                id: user._id,
+                _id: user._id,
                 firstName: user.firstName,
                 lastName: user.lastName,
                 uniqueId: user.uniqueId,
@@ -80,7 +86,7 @@ export const list = query({
             : null;
 
         return {
-          id: event._id,
+          _id: event._id,
           action: event.action,
           recordCategory: event.recordCategory,
           recipientType: event.recipientType,

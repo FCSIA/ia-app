@@ -2,18 +2,75 @@ import { ConvexError, v } from "convex/values";
 import { authComponent, createAuth } from "../auth";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { toPublicUser } from "../../lib/currentUser";
 import { type AppRole } from "../../lib/roles";
-import {
-  appUserPublicValidator,
-} from "../validators";
 import { incrementUserCounts } from "../stats";
+import { docs } from "../../lib/docs";
+
+const userProfileFields = {
+  _id: v.id("users"),
+  uniqueId: docs.users.fields.uniqueId,
+  firstName: docs.users.fields.firstName,
+  lastName: docs.users.fields.lastName,
+  roles: docs.users.fields.roles,
+  gradeLevel: docs.users.fields.gradeLevel,
+  major: docs.users.fields.major,
+  minor: docs.users.fields.minor,
+  email: docs.users.fields.email,
+  isActive: docs.users.fields.isActive,
+  avatarUrl: docs.users.fields.avatarUrl,
+};
+
+export const userSelfProfileValidator = v.object({
+  ...userProfileFields,
+  directoryOptOut: v.boolean(),
+  mustResetPassword: docs.users.fields.mustResetPassword,
+  dashboardLayout: docs.users.fields.dashboardLayout,
+  customBackgroundUrl: docs.users.fields.customBackgroundUrl,
+});
+
+export const adminUserProfileValidator = v.object(userProfileFields);
+
+export function toUserSelfProfile(user: Doc<"users">) {
+  return {
+    _id: user._id,
+    uniqueId: user.uniqueId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    roles: user.roles,
+    gradeLevel: user.gradeLevel,
+    major: user.major,
+    minor: user.minor,
+    email: user.email,
+    isActive: user.isActive,
+    directoryOptOut: user.directoryOptOut ?? false,
+    mustResetPassword: user.mustResetPassword,
+    dashboardLayout: user.dashboardLayout,
+    avatarUrl: user.avatarUrl,
+    customBackgroundUrl: user.customBackgroundUrl,
+  };
+}
+
+export function toAdminUserProfile(user: Doc<"users">) {
+  return {
+    _id: user._id,
+    uniqueId: user.uniqueId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    roles: user.roles,
+    gradeLevel: user.gradeLevel,
+    major: user.major,
+    minor: user.minor,
+    email: user.email,
+    isActive: user.isActive,
+    avatarUrl: user.avatarUrl,
+  };
+}
 
 export const temporaryPasswordAlphabet =
   "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 export const createUserResultValidator = v.object({
-  user: appUserPublicValidator,
+  user: adminUserProfileValidator,
   temporaryPassword: v.union(v.string(), v.null()),
 });
 
@@ -26,7 +83,7 @@ export const userRoleGroupValidator = v.union(
 );
 
 export const listUsersResultValidator = v.object({
-  page: v.array(appUserPublicValidator),
+  page: v.array(adminUserProfileValidator),
   isDone: v.boolean(),
   continueCursor: v.string(),
   pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
@@ -221,7 +278,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
   await incrementUserCounts(ctx, user, 1);
 
   return {
-    user: toPublicUser(user),
+    user: toAdminUserProfile(user),
     temporaryPassword: args.password ? null : password,
   };
 }

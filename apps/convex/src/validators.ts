@@ -83,6 +83,30 @@ export const notificationPreferenceLevelValidator = v.union(
 
 export type NotificationPreferenceLevel = Infer<typeof notificationPreferenceLevelValidator>;
 
+export const disclosureActionValidator = v.union(
+  v.literal("STUDENT_EXPORT"),
+);
+
+export type DisclosureAction = Infer<typeof disclosureActionValidator>;
+
+export const disclosureRecordCategoryValidator = v.union(
+  v.literal("student_directory_export"),
+);
+
+export type DisclosureRecordCategory = Infer<typeof disclosureRecordCategoryValidator>;
+
+export const disclosureRecipientTypeValidator = v.union(
+  v.literal("internal_school_official"),
+);
+
+export type DisclosureRecipientType = Infer<typeof disclosureRecipientTypeValidator>;
+
+export const disclosureLegalBasisValidator = v.union(
+  v.literal("FERPA school official / legitimate educational interest"),
+);
+
+export type DisclosureLegalBasis = Infer<typeof disclosureLegalBasisValidator>;
+
 export const appUserPublicValidator = v.object({
   id: v.id("users"),
   uniqueId: v.string(),

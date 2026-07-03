@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { AppShell } from "@/components/layout/AppShell";
-import { mergeAppMainClassName } from "@/components/layout/app-main";
+import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -148,10 +148,10 @@ export function ClubWorkspace({
 
   const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
   const isSponsor = club?.sponsors?.some(
-    (sponsor) => sponsor.userId === user?.id,
+    (sponsor) => sponsor.userId === user?._id,
   );
   const myMembership = club?.members?.find(
-    (member) => member.userId === user?.id,
+    (member) => member.userId === user?._id,
   );
   const canManageChannels = isSponsor || !!myMembership?.role || isAdmin;
 
@@ -203,13 +203,11 @@ export function ClubWorkspace({
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName={mergeAppMainClassName(
-        "flex h-[calc(100vh-4rem)] min-h-0 overflow-hidden p-0",
-      )}
+      mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 flex-col border-r bg-background md:flex">
+        <aside className="hidden w-72 shrink-0 flex-col border-r bg-muted/30 md:flex">
           <div className="border-b p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -374,9 +372,9 @@ export function ClubWorkspace({
           </ScrollArea>
         </aside>
 
-        <div className="flex min-w-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1">
           <div
-            className={cn("min-w-0 flex-1 overflow-y-auto", contentClassName)}
+            className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto", contentClassName)}
           >
             {children}
           </div>

@@ -27,8 +27,7 @@ export const USER_ROLE_GROUP_META: Record<AdminUserRoleGroup, { label: string; e
 };
 
 export function getUserRoles(user: AdminUserRecord) {
-  if (user.roles?.length) return user.roles;
-  return user.role ? [user.role] : [];
+  return user.roles ?? [];
 }
 
 export function formatRoleLabel(role: string) {

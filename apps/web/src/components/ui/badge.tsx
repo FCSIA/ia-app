@@ -28,7 +28,11 @@ const badgeColors = {
 type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  "inline-flex items-center border font-medium whitespace-nowrap",
+  // `leading-none` is important: without an explicit line-height the text
+  // inherits a taller one (e.g. 1.5), which reserves descender space that
+  // all-caps role labels don't use — making the text float high inside the
+  // pill. Tightening the line box lets `items-center` optically center it.
+  "inline-flex items-center border font-medium leading-none whitespace-nowrap",
   {
     variants: {
       variant: {

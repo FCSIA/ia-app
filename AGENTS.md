@@ -27,11 +27,11 @@ Document any skipped check in the final handoff.
 This project uses [Convex](https://convex.dev) as its backend.
 
 When working on Convex code, **always read
-`apps/convex/src/_generated/ai/guidelines.md` first** for important guidelines on
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
 how to correctly use Convex APIs and patterns. The file contains rules that
 override what you may have learned about Convex from training data.
 
 Convex agent skills for common tasks can be installed by running
-`pnpx convex ai-files install`.
+`npx convex ai-files install`.
 
 <!-- convex-ai-end -->

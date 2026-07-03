@@ -48,13 +48,13 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   const sponsorOptions = useMemo((): SelectablePerson[] => {
     return (staffPage?.page ?? [])
       .map((user) => ({
-        _id: user.id,
+        _id: user._id,
         uniqueId: user.uniqueId,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         roles: user.roles,
-        avatarUrl: user.avatarUrl,
+        avatarUrl: user.avatarUrl ?? null,
         directoryOptOut: false,
       }))
       .filter(isSponsorEligible)

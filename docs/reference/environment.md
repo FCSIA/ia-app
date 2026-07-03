@@ -16,12 +16,12 @@ development.
 | ------------------------ | ------------------------------------------------------------ |
 | `.env`                   | Local root defaults                                          |
 | `.env.example`           | Template for local defaults                                  |
-| `apps/convex/.env.local` | Convex-selected deployment URLs written by `pnpm convex:dev` |
+| `apps/convex/.env.local` | Convex-selected deployment URLs written by `pnpm cvx:dev` |
 | `apps/web/.env.local`    | Local web-only public values such as Convex URLs and VAPID public key |
 
 ## Convex Variables
 
-`pnpm convex:dev` writes the selected deployment:
+`pnpm cvx:dev` writes the selected deployment:
 
 ```env
 CONVEX_DEPLOYMENT=dev:...

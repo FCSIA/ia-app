@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type {
+  DisclosureAction,
+  DisclosureLegalBasis,
+  DisclosureRecipientType,
+  DisclosureRecordCategory,
+} from "../validators";
 
 export const actorValidator = v.union(
   v.object({
@@ -93,11 +99,11 @@ export async function logDisclosureEvent(
   input: {
     actorId?: Id<"users">;
     studentId?: Id<"users">;
-    action: string;
-    recordCategory: string;
-    recipientType: string;
+    action: DisclosureAction;
+    recordCategory: DisclosureRecordCategory;
+    recipientType: DisclosureRecipientType;
     recipient: string;
-    legalBasis: string;
+    legalBasis: DisclosureLegalBasis;
     legitimateInterest: string;
     meta?: unknown;
   },

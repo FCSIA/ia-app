@@ -26,8 +26,8 @@ export default function ClubTagsPage() {
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
 
-  const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?.id);
-  const myMembership = club?.members?.find((member) => member.userId === user?.id);
+  const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?._id);
+  const myMembership = club?.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canCreate = isSponsor || !!myMembership?.role || isAdmin;
 
