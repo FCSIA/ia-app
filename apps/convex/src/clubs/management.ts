@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
-import { clubValidator } from "./_lib";
+import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryWithCounts } from "./serialize";
 import type { AppRole } from "../../lib/roles";
@@ -17,7 +17,7 @@ export const getAll = query({
   handler: async (ctx) => {
     const clubs = await ctx.db
       .query("clubs")
-      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))
       .collect();
     return Promise.all(clubs.map((club) => clubSummaryWithCounts(ctx, club)));
   },
@@ -31,6 +31,7 @@ export const getOne = query({
     const club = await ctx.db.get(args.clubId);
     if (!club) return null;
     const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return null;
 
     const members = await ctx.db
       .query("clubMembers")
@@ -56,9 +57,13 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireAnyRole(user, [...CLUB_CREATION_ROLES]);
+
+    const name = args.name.trim();
+    if (!name) throw new ConvexError("Club name is required");
+
     const clubId = await ctx.db.insert("clubs", {
-      name: args.name,
-      description: args.description,
+      name,
+      description: args.description?.trim() || undefined,
       joinPolicy: args.joinPolicy,
       memberLimit: args.memberLimit,
       isActive: true,
@@ -82,11 +87,11 @@ export const create = mutation({
       }
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_CREATED",
       entityType: "Club",
       entityId: clubId,
-      createdAt: Date.now(),
     });
 
     return clubId;
@@ -110,19 +115,39 @@ export const update = mutation({
     const { clubId, ...updates } = args;
     const context = await getClubContext(ctx, clubId, user);
     if (!context.canManageMembership) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized to update this club");
+    }
+
+    const cleanUpdates = {
+      ...updates,
+      ...(updates.name !== undefined ? { name: updates.name.trim() } : {}),
+      ...(updates.description !== undefined
+        ? { description: updates.description?.trim() || undefined }
+        : {}),
+      ...(updates.overview !== undefined
+        ? { overview: updates.overview?.trim() || undefined }
+        : {}),
+      ...(updates.logoUrl !== undefined ? { logoUrl: updates.logoUrl || undefined } : {}),
+      ...(updates.bannerUrl !== undefined ? { bannerUrl: updates.bannerUrl || undefined } : {}),
+      ...(updates.accentColor !== undefined
+        ? { accentColor: updates.accentColor || undefined }
+        : {}),
+    };
+
+    if (cleanUpdates.name !== undefined && !cleanUpdates.name) {
+      throw new ConvexError("Club name is required");
     }
 
     await ctx.db.patch(clubId, {
-      ...updates,
+      ...cleanUpdates,
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_UPDATED",
       entityType: "Club",
       entityId: clubId,
-      createdAt: Date.now(),
     });
   },
 });
@@ -131,18 +156,15 @@ export const deactivate = mutation({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageMembership) {
-      throw new Error("Not authorized");
-    }
+    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN"]);
 
     await ctx.db.patch(args.clubId, { isActive: false, updatedAt: Date.now() });
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_DEACTIVATED",
       entityType: "Club",
       entityId: args.clubId,
-      createdAt: Date.now(),
     });
   },
 });
@@ -158,7 +180,7 @@ export const setMemberRole = mutation({
     const context = await getClubContext(ctx, args.clubId, user);
 
     if (!context.canManageMembership) {
-      throw new Error("Only club role holders, sponsors, or admins can assign club roles");
+      throw new ConvexError("Only club role holders, sponsors, or admins can assign club roles");
     }
 
     const member = await ctx.db
@@ -172,12 +194,12 @@ export const setMemberRole = mutation({
       await ctx.db.patch(member._id, { role: args.role });
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_MEMBER_ROLE_SET",
       entityType: "Club",
       entityId: args.clubId,
       meta: { memberId: args.memberId, role: args.role },
-      createdAt: Date.now(),
     });
   },
 });
@@ -189,7 +211,7 @@ export const removeMember = mutation({
     const context = await getClubContext(ctx, args.clubId, user);
 
     if (!context.canManageMembership) {
-      throw new Error("Only club role holders, sponsors, or admins can remove members");
+      throw new ConvexError("Only club role holders, sponsors, or admins can remove members");
     }
 
     const member = await ctx.db
@@ -203,12 +225,12 @@ export const removeMember = mutation({
       await ctx.db.delete(member._id);
     }
 
-    await ctx.db.insert("auditEvents", {
+    await logAuditEvent(ctx, {
+      actorId: user._id,
       action: "CLUB_MEMBER_REMOVED",
       entityType: "Club",
       entityId: args.clubId,
       meta: { memberId: args.memberId },
-      createdAt: Date.now(),
     });
   },
 });
@@ -234,7 +256,7 @@ export const getMyClubs = query({
 
     const sponsors = await ctx.db
       .query("clubSponsors")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .withIndex("by_userId_and_clubId", (q) => q.eq("userId", user._id))
       .collect();
     const sponsoring = (
       await Promise.all(
@@ -257,9 +279,10 @@ export const listMyInvites = query({
     if (!user) return [];
     const invites = await ctx.db
       .query("clubInvites")
-      .withIndex("by_recipientId_and_status", (q) =>
+      .withIndex("by_recipientId_and_status_and_updatedAt", (q) =>
         q.eq("recipientId", user._id).eq("status", "PENDING"),
       )
+      .order("desc")
       .collect();
 
     return Promise.all(

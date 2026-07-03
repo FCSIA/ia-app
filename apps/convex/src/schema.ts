@@ -64,6 +64,7 @@ export const schema = defineSchema({
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_uniqueId", ["uniqueId"])
     .index("by_email", ["email"])
+    .index("by_isActive", ["isActive"])
     .index("by_lastName_and_firstName", ["lastName", "firstName"])
     .index("by_isStudent_and_lastName_and_firstName", [
       "isStudent",
@@ -372,7 +373,9 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_isActive", ["isActive"]),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_isActive_and_name", ["isActive", "name"]),
 
   clubMembers: defineTable({
     clubId: v.id("clubs"),
@@ -382,7 +385,8 @@ export const schema = defineSchema({
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"])
-    .index("by_clubId_and_userId", ["clubId", "userId"]),
+    .index("by_clubId_and_userId", ["clubId", "userId"])
+    .index("by_userId_and_clubId", ["userId", "clubId"]),
 
   clubSponsors: defineTable({
     clubId: v.id("clubs"),
@@ -391,7 +395,8 @@ export const schema = defineSchema({
   })
     .index("by_clubId", ["clubId"])
     .index("by_userId", ["userId"])
-    .index("by_clubId_and_userId", ["clubId", "userId"]),
+    .index("by_clubId_and_userId", ["clubId", "userId"])
+    .index("by_userId_and_clubId", ["userId", "clubId"]),
 
   clubInvites: defineTable({
     clubId: v.id("clubs"),
@@ -402,7 +407,12 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_recipientId_and_status", ["recipientId", "status"])
-    .index("by_clubId_and_recipientId", ["clubId", "recipientId"]),
+    .index("by_clubId_and_recipientId", ["clubId", "recipientId"])
+    .index("by_recipientId_and_status_and_updatedAt", [
+      "recipientId",
+      "status",
+      "updatedAt",
+    ]),
 
   clubJoinRequests: defineTable({
     clubId: v.id("clubs"),
@@ -412,6 +422,13 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_clubId_and_status", ["clubId", "status"])
+    .index("by_clubId_and_status_and_requesterId", [
+      "clubId",
+      "status",
+      "requesterId",
+    ])
+    .index("by_clubId_and_requesterId", ["clubId", "requesterId"])
+    .index("by_requesterId_and_status", ["requesterId", "status"])
     .index("by_clubId_and_requesterId_and_status", [
       "clubId",
       "requesterId",
@@ -434,7 +451,8 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_channelId", ["channelId"])
-    .index("by_channelId_and_userId", ["channelId", "userId"]),
+    .index("by_channelId_and_userId", ["channelId", "userId"])
+    .index("by_userId", ["userId"]),
 
   clubTags: defineTable({
     clubId: v.id("clubs"),
@@ -442,13 +460,18 @@ export const schema = defineSchema({
     slug: v.string(),
     createdById: v.id("users"),
     createdAt: v.number(),
-  }).index("by_clubId", ["clubId"]),
+  })
+    .index("by_clubId", ["clubId"])
+    .index("by_clubId_and_slug", ["clubId", "slug"]),
 
   clubTagMembers: defineTable({
     tagId: v.id("clubTags"),
     userId: v.id("users"),
     createdAt: v.number(),
-  }).index("by_tagId", ["tagId"]),
+  })
+    .index("by_tagId", ["tagId"])
+    .index("by_tagId_and_userId", ["tagId", "userId"])
+    .index("by_userId", ["userId"]),
 
   clubChannelMessages: defineTable({
     channelId: v.id("clubChannels"),
@@ -505,6 +528,7 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_messageId_and_emoji", ["messageId", "emoji"])
+    .index("by_messageId_and_userId_and_emoji", ["messageId", "userId", "emoji"])
     .index("by_messageId_and_emoji_and_userId", [
       "messageId",
       "emoji",
@@ -556,7 +580,9 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_clubId", ["clubId"])
+    .index("by_clubId_and_status", ["clubId", "status"])
     .index("by_status", ["status"])
+    .index("by_status_and_startAt", ["status", "startAt"])
     .index("by_startAt", ["startAt"]),
 
   eventApprovals: defineTable({
@@ -667,6 +693,7 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_keyword", ["keyword"])
+    .index("by_isActive", ["isActive"])
     .index("by_isActive_and_createdAt", ["isActive", "createdAt"]),
 
   moderationReports: defineTable({

@@ -19,7 +19,7 @@ User management is handled through Convex functions and the Admin Panel.
 ## Source Files
 
 - Backend: `apps/convex/src/users/`
-- Auth helpers: `apps/convex/src/lib/currentUser.ts`
+- Auth helpers: `apps/convex/lib/currentUser.ts`
 - Web auth helpers: `apps/web/src/lib/auth.ts`
 - Admin UI: `apps/web/src/app/admin/`
 

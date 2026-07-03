@@ -49,9 +49,10 @@ Event status is one of `DRAFT`, `PENDING_APPROVAL`, `APPROVED`, `PUBLISHED`, or
 
 ## Permissions
 
-Admins can create and view broader event data. Sponsors can create club events
-and approve pending club events assigned to them. Event creators and admins can
-cancel events.
+Admin/support event managers can create general school events and view broader
+event data. Club sponsors and club leaders can create club events; non-sponsor
+club events go through sponsor approval. Event creators and admins can cancel
+events.
 
 ## Side Effects
 

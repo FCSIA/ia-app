@@ -11,7 +11,7 @@ tags: [commands, development]
 | Command                 | What it does                                              |
 | ----------------------- | --------------------------------------------------------- |
 | `pnpm dev`              | Start the web app and Convex dev server through Turborepo |
-| `pnpm cvx:dev`       | Start only the Convex dev server                          |
+| `pnpm cvx:dev`          | Start only the Convex dev server                          |
 | `pnpm --filter web dev` | Start only the Next.js web app                            |
 | `pnpm lint`             | Lint all workspaces                                       |
 | `pnpm build`            | Build all workspaces                                      |
@@ -23,6 +23,7 @@ tags: [commands, development]
 | ----------------------------- | ---------------------------------- |
 | `pnpm db:generate`            | Regenerate Convex generated files  |
 | `pnpm db:studio`              | Start Convex dev/dashboard tooling |
+| `pnpm --filter cvx codegen`   | Regenerate Convex generated files  |
 | `pnpm --filter cvx typecheck` | Typecheck Convex functions         |
 | `pnpm --filter cvx deploy`    | Deploy Convex backend changes      |
 

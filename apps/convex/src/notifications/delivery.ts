@@ -93,7 +93,10 @@ async function shouldCreateDelivery(
 }
 
 export async function activeUsers(ctx: MutationCtx) {
-  return (await ctx.db.query("users").take(5000)).filter((user) => user.isActive);
+  return await ctx.db
+    .query("users")
+    .withIndex("by_isActive", (q) => q.eq("isActive", true))
+    .take(5000);
 }
 
 export async function activeAdmins(ctx: MutationCtx) {

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { calendarSourceValidator } from "../validators";
@@ -57,15 +57,24 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    if (args.source && args.source !== "PERSONAL") {
+      throw new ConvexError("Shared calendar entries must be created by their owning feature");
+    }
+
+    const title = args.title.trim();
+    if (!title) throw new ConvexError("Title is required");
+    if (args.endAt !== undefined && args.endAt < args.startAt) {
+      throw new ConvexError("End time must be after start time");
+    }
 
     const entryId = await ctx.db.insert("calendarEntries", {
-      title: args.title.trim(),
+      title,
       description: args.description?.trim(),
       location: args.location?.trim(),
       startAt: args.startAt,
       endAt: args.endAt,
       tags: args.tags ?? ["personal"],
-      source: args.source ?? "PERSONAL",
+      source: "PERSONAL",
       createdById: user._id,
       createdAt: Date.now(),
     });

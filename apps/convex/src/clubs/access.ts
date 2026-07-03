@@ -1,10 +1,8 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-
-// Define our own app role union type for internal checks
-type AppRoleType = "STUDENT" | "STUDENT_LEADER" | "STUDENT_ADMIN" | "TEACHER" | "SPONSOR" | "SUPPORT_STAFF" | "ADMIN" | "SUPER_ADMIN";
+type ClubDbCtx = QueryCtx | MutationCtx;
 
 export interface ClubContext {
   club: Doc<"clubs">;
@@ -53,7 +51,7 @@ export function isStaff(roles: string[]) {
 }
 
 export async function getViewerContext(
-  ctx: QueryCtx,
+  ctx: ClubDbCtx,
   clubId: Id<"clubs">,
   user: Doc<"users">
 ): Promise<ClubContext> {
@@ -83,7 +81,8 @@ export async function getViewerContext(
 
   const userIsAdmin = isAdmin(user.roles as string[]);
   const isMember = !!membership;
-  const hasClubRole = !!membership?.role;
+  const hasClubRole =
+    membership?.role === "LEADER" || membership?.role === "SPONSOR";
   const isSponsor = !!sponsor;
   const canAccessWorkspace = isMember || isSponsor || userIsAdmin;
   const canManageChannels = isSponsor || hasClubRole || userIsAdmin;
@@ -108,7 +107,7 @@ export async function getViewerContext(
 }
 
 export async function getClubContext(
-  ctx: QueryCtx,
+  ctx: ClubDbCtx,
   clubId: Id<"clubs">,
   user: Doc<"users">
 ): Promise<ClubContext> {

@@ -29,7 +29,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   // API calls: always network
-  if (event.request.url.includes('/api/') || event.request.url.includes(':3001')) {
+  if (event.request.url.includes('/api/')) {
     return;
   }
   event.respondWith(

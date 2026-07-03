@@ -9,6 +9,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "cvx:dev": "pnpm --filter cvx dev",
+    "convex:dev": "pnpm --filter cvx dev",
+    "db:generate": "pnpm --filter cvx codegen",
+    "db:studio": "pnpm --filter cvx exec convex dashboard",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {

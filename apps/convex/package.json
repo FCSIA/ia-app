@@ -7,6 +7,8 @@
     "dev": "convex dev",
     "codegen": "convex dev --once --typecheck disable --codegen enable",
     "typecheck": "tsc -p src/tsconfig.json",
+    "build": "pnpm run typecheck",
+    "lint": "pnpm run typecheck",
     "test": "vitest run --config vitest.config.ts",
     "deploy": "convex deploy",
     "auth:generate": "cd src/betterAuth && auth generate -y"

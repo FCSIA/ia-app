@@ -24,7 +24,7 @@ Authentication uses Better Auth on Convex. The app user profile is stored in the
 ## Current User Pattern
 
 Backend functions use `getCurrentAppUser(ctx)` from
-`apps/convex/src/lib/currentUser.ts`.
+`apps/convex/lib/currentUser.ts`.
 
 That helper:
 

@@ -1,11 +1,43 @@
-import { v } from "convex/values";
-import { mutation, query, type QueryCtx } from "../_generated/server";
+import { ConvexError, v } from "convex/values";
+import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
 import { getClubContext, getViewerContext, canReadChannel, canPostInChannel } from "./access";
 import { toClubUserRef } from "./serialize";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
+
+type ChannelDbCtx = QueryCtx | MutationCtx;
+
+async function getChannelMemberships(
+  ctx: ChannelDbCtx,
+  channelId: Id<"clubChannels">,
+) {
+  return await ctx.db
+    .query("clubChannelMemberships")
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+    .collect();
+}
+
+async function assertMessageAccess(
+  ctx: ChannelDbCtx,
+  user: Doc<"users">,
+  messageId: Id<"clubChannelMessages">,
+) {
+  const message = await ctx.db.get(messageId);
+  if (!message) throw new ConvexError("Message not found");
+
+  const channel = await ctx.db.get(message.channelId);
+  if (!channel) throw new ConvexError("Channel not found");
+
+  const context = await getClubContext(ctx, channel.clubId, user);
+  const memberships = await getChannelMemberships(ctx, channel._id);
+  if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
+    throw new ConvexError("Not authorized");
+  }
+
+  return { message, channel, context, memberships };
+}
 
 export const list = query({
   args: { clubId: v.id("clubs") },
@@ -48,7 +80,7 @@ export const create = mutation({
     const context = await getClubContext(ctx, args.clubId, user);
 
     if (!context.canManageChannels) {
-      throw new Error("Only club role holders, sponsors, or admins can create channels");
+      throw new ConvexError("Only club role holders, sponsors, or admins can create channels");
     }
 
     const channelId = await ctx.db.insert("clubChannels", {
@@ -96,36 +128,6 @@ function mentionTokens(body: string) {
   return Array.from(new Set(body.match(/@[A-Za-z0-9_-]+/g)?.map((token) => token.slice(1)) ?? []));
 }
 
-async function getChannelMemberships(ctx: QueryCtx, channelId: Id<"clubChannels">) {
-  return await ctx.db
-    .query("clubChannelMemberships")
-    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
-    .collect();
-}
-
-async function assertCanReadMessage(
-  ctx: QueryCtx,
-  userId: Id<"users">,
-  messageId: Id<"clubChannelMessages">,
-) {
-  const message = await ctx.db.get(messageId);
-  if (!message) throw new Error("Message not found");
-
-  const channel = await ctx.db.get(message.channelId);
-  if (!channel) throw new Error("Channel not found");
-
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found");
-
-  const context = await getClubContext(ctx, channel.clubId, user);
-  const memberships = await getChannelMemberships(ctx, channel._id);
-  if (!canReadChannel({ ...channel, memberships }, context, userId)) {
-    throw new Error("Not authorized");
-  }
-
-  return { message, channel };
-}
-
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -140,18 +142,25 @@ export const postMessage = mutation({
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
 
-    if (!channel) throw new Error("Channel not found");
+    if (!channel) throw new ConvexError("Channel not found");
 
     const context = await getClubContext(ctx, channel.clubId, user);
     const memberships = await getChannelMemberships(ctx, channel._id);
 
     if (!canPostInChannel({ ...channel, memberships }, context, user._id)) {
-      throw new Error("Cannot post in this channel");
+      throw new ConvexError("Cannot post in this channel");
     }
 
     const trimmedBody = args.body.trim();
     if (!trimmedBody && !(args.attachments?.length) && !args.pollQuestion) {
-      throw new Error("Message cannot be empty");
+      throw new ConvexError("Message cannot be empty");
+    }
+
+    if (args.parentMessageId) {
+      const parent = await ctx.db.get(args.parentMessageId);
+      if (!parent || parent.channelId !== channel._id) {
+        throw new ConvexError("Parent message not found");
+      }
     }
 
     const messageId = await ctx.db.insert("clubChannelMessages", {
@@ -393,15 +402,16 @@ async function serializeMessage(
 }
 
 export const getMessages = query({
-  args: { channelId: v.id("clubChannels") },
+  args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
     const channel = await ctx.db.get(args.channelId);
 
     if (!channel) return [];
+    if (channel.clubId !== args.clubId) return [];
 
-    const club = await ctx.db.get(channel.clubId);
+    const club = await ctx.db.get(args.clubId);
     if (!club) return [];
     const context = await getViewerContext(ctx, channel.clubId, user);
     const memberships = await getChannelMemberships(ctx, channel._id);
@@ -437,9 +447,9 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new Error("Channel not found");
+    if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.canManageChannels) throw new Error("Not authorized");
+    if (!context.canManageChannels) throw new ConvexError("Not authorized");
 
     const { channelId, ...updates } = args;
     await ctx.db.patch(channelId, { ...updates, updatedAt: Date.now() });
@@ -451,9 +461,9 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
-    if (!channel) throw new Error("Channel not found");
+    if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.canManageChannels) throw new Error("Not authorized");
+    if (!context.canManageChannels) throw new ConvexError("Not authorized");
     await ctx.db.delete(args.channelId);
   },
 });
@@ -466,9 +476,8 @@ export const updateMessage = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const message = await ctx.db.get(args.messageId);
-    if (!message) throw new Error("Message not found");
-    if (message.authorId !== user._id) throw new Error("Not authorized");
+    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    if (message.authorId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.patch(args.messageId, {
       body: args.body,
       bodyRich: args.bodyRich,
@@ -481,13 +490,9 @@ export const deleteMessage = mutation({
   args: { messageId: v.id("clubChannelMessages") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const message = await ctx.db.get(args.messageId);
-    if (!message) throw new Error("Message not found");
-    const channel = await ctx.db.get(message.channelId);
-    if (!channel) throw new Error("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
+    const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.authorId !== user._id && !context.canManageChannels) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
     }
     await ctx.db.delete(args.messageId);
   },
@@ -500,11 +505,12 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    await assertCanReadMessage(ctx, user._id, args.messageId);
+    await assertMessageAccess(ctx, user, args.messageId);
+
     const existing = await ctx.db
       .query("clubChannelMessageReactions")
-      .withIndex("by_messageId_and_emoji_and_userId", (q) =>
-        q.eq("messageId", args.messageId).eq("emoji", args.emoji).eq("userId", user._id),
+      .withIndex("by_messageId_and_userId_and_emoji", (q) =>
+        q.eq("messageId", args.messageId).eq("userId", user._id).eq("emoji", args.emoji),
       )
       .first();
     if (existing) {
@@ -527,8 +533,17 @@ export const votePoll = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message } = await assertCanReadMessage(ctx, user._id, args.messageId);
-    if (!message?.pollQuestion) throw new Error("Poll not found");
+    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    if (!message.pollQuestion || !Array.isArray(message.pollOptions)) {
+      throw new ConvexError("Poll not found");
+    }
+    if (
+      !(message.pollOptions as Array<{ id: string }>).some(
+        (option) => option.id === args.optionId,
+      )
+    ) {
+      throw new ConvexError("Poll option not found");
+    }
 
     const existing = await ctx.db
       .query("clubChannelMessagePollVotes")
@@ -559,13 +574,9 @@ export const setPinned = mutation({
   args: { messageId: v.id("clubChannelMessages"), pinned: v.boolean() },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const message = await ctx.db.get(args.messageId);
-    if (!message) throw new Error("Message not found");
-    const channel = await ctx.db.get(message.channelId);
-    if (!channel) throw new Error("Channel not found");
-    const context = await getClubContext(ctx, channel.clubId, user);
+    const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
     if (!context.canManageChannels && message.authorId !== user._id) {
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
     }
     await ctx.db.patch(args.messageId, {
       isPinned: args.pinned,

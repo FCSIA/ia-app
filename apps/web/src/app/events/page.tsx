@@ -22,6 +22,7 @@ import { filterBySearchQuery } from '@/lib/search';
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
 
   return (
     <Card className="hover:-translate-y-0.5 transition-all duration-200">
@@ -58,7 +59,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
               <Button size="sm" variant="primary" onClick={() => onReject(event._id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
             </div>
           )}
-          {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?._id) && (
+          {event.status === 'PUBLISHED' && (isAdmin || isAuthor) && (
             <Button variant="ghost" size="sm" onClick={() => onCancel(event._id)} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel</Button>
           )}
         </div>
@@ -95,12 +96,28 @@ export default function EventsPage() {
       hydrated && !!user ? {} : 'skip',
     ) ?? [];
 
-  const availableClubs = [
-    ...((myClubs?.memberOf || []).filter((club) => !!club.role)),
-    ...(myClubs?.sponsoring || []),
-  ].filter((club, index, list) => list.findIndex((item) => item._id === club._id) === index);
+  const availableClubs = useMemo(
+    () =>
+      [
+        ...((myClubs?.memberOf || []).filter(
+          (club) => club.role === 'LEADER' || club.role === 'SPONSOR',
+        )),
+        ...(myClubs?.sponsoring || []),
+      ].filter(
+        (club, index, list) =>
+          list.findIndex((item) => item._id === club._id) === index,
+      ),
+    [myClubs],
+  );
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
+
+  useEffect(() => {
+    if (!showNew || canCreateGeneral || form.clubId || availableClubs.length === 0) {
+      return;
+    }
+    setForm((current) => ({ ...current, clubId: availableClubs[0]!._id }));
+  }, [availableClubs, canCreateGeneral, form.clubId, showNew]);
 
   const createEvent = useMutation(api.events.events.create);
   const approveEvent = useMutation(api.events.approvals.approveEvent);
@@ -112,6 +129,10 @@ export default function EventsPage() {
   const handleCreate = async () => {
     if (!form.startAt) {
       toast({ title: 'Start date is required', variant: 'destructive' });
+      return;
+    }
+    if (!canCreateGeneral && !form.clubId) {
+      toast({ title: 'Choose a club for this event', variant: 'destructive' });
       return;
     }
     setCreatePending(true);

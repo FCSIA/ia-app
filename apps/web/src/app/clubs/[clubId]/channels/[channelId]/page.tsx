@@ -510,7 +510,8 @@ export default function ClubChannelPage({
   const user = useCurrentUser();
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
-  const messages = useQuery(api.clubs.channels.getMessages, { channelId }) ?? [];
+  const messages =
+    useQuery(api.clubs.channels.getMessages, { clubId, channelId }) ?? [];
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);

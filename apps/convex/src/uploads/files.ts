@@ -61,6 +61,12 @@ async function deleteRejectedUpload(
   }
 }
 
+async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const metadata = await ctx.db.system.get("_storage", storageId);
+  if (!metadata) throw new ConvexError("Upload not found");
+  return metadata;
+}
+
 export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
@@ -85,9 +91,7 @@ export const finalizeChatAttachment = mutation({
   }),
   handler: async (ctx, args) => {
     await getCurrentAppUser(ctx);
-
-    const metadata = await ctx.db.system.get("_storage", args.storageId);
-    if (!metadata) throw new ConvexError("Upload failed");
+    const metadata = await getUploadedMetadata(ctx, args.storageId);
 
     let validated: ReturnType<typeof validateChatAttachmentMetadata>;
     try {
@@ -105,7 +109,7 @@ export const finalizeChatAttachment = mutation({
 
     return {
       url,
-      fileName: args.fileName,
+      fileName: args.fileName.trim(),
       mimeType: validated.mimeType,
       size: validated.size,
     };
@@ -136,8 +140,7 @@ export const finalizeClubImage = mutation({
       user.roles.includes("STUDENT_ADMIN");
     if (!canUpload) throw new ConvexError("Unauthorized");
 
-    const metadata = await ctx.db.system.get("_storage", args.storageId);
-    if (!metadata) throw new ConvexError("Upload failed");
+    const metadata = await getUploadedMetadata(ctx, args.storageId);
 
     let validated: ReturnType<typeof validateClubImageMetadata>;
     try {
@@ -156,7 +159,7 @@ export const finalizeClubImage = mutation({
     return {
       url,
       filename: args.storageId,
-      originalName: args.originalName,
+      originalName: args.originalName.trim(),
       mimeType: validated.mimeType,
       size: validated.size,
     };

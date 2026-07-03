@@ -1,16 +1,26 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexAttendanceStatusValidator } from "../validators";
 
 function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string, actorId?: string) {
-  const isStaff =
-    user.roles.includes("TEACHER") ||
+  const isGlobalAttendanceManager =
     user.roles.includes("ADMIN") ||
-    user.roles.includes("SUPER_ADMIN");
+    user.roles.includes("SUPER_ADMIN") ||
+    user.roles.includes("SUPPORT_STAFF");
   const isWorkshopTeacher = workshopTeacherId && actorId && workshopTeacherId === actorId;
-  return isStaff || isWorkshopTeacher;
+  return isGlobalAttendanceManager || isWorkshopTeacher;
+}
+
+function isActiveStudent(user: { isActive: boolean; isStudent: boolean; roles: string[] }) {
+  return (
+    user.isActive &&
+    (user.isStudent ||
+      user.roles.includes("STUDENT") ||
+      user.roles.includes("STUDENT_LEADER") ||
+      user.roles.includes("STUDENT_ADMIN"))
+  );
 }
 
 export const getRoster = query({
@@ -95,10 +105,15 @@ export const markAttendance = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const workshop = await ctx.db.get(args.workshopId);
-    if (!workshop) throw new Error("Workshop not found");
+    if (!workshop) throw new ConvexError("Workshop not found");
 
     if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
-      throw new Error("Only teachers or admins may mark attendance");
+      throw new ConvexError("Only the workshop teacher or admins may mark attendance");
+    }
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || !isActiveStudent(student)) {
+      throw new ConvexError("Student not found");
     }
 
     const workshopSession = await ctx.db
@@ -106,10 +121,29 @@ export const markAttendance = mutation({
       .withIndex("by_workshopId_and_sessionId", (q) => q.eq("workshopId", args.workshopId))
       .first();
 
-    if (!workshopSession) throw new Error("Workshop is not attached to any session");
+    if (!workshopSession) throw new ConvexError("Workshop is not attached to any session");
 
     const session = await ctx.db.get(workshopSession.sessionId);
-    if (!session) throw new Error("Session not found");
+    if (!session) throw new ConvexError("Session not found");
+
+    const [registration, assignment] = await Promise.all([
+      ctx.db
+        .query("flexRegistrations")
+        .withIndex("by_workshopId_and_studentId", (q) =>
+          q.eq("workshopId", args.workshopId).eq("studentId", args.studentId),
+        )
+        .first(),
+      ctx.db
+        .query("flexAssignments")
+        .withIndex("by_workshopId_and_studentId", (q) =>
+          q.eq("workshopId", args.workshopId).eq("studentId", args.studentId),
+        )
+        .first(),
+    ]);
+
+    if (!registration && !assignment) {
+      throw new ConvexError("Student is not on this workshop roster");
+    }
 
     const existingAttendance = await ctx.db
       .query("flexAttendances")
@@ -159,10 +193,10 @@ export const clearAttendance = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const workshop = await ctx.db.get(args.workshopId);
-    if (!workshop) throw new Error("Workshop not found");
+    if (!workshop) throw new ConvexError("Workshop not found");
 
     if (!canMarkAttendance(user, workshop.teacherId, user._id)) {
-      throw new Error("Only teachers or admins may clear attendance");
+      throw new ConvexError("Only the workshop teacher or admins may clear attendance");
     }
 
     const existing = await ctx.db

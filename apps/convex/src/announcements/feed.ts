@@ -5,6 +5,7 @@ import { logAuditEvent } from "../audit/_lib";
 import { announcementAudience, deliverMany } from "../notifications/delivery";
 import {
   announcementListItemValidator,
+  assertCanApproveAnnouncement,
   canViewAnnouncement,
   commentWithAuthorValidator,
   getAccessibleClubIds,
@@ -244,12 +245,10 @@ export const approve = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isElevatedReader(user.roles)) {
-      throw new ConvexError("Unauthorized");
-    }
 
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
+    await assertCanApproveAnnouncement(ctx, ann, user);
 
     await ctx.db.patch(args.announcementId, {
       status: "ACTIVE",
@@ -290,12 +289,10 @@ export const reject = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!isElevatedReader(user.roles)) {
-      throw new ConvexError("Unauthorized");
-    }
 
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
+    await assertCanApproveAnnouncement(ctx, ann, user);
 
     await ctx.db.patch(args.announcementId, {
       status: "REJECTED",

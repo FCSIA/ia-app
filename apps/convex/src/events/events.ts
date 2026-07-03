@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializeEventDetail } from "./serialize";
@@ -20,22 +20,24 @@ export const list = query({
     const admin = isAdmin(user);
 
     let events = args.clubId
-      ? await ctx.db
-          .query("events")
-          .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-          .order("desc")
-          .take(200)
-      : admin
-        ? await ctx.db.query("events").order("desc").take(200)
+      ? admin
+        ? await ctx.db
+            .query("events")
+            .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+            .take(200)
         : await ctx.db
             .query("events")
-            .withIndex("by_status", (q) => q.eq("status", "PUBLISHED"))
+            .withIndex("by_clubId_and_status", (q) =>
+              q.eq("clubId", args.clubId).eq("status", "PUBLISHED"),
+            )
+            .take(200)
+      : admin
+        ? await ctx.db.query("events").withIndex("by_startAt").order("desc").take(200)
+        : await ctx.db
+            .query("events")
+            .withIndex("by_status_and_startAt", (q) => q.eq("status", "PUBLISHED"))
             .order("desc")
             .take(200);
-
-    if (args.clubId && !admin) {
-      events = events.filter((event) => event.status === "PUBLISHED");
-    }
 
     events.sort((a, b) => a.startAt - b.startAt);
 
@@ -75,6 +77,11 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const admin = isAdmin(user);
+    const canCreateGeneral = admin;
+
+    if (!args.clubId && !canCreateGeneral) {
+      throw new ConvexError("Insufficient permissions to create general events");
+    }
 
     let isSponsor = false;
     let hasClubRole = false;
@@ -82,21 +89,23 @@ export const create = mutation({
       const clubId = args.clubId;
       const sponsors = await ctx.db
         .query("clubSponsors")
-        .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-        .collect();
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", clubId).eq("userId", user._id),
+        )
+        .first();
       const members = await ctx.db
         .query("clubMembers")
         .withIndex("by_clubId_and_userId", (q) =>
           q.eq("clubId", clubId).eq("userId", user._id),
         )
         .first();
-      isSponsor = sponsors.some((s) => s.userId === user._id);
-      hasClubRole = !!members?.role;
+      isSponsor = !!sponsors;
+      hasClubRole = members?.role === "LEADER" || members?.role === "SPONSOR";
     }
 
-    const canCreate = admin || isSponsor || hasClubRole || !args.clubId;
+    const canCreate = canCreateGeneral || isSponsor || hasClubRole;
     if (!canCreate) {
-      throw new Error("Insufficient permissions to create this event");
+      throw new ConvexError("Insufficient permissions to create this event");
     }
 
     const status =
