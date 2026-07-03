@@ -46,8 +46,10 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   );
 
   const sponsorOptions = useMemo((): SelectablePerson[] => {
-    return (staffPage?.page ?? [])
-      .map((user) => ({
+    const options: SelectablePerson[] = [];
+
+    for (const user of staffPage?.page ?? []) {
+      const option = {
         _id: user._id,
         uniqueId: user.uniqueId,
         firstName: user.firstName,
@@ -55,9 +57,14 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         email: user.email ?? null,
         roles: user.roles,
         avatarUrl: user.avatarUrl ?? null,
-      }))
-      .filter(isSponsorEligible)
-      .sort((a, b) => fullName(a).localeCompare(fullName(b)));
+      };
+
+      if (isSponsorEligible(option)) {
+        options.push(option);
+      }
+    }
+
+    return options.sort((a, b) => fullName(a).localeCompare(fullName(b)));
   }, [staffPage?.page]);
 
   const createClub = useMutation(api.clubs.management.create);

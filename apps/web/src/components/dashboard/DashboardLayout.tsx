@@ -202,22 +202,17 @@ export function DashboardLayout() {
 
   // Load persisted layout once user is known
   useEffect(() => {
-    if (!user) {
-      setLayout(getDefaultLayout());
-      return;
-    }
+    const nextLayout =
+      !user
+        ? getDefaultLayout()
+        : user.dashboardLayout && user.dashboardLayout.length > 0
+          ? user.dashboardLayout.filter((id) => {
+              const widget = WIDGETS[id];
+              return widget && isWidgetAllowed(widget, user.roles);
+            })
+          : (loadLayout(user._id) ?? getDefaultLayout());
 
-    if (user.dashboardLayout && user.dashboardLayout.length > 0) {
-      const cleaned = user.dashboardLayout.filter((id) => {
-        const widget = WIDGETS[id];
-        return widget && isWidgetAllowed(widget, user.roles);
-      });
-      setLayout(cleaned);
-      return;
-    }
-
-    const persisted = loadLayout(user._id);
-    setLayout(persisted ?? getDefaultLayout());
+    setLayout(nextLayout);
   }, [user]);
 
   const availableWidgets = useMemo(
