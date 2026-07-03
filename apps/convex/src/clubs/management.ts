@@ -1,16 +1,23 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { clubValidator } from "./_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryWithCounts } from "./serialize";
+import type { AppRole } from "../../lib/roles";
+
+const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
+
+export function canCreateClub(roles: readonly AppRole[]) {
+  return roles.some((role) => (CLUB_CREATION_ROLES as readonly AppRole[]).includes(role));
+}
 
 export const getAll = query({
   args: {},
   handler: async (ctx) => {
     const clubs = await ctx.db
       .query("clubs")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
       .collect();
     return Promise.all(clubs.map((club) => clubSummaryWithCounts(ctx, club)));
   },
@@ -48,6 +55,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    requireAnyRole(user, [...CLUB_CREATION_ROLES]);
     const clubId = await ctx.db.insert("clubs", {
       name: args.name,
       description: args.description,
@@ -61,8 +69,8 @@ export const create = mutation({
     for (const sponsorId of args.sponsorIds ?? []) {
       const existing = await ctx.db
         .query("clubSponsors")
-        .filter((q) =>
-          q.and(q.eq(q.field("clubId"), clubId), q.eq(q.field("userId"), sponsorId)),
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", clubId).eq("userId", sponsorId),
         )
         .first();
       if (!existing) {
@@ -98,7 +106,13 @@ export const update = mutation({
     memberLimit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
     const { clubId, ...updates } = args;
+    const context = await getClubContext(ctx, clubId, user);
+    if (!context.canManageMembership) {
+      throw new Error("Not authorized");
+    }
+
     await ctx.db.patch(clubId, {
       ...updates,
       updatedAt: Date.now(),
@@ -116,6 +130,12 @@ export const update = mutation({
 export const deactivate = mutation({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageMembership) {
+      throw new Error("Not authorized");
+    }
+
     await ctx.db.patch(args.clubId, { isActive: false, updatedAt: Date.now() });
 
     await ctx.db.insert("auditEvents", {
@@ -143,8 +163,9 @@ export const setMemberRole = mutation({
 
     const member = await ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .filter((q) => q.eq(q.field("userId"), args.memberId))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", args.clubId).eq("userId", args.memberId),
+      )
       .first();
 
     if (member) {
@@ -173,8 +194,9 @@ export const removeMember = mutation({
 
     const member = await ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-      .filter((q) => q.eq(q.field("userId"), args.memberId))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", args.clubId).eq("userId", args.memberId),
+      )
       .first();
 
     if (member) {
@@ -212,7 +234,7 @@ export const getMyClubs = query({
 
     const sponsors = await ctx.db
       .query("clubSponsors")
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .collect();
     const sponsoring = (
       await Promise.all(
@@ -235,11 +257,8 @@ export const listMyInvites = query({
     if (!user) return [];
     const invites = await ctx.db
       .query("clubInvites")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("recipientId"), user._id),
-          q.eq(q.field("status"), "PENDING"),
-        ),
+      .withIndex("by_recipientId_and_status", (q) =>
+        q.eq("recipientId", user._id).eq("status", "PENDING"),
       )
       .collect();
 

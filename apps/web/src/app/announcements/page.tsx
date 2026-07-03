@@ -662,7 +662,7 @@ export default function AnnouncementsPage() {
             <div className="space-y-4">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement =
-                  canArchiveAny || announcement.author?._id === user?.id;
+                  canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
                 const isReviewPending = reviewPending?.id === announcement._id;
                 const approving = isReviewPending && reviewPending?.action === 'approve';

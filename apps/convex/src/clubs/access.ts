@@ -63,20 +63,21 @@ export async function getViewerContext(
   const [membership, sponsor, pendingJoinRequest] = await Promise.all([
     ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", user._id),
+      )
       .first(),
     ctx.db
       .query("clubSponsors")
-      .filter((q) => q.eq(q.field("clubId"), clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", user._id),
+      )
       .first(),
     ctx.db
       .query("clubJoinRequests")
-      .withIndex("by_clubId_and_status", (q) =>
-        q.eq("clubId", clubId).eq("status", "PENDING")
+      .withIndex("by_clubId_and_requesterId_and_status", (q) =>
+        q.eq("clubId", clubId).eq("requesterId", user._id).eq("status", "PENDING")
       )
-      .filter((q) => q.eq(q.field("requesterId"), user._id))
       .first(),
   ]);
 

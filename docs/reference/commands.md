@@ -47,3 +47,6 @@ The function schedules small internal batches. Run the internal query
 | `pnpm install`                    | Install dependencies for all workspaces |
 | `pnpm --filter web add <package>` | Add a package to the web app            |
 | `pnpm --filter cvx add <package>` | Add a package to the Convex backend     |
+
+This repository currently pins pnpm `10.29.3` through `packageManager`. If a
+newer global pnpm refuses to run, use `corepack pnpm@10.29.3 <command>`.

@@ -44,13 +44,14 @@ export type AuditEventDetail = AuditEventRecord & {
 };
 
 export type AdminUserRecord = {
-  id: string;
+  _id: string;
   uniqueId: string;
   firstName: string;
   lastName: string;
-  role?: string | null;
   roles?: string[];
   gradeLevel?: number | null;
+  email?: string;
+  avatarUrl?: string;
   isActive?: boolean;
 };
 

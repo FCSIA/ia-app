@@ -20,20 +20,6 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "pnpm": {
-    "overrides": {
-      "react": "19.0.0",
-      "react-dom": "19.0.0",
-      "@types/react": "19.0.8",
-      "@types/react-dom": "19.0.3"
-    },
-    "onlyBuiltDependencies": [
-      "bcrypt",
-      "esbuild",
-      "sharp",
-      "unrs-resolver"
-    ]
-  },
   "dependencies": {
     "convex": "1.39.1"
   }

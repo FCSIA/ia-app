@@ -16,14 +16,14 @@ export const list = query({
 
     const tags = await ctx.db
       .query("clubTags")
-      .filter((q) => q.eq(q.field("clubId"), args.clubId))
+      .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
       .collect();
 
     return Promise.all(
       tags.map(async (tag) => {
         const tagMembers = await ctx.db
           .query("clubTagMembers")
-          .filter((q) => q.eq(q.field("tagId"), tag._id))
+          .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
           .collect();
         const members = await Promise.all(
           tagMembers.map(async (tm) => {

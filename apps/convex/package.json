@@ -7,6 +7,7 @@
     "dev": "convex dev",
     "codegen": "convex dev --once --typecheck disable --codegen enable",
     "typecheck": "tsc -p src/tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
     "deploy": "convex deploy",
     "auth:generate": "cd src/betterAuth && auth generate -y"
   },
@@ -18,10 +19,12 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@types/web-push": "^3.6.4",
     "auth": "1.6.11",
     "convex-test": "0.0.53",
     "edge-runtime": "4.0.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.9"
   }
 }

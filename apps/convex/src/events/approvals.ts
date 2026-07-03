@@ -11,11 +11,8 @@ export const listPendingForSponsor = query({
     if (!user) return [];
     const approvals = await ctx.db
       .query("eventApprovals")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("sponsorId"), user._id),
-          q.eq(q.field("status"), "PENDING"),
-        ),
+      .withIndex("by_sponsorId_and_status", (q) =>
+        q.eq("sponsorId", user._id).eq("status", "PENDING"),
       )
       .collect();
 
@@ -57,8 +54,9 @@ export const approveEvent = mutation({
 
     const pending = await ctx.db
       .query("eventApprovals")
-      .withIndex("by_eventId_and_sponsorId", (q) => q.eq("eventId", args.eventId))
-      .filter((q) => q.eq(q.field("status"), "PENDING"))
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", args.eventId).eq("status", "PENDING"),
+      )
       .collect();
 
     if (pending.length === 0) {

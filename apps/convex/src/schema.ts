@@ -372,7 +372,7 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  }).index("by_isActive", ["isActive"]),
 
   clubMembers: defineTable({
     clubId: v.id("clubs"),
@@ -381,13 +381,17 @@ export const schema = defineSchema({
     joinedAt: v.number(),
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
-    .index("by_clubId", ["clubId"]),
+    .index("by_clubId", ["clubId"])
+    .index("by_clubId_and_userId", ["clubId", "userId"]),
 
   clubSponsors: defineTable({
     clubId: v.id("clubs"),
     userId: v.id("users"),
     addedAt: v.number(),
-  }),
+  })
+    .index("by_clubId", ["clubId"])
+    .index("by_userId", ["userId"])
+    .index("by_clubId_and_userId", ["clubId", "userId"]),
 
   clubInvites: defineTable({
     clubId: v.id("clubs"),
@@ -396,7 +400,9 @@ export const schema = defineSchema({
     status: inviteStatusValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  })
+    .index("by_recipientId_and_status", ["recipientId", "status"])
+    .index("by_clubId_and_recipientId", ["clubId", "recipientId"]),
 
   clubJoinRequests: defineTable({
     clubId: v.id("clubs"),
@@ -404,7 +410,13 @@ export const schema = defineSchema({
     status: clubJoinRequestStatusValidator,
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_clubId_and_status", ["clubId", "status"]),
+  })
+    .index("by_clubId_and_status", ["clubId", "status"])
+    .index("by_clubId_and_requesterId_and_status", [
+      "clubId",
+      "requesterId",
+      "status",
+    ]),
 
   clubChannels: defineTable({
     clubId: v.id("clubs"),
@@ -420,7 +432,9 @@ export const schema = defineSchema({
     channelId: v.id("clubChannels"),
     userId: v.id("users"),
     createdAt: v.number(),
-  }),
+  })
+    .index("by_channelId", ["channelId"])
+    .index("by_channelId_and_userId", ["channelId", "userId"]),
 
   clubTags: defineTable({
     clubId: v.id("clubs"),
@@ -428,13 +442,13 @@ export const schema = defineSchema({
     slug: v.string(),
     createdById: v.id("users"),
     createdAt: v.number(),
-  }),
+  }).index("by_clubId", ["clubId"]),
 
   clubTagMembers: defineTable({
     tagId: v.id("clubTags"),
     userId: v.id("users"),
     createdAt: v.number(),
-  }),
+  }).index("by_tagId", ["tagId"]),
 
   clubChannelMessages: defineTable({
     channelId: v.id("clubChannels"),
@@ -471,7 +485,9 @@ export const schema = defineSchema({
     userId: v.id("users"),
     optionId: v.string(),
     createdAt: v.number(),
-  }).index("by_messageId_and_optionId", ["messageId", "optionId"]),
+  })
+    .index("by_messageId_and_optionId", ["messageId", "optionId"])
+    .index("by_messageId_and_userId", ["messageId", "userId"]),
 
   clubChannelMessageAttachments: defineTable({
     messageId: v.id("clubChannelMessages"),
@@ -489,6 +505,11 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_messageId_and_emoji", ["messageId", "emoji"])
+    .index("by_messageId_and_emoji_and_userId", [
+      "messageId",
+      "emoji",
+      "userId",
+    ])
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
 
@@ -545,7 +566,10 @@ export const schema = defineSchema({
     note: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_eventId_and_sponsorId", ["eventId", "sponsorId"]),
+  })
+    .index("by_eventId_and_sponsorId", ["eventId", "sponsorId"])
+    .index("by_eventId_and_status", ["eventId", "status"])
+    .index("by_sponsorId_and_status", ["sponsorId", "status"]),
 
   calendarEntries: defineTable({
     eventId: v.optional(v.id("events")),
@@ -641,7 +665,9 @@ export const schema = defineSchema({
     addedById: v.id("users"),
     isActive: v.boolean(),
     createdAt: v.number(),
-  }).index("by_keyword", ["keyword"]),
+  })
+    .index("by_keyword", ["keyword"])
+    .index("by_isActive_and_createdAt", ["isActive", "createdAt"]),
 
   moderationReports: defineTable({
     submitterId: v.id("users"),
@@ -661,7 +687,9 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"])
+    .index("by_clubId_and_createdAt", ["clubId", "createdAt"]),
 
   wrappedSnapshots: defineTable({
     userId: v.id("users"),

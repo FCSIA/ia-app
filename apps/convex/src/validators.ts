@@ -83,24 +83,6 @@ export const notificationPreferenceLevelValidator = v.union(
 
 export type NotificationPreferenceLevel = Infer<typeof notificationPreferenceLevelValidator>;
 
-export const appUserPublicValidator = v.object({
-  id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
-  roles: v.array(appRoleValidator),
-  role: v.union(appRoleValidator, v.null()),
-  gradeLevel: v.union(v.number(), v.null()),
-  major: v.union(pathwayValidator, v.null()),
-  minor: v.union(pathwayValidator, v.null()),
-  email: v.union(v.string(), v.null()),
-  isActive: v.boolean(),
-  mustResetPassword: v.boolean(),
-  dashboardLayout: v.array(v.string()),
-  avatarUrl: v.union(v.string(), v.null()),
-  customBackgroundUrl: v.union(v.string(), v.null()),
-});
-
 export const clubMemberRoleValidator = v.union(
   v.literal("MEMBER"),
   v.literal("LEADER"),

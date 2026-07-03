@@ -422,13 +422,13 @@ function SchedulePageContent() {
                   {deferredSearch.trim().length < 2 ? null : searchResults.length > 0 ? (
                     <div className="divide-y divide-border/40 overflow-hidden">
                       {searchResults.map((person) => {
-                        const sendKey = `friend-send:${person.id}`;
-                        const acceptKey = `friend-accept:${person.id}`;
+                        const sendKey = `friend-send:${person._id}`;
+                        const acceptKey = `friend-accept:${person._id}`;
                         const isSending = pendingAction === sendKey;
                         const isAccepting = pendingAction === acceptKey;
                         const status = person.friendshipStatus;
                         return (
-                          <div key={person.id} className="flex items-center justify-between gap-3 py-2.5">
+                          <div key={person._id} className="flex items-center justify-between gap-3 py-2.5">
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-foreground truncate">
                                 {person.firstName} {person.lastName}
@@ -450,7 +450,7 @@ function SchedulePageContent() {
                                 onClick={() =>
                                   void runScheduleAction(
                                     acceptKey,
-                                    () => acceptFriendRequest({ requesterId: person.id }),
+                                    () => acceptFriendRequest({ requesterId: person._id }),
                                     'Friend added',
                                   )
                                 }
@@ -466,7 +466,7 @@ function SchedulePageContent() {
                                 onClick={() =>
                                   void runScheduleAction(
                                     sendKey,
-                                    () => sendFriendRequest({ friendId: person.id }),
+                                    () => sendFriendRequest({ friendId: person._id }),
                                     'Request sent',
                                   )
                                 }
@@ -492,8 +492,8 @@ function SchedulePageContent() {
                         Requests · {data.incomingRequests.length}
                       </p>
                       {data.incomingRequests.map((req) => {
-                        const acceptKey = `friend-accept:${req.user.id}`;
-                        const removeKey = `friend-remove:${req.user.id}`;
+                        const acceptKey = `friend-accept:${req.user._id}`;
+                        const removeKey = `friend-remove:${req.user._id}`;
                         const isAccepting = pendingAction === acceptKey;
                         const isDeclining = pendingAction === removeKey;
                         return (
@@ -510,7 +510,7 @@ function SchedulePageContent() {
                                 onClick={() =>
                                   void runScheduleAction(
                                     removeKey,
-                                    () => removeFriend({ otherUserId: req.user.id }),
+                                    () => removeFriend({ otherUserId: req.user._id }),
                                     'Removed',
                                   )
                                 }
@@ -524,7 +524,7 @@ function SchedulePageContent() {
                                 onClick={() =>
                                   void runScheduleAction(
                                     acceptKey,
-                                    () => acceptFriendRequest({ requesterId: req.user.id }),
+                                    () => acceptFriendRequest({ requesterId: req.user._id }),
                                     'Friend added',
                                   )
                                 }
@@ -550,12 +550,12 @@ function SchedulePageContent() {
                           blocks={blocks}
                           onRemove={() =>
                             void runScheduleAction(
-                              `friend-remove:${friend.user.id}`,
-                              () => removeFriend({ otherUserId: friend.user.id }),
+                              `friend-remove:${friend.user._id}`,
+                              () => removeFriend({ otherUserId: friend.user._id }),
                               'Removed',
                             )
                           }
-                          isRemoving={pendingAction === `friend-remove:${friend.user.id}`}
+                          isRemoving={pendingAction === `friend-remove:${friend.user._id}`}
                         />
                       ))}
                     </div>

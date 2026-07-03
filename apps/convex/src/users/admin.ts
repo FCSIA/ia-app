@@ -7,12 +7,10 @@ import {
   getMaybeCurrentAppUser,
   requireAnyRole,
   requireAnyRoleSafe,
-  toPublicUser,
 } from "../../lib/currentUser";
 import { USER_MANAGEMENT_ROLES } from "../../lib/roles";
 import {
   appRoleValidator,
-  appUserPublicValidator,
   pathwayValidator,
 } from "../validators";
 import {
@@ -27,8 +25,10 @@ import {
   generateTemporaryPassword,
   listUsersResultValidator,
   normalizeUniqueId,
+  adminUserProfileValidator,
   studentExportRowValidator,
   studentImportResultValidator,
+  toAdminUserProfile,
   userRoleGroupValidator,
   type Pathway,
 } from "./_lib";
@@ -116,7 +116,7 @@ export const list = query({
 
     return {
       ...page,
-      page: page.page.map(toPublicUser),
+      page: page.page.map(toAdminUserProfile),
     };
   },
 });
@@ -209,7 +209,7 @@ export const createUser = mutation({
       actorId: actor._id,
       action: "user.created",
       entityType: "user",
-      entityId: result.user.id,
+      entityId: result.user._id,
       meta: { roles: requestedRoles },
     });
 
@@ -349,7 +349,7 @@ export const activate = mutation({
   args: {
     userId: v.id("users"),
   },
-  returns: appUserPublicValidator,
+  returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
     requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
@@ -375,7 +375,7 @@ export const activate = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toAdminUserProfile(updated);
   },
 });
 
@@ -383,7 +383,7 @@ export const deactivate = mutation({
   args: {
     userId: v.id("users"),
   },
-  returns: appUserPublicValidator,
+  returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
     requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
@@ -420,7 +420,7 @@ export const deactivate = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toAdminUserProfile(updated);
   },
 });
 
@@ -429,7 +429,7 @@ export const assignRoles = mutation({
     userId: v.id("users"),
     roles: v.array(appRoleValidator),
   },
-  returns: appUserPublicValidator,
+  returns: adminUserProfileValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
     requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
@@ -467,7 +467,7 @@ export const assignRoles = mutation({
         .withIndex("by_isStudentAdmin_and_lastName_and_firstName", (q) =>
           q.eq("isStudentAdmin", true),
         )
-        .collect();
+        .take(5);
       if (currentStudentAdmins.length >= 5) {
         throw new ConvexError(
           "Maximum of 5 students can have the Student Admin role.",
@@ -493,7 +493,7 @@ export const assignRoles = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toAdminUserProfile(updated);
   },
 });
 

@@ -148,10 +148,10 @@ export function ClubWorkspace({
 
   const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
   const isSponsor = club?.sponsors?.some(
-    (sponsor) => sponsor.userId === user?.id,
+    (sponsor) => sponsor.userId === user?._id,
   );
   const myMembership = club?.members?.find(
-    (member) => member.userId === user?.id,
+    (member) => member.userId === user?._id,
   );
   const canManageChannels = isSponsor || !!myMembership?.role || isAdmin;
 

@@ -116,7 +116,7 @@ export const DEFAULT_DASHBOARD_LAYOUT = [
   'announcements',
 ] as const;
 
-export function getDefaultLayout(_roles?: AppRole[] | undefined): string[] {
+export function getDefaultLayout(): string[] {
   return [...DEFAULT_DASHBOARD_LAYOUT];
 }
 

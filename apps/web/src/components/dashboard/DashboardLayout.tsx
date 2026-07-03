@@ -202,22 +202,17 @@ export function DashboardLayout() {
 
   // Load persisted layout once user is known
   useEffect(() => {
-    if (!user) {
-      setLayout(getDefaultLayout(undefined));
-      return;
-    }
+    const nextLayout =
+      !user
+        ? getDefaultLayout()
+        : user.dashboardLayout && user.dashboardLayout.length > 0
+          ? user.dashboardLayout.filter((id) => {
+              const widget = WIDGETS[id];
+              return widget && isWidgetAllowed(widget, user.roles);
+            })
+          : (loadLayout(user._id) ?? getDefaultLayout());
 
-    if (user.dashboardLayout && user.dashboardLayout.length > 0) {
-      const cleaned = user.dashboardLayout.filter((id) => {
-        const widget = WIDGETS[id];
-        return widget && isWidgetAllowed(widget, user.roles);
-      });
-      setLayout(cleaned);
-      return;
-    }
-
-    const persisted = loadLayout(user.id);
-    setLayout(persisted ?? getDefaultLayout(user.roles));
+    setLayout(nextLayout);
   }, [user]);
 
   const availableWidgets = useMemo(
@@ -228,7 +223,7 @@ export function DashboardLayout() {
   const handleSave = useCallback(() => {
     if (user && layout) {
       void updateDashboardLayout({ layout });
-      saveLayout(user.id, layout);
+      saveLayout(user._id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
     setEditing(false);
@@ -236,9 +231,9 @@ export function DashboardLayout() {
 
   const handleReset = useCallback(() => {
     if (!user) return;
-    const fresh = getDefaultLayout(user.roles);
+    const fresh = getDefaultLayout();
     setLayout(fresh);
-    saveLayout(user.id, fresh);
+    saveLayout(user._id, fresh);
     toast({ title: 'Dashboard reset to default' });
   }, [toast, user]);
 
