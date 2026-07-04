@@ -133,6 +133,26 @@ export function ChangePasswordCard({
   onSubmit,
 }: ChangePasswordCardProps) {
   const { toast } = useToast();
+  const canSubmitPassword =
+    form.currentPassword.length > 0 && form.newPassword.length > 0 && form.confirm.length > 0;
+
+  function handlePasswordSubmit() {
+    if (form.newPassword.length < 8) {
+      toast({
+        title: 'Your new password must be at least 8 characters long.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (form.newPassword !== form.confirm) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+    onSubmit({
+      currentPassword: form.currentPassword,
+      newPassword: form.newPassword,
+    });
+  }
 
   return (
     <Card>
@@ -151,27 +171,7 @@ export function ChangePasswordCard({
       </CardHeader>
       <CardContent className="pt-4">
         {changing ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (form.newPassword.length < 8) {
-                toast({
-                  title: 'Your new password must be at least 8 characters long.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-              if (form.newPassword !== form.confirm) {
-                toast({ title: 'Passwords do not match', variant: 'destructive' });
-                return;
-              }
-              onSubmit({
-                currentPassword: form.currentPassword,
-                newPassword: form.newPassword,
-              });
-            }}
-            className="space-y-4"
-          >
+          <div className="space-y-4">
             <Input
               type="password"
               placeholder="Current password"
@@ -194,12 +194,18 @@ export function ChangePasswordCard({
               required
             />
             <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
-              <Button type="submit">Update Password</Button>
+              <Button
+                type="button"
+                disabled={!canSubmitPassword}
+                onClick={handlePasswordSubmit}
+              >
+                Update Password
+              </Button>
               <Button type="button" variant="ghost" onClick={onCancel}>
                 Cancel
               </Button>
             </div>
-          </form>
+          </div>
         ) : (
           <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
             {'\u2022'.repeat(8)}

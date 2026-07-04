@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from 'convex/react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
@@ -25,6 +25,35 @@ const PALETTE_SLOTS: Array<{ key: CustomColorKey; label: string; help: string }>
   { key: 'secondary', label: 'Secondary', help: 'Cards and inner panels.' },
   { key: 'accent', label: 'Accent', help: 'Borders, hover highlights.' },
 ];
+
+function getLegacyBackgroundDataUrl() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const legacy = localStorage.getItem(CUSTOM_BG_STORAGE_KEY);
+    return legacy?.startsWith('data:image/') ? legacy : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearLegacyBackground() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function loadCustomColors(): CustomColors {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CustomColors) : {};
+  } catch {
+    return {};
+  }
+}
 
 export function CustomThemeEditor() {
   const [mode, setMode] = useState<'image' | 'colors'>('image');
@@ -71,6 +100,9 @@ function CustomBackgroundPanel() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [hasLegacyBackground, setHasLegacyBackground] = useState(
+    () => getLegacyBackgroundDataUrl() !== null,
+  );
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const saveUserImage = useMutation(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
@@ -84,29 +116,35 @@ function CustomBackgroundPanel() {
       'background',
       file,
     );
-    localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
+    clearLegacyBackground();
+    setHasLegacyBackground(false);
   }
 
-  useEffect(() => {
-    if (!user || user.customBackgroundUrl || migrating) return;
-    const legacy = localStorage.getItem(CUSTOM_BG_STORAGE_KEY);
-    if (!legacy || !legacy.startsWith('data:image/')) return;
+  async function handleLegacyBackground() {
+    const legacy = getLegacyBackgroundDataUrl();
+    if (!legacy) {
+      setHasLegacyBackground(false);
+      return;
+    }
 
     setMigrating(true);
-    void (async () => {
-      try {
-        const response = await fetch(legacy);
-        const blob = await response.blob();
-        const file = new File([blob], 'background.jpg', { type: blob.type || 'image/jpeg' });
-        const compressed = await compressImageForUpload(file, 'background');
-        await uploadAndSave(compressed);
-      } catch {
-        // ignore migration failures
-      } finally {
-        setMigrating(false);
-      }
-    })();
-  }, [user, migrating]);
+    try {
+      const response = await fetch(legacy);
+      const blob = await response.blob();
+      const file = new File([blob], 'background.jpg', { type: blob.type || 'image/jpeg' });
+      const compressed = await compressImageForUpload(file, 'background');
+      await uploadAndSave(compressed);
+      toast({ title: 'Background image updated' });
+    } catch (e: unknown) {
+      toast({
+        title: e instanceof Error ? e.message : 'Failed to update background',
+        variant: 'destructive',
+      });
+    } finally {
+      setMigrating(false);
+    }
+  }
+
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -135,7 +173,8 @@ function CustomBackgroundPanel() {
   async function handleRemove() {
     try {
       await clearUserImage({ kind: 'background' });
-      localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
+      clearLegacyBackground();
+      setHasLegacyBackground(false);
       toast({ title: 'Background image removed' });
     } catch (e: unknown) {
       toast({
@@ -219,6 +258,19 @@ function CustomBackgroundPanel() {
             Remove
           </Button>
         ) : null}
+        {!preview && hasLegacyBackground ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={uploading || migrating || !user}
+            onClick={() => void handleLegacyBackground()}
+            className="rounded-full text-muted-foreground hover:text-foreground"
+          >
+            {migrating ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+            Use saved image
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -226,18 +278,8 @@ function CustomBackgroundPanel() {
 
 function CustomColorsPanel() {
   const { toast } = useToast();
-  const [colors, setColors] = useState<CustomColors>({});
+  const [colors, setColors] = useState<CustomColors>(loadCustomColors);
   const [openSlot, setOpenSlot] = useState<CustomColorKey | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const raw = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
-      if (raw) setColors(JSON.parse(raw));
-    } catch {
-      // ignore
-    }
-  }, []);
 
   function persist(next: CustomColors) {
     setColors(next);
@@ -321,6 +363,7 @@ function CustomColorsPanel() {
                   <div className="flex items-center justify-between gap-2">
                     <input
                       type="text"
+                      aria-label={`${label} color hex`}
                       value={hex ?? ''}
                       placeholder="#rrggbb"
                       onChange={(event) => {
