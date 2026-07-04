@@ -36,7 +36,8 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
-agent-notes/
+agent-notes/*
+!agent-notes/IDIOMATIC_CONVEX_TODO.md
 
 # Editors
 .idea
