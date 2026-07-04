@@ -147,7 +147,7 @@ export function FeatureFilterBar({
   };
 
   return (
-    <SearchToolbar className={cn('rounded-2xl border border-border/70 bg-card/95 p-3 shadow-sm shadow-foreground/5', className)}>
+    <SearchToolbar className={cn('p-0', className)}>
       <SearchToolbarRow>
         <SearchInput
           value={search}
@@ -216,7 +216,7 @@ export function FeatureFilterBar({
       {advanced ? (
         <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
           <CollapsibleContent className="pt-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
-            <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
+            <div className="rounded-xl bg-muted/25 p-3">
               {advanced}
             </div>
           </CollapsibleContent>

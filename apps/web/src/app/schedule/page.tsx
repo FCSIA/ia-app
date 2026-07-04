@@ -305,32 +305,29 @@ function SchedulePageContent() {
           }
         >
           {/* Tab bar + controls in one row */}
-          <div className="flex items-center justify-between gap-4 border-b border-border/50 pb-px">
-            <TabsList className="h-auto gap-0 rounded-none border-0 bg-transparent p-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList className="w-full overflow-x-auto sm:w-auto">
               {canEditOwnSchedule ? (
                 <TabItem
                   value="my"
-                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   label="My Schedule"
                 />
               ) : null}
               {canEditOwnSchedule ? (
                 <TabItem
                   value="friends"
-                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   label="Friend Schedules"
                 />
               ) : null}
               {canManageBlocks ? (
                 <TabItem
                   value="admin"
-                  className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
                   label="Manage Blocks"
                 />
               ) : null}
             </TabsList>
             {selectedTab === 'my' && canEditOwnSchedule && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Public</span>
                   <Switch label="" checked={isPublic} onToggle={() => setIsPublic((current) => !current)} className="scale-[0.85]" />
