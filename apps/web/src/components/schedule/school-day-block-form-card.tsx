@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,14 +55,16 @@ export function SchoolDayBlockFormCard({
   const [label, setLabel] = useState<string>(block?.periodNumber ? '' : block?.label ?? '');
   const [startTime, setStartTime] = useState<string>(block?.startTime ?? '08:10');
   const [endTime, setEndTime] = useState<string>(block?.endTime ?? '08:55');
+  const [previousBlock, setPreviousBlock] = useState<SchoolDayBlock | undefined>(block);
 
-  useEffect(() => {
+  if (previousBlock !== block) {
+    setPreviousBlock(block);
     setKind(block?.periodNumber ? 'PERIOD' : 'CUSTOM');
     setPeriodNumber(block?.periodNumber?.toString() ?? '1');
     setLabel(block?.periodNumber ? '' : block?.label ?? '');
     setStartTime(block?.startTime ?? '08:10');
     setEndTime(block?.endTime ?? '08:55');
-  }, [block]);
+  }
 
   const durationMinutes = useMemo(() => {
     const value = parseTimeToMinutes(endTime) - parseTimeToMinutes(startTime);

@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import {
@@ -137,7 +137,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const [commentPending, setCommentPending] = useState(false);
   const [deleteCommentPending, setDeleteCommentPending] = useState<string | null>(null);
   const [reportPending, setReportPending] = useState(false);
-  const [markedRead, setMarkedRead] = useState(false);
+  const markReadAttemptsRef = useRef(new Set<string>());
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
@@ -153,12 +153,12 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const submitReport = useMutation(api.moderation.reports.submit);
 
   useEffect(() => {
-    if (!announcement || announcement.isRead || markedRead) return;
-    setMarkedRead(true);
+    if (!announcement || announcement.isRead || markReadAttemptsRef.current.has(id)) return;
+    markReadAttemptsRef.current.add(id);
     void markRead({ announcementId: id as Id<'announcements'> }).catch(() => {
-      setMarkedRead(false);
+      markReadAttemptsRef.current.delete(id);
     });
-  }, [announcement, id, markRead, markedRead]);
+  }, [announcement, id, markRead]);
 
   if (isLoading) {
     return (
