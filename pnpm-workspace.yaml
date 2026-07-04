@@ -11,6 +11,8 @@ overrides:
   react-dom: "19.0.0"
   "@types/react": "19.0.8"
   "@types/react-dom": "19.0.3"
+  prisma: "7.8.0"
+  "@prisma/client": "7.8.0"
 
 onlyBuiltDependencies:
   - bcrypt

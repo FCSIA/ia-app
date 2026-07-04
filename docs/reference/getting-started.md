@@ -11,6 +11,9 @@ longer part of the active local setup.
 
 ## First Run
 
+Use Node.js 20.19 or newer. The Codex/development environment currently uses
+Node 24.
+
 ```bash
 cp .env.example .env
 pnpm install
