@@ -21,6 +21,7 @@ import {
   Trash2,
   AlertTriangle,
   Flag,
+  UserPlus,
   X,
 } from 'lucide-react';
 import {
@@ -73,6 +74,7 @@ import { MentionBody } from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Empty,
   EmptyDescription,
@@ -207,6 +209,79 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
   return message.body ? <MarkdownMessage body={message.body} /> : null;
 }
 
+function MessageAuthorPreview({
+  author,
+  compact,
+  currentUserId,
+  friendRequestPendingId,
+  onSendFriendRequest,
+}: {
+  author: ClubChannelMessage['author'];
+  compact: boolean;
+  currentUserId?: string;
+  friendRequestPendingId?: string | null;
+  onSendFriendRequest: (userId: string) => void;
+}) {
+  const name = fullName(author);
+  const isCurrentUser = author._id === currentUserId;
+  const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
+  const isPending = friendRequestPendingId === author._id;
+
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`View ${name} profile`}
+          className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <ClubAvatar
+            person={author}
+            className={compact ? 'size-7' : 'size-9'}
+            fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+          />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent side="right" align="start" className="w-72 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <ClubAvatar person={author} className="size-12" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+            <p className="font-mono text-xs text-muted-foreground">{author.uniqueId}</p>
+            {roleLabels.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {roleLabels.map((role) => (
+                  <Badge key={role} variant="dot" className="h-5 text-[10px]">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+          <span className="text-xs text-muted-foreground">
+            {isCurrentUser ? 'This is you' : 'Public IA profile'}
+          </span>
+          {!isCurrentUser ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="tertiary"
+              leadingIcon={UserPlus}
+              disabled={!currentUserId || isPending}
+              loading={isPending}
+              onClick={() => onSendFriendRequest(author._id)}
+            >
+              Add friend
+            </Button>
+          ) : null}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
 function PollCard({
   message,
   onVote,
@@ -265,11 +340,13 @@ function MessageRow({
   onDelete,
   onShowHistory,
   onReport,
+  onSendFriendRequest,
   isEditing,
   isReactionPending,
   isPinPending,
   isVotePending,
   isDeletePending,
+  friendRequestPendingId,
   highlighted,
   canModerate,
   currentUserId,
@@ -284,11 +361,13 @@ function MessageRow({
   onDelete: (messageId: string) => void;
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
+  onSendFriendRequest: (userId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
   isPinPending: boolean;
   isVotePending: boolean;
   isDeletePending: boolean;
+  friendRequestPendingId?: string | null;
   highlighted: boolean;
   canModerate: boolean;
   currentUserId?: string;
@@ -306,10 +385,12 @@ function MessageRow({
         isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
       )}
     >
-      <ClubAvatar
-        person={message.author}
-        className={compact ? 'size-7' : 'size-9'}
-        fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+      <MessageAuthorPreview
+        author={message.author}
+        compact={compact}
+        currentUserId={currentUserId}
+        friendRequestPendingId={friendRequestPendingId}
+        onSendFriendRequest={onSendFriendRequest}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -505,6 +586,7 @@ export default function ClubChannelPage({
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   const user = useCurrentUser();
@@ -522,6 +604,7 @@ export default function ClubChannelPage({
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
   const submitReport = useMutation(api.moderation.reports.submit);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const submitMessage = async ({
     body,
@@ -660,6 +743,22 @@ export default function ClubChannelPage({
     setReportReason('');
   };
 
+  const handleSendFriendRequest = async (friendId: string) => {
+    if (friendRequestPendingId) return;
+    setFriendRequestPendingId(friendId);
+    try {
+      await sendFriendRequest({ friendId: friendId as Id<'users'> });
+      toast({ title: 'Friend request sent' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to send friend request',
+        variant: 'destructive',
+      });
+    } finally {
+      setFriendRequestPendingId(null);
+    }
+  };
+
   const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
     const isEditing = editingMessageId === message._id;
 
@@ -696,11 +795,13 @@ export default function ClubChannelPage({
             )
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
+          onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
           isEditing={isEditing}
           isReactionPending={false}
           isPinPending={false}
           isVotePending={false}
           isDeletePending={false}
+          friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
           canModerate={canModerateChannel}
           compact={compact}
