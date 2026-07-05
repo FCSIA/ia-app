@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/dialog';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import type {
   ClubChannelMessage,
@@ -92,6 +93,12 @@ import { useToast } from '@/hooks/use-toast';
 
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👀'];
 
+const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
+  'STUDENT',
+  'STUDENT_LEADER',
+  'STUDENT_ADMIN',
+]);
+
 type ComposerSubmitArgs = {
   body: string;
   bodyRich: ClubChannelMessageRichBody | null;
@@ -127,6 +134,10 @@ function getSearchableText(message: ClubChannelMessage) {
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
+}
+
+function hasStudentScheduleRole(roles?: AppRole[] | null) {
+  return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
 }
 
 function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
@@ -213,19 +224,23 @@ function MessageAuthorPreview({
   author,
   compact,
   currentUserId,
+  canSendFriendRequest,
   friendRequestPendingId,
   onSendFriendRequest,
 }: {
   author: ClubChannelMessage['author'];
   compact: boolean;
   currentUserId?: string;
+  canSendFriendRequest: boolean;
   friendRequestPendingId?: string | null;
   onSendFriendRequest: (userId: string) => void;
 }) {
   const name = fullName(author);
   const isCurrentUser = author._id === currentUserId;
+  const isStudentProfile = hasStudentScheduleRole(author.roles);
   const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
   const isPending = friendRequestPendingId === author._id;
+  const canOfferFriendRequest = canSendFriendRequest && !isCurrentUser && isStudentProfile;
 
   return (
     <HoverCard openDelay={150} closeDelay={100}>
@@ -261,15 +276,15 @@ function MessageAuthorPreview({
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
           <span className="text-xs text-muted-foreground">
-            {isCurrentUser ? 'This is you' : 'Public IA profile'}
+            {isCurrentUser ? 'This is you' : isStudentProfile ? 'Student IA profile' : 'Public IA profile'}
           </span>
-          {!isCurrentUser ? (
+          {canOfferFriendRequest ? (
             <Button
               type="button"
               size="sm"
               variant="tertiary"
               leadingIcon={UserPlus}
-              disabled={!currentUserId || isPending}
+              disabled={isPending}
               loading={isPending}
               onClick={() => onSendFriendRequest(author._id)}
             >
@@ -340,6 +355,7 @@ function MessageRow({
   onDelete,
   onShowHistory,
   onReport,
+  canSendFriendRequest,
   onSendFriendRequest,
   isEditing,
   isReactionPending,
@@ -361,6 +377,7 @@ function MessageRow({
   onDelete: (messageId: string) => void;
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
+  canSendFriendRequest: boolean;
   onSendFriendRequest: (userId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
@@ -389,6 +406,7 @@ function MessageRow({
         author={message.author}
         compact={compact}
         currentUserId={currentUserId}
+        canSendFriendRequest={canSendFriendRequest}
         friendRequestPendingId={friendRequestPendingId}
         onSendFriendRequest={onSendFriendRequest}
       />
@@ -744,7 +762,7 @@ export default function ClubChannelPage({
   };
 
   const handleSendFriendRequest = async (friendId: string) => {
-    if (friendRequestPendingId) return;
+    if (!hasStudentScheduleRole(user?.roles) || friendRequestPendingId) return;
     setFriendRequestPendingId(friendId);
     try {
       await sendFriendRequest({ friendId: friendId as Id<'users'> });
@@ -795,6 +813,7 @@ export default function ClubChannelPage({
             )
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
+          canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
           onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
           isEditing={isEditing}
           isReactionPending={false}
