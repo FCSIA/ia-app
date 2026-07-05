@@ -171,7 +171,12 @@ export function ChangePasswordCard({
       </CardHeader>
       <CardContent className="pt-4">
         {changing ? (
-          <div className="space-y-4">
+          <form
+            action={() => {
+              handlePasswordSubmit();
+            }}
+            className="space-y-4"
+          >
             <Input
               type="password"
               placeholder="Current password"
@@ -195,9 +200,8 @@ export function ChangePasswordCard({
             />
             <div className="flex gap-2 pt-4 mt-2 border-t border-foreground/[0.07]">
               <Button
-                type="button"
+                type="submit"
                 disabled={!canSubmitPassword}
-                onClick={handlePasswordSubmit}
               >
                 Update Password
               </Button>
@@ -205,7 +209,7 @@ export function ChangePasswordCard({
                 Cancel
               </Button>
             </div>
-          </div>
+          </form>
         ) : (
           <p className="text-muted-foreground text-sm font-mono tracking-[0.2em] mt-2">
             {'\u2022'.repeat(8)}
