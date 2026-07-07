@@ -41,7 +41,7 @@ export function ScheduleDayEditor({
           {customBlocks.map((block) => (
             <div
               key={block.id}
-              className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm"
+              className="inline-flex items-center gap-2 rounded-md border border-border/50 px-3 py-2 text-sm"
             >
               <Lock className="size-3 text-muted-foreground" />
               <span className="font-medium text-foreground">{block.label}</span>
