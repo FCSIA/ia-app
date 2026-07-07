@@ -57,8 +57,8 @@
   clubs/chat/reporting/join approvals, schedule, events/calendar, Flex Friday
   browse/register/pass, notifications/preferences/native push, profile/avatar
   upload, persisted themes, design-system gallery, offline cached
-  dashboard/schedule/pass state, notification deep-link routing, and Maestro
-  smoke flows.
+  dashboard/schedule/pass state, notification deep-link routing, native push
+  device/test-push validation in the Inbox, and Maestro smoke flows.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 

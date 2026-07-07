@@ -44,7 +44,9 @@ alongside the existing web-push delivery path.
 The app does not blind-prompt for notifications on login. It silently refreshes
 an existing permission and exposes the first permission prompt from the Inbox
 screen. Notification taps route through Expo Router and map existing backend
-`href` values into mobile routes.
+`href` values into mobile routes. The Inbox also lists registered native push
+devices and can queue a test push through the Convex Expo push action for
+physical-device validation.
 
 EAS profiles live in `eas.json`; release builds should use EAS Build/Submit and
 production Convex environment variables.

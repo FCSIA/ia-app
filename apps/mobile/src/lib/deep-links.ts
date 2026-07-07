@@ -12,20 +12,50 @@ export function normalizeHref(href?: string | null) {
 
 export function openAppHref(href?: string | null) {
   const path = normalizeHref(href);
-  if (path.startsWith("/clubs/") || path.startsWith("/announcements/")) {
+
+  if (path.startsWith("/announcements/")) {
     router.push(path as never);
     return;
   }
+
+  const channelMatch = path.match(/^\/clubs\/([^/]+)\/channels\/([^/?#]+)/);
+  if (channelMatch) {
+    router.push(`/clubs/${channelMatch[1]}/channels/${channelMatch[2]}` as never);
+    return;
+  }
+
+  const clubMatch = path.match(/^\/clubs\/([^/?#]+)/);
+  if (clubMatch) {
+    router.push(`/clubs/${clubMatch[1]}` as never);
+    return;
+  }
+
   if (path.startsWith("/events")) {
     router.push("/events" as never);
+    return;
+  }
+  if (path.startsWith("/flex-friday/pass")) {
+    router.push("/flex-friday/pass" as never);
     return;
   }
   if (path.startsWith("/flex-friday")) {
     router.push("/flex-friday" as never);
     return;
   }
+  if (path.startsWith("/schedule")) {
+    router.push("/schedule" as never);
+    return;
+  }
   if (path.startsWith("/notifications")) {
     router.push("/notifications" as never);
+    return;
+  }
+  if (path.startsWith("/profile")) {
+    router.push("/profile" as never);
+    return;
+  }
+  if (path.startsWith("/settings/theme")) {
+    router.push("/settings/theme" as never);
     return;
   }
   router.push("/dashboard" as never);
