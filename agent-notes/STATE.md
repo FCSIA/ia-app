@@ -3,7 +3,7 @@
 ## Active Focus
 
 - **Branch**: `mobile`
-- **Goal**: Native Expo mobile app foundation added on top of the Convex-first IA app.
+- **Goal**: Native Expo mobile app advanced to repo-local store-ready v1 on top of the Convex-first IA app.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -52,18 +52,23 @@
   blocks club-scoped submissions without an eligible club.
 - Event author cancellation checks both current user id shapes used by the app.
 - `apps/mobile` now contains an Expo SDK 57 app with Expo Router, Better Auth
-  Expo/SecureStore auth, Convex live data, shared design tokens, mobile tabs,
-  announcements, clubs/chat, schedule, events, Flex Friday, notifications,
-  profile, theme, and design-system gallery screens.
+  Expo/SecureStore auth, Convex live data, shared design tokens, IA app assets,
+  production-shaped dynamic Expo config, mobile tabs, announcements,
+  clubs/chat/reporting/join approvals, schedule, events/calendar, Flex Friday
+  browse/register/pass, notifications/preferences/native push, profile/avatar
+  upload, persisted themes, design-system gallery, offline cached
+  dashboard/schedule/pass state, notification deep-link routing, and Maestro
+  smoke flows.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 
 ### Remaining Debt
 
-- Mobile v1 is a functional foundation, not store-ready: EAS project id,
-  app icons/splash assets, physical-device push testing, Maestro flows,
-  screenshot parity review, and TestFlight/Play internal builds still need
-  product/build credentials.
+- Mobile v1 is repo-local store-ready. Remaining mobile launch blockers are
+  external: school-controlled EAS project id/account owner, Apple/Google store
+  accounts, universal-link domain files, reviewer credentials on a demo
+  deployment, physical iOS/Android push validation, screenshot capture, and
+  TestFlight/Play internal-track builds. See `apps/mobile/STORE_READY.md`.
 - Channel delete is still a direct row delete and does not cascade related
   messages/reactions/memberships.
 - Announcement feed still has pagination/read-amplification room for improvement.
@@ -78,6 +83,8 @@
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
 - `pnpm --filter mobile typecheck` - pass
+- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+  a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass
 - `pnpm build` - pass
 - `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)

@@ -62,6 +62,10 @@ Start the native mobile app with Expo:
 pnpm dev:mobile
 ```
 
+The mobile app has repo-local store assets and production-shaped Expo config.
+School-owned EAS, Apple, Google, and universal-link values are documented in
+[apps/mobile/STORE_READY.md](./apps/mobile/STORE_READY.md).
+
 Open Convex dashboard:
 
 ```bash
@@ -141,6 +145,8 @@ The detailed architecture and feature list starts in [docs/architecture/overview
 - [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.
 - [docs/backend/convex-overview.md](./docs/backend/convex-overview.md) — Backend function layout and rules.
 - [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Frontend structure and conventions.
+- [apps/mobile/README.md](./apps/mobile/README.md) - Native mobile setup and verification.
+- [apps/mobile/STORE_READY.md](./apps/mobile/STORE_READY.md) - External store/EAS/device steps for release.
 - [PORTING.md](./PORTING.md) — Historical migration context, not the active operating manual.
 
 ## License
