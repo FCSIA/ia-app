@@ -25,14 +25,14 @@ export function Button({
   const disabledStyle = disabled || loading;
   const backgroundColor =
     variant === "primary"
-      ? disabledStyle ? "#cbd9d2" : "#14231d"
+      ? disabledStyle ? color("muted") : color("primary")
       : variant === "secondary"
-        ? color("accent")
+        ? color("secondary")
         : "transparent";
-  const borderColor = disabledStyle && variant === "primary" ? "#8fa39a" : variant === "tertiary" ? color("border") : "transparent";
+  const borderColor = disabledStyle && variant === "primary" ? color("border") : variant === "tertiary" ? color("border") : "transparent";
   const textColor =
     variant === "primary"
-      ? disabledStyle ? "#53635b" : "#ffffff"
+      ? disabledStyle ? color("mutedForeground") : color("primaryForeground")
       : color("foreground");
 
   return (
@@ -49,7 +49,7 @@ export function Button({
       <View
         style={{
           minHeight: height,
-          borderRadius: 999,
+          borderRadius: 14,
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",

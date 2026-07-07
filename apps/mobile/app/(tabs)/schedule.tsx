@@ -110,7 +110,7 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <Screen title="Schedule" subtitle="Your classes, visibility, and shared friend schedule access.">
+    <Screen title="Classes" subtitle="Your weekly class schedule, visibility, and friend access.">
       {data.isOffline || data.isStale ? <OfflineBanner stale={data.isStale} /> : null}
       <DataBoundary data={data.value} emptyTitle="Schedule unavailable">
         {(schedule) => (

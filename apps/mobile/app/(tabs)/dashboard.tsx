@@ -15,7 +15,7 @@ import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const DEFAULT_WIDGETS = ["schedule", "quickActions", "announcements", "clubs", "events", "calendar", "flex", "funFact"] as const;
+const DEFAULT_WIDGETS = ["schedule", "calendar", "announcements", "quickActions", "flex", "clubs", "events", "funFact"] as const;
 const WIDGET_LABELS: Record<string, string> = {
   schedule: "Today",
   quickActions: "Quick Actions",
@@ -114,7 +114,8 @@ export default function DashboardScreen() {
           <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Quick Actions</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <Button title="Courses" size="sm" variant="secondary" onPress={() => router.push("/courses" as never)} />
-            <Button title="Calendar" size="sm" variant="secondary" onPress={() => router.push("/calendar" as never)} />
+            <Button title="Events" size="sm" variant="secondary" onPress={() => router.push("/events" as never)} />
+            <Button title="Flex Friday" size="sm" variant="secondary" onPress={() => router.push("/flex-friday" as never)} />
             <Button title="Flex Pass" size="sm" variant="secondary" onPress={() => router.push("/flex-friday/pass" as never)} />
             <Button title="Wrapped" size="sm" variant="secondary" onPress={() => router.push("/wrapped" as never)} />
           </View>

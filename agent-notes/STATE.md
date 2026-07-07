@@ -64,6 +64,9 @@
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
   sync via `pnpm sync:convex-env -- --android`.
+- Mobile navigation is student-prioritized: tab bar is Home, Calendar, Posts,
+  Clubs, Classes, More. Inbox moved into More with unread count so Calendar is
+  not hidden behind the secondary menu.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 
@@ -95,6 +98,10 @@
   spacing, and More navigation. Alex STU001 has no approved club memberships in
   the hosted dataset, so member-only club channel/people/tag runtime actions
   were source/typecheck verified but hidden for that user.
+- Latest design/tab pass was typechecked. Android Expo Go visual rerun was
+  blocked because Expo Go stopped requesting the Metro bundle after reload even
+  though Metro `/status` returned `packager-status:running` and `adb reverse`
+  mappings existed; restart Expo Go/Metro before the next visual QA pass.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass

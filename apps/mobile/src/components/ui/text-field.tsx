@@ -9,7 +9,7 @@ export function TextField(props: TextInputProps) {
       selectionColor={color("primary")}
       style={{
         minHeight: 46,
-        borderRadius: 18,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: color("border"),
         backgroundColor: color("card"),

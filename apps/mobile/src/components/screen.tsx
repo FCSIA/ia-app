@@ -17,10 +17,10 @@ export function Screen({ title, subtitle, children, contentContainerStyle, ...pr
       <ScrollView
         contentContainerStyle={[
           {
-            padding: 18,
-            paddingTop: Math.max(22, insets.top ? 10 : 22),
-            paddingBottom: 32,
-            gap: 16
+            paddingHorizontal: 16,
+            paddingTop: Math.max(18, insets.top ? 12 : 18),
+            paddingBottom: 96,
+            gap: 14
           },
           contentContainerStyle
         ]}
@@ -29,9 +29,9 @@ export function Screen({ title, subtitle, children, contentContainerStyle, ...pr
         <AppBackHeader />
         {title ? (
           <View style={{ gap: 4 }}>
-            <Text style={{ color: color("foreground"), fontSize: 28, fontWeight: "900" }}>{title}</Text>
+            <Text style={{ color: color("foreground"), fontSize: 30, fontWeight: "900" }}>{title}</Text>
             {subtitle ? (
-              <Text style={{ color: color("mutedForeground"), fontSize: 14, lineHeight: 20 }}>{subtitle}</Text>
+              <Text style={{ color: color("mutedForeground"), fontSize: 15, lineHeight: 21 }}>{subtitle}</Text>
             ) : null}
           </View>
         ) : null}
@@ -65,7 +65,7 @@ export function AppBackHeader({ forceVisible = false }: { forceVisible?: boolean
         style={{
           minHeight: 40,
           width: 92,
-          borderRadius: 999,
+          borderRadius: 14,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",

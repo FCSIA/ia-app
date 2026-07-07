@@ -7,11 +7,16 @@ export function Card({ style, ...props }: ViewProps) {
     <View
       style={[
         {
-          borderRadius: 22,
+          borderRadius: 16,
           borderWidth: 1,
           borderColor: color("border"),
           backgroundColor: color("card"),
-          padding: 16
+          padding: 14,
+          shadowColor: color("foreground"),
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+          elevation: 1
         },
         style
       ]}

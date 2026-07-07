@@ -56,7 +56,7 @@ sign-in uses the same school unique ID and password flow as the web app.
 
 ## Navigation
 
-- Bottom tabs: Dashboard, Announcements, Clubs, Schedule, Inbox, More.
+- Bottom tabs: Home, Calendar, Posts, Clubs, Classes, More.
 - Dashboard includes the same practical student widgets as web: schedule,
   quick actions, unread announcements, clubs, upcoming events, calendar,
   Flex Friday, and fun fact, with saved widget layout.
@@ -64,9 +64,9 @@ sign-in uses the same school unique ID and password flow as the web app.
 - Clubs include discovery, join/request states, club detail, member people
   tools, tags, and channel message surfaces with replies, reactions, pins,
   polls, edit/delete, and reports where the current user's role allows them.
-- Schedule includes class viewing, visibility, edit/save, friend search,
+- Classes includes schedule viewing, visibility, edit/save, friend search,
   friend requests, and shared friend schedule access.
-- More links to Courses, Events, Calendar, Flex Friday, Flex Pass, Wrapped,
+- More links to Inbox, Courses, Events, Flex Friday, Flex Pass, Wrapped,
   Profile, Theme, and the design-system gallery.
 - Courses include catalog search, pathway/grade/department filters, and course
   detail pages.
