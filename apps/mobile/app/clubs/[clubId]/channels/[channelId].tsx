@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, Text, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "convex/react";
+import { AppBackHeader } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { TextField } from "@/components/ui/text-field";
@@ -60,10 +62,14 @@ export default function ChannelScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{ flex: 1, backgroundColor: color("background") }}
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1, backgroundColor: color("background") }}
+      >
+      <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
+        <AppBackHeader forceVisible />
+      </View>
       <FlashList
         data={messages ?? []}
         contentContainerStyle={{ padding: 16 }}
@@ -129,6 +135,7 @@ export default function ChannelScreen() {
         <TextField placeholder="Message this channel" value={body} onChangeText={setBody} multiline />
         <Button title="Send" onPress={send} disabled={!body.trim()} />
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

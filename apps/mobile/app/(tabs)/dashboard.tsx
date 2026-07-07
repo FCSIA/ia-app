@@ -38,7 +38,9 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const saved = user?.dashboardLayout?.filter((id) => id in WIDGET_LABELS);
-    if (saved?.length) setLayout(saved);
+    if (saved?.length) {
+      setLayout((current) => (arraysEqual(current, saved) ? current : saved));
+    }
   }, [user?.dashboardLayout]);
 
   const hiddenWidgets = useMemo(
@@ -173,4 +175,8 @@ export default function DashboardScreen() {
       {layout.map((id) => renderWidget(id))}
     </Screen>
   );
+}
+
+function arraysEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
 }

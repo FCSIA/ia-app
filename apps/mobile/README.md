@@ -21,18 +21,23 @@ Native push notifications are disabled in Expo Go on SDK 53+ and require a
 development build.
 
 For Expo Go on a physical iPhone or Android emulator against the same local
-Convex backend as the web app, sync mobile env with a LAN-reachable host:
+Convex backend as the web app, sync mobile env for the device you are testing:
 
 ```powershell
-$env:MOBILE_CONVEX_HOST="<your Wi-Fi IPv4>"
-pnpm sync:convex-env
+# Android Studio emulator
+pnpm sync:convex-env -- --android
+
+# Physical iPhone on the same Wi-Fi as the laptop
+pnpm sync:convex-env -- --host "<your Wi-Fi IPv4>"
+
 pnpm --filter cvx dev
 pnpm dev:mobile
 ```
 
-Use the current Wi-Fi IPv4 address for `MOBILE_CONVEX_HOST` if it changes. The
-script keeps web on `127.0.0.1` and writes mobile URLs to
-`apps/mobile/.env.local`.
+Use the current Wi-Fi IPv4 address for the iPhone command if it changes. The
+script keeps web on `127.0.0.1` and writes the mobile-specific URLs to
+`apps/mobile/.env.local`. Android emulators use `10.0.2.2` to reach the Windows
+host loopback.
 
 Set these values before launching a dev build:
 

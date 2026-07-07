@@ -20,14 +20,17 @@ export default function ClubDetailScreen() {
   return (
     <Screen>
       <DataBoundary data={club} emptyTitle="Club unavailable">
-        {(data) => (
-          <>
+        {(data) => {
+          const hasPendingJoinRequest = !!data.viewer?.hasPendingJoinRequest;
+
+          return (
+            <>
             <Card style={{ gap: 12 }}>
               <Badge
                 label={
                   data.viewer?.canAccessWorkspace
                     ? "Workspace"
-                    : data.viewer?.hasPendingJoinRequest
+                    : hasPendingJoinRequest
                       ? "Requested"
                       : data.joinPolicy ?? "Club"
                 }
@@ -39,7 +42,8 @@ export default function ClubDetailScreen() {
               </Text>
               {!data.viewer?.canAccessWorkspace ? (
                 <Button
-                  title={data.joinPolicy === "OPEN" ? "Join club" : "Request to join"}
+                  title={hasPendingJoinRequest ? "Request pending" : data.joinPolicy === "OPEN" ? "Join club" : "Request to join"}
+                  disabled={hasPendingJoinRequest}
                   onPress={() =>
                     data.joinPolicy === "OPEN"
                       ? joinOpen({ clubId: clubId as any })
@@ -100,8 +104,9 @@ export default function ClubDetailScreen() {
                 ))}
               </Card>
             ) : null}
-          </>
-        )}
+            </>
+          );
+        }}
       </DataBoundary>
     </Screen>
   );

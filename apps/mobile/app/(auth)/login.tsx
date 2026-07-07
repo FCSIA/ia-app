@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const [uniqueId, setUniqueId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const canSubmit = !!uniqueId.trim() && !!password;
 
   async function signIn() {
     setLoading(true);
@@ -65,7 +66,17 @@ export default function LoginScreen() {
             returnKeyType="go"
             onSubmitEditing={signIn}
           />
-          <Button title="Sign in" loading={loading} disabled={!uniqueId || !password} onPress={signIn} />
+          <Button
+            title={canSubmit ? "Sign in" : "Enter ID and password"}
+            loading={loading}
+            disabled={!canSubmit}
+            onPress={signIn}
+          />
+          {!canSubmit ? (
+            <Text style={{ color: color("mutedForeground"), fontSize: 12, textAlign: "center" }}>
+              Use the same school ID and password as the web app.
+            </Text>
+          ) : null}
         </Card>
       </View>
     </KeyboardAvoidingView>

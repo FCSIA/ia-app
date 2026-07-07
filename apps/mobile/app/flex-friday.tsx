@@ -102,43 +102,45 @@ export default function FlexFridayScreen() {
         </Card>
       ) : null}
 
-      <DataBoundary data={workshops} emptyTitle="No workshops for this session">
-        {(items) => (
-          <View style={{ gap: 12 }}>
-            {items.map((workshop: any) => {
-              const isRegistered = workshop.registrations?.length > 0;
-              const isAssigned = workshop.assignments?.length > 0;
-              return (
-                <Card key={workshop._id} style={{ gap: 8 }}>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    {isRegistered ? <Badge label="Registered" color="emerald" /> : null}
-                    {isAssigned ? <Badge label="Assigned" color="blue" /> : null}
-                    {workshop.capacity ? <Badge label={`${workshop._count?.registrations ?? 0}/${workshop.capacity}`} color="amber" /> : null}
-                  </View>
-                  <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>{workshop.title}</Text>
-                  {workshop.description ? (
-                    <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>{workshop.description}</Text>
-                  ) : null}
-                  {workshop.location ? <Text style={{ color: color("mutedForeground") }}>{workshop.location}</Text> : null}
-                  <Button
-                    title={isRegistered ? "Unregister" : "Register"}
-                    variant={isRegistered ? "tertiary" : "primary"}
-                    disabled={isAssigned}
-                    onPress={() =>
-                      (isRegistered
-                        ? unregister({ workshopId: workshop._id })
-                        : register({ workshopId: workshop._id })
-                      ).catch((error) =>
-                        Alert.alert("Flex Friday", error instanceof Error ? error.message : "Try again.")
-                      )
-                    }
-                  />
-                </Card>
-              );
-            })}
-          </View>
-        )}
-      </DataBoundary>
+      {selectedFriday && selectedSession ? (
+        <DataBoundary data={workshops} emptyTitle="No workshops for this session">
+          {(items) => (
+            <View style={{ gap: 12 }}>
+              {items.map((workshop: any) => {
+                const isRegistered = workshop.registrations?.length > 0;
+                const isAssigned = workshop.assignments?.length > 0;
+                return (
+                  <Card key={workshop._id} style={{ gap: 8 }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {isRegistered ? <Badge label="Registered" color="emerald" /> : null}
+                      {isAssigned ? <Badge label="Assigned" color="blue" /> : null}
+                      {workshop.capacity ? <Badge label={`${workshop._count?.registrations ?? 0}/${workshop.capacity}`} color="amber" /> : null}
+                    </View>
+                    <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>{workshop.title}</Text>
+                    {workshop.description ? (
+                      <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>{workshop.description}</Text>
+                    ) : null}
+                    {workshop.location ? <Text style={{ color: color("mutedForeground") }}>{workshop.location}</Text> : null}
+                    <Button
+                      title={isRegistered ? "Unregister" : "Register"}
+                      variant={isRegistered ? "tertiary" : "primary"}
+                      disabled={isAssigned}
+                      onPress={() =>
+                        (isRegistered
+                          ? unregister({ workshopId: workshop._id })
+                          : register({ workshopId: workshop._id })
+                        ).catch((error) =>
+                          Alert.alert("Flex Friday", error instanceof Error ? error.message : "Try again.")
+                        )
+                      }
+                    />
+                  </Card>
+                );
+              })}
+            </View>
+          )}
+        </DataBoundary>
+      ) : null}
     </Screen>
   );
 }

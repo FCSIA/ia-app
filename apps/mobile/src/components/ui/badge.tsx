@@ -11,8 +11,8 @@ type BadgeProps = {
 export function Badge({ label, color = "gray", variant = "solid" }: BadgeProps) {
   const { color: themeColor } = useTheme();
   const badgeColor = badgeColors[color];
-  const backgroundColor = color === "gray" ? themeColor("muted") : `${badgeColor}22`;
-  const borderColor = color === "gray" ? themeColor("border") : `${badgeColor}66`;
+  const backgroundColor = color === "gray" ? themeColor("muted") : hexToRgba(badgeColor, 0.13);
+  const borderColor = color === "gray" ? themeColor("border") : hexToRgba(badgeColor, 0.4);
   const textColor = color === "gray" ? themeColor("foreground") : badgeColor;
 
   return (
@@ -38,4 +38,12 @@ export function Badge({ label, color = "gray", variant = "solid" }: BadgeProps) 
       </Text>
     </View>
   );
+}
+
+function hexToRgba(hex: string, alpha: number) {
+  const value = hex.replace("#", "");
+  const r = Number.parseInt(value.slice(0, 2), 16);
+  const g = Number.parseInt(value.slice(2, 4), 16);
+  const b = Number.parseInt(value.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

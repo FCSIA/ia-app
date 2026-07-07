@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import { themes, type ThemeName } from "@ia/design-tokens";
+import { hsl, themes, type ThemeName } from "@ia/design-tokens";
 import { Screen } from "@/components/screen";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "@/lib/theme";
@@ -32,7 +32,7 @@ export default function ThemeScreen() {
                       borderRadius: 999,
                       borderWidth: 1,
                       borderColor: theme.color("border"),
-                      backgroundColor: `hsl(${themes[name][key]})`
+                      backgroundColor: hsl(themes[name][key])
                     }}
                   />
                 ))}

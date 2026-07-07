@@ -261,10 +261,37 @@ export const typography = {
 } as const;
 
 export function hsl(token: string) {
-  return `hsl(${token})`;
+  const [h, s, l] = parseHsl(token);
+  const [r, g, b] = hslToRgb(h, s, l);
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 export function hsla(token: string, alpha: number) {
-  return `hsla(${token.replaceAll(" ", ", ")}, ${alpha})`;
+  const [h, s, l] = parseHsl(token);
+  const [r, g, b] = hslToRgb(h, s, l);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function parseHsl(token: string) {
+  const [h = "0", s = "0%", l = "0%"] = token.split(/\s+/);
+  return [
+    Number(h),
+    Number(s.replace("%", "")) / 100,
+    Number(l.replace("%", "")) / 100,
+  ] as const;
+}
+
+function hslToRgb(hue: number, saturation: number, lightness: number) {
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const huePrime = (((hue % 360) + 360) % 360) / 60;
+  const x = chroma * (1 - Math.abs((huePrime % 2) - 1));
+  const [r1, g1, b1] =
+    huePrime < 1 ? [chroma, x, 0] :
+    huePrime < 2 ? [x, chroma, 0] :
+    huePrime < 3 ? [0, chroma, x] :
+    huePrime < 4 ? [0, x, chroma] :
+    huePrime < 5 ? [x, 0, chroma] :
+    [chroma, 0, x];
+  const m = lightness - chroma / 2;
+  return [r1, g1, b1].map((value) => Math.round((value + m) * 255));
+}

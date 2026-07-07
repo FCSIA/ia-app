@@ -59,6 +59,10 @@
   upload, persisted themes, design-system gallery, offline cached
   dashboard/schedule/pass state, notification deep-link routing, native push
   device/test-push validation in the Inbox, and Maestro smoke flows.
+- Android Expo Go QA now uses safe-area in-app headers instead of native stack
+  headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
+  colors, visible disabled/primary buttons, and Android emulator Convex env
+  sync via `pnpm sync:convex-env -- --android`.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 
@@ -83,6 +87,10 @@
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
 - `pnpm --filter mobile typecheck` - pass
+- Android Expo Go smoke pass - pass for login, dashboard, announcements
+  read/save/detail, club join/request states, joined club channel post,
+  schedule, inbox Expo Go push-disabled state, More/Profile/Theme/Design
+  System, Flex Friday empty state, and Flex Pass.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass

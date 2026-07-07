@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export async function readOfflineCache<T>(key: string): Promise<T | null> {
   try {
@@ -22,8 +22,10 @@ export async function writeOfflineCache<T>(key: string, value: T) {
 export function useOfflineValue<T>(key: string, liveValue: T | undefined | null) {
   const [cachedValue, setCachedValue] = useState<T | null>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const lastLiveSnapshot = useRef<string | null>(null);
 
   useEffect(() => {
+    lastLiveSnapshot.current = null;
     readOfflineCache<T>(key).then(setCachedValue);
   }, [key]);
 
@@ -36,8 +38,12 @@ export function useOfflineValue<T>(key: string, liveValue: T | undefined | null)
 
   useEffect(() => {
     if (liveValue !== undefined && liveValue !== null) {
-      setCachedValue(liveValue);
-      writeOfflineCache(key, liveValue);
+      const snapshot = JSON.stringify(liveValue);
+      if (lastLiveSnapshot.current !== snapshot) {
+        lastLiveSnapshot.current = snapshot;
+        setCachedValue(liveValue);
+        writeOfflineCache(key, liveValue);
+      }
     }
   }, [key, liveValue]);
 

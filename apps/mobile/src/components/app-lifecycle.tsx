@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import Constants from "expo-constants";
 import * as ScreenCapture from "expo-screen-capture";
 import { useConvex, useConvexAuth } from "convex/react";
 import { installNotificationResponseRouting, syncNativePushTokenIfGranted } from "@/lib/push";
@@ -10,6 +11,7 @@ export function AppLifecycle() {
   useEffect(() => installNotificationResponseRouting(), []);
 
   useEffect(() => {
+    if (Constants.appOwnership === "expo" || __DEV__) return;
     ScreenCapture.preventScreenCaptureAsync().catch(() => {});
     return () => {
       ScreenCapture.allowScreenCaptureAsync().catch(() => {});

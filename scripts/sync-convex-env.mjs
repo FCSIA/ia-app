@@ -6,6 +6,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const convexEnvPath = join(root, 'apps', 'convex', '.env.local');
 const webEnvPath = join(root, 'apps', 'web', '.env.local');
 const mobileEnvPath = join(root, 'apps', 'mobile', '.env.local');
+const args = process.argv.slice(2);
 
 if (!existsSync(convexEnvPath)) {
   console.error('Missing apps/convex/.env.local — run `pnpm --filter cvx dev` and link a project first.');
@@ -32,7 +33,16 @@ const upsert = (content, key, value) => {
   return pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`;
 };
 
-const mobileHost = process.env.MOBILE_CONVEX_HOST?.trim();
+const readArgValue = (flag) => {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : undefined;
+};
+
+const mobileTarget = readArgValue('--target') ?? (args.includes('--android') ? 'android' : undefined);
+const mobileHost =
+  readArgValue('--host')?.trim() ??
+  process.env.MOBILE_CONVEX_HOST?.trim() ??
+  (mobileTarget === 'android' ? '10.0.2.2' : undefined);
 const mobileUrl = (value) => {
   if (!mobileHost) return value;
   const url = new URL(value);
@@ -66,7 +76,7 @@ console.log(`Synced Convex env to apps/mobile/.env.local`);
 console.log(`  EXPO_PUBLIC_CONVEX_URL=${mobileUrl(convexUrl)}`);
 console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${mobileUrl(convexSiteUrl)}`);
 if (!mobileHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
-  console.log('Tip: set MOBILE_CONVEX_HOST=<your LAN IPv4> before running this script for physical-device Expo Go testing.');
+  console.log('Tip: run `pnpm sync:convex-env -- --android` for Android emulator, or `pnpm sync:convex-env -- --host <your LAN IPv4>` for physical iPhone testing.');
 }
 
 if (mobileHost) {
