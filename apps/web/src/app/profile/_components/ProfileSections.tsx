@@ -13,6 +13,7 @@ import {
   Sun,
   User,
 } from 'lucide-react';
+import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,11 +27,18 @@ import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
-export type PasswordForm = {
-  currentPassword: string;
-  newPassword: string;
-  confirm: string;
-};
+const passwordFormSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required.'),
+    newPassword: z.string().min(8, 'Your new password must be at least 8 characters long.'),
+    confirm: z.string().min(1, 'Confirm your new password.'),
+  })
+  .refine((form) => form.newPassword === form.confirm, {
+    message: 'Passwords do not match',
+    path: ['confirm'],
+  });
+
+export type PasswordForm = z.infer<typeof passwordFormSchema>;
 
 type NotificationCategoryOption = {
   key: NotificationCategory;
@@ -137,20 +145,18 @@ export function ChangePasswordCard({
     form.currentPassword.length > 0 && form.newPassword.length > 0 && form.confirm.length > 0;
 
   function handlePasswordSubmit() {
-    if (form.newPassword.length < 8) {
+    const result = passwordFormSchema.safeParse(form);
+    if (!result.success) {
       toast({
-        title: 'Your new password must be at least 8 characters long.',
+        title: result.error.issues[0]?.message ?? 'Check your password details.',
         variant: 'destructive',
       });
       return;
     }
-    if (form.newPassword !== form.confirm) {
-      toast({ title: 'Passwords do not match', variant: 'destructive' });
-      return;
-    }
+
     onSubmit({
-      currentPassword: form.currentPassword,
-      newPassword: form.newPassword,
+      currentPassword: result.data.currentPassword,
+      newPassword: result.data.newPassword,
     });
   }
 

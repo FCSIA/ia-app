@@ -1,21 +1,20 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import {
-  CUSTOM_BG_STORAGE_KEY,
   CUSTOM_COLORS_STORAGE_KEY,
   applyCustomColors,
   type CustomColorKey,
   type CustomColors,
 } from '@/app/providers';
 import { Button } from '@/components/ui/button';
+import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
-import { compressImageForUpload } from '@/lib/compress-image';
 import { uploadUserImage } from '@/lib/upload-user-image';
 import { api } from '~/apps/convex/src/_generated/api';
 
@@ -25,25 +24,6 @@ const PALETTE_SLOTS: Array<{ key: CustomColorKey; label: string; help: string }>
   { key: 'secondary', label: 'Secondary', help: 'Cards and inner panels.' },
   { key: 'accent', label: 'Accent', help: 'Borders, hover highlights.' },
 ];
-
-function getLegacyBackgroundDataUrl() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const legacy = localStorage.getItem(CUSTOM_BG_STORAGE_KEY);
-    return legacy?.startsWith('data:image/') ? legacy : null;
-  } catch {
-    return null;
-  }
-}
-
-function clearLegacyBackground() {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(CUSTOM_BG_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
 
 function loadCustomColors(): CustomColors {
   if (typeof window === 'undefined') return {};
@@ -97,12 +77,7 @@ export function CustomThemeEditor() {
 function CustomBackgroundPanel() {
   const { toast } = useToast();
   const user = useCurrentUser();
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [migrating, setMigrating] = useState(false);
-  const [hasLegacyBackground, setHasLegacyBackground] = useState(
-    () => getLegacyBackgroundDataUrl() !== null,
-  );
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const saveUserImage = useMutation(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
@@ -116,35 +91,7 @@ function CustomBackgroundPanel() {
       'background',
       file,
     );
-    clearLegacyBackground();
-    setHasLegacyBackground(false);
   }
-
-  async function handleLegacyBackground() {
-    const legacy = getLegacyBackgroundDataUrl();
-    if (!legacy) {
-      setHasLegacyBackground(false);
-      return;
-    }
-
-    setMigrating(true);
-    try {
-      const response = await fetch(legacy);
-      const blob = await response.blob();
-      const file = new File([blob], 'background.jpg', { type: blob.type || 'image/jpeg' });
-      const compressed = await compressImageForUpload(file, 'background');
-      await uploadAndSave(compressed);
-      toast({ title: 'Background image updated' });
-    } catch (e: unknown) {
-      toast({
-        title: e instanceof Error ? e.message : 'Failed to update background',
-        variant: 'destructive',
-      });
-    } finally {
-      setMigrating(false);
-    }
-  }
-
 
   async function handleFile(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -173,8 +120,6 @@ function CustomBackgroundPanel() {
   async function handleRemove() {
     try {
       await clearUserImage({ kind: 'background' });
-      clearLegacyBackground();
-      setHasLegacyBackground(false);
       toast({ title: 'Background image removed' });
     } catch (e: unknown) {
       toast({
@@ -202,7 +147,7 @@ function CustomBackgroundPanel() {
         >
           {!preview ? (
             <div className="flex h-full items-center justify-center text-muted-foreground/60">
-              {uploading || migrating ? (
+              {uploading ? (
                 <Loader2 className="size-5 animate-spin" />
               ) : (
                 <ImageIcon size={20} />
@@ -221,30 +166,14 @@ function CustomBackgroundPanel() {
         </div>
       </div>
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-          event.target.value = '';
-        }}
-      />
-
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="tertiary"
-          disabled={uploading || migrating}
-          onClick={() => fileRef.current?.click()}
-          className="rounded-full"
-        >
-          {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
-          {preview ? 'Replace image' : 'Upload image'}
-        </Button>
+        <FileInput
+          accept="image/*"
+          disabled={uploading}
+          loading={uploading}
+          label={preview ? 'Replace image' : 'Upload image'}
+          onFileSelect={(file) => void handleFile(file)}
+        />
         {preview ? (
           <Button
             type="button"
@@ -256,19 +185,6 @@ function CustomBackgroundPanel() {
           >
             <Trash2 className="size-4" />
             Remove
-          </Button>
-        ) : null}
-        {!preview && hasLegacyBackground ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={uploading || migrating || !user}
-            onClick={() => void handleLegacyBackground()}
-            className="rounded-full text-muted-foreground hover:text-foreground"
-          >
-            {migrating ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
-            Use saved image
           </Button>
         ) : null}
       </div>

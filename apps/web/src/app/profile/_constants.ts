@@ -1,12 +1,22 @@
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
-export const PROFILE_NOTIFICATION_CATEGORIES: Array<{
-  key: NotificationCategory;
-  label: string;
-}> = [
-  { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
-  { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
-  { key: 'EVENT', label: 'Events' },
-  { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
-  { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
-];
+type ProfileNotificationCategory = Extract<
+  NotificationCategory,
+  | 'SCHOOL_ANNOUNCEMENT'
+  | 'CLUB_JOIN_REQUEST'
+  | 'EVENT'
+  | 'FLEX_FRIDAY'
+  | 'CONTENT_MODERATED'
+>;
+
+const PROFILE_NOTIFICATION_LABELS = {
+  SCHOOL_ANNOUNCEMENT: 'School Announcements',
+  CLUB_JOIN_REQUEST: 'Club Join Requests',
+  EVENT: 'Events',
+  FLEX_FRIDAY: 'Flex Friday',
+  CONTENT_MODERATED: 'Content Moderation Alerts',
+} as const satisfies Record<ProfileNotificationCategory, string>;
+
+export const PROFILE_NOTIFICATION_CATEGORIES = Object.entries(PROFILE_NOTIFICATION_LABELS).map(
+  ([key, label]) => ({ key: key as ProfileNotificationCategory, label }),
+);

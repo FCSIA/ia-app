@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { Camera, Loader2, Trash2 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import { FileInput } from '@/components/ui/file-input';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
@@ -11,7 +12,6 @@ import { uploadUserImage } from '@/lib/upload-user-image';
 
 export function ProfileAvatarEditor({ user }: { user: AppUser }) {
   const { toast } = useToast();
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const saveUserImage = useMutation(api.users.me.saveUserImage);
@@ -67,26 +67,23 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
         className="size-16 rounded-2xl"
         fallbackClassName="text-xl rounded-2xl"
       />
-      <input
-        ref={fileRef}
-        type="file"
+      <FileInput
         accept="image/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void handleFile(file);
-          event.target.value = '';
-        }}
-      />
-      <button
-        type="button"
         disabled={uploading}
-        onClick={() => fileRef.current?.click()}
-        className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border bg-background shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
-        aria-label="Change profile picture"
+        onFileSelect={(file) => void handleFile(file)}
       >
-        {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
-      </button>
+        {({ disabled, open }) => (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={open}
+            className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border bg-background shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
+            aria-label="Change profile picture"
+          >
+            {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+          </button>
+        )}
+      </FileInput>
       {user.avatarUrl ? (
         <button
           type="button"
