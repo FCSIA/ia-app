@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import * as ScreenCapture from "expo-screen-capture";
 import { useConvex, useConvexAuth } from "convex/react";
 import { installNotificationResponseRouting, syncNativePushTokenIfGranted } from "@/lib/push";
 
@@ -7,6 +8,13 @@ export function AppLifecycle() {
   const { isAuthenticated } = useConvexAuth();
 
   useEffect(() => installNotificationResponseRouting(), []);
+
+  useEffect(() => {
+    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    return () => {
+      ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;

@@ -73,12 +73,6 @@ const config: ExpoConfig = {
         defaultChannel: "default",
       },
     ],
-    [
-      "expo-screen-capture",
-      {
-        preventScreenCapture: true,
-      },
-    ],
   ],
   updates: easProjectId
     ? {
