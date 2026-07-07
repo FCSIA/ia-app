@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme";
 const links = [
   { title: "Events", href: "/events", body: "Agenda, registrations, and calendar entries." },
   { title: "Flex Friday", href: "/flex-friday", body: "Browse sessions, registrations, and pass details." },
+  { title: "Flex Pass", href: "/flex-friday/pass", body: "Brightness-friendly pass for check-in." },
   { title: "Profile", href: "/profile", body: "Account, avatar, logout, and account deletion request path." },
   { title: "Theme", href: "/settings/theme", body: "Light, dark, high contrast, bubblegum, and custom palette." },
   { title: "Design system", href: "/design-system", body: "Native primitive gallery for parity review." }

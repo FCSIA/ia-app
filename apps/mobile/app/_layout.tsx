@@ -5,6 +5,8 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AppErrorBoundary } from "@/components/error-boundary";
+import { AppLifecycle } from "@/components/app-lifecycle";
 import { authClient } from "@/lib/auth-client";
 import { convex } from "@/lib/convex";
 import { ThemeProvider, useTheme } from "@/lib/theme";
@@ -28,6 +30,10 @@ function RootNavigator() {
         <Stack.Screen name="announcements/[id]" options={{ title: "Announcement" }} />
         <Stack.Screen name="clubs/[clubId]" options={{ title: "Club" }} />
         <Stack.Screen name="clubs/[clubId]/channels/[channelId]" options={{ title: "Channel" }} />
+        <Stack.Screen name="events" options={{ title: "Events" }} />
+        <Stack.Screen name="flex-friday" options={{ title: "Flex Friday" }} />
+        <Stack.Screen name="flex-friday/pass" options={{ title: "Flex Pass" }} />
+        <Stack.Screen name="profile" options={{ title: "Profile" }} />
         <Stack.Screen name="settings/theme" options={{ title: "Theme" }} />
         <Stack.Screen name="design-system" options={{ title: "Design System" }} />
       </Stack>
@@ -41,7 +47,10 @@ export default function Layout() {
       <SafeAreaProvider>
         <ConvexBetterAuthProvider client={convex} authClient={authClient}>
           <ThemeProvider>
-            <RootNavigator />
+            <AppErrorBoundary>
+              <AppLifecycle />
+              <RootNavigator />
+            </AppErrorBoundary>
           </ThemeProvider>
         </ConvexBetterAuthProvider>
       </SafeAreaProvider>

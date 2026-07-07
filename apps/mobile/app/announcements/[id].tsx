@@ -16,7 +16,9 @@ export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any } : "skip");
   const markRead = useMutation(api.announcements.engagement.markRead);
+  const markUnread = useMutation(api.announcements.engagement.markUnread);
   const bookmark = useMutation(api.announcements.engagement.bookmark);
+  const unbookmark = useMutation(api.announcements.engagement.unbookmark);
   const addComment = useMutation(api.announcements.comments.add);
   const [comment, setComment] = useState("");
   const { color } = useTheme();
@@ -49,8 +51,24 @@ export default function AnnouncementDetailScreen() {
                 {relativeTime(data.announcement.createdAt)}
               </Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <Button title="Mark read" variant="secondary" onPress={() => markRead({ announcementId: id as any })} />
-                <Button title="Save" variant="tertiary" onPress={() => bookmark({ announcementId: id as any })} />
+                <Button
+                  title={data.announcement.isRead ? "Mark unread" : "Mark read"}
+                  variant="secondary"
+                  onPress={() =>
+                    data.announcement.isRead
+                      ? markUnread({ announcementId: id as any })
+                      : markRead({ announcementId: id as any })
+                  }
+                />
+                <Button
+                  title={data.announcement.isBookmarked ? "Unsave" : "Save"}
+                  variant="tertiary"
+                  onPress={() =>
+                    data.announcement.isBookmarked
+                      ? unbookmark({ announcementId: id as any })
+                      : bookmark({ announcementId: id as any })
+                  }
+                />
               </View>
             </Card>
 

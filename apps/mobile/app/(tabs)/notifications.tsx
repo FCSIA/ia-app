@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { relativeTime } from "@/lib/format";
+import { openAppHref } from "@/lib/deep-links";
 import { registerNativePushToken } from "@/lib/push";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -13,7 +14,9 @@ import { api } from "~/apps/convex/src/_generated/api";
 export default function NotificationsScreen() {
   const convex = useConvex();
   const notifications = useQuery(api.notifications.inbox.list, { limit: 50 });
+  const preferences = useQuery(api.notifications.preferences.list, {});
   const markRead = useMutation(api.notifications.inbox.markRead);
+  const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const { color } = useTheme();
 
   async function enablePush() {
@@ -36,8 +39,11 @@ export default function NotificationsScreen() {
           <View style={{ gap: 10 }}>
             {items.map((item: any) => (
               <Pressable
-                key={item._id}
-                onPress={() => markRead({ ids: [item._id] })}
+                key={item.id}
+                onPress={() => {
+                  void markRead({ ids: [item.id] });
+                  openAppHref(item.href);
+                }}
               >
                 <Card style={{ gap: 8, opacity: item.isRead ? 0.72 : 1 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 10 }}>
@@ -52,6 +58,43 @@ export default function NotificationsScreen() {
           </View>
         )}
       </DataBoundary>
+
+      <Card style={{ gap: 10 }}>
+        <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Preferences</Text>
+        {[
+          "SCHOOL_ANNOUNCEMENT",
+          "CLUB_ANNOUNCEMENT",
+          "CLUB_CHANNEL_MESSAGE",
+          "CLUB_CHANNEL_MENTION",
+          "EVENT",
+          "FLEX_FRIDAY",
+          "FRIEND_REQUEST"
+        ].map((category) => {
+          const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === "global");
+          const enabled = pref ? pref.enabled : category !== "CLUB_CHANNEL_MESSAGE";
+          return (
+            <View key={category} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: color("foreground"), fontWeight: "800" }}>{category.replaceAll("_", " ")}</Text>
+                <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>{enabled ? "Push enabled" : "Off"}</Text>
+              </View>
+              <Button
+                title={enabled ? "Off" : "On"}
+                size="sm"
+                variant={enabled ? "tertiary" : "secondary"}
+                onPress={() =>
+                  upsertPreference({
+                    category: category as any,
+                    enabled: !enabled,
+                    scopeKey: "global",
+                    level: !enabled ? "PUSH" : "OFF"
+                  })
+                }
+              />
+            </View>
+          );
+        })}
+      </Card>
     </Screen>
   );
 }

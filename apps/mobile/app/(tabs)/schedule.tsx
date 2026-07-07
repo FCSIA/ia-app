@@ -1,21 +1,25 @@
 import { Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
+import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "@/lib/theme";
+import { useOfflineValue } from "@/lib/offline-cache";
 import { api } from "~/apps/convex/src/_generated/api";
 
 const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
 
 export default function ScheduleScreen() {
-  const data = useQuery(api.schedule.dashboard.get, {});
+  const liveData = useQuery(api.schedule.dashboard.get, {});
+  const data = useOfflineValue("schedule", liveData);
   const { color } = useTheme();
 
   return (
     <Screen title="Schedule" subtitle="Your classes and shared friend schedule access.">
-      <DataBoundary data={data} emptyTitle="Schedule unavailable">
+      {data.isOffline || data.isStale ? <OfflineBanner stale={data.isStale} /> : null}
+      <DataBoundary data={data.value} emptyTitle="Schedule unavailable">
         {(schedule) => (
           <View style={{ gap: 14 }}>
             {weekdays.map((day) => {

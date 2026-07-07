@@ -2,29 +2,33 @@ import { Text, View } from "react-native";
 import { useQuery } from "convex/react";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
+import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { shortDate, timeRange } from "@/lib/format";
 import { useCurrentUser } from "@/lib/auth";
+import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function DashboardScreen() {
   const user = useCurrentUser();
   const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true });
-  const schedule = useQuery(api.schedule.dashboard.get, {});
+  const liveSchedule = useQuery(api.schedule.dashboard.get, {});
   const events = useQuery(api.events.events.list, {});
+  const schedule = useOfflineValue("dashboard-schedule", liveSchedule);
   const { color } = useTheme();
 
   return (
     <Screen title={`Hi, ${user?.firstName ?? "there"}`} subtitle="Your school day at a glance.">
+      {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
       <Card style={{ gap: 10 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Today</Text>
           <Badge label={user?.roles?.[0] ?? "Student"} color="orange" />
         </View>
-        <DataBoundary data={schedule} emptyTitle="No schedule yet">
+        <DataBoundary data={schedule.value} emptyTitle="No schedule yet">
           {(data) => (
             <View style={{ gap: 8 }}>
               {(data.mySchedule?.entries ?? []).slice(0, 4).map((entry: any) => (

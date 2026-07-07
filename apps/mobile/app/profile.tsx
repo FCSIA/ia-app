@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
 import { authClient } from "@/lib/auth-client";
+import { unregisterStoredNativePushToken } from "@/lib/push";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export default function ProfileScreen() {
   }
 
   async function logout() {
+    await unregisterStoredNativePushToken(convex).catch(() => {});
     await authClient.signOut();
     router.replace("/login");
   }

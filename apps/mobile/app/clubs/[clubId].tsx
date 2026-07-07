@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
@@ -14,6 +14,7 @@ export default function ClubDetailScreen() {
   const club = useQuery(api.clubs.detail.get, clubId ? { clubId: clubId as any } : "skip");
   const joinOpen = useMutation(api.clubs.invitations.joinOpenClub);
   const requestJoin = useMutation(api.clubs.invitations.requestToJoin);
+  const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
   const { color } = useTheme();
 
   return (
@@ -62,6 +63,40 @@ export default function ClubDetailScreen() {
                       <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>{channel.description}</Text>
                     ) : null}
                   </Pressable>
+                ))}
+              </Card>
+            ) : null}
+
+            {data.viewer?.canApproveJoinRequests && data.pendingJoinRequests?.length ? (
+              <Card style={{ gap: 10 }}>
+                <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Join requests</Text>
+                {data.pendingJoinRequests.map((request: any) => (
+                  <View key={request._id} style={{ gap: 8 }}>
+                    <Text style={{ color: color("foreground"), fontWeight: "800" }}>
+                      {[request.requester?.firstName, request.requester?.lastName].filter(Boolean).join(" ")}
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <Button
+                        title="Approve"
+                        size="sm"
+                        onPress={() =>
+                          respondToJoinRequest({ clubId: clubId as any, requestId: request._id, accept: true }).catch(
+                            (error) => Alert.alert("Could not approve", error instanceof Error ? error.message : "Try again.")
+                          )
+                        }
+                      />
+                      <Button
+                        title="Decline"
+                        size="sm"
+                        variant="tertiary"
+                        onPress={() =>
+                          respondToJoinRequest({ clubId: clubId as any, requestId: request._id, accept: false }).catch(
+                            (error) => Alert.alert("Could not decline", error instanceof Error ? error.message : "Try again.")
+                          )
+                        }
+                      />
+                    </View>
+                  </View>
                 ))}
               </Card>
             ) : null}
