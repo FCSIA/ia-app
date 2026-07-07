@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { themes, hsl, type ThemeName, type ThemeTokens } from "@ia/design-tokens";
 
 type ThemeContextValue = {
@@ -9,15 +10,28 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const THEME_STORAGE_KEY = "ia_theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [name, setName] = useState<ThemeName>("light");
   const tokens = themes[name];
+
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_STORAGE_KEY).then((stored) => {
+      if (stored && stored in themes) setName(stored as ThemeName);
+    });
+  }, []);
+
+  function setTheme(next: ThemeName) {
+    setName(next);
+    AsyncStorage.setItem(THEME_STORAGE_KEY, next).catch(() => {});
+  }
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       name,
       tokens,
-      setTheme: setName,
+      setTheme,
       color: (key) => hsl(tokens[key])
     }),
     [name, tokens]

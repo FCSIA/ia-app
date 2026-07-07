@@ -21,6 +21,8 @@ export default function ChannelScreen() {
   const report = useMutation(api.moderation.reports.submit);
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<any | null>(null);
+  const [reportTarget, setReportTarget] = useState<any | null>(null);
+  const [reportReason, setReportReason] = useState("");
   const { color } = useTheme();
 
   async function send() {
@@ -36,6 +38,24 @@ export default function ChannelScreen() {
       setReplyTo(null);
     } catch (error) {
       Alert.alert("Message not sent", error instanceof Error ? error.message : "Try again.");
+    }
+  }
+
+  async function submitReport() {
+    if (!reportTarget || !reportReason.trim() || !clubId) return;
+    try {
+      await report({
+        contentType: "clubChannelMessage",
+        contentId: reportTarget._id,
+        reason: reportReason,
+        reportedUserId: reportTarget.authorId,
+        clubId: clubId as any
+      });
+      setReportTarget(null);
+      setReportReason("");
+      Alert.alert("Reported", "Sponsors have been notified.");
+    } catch (error) {
+      Alert.alert("Report not sent", error instanceof Error ? error.message : "Try again.");
     }
   }
 
@@ -80,34 +100,24 @@ export default function ChannelScreen() {
                 title="Report"
                 size="sm"
                 variant="ghost"
-                onPress={() => {
-                  if (Platform.OS === "ios" && Alert.prompt) {
-                    Alert.prompt("Report message", "Tell sponsors what needs review.", (reason) => {
-                      if (!reason?.trim()) return;
-                      void report({
-                        contentType: "clubChannelMessage",
-                        contentId: item._id,
-                        reason,
-                        reportedUserId: item.authorId,
-                        clubId: clubId as any
-                      });
-                    });
-                    return;
-                  }
-                  void report({
-                    contentType: "clubChannelMessage",
-                    contentId: item._id,
-                    reason: "Reported from mobile app",
-                    reportedUserId: item.authorId,
-                    clubId: clubId as any
-                  }).then(() => Alert.alert("Reported", "Sponsors have been notified."));
-                }}
+                onPress={() => setReportTarget(item)}
               />
             </View>
           </Card>
         )}
       />
       <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: color("border"), gap: 8 }}>
+        {reportTarget ? (
+          <Card style={{ gap: 8 }}>
+            <Text style={{ color: color("foreground"), fontWeight: "900" }}>Report message</Text>
+            <Text style={{ color: color("mutedForeground") }}>Tell sponsors what needs review.</Text>
+            <TextField placeholder="Reason" value={reportReason} onChangeText={setReportReason} multiline />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Button title="Submit" size="sm" onPress={submitReport} disabled={!reportReason.trim()} />
+              <Button title="Cancel" size="sm" variant="ghost" onPress={() => setReportTarget(null)} />
+            </View>
+          </Card>
+        ) : null}
         {replyTo ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text style={{ color: color("mutedForeground"), flex: 1 }} numberOfLines={1}>

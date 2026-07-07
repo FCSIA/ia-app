@@ -6,6 +6,7 @@ export function TextField(props: TextInputProps) {
   return (
     <TextInput
       placeholderTextColor={color("mutedForeground")}
+      selectionColor={color("primary")}
       style={{
         minHeight: 46,
         borderRadius: 18,
