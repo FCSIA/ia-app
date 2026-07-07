@@ -10,8 +10,11 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
     return { error };
   }
 
-  componentDidCatch(_error: Error, _info: ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     // Keep student data out of logs/crash payloads. Add sanitized Sentry here when configured.
+    if (__DEV__) {
+      console.error("[AppErrorBoundary]", error.message, info.componentStack);
+    }
   }
 
   render() {

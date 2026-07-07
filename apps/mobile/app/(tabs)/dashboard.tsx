@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
+import { router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
@@ -14,22 +15,33 @@ import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const DEFAULT_WIDGETS = ["schedule", "announcements", "events", "flex", "funFact"] as const;
+const DEFAULT_WIDGETS = ["schedule", "quickActions", "announcements", "clubs", "events", "calendar", "flex", "funFact"] as const;
 const WIDGET_LABELS: Record<string, string> = {
   schedule: "Today",
+  quickActions: "Quick Actions",
   announcements: "Unread Announcements",
+  clubs: "My Clubs",
   events: "Coming Up",
+  calendar: "Calendar",
   flex: "Flex Friday",
   funFact: "Fun Fact",
 };
+const EMPTY_ARGS = {};
+const UNREAD_ANNOUNCEMENTS_ARGS = { unreadOnly: true };
 
 export default function DashboardScreen() {
   const user = useCurrentUser();
-  const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true });
-  const liveSchedule = useQuery(api.schedule.dashboard.get, {});
-  const events = useQuery(api.events.events.list, {});
-  const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, {});
-  const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, {});
+  const calendarWindow = useMemo(() => {
+    const startDate = Date.now();
+    return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
+  }, []);
+  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
+  const liveSchedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
+  const events = useQuery(api.events.events.list, EMPTY_ARGS);
+  const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
+  const myClubs = useQuery(api.clubs.management.getMyClubs, EMPTY_ARGS);
+  const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, EMPTY_ARGS);
+  const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, EMPTY_ARGS);
   const updateLayout = useMutation(api.users.me.updateDashboardLayout);
   const schedule = useOfflineValue("dashboard-schedule", liveSchedule);
   const { color } = useTheme();
@@ -96,6 +108,36 @@ export default function DashboardScreen() {
       );
     }
 
+    if (id === "quickActions") {
+      return (
+        <Card key={id} style={{ gap: 10 }}>
+          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Quick Actions</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <Button title="Courses" size="sm" variant="secondary" onPress={() => router.push("/courses" as never)} />
+            <Button title="Calendar" size="sm" variant="secondary" onPress={() => router.push("/calendar" as never)} />
+            <Button title="Flex Pass" size="sm" variant="secondary" onPress={() => router.push("/flex-friday/pass" as never)} />
+            <Button title="Wrapped" size="sm" variant="secondary" onPress={() => router.push("/wrapped" as never)} />
+          </View>
+        </Card>
+      );
+    }
+
+    if (id === "clubs") {
+      const memberships = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])].slice(0, 4);
+      return (
+        <Card key={id} style={{ gap: 10 }}>
+          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>My Clubs</Text>
+          {memberships.length ? memberships.map((club: any) => (
+            <View key={club._id} style={{ gap: 3 }}>
+              <Text style={{ color: color("foreground"), fontWeight: "800" }}>{club.name}</Text>
+              <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>{club.role ?? "Sponsor"}</Text>
+            </View>
+          )) : <Text style={{ color: color("mutedForeground") }}>No club memberships yet.</Text>}
+          <Button title="Browse clubs" size="sm" variant="secondary" onPress={() => router.push("/clubs" as never)} />
+        </Card>
+      );
+    }
+
     if (id === "events") {
       return (
         <Card key={id} style={{ gap: 10 }}>
@@ -108,6 +150,28 @@ export default function DashboardScreen() {
                     <Text style={{ color: color("foreground"), fontWeight: "800" }}>{event.title}</Text>
                     <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>
                       {shortDate(event.startAt)} · {timeRange(event.startAt, event.endAt)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </DataBoundary>
+        </Card>
+      );
+    }
+
+    if (id === "calendar") {
+      return (
+        <Card key={id} style={{ gap: 10 }}>
+          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Calendar</Text>
+          <DataBoundary data={calendarEntries} emptyTitle="No upcoming entries">
+            {(items) => (
+              <View style={{ gap: 10 }}>
+                {items.slice(0, 4).map((entry: any) => (
+                  <View key={entry._id}>
+                    <Text style={{ color: color("foreground"), fontWeight: "800" }}>{entry.title}</Text>
+                    <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>
+                      {shortDate(entry.startAt)} - {timeRange(entry.startAt, entry.endAt)}
                     </Text>
                   </View>
                 ))}

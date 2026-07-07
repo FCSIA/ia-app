@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useConvexAuth, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -8,6 +8,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 
 const CACHE_KEY = "ia_user";
+const EMPTY_ARGS = {};
 
 export function hasRole(user: AppUser | null, ...roles: AppRole[]) {
   if (!user?.roles) return false;
@@ -16,20 +17,32 @@ export function hasRole(user: AppUser | null, ...roles: AppRole[]) {
 
 export function useCurrentUser() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const user = useQuery(api.users.me.me, isAuthenticated ? {} : "skip");
+  const user = useQuery(api.users.me.me, isAuthenticated ? EMPTY_ARGS : "skip");
   const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
+  const lastUserSnapshot = useRef<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(CACHE_KEY)
-      .then((raw) => setCachedUser(raw ? JSON.parse(raw) as AppUser : null))
-      .catch(() => setCachedUser(null));
+      .then((raw) => {
+        lastUserSnapshot.current = raw;
+        setCachedUser(raw ? JSON.parse(raw) as AppUser : null);
+      })
+      .catch(() => {
+        lastUserSnapshot.current = null;
+        setCachedUser(null);
+      });
   }, []);
 
   useEffect(() => {
     if (user) {
-      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(user)).catch(() => {});
-      setCachedUser(user);
+      const snapshot = JSON.stringify(user);
+      if (lastUserSnapshot.current !== snapshot) {
+        lastUserSnapshot.current = snapshot;
+        AsyncStorage.setItem(CACHE_KEY, snapshot).catch(() => {});
+        setCachedUser(user);
+      }
     } else if (!isLoading && !isAuthenticated) {
+      lastUserSnapshot.current = null;
       AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
       setCachedUser(null);
     }

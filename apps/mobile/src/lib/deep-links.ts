@@ -30,6 +30,22 @@ export function openAppHref(href?: string | null) {
     return;
   }
 
+  if (path.startsWith("/courses/")) {
+    router.push(path as never);
+    return;
+  }
+  if (path.startsWith("/courses")) {
+    router.push("/courses" as never);
+    return;
+  }
+  if (path.startsWith("/calendar")) {
+    router.push("/calendar" as never);
+    return;
+  }
+  if (path.startsWith("/events/")) {
+    router.push(path as never);
+    return;
+  }
   if (path.startsWith("/events")) {
     router.push("/events" as never);
     return;
@@ -44,6 +60,10 @@ export function openAppHref(href?: string | null) {
   }
   if (path.startsWith("/schedule")) {
     router.push("/schedule" as never);
+    return;
+  }
+  if (path.startsWith("/wrapped")) {
+    router.push("/wrapped" as never);
     return;
   }
   if (path.startsWith("/notifications")) {

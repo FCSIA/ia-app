@@ -54,11 +54,12 @@
 - `apps/mobile` now contains an Expo SDK 57 app with Expo Router, Better Auth
   Expo/SecureStore auth, Convex live data, shared design tokens, IA app assets,
   production-shaped dynamic Expo config, mobile tabs, announcements,
-  clubs/chat/reporting/join approvals, schedule, events/calendar, Flex Friday
-  browse/register/pass, notifications/preferences/native push, profile/avatar
-  upload, persisted themes, design-system gallery, offline cached
-  dashboard/schedule/pass state, notification deep-link routing, native push
-  device/test-push validation in the Inbox, and Maestro smoke flows.
+  clubs/chat/reporting/join approvals/people/tags, editable schedule and friend
+  requests, courses, events/calendar, Flex Friday browse/register/pass,
+  Wrapped, notifications/preferences/native push, profile/avatar/password,
+  persisted themes, design-system gallery, offline cached dashboard/schedule/
+  pass state, notification deep-link routing, native push device/test-push
+  validation in the Inbox, and Maestro smoke flows.
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
@@ -87,10 +88,13 @@
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
 - `pnpm --filter mobile typecheck` - pass
-- Android Expo Go smoke pass - pass for login, dashboard, announcements
-  read/save/detail, club join/request states, joined club channel post,
-  schedule, inbox Expo Go push-disabled state, More/Profile/Theme/Design
-  System, Flex Friday empty state, and Flex Pass.
+- Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
+  Courses list/detail, Events empty state, Calendar personal create/delete,
+  Schedule view/edit-mode controls, Clubs list/request-only detail state,
+  Wrapped closed state, Profile avatar/password controls, safe-area back
+  spacing, and More navigation. Alex STU001 has no approved club memberships in
+  the hosted dataset, so member-only club channel/people/tag runtime actions
+  were source/typecheck verified but hidden for that user.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Alert, Image, Text, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -8,6 +9,7 @@ import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { TextField } from "@/components/ui/text-field";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 
@@ -15,7 +17,10 @@ export default function ProfileScreen() {
   const user = useCurrentUser();
   const convex = useConvex();
   const saveImage = useMutation(api.users.me.saveUserImage);
+  const clearImage = useMutation(api.users.me.clearUserImage);
+  const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const { color } = useTheme();
 
   async function pickAvatar() {
@@ -74,6 +79,48 @@ export default function ProfileScreen() {
         </Text>
         <Text style={{ color: color("mutedForeground") }}>{user?.uniqueId}</Text>
         <Button title="Update avatar" variant="secondary" onPress={pickAvatar} />
+        {user?.avatarUrl ? (
+          <Button
+            title="Remove avatar"
+            variant="tertiary"
+            onPress={() => clearImage({ kind: "avatar" }).catch((error) => Alert.alert("Avatar", error instanceof Error ? error.message : "Try again."))}
+          />
+        ) : null}
+      </Card>
+
+      <Card style={{ gap: 10 }}>
+        <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Password</Text>
+        <TextField
+          value={passwordForm.currentPassword}
+          onChangeText={(currentPassword) => setPasswordForm((current) => ({ ...current, currentPassword }))}
+          placeholder="Current password"
+          secureTextEntry
+        />
+        <TextField
+          value={passwordForm.newPassword}
+          onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
+          placeholder="New password"
+          secureTextEntry
+        />
+        <TextField
+          value={passwordForm.confirmPassword}
+          onChangeText={(confirmPassword) => setPasswordForm((current) => ({ ...current, confirmPassword }))}
+          placeholder="Confirm new password"
+          secureTextEntry
+        />
+        <Button
+          title="Change password"
+          disabled={!passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
+          onPress={() =>
+            changePassword({
+              currentPassword: passwordForm.currentPassword,
+              newPassword: passwordForm.newPassword,
+            }).then(() => {
+              setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+              Alert.alert("Password updated");
+            }).catch((error) => Alert.alert("Password", error instanceof Error ? error.message : "Try again."))
+          }
+        />
       </Card>
 
       <Card style={{ gap: 10 }}>

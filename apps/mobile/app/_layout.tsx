@@ -32,20 +32,7 @@ function RootNavigator() {
           headerShadowVisible: false,
           contentStyle: { backgroundColor }
         }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="announcements/[id]" options={{ title: "Announcement" }} />
-        <Stack.Screen name="clubs/[clubId]" options={{ title: "Club" }} />
-        <Stack.Screen name="clubs/[clubId]/channels/[channelId]" options={{ title: "Channel" }} />
-        <Stack.Screen name="events" options={{ title: "Events" }} />
-        <Stack.Screen name="flex-friday" options={{ title: "Flex Friday" }} />
-        <Stack.Screen name="flex-friday/pass" options={{ title: "Flex Pass" }} />
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
-        <Stack.Screen name="settings/theme" options={{ title: "Theme" }} />
-        <Stack.Screen name="design-system" options={{ title: "Design System" }} />
-      </Stack>
+      />
     </>
   );
 }

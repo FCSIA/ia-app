@@ -55,6 +55,10 @@ export default function ClubDetailScreen() {
 
             {data.viewer?.canAccessWorkspace ? (
               <Card style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <Button title="People" size="sm" variant="secondary" onPress={() => router.push(`/clubs/${clubId}/people`)} />
+                  <Button title="Tags" size="sm" variant="secondary" onPress={() => router.push(`/clubs/${clubId}/tags`)} />
+                </View>
                 <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Channels</Text>
                 {data.channels.map((channel: any) => (
                   <Pressable

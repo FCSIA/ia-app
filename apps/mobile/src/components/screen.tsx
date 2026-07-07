@@ -57,6 +57,7 @@ export function AppBackHeader({ forceVisible = false }: { forceVisible?: boolean
       onPress={() => router.back()}
       style={({ pressed }) => ({
         alignSelf: "flex-start",
+        width: 92,
         opacity: pressed ? 0.72 : 1
       })}
     >
