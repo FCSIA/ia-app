@@ -9,6 +9,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 ## What It Includes
 
 - Authentication with Better Auth on Convex and role-based access
+- Native Expo mobile app with secure sessions, shared Convex data, and native push
 - Announcements, comments, moderation, and notification preferences
 - Clubs, channels, invites, membership, and leader/sponsor workflows
 - Events, calendar entries, Flex Friday sessions, and student schedules
@@ -19,19 +20,23 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 | Layer              | Technology                                                  |
 | ------------------ | ----------------------------------------------------------- |
 | Web                | Next.js 16, React 19, Tailwind CSS, shadcn/ui               |
+| Mobile             | Expo SDK 57, React Native, Expo Router, NativeWind          |
 | Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
-| Tooling            | pnpm workspaces, Turborepo                                  |
+| Design             | Shared `@ia/design-tokens` package                          |
+| Tooling            | pnpm workspaces, Turborepo, EAS                             |
 
 ## Project Structure
 
 ```text
 ia-app/
-├── apps/web/       # Next.js 16 web app
-├── apps/convex/    # Convex backend (schema, functions, auth, storage)
-├── docs/           # Current product, architecture, backend, frontend docs
-├── AGENTS.md       # Agent workflow rules
-├── SETUP.md        # Full developer setup guide
-└── PORTING.md      # Historical backend-to-Convex migration context
+├── apps/web/              # Next.js 16 web app
+├── apps/mobile/           # Expo native mobile app
+├── apps/convex/           # Convex backend (schema, functions, auth, storage)
+├── packages/design-tokens/ # Shared color, radius, type, and badge tokens
+├── docs/                  # Current product, architecture, backend, frontend docs
+├── AGENTS.md              # Agent workflow rules
+├── SETUP.md               # Full developer setup guide
+└── PORTING.md             # Historical backend-to-Convex migration context
 ```
 
 ## Quick Start
@@ -49,6 +54,12 @@ Start the application (Next.js frontend and Convex dev server in parallel):
 
 ```bash
 pnpm dev
+```
+
+Start the native mobile app with Expo:
+
+```bash
+pnpm dev:mobile
 ```
 
 Open Convex dashboard:
@@ -104,6 +115,7 @@ Demo accounts are seeded with their ID as the password, for example `STU001` / `
 
 ```bash
 pnpm dev          # Start web app and Convex dev server in parallel
+pnpm dev:mobile   # Start the Expo mobile app
 pnpm --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
 pnpm build        # Build all workspaces for production

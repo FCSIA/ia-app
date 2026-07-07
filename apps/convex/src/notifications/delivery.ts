@@ -52,6 +52,14 @@ export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput
     href: input.href,
     scopeKey: scope.scopeKey,
   });
+  await ctx.scheduler.runAfter(0, internal.notifications.pushExpo.sendForDelivery, {
+    userId: input.userId,
+    category: input.category,
+    title: input.title,
+    body: input.body,
+    href: input.href,
+    scopeKey: scope.scopeKey,
+  });
 }
 
 export async function deliverMany(ctx: MutationCtx, userIds: Id<"users">[], input: Omit<DeliveryInput, "userId">) {

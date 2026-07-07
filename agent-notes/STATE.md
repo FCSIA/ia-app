@@ -2,8 +2,8 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Convex-first IA app; broad backend/data/routing hardening pass completed.
+- **Branch**: `mobile`
+- **Goal**: Native Expo mobile app foundation added on top of the Convex-first IA app.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -19,6 +19,7 @@
 | Wrapped | **Done** |
 | Announcements | **Done for current web flows** |
 | Moderation, uploads | **Done for current web flows** |
+| Native mobile push tokens | **Added for Expo clients** |
 
 ### Hardening Completed
 
@@ -50,9 +51,19 @@
 - Event creation UI only offers eligible clubs to non-general creators and
   blocks club-scoped submissions without an eligible club.
 - Event author cancellation checks both current user id shapes used by the app.
+- `apps/mobile` now contains an Expo SDK 57 app with Expo Router, Better Auth
+  Expo/SecureStore auth, Convex live data, shared design tokens, mobile tabs,
+  announcements, clubs/chat, schedule, events, Flex Friday, notifications,
+  profile, theme, and design-system gallery screens.
+- `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
+  tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 
 ### Remaining Debt
 
+- Mobile v1 is a functional foundation, not store-ready: EAS project id,
+  app icons/splash assets, physical-device push testing, Maestro flows,
+  screenshot parity review, and TestFlight/Play internal builds still need
+  product/build credentials.
 - Channel delete is still a direct row delete and does not cascade related
   messages/reactions/memberships.
 - Announcement feed still has pagination/read-amplification room for improvement.
@@ -66,6 +77,7 @@
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
+- `pnpm --filter mobile typecheck` - pass
 - `pnpm lint` - pass
 - `pnpm build` - pass
 - `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)

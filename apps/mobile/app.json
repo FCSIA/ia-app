@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Innovation Academy",
+    "slug": "ia-mobile",
+    "scheme": "ia-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.fcsia.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Innovation Academy uses the camera when you choose a new profile image.",
+        "NSPhotoLibraryUsageDescription": "Innovation Academy uses your photo library when you choose a new profile image."
+      }
+    },
+    "android": {
+      "package": "org.fcsia.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#f95b01"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#f95b01",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-screen-capture",
+        {
+          "preventScreenCapture": true
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-eas-project-id"
+      }
+    }
+  }
+}

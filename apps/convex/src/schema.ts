@@ -206,6 +206,23 @@ export const schema = defineSchema({
     .index("by_endpoint", ["endpoint"])
     .index("by_userId_and_enabled", ["userId", "enabled"]),
 
+  notificationNativePushTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android")),
+    deviceId: v.optional(v.string()),
+    deviceName: v.optional(v.string()),
+    enabled: v.boolean(),
+    failureCount: v.number(),
+    lastError: v.optional(v.string()),
+    lastSentAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_token", ["userId", "token"])
+    .index("by_token", ["token"])
+    .index("by_userId_and_enabled", ["userId", "enabled"]),
+
   courses: defineTable({
     slug: v.string(),
     title: v.string(),
