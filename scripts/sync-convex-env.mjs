@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const convexEnvPath = join(root, 'apps', 'convex', '.env.local');
 const webEnvPath = join(root, 'apps', 'web', '.env.local');
+const mobileEnvPath = join(root, 'apps', 'mobile', '.env.local');
 
 if (!existsSync(convexEnvPath)) {
   console.error('Missing apps/convex/.env.local — run `pnpm --filter cvx dev` and link a project first.');
@@ -31,6 +32,16 @@ const upsert = (content, key, value) => {
   return pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`;
 };
 
+const mobileHost = process.env.MOBILE_CONVEX_HOST?.trim();
+const mobileUrl = (value) => {
+  if (!mobileHost) return value;
+  const url = new URL(value);
+  if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname)) {
+    url.hostname = mobileHost;
+  }
+  return url.toString().replace(/\/$/, '');
+};
+
 let webEnv = existsSync(webEnvPath) ? readFileSync(webEnvPath, 'utf8') : '';
 webEnv = upsert(webEnv, 'NEXT_PUBLIC_CONVEX_URL', convexUrl);
 webEnv = upsert(webEnv, 'NEXT_PUBLIC_CONVEX_SITE_URL', convexSiteUrl);
@@ -41,6 +52,25 @@ if (!/^NEXT_PUBLIC_SITE_URL=/m.test(webEnv)) {
 }
 
 writeFileSync(webEnvPath, webEnv.endsWith('\n') ? webEnv : `${webEnv}\n`, 'utf8');
+
+let mobileEnv = existsSync(mobileEnvPath) ? readFileSync(mobileEnvPath, 'utf8') : '';
+mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_APP_SCHEME', 'ia-app');
+mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_URL', mobileUrl(convexUrl));
+mobileEnv = upsert(mobileEnv, 'EXPO_PUBLIC_CONVEX_SITE_URL', mobileUrl(convexSiteUrl));
+writeFileSync(mobileEnvPath, mobileEnv.endsWith('\n') ? mobileEnv : `${mobileEnv}\n`, 'utf8');
+
 console.log(`Synced Convex env to apps/web/.env.local`);
 console.log(`  NEXT_PUBLIC_CONVEX_URL=${convexUrl}`);
 console.log(`  NEXT_PUBLIC_CONVEX_SITE_URL=${convexSiteUrl}`);
+console.log(`Synced Convex env to apps/mobile/.env.local`);
+console.log(`  EXPO_PUBLIC_CONVEX_URL=${mobileUrl(convexUrl)}`);
+console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${mobileUrl(convexSiteUrl)}`);
+if (!mobileHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
+  console.log('Tip: set MOBILE_CONVEX_HOST=<your LAN IPv4> before running this script for physical-device Expo Go testing.');
+}
+
+if (mobileHost) {
+  const nextConvexEnv = upsert(convexEnv, 'MOBILE_CONVEX_HOST', mobileHost);
+  writeFileSync(convexEnvPath, nextConvexEnv.endsWith('\n') ? nextConvexEnv : `${nextConvexEnv}\n`, 'utf8');
+  console.log(`Saved MOBILE_CONVEX_HOST=${mobileHost} to apps/convex/.env.local for local auth host validation.`);
+}

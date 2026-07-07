@@ -12,6 +12,20 @@ pnpm --filter cvx dev
 pnpm dev:mobile
 ```
 
+For Expo Go on a physical iPhone or Android emulator against the same local
+Convex backend as the web app, sync mobile env with a LAN-reachable host:
+
+```powershell
+$env:MOBILE_CONVEX_HOST="<your Wi-Fi IPv4>"
+pnpm sync:convex-env
+pnpm --filter cvx dev
+pnpm dev:mobile
+```
+
+Use the current Wi-Fi IPv4 address for `MOBILE_CONVEX_HOST` if it changes. The
+script keeps web on `127.0.0.1` and writes mobile URLs to
+`apps/mobile/.env.local`.
+
 Set these values before launching a dev build:
 
 ```env

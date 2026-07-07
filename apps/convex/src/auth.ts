@@ -42,13 +42,32 @@ const configuredSiteHostname = (() => {
   }
 })();
 
+function hostFromEnvUrl(value?: string) {
+  if (!value) return null;
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const configuredAuthHostnames = Array.from(
+  new Set(
+    [
+      configuredSiteHostname,
+      hostFromEnvUrl(process.env.CONVEX_SITE_URL),
+      hostFromEnvUrl(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
+      process.env.MOBILE_CONVEX_HOST,
+      "localhost",
+      "127.0.0.1",
+      "10.0.2.2",
+      "*-sreyassabbanis-projects.vercel.app",
+    ].filter((host): host is string => Boolean(host)),
+  ),
+);
+
 const authBaseURL: BetterAuthOptions["baseURL"] = {
-  allowedHosts: [
-    configuredSiteHostname,
-    "localhost",
-    "127.0.0.1",
-    "*-sreyassabbanis-projects.vercel.app",
-  ],
+  allowedHosts: configuredAuthHostnames,
   fallback: siteUrl,
   protocol: "auto",
 };
