@@ -16,6 +16,10 @@ pnpm dev:mobile
 emulator testing. Use `pnpm --filter mobile dev:client` only after installing a
 development build.
 
+Expo Go can test auth, Convex data, navigation, uploads, and the main screens.
+Native push notifications are disabled in Expo Go on SDK 53+ and require a
+development build.
+
 For Expo Go on a physical iPhone or Android emulator against the same local
 Convex backend as the web app, sync mobile env with a LAN-reachable host:
 

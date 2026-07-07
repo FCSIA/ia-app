@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { relativeTime } from "@/lib/format";
 import { openAppHref } from "@/lib/deep-links";
-import { registerNativePushToken } from "@/lib/push";
+import { nativePushUnavailableReason, registerNativePushToken } from "@/lib/push";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 
@@ -22,6 +22,7 @@ export default function NotificationsScreen() {
   const sendTestPush = useAction(api.notifications.pushExpo.sendTestToMe);
   const [pushLoading, setPushLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
+  const pushUnavailableReason = nativePushUnavailableReason();
   const { color } = useTheme();
 
   async function enablePush() {
@@ -56,6 +57,11 @@ export default function NotificationsScreen() {
         <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>
           Enable notifications for announcements, club messages, events, and Flex Friday changes.
         </Text>
+        {pushUnavailableReason ? (
+          <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>
+            {pushUnavailableReason}
+          </Text>
+        ) : null}
         <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>
           {nativeTokens === undefined
             ? "Checking registered devices..."
@@ -72,13 +78,18 @@ export default function NotificationsScreen() {
           </View>
         ))}
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-          <Button title="Enable push on this device" onPress={enablePush} loading={pushLoading} />
+          <Button
+            title="Enable push on this device"
+            onPress={enablePush}
+            loading={pushLoading}
+            disabled={!!pushUnavailableReason}
+          />
           <Button
             title="Send test push"
             variant="secondary"
             onPress={sendTest}
             loading={testLoading}
-            disabled={!nativeTokens?.length}
+            disabled={!!pushUnavailableReason || !nativeTokens?.length}
           />
         </View>
       </Card>
