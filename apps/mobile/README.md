@@ -12,6 +12,10 @@ pnpm --filter cvx dev
 pnpm dev:mobile
 ```
 
+`pnpm dev:mobile` starts Expo in Expo Go mode for quick iPhone and Android
+emulator testing. Use `pnpm --filter mobile dev:client` only after installing a
+development build.
+
 For Expo Go on a physical iPhone or Android emulator against the same local
 Convex backend as the web app, sync mobile env with a LAN-reachable host:
 

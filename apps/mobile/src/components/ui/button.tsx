@@ -36,7 +36,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled || loading, busy: loading }}
       disabled={disabled || loading}
-      style={({ pressed }) => [
+      style={(state) => [
         {
           minHeight: height,
           borderRadius: 999,
@@ -48,9 +48,9 @@ export function Button({
           borderWidth: variant === "tertiary" ? 1 : 0,
           borderColor,
           backgroundColor,
-          opacity: disabled ? 0.45 : pressed ? 0.76 : 1
+          opacity: disabled ? 0.45 : state.pressed ? 0.76 : 1
         },
-        typeof style === "function" ? style({ pressed }) : style
+        typeof style === "function" ? style(state) : style
       ]}
       {...props}
     >
