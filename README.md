@@ -38,6 +38,8 @@ ia-app/
 
 For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 
+Requires Node.js 20.19 or newer and pnpm 10.29.3.
+
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
