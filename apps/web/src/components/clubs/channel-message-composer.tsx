@@ -115,16 +115,21 @@ export function ChannelMessageComposer({
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [previousResetKey, setPreviousResetKey] = useState(resetKey);
 
-  useEffect(() => {
+  if (previousResetKey !== resetKey) {
     const emptyValue = createEmptyClubChannelMessageValue();
+    setPreviousResetKey(resetKey);
     setFiles([]);
     setPlainText('');
     setRichValue(emptyValue);
     setPollOpen(false);
     setPollQuestion('');
     setPollOptions(['', '']);
-    editor.tf.setValue(emptyValue);
+  }
+
+  useEffect(() => {
+    editor.tf.setValue(createEmptyClubChannelMessageValue());
   }, [editor, resetKey]);
 
   const mentionables = useMemo<MentionableItem[]>(

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,17 +33,14 @@ export function SessionForm({
 }: Props) {
   const { toast } = useToast();
   const [form, setForm] = useState<SessionFormType>(initialData);
+  const [previousTarget, setPreviousTarget] = useState({ isOpen, editingSessionId });
 
-  // Reset the form when the sheet opens or the edit target changes. We
-  // intentionally do NOT depend on `initialData`: if a caller ever passes a
-  // fresh object identity per render, depending on it here re-runs setForm on
-  // every render → "Maximum update depth exceeded" while the sheet is open.
-  useEffect(() => {
+  if (previousTarget.isOpen !== isOpen || previousTarget.editingSessionId !== editingSessionId) {
+    setPreviousTarget({ isOpen, editingSessionId });
     if (isOpen) {
       setForm(initialData);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, editingSessionId]);
+  }
 
   const handleSubmit = async () => {
 

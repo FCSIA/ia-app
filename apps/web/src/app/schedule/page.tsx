@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useDeferredValue, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
@@ -24,6 +24,7 @@ import type { CourseSummary } from '@/components/courses/types';
 import {
   ScheduleWeekday,
   StudentScheduleDraftEntry,
+  StudentScheduleRecord,
 } from '@/components/schedule/types';
 import {
   WEEKDAYS,
@@ -51,6 +52,19 @@ function buildScheduleRecord(entries: StudentScheduleDraftEntry[], isPublic: boo
 }
 
 type ScheduleTab = 'my' | 'friends' | 'admin';
+
+type ScheduleTabState = {
+  requestedTab: string | null;
+  canEditOwnSchedule: boolean;
+  canManageBlocks: boolean;
+  activeTab: ScheduleTab;
+};
+
+type ScheduleDraftState = {
+  source: StudentScheduleRecord | null | undefined;
+  entries: StudentScheduleDraftEntry[];
+  isPublic: boolean;
+};
 
 function resolveScheduleTab(
   requestedTab: string | null,
@@ -94,31 +108,76 @@ function SchedulePageContent() {
   const requestedTab = searchParams?.get('tab') ?? null;
   const requestedSection = searchParams?.get('section') ?? null;
 
-  const [activeTab, setActiveTab] = useState<ScheduleTab>('my');
+  const [tabState, setTabState] = useState<ScheduleTabState>(() => ({
+    requestedTab,
+    canEditOwnSchedule,
+    canManageBlocks,
+    activeTab: resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks),
+  }));
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
-  const [scheduleEntries, setScheduleEntries] = useState<StudentScheduleDraftEntry[]>([]);
-  const [isPublic, setIsPublic] = useState(false);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraftState>({
+    source: undefined,
+    entries: [],
+    isPublic: false,
+  });
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
 
   const data = useQuery(api.schedule.dashboard.get);
   const isLoading = data === undefined;
   const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? [];
+  const sourceSchedule = data?.mySchedule;
 
-  useEffect(() => {
-    setScheduleEntries(data?.mySchedule?.entries ?? []);
-    setIsPublic(data?.mySchedule?.isPublic ?? false);
-  }, [data?.mySchedule]);
+  let scheduleEntries = scheduleDraft.entries;
+  let isPublic = scheduleDraft.isPublic;
+  if (scheduleDraft.source !== sourceSchedule) {
+    scheduleEntries = sourceSchedule?.entries ?? [];
+    isPublic = sourceSchedule?.isPublic ?? false;
+    setScheduleDraft({
+      source: sourceSchedule,
+      entries: scheduleEntries,
+      isPublic,
+    });
+  }
 
-  useEffect(() => {
-    setActiveTab(resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks));
-  }, [canEditOwnSchedule, canManageBlocks, requestedTab]);
+  let activeTab = tabState.activeTab;
+  if (
+    tabState.requestedTab !== requestedTab ||
+    tabState.canEditOwnSchedule !== canEditOwnSchedule ||
+    tabState.canManageBlocks !== canManageBlocks
+  ) {
+    activeTab = resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks);
+    setTabState({
+      requestedTab,
+      canEditOwnSchedule,
+      canManageBlocks,
+      activeTab,
+    });
+  }
 
   const selectedTab = resolveScheduleTab(activeTab, canEditOwnSchedule, canManageBlocks);
+  const setActiveTab = (tab: ScheduleTab) => {
+    setTabState((current) => ({
+      ...current,
+      activeTab: resolveScheduleTab(tab, canEditOwnSchedule, canManageBlocks),
+    }));
+  };
+  const setScheduleEntries = (value: SetStateAction<StudentScheduleDraftEntry[]>) => {
+    setScheduleDraft((current) => ({
+      ...current,
+      entries: typeof value === 'function' ? value(current.entries) : value,
+    }));
+  };
+  const setIsPublic = (value: SetStateAction<boolean>) => {
+    setScheduleDraft((current) => ({
+      ...current,
+      isPublic: typeof value === 'function' ? value(current.isPublic) : value,
+    }));
+  };
 
   useEffect(() => {
     if (selectedTab !== 'friends' || requestedSection !== 'requests') return;
