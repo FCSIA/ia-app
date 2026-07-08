@@ -53,22 +53,31 @@
 - Event author cancellation checks both current user id shapes used by the app.
 - `apps/mobile` now contains an Expo SDK 57 app with Expo Router, Better Auth
   Expo/SecureStore auth, Convex live data, shared design tokens, IA app assets,
-  production-shaped dynamic Expo config, mobile tabs, announcements,
-  clubs/chat/reporting/join approvals/people/tags, editable schedule and friend
-  requests, courses, events/calendar, Flex Friday browse/register/pass,
-  Wrapped, notifications/preferences/native push, profile/avatar/password,
-  persisted themes, design-system gallery, offline cached dashboard/schedule/
+  production-shaped dynamic Expo config, redesigned 5-tab mobile IA,
+  announcements/feed, clubs/chat/reporting/join approvals/people/tags,
+  Calendar hub (My Week, Month, Events), Discover for Courses/Flex/Wrapped,
+  Flex Friday browse/register/pass, notifications inbox plus settings,
+  profile/avatar/password, persisted themes with editable custom mobile
+  colors, dev-only design-system gallery, offline cached dashboard/schedule/
   pass state, notification deep-link routing, native push device/test-push
-  validation in the Inbox, and Maestro smoke flows.
+  validation in settings, and Maestro smoke flows.
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
   sync via `pnpm sync:convex-env -- --android`.
-- Mobile navigation is student-prioritized: tab bar is Home, Calendar, Posts,
-  Clubs, Classes, More. Inbox moved into More with unread count so Calendar is
-  not hidden behind the secondary menu.
+- Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
+  Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
+  are reachable from every tab through the shared in-app header, and Profile
+  owns Appearance and Notification settings.
+- Mobile UI has a shared primitive layer for headers, rows, segmented controls,
+  chips, switches, avatar, skeletons, icon buttons, bottom sheets, stats,
+  press-scale motion, haptics, and toast feedback. Dashboard customization now
+  uses a bottom sheet with drag-to-reorder.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
+- `packages/fun-facts` centralizes the shared school-appropriate fun fact bank
+  and picker used by both the web loading/dashboard widget and the mobile Home
+  Fun Fact card.
 
 ### Remaining Debt
 
@@ -90,7 +99,7 @@
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
-- `pnpm --filter mobile typecheck` - pass
+- `pnpm --filter mobile typecheck` - pass after mobile redesign/IA refactor
 - Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
   Courses list/detail, Events empty state, Calendar personal create/delete,
   Schedule view/edit-mode controls, Clubs list/request-only detail state,

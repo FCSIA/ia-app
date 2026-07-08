@@ -1,6 +1,8 @@
-import { ActivityIndicator, Pressable, Text, View, type PressableProps } from "react-native";
+import { ActivityIndicator, Text, View, type PressableProps } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/pressable-scale";
 import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 
 type ButtonProps = PressableProps & {
   title: string;
@@ -36,28 +38,26 @@ export function Button({
       : color("foreground");
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled || loading, busy: loading }}
       disabled={disabled || loading}
-      style={(state) => [
-        { opacity: disabledStyle ? 1 : state.pressed ? 0.76 : 1 },
-        typeof style === "function" ? style(state) : style
-      ]}
+      style={typeof style === "function" ? undefined : style}
       {...props}
     >
       <View
         style={{
           minHeight: height,
-          borderRadius: 14,
+          borderRadius: radii.md,
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "row",
-          gap: 8,
-          paddingHorizontal: size === "sm" ? 12 : 16,
+          gap: spacing.sm,
+          paddingHorizontal: size === "sm" ? spacing.md : spacing.lg,
           borderWidth: variant === "tertiary" || (disabledStyle && variant === "primary") ? 1 : 0,
           borderColor,
           backgroundColor,
+          opacity: disabledStyle ? 0.68 : 1,
         }}
       >
         {loading ? <ActivityIndicator color={textColor} /> : null}
@@ -66,6 +66,6 @@ export function Button({
           {title}
         </Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

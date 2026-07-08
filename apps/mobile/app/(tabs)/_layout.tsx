@@ -1,8 +1,10 @@
 import { Redirect, Tabs } from "expo-router";
-import { CalendarDays, Home, Megaphone, MoreHorizontal, Rows3, UsersRound } from "lucide-react-native";
+import { CalendarDays, Compass, Home, Megaphone, UsersRound } from "lucide-react-native";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useTheme } from "@/lib/theme";
+import { tapLight } from "@/lib/haptics";
+import { spacing } from "@/lib/tokens";
 
 const EMPTY_ARGS = {};
 
@@ -24,7 +26,7 @@ export default function TabsLayout() {
           fontWeight: "800"
         },
         tabBarItemStyle: {
-          paddingTop: 6
+          paddingTop: spacing.xs
         },
         tabBarStyle: {
           backgroundColor: color("card"),
@@ -35,11 +37,11 @@ export default function TabsLayout() {
         }
       }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: "Home", tabBarIcon: ({ color: c }) => <Home color={c} size={21} /> }} />
-      <Tabs.Screen name="calendar" options={{ title: "Calendar", tabBarIcon: ({ color: c }) => <CalendarDays color={c} size={21} /> }} />
-      <Tabs.Screen name="announcements" options={{ title: "Posts", tabBarIcon: ({ color: c }) => <Megaphone color={c} size={21} /> }} />
-      <Tabs.Screen name="clubs" options={{ title: "Clubs", tabBarIcon: ({ color: c }) => <UsersRound color={c} size={21} /> }} />
-      <Tabs.Screen name="schedule" options={{ title: "Classes", tabBarIcon: ({ color: c }) => <Rows3 color={c} size={21} /> }} />
+      <Tabs.Screen name="dashboard" listeners={{ tabPress: () => void tapLight() }} options={{ title: "Home", tabBarIcon: ({ color: c }) => <Home color={c} size={21} /> }} />
+      <Tabs.Screen name="calendar" listeners={{ tabPress: () => void tapLight() }} options={{ title: "Calendar", tabBarIcon: ({ color: c }) => <CalendarDays color={c} size={21} /> }} />
+      <Tabs.Screen name="clubs" listeners={{ tabPress: () => void tapLight() }} options={{ title: "Clubs", tabBarIcon: ({ color: c }) => <UsersRound color={c} size={21} /> }} />
+      <Tabs.Screen name="announcements" listeners={{ tabPress: () => void tapLight() }} options={{ title: "Feed", tabBarIcon: ({ color: c }) => <Megaphone color={c} size={21} /> }} />
+      <Tabs.Screen name="discover" listeners={{ tabPress: () => void tapLight() }} options={{ title: "Discover", tabBarIcon: ({ color: c }) => <Compass color={c} size={21} /> }} />
       <Tabs.Screen
         name="notifications"
         options={{
@@ -49,7 +51,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color: c }) => <Megaphone color={c} size={21} />
         }}
       />
-      <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color: c }) => <MoreHorizontal color={c} size={21} /> }} />
     </Tabs>
   );
 }

@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Alert, Image, Text, View } from "react-native";
+import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
+import { Bell, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import { unregisterStoredNativePushToken } from "@/lib/push";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextField } from "@/components/ui/text-field";
-import { useTheme } from "@/lib/theme";
+import { Avatar, Button, Card, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
+import { warning } from "@/lib/haptics";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ProfileScreen() {
@@ -20,13 +20,15 @@ export default function ProfileScreen() {
   const clearImage = useMutation(api.users.me.clearUserImage);
   const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const { color } = useTheme();
+  const { showToast } = useToast();
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   async function pickAvatar() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85
+      quality: 0.85,
     });
     if (result.canceled || !result.assets[0]) return;
 
@@ -36,60 +38,89 @@ export default function ProfileScreen() {
     const upload = await fetch(uploadUrl, {
       method: "POST",
       headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
-      body: blob
+      body: blob,
     });
     const { storageId } = await upload.json();
     await saveImage({
       kind: "avatar",
       storageId,
       mimeType: asset.mimeType ?? "image/jpeg",
-      size: asset.fileSize ?? blob.size
+      size: asset.fileSize ?? blob.size,
     });
+    showToast({ title: "Avatar updated", tone: "success" });
   }
 
   async function logout() {
-    await unregisterStoredNativePushToken(convex).catch(() => {});
-    await authClient.signOut();
-    router.replace("/login");
+    await warning();
+    Alert.alert("Sign out?", "You can sign back in with your school account.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          await unregisterStoredNativePushToken(convex).catch(() => {});
+          await authClient.signOut();
+          router.replace("/login");
+        },
+      },
+    ]);
+  }
+
+  async function submitPassword() {
+    try {
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordOpen(false);
+      showToast({ title: "Password updated", tone: "success" });
+    } catch (error) {
+      showToast({ title: "Password", body: error instanceof Error ? error.message : "Try again." });
+    }
   }
 
   return (
-    <Screen title="Profile" subtitle="Account settings stay lightweight on mobile.">
-      <Card style={{ alignItems: "center", gap: 12 }}>
-        {user?.avatarUrl ? (
-          <Image source={{ uri: user.avatarUrl }} style={{ width: 84, height: 84, borderRadius: 999 }} />
-        ) : (
-          <View
-            style={{
-              width: 84,
-              height: 84,
-              borderRadius: 999,
-              backgroundColor: color("accent"),
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            <Text style={{ color: color("foreground"), fontSize: 28, fontWeight: "900" }}>
-              {user?.firstName?.[0] ?? "I"}
-            </Text>
-          </View>
-        )}
-        <Text style={{ color: color("foreground"), fontSize: 22, fontWeight: "900" }}>
-          {[user?.firstName, user?.lastName].filter(Boolean).join(" ")}
-        </Text>
-        <Text style={{ color: color("mutedForeground") }}>{user?.uniqueId}</Text>
+    <Screen title="Profile" subtitle="Account, appearance, and notification settings.">
+      <Card style={{ alignItems: "center", gap: spacing.md }}>
+        <Avatar uri={user?.avatarUrl} name={fullName} size={84} />
+        <View style={{ alignItems: "center", gap: 2 }}>
+          <Txt variant="title">{fullName || "Innovation Academy"}</Txt>
+          <Txt tone="muted">{user?.uniqueId}</Txt>
+        </View>
         <Button title="Update avatar" variant="secondary" onPress={pickAvatar} />
         {user?.avatarUrl ? (
           <Button
             title="Remove avatar"
             variant="tertiary"
-            onPress={() => clearImage({ kind: "avatar" }).catch((error) => Alert.alert("Avatar", error instanceof Error ? error.message : "Try again."))}
+            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Avatar removed", tone: "success" })).catch((error) => showToast({ title: "Avatar", body: error instanceof Error ? error.message : "Try again." }))}
           />
         ) : null}
       </Card>
 
-      <Card style={{ gap: 10 }}>
-        <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Password</Text>
+      <Section title="Settings">
+        <ListRow icon={Palette} title="Appearance" subtitle="Theme and color preferences" onPress={() => router.push("/settings/theme" as never)} />
+        <ListRow icon={Bell} title="Notifications" subtitle="Push devices and categories" onPress={() => router.push("/settings/notifications" as never)} />
+        <ListRow icon={KeyRound} title="Password" subtitle="Change your account password" onPress={() => setPasswordOpen(true)} />
+      </Section>
+
+      <Section title="Account">
+        <ListRow
+          icon={Trash2}
+          title="Account deletion"
+          subtitle="School-managed accounts are handled by IA support."
+          onPress={() => showToast({ title: "Account deletion", body: "Contact IA support or the front office to request account removal or deactivation." })}
+        />
+        <Button title="Sign out" variant="ghost" onPress={logout} />
+      </Section>
+
+      {__DEV__ ? (
+        <Txt variant="caption" tone="muted" style={{ textAlign: "center" }} onLongPress={() => router.push("/design-system" as never)}>
+          IA Mobile v0.0.1
+        </Txt>
+      ) : null}
+
+      <Sheet open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change Password">
         <TextField
           value={passwordForm.currentPassword}
           onChangeText={(currentPassword) => setPasswordForm((current) => ({ ...current, currentPassword }))}
@@ -111,31 +142,9 @@ export default function ProfileScreen() {
         <Button
           title="Change password"
           disabled={!passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
-          onPress={() =>
-            changePassword({
-              currentPassword: passwordForm.currentPassword,
-              newPassword: passwordForm.newPassword,
-            }).then(() => {
-              setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-              Alert.alert("Password updated");
-            }).catch((error) => Alert.alert("Password", error instanceof Error ? error.message : "Try again."))
-          }
+          onPress={submitPassword}
         />
-      </Card>
-
-      <Card style={{ gap: 10 }}>
-        <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Account deletion</Text>
-        <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>
-          School-managed accounts are handled by IA support. Submit a deletion request through the front office or district account support.
-        </Text>
-        <Button
-          title="Show deletion path"
-          variant="tertiary"
-          onPress={() => Alert.alert("Account deletion", "Contact IA support or the front office to request account removal or deactivation.")}
-        />
-      </Card>
-
-      <Button title="Sign out" variant="ghost" onPress={logout} />
+      </Sheet>
     </Screen>
   );
 }

@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
+import { QrCode } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Badge, Button, Card, ChipGroup, IconButton, Section, Stat, Txt, useToast } from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { useOfflineValue } from "@/lib/offline-cache";
-import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function FlexFridayScreen() {
@@ -22,21 +21,21 @@ export default function FlexFridayScreen() {
   const selectedFriday = fridayList.find((friday: any) => friday._id === selectedFridayId) ?? fridayList[0];
   const sessions = useQuery(
     api.flexFriday.sessions.listByFriday,
-    selectedFriday?._id ? { flexFridayId: selectedFriday._id as any } : "skip"
+    selectedFriday?._id ? { flexFridayId: selectedFriday._id as any } : "skip",
   );
   const selectedSession = sessions?.find((session: any) => session._id === selectedSessionId) ?? sessions?.[0];
   const workshops = useQuery(
     api.flexFriday.workshops.listBySession,
     selectedFriday?._id && selectedSession?._id
       ? { flexFridayId: selectedFriday._id as any, sessionId: selectedSession._id as any }
-      : "skip"
+      : "skip",
   );
   const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, {});
   const assignments = useQuery(api.flexFriday.registration.getMyAssignments, {});
   const credits = useQuery(api.flexFriday.credits.getMyCredits, {});
   const register = useMutation(api.flexFriday.registration.register);
   const unregister = useMutation(api.flexFriday.registration.unregister);
-  const { color } = useTheme();
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!selectedFridayId && selectedFriday?._id) setSelectedFridayId(selectedFriday._id);
@@ -47,80 +46,75 @@ export default function FlexFridayScreen() {
   }, [selectedSession?._id, selectedSessionId]);
 
   return (
-    <Screen title="Flex Friday" subtitle="Browse upcoming Flex Fridays and keep your mobile pass close.">
+    <Screen title="Flex Friday" subtitle="Browse sessions, register, and keep your pass close.">
       {fridays.isOffline || fridays.isStale ? <OfflineBanner stale={fridays.isStale} /> : null}
-      <Card style={{ gap: 8 }}>
-        <Badge label="Pass" color="orange" />
-        <Text style={{ color: color("foreground"), fontSize: 24, fontWeight: "900" }}>
-          {credits?.earned ?? 0} credits earned
-        </Text>
-        <Text style={{ color: color("mutedForeground") }}>
-          Registrations: {(registrations ?? []).length} · Assignments: {(assignments ?? []).length}
-        </Text>
-        <Button title="Open pass" variant="secondary" onPress={() => router.push("/flex-friday/pass" as never)} />
+      <Card style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+          <IconButton icon={QrCode} label="Show my pass" variant="primary" onPress={() => router.push("/flex-friday/pass" as never)} />
+          <View style={{ flex: 1 }}>
+            <Txt variant="title">Show my pass</Txt>
+            <Txt tone="muted">Ready for check-in and attendance.</Txt>
+          </View>
+        </View>
+        <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <View style={{ flex: 1 }}>
+            <Stat value={credits?.earned ?? 0} label="credits earned" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Stat value={(registrations ?? []).length + (assignments ?? []).length} label="active items" />
+          </View>
+        </View>
+        <Button title="Show my pass" onPress={() => router.push("/flex-friday/pass" as never)} />
       </Card>
 
       <DataBoundary data={fridays.value} emptyTitle="No Flex Fridays scheduled">
         {(items) => (
-          <View style={{ gap: 12 }}>
+          <Section title="Fridays">
             {items.map((friday: any) => (
-              <Pressable key={friday._id} onPress={() => setSelectedFridayId(friday._id)}>
               <Card
-                style={{
-                  gap: 8,
-                  borderColor: selectedFriday?._id === friday._id ? color("primary") : color("border")
-                }}
+                key={friday._id}
+                onPress={() => setSelectedFridayId(friday._id)}
+                style={{ gap: spacing.sm, borderWidth: selectedFriday?._id === friday._id ? 2 : 1 }}
               >
-                <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>
-                  {shortDate(friday.date)}
-                </Text>
-                <Text style={{ color: color("mutedForeground") }}>
-                  {friday.type.replaceAll("_", " ")} · {friday._count?.sessions ?? 0} sessions
-                </Text>
-                {friday.notes ? <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>{friday.notes}</Text> : null}
+                <Txt variant="section">{shortDate(friday.date)}</Txt>
+                <Txt tone="muted">
+                  {friday.type.replaceAll("_", " ")} - {friday._count?.sessions ?? 0} sessions
+                </Txt>
+                {friday.notes ? <Txt tone="muted">{friday.notes}</Txt> : null}
               </Card>
-              </Pressable>
             ))}
-          </View>
+          </Section>
         )}
       </DataBoundary>
 
       {sessions?.length ? (
-        <Card style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Sessions</Text>
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-            {sessions.map((session: any) => (
-              <Button
-                key={session._id}
-                title={session.title}
-                size="sm"
-                variant={selectedSession?._id === session._id ? "primary" : "secondary"}
-                onPress={() => setSelectedSessionId(session._id)}
-              />
-            ))}
-          </View>
-        </Card>
+        <Section title="Sessions">
+          <ChipGroup
+            values={sessions.map((session: any) => session._id)}
+            selected={selectedSession?._id ? [selectedSession._id] : []}
+            labels={Object.fromEntries(sessions.map((session: any) => [session._id, session.title]))}
+            onToggle={(sessionId) => setSelectedSessionId(sessionId)}
+          />
+        </Section>
       ) : null}
 
       {selectedFriday && selectedSession ? (
         <DataBoundary data={workshops} emptyTitle="No workshops for this session">
           {(items) => (
-            <View style={{ gap: 12 }}>
+            <Section title="Workshops">
               {items.map((workshop: any) => {
                 const isRegistered = workshop.registrations?.length > 0;
                 const isAssigned = workshop.assignments?.length > 0;
                 return (
-                  <Card key={workshop._id} style={{ gap: 8 }}>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <Card key={workshop._id} style={{ gap: spacing.sm }}>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
                       {isRegistered ? <Badge label="Registered" color="emerald" /> : null}
                       {isAssigned ? <Badge label="Assigned" color="blue" /> : null}
                       {workshop.capacity ? <Badge label={`${workshop._count?.registrations ?? 0}/${workshop.capacity}`} color="amber" /> : null}
                     </View>
-                    <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>{workshop.title}</Text>
-                    {workshop.description ? (
-                      <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>{workshop.description}</Text>
-                    ) : null}
-                    {workshop.location ? <Text style={{ color: color("mutedForeground") }}>{workshop.location}</Text> : null}
+                    <Txt variant="section">{workshop.title}</Txt>
+                    {workshop.description ? <Txt tone="muted">{workshop.description}</Txt> : null}
+                    {workshop.location ? <Txt tone="muted">{workshop.location}</Txt> : null}
                     <Button
                       title={isRegistered ? "Unregister" : "Register"}
                       variant={isRegistered ? "tertiary" : "primary"}
@@ -129,15 +123,14 @@ export default function FlexFridayScreen() {
                         (isRegistered
                           ? unregister({ workshopId: workshop._id })
                           : register({ workshopId: workshop._id })
-                        ).catch((error) =>
-                          Alert.alert("Flex Friday", error instanceof Error ? error.message : "Try again.")
-                        )
+                        ).then(() => showToast({ title: isRegistered ? "Registration removed" : "Registered", tone: "success" }))
+                          .catch((error) => showToast({ title: "Flex Friday", body: error instanceof Error ? error.message : "Try again." }))
                       }
                     />
                   </Card>
                 );
               })}
-            </View>
+            </Section>
           )}
         </DataBoundary>
       ) : null}

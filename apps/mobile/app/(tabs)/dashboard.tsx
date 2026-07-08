@@ -1,24 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
+import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
+import { ArrowDown, ArrowUp, EyeOff, GripVertical } from "lucide-react-native";
+import { pickNavigationLoadingMessage } from "@ia/fun-facts";
+import { AppHeader } from "@/components/app-header";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Badge, Button, Card, ListRow, Section, Sheet, Stat, Txt, useToast } from "@/components/ui";
 import { shortDate, timeRange } from "@/lib/format";
 import { useCurrentUser } from "@/lib/auth";
 import { useOfflineValue } from "@/lib/offline-cache";
-import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const DEFAULT_WIDGETS = ["schedule", "calendar", "announcements", "quickActions", "flex", "clubs", "events", "funFact"] as const;
+const DEFAULT_WIDGETS = ["funFact", "schedule", "calendar", "announcements", "flex", "clubs", "events", "quickActions"] as const;
 const WIDGET_LABELS: Record<string, string> = {
   schedule: "Today",
-  quickActions: "Quick Actions",
+  quickActions: "Shortcuts",
   announcements: "Unread Announcements",
   clubs: "My Clubs",
   events: "Coming Up",
@@ -44,204 +46,255 @@ export default function DashboardScreen() {
   const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, EMPTY_ARGS);
   const updateLayout = useMutation(api.users.me.updateDashboardLayout);
   const schedule = useOfflineValue("dashboard-schedule", liveSchedule);
-  const { color } = useTheme();
-  const [editing, setEditing] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+  const [funFact, setFunFact] = useState(pickNavigationLoadingMessage);
   const [layout, setLayout] = useState<string[]>([...DEFAULT_WIDGETS]);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const saved = user?.dashboardLayout?.filter((id) => id in WIDGET_LABELS);
     if (saved?.length) {
-      setLayout((current) => (arraysEqual(current, saved) ? current : saved));
+      const normalized = normalizeLayout(saved);
+      setLayout((current) => (arraysEqual(current, normalized) ? current : normalized));
     }
   }, [user?.dashboardLayout]);
 
-  const hiddenWidgets = useMemo(
-    () => DEFAULT_WIDGETS.filter((id) => !layout.includes(id)),
-    [layout],
-  );
+  const hiddenWidgets = useMemo(() => DEFAULT_WIDGETS.filter((id) => !layout.includes(id)), [layout]);
+
+  async function saveLayout(next = layout) {
+    const normalized = normalizeLayout(next);
+    setLayout(normalized);
+    await updateLayout({ layout: normalized });
+    showToast({ title: "Home layout saved", tone: "success" });
+  }
 
   function moveWidget(id: string, direction: -1 | 1) {
     setLayout((current) => {
-      const index = current.indexOf(id);
+      const normalized = normalizeLayout(current);
+      const index = normalized.indexOf(id);
+      if (index < 0) return normalized;
       const nextIndex = index + direction;
-      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current;
-      const next = [...current];
+      if (nextIndex < 1 || nextIndex >= normalized.length) return normalized;
+      const next = [...normalized];
       [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      void saveLayout(next);
       return next;
     });
+  }
+
+  function hideWidget(id: string) {
+    const next = normalizeLayout(layout.filter((item) => item !== id));
+    setLayout(next);
+    void saveLayout(next);
+  }
+
+  function addWidget(id: string) {
+    const next = normalizeLayout([...layout, id]);
+    setLayout(next);
+    void saveLayout(next);
   }
 
   function renderWidget(id: string) {
     if (id === "schedule") {
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Today</Text>
-            <Badge label={user?.roles?.[0] ?? "Student"} color="orange" />
-          </View>
-          <DataBoundary data={schedule.value} emptyTitle="No schedule yet">
-            {(data) => (
-              <View style={{ gap: 8 }}>
-                {(data.mySchedule?.entries ?? []).slice(0, 4).map((entry: any) => (
-                  <View key={entry.id ?? `${entry.weekday}-${entry.periodNumber}`} style={{ gap: 2 }}>
-                    <Text style={{ color: color("foreground"), fontWeight: "800" }}>
-                      Period {entry.periodNumber}: {entry.className}
-                    </Text>
-                    <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>{entry.weekday}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </DataBoundary>
-        </Card>
+        <Section
+          key={id}
+          title="Today"
+          action={<Badge label={user?.roles?.[0] ?? "Student"} color="orange" />}
+        >
+          <Card style={{ gap: spacing.sm }}>
+            <DataBoundary data={schedule.value} emptyTitle="No schedule yet">
+              {(data) => (
+                <View style={{ gap: spacing.sm }}>
+                  {(data.mySchedule?.entries ?? []).slice(0, 4).map((entry: any) => (
+                    <ListRow
+                      key={entry.id ?? `${entry.weekday}-${entry.periodNumber}`}
+                      title={`Period ${entry.periodNumber}: ${entry.className}`}
+                      subtitle={entry.weekday}
+                    />
+                  ))}
+                </View>
+              )}
+            </DataBoundary>
+          </Card>
+        </Section>
       );
     }
 
     if (id === "announcements") {
       return (
-        <View key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Unread Announcements</Text>
+        <Section
+          key={id}
+          title="Unread Announcements"
+          action={<Txt variant="label" tone="primary" onPress={() => router.push("/announcements" as never)}>See all</Txt>}
+        >
           <DataBoundary data={announcements} emptyTitle="All caught up">
             {(items) => <>{items.slice(0, 3).map((item: any) => <AnnouncementCard key={item._id} announcement={item} />)}</>}
           </DataBoundary>
-        </View>
+        </Section>
       );
     }
 
     if (id === "quickActions") {
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Quick Actions</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <Button title="Courses" size="sm" variant="secondary" onPress={() => router.push("/courses" as never)} />
-            <Button title="Events" size="sm" variant="secondary" onPress={() => router.push("/events" as never)} />
-            <Button title="Flex Friday" size="sm" variant="secondary" onPress={() => router.push("/flex-friday" as never)} />
+        <Section key={id} title="Shortcuts">
+          <Card style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             <Button title="Flex Pass" size="sm" variant="secondary" onPress={() => router.push("/flex-friday/pass" as never)} />
-            <Button title="Wrapped" size="sm" variant="secondary" onPress={() => router.push("/wrapped" as never)} />
-          </View>
-        </Card>
+            <Button title="Courses" size="sm" variant="secondary" onPress={() => router.push("/courses" as never)} />
+            <Button title="Discover" size="sm" variant="secondary" onPress={() => router.push("/discover" as never)} />
+          </Card>
+        </Section>
       );
     }
 
     if (id === "clubs") {
       const memberships = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])].slice(0, 4);
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>My Clubs</Text>
-          {memberships.length ? memberships.map((club: any) => (
-            <View key={club._id} style={{ gap: 3 }}>
-              <Text style={{ color: color("foreground"), fontWeight: "800" }}>{club.name}</Text>
-              <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>{club.role ?? "Sponsor"}</Text>
-            </View>
-          )) : <Text style={{ color: color("mutedForeground") }}>No club memberships yet.</Text>}
-          <Button title="Browse clubs" size="sm" variant="secondary" onPress={() => router.push("/clubs" as never)} />
-        </Card>
+        <Section
+          key={id}
+          title="My Clubs"
+          action={<Txt variant="label" tone="primary" onPress={() => router.push("/clubs" as never)}>See all</Txt>}
+        >
+          <Card style={{ gap: spacing.sm }}>
+            {memberships.length ? memberships.map((club: any) => (
+              <ListRow key={club._id} title={club.name} subtitle={club.role ?? "Sponsor"} onPress={() => router.push(`/clubs/${club._id}` as never)} />
+            )) : <Txt tone="muted">No club memberships yet.</Txt>}
+          </Card>
+        </Section>
       );
     }
 
     if (id === "events") {
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Coming Up</Text>
-          <DataBoundary data={events} emptyTitle="No upcoming events">
-            {(items) => (
-              <View style={{ gap: 10 }}>
-                {items.slice(0, 3).map((event: any) => (
-                  <View key={event._id}>
-                    <Text style={{ color: color("foreground"), fontWeight: "800" }}>{event.title}</Text>
-                    <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>
-                      {shortDate(event.startAt)} · {timeRange(event.startAt, event.endAt)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </DataBoundary>
-        </Card>
+        <Section
+          key={id}
+          title="Coming Up"
+          action={<Txt variant="label" tone="primary" onPress={() => router.push("/calendar" as never)}>See all</Txt>}
+        >
+          <Card style={{ gap: spacing.sm }}>
+            <DataBoundary data={events} emptyTitle="No upcoming events">
+              {(items) => (
+                <View style={{ gap: spacing.sm }}>
+                  {items.slice(0, 3).map((event: any) => (
+                    <ListRow
+                      key={event._id}
+                      title={event.title}
+                      subtitle={`${shortDate(event.startAt)} - ${timeRange(event.startAt, event.endAt)}`}
+                      onPress={() => router.push(`/events/${event._id}` as never)}
+                    />
+                  ))}
+                </View>
+              )}
+            </DataBoundary>
+          </Card>
+        </Section>
       );
     }
 
     if (id === "calendar") {
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Calendar</Text>
-          <DataBoundary data={calendarEntries} emptyTitle="No upcoming entries">
-            {(items) => (
-              <View style={{ gap: 10 }}>
-                {items.slice(0, 4).map((entry: any) => (
-                  <View key={entry._id}>
-                    <Text style={{ color: color("foreground"), fontWeight: "800" }}>{entry.title}</Text>
-                    <Text style={{ color: color("mutedForeground"), fontSize: 12 }}>
-                      {shortDate(entry.startAt)} - {timeRange(entry.startAt, entry.endAt)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </DataBoundary>
-        </Card>
+        <Section
+          key={id}
+          title="Calendar"
+          action={<Txt variant="label" tone="primary" onPress={() => router.push("/calendar" as never)}>See all</Txt>}
+        >
+          <Card style={{ gap: spacing.sm }}>
+            <DataBoundary data={calendarEntries} emptyTitle="No upcoming entries">
+              {(items) => (
+                <View style={{ gap: spacing.sm }}>
+                  {items.slice(0, 4).map((entry: any) => (
+                    <ListRow
+                      key={entry._id}
+                      title={entry.title}
+                      subtitle={`${shortDate(entry.startAt)} - ${timeRange(entry.startAt, entry.endAt)}`}
+                    />
+                  ))}
+                </View>
+              )}
+            </DataBoundary>
+          </Card>
+        </Section>
       );
     }
 
     if (id === "flex") {
       return (
-        <Card key={id} style={{ gap: 10 }}>
-          <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Flex Friday</Text>
-          <Text style={{ color: color("foreground"), fontSize: 24, fontWeight: "900" }}>
-            {flexCredits?.earned ?? 0} credits
-          </Text>
-          <Text style={{ color: color("mutedForeground") }}>
-            Active registrations: {(registrations ?? []).length}
-          </Text>
-        </Card>
+        <Section
+          key={id}
+          title="Flex Friday"
+          action={<Txt variant="label" tone="primary" onPress={() => router.push("/flex-friday" as never)}>See all</Txt>}
+        >
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Stat value={flexCredits?.earned ?? 0} label="credits" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Stat value={(registrations ?? []).length} label="registrations" />
+            </View>
+          </View>
+        </Section>
       );
     }
 
     return (
-      <Card key={id} style={{ gap: 8 }}>
-        <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Fun Fact</Text>
-        <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>
-          Innovation Academy pathways connect student projects to real sponsors and community needs.
-        </Text>
-      </Card>
+      <Section
+        key={id}
+        title="Fun Fact"
+        action={<Txt variant="label" tone="primary" onPress={() => setFunFact(pickNavigationLoadingMessage())}>Another</Txt>}
+      >
+        <Card>
+          <Txt tone="muted">{funFact}</Txt>
+        </Card>
+      </Section>
     );
   }
 
   return (
-    <Screen title={`Hi, ${user?.firstName ?? "there"}`} subtitle="Your school day at a glance.">
+    <Screen header={<AppHeader title={`Hi, ${user?.firstName ?? "there"}`} subtitle="Your school day at a glance." />}>
       {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        <Button title={editing ? "Done" : "Edit widgets"} variant="secondary" onPress={() => setEditing((value) => !value)} />
-        {editing ? (
-          <Button
-            title="Save"
-            variant="tertiary"
-            onPress={() => updateLayout({ layout }).then(() => setEditing(false))}
-          />
-        ) : null}
-      </View>
-
-      {editing ? (
-        <Card style={{ gap: 10 }}>
-          {layout.map((id) => (
-            <View key={id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ color: color("foreground"), flex: 1, fontWeight: "800" }}>{WIDGET_LABELS[id]}</Text>
-              <Button title="Up" size="sm" variant="ghost" onPress={() => moveWidget(id, -1)} />
-              <Button title="Down" size="sm" variant="ghost" onPress={() => moveWidget(id, 1)} />
-              <Button title="Hide" size="sm" variant="tertiary" onPress={() => setLayout((current) => current.filter((item) => item !== id))} />
-            </View>
-          ))}
-          {hiddenWidgets.map((id) => (
-            <Button key={id} title={`Add ${WIDGET_LABELS[id]}`} variant="secondary" onPress={() => setLayout((current) => [...current, id])} />
-          ))}
-        </Card>
-      ) : null}
-
+      <Button title="Customize home" variant="secondary" onPress={() => setCustomizing(true)} />
       {layout.map((id) => renderWidget(id))}
+
+      <Sheet open={customizing} onClose={() => setCustomizing(false)} title="Customize Home" snapPoints={["65%", "88%"]}>
+        <Txt tone="muted">Fun Fact stays at the top. Reorder the rest with the arrows or drag handles.</Txt>
+        <DraggableFlatList
+          data={layout}
+          keyExtractor={(item) => item}
+          activationDistance={12}
+          style={{ height: 330 }}
+          contentContainerStyle={{ gap: spacing.sm }}
+          onDragEnd={({ data }) => {
+            void saveLayout(data);
+          }}
+          renderItem={({ item, drag, isActive }: RenderItemParams<string>) => (
+            <ListRow
+              title={WIDGET_LABELS[item]}
+              subtitle={item === "funFact" ? "Pinned to top" : isActive ? "Move widget" : "Use arrows or hold the handle to drag"}
+              trailing={
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                  <Button title="" size="sm" variant="ghost" icon={ArrowUp} disabled={item === "funFact"} onPress={() => moveWidget(item, -1)} />
+                  <Button title="" size="sm" variant="ghost" icon={ArrowDown} disabled={item === "funFact"} onPress={() => moveWidget(item, 1)} />
+                  <Button title="" size="sm" variant="ghost" icon={EyeOff} disabled={item === "funFact"} onPress={() => hideWidget(item)} />
+                  <Button title="" size="sm" variant="ghost" icon={GripVertical} disabled={item === "funFact"} onLongPress={drag} onPress={drag} />
+                </View>
+              }
+            />
+          )}
+        />
+        {hiddenWidgets.map((id) => (
+          <Button key={id} title={`Add ${WIDGET_LABELS[id]}`} variant="secondary" onPress={() => addWidget(id)} />
+        ))}
+      </Sheet>
     </Screen>
   );
 }
 
 function arraysEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+function normalizeLayout(layout: readonly string[]) {
+  const allowed = new Set<string>(DEFAULT_WIDGETS);
+  const withoutFunFact = layout.filter((id) => id !== "funFact" && allowed.has(id));
+  return ["funFact", ...withoutFunFact] as string[];
 }

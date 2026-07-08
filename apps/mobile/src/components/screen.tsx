@@ -1,15 +1,19 @@
-import { Pressable, ScrollView, Text, View, type ScrollViewProps } from "react-native";
+import { ScrollView, type ScrollViewProps } from "react-native";
 import { router, useSegments } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import type { ReactNode } from "react";
+import { IconButton, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 
 type ScreenProps = ScrollViewProps & {
   title?: string;
   subtitle?: string;
+  header?: ReactNode;
 };
 
-export function Screen({ title, subtitle, children, contentContainerStyle, ...props }: ScreenProps) {
+export function Screen({ title, subtitle, header, children, contentContainerStyle, ...props }: ScreenProps) {
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -17,23 +21,26 @@ export function Screen({ title, subtitle, children, contentContainerStyle, ...pr
       <ScrollView
         contentContainerStyle={[
           {
-            paddingHorizontal: 16,
-            paddingTop: Math.max(18, insets.top ? 12 : 18),
+            paddingHorizontal: spacing.lg,
+            paddingTop: Math.max(spacing.lg, insets.top ? spacing.md : spacing.lg),
             paddingBottom: 96,
-            gap: 14
+            gap: spacing.md
           },
           contentContainerStyle
         ]}
         {...props}
       >
         <AppBackHeader />
+        {header}
         {title ? (
-          <View style={{ gap: 4 }}>
-            <Text style={{ color: color("foreground"), fontSize: 30, fontWeight: "900" }}>{title}</Text>
+          <>
+            <Txt variant="display">{title}</Txt>
             {subtitle ? (
-              <Text style={{ color: color("mutedForeground"), fontSize: 15, lineHeight: 21 }}>{subtitle}</Text>
+              <Txt variant="body" tone="muted">
+                {subtitle}
+              </Txt>
             ) : null}
-          </View>
+          </>
         ) : null}
         {children}
       </ScrollView>
@@ -50,33 +57,5 @@ export function AppBackHeader({ forceVisible = false }: { forceVisible?: boolean
 
   if (!shouldShow) return null;
 
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      onPress={() => router.back()}
-      style={({ pressed }) => ({
-        alignSelf: "flex-start",
-        width: 92,
-        opacity: pressed ? 0.72 : 1
-      })}
-    >
-      <View
-        style={{
-          minHeight: 40,
-          width: 92,
-          borderRadius: 14,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          paddingHorizontal: 12,
-          backgroundColor: color("secondary")
-        }}
-      >
-        <ArrowLeft size={18} color={color("foreground")} strokeWidth={2} />
-        <Text style={{ color: color("foreground"), fontWeight: "800" }}>Back</Text>
-      </View>
-    </Pressable>
-  );
+  return <IconButton icon={ArrowLeft} label="Go back" onPress={() => router.back()} />;
 }

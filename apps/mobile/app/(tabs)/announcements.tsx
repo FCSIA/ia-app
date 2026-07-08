@@ -1,52 +1,58 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { RefreshControl, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "convex/react";
+import { AppHeader } from "@/components/app-header";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
+import { SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
+type Filter = "all" | "unread" | "saved";
+
 export default function AnnouncementsScreen() {
-  const [filter, setFilter] = useState<"all" | "unread" | "saved">("all");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [refreshing, setRefreshing] = useState(false);
   const announcements = useQuery(api.announcements.feed.list, filter === "unread" ? { unreadOnly: true } : {});
   const filtered = filter === "saved" ? announcements?.filter((item: any) => item.isBookmarked) : announcements;
   const { color } = useTheme();
 
   return (
-    <Screen title="Announcements" subtitle="School, pathway, grade, and club updates.">
-      <View style={{ flexDirection: "row", gap: 8 }}>
-        {(["all", "unread", "saved"] as const).map((item) => {
-          const selected = filter === item;
-          return (
-            <Pressable
-              key={item}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() => setFilter(item)}
-              style={{
-                borderRadius: 999,
-                paddingHorizontal: 14,
-                paddingVertical: 9,
-                backgroundColor: selected ? color("foreground") : color("secondary")
-              }}
-            >
-              <Text style={{ color: selected ? color("background") : color("foreground"), fontWeight: "800" }}>
-                {item[0].toUpperCase() + item.slice(1)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+    <Screen
+      header={<AppHeader title="Feed" subtitle="School, pathway, grade, and club updates." />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor={color("primary")}
+          onRefresh={() => {
+            setRefreshing(true);
+            setTimeout(() => setRefreshing(false), 550);
+          }}
+        />
+      }
+    >
+      <SegmentedControl
+        value={filter}
+        onChange={setFilter}
+        segments={[
+          { label: "All", value: "all" },
+          { label: "Unread", value: "unread" },
+          { label: "Saved", value: "saved" },
+        ]}
+      />
       <DataBoundary data={filtered} emptyTitle="No announcements">
         {(items) => (
-          <FlashList
-            data={items}
-            scrollEnabled={false}
-            ItemSeparatorComponent={() => null}
-            renderItem={({ item }) => <AnnouncementCard announcement={item} />}
-          />
+          <View style={{ minHeight: Math.max(1, items.length) * 190 }}>
+            <FlashList
+              data={items}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+              renderItem={({ item }) => <AnnouncementCard announcement={item} />}
+            />
+          </View>
         )}
       </DataBoundary>
     </Screen>

@@ -1,24 +1,23 @@
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text } from "react-native";
 import type React from "react";
 import { Empty } from "@/components/ui/empty";
+import { SkeletonList } from "@/components/ui/skeleton";
 import { useTheme } from "@/lib/theme";
 
 export function DataBoundary<T>({
   data,
   emptyTitle,
+  skeleton,
   children
 }: {
   data: T | undefined | null;
   emptyTitle?: string;
+  skeleton?: React.ReactNode;
   children: (data: NonNullable<T>) => React.ReactNode;
 }) {
   const { color } = useTheme();
   if (data === undefined) {
-    return (
-      <View style={{ padding: 24, alignItems: "center" }}>
-        <ActivityIndicator color={color("primary")} />
-      </View>
-    );
+    return <>{skeleton ?? <SkeletonList />}</>;
   }
   if (data === null || (Array.isArray(data) && data.length === 0)) {
     return <Empty title={emptyTitle ?? "Nothing here yet"} />;

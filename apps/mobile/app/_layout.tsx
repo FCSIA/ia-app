@@ -2,6 +2,7 @@ import "../global.css";
 
 import { useEffect } from "react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { LogBox, StatusBar } from "react-native";
@@ -12,6 +13,7 @@ import { AppLifecycle } from "@/components/app-lifecycle";
 import { authClient } from "@/lib/auth-client";
 import { convex } from "@/lib/convex";
 import { ThemeProvider, useTheme } from "@/lib/theme";
+import { ToastProvider } from "@/components/ui";
 
 LogBox.ignoreLogs(["[RNScreens] SplitView is supported only for iOS"]);
 
@@ -47,10 +49,14 @@ export default function Layout() {
       <SafeAreaProvider>
         <ConvexBetterAuthProvider client={convex} authClient={authClient}>
           <ThemeProvider>
-            <AppErrorBoundary>
-              <AppLifecycle />
-              <RootNavigator />
-            </AppErrorBoundary>
+            <BottomSheetModalProvider>
+              <ToastProvider>
+                <AppErrorBoundary>
+                  <AppLifecycle />
+                  <RootNavigator />
+                </AppErrorBoundary>
+              </ToastProvider>
+            </BottomSheetModalProvider>
           </ThemeProvider>
         </ConvexBetterAuthProvider>
       </SafeAreaProvider>
