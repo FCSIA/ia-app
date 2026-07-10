@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import {
-  Camera,
   ImagePlus,
   Loader2,
   Palette,
@@ -14,6 +13,7 @@ import { useMutation } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
+import { EditableAvatar } from "@/components/ui/editable-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,9 +48,7 @@ export function ClubHero({
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement | null>(null);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
-  const quickLogoInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadClubImage = async (file: File) => {
     const storageId = await uploadFileToConvex(
@@ -128,6 +126,7 @@ export function ClubHero({
   const bannerUrl = resolveMediaUrl(club.bannerUrl);
   const logoUrl = resolveMediaUrl(club.logoUrl);
   const accent = club.accentColor || undefined;
+  const clubInitial = club.name.trim().charAt(0).toUpperCase() || "C";
 
   return (
     <Card className="overflow-hidden border-border/70">
@@ -165,58 +164,24 @@ export function ClubHero({
 
       <CardContent className="relative -mt-12 space-y-4 px-6 pb-6 pt-0">
         <div className="flex items-end gap-4">
-          <div className="group relative size-24 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-muted shadow-sm">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt={club.name}
-                className="size-full object-cover"
-              />
-            ) : (
-              <div
-                className="flex size-full items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-2xl font-semibold text-orange-100"
-                style={
-                  accent
-                    ? {
-                        background: `linear-gradient(135deg, ${accent}55, ${accent}22)`,
-                      }
-                    : undefined
-                }
-              >
-                {club.name.trim().charAt(0).toUpperCase() || "C"}
-              </div>
-            )}
-            {canEdit && (
-              <>
-                <div
-                  className={cn(
-                    "absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity cursor-pointer",
-                    uploadingLogo ? "opacity-100" : "group-hover:opacity-100",
-                  )}
-                  onClick={() => quickLogoInputRef.current?.click()}
-                >
-                  {uploadingLogo ? (
-                    <Loader2 className="size-6 text-white animate-spin" />
-                  ) : (
-                    <Camera className="size-6 text-white" />
-                  )}
-                </div>
-                <input
-                  ref={quickLogoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleQuickLogoUpload(file);
-                    if (quickLogoInputRef.current)
-                      quickLogoInputRef.current.value = "";
-                  }}
-                />
-              </>
-            )}
-          </div>
+          <EditableAvatar
+            alt={club.name}
+            canEdit={canEdit && !editing}
+            className="size-24 rounded-2xl border-4 border-background bg-muted"
+            fallback={clubInitial}
+            fallbackClassName="rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-2xl text-orange-100"
+            fallbackStyle={
+              accent
+                ? {
+                    background: `linear-gradient(135deg, ${accent}55, ${accent}22)`,
+                  }
+                : undefined
+            }
+            imageUrl={logoUrl}
+            loading={uploadingLogo}
+            onUpload={(file) => void handleQuickLogoUpload(file)}
+            uploadLabel="Change club logo"
+          />
           <div className="min-w-0 pb-1">
             <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
               {club.name}
@@ -312,54 +277,20 @@ export function ClubHero({
                 Logo / profile picture
               </label>
               <div className="flex items-center gap-3">
-                <div
-                  className="size-16 shrink-0 overflow-hidden rounded-md border bg-background bg-cover bg-center"
-                  style={
-                    form.logoUrl
-                      ? {
-                          backgroundImage: `url(${resolveMediaUrl(form.logoUrl)})`,
-                        }
-                      : undefined
-                  }
+                <EditableAvatar
+                  alt={club.name}
+                  canEdit={canEdit}
+                  className="size-16 rounded-md"
+                  fallback={clubInitial}
+                  fallbackClassName="rounded-md bg-muted text-muted-foreground"
+                  imageUrl={resolveMediaUrl(form.logoUrl)}
+                  loading={uploadingLogo}
+                  onRemove={() => setForm((c) => ({ ...c, logoUrl: "" }))}
+                  onUpload={(file) => void handleUpload("logo", file)}
+                  removeLabel="Remove"
+                  uploadLabel="Upload logo"
+                  variant="inline"
                 />
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUpload("logo", file);
-                      if (logoInputRef.current) logoInputRef.current.value = "";
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="tertiary"
-                    onClick={() => logoInputRef.current?.click()}
-                    disabled={uploadingLogo}
-                  >
-                    {uploadingLogo ? (
-                      <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                    ) : (
-                      <ImagePlus className="mr-1.5 size-3.5" />
-                    )}
-                    Upload logo
-                  </Button>
-                  {form.logoUrl && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setForm((c) => ({ ...c, logoUrl: "" }))}
-                    >
-                      <Trash2 className="mr-1.5 size-3.5" /> Remove
-                    </Button>
-                  )}
-                </div>
               </div>
             </div>
 

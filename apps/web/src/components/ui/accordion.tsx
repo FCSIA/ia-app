@@ -353,7 +353,7 @@ const AccordionGroup = forwardRef<HTMLDivElement, AccordionGroupProps>(
               {activeRect && (
                 <motion.div
                   key={sessionRef.current}
-                  className={`absolute ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
+                  className={`absolute ${shape.bg} bg-hover pointer-events-none`}
                   initial={{
                     opacity: 0,
                     top: activeRect.top,
@@ -721,7 +721,7 @@ const AccordionTrigger = forwardRef<HTMLButtonElement, AccordionTriggerProps>(
         <AnimatePresence>
           {isHovered && (
             <motion.div
-              className={`absolute inset-0 ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
+              className={`absolute inset-0 ${shape.bg} bg-hover pointer-events-none`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.06 } }}

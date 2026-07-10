@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useMutation } from 'convex/react';
-import { Camera, Loader2, Trash2 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { FileInput } from '@/components/ui/file-input';
-import { UserAvatar } from '@/components/ui/user-avatar';
+import { EditableAvatar } from '@/components/ui/editable-avatar';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { uploadUserImage } from '@/lib/upload-user-image';
+
+function initialsOf(firstName: string, lastName: string) {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+}
 
 export function ProfileAvatarEditor({ user }: { user: AppUser }) {
   const { toast } = useToast();
@@ -59,41 +61,18 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
   }
 
   return (
-    <div className="relative shrink-0">
-      <UserAvatar
-        firstName={user.firstName}
-        lastName={user.lastName}
-        avatarUrl={user.avatarUrl}
-        className="size-16 rounded-2xl"
-        fallbackClassName="text-xl rounded-2xl"
-      />
-      <FileInput
-        accept="image/*"
-        disabled={uploading}
-        onFileSelect={(file) => void handleFile(file)}
-      >
-        {({ disabled, open }) => (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={open}
-            className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full border bg-background shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
-            aria-label="Change profile picture"
-          >
-            {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
-          </button>
-        )}
-      </FileInput>
-      {user.avatarUrl ? (
-        <button
-          type="button"
-          onClick={() => void handleRemove()}
-          className="absolute -top-1 -right-1 flex size-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:text-destructive"
-          aria-label="Remove profile picture"
-        >
-          <Trash2 className="size-3" />
-        </button>
-      ) : null}
-    </div>
+    <EditableAvatar
+      alt={`${user.firstName} ${user.lastName}`}
+      canEdit
+      className="size-16 rounded-2xl"
+      fallback={initialsOf(user.firstName, user.lastName)}
+      fallbackClassName="rounded-2xl bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-xl text-white"
+      imageUrl={user.avatarUrl}
+      loading={uploading}
+      onRemove={() => void handleRemove()}
+      onUpload={(file) => void handleFile(file)}
+      removeLabel="Remove profile picture"
+      uploadLabel="Change profile picture"
+    />
   );
 }

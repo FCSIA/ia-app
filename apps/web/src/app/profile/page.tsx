@@ -5,24 +5,28 @@ import { useMutation, useQuery } from 'convex/react';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { useToast } from '@/hooks/use-toast';
-import { useCurrentUser } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { PROFILE_NOTIFICATION_CATEGORIES } from './_constants';
 import {
-  AccountInfoCard,
+  AccountSettingsCard,
   AppearanceCard,
-  ChangePasswordCard,
   ModerationAlertsCard,
   NotificationPreferencesCard,
-  ProfileSummaryCard,
+  ProfileSidebar,
 } from './_components/ProfileSections';
-import type { PasswordForm } from './_components/ProfileSections';
+import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
 
 const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: '',
   newPassword: '',
   confirm: '',
+};
+
+type PreferenceState = {
+  enabled?: boolean;
+  locked?: boolean;
 };
 
 export default function ProfilePage() {
@@ -32,6 +36,8 @@ export default function ProfilePage() {
   const [mounted, setMounted] = useState(false);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [activeSection, setActiveSection] = useState<ProfileSection>('account');
+  const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
 
   const changePassword = useMutation(api.users.auth.changePassword);
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
@@ -42,18 +48,50 @@ export default function ProfilePage() {
 
   useEffect(() => setMounted(true), []);
 
-  const prefMap = useMemo(
+  const canSeeModeration =
+    hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN') || moderationAlerts.length > 0;
+  const visibleSection =
+    activeSection === 'moderation' && !canSeeModeration ? 'account' : activeSection;
+
+  const visiblePreferenceCategories = useMemo(
+    () =>
+      PROFILE_NOTIFICATION_CATEGORIES.filter(
+        (category) => !category.staffOnly || canSeeModeration,
+      ),
+    [canSeeModeration],
+  );
+
+  const storedPrefMap = useMemo(
     () => {
       const preferences = prefs ?? [];
       return Object.fromEntries(
         preferences.map((preference) => [
-          `${preference.category}:${preference.clubId || 'null'}`,
-          preference.enabled,
+          `${preference.category}:${preference.scopeKey}`,
+          { enabled: preference.enabled, locked: preference.locked },
         ]),
-      ) as Record<string, boolean | undefined>;
+      ) as Record<string, PreferenceState | undefined>;
     },
     [prefs],
   );
+
+  const prefMap = useMemo(
+    () => ({ ...storedPrefMap, ...optimisticPrefs }),
+    [optimisticPrefs, storedPrefMap],
+  );
+
+  useEffect(() => {
+    setOptimisticPrefs((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const [key, value] of Object.entries(current)) {
+        if (storedPrefMap[key]?.enabled === value.enabled) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [storedPrefMap]);
 
   async function handleChangePassword(data: {
     currentPassword: string;
@@ -79,29 +117,58 @@ export default function ProfilePage() {
     category: NotificationCategory;
     enabled: boolean;
   }) {
-    void upsertPreference({ category, enabled });
+    const key = `${category}:global`;
+    if (storedPrefMap[key]?.locked) return;
+    setOptimisticPrefs((current) => ({ ...current, [key]: { enabled } }));
+    void upsertPreference({ category, enabled, scopeKey: 'global' }).catch((error: unknown) => {
+      setOptimisticPrefs((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to update notification preference',
+        variant: 'destructive',
+      });
+    });
   }
 
   return (
     <AppShell>
-      <div className="max-w-xl mx-auto space-y-5">
-        <ProfileSummaryCard user={user} />
-        <AccountInfoCard user={user} />
-        <ChangePasswordCard
-          changing={changingPassword}
-          form={passwordForm}
-          setForm={setPasswordForm}
-          onStart={() => setChangingPassword(true)}
-          onCancel={() => setChangingPassword(false)}
-          onSubmit={(data) => void handleChangePassword(data)}
+      <div className="mx-auto grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-start">
+        <ProfileSidebar
+          user={user}
+          activeSection={visibleSection}
+          canSeeModeration={canSeeModeration}
+          onSectionChange={setActiveSection}
         />
-        <NotificationPreferencesCard
-          categories={PROFILE_NOTIFICATION_CATEGORIES}
-          prefMap={prefMap}
-          onToggle={handlePreferenceToggle}
-        />
-        {mounted ? <AppearanceCard theme={theme} setTheme={setTheme} /> : null}
-        <ModerationAlertsCard alerts={moderationAlerts} />
+        <div>
+          {visibleSection === 'account' ? (
+            <AccountSettingsCard
+              user={user}
+              changing={changingPassword}
+              form={passwordForm}
+              setForm={setPasswordForm}
+              onStart={() => setChangingPassword(true)}
+              onCancel={() => setChangingPassword(false)}
+              onSubmit={(data) => void handleChangePassword(data)}
+            />
+          ) : null}
+          {visibleSection === 'notifications' ? (
+            <NotificationPreferencesCard
+              categories={visiblePreferenceCategories}
+              loading={prefs === undefined}
+              prefMap={prefMap}
+              onToggle={handlePreferenceToggle}
+            />
+          ) : null}
+          {visibleSection === 'appearance' && mounted ? (
+            <AppearanceCard theme={theme} setTheme={setTheme} />
+          ) : null}
+          {visibleSection === 'moderation' && canSeeModeration ? (
+            <ModerationAlertsCard alerts={moderationAlerts} />
+          ) : null}
+        </div>
       </div>
     </AppShell>
   );

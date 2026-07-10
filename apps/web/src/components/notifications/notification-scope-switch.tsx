@@ -16,6 +16,7 @@ type NotificationScopeSwitchProps = {
   announcementId?: string;
   eventId?: string;
   scopeKey?: string;
+  defaultEnabled?: boolean;
   locked?: boolean;
   compact?: boolean;
   className?: string;
@@ -29,6 +30,7 @@ export function NotificationScopeSwitch({
   announcementId,
   eventId,
   scopeKey,
+  defaultEnabled = true,
   locked = false,
   compact = false,
   className,
@@ -53,7 +55,8 @@ export function NotificationScopeSwitch({
   const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   );
-  const storedEnabled = locked || preferences === undefined || preference?.enabled !== false;
+  const storedEnabled = locked
+    || (preferences === undefined ? defaultEnabled : preference ? preference.enabled !== false : defaultEnabled);
   const enabled = optimisticEnabled ?? storedEnabled;
   const disabled = locked || pending || preferences === undefined;
   const stateLabel = pending ? 'Saving' : preferences === undefined ? '...' : enabled ? 'On' : 'Off';
@@ -65,9 +68,8 @@ export function NotificationScopeSwitch({
     }
   }, [optimisticEnabled, preferences, storedEnabled]);
 
-  const togglePreference = async () => {
+  const togglePreference = async (nextEnabled: boolean) => {
     if (disabled) return;
-    const nextEnabled = !enabled;
     setPending(true);
     setOptimisticEnabled(nextEnabled);
     try {
@@ -108,9 +110,9 @@ export function NotificationScopeSwitch({
       <Switch
         label={compact ? stateLabel : label}
         checked={enabled}
-        onToggle={() => void togglePreference()}
+        onCheckedChange={(nextEnabled) => void togglePreference(nextEnabled)}
         disabled={disabled}
-        className="min-w-0 flex-1 px-0 py-0"
+        wrapperClassName="min-w-0 flex-1"
       />
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
     </div>

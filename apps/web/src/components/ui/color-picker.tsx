@@ -631,7 +631,7 @@ function FormatDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] text-foreground border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+          "flex items-center justify-between gap-2 h-9 px-3 text-[13px] text-foreground border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
           shape.input
         )}
         style={{ fontVariationSettings: fontWeights.medium }}
@@ -843,7 +843,7 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
       onClick={handleClick}
       aria-label="Pick color from screen"
       className={cn(
-        "flex items-center justify-center h-9 px-3 text-foreground border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+        "flex items-center justify-center h-9 px-3 text-foreground border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
         shape.input
       )}
     >
@@ -1361,7 +1361,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
           aria-haspopup="dialog"
           aria-expanded={open}
           className={cn(
-            "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-accent/40 transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
+            "flex items-center gap-2 h-9 px-2 border border-border bg-transparent hover:bg-hover transition-colors duration-80 outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF] cursor-pointer",
             shape.input,
             triggerClassName
           )}

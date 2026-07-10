@@ -50,6 +50,20 @@
 - Event creation UI only offers eligible clubs to non-general creators and
   blocks club-scoped submissions without an eligible club.
 - Event author cancellation checks both current user id shapes used by the app.
+- Profile settings now use a responsive two-column composition with identity
+  and vertical section navigation in the left rail. Account, notifications,
+  appearance, and role-aware moderation render one at a time on the right.
+- User and club image editors share `EditableAvatar`; editable avatars reveal
+  their controls on hover or keyboard focus.
+- The shared switch is a dumb controlled Fluid/Radix primitive with visible
+  off/disabled states, an 80ms spring, accessible labels, and no padded empty
+  footprint. Optimistic Convex state stays in feature containers.
+- Profile appearance choices use the Fluid radio group as a linear list with
+  keyboard and roving-tabindex fixes; Fluid buttons drive the left rail.
+- Fluid controls now share substrate-relative interaction colors: `bg-hover`
+  mixes the current foreground at 6%, while `bg-active` uses 10%. Selected and
+  hover layers no longer depend on undefined `bg-selected` or dark-only accent
+  fallbacks, so Light, Dark, Contrast, Bubblegum, and Custom stay consistent.
 
 ### Remaining Debt
 
@@ -72,6 +86,14 @@
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex also reported that optional Convex AI guidance files are behind upstream.
+
+For the latest profile/avatar UI slice, focused web TypeScript and ESLint checks
+plus `git diff --check` pass. A build and browser smoke test were intentionally
+not rerun per the user's instruction.
+
+For the shared Fluid interaction-surface refactor, focused web TypeScript and
+ESLint checks plus `git diff --check` pass. A build and browser smoke test were
+again intentionally not run.
 
 ## Next Work
 

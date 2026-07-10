@@ -46,6 +46,21 @@ Opacity modifiers are common:
 className="border-border/70 bg-card/95 text-muted-foreground"
 ```
 
+## Interaction Surfaces
+
+Fluid controls use two semantic overlays instead of theme-specific hover or
+selection colors:
+
+| Class | Meaning |
+| --- | --- |
+| `bg-hover` | foreground mixed over the current substrate at 6% |
+| `bg-active` | foreground mixed over the current substrate at 10% |
+
+Because these colors are translucent, they remain relative to the card, panel,
+popover, or page underneath them. Use `bg-hover` for preview/hover feedback and
+`bg-active` for selected or pressed states; do not add light/dark branches for
+the same interaction.
+
 ## shadcn/ui
 
 The app uses shadcn/ui with Radix primitives under

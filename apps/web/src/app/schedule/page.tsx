@@ -333,7 +333,13 @@ function SchedulePageContent() {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Public</span>
-                  <Switch label="" checked={isPublic} onToggle={() => setIsPublic((current) => !current)} className="scale-[0.85]" />
+                  <Switch
+                    label=""
+                    aria-label="Public schedule"
+                    checked={isPublic}
+                    onCheckedChange={setIsPublic}
+                    wrapperClassName="scale-[0.85]"
+                  />
                 </div>
                 <span className="text-border">|</span>
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyMondayToWeek}>

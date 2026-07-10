@@ -17,21 +17,22 @@ import { SearchInput } from '@/components/ui/search';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
+import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
 import { cn } from '@/lib/utils';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
-const CATEGORY_META: Record<NotificationCategory, { label: string; color: BadgeColor }> = {
-  SCHOOL_ANNOUNCEMENT: { label: 'School', color: 'blue' },
-  CLUB_ANNOUNCEMENT: { label: 'Club', color: 'orange' },
-  CLUB_JOIN_REQUEST: { label: 'Join request', color: 'amber' },
-  CLUB_CHANNEL_MESSAGE: { label: 'Channel', color: 'teal' },
-  CLUB_CHANNEL_MENTION: { label: 'Mention', color: 'violet' },
-  CLUB_CHANNEL_TAG_MENTION: { label: 'Tag mention', color: 'purple' },
-  CLUB_CHANNEL_THREAD: { label: 'Thread', color: 'indigo' },
-  EVENT: { label: 'Event', color: 'green' },
-  FLEX_FRIDAY: { label: 'Flex Friday', color: 'pink' },
-  CONTENT_MODERATED: { label: 'Moderation', color: 'red' },
-  FRIEND_REQUEST: { label: 'Friends', color: 'cyan' },
+const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
+  SCHOOL_ANNOUNCEMENT: 'blue',
+  CLUB_ANNOUNCEMENT: 'orange',
+  CLUB_JOIN_REQUEST: 'amber',
+  CLUB_CHANNEL_MESSAGE: 'teal',
+  CLUB_CHANNEL_MENTION: 'violet',
+  CLUB_CHANNEL_TAG_MENTION: 'purple',
+  CLUB_CHANNEL_THREAD: 'indigo',
+  EVENT: 'green',
+  FLEX_FRIDAY: 'pink',
+  CONTENT_MODERATED: 'red',
+  FRIEND_REQUEST: 'cyan',
 };
 
 function NotificationListSkeleton() {
@@ -184,7 +185,8 @@ export default function NotificationsPage() {
                     <div>
                       <ul className="divide-y divide-border/60">
                         {filteredNotifications.map((n) => {
-                          const categoryMeta = CATEGORY_META[n.category] ?? { label: 'Update', color: 'gray' as const };
+                          const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
+                          const categoryColor = CATEGORY_COLORS[n.category] ?? 'gray';
                           return (
                             <li key={n.id}>
                               <button
@@ -209,8 +211,8 @@ export default function NotificationsPage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                                    <Badge variant="solid" size="sm" color={categoryMeta.color}>
-                                      {categoryMeta.label}
+                                    <Badge variant="solid" size="sm" color={categoryColor}>
+                                      {categoryDetails?.badgeLabel ?? 'Update'}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">
                                       {formatDistanceToNow(new Date(n.createdAt), {
