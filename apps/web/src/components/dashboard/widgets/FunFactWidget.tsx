@@ -36,7 +36,7 @@ export function FunFactWidget() {
         </Button>
       }
     >
-      <div className="flex min-h-[4.5rem] items-center gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5">
+      <div className="flex h-40 items-center gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lightbulb className="size-5" aria-hidden />
         </div>
