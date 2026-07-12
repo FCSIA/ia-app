@@ -16,9 +16,9 @@ export function FunFactWidget() {
   }, []);
 
   useEffect(() => {
-    const id = setInterval(nextMessage, ROTATE_MS);
-    return () => clearInterval(id);
-  }, [nextMessage]);
+    const id = setTimeout(nextMessage, ROTATE_MS);
+    return () => clearTimeout(id);
+  }, [message, nextMessage]);
 
   return (
     <Panel
