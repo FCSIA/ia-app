@@ -87,6 +87,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "react-native-enriched-markdown",
     ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
     notificationsPlugin,
   ],
