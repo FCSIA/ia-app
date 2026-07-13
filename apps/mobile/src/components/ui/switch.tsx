@@ -20,6 +20,8 @@ type SwitchProps = {
 
 export function Switch({ value, onValueChange, disabled, label }: SwitchProps) {
   const { color } = useTheme();
+  const mutedColor = color("muted");
+  const primaryColor = color("primary");
   const reduceMotion = useReducedMotion();
   const progress = useSharedValue(value ? 1 : 0);
 
@@ -29,7 +31,7 @@ export function Switch({ value, onValueChange, disabled, label }: SwitchProps) {
   }, [progress, reduceMotion, value]);
 
   const trackStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], [color("muted"), color("primary")]),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [mutedColor, primaryColor]),
   }));
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: progress.value * 22 }],
