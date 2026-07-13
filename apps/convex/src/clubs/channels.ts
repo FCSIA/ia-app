@@ -1,7 +1,13 @@
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
 import {
@@ -57,6 +63,7 @@ const MAX_SUMMARY_REACTION_ROWS = 500;
 const MAX_SUMMARY_POLL_VOTES = 500;
 const MAX_THREAD_PARENT_DEPTH = 8;
 const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
+const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 
 type PlannedMention = {
   kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG";
@@ -307,12 +314,21 @@ export const postMessage = mutation({
     attachments: v.optional(v.array(v.id("clubChannelAttachmentUploads"))),
     pollQuestion: v.optional(v.string()),
     pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
+    clientGeneratedId: v.optional(v.string()),
+    clientSentAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
 
     if (!channel) throw new ConvexError("Channel not found");
+    if (
+      args.clientGeneratedId &&
+      Array.from(args.clientGeneratedId).length >
+        MAX_CLIENT_MESSAGE_ID_CHARACTERS
+    ) {
+      throw new ConvexError("Client message ID is too long");
+    }
 
     const context = await getClubContext(ctx, channel.clubId, user);
     const memberships = await getChannelMemberships(ctx, channel._id);
@@ -352,14 +368,13 @@ export const postMessage = mutation({
       }
     }
 
-    const channelAudienceIds = await channelAudience(ctx, channel);
     const mentionTokens = boundedPortableMentionTokens(trimmedBody, bodyMarkdown);
     const mentionPlan = mentionTokens.length
       ? await resolveChannelMentionPlan(ctx, {
           channel,
           context,
           tokens: mentionTokens,
-          channelAudienceIds,
+          channelAudienceIds: await channelAudience(ctx, channel),
           authorId: user._id,
         })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
@@ -395,32 +410,79 @@ export const postMessage = mutation({
       });
     }
 
+    await ctx.scheduler.runAfter(
+      0,
+      internal.clubs.channels.deliverPostedMessageNotifications,
+      {
+        messageId,
+        mentionRecipients: Array.from(
+          mentionPlan.recipients,
+          ([userId, kind]) => ({ userId, kind }),
+        ),
+      },
+    );
+
+    return messageId;
+  },
+});
+
+/**
+ * Notification preference reads and fan-out are deliberately outside the
+ * sender's acknowledgement transaction. A normal channel post can otherwise
+ * read hundreds of member preference documents before the client sees the
+ * message as sent.
+ */
+export const deliverPostedMessageNotifications = internalMutation({
+  args: {
+    messageId: v.id("clubChannelMessages"),
+    mentionRecipients: v.array(
+      v.object({
+        userId: v.id("users"),
+        kind: v.union(v.literal("USER"), v.literal("GROUP")),
+      }),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.messageId);
+    if (!message || message.deletedAt) return null;
+    const channel = await ctx.db.get(message.channelId);
+    if (!channel) return null;
+
+    const mentionRecipients = new Map(
+      args.mentionRecipients.map(({ userId, kind }) => [userId, kind]),
+    );
     const href = `/clubs/${channel.clubId}/channels/${channel._id}`;
     const subject = {
       kind: "clubMessage" as const,
       clubId: channel.clubId,
       channelId: channel._id,
-      messageId,
+      messageId: message._id,
     };
-    const preview = trimmedBody || "New channel message.";
-    const allAudience = channelAudienceIds.filter(
-      (id) => id !== user._id && !mentionPlan.recipients.has(id),
+    const preview = message.body || "New channel message.";
+    const audienceIds = await channelAudience(ctx, channel);
+
+    await deliverMany(
+      ctx,
+      audienceIds.filter(
+        (userId) =>
+          userId !== message.authorId && !mentionRecipients.has(userId),
+      ),
+      {
+        category: "CLUB_CHANNEL_MESSAGE",
+        title: `#${channel.name}`,
+        body: preview,
+        href,
+        subject,
+      },
     );
 
-    await deliverMany(ctx, allAudience, {
-      category: "CLUB_CHANNEL_MESSAGE",
-      title: `#${channel.name}`,
-      body: preview,
-      href,
-      subject,
-    });
-
-    if (args.parentMessageId) {
-      const parent = await ctx.db.get(args.parentMessageId);
+    if (message.parentMessageId) {
+      const parent = await ctx.db.get(message.parentMessageId);
       if (
         parent &&
-        parent.authorId !== user._id &&
-        !mentionPlan.recipients.has(parent.authorId)
+        parent.authorId !== message.authorId &&
+        !mentionRecipients.has(parent.authorId)
       ) {
         await deliverNotification(ctx, {
           userId: parent.authorId,
@@ -433,7 +495,7 @@ export const postMessage = mutation({
       }
     }
 
-    for (const [recipientId, mentionKind] of mentionPlan.recipients) {
+    for (const [recipientId, mentionKind] of mentionRecipients) {
       await deliverNotification(ctx, {
         userId: recipientId,
         category:
@@ -450,7 +512,7 @@ export const postMessage = mutation({
       });
     }
 
-    return messageId;
+    return null;
   },
 });
 
