@@ -20,6 +20,7 @@ import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { AttachmentViewer } from "./attachment-viewer";
+import { chatSafeAreaOffset } from "./chat-keyboard-layout";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import {
@@ -154,6 +155,13 @@ export function ClubChatScreen({
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
   const composerPending = pendingActions.has("composer");
+  // The composer is a normal-flow sibling, so its height already reduces the
+  // timeline viewport. Only the safe-area correction belongs in the dynamic
+  // KeyboardChatScrollView/KeyboardStickyView translation offset.
+  const keyboardSafeAreaOffset = chatSafeAreaOffset(
+    insets.bottom,
+    spacing.sm,
+  );
   const draftEnabled =
     composer.mode.kind === "message" || composer.mode.kind === "reply";
   const draftThreadId =
@@ -531,7 +539,7 @@ export function ClubChatScreen({
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: color("background") }}
-      edges={["top", "left", "right"]}
+      edges={["top", "bottom", "left", "right"]}
     >
       <View style={{ flex: 1, backgroundColor: color("background") }}>
         <ChatHeader
@@ -572,7 +580,7 @@ export function ClubChatScreen({
               canPost={canPost}
               canLoadOlder={canLoadOlder}
               isLoadingOlder={isLoadingOlder}
-              keyboardOffset={composerBaseHeight}
+              keyboardOffset={keyboardSafeAreaOffset}
               extraContentPadding={extraContentPadding}
               pendingActions={pendingActions}
               onLoadOlder={loadOlderMessages}
@@ -585,12 +593,13 @@ export function ClubChatScreen({
           )}
 
           {!threadIsMissing ? (
-            <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
+            <KeyboardStickyView
+              offset={{ closed: 0, opened: keyboardSafeAreaOffset }}
+            >
               <ChatComposer
                 composer={composer}
                 canPost={canPost}
                 isPending={composerPending}
-                bottomInset={insets.bottom}
                 channelName={channel?.name}
                 threadMode={!!threadRootId}
                 canCreatePoll={canManage}

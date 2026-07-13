@@ -22,7 +22,6 @@ type ChatComposerProps = {
   composer: ChatComposerController;
   canPost?: boolean;
   isPending: boolean;
-  bottomInset: number;
   channelName?: string;
   threadMode?: boolean;
   canCreatePoll?: boolean;
@@ -45,7 +44,6 @@ export function ChatComposer({
   composer,
   canPost,
   isPending,
-  bottomInset,
   channelName,
   threadMode = false,
   canCreatePoll = false,
@@ -91,7 +89,7 @@ export function ChatComposer({
           alignSelf: "center",
           paddingHorizontal: spacing.md,
           paddingTop: spacing.xs,
-          paddingBottom: Math.max(spacing.sm, bottomInset),
+          paddingBottom: spacing.sm,
           gap: spacing.xs,
         }}
       >

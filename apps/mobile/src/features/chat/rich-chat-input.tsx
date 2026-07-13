@@ -117,7 +117,7 @@ export function RichChatInput({
   }, [linkText, linkUrl, selection.end, selection.start]);
 
   return (
-    <View style={{ minWidth: 0, flex: 1, gap: spacing.xs }}>
+    <View style={{ minWidth: 0, width: "100%", gap: spacing.xs }}>
       {mentionOpen ? (
         <View
           accessibilityRole="menu"
