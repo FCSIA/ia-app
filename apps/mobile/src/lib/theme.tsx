@@ -5,6 +5,7 @@ import { themes, hsl, type ThemeName, type ThemeTokens } from "@ia/design-tokens
 type ThemeContextValue = {
   name: ThemeName;
   tokens: ThemeTokens;
+  customTokens: ThemeTokens;
   setTheme: (name: ThemeName) => void;
   setCustomTokens: (tokens: ThemeTokens) => void;
   updateCustomToken: (key: keyof ThemeTokens, value: string) => void;
@@ -52,6 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({
       name,
       tokens,
+      customTokens,
       setTheme,
       setCustomTokens,
       updateCustomToken,

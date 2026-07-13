@@ -1,20 +1,28 @@
 import { useMemo, useState } from "react";
-import { View } from "react-native";
+import { useWindowDimensions, View } from "react-native";
 import { Check, RotateCcw } from "lucide-react-native";
 import { hsl, themes, type ThemeName, type ThemeTokens } from "@ia/design-tokens";
 import { Screen } from "@/components/screen";
-import { Button, Card, PressableScale, Section, TextField, Txt, useToast } from "@/components/ui";
+import { Button, PressableScale, Section, TextField, Txt, useToast } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
-import { spacing } from "@/lib/tokens";
+import { radii, spacing } from "@/lib/tokens";
 
 const names = Object.keys(themes) as ThemeName[];
 const editableColors = [
   { key: "background", label: "Background" },
-  { key: "card", label: "Cards" },
+  { key: "card", label: "Surface" },
   { key: "foreground", label: "Text" },
   { key: "primary", label: "Primary" },
   { key: "accent", label: "Accent" },
 ] as const;
+
+const themeLabels: Record<ThemeName, string> = {
+  light: "Light",
+  dark: "Dark",
+  "high-contrast": "High contrast",
+  bubblegum: "Bubblegum",
+  custom: "Custom",
+};
 
 const swatches = [
   "#f8fafc",
@@ -31,21 +39,23 @@ const swatches = [
 
 export default function ThemeScreen() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const { showToast } = useToast();
-  const [draftHex, setDraftHex] = useState<Record<string, string>>(() => makeDraft(theme.tokens));
+  const isWide = width >= 720;
+  const [draftHex, setDraftHex] = useState<Record<string, string>>(() => makeDraft(theme.customTokens));
   const customPreview = useMemo(() => {
-    const next = { ...theme.tokens };
+    const next = { ...theme.customTokens };
     for (const item of editableColors) {
       const token = hexToHslToken(draftHex[item.key]);
       if (token) next[item.key] = token;
     }
     applyReadablePairs(next);
     return next;
-  }, [draftHex, theme.tokens]);
+  }, [draftHex, theme.customTokens]);
 
   function selectTheme(name: ThemeName) {
     theme.setTheme(name);
-    setDraftHex(makeDraft(name === "custom" ? theme.tokens : themes[name]));
+    if (name === "custom") setDraftHex(makeDraft(theme.customTokens));
   }
 
   function updateDraft(key: keyof ThemeTokens, hexValue: string) {
@@ -65,60 +75,100 @@ export default function ThemeScreen() {
   }
 
   return (
-    <Screen title="Theme" subtitle="Choose a theme or tune your own custom colors.">
-      <Section title="Themes">
-        {names.map((name) => (
-          <Card
-            key={name}
-            onPress={() => selectTheme(name)}
-            style={{
-              gap: spacing.sm,
-              borderColor: theme.name === name ? theme.color("primary") : theme.color("border"),
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-              <Txt variant="section" style={{ flex: 1, textTransform: "capitalize" }}>
-                {name.replace("-", " ")}
-              </Txt>
-              {theme.name === name ? <Check size={20} color={theme.color("primary")} /> : null}
-            </View>
-            <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              {(["background", "primary", "accent", "foreground"] as const).map((key) => (
-                <ColorDot key={key} color={hsl(name === "custom" ? theme.tokens[key] : themes[name][key])} border={theme.color("border")} />
-              ))}
-            </View>
-          </Card>
-        ))}
+    <Screen
+      title="Appearance"
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+    >
+      <Section title="Theme">
+        <View
+          accessibilityRole="radiogroup"
+          style={{
+            overflow: "hidden",
+            borderRadius: radii.lg,
+            borderWidth: 1,
+            borderColor: theme.color("border"),
+            backgroundColor: theme.color("card"),
+          }}
+        >
+          {names.map((name, index) => {
+            const tokens = name === "custom" ? customPreview : themes[name];
+            const selected = theme.name === name;
+            return (
+              <PressableScale
+                key={name}
+                accessibilityRole="radio"
+                accessibilityLabel={`${themeLabels[name]} theme`}
+                accessibilityState={{ checked: selected, selected }}
+                onPress={() => selectTheme(name)}
+                style={{
+                  minHeight: 64,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.md,
+                  borderTopWidth: index === 0 ? 0 : 1,
+                  borderTopColor: theme.color("border"),
+                }}
+              >
+                <Txt numberOfLines={1} style={{ flex: 1, fontWeight: "700" }}>
+                  {themeLabels[name]}
+                </Txt>
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={{ flexDirection: "row", gap: spacing.xs }}
+                >
+                  {(["background", "card", "primary", "foreground"] as const).map((key) => (
+                    <ColorPreview
+                      key={key}
+                      color={hsl(tokens[key])}
+                      border={hsl(tokens.border)}
+                      size={20}
+                    />
+                  ))}
+                </View>
+                <View style={{ width: 24, alignItems: "center" }}>
+                  {selected ? <Check size={19} strokeWidth={2.5} color={theme.color("primary")} /> : null}
+                </View>
+              </PressableScale>
+            );
+          })}
+        </View>
       </Section>
 
-      <Section title="Custom Colors">
-        <Card style={{ gap: spacing.md }}>
-          <Txt tone="muted">Pick swatches or enter hex values. Saving switches the app to Custom.</Txt>
-          {editableColors.map((item) => (
+      <Section title="Custom colors">
+        <Txt tone="muted">Choose a swatch or enter a hex value. Save to apply the theme.</Txt>
+        <View>
+          {editableColors.map((item, index) => (
             <ColorEditor
               key={item.key}
               label={item.label}
               value={draftHex[item.key]}
               preview={hexToRgb(draftHex[item.key]) ?? hsl(customPreview[item.key])}
+              isWide={isWide}
+              separated={index > 0}
+              border={theme.color("border")}
+              errorBorder={theme.color("destructive")}
+              selectedBorder={theme.color("primary")}
               onChange={(value) => updateDraft(item.key, value)}
               onSwatch={(value) => updateDraft(item.key, value)}
             />
           ))}
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Button title="Save custom" onPress={saveCustom} style={{ flex: 1 }} />
-            <Button title="Reset" variant="tertiary" icon={RotateCcw} onPress={resetCustom} />
-          </View>
-        </Card>
+        </View>
 
-        <Card style={{ gap: spacing.sm, backgroundColor: hsl(customPreview.background), borderColor: hsl(customPreview.border) }}>
-          <Txt variant="section" style={{ color: hsl(customPreview.foreground) }}>Preview</Txt>
-          <View style={{ borderRadius: 14, backgroundColor: hsl(customPreview.card), padding: spacing.md, gap: spacing.sm }}>
-            <Txt style={{ color: hsl(customPreview.foreground) }}>Cards, text, and buttons update from your custom colors.</Txt>
-            <View style={{ alignSelf: "flex-start", borderRadius: 999, backgroundColor: hsl(customPreview.primary), paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
-              <Txt variant="label" style={{ color: hsl(customPreview.primaryForeground) }}>Primary action</Txt>
-            </View>
-          </View>
-        </Card>
+        <ThemePreview tokens={customPreview} />
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <Button title="Save custom" onPress={saveCustom} style={{ flexGrow: 1, minWidth: 180 }} />
+          <Button
+            title="Reset"
+            variant="tertiary"
+            icon={RotateCcw}
+            onPress={resetCustom}
+            style={{ minWidth: 112 }}
+          />
+        </View>
       </Section>
     </Screen>
   );
@@ -128,49 +178,177 @@ function ColorEditor({
   label,
   value,
   preview,
+  isWide,
+  separated,
+  border,
+  errorBorder,
+  selectedBorder,
   onChange,
   onSwatch,
 }: {
   label: string;
   value: string;
   preview: string;
+  isWide: boolean;
+  separated: boolean;
+  border: string;
+  errorBorder: string;
+  selectedBorder: string;
   onChange: (value: string) => void;
   onSwatch: (value: string) => void;
 }) {
+  const isValid = parseHex(value) !== null;
+  const normalizedValue = normalizeHexInput(value).toLowerCase();
+
   return (
-    <View style={{ gap: spacing.sm }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-        <ColorDot color={preview} border="rgba(127, 127, 127, 0.35)" />
-        <View style={{ flex: 1 }}>
+    <View
+      style={{
+        flexDirection: isWide ? "row" : "column",
+        alignItems: isWide ? "flex-start" : "stretch",
+        gap: spacing.lg,
+        paddingVertical: spacing.lg,
+        borderTopWidth: separated ? 1 : 0,
+        borderTopColor: border,
+      }}
+    >
+      <View style={{ width: isWide ? 232 : "100%", flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
+        <ColorPreview color={preview} border={border} size={44} />
+        <View style={{ flex: 1, gap: spacing.xs }}>
           <Txt variant="label">{label}</Txt>
-          <Txt variant="caption" tone="muted">Custom color</Txt>
+          <TextField
+            accessibilityLabel={`${label} hex value`}
+            accessibilityHint="Enter three or six hexadecimal digits."
+            value={value}
+            onChangeText={onChange}
+            placeholder="#f97316"
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{ minHeight: 44, borderColor: isValid ? border : errorBorder }}
+          />
+          {!isValid ? (
+            <Txt variant="caption" tone="destructive">
+              Enter 3 or 6 hex digits.
+            </Txt>
+          ) : null}
         </View>
       </View>
-      <TextField value={value} onChangeText={onChange} placeholder="#f97316" autoCapitalize="none" />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+
+      <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap" }}>
         {swatches.map((swatch) => (
-          <ColorDot key={swatch} color={swatch} border="rgba(127, 127, 127, 0.35)" onPress={() => onSwatch(swatch)} />
+          <ColorSwatch
+            key={swatch}
+            color={swatch}
+            selected={normalizedValue === swatch}
+            border={border}
+            selectedBorder={selectedBorder}
+            onPress={() => onSwatch(swatch)}
+          />
         ))}
       </View>
     </View>
   );
 }
 
-function ColorDot({ color, border, onPress }: { color: string; border: string; onPress?: () => void }) {
-  const dot = (
+function ThemePreview({ tokens }: { tokens: ThemeTokens }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel="Custom theme preview"
+      style={{
+        overflow: "hidden",
+        borderRadius: radii.lg,
+        borderWidth: 1,
+        borderColor: hsl(tokens.border),
+        backgroundColor: hsl(tokens.background),
+        padding: spacing.lg,
+      }}
+    >
+      <View
+        style={{
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: hsl(tokens.border),
+          backgroundColor: hsl(tokens.card),
+          padding: spacing.md,
+          gap: spacing.md,
+        }}
+      >
+        <View style={{ gap: spacing.xs }}>
+          <Txt variant="label" style={{ color: hsl(tokens.cardForeground) }}>
+            Preview
+          </Txt>
+          <Txt style={{ color: hsl(tokens.cardForeground) }}>Tomorrow's schedule is ready.</Txt>
+          <Txt variant="caption" style={{ color: hsl(tokens.mutedForeground) }}>
+            Four classes · First period at 8:55 AM
+          </Txt>
+        </View>
+        <View
+          style={{
+            alignSelf: "flex-start",
+            minHeight: 44,
+            borderRadius: radii.md,
+            backgroundColor: hsl(tokens.primary),
+            paddingHorizontal: spacing.lg,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Txt variant="label" style={{ color: hsl(tokens.primaryForeground) }}>
+            View schedule
+          </Txt>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ColorPreview({ color, border, size }: { color: string; border: string; size: number }) {
+  return (
     <View
       style={{
-        width: 32,
-        height: 32,
-        borderRadius: 999,
+        width: size,
+        height: size,
+        borderRadius: radii.pill,
         borderWidth: 1,
         borderColor: border,
         backgroundColor: color,
       }}
     />
   );
-  if (!onPress) return dot;
-  return <PressableScale accessibilityLabel={`Use ${color}`} onPress={onPress}>{dot}</PressableScale>;
+}
+
+function ColorSwatch({
+  color,
+  selected,
+  border,
+  selectedBorder,
+  onPress,
+}: {
+  color: string;
+  selected: boolean;
+  border: string;
+  selectedBorder: string;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale
+      accessibilityLabel={`Use ${color}`}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+    >
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: radii.pill,
+          borderWidth: selected ? 3 : 1,
+          borderColor: selected ? selectedBorder : border,
+          backgroundColor: color,
+        }}
+      />
+    </PressableScale>
+  );
 }
 
 function makeDraft(tokens: ThemeTokens) {

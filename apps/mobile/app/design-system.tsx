@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { Bell, BookOpen, ChevronRight } from "lucide-react-native";
+import { Bell, BookOpen, ChevronRight, Inbox } from "lucide-react-native";
 import {
   Avatar,
   Badge,
@@ -31,27 +31,52 @@ export default function DesignSystemScreen() {
   const { showToast } = useToast();
 
   return (
-    <Screen title="Design System" subtitle="Native primitive parity gallery.">
+    <Screen
+      title="Design system"
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+    >
       <Section title="Type">
-        <Card style={{ gap: spacing.sm }}>
+        <View style={{ gap: spacing.xs }}>
           <Txt variant="display">Display</Txt>
           <Txt variant="title">Title</Txt>
           <Txt variant="section">Section</Txt>
-          <Txt>Body text for school-centered workflows.</Txt>
-          <Txt variant="caption" tone="muted">Caption text</Txt>
-        </Card>
+          <Txt>Body text for school workflows.</Txt>
+          <Txt variant="label">Label</Txt>
+          <Txt variant="caption" tone="muted">Caption</Txt>
+        </View>
       </Section>
 
       <Section title="Actions">
-        <Card style={{ gap: spacing.sm }}>
-          <Button title="Primary" onPress={() => showToast({ title: "Primary action", tone: "success" })} />
-          <Button title="Secondary" variant="secondary" />
-          <Button title="Tertiary" variant="tertiary" />
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <IconButton icon={Bell} label="Bell" onPress={() => showToast({ title: "Inbox opened" })} />
-            <IconButton icon={ChevronRight} label="Next" variant="primary" onPress={() => {}} />
-          </View>
-        </Card>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <Button
+            title="Primary"
+            onPress={() => showToast({ title: "Primary action", tone: "success" })}
+            style={{ flexGrow: 1, minWidth: 160 }}
+          />
+          <Button
+            title="Secondary"
+            variant="secondary"
+            onPress={() => showToast({ title: "Secondary action" })}
+            style={{ flexGrow: 1, minWidth: 140 }}
+          />
+          <Button
+            title="Tertiary"
+            variant="tertiary"
+            onPress={() => showToast({ title: "Tertiary action" })}
+            style={{ flexGrow: 1, minWidth: 130 }}
+          />
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm }}>
+          <IconButton icon={Bell} label="Show inbox notice" onPress={() => showToast({ title: "Inbox opened" })} />
+          <IconButton
+            icon={ChevronRight}
+            label="Show next notice"
+            variant="primary"
+            onPress={() => showToast({ title: "Next action" })}
+          />
+          <Button title="Disabled" variant="secondary" disabled style={{ minWidth: 120 }} />
+          <Button title="Saving" variant="tertiary" loading style={{ minWidth: 120 }} />
+        </View>
       </Section>
 
       <Section title="Selection">
@@ -67,35 +92,66 @@ export default function DesignSystemScreen() {
         <ChipGroup
           values={["School", "Club", "Flex"] as const}
           selected={chips}
-          onToggle={(value) => setChips((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])}
+          onToggle={(value) =>
+            setChips((current) =>
+              current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+            )
+          }
         />
-        <ListRow title="Push notifications" subtitle="Animated switch row" trailing={<Switch value={enabled} onValueChange={setEnabled} />} />
+        <ListRow
+          title="Push notifications"
+          subtitle={enabled ? "Enabled" : "Disabled"}
+          trailing={<Switch label="Push notifications" value={enabled} onValueChange={setEnabled} />}
+        />
       </Section>
 
       <Section title="Content">
-        <ListRow icon={BookOpen} title="Course catalog" subtitle="Search pathways and courses" />
-        <Card style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
-            <Badge label="School Wide" color="blue" />
-            <Badge label="Club" color="amber" />
-            <Badge label="Saved" color="emerald" variant="dot" />
+        <ListRow
+          icon={BookOpen}
+          title="Course catalog"
+          subtitle="Search pathways and courses"
+          onPress={() => showToast({ title: "Course catalog row" })}
+        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+          <Avatar name="Innovation Academy" />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt style={{ fontWeight: "700" }}>Innovation Academy</Txt>
+            <Txt variant="caption" tone="muted">Avatar and supporting text</Txt>
           </View>
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Avatar name="Innovation Academy" />
-            <View style={{ flex: 1 }}>
-              <Txt variant="label">Innovation Academy</Txt>
-              <Txt variant="caption" tone="muted">Avatar, card, badge, and stat primitives.</Txt>
-            </View>
+          <Badge label="School wide" color="blue" />
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <Badge label="Club" color="amber" />
+          <Badge label="Saved" color="emerald" variant="dot" />
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+          <View style={{ flexGrow: 1, minWidth: 140 }}>
+            <Stat value="24" label="Credits" />
           </View>
-          <Stat value="24" label="credits" />
-        </Card>
+          <Card variant="flat" style={{ flexGrow: 1, minWidth: 200, gap: spacing.xs }}>
+            <Txt variant="label">Surface</Txt>
+            <Txt variant="caption" tone="muted">A single content boundary.</Txt>
+          </Card>
+        </View>
       </Section>
 
-      <Section title="Inputs and States">
-        <TextField placeholder="Search IA" />
-        <TextField placeholder="Message" multiline />
+      <Section title="Inputs">
+        <View style={{ gap: spacing.xs }}>
+          <Txt variant="label">Search</Txt>
+          <TextField placeholder="Search IA" accessibilityLabel="Search" />
+        </View>
+        <View style={{ gap: spacing.xs }}>
+          <Txt variant="label">Message</Txt>
+          <TextField placeholder="Write a message" accessibilityLabel="Message" multiline />
+        </View>
+      </Section>
+
+      <Section title="Loading">
         <SkeletonList count={2} />
-        <Empty title="Nothing here yet" body="Empty states keep the layout calm." />
+      </Section>
+
+      <Section title="Empty">
+        <Empty title="No announcements" body="New school updates will appear here." icon={Inbox} />
       </Section>
     </Screen>
   );
