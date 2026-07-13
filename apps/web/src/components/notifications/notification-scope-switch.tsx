@@ -33,7 +33,7 @@ export function NotificationScopeSwitch({
   eventId,
   scopeKey,
   defaultEnabled = true,
-  locked = false,
+  locked: lockedProp = false,
   compact = false,
   className,
   parentEnabled = true,
@@ -59,6 +59,7 @@ export function NotificationScopeSwitch({
   const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   );
+  const locked = lockedProp || preference?.locked === true;
   const storedEnabled = locked
     || (preferences === undefined ? defaultEnabled : preference ? preference.enabled !== false : defaultEnabled);
   const enabled = parentEnabled && (optimisticEnabled ?? storedEnabled);
@@ -104,7 +105,7 @@ export function NotificationScopeSwitch({
       )}
       title={
         locked
-          ? 'Required'
+          ? 'This notification is required'
           : !parentEnabled
             ? 'Turn on club notifications to change this channel'
           : preferences === undefined
