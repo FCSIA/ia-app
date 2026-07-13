@@ -86,7 +86,24 @@ import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👀'];
+const QUICK_REACTIONS = [
+  { value: 'LIKE', label: '👍', name: 'Like' },
+  { value: 'HEART', label: '❤️', name: 'Love' },
+  { value: 'FIRE', label: '🔥', name: 'Fire' },
+  { value: 'CELEBRATE', label: '🎉', name: 'Celebrate' },
+  { value: 'EYES', label: '👀', name: 'Watching' },
+  { value: 'DONE', label: '✅', name: 'Done' },
+] as const;
+
+const REACTION_LABELS = Object.fromEntries(
+  QUICK_REACTIONS.map((reaction) => [reaction.value, reaction.label]),
+) as Record<string, string>;
+
+type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
+
+function isChannelReaction(value: string): value is ChannelReaction {
+  return QUICK_REACTIONS.some((reaction) => reaction.value === value);
+}
 
 type ComposerSubmitArgs = {
   body: string;
@@ -267,7 +284,7 @@ function MessageRow({
 }: {
   message: ClubChannelMessage;
   onOpenThread: (messageId: string) => void;
-  onToggleReaction: (messageId: string, emoji: string) => void;
+  onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
   onVotePoll: (messageId: string, optionId: string) => void;
   onStartEdit: (messageId: string) => void;
@@ -349,10 +366,14 @@ function MessageRow({
                       'h-6 gap-1 px-2 text-xs',
                       reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
                     )}
-                    disabled={isReactionPending}
-                    onClick={() => onToggleReaction(message._id, reaction.emoji)}
+                    disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+                    onClick={() => {
+                      if (isChannelReaction(reaction.emoji)) {
+                        onToggleReaction(message._id, reaction.emoji);
+                      }
+                    }}
                   >
-                    <span>{reaction.emoji}</span>
+                    <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
                     {reaction.count}
                   </Button>
                 ))}
@@ -360,16 +381,17 @@ function MessageRow({
             ) : null}
 
             <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {QUICK_REACTIONS.map((emoji) => (
+              {QUICK_REACTIONS.map((reaction) => (
                 <Button
-                  key={`${message._id}-${emoji}-quick`}
+                  key={`${message._id}-${reaction.value}-quick`}
                   variant="ghost"
                   size="sm"
                   className="size-6 p-0 text-sm"
                   disabled={isReactionPending}
-                  onClick={() => onToggleReaction(message._id, emoji)}
+                  aria-label={reaction.name}
+                  onClick={() => onToggleReaction(message._id, reaction.value)}
                 >
-                  {emoji}
+                  {reaction.label}
                 </Button>
               ))}
               {!compact ? (

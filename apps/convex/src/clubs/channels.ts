@@ -18,6 +18,15 @@ import {
   normalizePortableMessageBody,
   portableMentionTokens,
 } from "./channelMarkdown";
+import {
+  assertChannelMessageBodyBounds,
+  normalizeChannelPoll,
+  normalizeLegacyChannelAttachments,
+} from "./channelValidation";
+import {
+  clubChannelPollOptionValidator,
+  clubChannelReactionValidator,
+} from "../validators";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -136,11 +145,6 @@ const attachmentInputValidator = v.object({
   size: v.optional(v.number()),
 });
 
-const pollOptionInputValidator = v.object({
-  id: v.string(),
-  label: v.string(),
-});
-
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -150,7 +154,7 @@ export const postMessage = mutation({
     parentMessageId: v.optional(v.id("clubChannelMessages")),
     attachments: v.optional(v.array(attachmentInputValidator)),
     pollQuestion: v.optional(v.string()),
-    pollOptions: v.optional(v.array(pollOptionInputValidator)),
+    pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -172,7 +176,13 @@ export const postMessage = mutation({
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
       throw new ConvexError("Inline images are not supported; attach the image instead");
     }
-    if (!trimmedBody && !(args.attachments?.length) && !args.pollQuestion) {
+    assertChannelMessageBodyBounds(trimmedBody, bodyMarkdown, args.bodyRich);
+    const attachments = normalizeLegacyChannelAttachments(args.attachments);
+    const poll = normalizeChannelPoll(args.pollQuestion, args.pollOptions);
+    if (poll && !context.canManageChannels) {
+      throw new ConvexError("Only club role holders, sponsors, or admins can create polls");
+    }
+    if (!trimmedBody && attachments.length === 0 && !poll) {
       throw new ConvexError("Message cannot be empty");
     }
 
@@ -180,6 +190,9 @@ export const postMessage = mutation({
       const parent = await ctx.db.get(args.parentMessageId);
       if (!parent || parent.channelId !== channel._id) {
         throw new ConvexError("Parent message not found");
+      }
+      if (parent.parentMessageId) {
+        throw new ConvexError("Replies must target a root message");
       }
     }
 
@@ -190,14 +203,14 @@ export const postMessage = mutation({
       body: trimmedBody,
       bodyMarkdown,
       bodyRich: args.bodyRich,
-      pollQuestion: args.pollQuestion,
-      pollOptions: args.pollOptions,
+      pollQuestion: poll?.question,
+      pollOptions: poll?.options,
       isPinned: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
-    for (const attachment of args.attachments ?? []) {
+    for (const attachment of attachments) {
       await ctx.db.insert("clubChannelMessageAttachments", {
         messageId,
         fileName: attachment.fileName,
@@ -745,6 +758,7 @@ export const updateMessage = mutation({
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
       throw new ConvexError("Inline images are not supported; attach the image instead");
     }
+    assertChannelMessageBodyBounds(body, bodyMarkdown, args.bodyRich);
     await ctx.db.patch(args.messageId, {
       body,
       bodyMarkdown,
@@ -769,7 +783,7 @@ export const deleteMessage = mutation({
 export const toggleReaction = mutation({
   args: {
     messageId: v.id("clubChannelMessages"),
-    emoji: v.string(),
+    emoji: clubChannelReactionValidator,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);

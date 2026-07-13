@@ -12,6 +12,7 @@ import {
   clubMemberRoleValidator,
   inviteStatusValidator,
   clubChannelVisibilityValidator,
+  clubChannelPollOptionValidator,
   clubJoinPolicyValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
@@ -500,7 +501,7 @@ export const schema = defineSchema({
     isPinned: v.boolean(),
     pinnedAt: v.optional(v.number()),
     pollQuestion: v.optional(v.string()),
-    pollOptions: v.optional(v.any()),
+    pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
