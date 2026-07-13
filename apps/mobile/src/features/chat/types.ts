@@ -79,7 +79,11 @@ export function chatAuthorName(message: ChatMessage) {
 }
 
 export function isImageAttachment(attachment: ChatAttachment) {
-  return attachment.mimeType?.startsWith("image/") && attachment.mimeType !== "image/svg+xml";
+  if (attachment.mimeType) {
+    return attachment.mimeType.startsWith("image/") && attachment.mimeType !== "image/svg+xml";
+  }
+  const source = `${attachment.fileName} ${attachment.fileUrl}`.toLowerCase();
+  return /\.(avif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);
 }
 
 export function formatAttachmentSize(size?: number) {

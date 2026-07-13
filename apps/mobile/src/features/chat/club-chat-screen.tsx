@@ -115,7 +115,7 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
       );
       if (completed) {
         composer.reset();
-        showToast({ title: "Report sent", body: "Club sponsors have been notified.", tone: "success" });
+        showToast({ title: "Report sent", body: "Moderators have been notified.", tone: "success" });
       }
       return;
     }

@@ -77,7 +77,7 @@ export function ChatComposer({
           <>
             <ComposerModeHeader icon={ShieldAlert} label="Report message" onClose={composer.reset} />
             <Txt variant="caption" tone="muted">
-              Tell club sponsors what needs review. The message author will not see your report.
+              Tell school moderators what needs review. The message author will not see your report.
             </Txt>
             <PlainChatInput
               accessibilityLabel="Reason for report"

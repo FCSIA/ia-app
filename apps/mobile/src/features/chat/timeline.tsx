@@ -45,6 +45,11 @@ export function ChatTimeline({
   const rows = useMemo(() => buildTimeline(messages ?? [], threadRoot), [messages, threadRoot]);
   const messageCount = useMemo(() => rows.filter((row) => row.type === "message").length, [rows]);
   const finalKey = rows.at(-1)?.key;
+  const finalKeyRef = useRef(finalKey);
+
+  useEffect(() => {
+    finalKeyRef.current = finalKey;
+  }, [finalKey]);
 
   useEffect(() => {
     const added = Math.max(0, messageCount - previousMessageCount.current);
@@ -75,14 +80,13 @@ export function ChatTimeline({
     [onLongPress, onOpenAttachment, onOpenThread, onToggleReaction, onVotePoll, pendingAction, threadRoot],
   );
 
-  const handleViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
-      const atLiveEdge = !!finalKey && viewableItems.some((token) => token.item?.key === finalKey && token.isViewable);
-      setIsAtLiveEdge(atLiveEdge);
-      if (atLiveEdge) setUnseenCount(0);
-    },
-    [finalKey],
-  );
+  const handleViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
+    const currentFinalKey = finalKeyRef.current;
+    const atLiveEdge =
+      !!currentFinalKey && viewableItems.some((token) => token.item?.key === currentFinalKey && token.isViewable);
+    setIsAtLiveEdge(atLiveEdge);
+    if (atLiveEdge) setUnseenCount(0);
+  }, []);
 
   const scrollToLiveEdge = useCallback(() => {
     listRef.current?.scrollToEnd({ animated: true });
@@ -97,8 +101,8 @@ export function ChatTimeline({
         ref={listRef}
         data={rows}
         renderItem={renderItem}
-        keyExtractor={(row) => row.key}
-        getItemType={(row) => row.type}
+        keyExtractor={timelineKeyExtractor}
+        getItemType={timelineItemType}
         contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
@@ -147,6 +151,14 @@ export function ChatTimeline({
       ) : null}
     </View>
   );
+}
+
+function timelineKeyExtractor(row: TimelineRow) {
+  return row.key;
+}
+
+function timelineItemType(row: TimelineRow) {
+  return row.type;
 }
 
 function buildTimeline(messages: ChatMessage[], threadRoot?: ChatMessage | null): TimelineRow[] {
