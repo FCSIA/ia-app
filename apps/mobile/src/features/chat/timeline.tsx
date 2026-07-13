@@ -1,7 +1,9 @@
 import {
+  createContext,
   forwardRef,
   memo,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -11,7 +13,6 @@ import {
   ActivityIndicator,
   View,
   type ScrollViewProps,
-  type ViewToken,
 } from "react-native";
 import {
   FlashList,
@@ -56,6 +57,35 @@ type ChatTimelineProps = {
   onOpenAttachment: (attachment: ChatAttachment) => void;
 };
 
+type ChatScrollContextValue = {
+  keyboardOffset: number;
+  extraContentPadding: SharedValue<number>;
+  onEndVisible: (visible: boolean) => void;
+};
+
+const ChatScrollContext = createContext<ChatScrollContextValue | null>(null);
+
+const ClubChatScrollView = forwardRef<
+  React.ElementRef<typeof KeyboardChatScrollView>,
+  ScrollViewProps
+>(function ClubChatScrollView(props, ref) {
+  const context = useContext(ChatScrollContext);
+
+  return (
+    <KeyboardChatScrollView
+      ref={ref}
+      {...props}
+      automaticallyAdjustContentInsets={false}
+      contentInsetAdjustmentBehavior="never"
+      extraContentPadding={context?.extraContentPadding}
+      keyboardDismissMode="interactive"
+      keyboardLiftBehavior="whenAtEnd"
+      offset={context?.keyboardOffset ?? 0}
+      onEndVisible={context?.onEndVisible}
+    />
+  );
+});
+
 export function ChatTimeline({
   messages,
   threadRoot,
@@ -81,34 +111,7 @@ export function ChatTimeline({
     () => buildTimeline(messages ?? [], threadRoot),
     [messages, threadRoot],
   );
-  const finalKey = rows.at(-1)?.key;
-  const finalKeyRef = useRef(finalKey);
   const previousNewestMessageKey = useRef<string | undefined>(undefined);
-  const renderScrollComponent = useMemo(
-    () =>
-      forwardRef<
-        React.ElementRef<typeof KeyboardChatScrollView>,
-        ScrollViewProps
-      >(function ClubChatScrollView(props, ref) {
-        return (
-          <KeyboardChatScrollView
-            ref={ref}
-            {...props}
-            automaticallyAdjustContentInsets={false}
-            contentInsetAdjustmentBehavior="never"
-            extraContentPadding={extraContentPadding}
-            keyboardDismissMode="interactive"
-            keyboardLiftBehavior="whenAtEnd"
-            offset={keyboardOffset}
-          />
-        );
-      }),
-    [extraContentPadding, keyboardOffset],
-  );
-
-  useEffect(() => {
-    finalKeyRef.current = finalKey;
-  }, [finalKey]);
 
   useEffect(() => {
     const newestMessageKey = [...rows]
@@ -164,18 +167,13 @@ export function ChatTimeline({
     ],
   );
 
-  const handleViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
-      const currentFinalKey = finalKeyRef.current;
-      const atLiveEdge =
-        !!currentFinalKey &&
-        viewableItems.some(
-          (token) => token.item?.key === currentFinalKey && token.isViewable,
-        );
-      setIsAtLiveEdge(atLiveEdge);
-      if (atLiveEdge) setUnseenCount(0);
-    },
-    [],
+  const handleEndVisible = useCallback((visible: boolean) => {
+    setIsAtLiveEdge(visible);
+    if (visible) setUnseenCount(0);
+  }, []);
+  const scrollContext = useMemo(
+    () => ({ keyboardOffset, extraContentPadding, onEndVisible: handleEndVisible }),
+    [extraContentPadding, handleEndVisible, keyboardOffset],
   );
 
   const scrollToLiveEdge = useCallback(() => {
@@ -186,76 +184,77 @@ export function ChatTimeline({
   if (messages === undefined) return <ChatTimelineSkeleton />;
 
   return (
-    <View style={{ flex: 1 }}>
-      <FlashList
-        ref={listRef}
-        data={rows}
-        renderItem={renderItem}
-        keyExtractor={timelineKeyExtractor}
-        getItemType={timelineItemType}
-        renderScrollComponent={renderScrollComponent}
-        contentContainerStyle={{
-          paddingTop: spacing.sm,
-          paddingBottom: spacing.lg,
-        }}
-        keyboardShouldPersistTaps="handled"
-        maintainVisibleContentPosition={{
-          autoscrollToBottomThreshold: 0.2,
-          startRenderingFromBottom: true,
-        }}
-        onViewableItemsChanged={handleViewableItemsChanged}
-        onStartReached={
-          canLoadOlder && !isLoadingOlder ? onLoadOlder : undefined
-        }
-        onStartReachedThreshold={0.2}
-        ListHeaderComponent={isLoadingOlder ? <OlderMessagesLoader /> : null}
-        ListEmptyComponent={
-          <Empty
-            icon={MessageCircle}
-            title="No messages yet"
-            body={
-              canPost === false
-                ? "This channel is read-only."
-                : "Start the conversation when you’re ready."
-            }
-          />
-        }
-      />
-
-      {!isAtLiveEdge && rows.length ? (
-        <PressableScale
-          accessibilityLabel={
-            unseenCount
-              ? `Jump to ${unseenCount} new messages`
-              : "Jump to latest message"
-          }
-          haptic={false}
-          onPress={scrollToLiveEdge}
-          style={{
-            position: "absolute",
-            right: spacing.md,
-            bottom: spacing.md,
-            minHeight: 42,
-            borderRadius: radii.pill,
-            borderWidth: 1,
-            borderColor: color("border"),
-            backgroundColor: color("card"),
-            paddingHorizontal: spacing.md,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: spacing.xs,
+    <ChatScrollContext.Provider value={scrollContext}>
+      <View style={{ flex: 1 }}>
+        <FlashList
+          ref={listRef}
+          data={rows}
+          renderItem={renderItem}
+          keyExtractor={timelineKeyExtractor}
+          getItemType={timelineItemType}
+          renderScrollComponent={ClubChatScrollView}
+          contentContainerStyle={{
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.lg,
           }}
-        >
-          <ArrowDown size={16} color={color("primary")} strokeWidth={2.4} />
-          {unseenCount ? (
-            <Txt variant="label" tone="primary" style={{ fontWeight: "800" }}>
-              {unseenCount} new
-            </Txt>
-          ) : null}
-        </PressableScale>
-      ) : null}
-    </View>
+          keyboardShouldPersistTaps="handled"
+          maintainVisibleContentPosition={{
+            autoscrollToBottomThreshold: 0.2,
+            startRenderingFromBottom: true,
+          }}
+          onStartReached={
+            canLoadOlder && !isLoadingOlder ? onLoadOlder : undefined
+          }
+          onStartReachedThreshold={0.2}
+          ListHeaderComponent={isLoadingOlder ? <OlderMessagesLoader /> : null}
+          ListEmptyComponent={
+            <Empty
+              icon={MessageCircle}
+              title="No messages yet"
+              body={
+                canPost === false
+                  ? "This channel is read-only."
+                  : "Start the conversation when you’re ready."
+              }
+            />
+          }
+        />
+
+        {!isAtLiveEdge && rows.length ? (
+          <PressableScale
+            accessibilityLabel={
+              unseenCount
+                ? `Jump to ${unseenCount} new messages`
+                : "Jump to latest message"
+            }
+            haptic={false}
+            onPress={scrollToLiveEdge}
+            style={{
+              position: "absolute",
+              right: spacing.md,
+              bottom: spacing.md,
+              minHeight: 42,
+              borderRadius: radii.pill,
+              borderWidth: 1,
+              borderColor: color("border"),
+              backgroundColor: color("card"),
+              paddingHorizontal: spacing.md,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.xs,
+            }}
+          >
+            <ArrowDown size={16} color={color("primary")} strokeWidth={2.4} />
+            {unseenCount ? (
+              <Txt variant="label" tone="primary" style={{ fontWeight: "800" }}>
+                {unseenCount} new
+              </Txt>
+            ) : null}
+          </PressableScale>
+        ) : null}
+      </View>
+    </ChatScrollContext.Provider>
   );
 }
 
