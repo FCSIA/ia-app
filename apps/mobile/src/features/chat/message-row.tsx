@@ -41,6 +41,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
   const reactions = message.reactions?.filter((reaction) => reaction.count > 0) ?? [];
+  const hasThread = message.hasReplies ?? message.replyCount > 0;
+  const replyCountIsExact = message.replyCountIsExact !== false;
 
   return (
     <Pressable
@@ -138,6 +140,11 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                 }
               />
             ))}
+            {message.attachmentsTruncated ? (
+              <Txt variant="caption" tone="muted">
+                Showing the latest attachments
+              </Txt>
+            ) : null}
           </View>
         ) : null}
 
@@ -182,7 +189,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                       {option.label}
                     </Txt>
                     <Txt variant="caption" tone="muted">
-                      {percent}%
+                      {message.poll?.votesTruncated ? "~" : ""}{percent}%
                     </Txt>
                     {option.votedByCurrentUser ? <Check size={15} color={color("primary")} strokeWidth={2.5} /> : null}
                   </View>
@@ -190,7 +197,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
               );
             })}
             <Txt variant="caption" tone="muted">
-              {message.poll.totalVotes} {message.poll.totalVotes === 1 ? "vote" : "votes"}
+              {message.poll.totalVotes}
+              {message.poll.votesTruncated ? "+" : ""} {message.poll.totalVotes === 1 ? "vote" : "votes"}
             </Txt>
           </View>
         ) : null}
@@ -234,6 +242,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   )}
                   <Txt variant="caption" tone={reaction.reactedByCurrentUser ? "primary" : "muted"} style={{ fontWeight: "800" }}>
                     {reaction.count}
+                    {reaction.countIsCapped ? "+" : ""}
                   </Txt>
                 </PressableScale>
               );
@@ -241,9 +250,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           </View>
         ) : null}
 
-        {showReplyPreview && message.replyCount > 0 ? (
+        {showReplyPreview && hasThread ? (
           <PressableScale
-            accessibilityLabel={`Open thread with ${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
+            accessibilityLabel={!replyCountIsExact ? "Open message thread" : `Open thread with ${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
             haptic={false}
             onPress={() => onOpenThread(message)}
             style={{
@@ -257,11 +266,11 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           >
             <MessageCircle size={16} color={color("primary")} />
             <Txt variant="label" tone="primary" style={{ fontWeight: "800" }}>
-              {message.replyCount} {message.replyCount === 1 ? "reply" : "replies"}
+              {!replyCountIsExact ? "View thread" : `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
             </Txt>
-            {message.replies?.length ? (
+            {message.latestReplyPreview || message.replies?.length ? (
               <Txt variant="caption" tone="muted" numberOfLines={1} style={{ minWidth: 0, flex: 1 }}>
-                {message.replies[message.replies.length - 1]?.body || "Open thread"}
+                {message.latestReplyPreview?.body || message.replies?.[message.replies.length - 1]?.body || "Open thread"}
               </Txt>
             ) : null}
           </PressableScale>

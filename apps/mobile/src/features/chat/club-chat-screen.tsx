@@ -1,8 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, KeyboardAvoidingView, Linking, Platform, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { MessageCircle } from "lucide-react-native";
 import { AppBackHeader } from "@/components/screen";
 import { Empty, Txt, useToast } from "@/components/ui";
@@ -14,7 +14,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import { ChatTimeline } from "./timeline";
-import type { ChatAttachment, ChatMessage, ClubChatData } from "./types";
+import type { ChatAttachment, ChatMessage, ChatThread, ClubChatData } from "./types";
 import { useChatComposer } from "./use-chat-composer";
 
 type ClubChatScreenProps = {
@@ -23,17 +23,42 @@ type ClubChatScreenProps = {
   threadRootId?: string;
 };
 
+const MESSAGE_PAGE_SIZE = 30;
+
 export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScreenProps) {
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const user = useCurrentUser();
-  const rawMessages = useQuery(api.clubs.channels.getMessages, {
-    clubId: clubId as Id<"clubs">,
-    channelId: channelId as Id<"clubChannels">,
-  });
+  const { results, status: paginationStatus, loadMore } = usePaginatedQuery(
+    api.clubs.channels.getMessagePage,
+    threadRootId
+      ? "skip"
+      : {
+          clubId: clubId as Id<"clubs">,
+          channelId: channelId as Id<"clubChannels">,
+        },
+    { initialNumItems: MESSAGE_PAGE_SIZE },
+  );
+  const rawThread = useQuery(
+    api.clubs.channels.getThread,
+    threadRootId
+      ? {
+          clubId: clubId as Id<"clubs">,
+          channelId: channelId as Id<"clubChannels">,
+          messageId: threadRootId as Id<"clubChannelMessages">,
+        }
+      : "skip",
+  );
   const rawClub = useQuery(api.clubs.detail.get, { clubId: clubId as Id<"clubs"> });
-  const messages = rawMessages as ChatMessage[] | undefined;
+  const messages = useMemo(
+    () =>
+      paginationStatus === "LoadingFirstPage"
+        ? undefined
+        : ([...(results as ChatMessage[])].reverse() as ChatMessage[]),
+    [paginationStatus, results],
+  );
+  const thread = rawThread as ChatThread | null | undefined;
   const club = rawClub as ClubChatData | null | undefined;
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
@@ -49,18 +74,16 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
   const channel = club?.channels?.find((item) => item._id === channelId);
   const canPost = club === undefined ? undefined : !!channel?.viewerCanPost;
   const canManage = !!club?.viewer?.canManageChannels;
-  const threadRoot = threadRootId
-    ? messages === undefined
-      ? undefined
-      : messages.find((message) => message._id === threadRootId) ?? null
-    : undefined;
-  const timelineMessages = threadRootId
-    ? threadRoot === undefined
-      ? undefined
-      : threadRoot?.replies ?? []
-    : messages;
-  const threadIsMissing = !!threadRootId && messages !== undefined && !threadRoot;
+  const threadRoot = threadRootId ? (thread === undefined ? undefined : thread?.root ?? null) : undefined;
+  const timelineMessages = threadRootId ? (thread === undefined ? undefined : thread?.replies ?? []) : messages;
+  const threadIsMissing = !!threadRootId && thread !== undefined && !thread;
+  const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
+  const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
   const composerPending = pendingAction === "composer";
+
+  const loadOlderMessages = useCallback(() => {
+    if (paginationStatus === "CanLoadMore") loadMore(MESSAGE_PAGE_SIZE);
+  }, [loadMore, paginationStatus]);
 
   const runPending = useCallback(
     async (key: string, operation: () => Promise<unknown>, errorTitle: string) => {
@@ -284,8 +307,12 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
           <ChatTimeline
             messages={timelineMessages}
             threadRoot={threadRoot}
+            threadHasMoreReplies={thread?.hasMoreReplies}
             canPost={canPost}
+            canLoadOlder={canLoadOlder}
+            isLoadingOlder={isLoadingOlder}
             pendingAction={pendingAction}
+            onLoadOlder={loadOlderMessages}
             onLongPress={setActionMessage}
             onOpenThread={openThread}
             onToggleReaction={handleToggleReaction}

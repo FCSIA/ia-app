@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, View, type ViewToken } from "react-native";
+import { ActivityIndicator, Platform, View, type ViewToken } from "react-native";
 import { FlashList, type FlashListRef, type ListRenderItemInfo } from "@shopify/flash-list";
 import { format } from "date-fns";
 import { ArrowDown, MessageCircle } from "lucide-react-native";
@@ -17,8 +17,12 @@ type TimelineRow =
 type ChatTimelineProps = {
   messages?: ChatMessage[];
   threadRoot?: ChatMessage | null;
+  threadHasMoreReplies?: boolean;
   canPost?: boolean;
+  canLoadOlder?: boolean;
+  isLoadingOlder?: boolean;
   pendingAction?: string | null;
+  onLoadOlder?: () => void;
   onLongPress: (message: ChatMessage) => void;
   onOpenThread: (message: ChatMessage) => void;
   onToggleReaction: (message: ChatMessage, emoji: string) => void;
@@ -29,8 +33,12 @@ type ChatTimelineProps = {
 export function ChatTimeline({
   messages,
   threadRoot,
+  threadHasMoreReplies = false,
   canPost,
+  canLoadOlder = false,
+  isLoadingOlder = false,
   pendingAction,
+  onLoadOlder,
   onLongPress,
   onOpenThread,
   onToggleReaction,
@@ -41,28 +49,36 @@ export function ChatTimeline({
   const listRef = useRef<FlashListRef<TimelineRow>>(null);
   const [isAtLiveEdge, setIsAtLiveEdge] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
-  const previousMessageCount = useRef(0);
   const rows = useMemo(() => buildTimeline(messages ?? [], threadRoot), [messages, threadRoot]);
-  const messageCount = useMemo(() => rows.filter((row) => row.type === "message").length, [rows]);
   const finalKey = rows.at(-1)?.key;
   const finalKeyRef = useRef(finalKey);
+  const previousNewestMessageKey = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     finalKeyRef.current = finalKey;
   }, [finalKey]);
 
   useEffect(() => {
-    const added = Math.max(0, messageCount - previousMessageCount.current);
-    if (added && previousMessageCount.current > 0 && !isAtLiveEdge) {
-      setUnseenCount((current) => current + added);
+    const newestMessageKey = [...rows].reverse().find((row) => row.type === "message")?.key;
+    const previousNewestKey = previousNewestMessageKey.current;
+    if (previousNewestKey && !isAtLiveEdge) {
+      const previousIndex = rows.findIndex((row) => row.key === previousNewestKey);
+      if (previousIndex >= 0) {
+        const addedAtLiveEdge = rows
+          .slice(previousIndex + 1)
+          .filter((row) => row.type === "message").length;
+        if (addedAtLiveEdge) setUnseenCount((current) => current + addedAtLiveEdge);
+      }
     }
-    previousMessageCount.current = messageCount;
-  }, [isAtLiveEdge, messageCount]);
+    previousNewestMessageKey.current = newestMessageKey;
+  }, [isAtLiveEdge, rows]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<TimelineRow>) => {
       if (item.type === "date") return <DateMarker label={item.label} />;
-      if (item.type === "thread-divider") return <ThreadDivider count={item.count} />;
+      if (item.type === "thread-divider") {
+        return <ThreadDivider count={item.count} hasMore={threadHasMoreReplies} />;
+      }
       return (
         <ChatMessageRow
           message={item.message}
@@ -77,7 +93,16 @@ export function ChatTimeline({
         />
       );
     },
-    [onLongPress, onOpenAttachment, onOpenThread, onToggleReaction, onVotePoll, pendingAction, threadRoot],
+    [
+      onLongPress,
+      onOpenAttachment,
+      onOpenThread,
+      onToggleReaction,
+      onVotePoll,
+      pendingAction,
+      threadHasMoreReplies,
+      threadRoot,
+    ],
   );
 
   const handleViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
@@ -111,6 +136,9 @@ export function ChatTimeline({
           startRenderingFromBottom: true,
         }}
         onViewableItemsChanged={handleViewableItemsChanged}
+        onStartReached={canLoadOlder && !isLoadingOlder ? onLoadOlder : undefined}
+        onStartReachedThreshold={0.2}
+        ListHeaderComponent={isLoadingOlder ? <OlderMessagesLoader /> : null}
         ListEmptyComponent={
           <Empty
             icon={MessageCircle}
@@ -235,7 +263,7 @@ const DateMarker = memo(function DateMarker({ label }: { label: string }) {
   );
 });
 
-const ThreadDivider = memo(function ThreadDivider({ count }: { count: number }) {
+const ThreadDivider = memo(function ThreadDivider({ count, hasMore }: { count: number; hasMore: boolean }) {
   const { color } = useTheme();
   return (
     <View
@@ -251,12 +279,21 @@ const ThreadDivider = memo(function ThreadDivider({ count }: { count: number }) 
       }}
     >
       <Txt variant="label" tone="muted" style={{ fontWeight: "800" }}>
-        {count} {count === 1 ? "reply" : "replies"}
+        {hasMore ? "Latest " : ""}{count}{hasMore ? "+" : ""} {count === 1 ? "reply" : "replies"}
       </Txt>
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />
     </View>
   );
 });
+
+function OlderMessagesLoader() {
+  const { color } = useTheme();
+  return (
+    <View style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+      <ActivityIndicator size="small" color={color("mutedForeground")} />
+    </View>
+  );
+}
 
 function ChatTimelineSkeleton() {
   return (

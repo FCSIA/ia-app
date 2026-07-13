@@ -17,6 +17,7 @@ export type ChatReaction = {
   emoji: string;
   count: number;
   reactedByCurrentUser: boolean;
+  countIsCapped?: boolean;
 };
 
 export type ChatPollOption = {
@@ -30,6 +31,7 @@ export type ChatPoll = {
   question: string;
   options: ChatPollOption[];
   totalVotes: number;
+  votesTruncated?: boolean;
 };
 
 export type ChatMessage = {
@@ -40,13 +42,27 @@ export type ChatMessage = {
   bodyRich?: unknown;
   author?: ChatUser | null;
   attachments?: ChatAttachment[];
+  attachmentsTruncated?: boolean;
   reactions?: ChatReaction[];
   replies?: ChatMessage[];
   replyCount: number;
+  replyCountIsExact?: boolean;
+  hasReplies?: boolean;
+  latestReplyPreview?: {
+    _id: string;
+    body: string;
+    createdAt: string;
+  } | null;
   poll?: ChatPoll | null;
   isPinned: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ChatThread = {
+  root: ChatMessage;
+  replies: ChatMessage[];
+  hasMoreReplies: boolean;
 };
 
 export type ChatChannel = {
