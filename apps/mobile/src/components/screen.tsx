@@ -1,4 +1,4 @@
-import { ScrollView, type ScrollViewProps } from "react-native";
+import { ScrollView, View, type ScrollViewProps } from "react-native";
 import { router, useSegments } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,14 +35,14 @@ export function Screen({ title, subtitle, header, children, contentContainerStyl
         <AppBackHeader />
         {header}
         {title ? (
-          <>
+          <View style={{ gap: spacing.xs }}>
             <Txt variant="display">{title}</Txt>
             {subtitle ? (
               <Txt variant="body" tone="muted">
                 {subtitle}
               </Txt>
             ) : null}
-          </>
+          </View>
         ) : null}
         {children}
       </ScrollView>

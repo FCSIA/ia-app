@@ -9,7 +9,7 @@ type BadgeProps = {
 };
 
 export function Badge({ label, color = "gray", variant = "solid" }: BadgeProps) {
-  const { color: themeColor } = useTheme();
+  const { color: themeColor, name } = useTheme();
   const badgeColor = badgeColors[color];
   const backgroundColor = color === "gray" ? themeColor("muted") : hexToRgba(badgeColor, 0.13);
   const borderColor = color === "gray" ? themeColor("border") : hexToRgba(badgeColor, 0.4);
@@ -24,7 +24,7 @@ export function Badge({ label, color = "gray", variant = "solid" }: BadgeProps) 
         alignItems: "center",
         gap: 6,
         borderRadius: 999,
-        borderWidth: 1,
+        borderWidth: name === "high-contrast" ? 1 : 0,
         borderColor,
         backgroundColor,
         paddingHorizontal: 10

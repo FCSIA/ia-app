@@ -17,13 +17,13 @@ type ListRowProps = {
 };
 
 export function ListRow({ icon: Icon, title, subtitle, leading, trailing, onPress }: ListRowProps) {
-  const { color } = useTheme();
+  const { color, name } = useTheme();
   const content = (
     <View
       style={{
         minHeight: 58,
-        borderRadius: radii.lg,
-        borderWidth: 1,
+        borderRadius: radii.md,
+        borderWidth: name === "high-contrast" ? 1 : 0,
         borderColor: color("border"),
         backgroundColor: color("card"),
         paddingHorizontal: spacing.md,
@@ -49,7 +49,7 @@ export function ListRow({ icon: Icon, title, subtitle, leading, trailing, onPres
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>
-        <Txt variant="body" numberOfLines={1} style={{ fontWeight: "800" }}>
+        <Txt variant="body" numberOfLines={1} style={{ fontWeight: "700" }}>
           {title}
         </Txt>
         {subtitle ? (

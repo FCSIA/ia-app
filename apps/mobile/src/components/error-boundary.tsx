@@ -1,5 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Button, Txt } from "@/components/ui";
+import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 
 type State = { error: Error | null };
 
@@ -19,15 +22,28 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
 
   render() {
     if (!this.state.error) return this.props.children;
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <Text style={{ fontSize: 20, fontWeight: "900", textAlign: "center" }}>
-          Something went wrong.
-        </Text>
-        <Text style={{ marginTop: 8, textAlign: "center" }}>
-          Close and reopen the app. No student data was sent from this error screen.
-        </Text>
-      </View>
-    );
+    return <ErrorFallback onRetry={() => this.setState({ error: null })} />;
   }
+}
+
+function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const { color } = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: spacing.md,
+        padding: spacing.xl,
+        backgroundColor: color("background"),
+      }}
+    >
+      <Txt variant="title" style={{ textAlign: "center" }}>Something went wrong</Txt>
+      <Txt tone="muted" style={{ maxWidth: 360, textAlign: "center" }}>
+        Try again. If the problem continues, close and reopen the app.
+      </Txt>
+      <Button title="Try again" variant="secondary" onPress={onRetry} />
+    </View>
+  );
 }

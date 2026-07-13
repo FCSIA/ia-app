@@ -18,10 +18,11 @@ import { ToastProvider } from "@/components/ui";
 LogBox.ignoreLogs(["[RNScreens] SplitView is supported only for iOS"]);
 
 function RootNavigator() {
-  const { color, name } = useTheme();
+  const { color } = useTheme();
   const backgroundColor = color("background");
   const foregroundColor = color("foreground");
-  const barStyle = name === "light" || name === "bubblegum" ? "dark-content" : "light-content";
+  const backgroundLightness = Number.parseFloat(backgroundColor.match(/([\d.]+)%\)$/)?.[1] ?? "0") / 100;
+  const barStyle = backgroundLightness > 0.55 ? "dark-content" : "light-content";
 
   return (
     <>

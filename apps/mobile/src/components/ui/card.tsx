@@ -9,18 +9,17 @@ type CardProps = ViewProps & {
 };
 
 export function Card({ style, variant = "default", onPress, ...props }: CardProps) {
-  const { color } = useTheme();
+  const { color, name } = useTheme();
   const content = (
     <View
       style={[
         {
           borderRadius: radii.lg,
-          borderWidth: 1,
+          borderWidth: name === "high-contrast" ? 1 : 0,
           borderColor: color("border"),
-          backgroundColor: color("card"),
+          backgroundColor: variant === "flat" ? color("secondary") : color("card"),
           padding: spacing.md,
-          shadowColor: color("foreground"),
-          ...(variant === "flat" ? elevation.none : elevation.sm),
+          ...elevation.none,
         },
         style
       ]}

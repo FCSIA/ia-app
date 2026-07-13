@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { LayoutChangeEvent, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { Txt } from "@/components/ui/typography";
 import { spring } from "@/lib/motion";
@@ -22,16 +21,17 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }) {
   const { color } = useTheme();
+  const reduceMotion = useReducedMotion();
   const width = useSharedValue(0);
   const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
-  const thumbStyle = useAnimatedStyle(() => ({
-    width: segments.length ? (width.value - 8) / segments.length : 0,
-    transform: [{ translateX: withSpring(index * ((width.value - 8) / segments.length), spring) }],
-  }));
-
-  useEffect(() => {
-    // Triggers animated style recalculation when value changes.
-  }, [value]);
+  const thumbStyle = useAnimatedStyle(() => {
+    const segmentWidth = segments.length ? Math.max(0, width.value - 8) / segments.length : 0;
+    const offset = index * segmentWidth;
+    return {
+      width: segmentWidth,
+      transform: [{ translateX: reduceMotion ? offset : withSpring(offset, spring) }],
+    };
+  });
 
   function onLayout(event: LayoutChangeEvent) {
     width.value = event.nativeEvent.layout.width;

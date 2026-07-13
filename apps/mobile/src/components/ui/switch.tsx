@@ -3,6 +3,7 @@ import { Pressable } from "react-native";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
@@ -19,11 +20,13 @@ type SwitchProps = {
 
 export function Switch({ value, onValueChange, disabled, label }: SwitchProps) {
   const { color } = useTheme();
+  const reduceMotion = useReducedMotion();
   const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withSpring(value ? 1 : 0, spring);
-  }, [progress, value]);
+    const next = value ? 1 : 0;
+    progress.value = reduceMotion ? next : withSpring(next, spring);
+  }, [progress, reduceMotion, value]);
 
   const trackStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(progress.value, [0, 1], [color("muted"), color("primary")]),
