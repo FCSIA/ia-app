@@ -61,7 +61,8 @@ Native push requires real iOS/Android devices and an EAS project id. Confirm:
 
 - login registers an already-authorized push token silently,
 - Notifications screen permission prompt registers a token,
-- the Inbox lists the registered device and can queue the built-in test push,
+- Notification Settings lists the registered device and receives the built-in
+  test push,
 - logout unregisters the stored token,
 - Convex `notifications.pushExpo.sendTestToMe` reaches both platforms,
 - tapping a notification opens the matching app route.

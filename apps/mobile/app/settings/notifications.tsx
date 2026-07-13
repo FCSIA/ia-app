@@ -13,8 +13,11 @@ const categories = [
   "CLUB_ANNOUNCEMENT",
   "CLUB_CHANNEL_MESSAGE",
   "CLUB_CHANNEL_MENTION",
+  "CLUB_CHANNEL_TAG_MENTION",
+  "CLUB_CHANNEL_THREAD",
   "EVENT",
   "FLEX_FRIDAY",
+  "CONTENT_MODERATED",
   "FRIEND_REQUEST",
 ] as const;
 
@@ -33,7 +36,13 @@ export default function NotificationSettingsScreen() {
     setPushLoading(true);
     try {
       const result = await registerNativePushToken(convex);
-      showToast({ title: result.ok ? "Push enabled" : "Push not enabled", body: result.ok ? "This device is registered." : result.reason, tone: result.ok ? "success" : "default" });
+      showToast({
+        title: result.ok ? "Push enabled" : "Push not enabled",
+        body: result.ok
+          ? `This device is registered and ${result.preferencesUpdated} alert preference${result.preferencesUpdated === 1 ? "" : "s"} activated.`
+          : result.reason,
+        tone: result.ok ? "success" : "default",
+      });
     } finally {
       setPushLoading(false);
     }
@@ -46,7 +55,11 @@ export default function NotificationSettingsScreen() {
         title: "Innovation Academy",
         body: "Native push validation is connected.",
       });
-      showToast({ title: "Test push queued", body: `${result.sent} registered device${result.sent === 1 ? "" : "s"} targeted.`, tone: "success" });
+      showToast({
+        title: "Test push accepted by Expo",
+        body: `${result.accepted} of ${result.targeted} registered device${result.targeted === 1 ? "" : "s"} accepted. Device delivery still needs physical-device validation.`,
+        tone: result.accepted ? "success" : "default",
+      });
     } catch (error) {
       showToast({ title: "Test push failed", body: error instanceof Error ? error.message : "Try again on a physical device." });
     } finally {
@@ -58,7 +71,7 @@ export default function NotificationSettingsScreen() {
     <Screen title="Notifications" subtitle="Device registration and push preferences.">
       <Section title="Native push">
         <Card style={{ gap: spacing.md }}>
-          <Txt tone="muted">Enable notifications for announcements, club messages, events, and Flex Friday changes.</Txt>
+          <Txt tone="muted">Enable push delivery for your active announcements, club activity, events, Flex Friday, and friend alerts.</Txt>
           {pushUnavailableReason ? <Txt tone="muted">{pushUnavailableReason}</Txt> : null}
           <Txt variant="caption" tone="muted">
             {nativeTokens === undefined
@@ -81,7 +94,7 @@ export default function NotificationSettingsScreen() {
       <Section title="Preferences">
         {categories.map((category) => {
           const pref = preferences?.find((item: any) => item.category === category && item.scopeKey === "global");
-          const enabled = pref ? pref.enabled : category !== "CLUB_CHANNEL_MESSAGE";
+          const enabled = pref?.enabled === true && ["PUSH", "TIME_SENSITIVE"].includes(pref.level);
           return (
             <ListRow
               key={category}

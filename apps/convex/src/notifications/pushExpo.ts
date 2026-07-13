@@ -141,10 +141,10 @@ export const sendTestToMe = action({
     title: v.optional(v.string()),
     body: v.optional(v.string()),
   },
-  returns: v.object({ sent: v.number() }),
+  returns: v.object({ targeted: v.number(), accepted: v.number() }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.notifications.pushExpo.currentUserForTest, {});
-    if (!user) return { sent: 0 };
+    if (!user) return { targeted: 0, accepted: 0 };
 
     const targets: DeliveryTarget[] = await ctx.runQuery(internal.notifications.pushExpo.getDeliveryTargets, {
       userId: user._id,
@@ -152,7 +152,7 @@ export const sendTestToMe = action({
       scopeKey: "global",
     });
 
-    await sendExpoMessages(
+    const results = await sendExpoMessages(
       targets.map((target) => ({
         to: target.token,
         title: args.title ?? "Innovation Academy",
@@ -161,7 +161,10 @@ export const sendTestToMe = action({
       })),
     );
 
-    return { sent: targets.length };
+    return {
+      targeted: targets.length,
+      accepted: results.filter((result) => result.ok).length,
+    };
   },
 });
 

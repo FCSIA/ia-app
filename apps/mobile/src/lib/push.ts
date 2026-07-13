@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
+import type { NotificationResponse } from "expo-notifications";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { openAppHref } from "./deep-links";
@@ -64,9 +65,10 @@ export async function registerNativePushToken(convex: ConvexReactClient) {
     deviceId: Constants.sessionId ?? undefined,
     deviceName: Device.deviceName ?? undefined
   });
+  const preferences = await convex.mutation(api.notifications.preferences.activatePush, {});
   await SecureStore.setItemAsync(TOKEN_STORAGE_KEY, response.data);
 
-  return { ok: true, token: response.data };
+  return { ok: true, token: response.data, preferencesUpdated: preferences.updated };
 }
 
 export async function syncNativePushTokenIfGranted(convex: ConvexReactClient) {
@@ -90,10 +92,14 @@ export function installNotificationResponseRouting() {
   let remove = () => {};
   void loadNotifications().then((Notifications) => {
     if (!Notifications) return;
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const openResponse = (response: NotificationResponse) => {
       const href = response.notification.request.content.data?.href;
       openAppHref(typeof href === "string" ? href : "/notifications");
+    };
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) openResponse(response);
     });
+    const subscription = Notifications.addNotificationResponseReceivedListener(openResponse);
     remove = () => subscription.remove();
   });
   return () => remove();

@@ -6,8 +6,8 @@ tags: [feature, notifications]
 
 [Home](../index.md)
 
-Notifications provide an in-app inbox, unread count, user preferences, and
-browser push delivery for subscribed devices.
+Notifications provide an in-app inbox, unread count, user preferences, browser
+push delivery, and Expo native push delivery for subscribed devices.
 
 ## What It Does
 
@@ -17,7 +17,11 @@ browser push delivery for subscribed devices.
 - Marks one or many notifications as read.
 - Stores per-category and scoped preferences.
 - Stores per-user browser push subscriptions.
+- Stores per-user Expo native push tokens.
 - Sends Web Push for categories configured at `PUSH` or `TIME_SENSITIVE`.
+- Sends Expo native push for the same category and scope preferences.
+- Activates supported alert categories when a user explicitly enables a push
+  device, while preserving explicit opt-outs.
 
 ## Source Files
 
@@ -36,16 +40,22 @@ browser push delivery for subscribed devices.
 - `api.notifications.inbox.markAllRead`
 - `api.notifications.preferences.list`
 - `api.notifications.preferences.upsert`
+- `api.notifications.preferences.activatePush`
 - `api.notifications.push.getPublicKey`
 - `api.notifications.push.listMine`
 - `api.notifications.push.upsertSubscription`
 - `api.notifications.push.removeSubscription`
+- `api.notifications.pushExpo.listMine`
+- `api.notifications.pushExpo.registerToken`
+- `api.notifications.pushExpo.unregisterToken`
+- `api.notifications.pushExpo.sendTestToMe`
 
 ## Data Model
 
 - `notificationDeliveries`
 - `notificationPreferences`
 - `notificationPushSubscriptions`
+- `notificationNativePushTokens`
 
 Preference levels are `OFF`, `IN_APP`, `PUSH`, and `TIME_SENSITIVE`. The schema
 also supports category and scope keys such as global, club, and channel scopes.
@@ -76,13 +86,24 @@ The same public key must also be present in `apps/web/.env.local` as
 Push is a best-effort delivery channel. Expired browser subscriptions are
 disabled when push services return a permanent failure.
 
+## Native Push
+
+The Expo mobile app registers a physical iOS or Android device from Notification
+Settings. Expo Go cannot receive native push on current Expo SDKs; use a
+development or release build with a configured EAS project. Notification taps
+route through Expo Router, including when the notification opens a terminated
+app. The test action reports Expo ticket acceptance, not final device delivery.
+
+Enabling either browser or native push registers that device and upgrades active
+supported preferences to `PUSH`. A global `OFF` preference stays off, and
+all-message channel alerts remain separately opt-in.
+
 ## Current Delivery
 
-The inbox, preference system, and Web Push subscription flow are active. Current
-Convex delivery rows are created in the implemented friend-request flow and can
-fan out to browser push when the target user has an active subscription and a
-push-enabled preference. Other categories are modeled for domain fanout and
-should be verified when each domain starts delivering rows.
+The inbox, preference system, and browser/native push subscription flows are
+active. Announcements, events, Flex Friday entries, club activity, channel
+messages and mentions, friend requests, and moderation reports create delivery
+rows. Eligible rows fan out to every active subscribed device.
 
 ## Known Limits
 
