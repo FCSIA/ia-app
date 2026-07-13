@@ -67,26 +67,20 @@ export type ChatThread = {
 };
 
 export type ChatChannel = {
-  _id: string;
   name: string;
   description?: string | null;
-  visibility?: string;
-  viewerCanPost?: boolean;
+  viewerCanPost: boolean;
 };
 
 export type ClubChatData = {
-  name?: string;
-  channels?: ChatChannel[];
-  viewer?: {
-    canManageChannels?: boolean;
-  };
-  directory?: Array<{
-    _id: string;
-    uniqueId?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-    kind?: string;
-    clubRole?: string | null;
+  clubName: string;
+  channel: ChatChannel;
+  canManageChannels: boolean;
+  members: Array<{
+    uniqueId: string;
+    firstName: string;
+    lastName: string;
+    role: "MEMBER" | "LEADER" | "SPONSOR";
   }>;
 };
 

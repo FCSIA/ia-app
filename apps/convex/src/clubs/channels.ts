@@ -6,6 +6,7 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { channelValidator } from "./_lib";
 import {
   getClubContext,
+  getChannelViewerContext,
   getViewerContext,
   canReadChannel,
   canPostInChannel,
@@ -44,6 +45,10 @@ import {
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
+import {
+  MAX_CHANNEL_CONTEXT_SOURCE_ROWS,
+  selectChannelContextMemberCandidates,
+} from "./channelContext";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -759,12 +764,106 @@ async function getReadableChannel(
   const channel = await ctx.db.get(channelId);
   if (!channel || channel.clubId !== clubId) return null;
   const club = await ctx.db.get(clubId);
-  if (!club) return null;
-  const context = await getViewerContext(ctx, clubId, user);
-  const memberships = await getChannelMemberships(ctx, channelId);
+  if (!club || !club.isActive) return null;
+  const context = await getChannelViewerContext(ctx, club, user);
+  const viewerMembership = await ctx.db
+    .query("clubChannelMemberships")
+    .withIndex("by_channelId_and_userId", (q) =>
+      q.eq("channelId", channelId).eq("userId", user._id),
+    )
+    .unique();
+  const memberships = viewerMembership ? [viewerMembership] : [];
   if (!canReadChannel({ ...channel, memberships }, context, user._id)) return null;
-  return channel;
+  return { channel, context, memberships };
 }
+
+const channelContextMemberValidator = v.object({
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  role: v.union(v.literal("MEMBER"), v.literal("LEADER"), v.literal("SPONSOR")),
+});
+
+const channelConversationContextValidator = v.union(
+  v.object({
+    clubName: v.string(),
+    channel: v.object({
+      name: v.string(),
+      description: v.union(v.string(), v.null()),
+      viewerCanPost: v.boolean(),
+    }),
+    canManageChannels: v.boolean(),
+    members: v.array(channelContextMemberValidator),
+  }),
+  v.null(),
+);
+
+export const getConversationContext = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+  },
+  returns: channelConversationContextValidator,
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return null;
+
+    const { channel, context, memberships } = readable;
+    const [sponsors, clubMembers, channelMembers] = await Promise.all([
+      ctx.db
+        .query("clubSponsors")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
+      ctx.db
+        .query("clubMembers")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
+      channel.visibility === "PRIVATE"
+        ? ctx.db
+            .query("clubChannelMemberships")
+            .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
+            .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS)
+        : Promise.resolve([]),
+    ]);
+    const candidates = selectChannelContextMemberCandidates({
+      visibility: channel.visibility,
+      sponsors,
+      clubMembers,
+      channelMembers,
+    });
+    const members = (
+      await Promise.all(
+        candidates.map(async (candidate) => {
+          const member = await ctx.db.get(candidate.userId);
+          if (!member) return null;
+          return {
+            uniqueId: member.uniqueId,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            role: candidate.role,
+          };
+        }),
+      )
+    ).filter((member): member is NonNullable<typeof member> => !!member);
+
+    return {
+      clubName: context.club.name,
+      channel: {
+        name: channel.name,
+        description: channel.description ?? null,
+        viewerCanPost: canPostInChannel(
+          { ...channel, memberships },
+          context,
+          user._id,
+        ),
+      },
+      canManageChannels: context.canManageChannels,
+      members,
+    };
+  },
+});
 
 async function resolveThreadRoot(
   ctx: QueryCtx,
@@ -803,8 +902,9 @@ export const getMessagePage = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyMessagePage(args.paginationOpts.cursor);
-    const channel = await getReadableChannel(ctx, user, args.clubId, args.channelId);
-    if (!channel) return emptyMessagePage(args.paginationOpts.cursor);
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
+    const { channel } = readable;
 
     const result = await ctx.db
       .query("clubChannelMessages")
@@ -835,8 +935,9 @@ export const getThread = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    const channel = await getReadableChannel(ctx, user, args.clubId, args.channelId);
-    if (!channel) return null;
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return null;
+    const { channel } = readable;
     const requested = await ctx.db.get(args.messageId);
     if (!requested || requested.channelId !== channel._id) return null;
     const rootMessage = await resolveThreadRoot(ctx, requested, channel._id);
@@ -879,19 +980,9 @@ export const getMessages = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
-    const channel = await ctx.db.get(args.channelId);
-
-    if (!channel) return [];
-    if (channel.clubId !== args.clubId) return [];
-
-    const club = await ctx.db.get(args.clubId);
-    if (!club) return [];
-    const context = await getViewerContext(ctx, channel.clubId, user);
-    const memberships = await getChannelMemberships(ctx, channel._id);
-
-    if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
-      return [];
-    }
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return [];
+    const { channel } = readable;
 
     const rootsNewest = await ctx.db
       .query("clubChannelMessages")

@@ -79,8 +79,9 @@ export function ClubChatScreen({
         }
       : "skip",
   );
-  const rawClub = useQuery(api.clubs.detail.get, {
+  const rawChannelContext = useQuery(api.clubs.channels.getConversationContext, {
     clubId: clubId as Id<"clubs">,
+    channelId: channelId as Id<"clubChannels">,
   });
   const messages = useMemo(
     () =>
@@ -90,7 +91,7 @@ export function ClubChatScreen({
     [paginationStatus, results],
   );
   const thread = rawThread as ChatThread | null | undefined;
-  const club = rawClub as ClubChatData | null | undefined;
+  const channelContext = rawChannelContext as ClubChatData | null | undefined;
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
@@ -110,9 +111,9 @@ export function ClubChatScreen({
   const composerBaseHeightRef = useRef(0);
   const extraContentPadding = useSharedValue(0);
   const pendingRef = useRef(false);
-  const channel = club?.channels?.find((item) => item._id === channelId);
-  const canPost = club === undefined ? undefined : !!channel?.viewerCanPost;
-  const canManage = !!club?.viewer?.canManageChannels;
+  const channel = channelContext?.channel;
+  const canPost = channelContext === undefined ? undefined : !!channel?.viewerCanPost;
+  const canManage = !!channelContext?.canManageChannels;
   const threadRoot = threadRootId
     ? thread === undefined
       ? undefined
@@ -164,18 +165,16 @@ export function ClubChatScreen({
           ]
         : []),
     ];
-    const people = (club?.directory ?? [])
-      .filter((person) => !!person.uniqueId)
-      .slice(0, 60)
+    const people = (channelContext?.members ?? [])
       .map((person) => ({
-        token: person.uniqueId!,
+        token: person.uniqueId,
         label:
           [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-          person.uniqueId!,
-        detail: person.clubRole || person.kind || "Club member",
+          person.uniqueId,
+        detail: formatClubRole(person.role),
       }));
     return [...builtIns, ...people];
-  }, [canManage, club?.directory]);
+  }, [canManage, channelContext?.members]);
 
   const handleComposerLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -503,7 +502,7 @@ export function ClubChatScreen({
           description={
             threadRootId
               ? `#${channel?.name ?? "channel"}`
-              : (channel?.description ?? club?.name)
+              : (channel?.description ?? channelContext?.clubName)
           }
         />
 
@@ -646,4 +645,12 @@ function ChatHeader({
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Try again.";
+}
+
+function formatClubRole(role: "MEMBER" | "LEADER" | "SPONSOR") {
+  return role === "SPONSOR"
+    ? "Sponsor"
+    : role === "LEADER"
+      ? "Leader"
+      : "Member";
 }
