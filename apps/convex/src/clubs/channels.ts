@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
@@ -6,8 +7,19 @@ import { getClubContext, getViewerContext, canReadChannel, canPostInChannel } fr
 import { toClubUserRef } from "./serialize";
 import type { Doc, Id } from "../_generated/dataModel";
 import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
+import {
+  MAX_CHANNEL_MESSAGE_WINDOW,
+  MAX_THREAD_REPLIES,
+  boundedChannelMessagePageSize,
+  chronologicalFromNewest,
+} from "./channelPagination";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
+
+const MAX_SUMMARY_ATTACHMENTS = 12;
+const MAX_SUMMARY_REACTION_ROWS = 500;
+const MAX_SUMMARY_POLL_VOTES = 500;
+const MAX_THREAD_PARENT_DEPTH = 8;
 
 async function getChannelMemberships(
   ctx: ChannelDbCtx,
@@ -401,6 +413,244 @@ async function serializeMessage(
   };
 }
 
+async function serializeMessageSummary(
+  ctx: QueryCtx,
+  message: Doc<"clubChannelMessages">,
+  currentUserId: Id<"users">,
+  includeLatestReply: boolean,
+) {
+  const author = await ctx.db.get(message.authorId);
+  if (!author) return null;
+
+  const reactionRows = await ctx.db
+    .query("clubChannelMessageReactions")
+    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
+    .order("desc")
+    .take(MAX_SUMMARY_REACTION_ROWS + 1);
+  const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
+  const reactionMap = new Map<
+    string,
+    { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
+  >();
+  for (const reaction of reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS)) {
+    const entry = reactionMap.get(reaction.emoji) ?? {
+      emoji: reaction.emoji,
+      count: 0,
+      reactedByCurrentUser: false,
+      reactors: [],
+    };
+    entry.count += 1;
+    if (reaction.userId === currentUserId) entry.reactedByCurrentUser = true;
+    reactionMap.set(reaction.emoji, entry);
+  }
+
+  const attachmentRowsNewest = await ctx.db
+    .query("clubChannelMessageAttachments")
+    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
+    .order("desc")
+    .take(MAX_SUMMARY_ATTACHMENTS + 1);
+  const attachmentsTruncated = attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
+  const attachments = chronologicalFromNewest(
+    attachmentRowsNewest.slice(0, MAX_SUMMARY_ATTACHMENTS),
+  );
+
+  let poll: (NonNullable<SerializedClubMessage["poll"]> & { votesTruncated?: boolean }) | null = null;
+  if (message.pollQuestion && Array.isArray(message.pollOptions)) {
+    const options = message.pollOptions as Array<{ id: string; label: string }>;
+    const voteRows = await ctx.db
+      .query("clubChannelMessagePollVotes")
+      .withIndex("by_messageId_and_optionId", (q) => q.eq("messageId", message._id))
+      .take(MAX_SUMMARY_POLL_VOTES + 1);
+    const votesTruncated = voteRows.length > MAX_SUMMARY_POLL_VOTES;
+    const votes = voteRows.slice(0, MAX_SUMMARY_POLL_VOTES);
+    const voteCounts = new Map<string, number>();
+    let currentUserOptionId: string | null = null;
+    for (const vote of votes) {
+      voteCounts.set(vote.optionId, (voteCounts.get(vote.optionId) ?? 0) + 1);
+      if (vote.userId === currentUserId) currentUserOptionId = vote.optionId;
+    }
+    poll = {
+      question: message.pollQuestion,
+      options: options.map((option) => ({
+        id: option.id,
+        label: option.label,
+        count: voteCounts.get(option.id) ?? 0,
+        votedByCurrentUser: currentUserOptionId === option.id,
+      })),
+      totalVotes: votes.length,
+      votesTruncated,
+    };
+  }
+
+  const latestReply = includeLatestReply
+    ? (
+        await ctx.db
+          .query("clubChannelMessages")
+          .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+            q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
+          )
+          .order("desc")
+          .take(1)
+      )[0] ?? null
+    : null;
+
+  return {
+    ...message,
+    pinnedAt: message.pinnedAt ? new Date(message.pinnedAt).toISOString() : null,
+    createdAt: new Date(message.createdAt).toISOString(),
+    updatedAt: new Date(message.updatedAt).toISOString(),
+    threadRootId: message.parentMessageId ?? message._id,
+    author: toClubUserRef(author),
+    mentions: [],
+    attachments: attachments.map((attachment) => ({
+      ...attachment,
+      createdAt: new Date(attachment.createdAt).toISOString(),
+    })),
+    attachmentsTruncated,
+    reactions: [...reactionMap.values()].map((reaction) => ({
+      ...reaction,
+      countIsCapped: reactionsTruncated,
+    })),
+    reactionsTruncated,
+    replies: [],
+    replyCount: latestReply ? 1 : 0,
+    replyCountIsExact: includeLatestReply && !latestReply,
+    hasReplies: !!latestReply,
+    latestReplyPreview: latestReply
+      ? {
+          _id: latestReply._id,
+          body: latestReply.body,
+          createdAt: new Date(latestReply.createdAt).toISOString(),
+        }
+      : null,
+    poll,
+  };
+}
+
+async function getReadableChannel(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  clubId: Id<"clubs">,
+  channelId: Id<"clubChannels">,
+) {
+  const channel = await ctx.db.get(channelId);
+  if (!channel || channel.clubId !== clubId) return null;
+  const club = await ctx.db.get(clubId);
+  if (!club) return null;
+  const context = await getViewerContext(ctx, clubId, user);
+  const memberships = await getChannelMemberships(ctx, channelId);
+  if (!canReadChannel({ ...channel, memberships }, context, user._id)) return null;
+  return channel;
+}
+
+async function resolveThreadRoot(
+  ctx: QueryCtx,
+  requested: Doc<"clubChannelMessages">,
+  channelId: Id<"clubChannels">,
+) {
+  let current = requested;
+  const visited = new Set<Id<"clubChannelMessages">>([requested._id]);
+
+  for (let depth = 0; depth < MAX_THREAD_PARENT_DEPTH; depth += 1) {
+    if (!current.parentMessageId) return current;
+    if (visited.has(current.parentMessageId)) return null;
+    visited.add(current.parentMessageId);
+    const parent = await ctx.db.get(current.parentMessageId);
+    if (!parent || parent.channelId !== channelId) return null;
+    current = parent;
+  }
+
+  return current.parentMessageId ? null : current;
+}
+
+function emptyMessagePage(cursor: string | null) {
+  return {
+    page: [],
+    isDone: true,
+    continueCursor: cursor ?? "",
+  };
+}
+
+export const getMessagePage = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return emptyMessagePage(args.paginationOpts.cursor);
+    const channel = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!channel) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const result = await ctx.db
+      .query("clubChannelMessages")
+      .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+        q.eq("channelId", channel._id).eq("parentMessageId", undefined),
+      )
+      .order("desc")
+      .paginate({
+        ...args.paginationOpts,
+        numItems: boundedChannelMessagePageSize(args.paginationOpts.numItems),
+      });
+    const page = await Promise.all(
+      result.page.map((message) => serializeMessageSummary(ctx, message, user._id, true)),
+    );
+    return {
+      ...result,
+      page: page.filter((message): message is NonNullable<typeof message> => !!message),
+    };
+  },
+});
+
+export const getThread = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    messageId: v.id("clubChannelMessages"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const channel = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!channel) return null;
+    const requested = await ctx.db.get(args.messageId);
+    if (!requested || requested.channelId !== channel._id) return null;
+    const rootMessage = await resolveThreadRoot(ctx, requested, channel._id);
+    if (!rootMessage) return null;
+
+    const replyRowsNewest = await ctx.db
+      .query("clubChannelMessages")
+      .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+        q.eq("channelId", channel._id).eq("parentMessageId", rootMessage._id),
+      )
+      .order("desc")
+      .take(MAX_THREAD_REPLIES + 1);
+    const hasMoreReplies = replyRowsNewest.length > MAX_THREAD_REPLIES;
+    const replyRows = chronologicalFromNewest(replyRowsNewest.slice(0, MAX_THREAD_REPLIES));
+    const [root, replies] = await Promise.all([
+      serializeMessageSummary(ctx, rootMessage, user._id, false),
+      Promise.all(
+        replyRows.map((message) => serializeMessageSummary(ctx, message, user._id, false)),
+      ),
+    ]);
+    if (!root) return null;
+    const serializedReplies = replies.filter(
+      (message): message is NonNullable<typeof message> => !!message,
+    );
+    return {
+      root: {
+        ...root,
+        hasReplies: serializedReplies.length > 0,
+        replyCount: serializedReplies.length,
+        replyCountIsExact: !hasMoreReplies,
+      },
+      replies: serializedReplies,
+      hasMoreReplies,
+    };
+  },
+});
+
 export const getMessages = query({
   args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
   handler: async (ctx, args) => {
@@ -420,13 +670,14 @@ export const getMessages = query({
       return [];
     }
 
-    const roots = await ctx.db
+    const rootsNewest = await ctx.db
       .query("clubChannelMessages")
       .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
         q.eq("channelId", args.channelId).eq("parentMessageId", undefined),
       )
-      .order("asc")
-      .take(200);
+      .order("desc")
+      .take(MAX_CHANNEL_MESSAGE_WINDOW);
+    const roots = chronologicalFromNewest(rootsNewest);
 
     const messages = await Promise.all(
       roots.map((m) => serializeMessage(ctx, m._id, user._id)),
