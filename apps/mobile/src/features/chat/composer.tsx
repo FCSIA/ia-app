@@ -2,6 +2,7 @@ import { View, type LayoutChangeEvent } from "react-native";
 import {
   BarChart3,
   MessageCircle,
+  Paperclip,
   Pencil,
   Send,
   ShieldAlert,
@@ -10,9 +11,11 @@ import {
 import { Button, IconButton, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
+import { AttachmentComposer } from "./attachment-composer";
 import { chatMessageLengthError } from "./chat-markdown";
 import { RichChatInput, type ChatMentionSuggestion } from "./rich-chat-input";
 import type { ChatComposerController } from "./use-chat-composer";
+import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
 
 type ChatComposerProps = {
@@ -23,10 +26,17 @@ type ChatComposerProps = {
   channelName?: string;
   threadMode?: boolean;
   canCreatePoll?: boolean;
+  attachments: ManagedChatAttachment[];
+  attachmentPickerBusy: boolean;
+  canPickAttachments: boolean;
+  hasReadyAttachments: boolean;
+  attachmentSubmissionBlocked: boolean;
   suggestions: ChatMentionSuggestion[];
   inputNativeID?: string;
   onLayout?: (event: LayoutChangeEvent) => void;
   onReset: () => void;
+  onPickAttachments: () => void;
+  onRemoveAttachment: (localId: string) => void;
   onStartPoll: () => void;
   onSubmit: () => void;
 };
@@ -39,10 +49,17 @@ export function ChatComposer({
   channelName,
   threadMode = false,
   canCreatePoll = false,
+  attachments,
+  attachmentPickerBusy,
+  canPickAttachments,
+  hasReadyAttachments,
+  attachmentSubmissionBlocked,
   suggestions,
   inputNativeID,
   onLayout,
   onReset,
+  onPickAttachments,
+  onRemoveAttachment,
   onStartPoll,
   onSubmit,
 }: ChatComposerProps) {
@@ -204,6 +221,11 @@ export function ChatComposer({
                 onClose={onReset}
               />
             ) : null}
+            <AttachmentComposer
+              items={attachments}
+              disabled={isPending}
+              onRemove={onRemoveAttachment}
+            />
             <View
               style={{
                 flexDirection: "row",
@@ -231,6 +253,14 @@ export function ChatComposer({
                 nativeID={inputNativeID}
                 suggestions={suggestions}
               />
+              <IconButton
+                icon={Paperclip}
+                label="Attach files"
+                size="sm"
+                variant="ghost"
+                disabled={isPending || !canPickAttachments}
+                onPress={onPickAttachments}
+              />
               {canCreatePoll ? (
                 <IconButton
                   icon={BarChart3}
@@ -250,7 +280,13 @@ export function ChatComposer({
                 }
                 size="sm"
                 variant="primary"
-                disabled={isPending || !composer.draft.trim() || !!lengthError}
+                disabled={
+                  isPending ||
+                  attachmentPickerBusy ||
+                  attachmentSubmissionBlocked ||
+                  (!composer.draft.trim() && !hasReadyAttachments) ||
+                  !!lengthError
+                }
                 onPress={onSubmit}
               />
             </View>

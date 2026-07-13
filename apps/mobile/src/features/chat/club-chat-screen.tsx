@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
+import { Alert, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import {
   SafeAreaView,
@@ -20,6 +20,7 @@ import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import type { ClubChannelReaction } from "~/apps/convex/src/validators";
+import { AttachmentViewer } from "./attachment-viewer";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import { ChatTimeline } from "./timeline";
@@ -31,6 +32,7 @@ import type {
 } from "./types";
 import { useChatComposer } from "./use-chat-composer";
 import { useChatDraft } from "./use-chat-draft";
+import { useManagedChatAttachments } from "./use-managed-chat-attachments";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 
@@ -95,9 +97,14 @@ export function ClubChatScreen({
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
-  const reportMessage = useMutation(api.moderation.reports.submit);
+  const reportMessage = useMutation(
+    api.moderation.reports.submitClubChannelMessage,
+  );
   const composer = useChatComposer();
+  const attachments = useManagedChatAttachments();
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
+  const [viewedAttachment, setViewedAttachment] =
+    useState<ChatAttachment | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [composerBaseHeight, setComposerBaseHeight] = useState(0);
   const composerBaseHeightRef = useRef(0);
@@ -119,7 +126,7 @@ export function ClubChatScreen({
   const threadIsMissing = !!threadRootId && thread !== undefined && !thread;
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
-  const composerPending = pendingAction === "composer";
+  const composerPending = pendingAction !== null;
   const draftEnabled =
     composer.mode.kind === "message" || composer.mode.kind === "reply";
   const draftThreadId =
@@ -222,6 +229,7 @@ export function ClubChatScreen({
   );
 
   const submitComposer = useCallback(async () => {
+    if (pendingRef.current) return;
     const mode = composer.mode;
     const draft = composer.draft.trim();
 
@@ -255,11 +263,8 @@ export function ClubChatScreen({
         "composer",
         () =>
           reportMessage({
-            contentType: "clubChannelMessage",
-            contentId: mode.target._id,
+            messageId: mode.target._id as Id<"clubChannelMessages">,
             reason: draft,
-            reportedUserId: mode.target.authorId as Id<"users">,
-            clubId: clubId as Id<"clubs">,
           }),
         "Report wasn’t sent",
       );
@@ -284,7 +289,8 @@ export function ClubChatScreen({
       showToast({ title: "Add at least two poll choices", tone: "warning" });
       return;
     }
-    if (mode.kind !== "poll" && !draft) return;
+    if (mode.kind !== "poll" && !draft && !attachments.hasReadyAttachments)
+      return;
     if (mode.kind !== "poll") {
       const lengthError = chatMessageLengthError(draft, composer.markdownDraft);
       if (lengthError) {
@@ -308,7 +314,8 @@ export function ClubChatScreen({
               ? undefined
               : composer.markdownDraft.trim() || undefined,
           parentMessageId,
-          attachments: [],
+          attachments:
+            mode.kind === "poll" ? [] : attachments.readyAttachmentUploadIds,
           pollQuestion:
             mode.kind === "poll" ? composer.pollQuestion.trim() : undefined,
           pollOptions:
@@ -324,10 +331,17 @@ export function ClubChatScreen({
         : "Message wasn’t sent",
     );
     if (completed) {
+      attachments.markAttachmentsConsumed();
       if (draftEnabled) await clearDraft();
       composer.reset();
+    } else {
+      await attachments.abandonAttachments();
     }
   }, [
+    attachments.abandonAttachments,
+    attachments.hasReadyAttachments,
+    attachments.markAttachmentsConsumed,
+    attachments.readyAttachmentUploadIds,
     canPost,
     channelId,
     clubId,
@@ -427,38 +441,43 @@ export function ClubChatScreen({
     (message: ChatMessage) => {
       setActionMessage(null);
       void flushDraft().catch(() => {});
+      void attachments.abandonAttachments();
       composer.startReply(message);
     },
-    [composer.startReply, flushDraft],
+    [attachments.abandonAttachments, composer.startReply, flushDraft],
   );
 
   const startEdit = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
       void flushDraft().catch(() => {});
+      void attachments.abandonAttachments();
       composer.startEdit(message);
     },
-    [composer.startEdit, flushDraft],
+    [attachments.abandonAttachments, composer.startEdit, flushDraft],
   );
 
   const startReport = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
       void flushDraft().catch(() => {});
+      void attachments.abandonAttachments();
       composer.startReport(message);
     },
-    [composer.startReport, flushDraft],
+    [attachments.abandonAttachments, composer.startReport, flushDraft],
   );
 
   const resetComposer = useCallback(() => {
     void flushDraft().catch(() => {});
+    void attachments.abandonAttachments();
     composer.reset();
-  }, [composer.reset, flushDraft]);
+  }, [attachments.abandonAttachments, composer.reset, flushDraft]);
 
   const startPoll = useCallback(() => {
     void flushDraft().catch(() => {});
+    void attachments.abandonAttachments();
     composer.startPoll();
-  }, [composer.startPoll, flushDraft]);
+  }, [attachments.abandonAttachments, composer.startPoll, flushDraft]);
 
   const openThread = useCallback(
     (message: ChatMessage) => {
@@ -469,18 +488,9 @@ export function ClubChatScreen({
     [channelId, clubId],
   );
 
-  const openAttachment = useCallback(
-    (attachment: ChatAttachment) => {
-      Linking.openURL(attachment.fileUrl).catch((error) =>
-        showToast({
-          title: "Attachment couldn’t be opened",
-          body: errorMessage(error),
-          tone: "warning",
-        }),
-      );
-    },
-    [showToast],
-  );
+  const openAttachment = useCallback((attachment: ChatAttachment) => {
+    setViewedAttachment(attachment);
+  }, []);
 
   return (
     <SafeAreaView
@@ -550,10 +560,21 @@ export function ClubChatScreen({
                 channelName={channel?.name}
                 threadMode={!!threadRootId}
                 canCreatePoll={canManage}
+                attachments={attachments.items}
+                attachmentPickerBusy={attachments.pickerBusy}
+                canPickAttachments={attachments.canPickAttachments}
+                hasReadyAttachments={attachments.hasReadyAttachments}
+                attachmentSubmissionBlocked={
+                  attachments.attachmentSubmissionBlocked
+                }
                 suggestions={mentionSuggestions}
                 inputNativeID={CHAT_INPUT_NATIVE_ID}
                 onLayout={handleComposerLayout}
                 onReset={resetComposer}
+                onPickAttachments={() => void attachments.pickAttachments()}
+                onRemoveAttachment={(localId) =>
+                  void attachments.removeAttachment(localId)
+                }
                 onStartPoll={startPoll}
                 onSubmit={() => void submitComposer()}
               />
@@ -575,6 +596,10 @@ export function ClubChatScreen({
         onDelete={confirmDelete}
         onTogglePin={handleTogglePin}
         onToggleReaction={handleToggleReaction}
+      />
+      <AttachmentViewer
+        attachment={viewedAttachment}
+        onClose={() => setViewedAttachment(null)}
       />
     </SafeAreaView>
   );
