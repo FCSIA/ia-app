@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { ClubContext } from "./access";
 import { canPostInChannel, canReadChannel } from "./access";
+import { toChannelViewerState } from "./serialize";
 
 const clubId = "club" as Id<"clubs">;
 const userId = "user" as Id<"users">;
@@ -73,5 +74,35 @@ describe("club channel access", () => {
     expect(
       canPostInChannel(readonlyChannel, clubContext({ isAdmin: true }), userId),
     ).toBe(true);
+  });
+
+  test("serialized permissions match posting enforcement for ordinary members", () => {
+    expect(
+      toChannelViewerState(channel("PUBLIC", []), clubContext({}), userId),
+    ).toEqual({ viewerCanRead: true, viewerCanPost: true });
+
+    expect(
+      toChannelViewerState(
+        channel("PRIVATE", [{ userId }]),
+        clubContext({}),
+        userId,
+      ),
+    ).toEqual({ viewerCanRead: true, viewerCanPost: true });
+
+    expect(
+      toChannelViewerState(
+        channel("PRIVATE", [{ userId: otherUserId }]),
+        clubContext({}),
+        userId,
+      ),
+    ).toEqual({ viewerCanRead: false, viewerCanPost: false });
+
+    expect(
+      toChannelViewerState(
+        channel("MEMBER_READONLY", []),
+        clubContext({}),
+        userId,
+      ),
+    ).toEqual({ viewerCanRead: true, viewerCanPost: false });
   });
 });
