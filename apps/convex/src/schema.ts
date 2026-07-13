@@ -503,6 +503,7 @@ export const schema = defineSchema({
     pinnedAt: v.optional(v.number()),
     pollQuestion: v.optional(v.string()),
     pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
+    deletedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

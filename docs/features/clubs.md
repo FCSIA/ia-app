@@ -74,13 +74,23 @@ user, built-in, and custom-tag mentions against that readable audience;
 only a message id and reason from clients, then derive the club and author after
 checking channel access.
 
+Deleting a channel message immediately removes its body, rich content, poll,
+pin, attachments, and reactions from reads. A deleted root remains as a
+content-free tombstone while replies still reference it, so an existing thread
+does not become structurally orphaned. A bounded scheduled cleanup removes
+attachment storage objects and all message-owned relation rows; leaf messages
+and empty tombstones are then removed entirely. Deleted messages cannot be
+edited, reacted to, pinned, reported, or used as the parent of a new reply.
+
 ## Side Effects
 
 Club management and channel changes create audit rows where implemented.
 Channel attachment uploads use Convex storage. A finalized upload becomes a
 short-lived, user-owned stage; posting consumes that stage, rechecks storage
 metadata, and derives the download URL server-side. Unused stages expire after
-one hour and can also be discarded explicitly by the uploader.
+one hour and can also be discarded explicitly by the uploader. Message deletion
+cleans the consumed attachment rows and their owned storage objects; upload
+stages are not retained as message relationships.
 
 ## Known Limits
 

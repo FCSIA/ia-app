@@ -180,6 +180,7 @@ export const submitClubChannelMessage = mutation({
     const user = await getCurrentAppUser(ctx);
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new ConvexError("Message not found");
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
     const channel = await ctx.db.get(message.channelId);
     if (!channel) throw new ConvexError("Message not found");
     const context = await getViewerContext(ctx, channel.clubId, user);

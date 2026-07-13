@@ -30,6 +30,9 @@
   access the club workspace.
 - Channel reads/writes/reactions/polls now validate channel access, parent
   message channel ownership, and poll option membership.
+- Channel message deletion now erases content immediately, retains roots only
+  while they anchor replies, and removes attachments/storage plus related
+  reactions, mentions, and poll votes in bounded scheduled batches.
 - General events require an event-manager role; club events require admin,
   sponsor, or club leader authority.
 - Calendar creation no longer lets regular users create non-personal calendar
@@ -90,8 +93,6 @@
   accounts, universal-link domain files, reviewer credentials on a demo
   deployment, physical iOS/Android push validation, screenshot capture, and
   TestFlight/Play internal-track builds. See `apps/mobile/STORE_READY.md`.
-- Channel delete is still a direct row delete and does not cascade related
-  messages/reactions/memberships.
 - Announcement feed still has pagination/read-amplification room for improvement.
 - `bodyRich` and poll option payloads are still `v.any()` shaped data.
 - Web still has a localStorage-backed user cache that may need a privacy pass.

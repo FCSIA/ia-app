@@ -296,7 +296,8 @@ function MessageRow({
   compact?: boolean;
 }) {
   const isAuthor = message.author._id === currentUserId;
-  const isEdited = message.updatedAt !== message.createdAt;
+  const isDeleted = message.isDeleted;
+  const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
 
   return (
     <div
@@ -337,7 +338,9 @@ function MessageRow({
           ) : null}
         </div>
 
-        {isEditing ? (
+        {isDeleted ? (
+          <p className="mt-1 text-sm italic text-muted-foreground">Message deleted</p>
+        ) : isEditing ? (
           <div className="mt-2" />
         ) : (
           <>
@@ -349,79 +352,81 @@ function MessageRow({
 
         {!isEditing && (
           <>
-            {message.reactions.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {message.reactions.map((reaction) => (
-                  <Button
-                    key={`${message._id}-${reaction.emoji}`}
-                    variant="tertiary"
-                    size="sm"
-                    className={cn(
-                      'h-6 gap-1 px-2 text-xs',
-                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                    )}
-                    disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
-                    onClick={() => {
-                      if (isChannelReaction(reaction.emoji)) {
-                        onToggleReaction(message._id, reaction.emoji);
-                      }
-                    }}
-                  >
-                    <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
-                    {reaction.count}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
+            {!isDeleted ? (
+              <>
+                {message.reactions.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {message.reactions.map((reaction) => (
+                      <Button
+                        key={`${message._id}-${reaction.emoji}`}
+                        variant="tertiary"
+                        size="sm"
+                        className={cn(
+                          'h-6 gap-1 px-2 text-xs',
+                          reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+                        )}
+                        disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+                        onClick={() => {
+                          if (isChannelReaction(reaction.emoji)) {
+                            onToggleReaction(message._id, reaction.emoji);
+                          }
+                        }}
+                      >
+                        <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
+                        {reaction.count}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
 
-            <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {QUICK_REACTIONS.map((reaction) => (
-                <Button
-                  key={`${message._id}-${reaction.value}-quick`}
-                  variant="ghost"
-                  size="sm"
-                  className="size-6 p-0 text-sm"
-                  disabled={isReactionPending}
-                  aria-label={reaction.name}
-                  onClick={() => onToggleReaction(message._id, reaction.value)}
-                >
-                  {reaction.label}
-                </Button>
-              ))}
-              {!compact ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onOpenThread(message.threadRootId)}
-                >
-                  <Reply className="size-3" />
-                  Reply
-                </Button>
-              ) : null}
-              {isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onStartEdit(message._id)}
-                >
-                  <Pencil className="size-3" />
-                  Edit
-                </Button>
-              )}
-              {!isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
-                  onClick={() => onReport?.(message._id)}
-                >
-                  <Flag className="size-3" />
-                  Report
-                </Button>
-              )}
-              {(isAuthor || canModerate) && (
+                <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {QUICK_REACTIONS.map((reaction) => (
+                    <Button
+                      key={`${message._id}-${reaction.value}-quick`}
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 p-0 text-sm"
+                      disabled={isReactionPending}
+                      aria-label={reaction.name}
+                      onClick={() => onToggleReaction(message._id, reaction.value)}
+                    >
+                      {reaction.label}
+                    </Button>
+                  ))}
+                  {!compact ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onOpenThread(message.threadRootId)}
+                    >
+                      <Reply className="size-3" />
+                      Reply
+                    </Button>
+                  ) : null}
+                  {isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onStartEdit(message._id)}
+                    >
+                      <Pencil className="size-3" />
+                      Edit
+                    </Button>
+                  )}
+                  {!isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
+                      onClick={() => onReport?.(message._id)}
+                    >
+                      <Flag className="size-3" />
+                      Report
+                    </Button>
+                  )}
+                  {(isAuthor || canModerate) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -439,13 +444,12 @@ function MessageRow({
                       <AlertDialogTitle>Delete Message?</AlertDialogTitle>
                       <AlertDialogDescription asChild>
                         <div className="text-sm text-muted-foreground">
-                          This will remove the message for everyone in the channel.
+                          This removes the message content for everyone in the channel.
                           <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
                             <AlertTriangle className="size-5 shrink-0 text-amber-500" />
                             <div className="text-xs">
-                              <strong>Note:</strong> While the message will be hidden from the UI,
-                              all message activity is still logged and visible to school administrators
-                              in the audit panel.
+                              <strong>Note:</strong> The deletion is logged for school administrators.
+                              If the message has replies, a content-free placeholder keeps the thread intact.
                             </div>
                           </div>
                         </div>
@@ -462,8 +466,8 @@ function MessageRow({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
-              {canModerate && !compact ? (
+                  )}
+                  {canModerate && !compact ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -474,8 +478,10 @@ function MessageRow({
                   {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
                   {message.isPinned ? 'Unpin' : 'Pin'}
                 </Button>
-              ) : null}
-            </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {!compact && message.replyCount > 0 ? (
               <button
@@ -799,7 +805,7 @@ export default function ClubChannelPage({
       </div>
 
       <div className="border-t p-3">
-        {canPost ? (
+        {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             resetKey={replyComposerResetKey}
             onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
@@ -809,6 +815,10 @@ export default function ClubChannelPage({
             submitLabel="Reply"
             canCreatePoll={canModerateChannel}
           />
+        ) : selectedThread.isDeleted ? (
+          <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+            Replies are closed because the original message was deleted.
+          </div>
         ) : (
           <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
             {getClubChannelVisibilityLabel(channel.visibility)} channel. Only club leaders, sponsors,

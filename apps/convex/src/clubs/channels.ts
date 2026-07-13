@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { internal } from "../_generated/api";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
@@ -41,6 +42,8 @@ import {
   assertCanMentionEveryone,
   boundedPortableMentionTokens,
 } from "./channelMentions";
+import { logAuditEvent } from "../audit/_lib";
+import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -339,6 +342,9 @@ export const postMessage = mutation({
       if (parent.parentMessageId) {
         throw new ConvexError("Replies must target a root message");
       }
+      if (parent.deletedAt) {
+        throw new ConvexError("Cannot reply to a deleted message");
+      }
     }
 
     const channelAudienceIds = await channelAudience(ctx, channel);
@@ -487,6 +493,8 @@ type SerializedClubMessage = {
     }>;
     totalVotes: number;
   } | null;
+  isDeleted: boolean;
+  deletedAt: string | null;
 };
 
 async function serializeMessage(
@@ -498,11 +506,16 @@ async function serializeMessage(
   if (!message) return null;
   const author = await ctx.db.get(message.authorId);
   if (!author) return null;
+  const isDeleted = !!message.deletedAt;
 
-  const reactions = await ctx.db
-    .query("clubChannelMessageReactions")
-    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
-    .collect();
+  const reactions = isDeleted
+    ? []
+    : await ctx.db
+        .query("clubChannelMessageReactions")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .collect();
   const reactionMap = new Map<
     string,
     { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
@@ -521,10 +534,14 @@ async function serializeMessage(
     reactionMap.set(reaction.emoji, entry);
   }
 
-  const attachments = await ctx.db
-    .query("clubChannelMessageAttachments")
-    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
-    .collect();
+  const attachments = isDeleted
+    ? []
+    : await ctx.db
+        .query("clubChannelMessageAttachments")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .collect();
 
   const replies = await ctx.db
     .query("clubChannelMessages")
@@ -540,7 +557,7 @@ async function serializeMessage(
   ).filter((r): r is SerializedClubMessage => !!r);
 
   let poll: SerializedClubMessage["poll"] = null;
-  if (message.pollQuestion && Array.isArray(message.pollOptions)) {
+  if (!isDeleted && message.pollQuestion && Array.isArray(message.pollOptions)) {
     const options = message.pollOptions as Array<{ id: string; label: string }>;
     const votes = await ctx.db
       .query("clubChannelMessagePollVotes")
@@ -570,7 +587,18 @@ async function serializeMessage(
 
   return {
     ...message,
-    pinnedAt: message.pinnedAt ? new Date(message.pinnedAt).toISOString() : null,
+    body: isDeleted ? "" : message.body,
+    bodyMarkdown: isDeleted ? undefined : message.bodyMarkdown,
+    bodyRich: isDeleted ? undefined : message.bodyRich,
+    isPinned: isDeleted ? false : message.isPinned,
+    pinnedAt:
+      !isDeleted && message.pinnedAt
+        ? new Date(message.pinnedAt).toISOString()
+        : null,
+    isDeleted,
+    deletedAt: message.deletedAt
+      ? new Date(message.deletedAt).toISOString()
+      : null,
     createdAt: new Date(message.createdAt).toISOString(),
     updatedAt: new Date(message.updatedAt).toISOString(),
     threadRootId: message.parentMessageId ?? message._id,
@@ -595,12 +623,17 @@ async function serializeMessageSummary(
 ) {
   const author = await ctx.db.get(message.authorId);
   if (!author) return null;
+  const isDeleted = !!message.deletedAt;
 
-  const reactionRows = await ctx.db
-    .query("clubChannelMessageReactions")
-    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
-    .order("desc")
-    .take(MAX_SUMMARY_REACTION_ROWS + 1);
+  const reactionRows = isDeleted
+    ? []
+    : await ctx.db
+        .query("clubChannelMessageReactions")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .order("desc")
+        .take(MAX_SUMMARY_REACTION_ROWS + 1);
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
   const reactionMap = new Map<
     string,
@@ -618,18 +651,22 @@ async function serializeMessageSummary(
     reactionMap.set(reaction.emoji, entry);
   }
 
-  const attachmentRowsNewest = await ctx.db
-    .query("clubChannelMessageAttachments")
-    .withIndex("by_messageId_and_createdAt", (q) => q.eq("messageId", message._id))
-    .order("desc")
-    .take(MAX_SUMMARY_ATTACHMENTS + 1);
+  const attachmentRowsNewest = isDeleted
+    ? []
+    : await ctx.db
+        .query("clubChannelMessageAttachments")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .order("desc")
+        .take(MAX_SUMMARY_ATTACHMENTS + 1);
   const attachmentsTruncated = attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
   const attachments = chronologicalFromNewest(
     attachmentRowsNewest.slice(0, MAX_SUMMARY_ATTACHMENTS),
   );
 
   let poll: (NonNullable<SerializedClubMessage["poll"]> & { votesTruncated?: boolean }) | null = null;
-  if (message.pollQuestion && Array.isArray(message.pollOptions)) {
+  if (!isDeleted && message.pollQuestion && Array.isArray(message.pollOptions)) {
     const options = message.pollOptions as Array<{ id: string; label: string }>;
     const voteRows = await ctx.db
       .query("clubChannelMessagePollVotes")
@@ -670,7 +707,18 @@ async function serializeMessageSummary(
 
   return {
     ...message,
-    pinnedAt: message.pinnedAt ? new Date(message.pinnedAt).toISOString() : null,
+    body: isDeleted ? "" : message.body,
+    bodyMarkdown: isDeleted ? undefined : message.bodyMarkdown,
+    bodyRich: isDeleted ? undefined : message.bodyRich,
+    isPinned: isDeleted ? false : message.isPinned,
+    pinnedAt:
+      !isDeleted && message.pinnedAt
+        ? new Date(message.pinnedAt).toISOString()
+        : null,
+    isDeleted,
+    deletedAt: message.deletedAt
+      ? new Date(message.deletedAt).toISOString()
+      : null,
     createdAt: new Date(message.createdAt).toISOString(),
     updatedAt: new Date(message.updatedAt).toISOString(),
     threadRootId: message.parentMessageId ?? message._id,
@@ -693,7 +741,8 @@ async function serializeMessageSummary(
     latestReplyPreview: latestReply
       ? {
           _id: latestReply._id,
-          body: latestReply.body,
+          body: latestReply.deletedAt ? "" : latestReply.body,
+          isDeleted: !!latestReply.deletedAt,
           createdAt: new Date(latestReply.createdAt).toISOString(),
         }
       : null,
@@ -904,6 +953,7 @@ export const updateMessage = mutation({
     const user = await getCurrentAppUser(ctx);
     const { message } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.authorId !== user._id) throw new ConvexError("Not authorized");
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
     const { body, bodyMarkdown } = normalizePortableMessageBody(args.body, args.bodyMarkdown);
     if (!body) throw new ConvexError("Message cannot be empty");
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
@@ -921,13 +971,48 @@ export const updateMessage = mutation({
 
 export const deleteMessage = mutation({
   args: { messageId: v.id("clubChannelMessages") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel, context } = await assertMessageAccess(
+      ctx,
+      user,
+      args.messageId,
+    );
     if (message.authorId !== user._id && !context.canManageChannels) {
       throw new ConvexError("Not authorized");
     }
-    await ctx.db.delete(args.messageId);
+    if (message.deletedAt) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.clubs.channelDeletion.cleanupDeletedMessage,
+        { messageId: message._id },
+      );
+      return null;
+    }
+
+    const deletedAt = Date.now();
+    await ctx.db.patch(
+      message._id,
+      deletedChannelMessagePatch(deletedAt),
+    );
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_CHANNEL_MESSAGE_DELETED",
+      entityType: "ClubChannelMessage",
+      entityId: message._id,
+      meta: {
+        channelId: channel._id,
+        clubId: channel.clubId,
+        parentMessageId: message.parentMessageId ?? null,
+      },
+    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.clubs.channelDeletion.cleanupDeletedMessage,
+      { messageId: message._id },
+    );
+    return null;
   },
 });
 
@@ -938,7 +1023,8 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    await assertMessageAccess(ctx, user, args.messageId);
+    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
     const existing = await ctx.db
       .query("clubChannelMessageReactions")
@@ -967,6 +1053,7 @@ export const votePoll = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
     if (!message.pollQuestion || !Array.isArray(message.pollOptions)) {
       throw new ConvexError("Poll not found");
     }
@@ -1008,6 +1095,7 @@ export const setPinned = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
     if (!context.canManageChannels && message.authorId !== user._id) {
       throw new ConvexError("Not authorized");
     }
