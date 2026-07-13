@@ -12,16 +12,18 @@ pnpm --filter cvx dev
 pnpm dev:mobile
 ```
 
-`pnpm dev:mobile` starts Expo in Expo Go mode for quick iPhone and Android
-emulator testing. Use `pnpm --filter mobile dev:client` only after installing a
-development build.
+`pnpm dev:mobile` starts Expo in Expo Go mode for compatible simulators and
+Android devices. Use `pnpm --filter mobile dev:client` after installing a
+development build. A physical iPhone whose App Store Expo Go does not support
+this project's SDK must use a development build.
 
 Expo Go can test auth, Convex data, navigation, uploads, and the main screens.
 Native push notifications are disabled in Expo Go on SDK 53+ and require a
 development build.
 
-For Expo Go on a physical iPhone or Android emulator against the same local
-Convex backend as the web app, sync mobile env for the device you are testing:
+For a development build on a physical iPhone or Expo Go on an Android emulator
+against the same Convex backend as the web app, sync mobile env for the device
+you are testing:
 
 ```powershell
 # Android Studio emulator
@@ -53,6 +55,40 @@ values. See [STORE_READY.md](./STORE_READY.md).
 
 The Convex auth server trusts `ia-app://` and Expo development origins. Mobile
 sign-in uses the same school unique ID and password flow as the web app.
+
+### Personal Team iPhone build
+
+Apple Personal Teams cannot sign the Push Notifications or Associated Domains
+entitlements used by the school release. The opt-in personal build mode removes
+only those iOS entitlements, leaves Android and ordinary school/EAS builds
+unchanged, and reports remote push as unavailable in the app.
+
+Use a developer-specific bundle identifier rather than the school-owned
+`org.fcsia.app`. For example, from the repository root:
+
+```bash
+zsh -c '
+  export PATH="/usr/bin:$PATH"
+  export EXPO_IOS_PERSONAL_TEAM=1
+  export IOS_BUNDLE_IDENTIFIER=is.sreyas.innovationacademy.dev
+
+  pnpm --filter mobile exec expo prebuild --platform ios --clean --no-install
+  cd apps/mobile/ios
+  pod install
+  cd ../../..
+  pnpm --filter mobile exec expo run:ios --device --no-install
+'
+```
+
+The `/usr/bin` prefix makes Expo's precompiled-module inspection use macOS BSD
+tar instead of GNU tar from the Nix CocoaPods closure. After the app is
+installed, restart Metro with `pnpm --filter mobile dev:client`; a native rebuild
+is only needed after native dependency or app-config changes.
+
+This build can validate the app on a real iPhone but cannot validate APNs token
+registration, remote iOS delivery, or universal links. Keep those checks for a
+development build signed by the school Apple Developer team. Android push
+configuration is unaffected.
 
 ## Navigation
 

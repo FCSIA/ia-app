@@ -61,6 +61,10 @@
   colors, dev-only design-system gallery, offline cached dashboard/schedule/
   pass state, notification deep-link routing, native push device/test-push
   validation in settings, and Maestro smoke flows.
+- Mobile config now supports opt-in `EXPO_IOS_PERSONAL_TEAM=1` builds that omit
+  paid-team-only iOS push and Associated Domains entitlements, use a
+  developer-supplied bundle identifier, and leave Android/school builds
+  unchanged. The app explains that remote push is unavailable in this mode.
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env

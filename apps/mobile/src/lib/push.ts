@@ -9,6 +9,8 @@ import { openAppHref } from "./deep-links";
 const TOKEN_STORAGE_KEY = "ia_expo_push_token";
 const EXPO_GO_PUSH_MESSAGE =
   "Native push requires a development build on Expo SDK 53+; Expo Go can still test the rest of the app.";
+const PUSH_NOT_CONFIGURED_MESSAGE =
+  "Remote push is disabled in this Personal Team development build.";
 
 function isExpoGo() {
   return Constants.appOwnership === "expo";
@@ -29,6 +31,9 @@ async function loadNotifications() {
 }
 
 export function nativePushUnavailableReason() {
+  if (Constants.expoConfig?.extra?.nativePushEnabled === false) {
+    return PUSH_NOT_CONFIGURED_MESSAGE;
+  }
   if (isExpoGo()) return EXPO_GO_PUSH_MESSAGE;
   if (!Device.isDevice) return "Physical device required.";
   return null;

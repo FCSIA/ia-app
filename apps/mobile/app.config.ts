@@ -1,9 +1,30 @@
 import type { ExpoConfig } from "expo/config";
+import { type ConfigPlugin, withEntitlementsPlist } from "expo/config-plugins";
 
 const easProjectId = process.env.EAS_PROJECT_ID;
 const expoOwner = process.env.EXPO_ACCOUNT_OWNER;
+const personalTeamBuild = process.env.EXPO_IOS_PERSONAL_TEAM === "1";
 const universalLinkHost =
   process.env.EXPO_PUBLIC_UNIVERSAL_LINK_HOST ?? "app.innovationacademy.fcsia.org";
+
+const notificationsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
+  "expo-notifications",
+  {
+    icon: "./assets/notification-icon.png",
+    color: "#f95b01",
+    defaultChannel: "default",
+  },
+];
+
+// Config mods execute from the end of the plugin chain toward the beginning.
+// Register this before expo-notifications so it removes the entitlement after
+// the notifications plugin adds it.
+const withoutPaidAppleCapabilities: ConfigPlugin = (config) =>
+  withEntitlementsPlist(config, (entitlementsConfig) => {
+    delete entitlementsConfig.modResults["aps-environment"];
+    delete entitlementsConfig.modResults["com.apple.developer.associated-domains"];
+    return entitlementsConfig;
+  });
 
 const config: ExpoConfig = {
   name: "Innovation Academy",
@@ -27,7 +48,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? "org.fcsia.app",
     buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
-    associatedDomains: [`applinks:${universalLinkHost}`],
+    associatedDomains: personalTeamBuild ? undefined : [`applinks:${universalLinkHost}`],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSFaceIDUsageDescription:
@@ -65,14 +86,8 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-secure-store",
-    [
-      "expo-notifications",
-      {
-        icon: "./assets/notification-icon.png",
-        color: "#f95b01",
-        defaultChannel: "default",
-      },
-    ],
+    ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
+    notificationsPlugin,
   ],
   updates: easProjectId
     ? {
@@ -89,6 +104,7 @@ const config: ExpoConfig = {
   extra: {
     appUrl: `https://${universalLinkHost}`,
     eas: easProjectId ? { projectId: easProjectId } : undefined,
+    nativePushEnabled: !personalTeamBuild,
   },
 };
 
