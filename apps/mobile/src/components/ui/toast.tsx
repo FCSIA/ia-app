@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -20,6 +21,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { color } = useTheme();
+  const insets = useSafeAreaInsets();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((toast: Omit<Toast, "id">) => {
@@ -41,7 +43,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           position: "absolute",
           left: spacing.lg,
           right: spacing.lg,
-          top: spacing.xl,
+          top: insets.top + spacing.sm,
           gap: spacing.sm,
         }}
       >

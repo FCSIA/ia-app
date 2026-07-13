@@ -24,10 +24,9 @@ export function SegmentedControl<T extends string>({
   const { color } = useTheme();
   const width = useSharedValue(0);
   const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
-  const segmentWidth = segments.length ? width.value / segments.length : 0;
   const thumbStyle = useAnimatedStyle(() => ({
-    width: segments.length ? width.value / segments.length : 0,
-    transform: [{ translateX: withSpring(index * segmentWidth, spring) }],
+    width: segments.length ? (width.value - 8) / segments.length : 0,
+    transform: [{ translateX: withSpring(index * ((width.value - 8) / segments.length), spring) }],
   }));
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export function SegmentedControl<T extends string>({
     <View
       onLayout={onLayout}
       style={{
-        minHeight: 42,
+        minHeight: 48,
         borderRadius: radii.pill,
         padding: 4,
         backgroundColor: color("secondary"),
@@ -69,11 +68,13 @@ export function SegmentedControl<T extends string>({
         return (
           <PressableScale
             key={segment.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
             haptic
             onPress={() => onChange(segment.value)}
             style={{
               flex: 1,
-              minHeight: 34,
+              minHeight: 40,
               alignItems: "center",
               justifyContent: "center",
               paddingHorizontal: spacing.xs,

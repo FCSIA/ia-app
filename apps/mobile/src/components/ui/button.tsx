@@ -23,7 +23,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const { color } = useTheme();
-  const height = size === "sm" ? 34 : size === "lg" ? 46 : 40;
+  const height = size === "sm" ? 44 : size === "lg" ? 50 : 46;
   const disabledStyle = disabled || loading;
   const backgroundColor =
     variant === "primary"

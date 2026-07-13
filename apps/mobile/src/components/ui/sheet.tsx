@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -16,6 +17,7 @@ type SheetProps = {
 export function Sheet({ open, onClose, title, children, snapPoints }: SheetProps) {
   const ref = useRef<BottomSheetModal>(null);
   const { color } = useTheme();
+  const insets = useSafeAreaInsets();
   const points = useMemo(() => snapPoints ?? ["55%", "86%"], [snapPoints]);
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export function Sheet({ open, onClose, title, children, snapPoints }: SheetProps
     <BottomSheetModal
       ref={ref}
       snapPoints={points}
+      bottomInset={insets.bottom}
       onDismiss={onClose}
       backgroundStyle={{ backgroundColor: color("card"), borderRadius: radii.xl }}
       handleIndicatorStyle={{ backgroundColor: color("mutedForeground") }}

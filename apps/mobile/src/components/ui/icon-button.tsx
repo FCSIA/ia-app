@@ -15,7 +15,7 @@ type IconButtonProps = {
 
 export function IconButton({ icon: Icon, label, onPress, size = "md", variant = "default", disabled }: IconButtonProps) {
   const { color } = useTheme();
-  const dimension = size === "sm" ? 36 : 42;
+  const dimension = size === "sm" ? 44 : 46;
   const backgroundColor =
     variant === "primary" ? color("primary") : variant === "ghost" ? "transparent" : color("secondary");
   const iconColor =

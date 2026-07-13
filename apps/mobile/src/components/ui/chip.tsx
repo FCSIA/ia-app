@@ -17,7 +17,7 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
       style={{
-        minHeight: 34,
+        minHeight: 44,
         borderRadius: radii.pill,
         paddingHorizontal: spacing.md,
         alignItems: "center",

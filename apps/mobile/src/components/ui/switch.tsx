@@ -36,10 +36,12 @@ export function Switch({ value, onValueChange, disabled }: SwitchProps) {
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}
+      hitSlop={4}
       onPress={() => {
         void tapMedium();
         onValueChange(!value);
       }}
+      style={{ minHeight: 44, justifyContent: "center" }}
     >
       <Animated.View
         style={[

@@ -16,6 +16,8 @@ type ScreenProps = ScrollViewProps & {
 export function Screen({ title, subtitle, header, children, contentContainerStyle, ...props }: ScreenProps) {
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
+  const isTabRoute = segments[0] === "(tabs)";
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }} edges={["top", "left", "right"]}>
       <ScrollView
@@ -23,7 +25,7 @@ export function Screen({ title, subtitle, header, children, contentContainerStyl
           {
             paddingHorizontal: spacing.lg,
             paddingTop: Math.max(spacing.lg, insets.top ? spacing.md : spacing.lg),
-            paddingBottom: 96,
+            paddingBottom: isTabRoute ? 112 : Math.max(spacing.xl, insets.bottom + spacing.lg),
             gap: spacing.md
           },
           contentContainerStyle

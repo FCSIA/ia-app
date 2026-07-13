@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, type PressableProps } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
 import { spring } from "@/lib/motion";
 import { tapLight } from "@/lib/haptics";
 
@@ -13,6 +13,7 @@ type PressableScaleProps = PressableProps & {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function PressableScale({ children, haptic = true, scaleTo = 0.97, onPressIn, onPressOut, onPress, style, ...props }: PressableScaleProps) {
+  const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -22,11 +23,11 @@ export function PressableScale({ children, haptic = true, scaleTo = 0.97, onPres
     <AnimatedPressable
       accessibilityRole={props.accessibilityRole ?? "button"}
       onPressIn={(event) => {
-        scale.value = withSpring(scaleTo, spring);
+        scale.value = reduceMotion ? 1 : withSpring(scaleTo, spring);
         onPressIn?.(event);
       }}
       onPressOut={(event) => {
-        scale.value = withSpring(1, spring);
+        scale.value = reduceMotion ? 1 : withSpring(1, spring);
         onPressOut?.(event);
       }}
       onPress={(event) => {
