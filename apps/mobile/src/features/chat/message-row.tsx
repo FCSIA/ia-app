@@ -4,12 +4,13 @@ import { Image } from "expo-image";
 import { format } from "date-fns";
 import {
   Check,
+  Clock3,
   FileText,
   MessageCircle,
-  MoreHorizontal,
   Pin,
+  RotateCcw,
 } from "lucide-react-native";
-import { Avatar, IconButton, PressableScale, Txt } from "@/components/ui";
+import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { QUICK_REACTIONS } from "./quick-reactions";
@@ -32,6 +33,7 @@ type MessageRowProps = {
   onToggleReaction: (message: ChatMessage, emoji: string) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
   onOpenAttachment?: (attachment: ChatAttachment) => void;
+  onRetry?: (message: ChatMessage) => void;
 };
 
 export const ChatMessageRow = memo(function ChatMessageRow({
@@ -44,6 +46,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   onToggleReaction,
   onVotePoll,
   onOpenAttachment,
+  onRetry,
 }: MessageRowProps) {
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
@@ -51,6 +54,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
     message.reactions?.filter((reaction) => reaction.count > 0) ?? [];
   const hasThread = message.hasReplies ?? message.replyCount > 0;
   const replyCountIsExact = message.replyCountIsExact !== false;
+  const isSending = message.deliveryState === "sending";
+  const failedToSend = message.deliveryState === "failed";
 
   return (
     <Pressable
@@ -59,73 +64,89 @@ export const ChatMessageRow = memo(function ChatMessageRow({
       onLongPress={() => onLongPress(message)}
       style={({ pressed }) => ({
         width: "100%",
-        maxWidth: 760,
-        alignSelf: "center",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: spacing.sm,
-        paddingHorizontal: spacing.md,
-        paddingTop: groupedWithPrevious ? 3 : spacing.md,
-        paddingBottom:
-          message.replyCount && showReplyPreview
-            ? spacing.sm
-            : groupedWithPrevious
-              ? 3
-              : spacing.sm,
         backgroundColor: message.isPinned
           ? color("secondary")
           : pressed
             ? color("muted")
             : "transparent",
-        borderLeftWidth: message.isPinned ? 2 : 0,
-        borderLeftColor: message.isPinned ? color("primary") : "transparent",
+        opacity: isSending ? 0.7 : 1,
       })}
     >
       <View
         style={{
-          width: 36,
-          alignItems: "center",
-          paddingTop: groupedWithPrevious ? 1 : 0,
+          width: "100%",
+          maxWidth: 760,
+          alignSelf: "center",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: spacing.sm,
+          paddingLeft: message.isPinned ? spacing.sm : spacing.md,
+          paddingRight: spacing.md,
+          paddingTop: groupedWithPrevious ? 2 : spacing.sm,
+          paddingBottom:
+            message.replyCount && showReplyPreview
+              ? spacing.xs
+              : groupedWithPrevious
+                ? 2
+                : spacing.xs,
+          borderLeftWidth: message.isPinned ? 3 : 0,
+          borderLeftColor: message.isPinned
+            ? color("primary")
+            : "transparent",
         }}
       >
-        {groupedWithPrevious ? (
-          <Txt
-            variant="caption"
-            tone="muted"
-            style={{ fontSize: 10, opacity: 0 }}
-          >
-            {format(new Date(message.createdAt), "h:mm")}
-          </Txt>
-        ) : (
-          <Avatar uri={message.author?.avatarUrl} name={authorName} size={34} />
-        )}
-      </View>
+        <View
+          style={{
+            width: 38,
+            flexShrink: 0,
+            alignItems: "center",
+          }}
+        >
+          {groupedWithPrevious ? null : (
+            <Avatar
+              uri={message.author?.avatarUrl}
+              name={authorName}
+              size={36}
+            />
+          )}
+        </View>
 
-      <View style={{ minWidth: 0, flex: 1, gap: spacing.xs }}>
-        {!groupedWithPrevious ? (
-          <View
-            style={{
-              minHeight: 20,
-              flexDirection: "row",
-              alignItems: "baseline",
-              gap: spacing.sm,
-            }}
-          >
-            <Txt
-              variant="label"
-              numberOfLines={1}
-              style={{ maxWidth: "72%", fontWeight: "800" }}
+        <View style={{ minWidth: 0, flex: 1, gap: 2 }}>
+          {!groupedWithPrevious ? (
+            <View
+              style={{
+                minHeight: 20,
+                flexDirection: "row",
+                alignItems: "baseline",
+                gap: spacing.xs,
+              }}
             >
-              {authorName}
-            </Txt>
-            <Txt variant="caption" tone="muted">
-              {format(new Date(message.createdAt), "h:mm a")}
-            </Txt>
-            {message.isPinned ? (
-              <Pin size={12} color={color("primary")} fill={color("primary")} />
-            ) : null}
-          </View>
-        ) : null}
+              <Txt
+                variant="label"
+                numberOfLines={1}
+                style={{ minWidth: 0, flexShrink: 1, fontWeight: "800" }}
+              >
+                {authorName}
+              </Txt>
+              <Txt
+                variant="caption"
+                tone="muted"
+                style={{ flexShrink: 0 }}
+              >
+                {format(new Date(message.createdAt), "h:mm a")}
+              </Txt>
+              {message.isPinned ? (
+                <Pin
+                  size={12}
+                  color={color("primary")}
+                  fill={color("primary")}
+                />
+              ) : null}
+              {isSending ? (
+                <Clock3 size={12} color={color("mutedForeground")} />
+              ) : null}
+            </View>
+          ) : null}
 
         {message.body || message.bodyMarkdown ? (
           <RichMessageBody
@@ -303,7 +324,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   onPress={() => onToggleReaction(message, reaction.emoji)}
                   style={{
                     minWidth: 38,
-                    minHeight: 34,
+                    minHeight: 44,
                     borderRadius: radii.pill,
                     borderWidth: 1,
                     borderColor: reaction.reactedByCurrentUser
@@ -361,7 +382,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             haptic={false}
             onPress={() => onOpenThread(message)}
             style={{
-              minHeight: 40,
+              minHeight: 44,
               maxWidth: 520,
               flexDirection: "row",
               alignItems: "center",
@@ -389,15 +410,31 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             ) : null}
           </PressableScale>
         ) : null}
+        {failedToSend ? (
+          <PressableScale
+            accessibilityLabel="Retry sending message"
+            haptic={false}
+            onPress={() => onRetry?.(message)}
+            style={{
+              minHeight: 44,
+              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.xs,
+            }}
+          >
+            <RotateCcw size={15} color={color("destructive")} />
+            <Txt
+              variant="caption"
+              tone="destructive"
+              style={{ fontWeight: "700" }}
+            >
+              Not sent · Tap to retry
+            </Txt>
+          </PressableScale>
+        ) : null}
+        </View>
       </View>
-
-      <IconButton
-        icon={MoreHorizontal}
-        label={`Message actions for ${authorName}`}
-        size="sm"
-        variant="ghost"
-        onPress={() => onLongPress(message)}
-      />
     </Pressable>
   );
 });

@@ -19,7 +19,6 @@ import {
   type FlashListRef,
   type ListRenderItemInfo,
 } from "@shopify/flash-list";
-import { format } from "date-fns";
 import { ArrowDown, MessageCircle } from "lucide-react-native";
 import { KeyboardChatScrollView } from "react-native-keyboard-controller";
 import type { SharedValue } from "react-native-reanimated";
@@ -27,17 +26,11 @@ import { Empty, PressableScale, Skeleton, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { ChatMessageRow } from "./message-row";
+import {
+  buildTimelineRows,
+  type TimelineRow,
+} from "./timeline-layout";
 import type { ChatAttachment, ChatMessage } from "./types";
-
-type TimelineRow =
-  | { type: "date"; key: string; label: string }
-  | { type: "thread-divider"; key: string; count: number }
-  | {
-      type: "message";
-      key: string;
-      message: ChatMessage;
-      groupedWithPrevious: boolean;
-    };
 
 type ChatTimelineProps = {
   messages?: ChatMessage[];
@@ -108,7 +101,7 @@ export function ChatTimeline({
   const [isAtLiveEdge, setIsAtLiveEdge] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
   const rows = useMemo(
-    () => buildTimeline(messages ?? [], threadRoot),
+    () => buildTimelineRows(messages ?? [], threadRoot),
     [messages, threadRoot],
   );
   const previousNewestMessageKey = useRef<string | undefined>(undefined);
@@ -188,13 +181,14 @@ export function ChatTimeline({
       <View style={{ flex: 1 }}>
         <FlashList
           ref={listRef}
+          style={{ flex: 1, width: "100%" }}
           data={rows}
           renderItem={renderItem}
           keyExtractor={timelineKeyExtractor}
           getItemType={timelineItemType}
           renderScrollComponent={ClubChatScrollView}
           contentContainerStyle={{
-            paddingTop: spacing.sm,
+            paddingTop: spacing.xs,
             paddingBottom: spacing.lg,
           }}
           keyboardShouldPersistTaps="handled"
@@ -266,99 +260,28 @@ function timelineItemType(row: TimelineRow) {
   return row.type;
 }
 
-function buildTimeline(
-  messages: ChatMessage[],
-  threadRoot?: ChatMessage | null,
-): TimelineRow[] {
-  const sortedMessages = [...messages].sort(
-    (first, second) =>
-      new Date(first.createdAt).getTime() -
-      new Date(second.createdAt).getTime(),
-  );
-  const source = threadRoot ? [threadRoot, ...sortedMessages] : sortedMessages;
-  const rows: TimelineRow[] = [];
-  let previousMessage: ChatMessage | null = null;
-  let previousDateKey: string | null = null;
-
-  source.forEach((message, index) => {
-    const date = new Date(message.createdAt);
-    const dateKey = format(date, "yyyy-MM-dd");
-
-    if (threadRoot && index === 1) {
-      rows.push({
-        type: "thread-divider",
-        key: `thread:${threadRoot._id}`,
-        count: sortedMessages.length,
-      });
-      previousMessage = null;
-    }
-
-    if (dateKey !== previousDateKey) {
-      rows.push({
-        type: "date",
-        key: `date:${dateKey}`,
-        label: formatDateLabel(date),
-      });
-      previousMessage = null;
-      previousDateKey = dateKey;
-    }
-
-    const groupedWithPrevious = previousMessage
-      ? previousMessage.authorId === message.authorId &&
-        dateKey === format(new Date(previousMessage.createdAt), "yyyy-MM-dd") &&
-        date.getTime() - new Date(previousMessage.createdAt).getTime() <=
-          5 * 60 * 1000
-      : false;
-    rows.push({
-      type: "message",
-      key: `message:${message._id}`,
-      message,
-      groupedWithPrevious,
-    });
-    previousMessage = message;
-  });
-
-  if (threadRoot && sortedMessages.length === 0) {
-    rows.push({
-      type: "thread-divider",
-      key: `thread:${threadRoot._id}`,
-      count: 0,
-    });
-  }
-  return rows;
-}
-
-function formatDateLabel(date: Date) {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const key = format(date, "yyyy-MM-dd");
-  if (key === format(today, "yyyy-MM-dd")) return "Today";
-  if (key === format(yesterday, "yyyy-MM-dd")) return "Yesterday";
-  return format(
-    date,
-    date.getFullYear() === today.getFullYear() ? "EEEE, MMM d" : "MMM d, yyyy",
-  );
-}
-
 const DateMarker = memo(function DateMarker({ label }: { label: string }) {
   const { color } = useTheme();
   return (
     <View
       accessibilityRole="header"
       style={{
-        minHeight: 34,
+        minHeight: 38,
         maxWidth: 760,
         width: "100%",
         alignSelf: "center",
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: spacing.lg,
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.sm,
       }}
     >
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />
-      <Txt variant="caption" tone="muted" style={{ fontWeight: "700" }}>
+      <Txt
+        variant="caption"
+        tone="muted"
+        style={{ fontSize: 11, fontWeight: "700" }}
+      >
         {label}
       </Txt>
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />

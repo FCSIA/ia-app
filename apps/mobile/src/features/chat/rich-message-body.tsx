@@ -93,7 +93,10 @@ export function RichMessageBody({ body, bodyMarkdown }: RichMessageBodyProps) {
       markdown={markdown}
       flavor="github"
       selectable
+      allowFontScaling
+      maxFontSizeMultiplier={1.6}
       enableLinkPreview={false}
+      containerStyle={{ width: "100%", alignSelf: "stretch" }}
       md4cFlags={{
         underline: true,
         superscript: false,
