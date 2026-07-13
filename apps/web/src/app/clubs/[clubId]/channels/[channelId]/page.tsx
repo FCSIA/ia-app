@@ -4,10 +4,6 @@ import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import Image from 'next/image';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import {
   BarChart3,
   FileText,
@@ -50,7 +46,6 @@ import type {
   ClubDetail,
 } from '@/components/clubs/types';
 
-type ClubChannelMessageRichBody = NonNullable<ClubChannelMessage['bodyRich']>;
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 type ChatAttachmentUploadResponse = {
   fileName: string;
@@ -69,7 +64,10 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { MentionBody } from '@/components/clubs/mention-body';
+import {
+  MentionBody,
+  type ClubChannelMessageRichBody,
+} from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,6 +90,7 @@ const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👀'];
 
 type ComposerSubmitArgs = {
   body: string;
+  bodyMarkdown: string;
   bodyRich: ClubChannelMessageRichBody | null;
   parentMessageId?: string;
   files: File[];
@@ -183,28 +182,19 @@ function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAtt
   );
 }
 
-function MarkdownMessage({ body }: { body: string }) {
-  return (
-    <div className="prose prose-sm dark:prose-invert mt-1 max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {body}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
 function MessageBody({ message }: { message: ClubChannelMessage }) {
-  if (Array.isArray(message.bodyRich) && message.bodyRich.length > 0) {
-    return (
-      <MentionBody
-        body={message.body}
-        bodyRich={message.bodyRich}
-        className="mt-1"
-      />
-    );
-  }
-
-  return message.body ? <MarkdownMessage body={message.body} /> : null;
+  return (
+    <MentionBody
+      body={message.body}
+      bodyMarkdown={message.bodyMarkdown}
+      bodyRich={
+        Array.isArray(message.bodyRich)
+          ? (message.bodyRich as ClubChannelMessageRichBody)
+          : null
+      }
+      className="mt-1"
+    />
+  );
 }
 
 function PollCard({
@@ -525,6 +515,7 @@ export default function ClubChannelPage({
 
   const submitMessage = async ({
     body,
+    bodyMarkdown,
     bodyRich,
     parentMessageId,
     files,
@@ -550,6 +541,7 @@ export default function ClubChannelPage({
       await postMessage({
         channelId,
         body: body.trim(),
+        bodyMarkdown: bodyMarkdown.trim() || undefined,
         bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
         parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
         pollQuestion,
@@ -713,10 +705,19 @@ export default function ClubChannelPage({
               submitLabel="Save Changes"
               isPending={false}
               resetKey={0}
-              onSubmit={({ body, bodyRich }) =>
+              canAttach={false}
+              initialBody={message.body}
+              initialBodyMarkdown={message.bodyMarkdown}
+              initialBodyRich={
+                Array.isArray(message.bodyRich)
+                  ? (message.bodyRich as ClubChannelMessageRichBody)
+                  : null
+              }
+              onSubmit={({ body, bodyMarkdown, bodyRich }) =>
                 void updateMessage({
                   messageId: message._id,
                   body,
+                  bodyMarkdown: bodyMarkdown.trim() || undefined,
                   bodyRich: bodyRich ?? undefined,
                 }).then(() => setEditingMessageId(null))
               }

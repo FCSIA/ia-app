@@ -495,6 +495,7 @@ export const schema = defineSchema({
     authorId: v.id("users"),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
     body: v.string(),
+    bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
     isPinned: v.boolean(),
     pinnedAt: v.optional(v.number()),

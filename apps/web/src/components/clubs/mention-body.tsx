@@ -2,12 +2,15 @@
 
 import { Fragment, type ReactNode } from 'react';
 import type { Value } from 'platejs';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
 export type ClubChannelMessageRichBody = Value;
 
 type MentionBodyProps = {
   body: string;
+  bodyMarkdown?: string | null;
   bodyRich?: ClubChannelMessageRichBody | null;
   className?: string;
 };
@@ -55,6 +58,38 @@ function serializeNodePlainText(node: RichTextNode): string {
 
 export function serializeClubChannelMessagePlainText(value: Value): string {
   return (value as RichTextNode[]).map(serializeNodePlainText).join('\n');
+}
+
+function escapeMarkdownText(text: string) {
+  return text.replace(/([\\`*_[\]~])/g, '\\$1');
+}
+
+function serializeNodeMarkdown(node: RichTextNode): string {
+  if (isRichTextLeaf(node)) {
+    let content = escapeMarkdownText(node.text);
+    if (!content) return content;
+    if (node.bold) content = `**${content}**`;
+    if (node.italic) content = `_${content}_`;
+    if (node.underline) content = `__${content}__`;
+    return content;
+  }
+
+  if (node.type === 'mention' && typeof node.value === 'string') {
+    return `[@${node.value}](user://${node.value})`;
+  }
+
+  const content = (node.children ?? []).map(serializeNodeMarkdown).join('');
+  if (node.type === 'blockquote') {
+    return content
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
+  }
+  return content;
+}
+
+export function serializeClubChannelMessageMarkdown(value: Value): string {
+  return (value as RichTextNode[]).map(serializeNodeMarkdown).join('\n\n').trim();
 }
 
 export function deserializeClubChannelMessageBody(body: string): Value {
@@ -156,7 +191,62 @@ function renderBlockNode(node: RichTextNode, index: number) {
   );
 }
 
-export function MentionBody({ body, bodyRich, className }: MentionBodyProps) {
+function allowedMessageHref(href?: string) {
+  if (!href) return null;
+  try {
+    const url = new URL(href);
+    return ['http:', 'https:', 'user:'].includes(url.protocol) ? href : null;
+  } catch {
+    return null;
+  }
+}
+
+function messageUrlTransform(url: string) {
+  return allowedMessageHref(url) ?? '';
+}
+
+export function MentionBody({ body, bodyMarkdown, bodyRich, className }: MentionBodyProps) {
+  if (bodyMarkdown?.trim()) {
+    return (
+      <div
+        className={cn(
+          'prose prose-sm dark:prose-invert max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5',
+          className,
+        )}
+      >
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          urlTransform={messageUrlTransform}
+          components={{
+            img: () => null,
+            a: ({ href, children }) => {
+              const safeHref = allowedMessageHref(href);
+              if (!safeHref || safeHref.startsWith('user://')) {
+                return (
+                  <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-medium text-primary">
+                    {children}
+                  </span>
+                );
+              }
+              return (
+                <a href={safeHref} target="_blank" rel="noreferrer noopener">
+                  {children}
+                </a>
+              );
+            },
+            strong: ({ node, children }) => {
+              const start = node?.position?.start.offset;
+              const marker = start === undefined ? null : bodyMarkdown.slice(start, start + 2);
+              return marker === '__' ? <u>{children}</u> : <strong>{children}</strong>;
+            },
+          }}
+        >
+          {bodyMarkdown}
+        </ReactMarkdown>
+      </div>
+    );
+  }
+
   const value = normalizeClubChannelMessageBody(bodyRich, body) as RichTextNode[];
   const hasContent = serializeClubChannelMessagePlainText(value as Value).trim().length > 0;
 

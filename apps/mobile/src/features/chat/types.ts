@@ -39,6 +39,7 @@ export type ChatMessage = {
   authorId: string;
   parentMessageId?: string;
   body: string;
+  bodyMarkdown?: string;
   bodyRich?: unknown;
   author?: ChatUser | null;
   attachments?: ChatAttachment[];

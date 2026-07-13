@@ -13,6 +13,11 @@ import {
   boundedChannelMessagePageSize,
   chronologicalFromNewest,
 } from "./channelPagination";
+import {
+  hasInlineMarkdownImage,
+  normalizePortableMessageBody,
+  portableMentionTokens,
+} from "./channelMarkdown";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -136,14 +141,11 @@ const pollOptionInputValidator = v.object({
   label: v.string(),
 });
 
-function mentionTokens(body: string) {
-  return Array.from(new Set(body.match(/@[A-Za-z0-9_-]+/g)?.map((token) => token.slice(1)) ?? []));
-}
-
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
     body: v.string(),
+    bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
     attachments: v.optional(v.array(attachmentInputValidator)),
@@ -163,7 +165,13 @@ export const postMessage = mutation({
       throw new ConvexError("Cannot post in this channel");
     }
 
-    const trimmedBody = args.body.trim();
+    const { body: trimmedBody, bodyMarkdown } = normalizePortableMessageBody(
+      args.body,
+      args.bodyMarkdown,
+    );
+    if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
+      throw new ConvexError("Inline images are not supported; attach the image instead");
+    }
     if (!trimmedBody && !(args.attachments?.length) && !args.pollQuestion) {
       throw new ConvexError("Message cannot be empty");
     }
@@ -180,6 +188,7 @@ export const postMessage = mutation({
       authorId: user._id,
       parentMessageId: args.parentMessageId,
       body: trimmedBody,
+      bodyMarkdown,
       bodyRich: args.bodyRich,
       pollQuestion: args.pollQuestion,
       pollOptions: args.pollOptions,
@@ -231,7 +240,7 @@ export const postMessage = mutation({
       }
     }
 
-    const tokens = mentionTokens(trimmedBody);
+    const tokens = portableMentionTokens(trimmedBody, bodyMarkdown);
     if (tokens.includes("all")) {
       await deliverMany(ctx, allAudience, {
         category: "CLUB_CHANNEL_TAG_MENTION",
@@ -277,6 +286,7 @@ type SerializedClubMessage = {
   authorId: Id<"users">;
   parentMessageId?: Id<"clubChannelMessages">;
   body: string;
+  bodyMarkdown?: string;
   bodyRich?: unknown;
   isPinned: boolean;
   pinnedAt: string | null;
@@ -723,14 +733,21 @@ export const updateMessage = mutation({
   args: {
     messageId: v.id("clubChannelMessages"),
     body: v.string(),
+    bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { message } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.authorId !== user._id) throw new ConvexError("Not authorized");
+    const { body, bodyMarkdown } = normalizePortableMessageBody(args.body, args.bodyMarkdown);
+    if (!body) throw new ConvexError("Message cannot be empty");
+    if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
+      throw new ConvexError("Inline images are not supported; attach the image instead");
+    }
     await ctx.db.patch(args.messageId, {
-      body: args.body,
+      body,
+      bodyMarkdown,
       bodyRich: args.bodyRich,
       updatedAt: Date.now(),
     });

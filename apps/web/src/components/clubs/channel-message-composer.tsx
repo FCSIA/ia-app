@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
   createEmptyClubChannelMessageValue,
+  deserializeClubChannelMessageBody,
+  serializeClubChannelMessageMarkdown,
   serializeClubChannelMessagePlainText,
   type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
@@ -35,13 +37,18 @@ type ChannelMessageComposerProps = {
   submitLabel: string;
   isPending: boolean;
   resetKey: number;
+  initialBody?: string;
+  initialBodyMarkdown?: string | null;
+  initialBodyRich?: ClubChannelMessageRichBody | null;
   onSubmit: (args: {
     body: string;
+    bodyMarkdown: string;
     bodyRich: ClubChannelMessageRichBody | null;
     files: File[];
     pollQuestion?: string;
     pollOptions?: Array<{ id: string; label: string }>;
   }) => void;
+  canAttach?: boolean;
   canCreatePoll?: boolean;
 };
 
@@ -92,7 +99,11 @@ export function ChannelMessageComposer({
   submitLabel,
   isPending,
   resetKey,
+  initialBody = '',
+  initialBodyMarkdown,
+  initialBodyRich,
   onSubmit,
+  canAttach = true,
   canCreatePoll = false,
 }: ChannelMessageComposerProps) {
   const editor = usePlateEditor(
@@ -104,7 +115,9 @@ export function ChannelMessageComposer({
         MentionPlugin.withComponent(MentionElement),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
-      value: createEmptyClubChannelMessageValue(),
+      value:
+        initialBodyRich ??
+        deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
     },
     [],
   );
@@ -115,17 +128,25 @@ export function ChannelMessageComposer({
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
+  const [isMarkdownSource, setIsMarkdownSource] = useState(
+    !initialBodyRich && !!initialBodyMarkdown?.trim(),
+  );
+  const [markdownSource, setMarkdownSource] = useState(initialBodyMarkdown ?? '');
 
   useEffect(() => {
-    const emptyValue = createEmptyClubChannelMessageValue();
+    const nextValue =
+      initialBodyRich ??
+      deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody);
     setFiles([]);
-    setPlainText('');
-    setRichValue(emptyValue);
+    setPlainText(serializeClubChannelMessagePlainText(nextValue));
+    setRichValue(nextValue);
+    setIsMarkdownSource(!initialBodyRich && !!initialBodyMarkdown?.trim());
+    setMarkdownSource(initialBodyMarkdown ?? '');
     setPollOpen(false);
     setPollQuestion('');
     setPollOptions(['', '']);
-    editor.tf.setValue(emptyValue);
-  }, [editor, resetKey]);
+    editor.tf.setValue(nextValue);
+  }, [editor, initialBody, initialBodyMarkdown, initialBodyRich, resetKey]);
 
   const mentionables = useMemo<MentionableItem[]>(
     () =>
@@ -143,14 +164,18 @@ export function ChannelMessageComposer({
     .map((label, index) => ({ id: `option-${index + 1}`, label: label.trim() }))
     .filter((option) => option.label);
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
-  const canSend = !isPending && (plainText.trim().length > 0 || files.length > 0 || !!hasPoll);
+  const currentBody = isMarkdownSource ? markdownSource : plainText;
+  const canSend = !isPending && (currentBody.trim().length > 0 || files.length > 0 || !!hasPoll);
 
   const handleSubmit = () => {
     if (!canSend) return;
 
     onSubmit({
-      body: plainText,
-      bodyRich: plainText.trim()
+      body: currentBody,
+      bodyMarkdown: isMarkdownSource
+        ? markdownSource.trim()
+        : serializeClubChannelMessageMarkdown(richValue),
+      bodyRich: plainText.trim() && !isMarkdownSource
         ? (richValue as unknown as ClubChannelMessageRichBody)
         : null,
       files,
@@ -171,6 +196,13 @@ export function ChannelMessageComposer({
     }
   };
 
+  const handleMarkdownSourceKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <Plate
       editor={editor}
@@ -183,34 +215,44 @@ export function ChannelMessageComposer({
       <MentionablesProvider items={mentionables}>
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm">
           <div className="flex flex-wrap items-center gap-1 border-b px-2 py-2">
-            <MarkButton icon={Bold} label="Bold" mark="bold" />
-            <MarkButton icon={Italic} label="Italic" mark="italic" />
-            <MarkButton icon={Underline} label="Underline" mark="underline" />
-            <Separator orientation="vertical" className="mx-1 h-5" />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-muted-foreground"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                editor.tf.insertText('@');
-                editor.tf.focus();
-              }}
-            >
-              <AtSign className="size-4" />
-              Mention
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-muted-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="size-4" />
-              Attach
-            </Button>
+            {isMarkdownSource ? (
+              <span className="px-1 text-xs font-medium text-muted-foreground">
+                Markdown source · ⌘/Ctrl+Enter to save
+              </span>
+            ) : (
+              <>
+                <MarkButton icon={Bold} label="Bold" mark="bold" />
+                <MarkButton icon={Italic} label="Italic" mark="italic" />
+                <MarkButton icon={Underline} label="Underline" mark="underline" />
+                <Separator orientation="vertical" className="mx-1 h-5" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2 text-muted-foreground"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    editor.tf.insertText('@');
+                    editor.tf.focus();
+                  }}
+                >
+                  <AtSign className="size-4" />
+                  Mention
+                </Button>
+              </>
+            )}
+            {canAttach ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-muted-foreground"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="size-4" />
+                Attach
+              </Button>
+            ) : null}
             {canCreatePoll ? (
               <Button
                 type="button"
@@ -226,9 +268,11 @@ export function ChannelMessageComposer({
                 Poll
               </Button>
             ) : null}
-            <div className="ml-auto text-[11px] text-muted-foreground">
-              Type @ to search mentions
-            </div>
+            {!isMarkdownSource ? (
+              <div className="ml-auto text-[11px] text-muted-foreground">
+                Type @ to search mentions
+              </div>
+            ) : null}
           </div>
 
           {files.length > 0 ? (
@@ -290,14 +334,24 @@ export function ChannelMessageComposer({
 
           <div className="flex items-end gap-3 px-3 py-3">
             <div className="flex-1 min-w-0">
-              <PlateContent
-                placeholder={placeholder}
-                onKeyDown={handleKeyDown}
-                className={cn(
-                  'max-h-64 min-h-[40px] overflow-y-auto py-2 text-sm leading-6 outline-none',
-                  '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-2',
-                )}
-              />
+              {isMarkdownSource ? (
+                <textarea
+                  aria-label="Markdown message source"
+                  value={markdownSource}
+                  onChange={(event) => setMarkdownSource(event.target.value)}
+                  onKeyDown={handleMarkdownSourceKeyDown}
+                  className="max-h-64 min-h-24 w-full resize-y bg-transparent py-2 font-mono text-sm leading-6 outline-none placeholder:text-muted-foreground"
+                />
+              ) : (
+                <PlateContent
+                  placeholder={placeholder}
+                  onKeyDown={handleKeyDown}
+                  className={cn(
+                    'max-h-64 min-h-[40px] overflow-y-auto py-2 text-sm leading-6 outline-none',
+                    '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-2',
+                  )}
+                />
+              )}
             </div>
 
             <Button
@@ -314,22 +368,24 @@ export function ChannelMessageComposer({
         </div>
       </MentionablesProvider>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const nextFiles = Array.from(event.target.files ?? []);
-          if (nextFiles.length > 0) {
-            setFiles((current) => [
-              ...current,
-              ...nextFiles.filter((file) => !current.some((entry) => entry.name === file.name)),
-            ]);
-          }
-          event.currentTarget.value = '';
-        }}
-      />
+      {canAttach ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const nextFiles = Array.from(event.target.files ?? []);
+            if (nextFiles.length > 0) {
+              setFiles((current) => [
+                ...current,
+                ...nextFiles.filter((file) => !current.some((entry) => entry.name === file.name)),
+              ]);
+            }
+            event.currentTarget.value = '';
+          }}
+        />
+      ) : null}
     </Plate>
   );
 }
