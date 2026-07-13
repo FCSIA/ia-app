@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { LogBox, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppErrorBoundary } from "@/components/error-boundary";
 import { AppLifecycle } from "@/components/app-lifecycle";
@@ -21,19 +22,25 @@ function RootNavigator() {
   const { color } = useTheme();
   const backgroundColor = color("background");
   const foregroundColor = color("foreground");
-  const backgroundLightness = Number.parseFloat(backgroundColor.match(/([\d.]+)%\)$/)?.[1] ?? "0") / 100;
-  const barStyle = backgroundLightness > 0.55 ? "dark-content" : "light-content";
+  const backgroundLightness =
+    Number.parseFloat(backgroundColor.match(/([\d.]+)%\)$/)?.[1] ?? "0") / 100;
+  const barStyle =
+    backgroundLightness > 0.55 ? "dark-content" : "light-content";
 
   return (
     <>
-      <StatusBar barStyle={barStyle} backgroundColor={backgroundColor} translucent={false} />
+      <StatusBar
+        barStyle={barStyle}
+        backgroundColor={backgroundColor}
+        translucent={false}
+      />
       <Stack
         screenOptions={{
           headerShown: false,
           headerStyle: { backgroundColor },
           headerTintColor: foregroundColor,
           headerShadowVisible: false,
-          contentStyle: { backgroundColor }
+          contentStyle: { backgroundColor },
         }}
       />
     </>
@@ -47,20 +54,25 @@ export default function Layout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-          <ThemeProvider>
-            <BottomSheetModalProvider>
-              <ToastProvider>
-                <AppErrorBoundary>
-                  <AppLifecycle />
-                  <RootNavigator />
-                </AppErrorBoundary>
-              </ToastProvider>
-            </BottomSheetModalProvider>
-          </ThemeProvider>
-        </ConvexBetterAuthProvider>
-      </SafeAreaProvider>
+      <KeyboardProvider
+        statusBarTranslucent={false}
+        navigationBarTranslucent={false}
+      >
+        <SafeAreaProvider>
+          <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+            <ThemeProvider>
+              <BottomSheetModalProvider>
+                <ToastProvider>
+                  <AppErrorBoundary>
+                    <AppLifecycle />
+                    <RootNavigator />
+                  </AppErrorBoundary>
+                </ToastProvider>
+              </BottomSheetModalProvider>
+            </ThemeProvider>
+          </ConvexBetterAuthProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

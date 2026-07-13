@@ -1,8 +1,27 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Platform, View, type ViewToken } from "react-native";
-import { FlashList, type FlashListRef, type ListRenderItemInfo } from "@shopify/flash-list";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ActivityIndicator,
+  View,
+  type ScrollViewProps,
+  type ViewToken,
+} from "react-native";
+import {
+  FlashList,
+  type FlashListRef,
+  type ListRenderItemInfo,
+} from "@shopify/flash-list";
 import { format } from "date-fns";
 import { ArrowDown, MessageCircle } from "lucide-react-native";
+import { KeyboardChatScrollView } from "react-native-keyboard-controller";
+import type { SharedValue } from "react-native-reanimated";
 import { Empty, PressableScale, Skeleton, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -12,7 +31,12 @@ import type { ChatAttachment, ChatMessage } from "./types";
 type TimelineRow =
   | { type: "date"; key: string; label: string }
   | { type: "thread-divider"; key: string; count: number }
-  | { type: "message"; key: string; message: ChatMessage; groupedWithPrevious: boolean };
+  | {
+      type: "message";
+      key: string;
+      message: ChatMessage;
+      groupedWithPrevious: boolean;
+    };
 
 type ChatTimelineProps = {
   messages?: ChatMessage[];
@@ -21,6 +45,8 @@ type ChatTimelineProps = {
   canPost?: boolean;
   canLoadOlder?: boolean;
   isLoadingOlder?: boolean;
+  keyboardOffset: number;
+  extraContentPadding: SharedValue<number>;
   pendingAction?: string | null;
   onLoadOlder?: () => void;
   onLongPress: (message: ChatMessage) => void;
@@ -37,6 +63,8 @@ export function ChatTimeline({
   canPost,
   canLoadOlder = false,
   isLoadingOlder = false,
+  keyboardOffset,
+  extraContentPadding,
   pendingAction,
   onLoadOlder,
   onLongPress,
@@ -49,25 +77,54 @@ export function ChatTimeline({
   const listRef = useRef<FlashListRef<TimelineRow>>(null);
   const [isAtLiveEdge, setIsAtLiveEdge] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
-  const rows = useMemo(() => buildTimeline(messages ?? [], threadRoot), [messages, threadRoot]);
+  const rows = useMemo(
+    () => buildTimeline(messages ?? [], threadRoot),
+    [messages, threadRoot],
+  );
   const finalKey = rows.at(-1)?.key;
   const finalKeyRef = useRef(finalKey);
   const previousNewestMessageKey = useRef<string | undefined>(undefined);
+  const renderScrollComponent = useMemo(
+    () =>
+      forwardRef<
+        React.ElementRef<typeof KeyboardChatScrollView>,
+        ScrollViewProps
+      >(function ClubChatScrollView(props, ref) {
+        return (
+          <KeyboardChatScrollView
+            ref={ref}
+            {...props}
+            automaticallyAdjustContentInsets={false}
+            contentInsetAdjustmentBehavior="never"
+            extraContentPadding={extraContentPadding}
+            keyboardDismissMode="interactive"
+            keyboardLiftBehavior="whenAtEnd"
+            offset={keyboardOffset}
+          />
+        );
+      }),
+    [extraContentPadding, keyboardOffset],
+  );
 
   useEffect(() => {
     finalKeyRef.current = finalKey;
   }, [finalKey]);
 
   useEffect(() => {
-    const newestMessageKey = [...rows].reverse().find((row) => row.type === "message")?.key;
+    const newestMessageKey = [...rows]
+      .reverse()
+      .find((row) => row.type === "message")?.key;
     const previousNewestKey = previousNewestMessageKey.current;
     if (previousNewestKey && !isAtLiveEdge) {
-      const previousIndex = rows.findIndex((row) => row.key === previousNewestKey);
+      const previousIndex = rows.findIndex(
+        (row) => row.key === previousNewestKey,
+      );
       if (previousIndex >= 0) {
         const addedAtLiveEdge = rows
           .slice(previousIndex + 1)
           .filter((row) => row.type === "message").length;
-        if (addedAtLiveEdge) setUnseenCount((current) => current + addedAtLiveEdge);
+        if (addedAtLiveEdge)
+          setUnseenCount((current) => current + addedAtLiveEdge);
       }
     }
     previousNewestMessageKey.current = newestMessageKey;
@@ -77,7 +134,9 @@ export function ChatTimeline({
     ({ item }: ListRenderItemInfo<TimelineRow>) => {
       if (item.type === "date") return <DateMarker label={item.label} />;
       if (item.type === "thread-divider") {
-        return <ThreadDivider count={item.count} hasMore={threadHasMoreReplies} />;
+        return (
+          <ThreadDivider count={item.count} hasMore={threadHasMoreReplies} />
+        );
       }
       return (
         <ChatMessageRow
@@ -105,13 +164,19 @@ export function ChatTimeline({
     ],
   );
 
-  const handleViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
-    const currentFinalKey = finalKeyRef.current;
-    const atLiveEdge =
-      !!currentFinalKey && viewableItems.some((token) => token.item?.key === currentFinalKey && token.isViewable);
-    setIsAtLiveEdge(atLiveEdge);
-    if (atLiveEdge) setUnseenCount(0);
-  }, []);
+  const handleViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken<TimelineRow>[] }) => {
+      const currentFinalKey = finalKeyRef.current;
+      const atLiveEdge =
+        !!currentFinalKey &&
+        viewableItems.some(
+          (token) => token.item?.key === currentFinalKey && token.isViewable,
+        );
+      setIsAtLiveEdge(atLiveEdge);
+      if (atLiveEdge) setUnseenCount(0);
+    },
+    [],
+  );
 
   const scrollToLiveEdge = useCallback(() => {
     listRef.current?.scrollToEnd({ animated: true });
@@ -128,29 +193,42 @@ export function ChatTimeline({
         renderItem={renderItem}
         keyExtractor={timelineKeyExtractor}
         getItemType={timelineItemType}
-        contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
+        renderScrollComponent={renderScrollComponent}
+        contentContainerStyle={{
+          paddingTop: spacing.sm,
+          paddingBottom: spacing.lg,
+        }}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         maintainVisibleContentPosition={{
           autoscrollToBottomThreshold: 0.2,
           startRenderingFromBottom: true,
         }}
         onViewableItemsChanged={handleViewableItemsChanged}
-        onStartReached={canLoadOlder && !isLoadingOlder ? onLoadOlder : undefined}
+        onStartReached={
+          canLoadOlder && !isLoadingOlder ? onLoadOlder : undefined
+        }
         onStartReachedThreshold={0.2}
         ListHeaderComponent={isLoadingOlder ? <OlderMessagesLoader /> : null}
         ListEmptyComponent={
           <Empty
             icon={MessageCircle}
             title="No messages yet"
-            body={canPost === false ? "This channel is read-only." : "Start the conversation when you’re ready."}
+            body={
+              canPost === false
+                ? "This channel is read-only."
+                : "Start the conversation when you’re ready."
+            }
           />
         }
       />
 
       {!isAtLiveEdge && rows.length ? (
         <PressableScale
-          accessibilityLabel={unseenCount ? `Jump to ${unseenCount} new messages` : "Jump to latest message"}
+          accessibilityLabel={
+            unseenCount
+              ? `Jump to ${unseenCount} new messages`
+              : "Jump to latest message"
+          }
           haptic={false}
           onPress={scrollToLiveEdge}
           style={{
@@ -189,9 +267,14 @@ function timelineItemType(row: TimelineRow) {
   return row.type;
 }
 
-function buildTimeline(messages: ChatMessage[], threadRoot?: ChatMessage | null): TimelineRow[] {
+function buildTimeline(
+  messages: ChatMessage[],
+  threadRoot?: ChatMessage | null,
+): TimelineRow[] {
   const sortedMessages = [...messages].sort(
-    (first, second) => new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime(),
+    (first, second) =>
+      new Date(first.createdAt).getTime() -
+      new Date(second.createdAt).getTime(),
   );
   const source = threadRoot ? [threadRoot, ...sortedMessages] : sortedMessages;
   const rows: TimelineRow[] = [];
@@ -203,12 +286,20 @@ function buildTimeline(messages: ChatMessage[], threadRoot?: ChatMessage | null)
     const dateKey = format(date, "yyyy-MM-dd");
 
     if (threadRoot && index === 1) {
-      rows.push({ type: "thread-divider", key: `thread:${threadRoot._id}`, count: sortedMessages.length });
+      rows.push({
+        type: "thread-divider",
+        key: `thread:${threadRoot._id}`,
+        count: sortedMessages.length,
+      });
       previousMessage = null;
     }
 
     if (dateKey !== previousDateKey) {
-      rows.push({ type: "date", key: `date:${dateKey}`, label: formatDateLabel(date) });
+      rows.push({
+        type: "date",
+        key: `date:${dateKey}`,
+        label: formatDateLabel(date),
+      });
       previousMessage = null;
       previousDateKey = dateKey;
     }
@@ -216,14 +307,24 @@ function buildTimeline(messages: ChatMessage[], threadRoot?: ChatMessage | null)
     const groupedWithPrevious = previousMessage
       ? previousMessage.authorId === message.authorId &&
         dateKey === format(new Date(previousMessage.createdAt), "yyyy-MM-dd") &&
-        date.getTime() - new Date(previousMessage.createdAt).getTime() <= 5 * 60 * 1000
+        date.getTime() - new Date(previousMessage.createdAt).getTime() <=
+          5 * 60 * 1000
       : false;
-    rows.push({ type: "message", key: `message:${message._id}`, message, groupedWithPrevious });
+    rows.push({
+      type: "message",
+      key: `message:${message._id}`,
+      message,
+      groupedWithPrevious,
+    });
     previousMessage = message;
   });
 
   if (threadRoot && sortedMessages.length === 0) {
-    rows.push({ type: "thread-divider", key: `thread:${threadRoot._id}`, count: 0 });
+    rows.push({
+      type: "thread-divider",
+      key: `thread:${threadRoot._id}`,
+      count: 0,
+    });
   }
   return rows;
 }
@@ -235,7 +336,10 @@ function formatDateLabel(date: Date) {
   const key = format(date, "yyyy-MM-dd");
   if (key === format(today, "yyyy-MM-dd")) return "Today";
   if (key === format(yesterday, "yyyy-MM-dd")) return "Yesterday";
-  return format(date, date.getFullYear() === today.getFullYear() ? "EEEE, MMM d" : "MMM d, yyyy");
+  return format(
+    date,
+    date.getFullYear() === today.getFullYear() ? "EEEE, MMM d" : "MMM d, yyyy",
+  );
 }
 
 const DateMarker = memo(function DateMarker({ label }: { label: string }) {
@@ -263,7 +367,13 @@ const DateMarker = memo(function DateMarker({ label }: { label: string }) {
   );
 });
 
-const ThreadDivider = memo(function ThreadDivider({ count, hasMore }: { count: number; hasMore: boolean }) {
+const ThreadDivider = memo(function ThreadDivider({
+  count,
+  hasMore,
+}: {
+  count: number;
+  hasMore: boolean;
+}) {
   const { color } = useTheme();
   return (
     <View
@@ -279,7 +389,9 @@ const ThreadDivider = memo(function ThreadDivider({ count, hasMore }: { count: n
       }}
     >
       <Txt variant="label" tone="muted" style={{ fontWeight: "800" }}>
-        {hasMore ? "Latest " : ""}{count}{hasMore ? "+" : ""} {count === 1 ? "reply" : "replies"}
+        {hasMore ? "Latest " : ""}
+        {count}
+        {hasMore ? "+" : ""} {count === 1 ? "reply" : "replies"}
       </Txt>
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />
     </View>
@@ -289,7 +401,9 @@ const ThreadDivider = memo(function ThreadDivider({ count, hasMore }: { count: n
 function OlderMessagesLoader() {
   const { color } = useTheme();
   return (
-    <View style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+    <View
+      style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
+    >
       <ActivityIndicator size="small" color={color("mutedForeground")} />
     </View>
   );
@@ -297,13 +411,34 @@ function OlderMessagesLoader() {
 
 function ChatTimelineSkeleton() {
   return (
-    <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, gap: spacing.lg }}>
+    <View
+      style={{
+        paddingHorizontal: spacing.md,
+        paddingTop: spacing.lg,
+        gap: spacing.lg,
+      }}
+    >
       {Array.from({ length: 5 }).map((_, index) => (
-        <View key={index} style={{ maxWidth: 760, width: "100%", alignSelf: "center", flexDirection: "row", gap: spacing.sm }}>
-          <Skeleton style={{ width: 34, height: 34, borderRadius: radii.pill }} />
+        <View
+          key={index}
+          style={{
+            maxWidth: 760,
+            width: "100%",
+            alignSelf: "center",
+            flexDirection: "row",
+            gap: spacing.sm,
+          }}
+        >
+          <Skeleton
+            style={{ width: 34, height: 34, borderRadius: radii.pill }}
+          />
           <View style={{ flex: 1, gap: spacing.sm }}>
-            <Skeleton style={{ width: index % 2 ? "32%" : "44%", height: 14 }} />
-            <Skeleton style={{ width: index % 2 ? "78%" : "92%", height: 18 }} />
+            <Skeleton
+              style={{ width: index % 2 ? "32%" : "44%", height: 14 }}
+            />
+            <Skeleton
+              style={{ width: index % 2 ? "78%" : "92%", height: 18 }}
+            />
           </View>
         </View>
       ))}

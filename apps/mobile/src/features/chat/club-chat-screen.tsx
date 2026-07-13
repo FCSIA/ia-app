@@ -1,9 +1,17 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Linking, Platform, View } from "react-native";
+import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { MessageCircle } from "lucide-react-native";
+import {
+  KeyboardGestureArea,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
+import { useSharedValue, withTiming } from "react-native-reanimated";
 import { AppBackHeader } from "@/components/screen";
 import { Empty, Txt, useToast } from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth";
@@ -14,7 +22,12 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import { ChatTimeline } from "./timeline";
-import type { ChatAttachment, ChatMessage, ChatThread, ClubChatData } from "./types";
+import type {
+  ChatAttachment,
+  ChatMessage,
+  ChatThread,
+  ClubChatData,
+} from "./types";
 import { useChatComposer } from "./use-chat-composer";
 
 type ClubChatScreenProps = {
@@ -24,13 +37,22 @@ type ClubChatScreenProps = {
 };
 
 const MESSAGE_PAGE_SIZE = 30;
+const CHAT_INPUT_NATIVE_ID = "club-chat-composer";
 
-export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScreenProps) {
+export function ClubChatScreen({
+  clubId,
+  channelId,
+  threadRootId,
+}: ClubChatScreenProps) {
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const user = useCurrentUser();
-  const { results, status: paginationStatus, loadMore } = usePaginatedQuery(
+  const {
+    results,
+    status: paginationStatus,
+    loadMore,
+  } = usePaginatedQuery(
     api.clubs.channels.getMessagePage,
     threadRootId
       ? "skip"
@@ -50,7 +72,9 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
         }
       : "skip",
   );
-  const rawClub = useQuery(api.clubs.detail.get, { clubId: clubId as Id<"clubs"> });
+  const rawClub = useQuery(api.clubs.detail.get, {
+    clubId: clubId as Id<"clubs">,
+  });
   const messages = useMemo(
     () =>
       paginationStatus === "LoadingFirstPage"
@@ -70,23 +94,58 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
   const composer = useChatComposer();
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [composerBaseHeight, setComposerBaseHeight] = useState(0);
+  const composerBaseHeightRef = useRef(0);
+  const extraContentPadding = useSharedValue(0);
   const pendingRef = useRef(false);
   const channel = club?.channels?.find((item) => item._id === channelId);
   const canPost = club === undefined ? undefined : !!channel?.viewerCanPost;
   const canManage = !!club?.viewer?.canManageChannels;
-  const threadRoot = threadRootId ? (thread === undefined ? undefined : thread?.root ?? null) : undefined;
-  const timelineMessages = threadRootId ? (thread === undefined ? undefined : thread?.replies ?? []) : messages;
+  const threadRoot = threadRootId
+    ? thread === undefined
+      ? undefined
+      : (thread?.root ?? null)
+    : undefined;
+  const timelineMessages = threadRootId
+    ? thread === undefined
+      ? undefined
+      : (thread?.replies ?? [])
+    : messages;
   const threadIsMissing = !!threadRootId && thread !== undefined && !thread;
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
   const composerPending = pendingAction === "composer";
+
+  const handleComposerLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const height = event.nativeEvent.layout.height;
+      const previousBaseHeight = composerBaseHeightRef.current;
+      const baseHeight =
+        previousBaseHeight === 0
+          ? height
+          : Math.min(previousBaseHeight, height);
+
+      if (baseHeight !== previousBaseHeight) {
+        composerBaseHeightRef.current = baseHeight;
+        setComposerBaseHeight(baseHeight);
+      }
+      extraContentPadding.value = withTiming(Math.max(0, height - baseHeight), {
+        duration: 180,
+      });
+    },
+    [extraContentPadding],
+  );
 
   const loadOlderMessages = useCallback(() => {
     if (paginationStatus === "CanLoadMore") loadMore(MESSAGE_PAGE_SIZE);
   }, [loadMore, paginationStatus]);
 
   const runPending = useCallback(
-    async (key: string, operation: () => Promise<unknown>, errorTitle: string) => {
+    async (
+      key: string,
+      operation: () => Promise<unknown>,
+      errorTitle: string,
+    ) => {
       if (pendingRef.current) return false;
       pendingRef.current = true;
       setPendingAction(key);
@@ -94,7 +153,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
         await operation();
         return true;
       } catch (error) {
-        showToast({ title: errorTitle, body: errorMessage(error), tone: "warning" });
+        showToast({
+          title: errorTitle,
+          body: errorMessage(error),
+          tone: "warning",
+        });
         return false;
       } finally {
         pendingRef.current = false;
@@ -112,7 +175,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
       if (!draft) return;
       const completed = await runPending(
         "composer",
-        () => updateMessage({ messageId: mode.target._id as Id<"clubChannelMessages">, body: draft }),
+        () =>
+          updateMessage({
+            messageId: mode.target._id as Id<"clubChannelMessages">,
+            body: draft,
+          }),
         "Message wasn’t updated",
       );
       if (completed) {
@@ -138,7 +205,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
       );
       if (completed) {
         composer.reset();
-        showToast({ title: "Report sent", body: "Moderators have been notified.", tone: "success" });
+        showToast({
+          title: "Report sent",
+          body: "Moderators have been notified.",
+          tone: "success",
+        });
       }
       return;
     }
@@ -167,13 +238,19 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
           body: draft,
           parentMessageId,
           attachments: [],
-          pollQuestion: mode.kind === "poll" ? composer.pollQuestion.trim() : undefined,
+          pollQuestion:
+            mode.kind === "poll" ? composer.pollQuestion.trim() : undefined,
           pollOptions:
             mode.kind === "poll"
-              ? pollOptions.map((label, index) => ({ id: `option-${index + 1}`, label }))
+              ? pollOptions.map((label, index) => ({
+                  id: `option-${index + 1}`,
+                  label,
+                }))
               : undefined,
         }),
-      mode.kind === "reply" || threadRootId ? "Reply wasn’t sent" : "Message wasn’t sent",
+      mode.kind === "reply" || threadRootId
+        ? "Reply wasn’t sent"
+        : "Message wasn’t sent",
     );
     if (completed) composer.reset();
   }, [
@@ -193,7 +270,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
     async (message: ChatMessage, emoji: string) => {
       await runPending(
         `reaction:${message._id}:${emoji}`,
-        () => toggleReaction({ messageId: message._id as Id<"clubChannelMessages">, emoji }),
+        () =>
+          toggleReaction({
+            messageId: message._id as Id<"clubChannelMessages">,
+            emoji,
+          }),
         "Reaction wasn’t updated",
       );
     },
@@ -204,7 +285,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
     async (message: ChatMessage, optionId: string) => {
       await runPending(
         `poll:${message._id}`,
-        () => votePoll({ messageId: message._id as Id<"clubChannelMessages">, optionId }),
+        () =>
+          votePoll({
+            messageId: message._id as Id<"clubChannelMessages">,
+            optionId,
+          }),
         "Vote wasn’t updated",
       );
     },
@@ -216,10 +301,18 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
       setActionMessage(null);
       const completed = await runPending(
         `pin:${message._id}`,
-        () => setPinned({ messageId: message._id as Id<"clubChannelMessages">, pinned: !message.isPinned }),
+        () =>
+          setPinned({
+            messageId: message._id as Id<"clubChannelMessages">,
+            pinned: !message.isPinned,
+          }),
         message.isPinned ? "Message wasn’t unpinned" : "Message wasn’t pinned",
       );
-      if (completed) showToast({ title: message.isPinned ? "Message unpinned" : "Message pinned", tone: "success" });
+      if (completed)
+        showToast({
+          title: message.isPinned ? "Message unpinned" : "Message pinned",
+          tone: "success",
+        });
     },
     [runPending, setPinned, showToast],
   );
@@ -228,7 +321,10 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
     async (message: ChatMessage) => {
       const completed = await runPending(
         `delete:${message._id}`,
-        () => deleteMessage({ messageId: message._id as Id<"clubChannelMessages"> }),
+        () =>
+          deleteMessage({
+            messageId: message._id as Id<"clubChannelMessages">,
+          }),
         "Message wasn’t deleted",
       );
       if (completed) showToast({ title: "Message deleted", tone: "success" });
@@ -241,7 +337,11 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
       setActionMessage(null);
       Alert.alert("Delete message?", "This cannot be undone.", [
         { text: "Keep message", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => void deleteSelectedMessage(message) },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => void deleteSelectedMessage(message),
+        },
       ]);
     },
     [deleteSelectedMessage],
@@ -273,7 +373,9 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
 
   const openThread = useCallback(
     (message: ChatMessage) => {
-      router.push(`/clubs/${clubId}/channels/${channelId}/threads/${message._id}` as never);
+      router.push(
+        `/clubs/${clubId}/channels/${channelId}/threads/${message._id}` as never,
+      );
     },
     [channelId, clubId],
   );
@@ -281,58 +383,91 @@ export function ClubChatScreen({ clubId, channelId, threadRootId }: ClubChatScre
   const openAttachment = useCallback(
     (attachment: ChatAttachment) => {
       Linking.openURL(attachment.fileUrl).catch((error) =>
-        showToast({ title: "Attachment couldn’t be opened", body: errorMessage(error), tone: "warning" }),
+        showToast({
+          title: "Attachment couldn’t be opened",
+          body: errorMessage(error),
+          tone: "warning",
+        }),
       );
     },
     [showToast],
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }} edges={["top", "left", "right"]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-        style={{ flex: 1, backgroundColor: color("background") }}
-      >
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: color("background") }}
+      edges={["top", "left", "right"]}
+    >
+      <View style={{ flex: 1, backgroundColor: color("background") }}>
         <ChatHeader
           title={threadRootId ? "Thread" : `#${channel?.name ?? "channel"}`}
-          description={threadRootId ? `#${channel?.name ?? "channel"}` : channel?.description ?? club?.name}
+          description={
+            threadRootId
+              ? `#${channel?.name ?? "channel"}`
+              : (channel?.description ?? club?.name)
+          }
         />
 
-        {threadIsMissing ? (
-          <View style={{ flex: 1, paddingHorizontal: spacing.lg, justifyContent: "center" }}>
-            <Empty icon={MessageCircle} title="Thread unavailable" body="The original message may have been deleted." />
-          </View>
-        ) : (
-          <ChatTimeline
-            messages={timelineMessages}
-            threadRoot={threadRoot}
-            threadHasMoreReplies={thread?.hasMoreReplies}
-            canPost={canPost}
-            canLoadOlder={canLoadOlder}
-            isLoadingOlder={isLoadingOlder}
-            pendingAction={pendingAction}
-            onLoadOlder={loadOlderMessages}
-            onLongPress={setActionMessage}
-            onOpenThread={openThread}
-            onToggleReaction={handleToggleReaction}
-            onVotePoll={handleVotePoll}
-            onOpenAttachment={openAttachment}
-          />
-        )}
+        <KeyboardGestureArea
+          enableSwipeToDismiss
+          interpolator="ios"
+          offset={composerBaseHeight}
+          style={{ flex: 1 }}
+          textInputNativeID={CHAT_INPUT_NATIVE_ID}
+        >
+          {threadIsMissing ? (
+            <View
+              style={{
+                flex: 1,
+                paddingHorizontal: spacing.lg,
+                justifyContent: "center",
+              }}
+            >
+              <Empty
+                icon={MessageCircle}
+                title="Thread unavailable"
+                body="The original message may have been deleted."
+              />
+            </View>
+          ) : (
+            <ChatTimeline
+              messages={timelineMessages}
+              threadRoot={threadRoot}
+              threadHasMoreReplies={thread?.hasMoreReplies}
+              canPost={canPost}
+              canLoadOlder={canLoadOlder}
+              isLoadingOlder={isLoadingOlder}
+              keyboardOffset={composerBaseHeight}
+              extraContentPadding={extraContentPadding}
+              pendingAction={pendingAction}
+              onLoadOlder={loadOlderMessages}
+              onLongPress={setActionMessage}
+              onOpenThread={openThread}
+              onToggleReaction={handleToggleReaction}
+              onVotePoll={handleVotePoll}
+              onOpenAttachment={openAttachment}
+            />
+          )}
 
-        {!threadIsMissing ? (
-          <ChatComposer
-            composer={composer}
-            canPost={canPost}
-            isPending={composerPending}
-            bottomInset={insets.bottom}
-            channelName={channel?.name}
-            threadMode={!!threadRootId}
-            onSubmit={() => void submitComposer()}
-          />
-        ) : null}
-      </KeyboardAvoidingView>
+          {!threadIsMissing ? (
+            <KeyboardStickyView
+              offset={{ opened: Math.max(0, insets.bottom - spacing.sm) }}
+            >
+              <ChatComposer
+                composer={composer}
+                canPost={canPost}
+                isPending={composerPending}
+                bottomInset={insets.bottom}
+                channelName={channel?.name}
+                threadMode={!!threadRootId}
+                inputNativeID={CHAT_INPUT_NATIVE_ID}
+                onLayout={handleComposerLayout}
+                onSubmit={() => void submitComposer()}
+              />
+            </KeyboardStickyView>
+          ) : null}
+        </KeyboardGestureArea>
+      </View>
 
       <MessageActionsSheet
         message={actionMessage}

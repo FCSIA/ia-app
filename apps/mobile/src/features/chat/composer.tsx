@@ -1,5 +1,12 @@
-import { View } from "react-native";
-import { BarChart3, MessageCircle, Pencil, Send, ShieldAlert, X } from "lucide-react-native";
+import { View, type LayoutChangeEvent } from "react-native";
+import {
+  BarChart3,
+  MessageCircle,
+  Pencil,
+  Send,
+  ShieldAlert,
+  X,
+} from "lucide-react-native";
 import { Button, IconButton, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -13,6 +20,8 @@ type ChatComposerProps = {
   bottomInset: number;
   channelName?: string;
   threadMode?: boolean;
+  inputNativeID?: string;
+  onLayout?: (event: LayoutChangeEvent) => void;
   onSubmit: () => void;
 };
 
@@ -23,14 +32,20 @@ export function ChatComposer({
   bottomInset,
   channelName,
   threadMode = false,
+  inputNativeID,
+  onLayout,
   onSubmit,
 }: ChatComposerProps) {
   const { color } = useTheme();
-  const requiresPostingPermission = composer.mode.kind === "message" || composer.mode.kind === "reply" || composer.mode.kind === "poll";
+  const requiresPostingPermission =
+    composer.mode.kind === "message" ||
+    composer.mode.kind === "reply" ||
+    composer.mode.kind === "poll";
   const unavailable = requiresPostingPermission && canPost !== true;
 
   return (
     <View
+      onLayout={onLayout}
       style={{
         width: "100%",
         borderTopWidth: 1,
@@ -52,18 +67,25 @@ export function ChatComposer({
         {unavailable ? (
           <View style={{ minHeight: 44, justifyContent: "center" }}>
             <Txt variant="label" tone="muted">
-              {canPost === undefined ? "Loading channel…" : "This channel is read-only."}
+              {canPost === undefined
+                ? "Loading channel…"
+                : "This channel is read-only."}
             </Txt>
           </View>
         ) : composer.mode.kind === "edit" ? (
           <>
-            <ComposerModeHeader icon={Pencil} label="Edit message" onClose={composer.reset} />
+            <ComposerModeHeader
+              icon={Pencil}
+              label="Edit message"
+              onClose={composer.reset}
+            />
             <PlainChatInput
               accessibilityLabel="Edit message"
               placeholder="Message"
               value={composer.draft}
               onChangeText={composer.setDraft}
               editable={!isPending}
+              nativeID={inputNativeID}
             />
             <Button
               title="Save changes"
@@ -75,9 +97,14 @@ export function ChatComposer({
           </>
         ) : composer.mode.kind === "report" ? (
           <>
-            <ComposerModeHeader icon={ShieldAlert} label="Report message" onClose={composer.reset} />
+            <ComposerModeHeader
+              icon={ShieldAlert}
+              label="Report message"
+              onClose={composer.reset}
+            />
             <Txt variant="caption" tone="muted">
-              Tell school moderators what needs review. The message author will not see your report.
+              Tell school moderators what needs review. The message author will
+              not see your report.
             </Txt>
             <PlainChatInput
               accessibilityLabel="Reason for report"
@@ -85,6 +112,7 @@ export function ChatComposer({
               value={composer.draft}
               onChangeText={composer.setDraft}
               editable={!isPending}
+              nativeID={inputNativeID}
             />
             <Button
               title="Send report"
@@ -96,7 +124,11 @@ export function ChatComposer({
           </>
         ) : composer.mode.kind === "poll" ? (
           <>
-            <ComposerModeHeader icon={BarChart3} label="Create a poll" onClose={composer.reset} />
+            <ComposerModeHeader
+              icon={BarChart3}
+              label="Create a poll"
+              onClose={composer.reset}
+            />
             <TextField
               accessibilityLabel="Poll question"
               placeholder="Question"
@@ -118,8 +150,15 @@ export function ChatComposer({
               value={composer.draft}
               onChangeText={composer.setDraft}
               editable={!isPending}
+              nativeID={inputNativeID}
             />
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.sm,
+              }}
+            >
               <Txt variant="caption" tone="muted" style={{ flex: 1 }}>
                 Add 2–6 choices.
               </Txt>
@@ -128,7 +167,9 @@ export function ChatComposer({
                 size="sm"
                 icon={Send}
                 loading={isPending}
-                disabled={!composer.pollQuestion.trim() || !composer.pollOptions.trim()}
+                disabled={
+                  !composer.pollQuestion.trim() || !composer.pollOptions.trim()
+                }
                 onPress={onSubmit}
               />
             </View>
@@ -143,9 +184,19 @@ export function ChatComposer({
                 onClose={composer.reset}
               />
             ) : null}
-            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-end",
+                gap: spacing.sm,
+              }}
+            >
               <PlainChatInput
-                accessibilityLabel={threadMode || composer.mode.kind === "reply" ? "Reply" : "Message channel"}
+                accessibilityLabel={
+                  threadMode || composer.mode.kind === "reply"
+                    ? "Reply"
+                    : "Message channel"
+                }
                 placeholder={
                   threadMode
                     ? "Reply in thread"
@@ -156,6 +207,7 @@ export function ChatComposer({
                 value={composer.draft}
                 onChangeText={composer.setDraft}
                 editable={!isPending}
+                nativeID={inputNativeID}
                 style={{ flex: 1 }}
               />
               <IconButton
@@ -168,7 +220,11 @@ export function ChatComposer({
               />
               <IconButton
                 icon={Send}
-                label={threadMode || composer.mode.kind === "reply" ? "Send reply" : "Send message"}
+                label={
+                  threadMode || composer.mode.kind === "reply"
+                    ? "Send reply"
+                    : "Send message"
+                }
                 size="sm"
                 variant="primary"
                 disabled={isPending || !composer.draft.trim()}
@@ -182,7 +238,10 @@ export function ChatComposer({
   );
 }
 
-function PlainChatInput({ style, ...props }: React.ComponentProps<typeof TextField>) {
+function PlainChatInput({
+  style,
+  ...props
+}: React.ComponentProps<typeof TextField>) {
   return <TextField multiline style={[{ maxHeight: 120 }, style]} {...props} />;
 }
 
@@ -199,7 +258,14 @@ function ComposerModeHeader({
 }) {
   const { color } = useTheme();
   return (
-    <View style={{ minHeight: 44, flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+    <View
+      style={{
+        minHeight: 44,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.sm,
+      }}
+    >
       <Icon size={17} color={color("primary")} strokeWidth={2} />
       <View style={{ minWidth: 0, flex: 1 }}>
         <Txt variant="label" numberOfLines={1} style={{ fontWeight: "800" }}>
@@ -211,7 +277,13 @@ function ComposerModeHeader({
           </Txt>
         ) : null}
       </View>
-      <IconButton icon={X} label={`Close ${label.toLowerCase()}`} size="sm" variant="ghost" onPress={onClose} />
+      <IconButton
+        icon={X}
+        label={`Close ${label.toLowerCase()}`}
+        size="sm"
+        variant="ghost"
+        onPress={onClose}
+      />
     </View>
   );
 }
