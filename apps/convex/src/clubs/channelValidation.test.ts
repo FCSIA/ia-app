@@ -4,7 +4,6 @@ import {
   MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS,
   assertChannelMessageBodyBounds,
   normalizeChannelPoll,
-  normalizeLegacyChannelAttachments,
 } from "./channelValidation";
 
 describe("club channel message validation", () => {
@@ -56,33 +55,5 @@ describe("club channel message validation", () => {
         { id: "two", label: "Two" },
       ]),
     ).toThrow("Poll choice identifiers are invalid");
-  });
-
-  test("bounds and normalizes the compatibility attachment payload", () => {
-    expect(
-      normalizeLegacyChannelAttachments([
-        {
-          fileName: " plan.pdf ",
-          fileUrl: " https://example.com/plan.pdf ",
-          mimeType: " APPLICATION/PDF ",
-          size: 2_048,
-        },
-      ]),
-    ).toEqual([
-      {
-        fileName: "plan.pdf",
-        fileUrl: "https://example.com/plan.pdf",
-        mimeType: "application/pdf",
-        size: 2_048,
-      },
-    ]);
-    expect(() =>
-      normalizeLegacyChannelAttachments(
-        Array.from({ length: 6 }, (_, index) => ({
-          fileName: `${index}.pdf`,
-          fileUrl: `https://example.com/${index}.pdf`,
-        })),
-      ),
-    ).toThrow("A message can include at most 5 attachments");
   });
 });

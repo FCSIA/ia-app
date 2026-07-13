@@ -21,12 +21,15 @@ import {
 import {
   assertChannelMessageBodyBounds,
   normalizeChannelPoll,
-  normalizeLegacyChannelAttachments,
 } from "./channelValidation";
 import {
   clubChannelPollOptionValidator,
   clubChannelReactionValidator,
 } from "../validators";
+import {
+  assertStagedChatAttachmentIds,
+  consumeStagedChatAttachments,
+} from "../uploads/chatAttachments";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -138,13 +141,6 @@ export const create = mutation({
   },
 });
 
-const attachmentInputValidator = v.object({
-  fileName: v.string(),
-  fileUrl: v.string(),
-  mimeType: v.optional(v.string()),
-  size: v.optional(v.number()),
-});
-
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -152,7 +148,7 @@ export const postMessage = mutation({
     bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
-    attachments: v.optional(v.array(attachmentInputValidator)),
+    attachments: v.optional(v.array(v.id("clubChannelAttachmentUploads"))),
     pollQuestion: v.optional(v.string()),
     pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
   },
@@ -177,12 +173,13 @@ export const postMessage = mutation({
       throw new ConvexError("Inline images are not supported; attach the image instead");
     }
     assertChannelMessageBodyBounds(trimmedBody, bodyMarkdown, args.bodyRich);
-    const attachments = normalizeLegacyChannelAttachments(args.attachments);
+    const attachmentUploadIds = args.attachments ?? [];
+    assertStagedChatAttachmentIds(attachmentUploadIds);
     const poll = normalizeChannelPoll(args.pollQuestion, args.pollOptions);
     if (poll && !context.canManageChannels) {
       throw new ConvexError("Only club role holders, sponsors, or admins can create polls");
     }
-    if (!trimmedBody && attachments.length === 0 && !poll) {
+    if (!trimmedBody && attachmentUploadIds.length === 0 && !poll) {
       throw new ConvexError("Message cannot be empty");
     }
 
@@ -210,16 +207,11 @@ export const postMessage = mutation({
       updatedAt: Date.now(),
     });
 
-    for (const attachment of attachments) {
-      await ctx.db.insert("clubChannelMessageAttachments", {
-        messageId,
-        fileName: attachment.fileName,
-        fileUrl: attachment.fileUrl,
-        mimeType: attachment.mimeType,
-        size: attachment.size,
-        createdAt: Date.now(),
-      });
-    }
+    await consumeStagedChatAttachments(ctx, {
+      attachmentUploadIds,
+      uploaderId: user._id,
+      messageId,
+    });
 
     const href = `/clubs/${channel.clubId}/channels/${channel._id}`;
     const subject = {

@@ -73,7 +73,10 @@ are enforced through `apps/convex/src/clubs/access.ts`.
 ## Side Effects
 
 Club management and channel changes create audit rows where implemented.
-Channel attachment uploads use Convex storage.
+Channel attachment uploads use Convex storage. A finalized upload becomes a
+short-lived, user-owned stage; posting consumes that stage, rechecks storage
+metadata, and derives the download URL server-side. Unused stages expire after
+one hour and can also be discarded explicitly by the uploader.
 
 ## Known Limits
 

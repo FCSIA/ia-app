@@ -47,12 +47,6 @@ import type {
 } from '@/components/clubs/types';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
-type ChatAttachmentUploadResponse = {
-  fileName: string;
-  url: string;
-  mimeType: string;
-  size: number;
-};
 import {
   ChannelMessageComposer,
   type ChannelMentionSuggestion,
@@ -527,6 +521,7 @@ export default function ClubChannelPage({
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
+  const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
@@ -545,21 +540,19 @@ export default function ClubChannelPage({
     pollOptions,
     mode,
   }: ComposerSubmitArgs) => {
+    const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
     try {
-      const uploadedAttachments = await Promise.all(
-        files.map(async (file) => {
-          const storageId = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({}) },
-            file,
-          );
-          return finalizeChatAttachment({
-            storageId,
-            fileName: file.name,
-            mimeType: file.type || 'application/octet-stream',
-            size: file.size,
-          });
-        }),
-      );
+      for (const file of files) {
+        const storageId = await uploadFileToConvex(
+          { generateUploadUrl: () => generateUploadUrl({}) },
+          file,
+        );
+        const staged = await finalizeChatAttachment({
+          storageId,
+          fileName: file.name,
+        });
+        attachmentUploadIds.push(staged.attachmentUploadId);
+      }
       await postMessage({
         channelId,
         body: body.trim(),
@@ -568,12 +561,7 @@ export default function ClubChannelPage({
         parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
         pollQuestion,
         pollOptions,
-        attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
-          fileName: a.fileName,
-          fileUrl: a.url,
-          mimeType: a.mimeType,
-          size: a.size,
-        })),
+        attachments: attachmentUploadIds,
       });
       if (mode === 'thread') {
         setReplyComposerResetKey((current) => current + 1);
@@ -581,6 +569,11 @@ export default function ClubChannelPage({
         setRootComposerResetKey((current) => current + 1);
       }
     } catch {
+      await Promise.allSettled(
+        attachmentUploadIds.map((attachmentUploadId) =>
+          discardChatAttachment({ attachmentUploadId }),
+        ),
+      );
       toast({ title: 'Failed to send message', variant: 'destructive' });
     }
   };

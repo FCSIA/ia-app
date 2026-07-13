@@ -54,6 +54,9 @@ type ChannelMessageComposerProps = {
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
 
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
 function MarkButton({
   icon: Icon,
   label,
@@ -123,6 +126,7 @@ export function ChannelMessageComposer({
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [plainText, setPlainText] = useState('');
   const [richValue, setRichValue] = useState<Value>(createEmptyClubChannelMessageValue());
   const [pollOpen, setPollOpen] = useState(false);
@@ -138,6 +142,7 @@ export function ChannelMessageComposer({
       initialBodyRich ??
       deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody);
     setFiles([]);
+    setAttachmentError(null);
     setPlainText(serializeClubChannelMessagePlainText(nextValue));
     setRichValue(nextValue);
     setIsMarkdownSource(!initialBodyRich && !!initialBodyMarkdown?.trim());
@@ -247,6 +252,7 @@ export function ChannelMessageComposer({
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-1.5 px-2 text-muted-foreground"
+                disabled={files.length >= MAX_ATTACHMENTS}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip className="size-4" />
@@ -283,15 +289,24 @@ export function ChannelMessageComposer({
                   <button
                     type="button"
                     className="rounded p-0.5 hover:bg-muted"
-                    onClick={() =>
-                      setFiles((current) => current.filter((entry) => entry.name !== file.name))
-                    }
+                    onClick={() => {
+                      setAttachmentError(null);
+                      setFiles((current) =>
+                        current.filter((entry) => entry.name !== file.name),
+                      );
+                    }}
                   >
                     <X className="size-3" />
                   </button>
                 </Badge>
               ))}
             </div>
+          ) : null}
+
+          {attachmentError ? (
+            <p role="alert" className="border-b px-3 py-2 text-xs text-destructive">
+              {attachmentError}
+            </p>
           ) : null}
 
           {pollOpen ? (
@@ -323,8 +338,8 @@ export function ChannelMessageComposer({
                 type="button"
                 size="sm"
                 variant="tertiary"
-                onClick={() => setPollOptions((current) => [...current, ''].slice(0, 8))}
-                disabled={pollOptions.length >= 8}
+                onClick={() => setPollOptions((current) => [...current, ''])}
+                disabled={pollOptions.length >= 6}
               >
                 <Plus className="size-3.5" />
                 Add option
@@ -376,11 +391,19 @@ export function ChannelMessageComposer({
           className="hidden"
           onChange={(event) => {
             const nextFiles = Array.from(event.target.files ?? []);
-            if (nextFiles.length > 0) {
-              setFiles((current) => [
-                ...current,
-                ...nextFiles.filter((file) => !current.some((entry) => entry.name === file.name)),
-              ]);
+            const oversized = nextFiles.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+            if (oversized) {
+              setAttachmentError(`${oversized.name} is larger than 10 MB.`);
+            } else if (nextFiles.length > 0) {
+              const additions = nextFiles.filter(
+                (file) => !files.some((entry) => entry.name === file.name),
+              );
+              if (files.length + additions.length > MAX_ATTACHMENTS) {
+                setAttachmentError('You can attach up to 5 files.');
+              } else {
+                setAttachmentError(null);
+                setFiles((current) => [...current, ...additions]);
+              }
             }
             event.currentTarget.value = '';
           }}

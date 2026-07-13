@@ -533,12 +533,25 @@ export const schema = defineSchema({
 
   clubChannelMessageAttachments: defineTable({
     messageId: v.id("clubChannelMessages"),
+    storageId: v.optional(v.id("_storage")),
+    uploaderId: v.optional(v.id("users")),
     fileName: v.string(),
     fileUrl: v.string(),
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+
+  clubChannelAttachmentUploads: defineTable({
+    uploaderId: v.id("users"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
