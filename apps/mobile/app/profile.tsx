@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { File } from "expo-file-system";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
+import {
+  discardPreparedAvatarImage,
+  prepareAvatarImage,
+  type PreparedAvatarImage,
+} from "@/lib/avatar-image";
 import { unregisterStoredNativePushToken } from "@/lib/push";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
@@ -22,27 +26,29 @@ export default function ProfileScreen() {
   const clearImage = useMutation(api.users.me.clearUserImage);
   const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const { showToast } = useToast();
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   async function pickAvatar() {
+    let prepared: PreparedAvatarImage | undefined;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.85,
+        quality: 1,
       });
       if (result.canceled || !result.assets[0]) return;
 
       const asset = result.assets[0];
-      const file = new File(asset.uri);
-      const mimeType = asset.mimeType || file.type || "image/jpeg";
+      setAvatarUploading(true);
+      prepared = await prepareAvatarImage(asset.uri);
       const uploadUrl = await generateUploadUrl({});
-      const upload = await file.upload(uploadUrl, {
+      const upload = await prepared.file.upload(uploadUrl, {
         httpMethod: "POST",
-        headers: { "Content-Type": mimeType },
-        mimeType,
+        headers: { "Content-Type": prepared.mimeType },
+        mimeType: prepared.mimeType,
       });
       if (upload.status < 200 || upload.status >= 300) {
         throw new Error("The image could not be uploaded.");
@@ -51,12 +57,15 @@ export default function ProfileScreen() {
       await saveImage({
         kind: "avatar",
         storageId,
-        mimeType,
-        size: asset.fileSize ?? file.size,
+        mimeType: prepared.mimeType,
+        size: prepared.size,
       });
       showToast({ title: "Photo updated", tone: "success" });
     } catch (error) {
       showToast({ title: "Photo wasn't updated", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
+    } finally {
+      discardPreparedAvatarImage(prepared);
+      setAvatarUploading(false);
     }
   }
 
@@ -101,11 +110,18 @@ export default function ProfileScreen() {
         </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-        <Button title="Change photo" icon={Camera} variant="secondary" onPress={() => void pickAvatar()} />
+        <Button
+          title="Change photo"
+          icon={Camera}
+          variant="secondary"
+          loading={avatarUploading}
+          onPress={() => void pickAvatar()}
+        />
         {user?.avatarUrl ? (
           <Button
             title="Remove"
             variant="ghost"
+            disabled={avatarUploading}
             onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Photo removed", tone: "success" })).catch((error) => showToast({ title: "Photo wasn't removed", body: error instanceof Error ? error.message : "Try again.", tone: "warning" }))}
           />
         ) : null}
