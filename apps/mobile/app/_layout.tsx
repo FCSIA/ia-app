@@ -13,6 +13,7 @@ import { AppErrorBoundary } from "@/components/error-boundary";
 import { AppLifecycle } from "@/components/app-lifecycle";
 import { authClient } from "@/lib/auth-client";
 import { convex } from "@/lib/convex";
+import { statusBarStyleForBackground } from "@/lib/status-bar-style";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui";
 
@@ -22,10 +23,7 @@ function RootNavigator() {
   const { color } = useTheme();
   const backgroundColor = color("background");
   const foregroundColor = color("foreground");
-  const backgroundLightness =
-    Number.parseFloat(backgroundColor.match(/([\d.]+)%\)$/)?.[1] ?? "0") / 100;
-  const barStyle =
-    backgroundLightness > 0.55 ? "dark-content" : "light-content";
+  const barStyle = statusBarStyleForBackground(backgroundColor);
 
   return (
     <>
