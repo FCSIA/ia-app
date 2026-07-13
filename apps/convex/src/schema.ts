@@ -403,6 +403,7 @@ export const schema = defineSchema({
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"])
+    .index("by_clubId_and_role", ["clubId", "role"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
     .index("by_userId_and_clubId", ["userId", "clubId"]),
 

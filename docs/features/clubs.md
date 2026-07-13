@@ -68,7 +68,11 @@ rich representations so mobile and web show the same message.
 
 Admins create clubs. Sponsors and leaders manage most club-local settings.
 Sponsors retain visibility into private channels. Channel read/post permissions
-are enforced through `apps/convex/src/clubs/access.ts`.
+are enforced through `apps/convex/src/clubs/access.ts`. The backend resolves
+user, built-in, and custom-tag mentions against that readable audience;
+`@all` is manager-only and mention delivery is capped. Message reports accept
+only a message id and reason from clients, then derive the club and author after
+checking channel access.
 
 ## Side Effects
 

@@ -3,7 +3,13 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
-import { getClubContext, getViewerContext, canReadChannel, canPostInChannel } from "./access";
+import {
+  getClubContext,
+  getViewerContext,
+  canReadChannel,
+  canPostInChannel,
+  type ClubContext,
+} from "./access";
 import { toClubUserRef } from "./serialize";
 import type { Doc, Id } from "../_generated/dataModel";
 import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
@@ -16,7 +22,6 @@ import {
 import {
   hasInlineMarkdownImage,
   normalizePortableMessageBody,
-  portableMentionTokens,
 } from "./channelMarkdown";
 import {
   assertChannelMessageBodyBounds,
@@ -30,6 +35,12 @@ import {
   assertStagedChatAttachmentIds,
   consumeStagedChatAttachments,
 } from "../uploads/chatAttachments";
+import {
+  MAX_CHANNEL_MENTION_RECIPIENTS,
+  addBoundedMentionRecipients,
+  assertCanMentionEveryone,
+  boundedPortableMentionTokens,
+} from "./channelMentions";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -37,6 +48,143 @@ const MAX_SUMMARY_ATTACHMENTS = 12;
 const MAX_SUMMARY_REACTION_ROWS = 500;
 const MAX_SUMMARY_POLL_VOTES = 500;
 const MAX_THREAD_PARENT_DEPTH = 8;
+const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
+
+type PlannedMention = {
+  kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG";
+  token: string;
+  userId?: Id<"users">;
+  tagId?: Id<"clubTags">;
+};
+
+type MentionPlan = {
+  rows: PlannedMention[];
+  recipients: Map<Id<"users">, "USER" | "GROUP">;
+};
+
+async function resolveChannelMentionPlan(
+  ctx: MutationCtx,
+  input: {
+    channel: Doc<"clubChannels">;
+    context: ClubContext;
+    tokens: string[];
+    channelAudienceIds: Id<"users">[];
+    authorId: Id<"users">;
+  },
+): Promise<MentionPlan> {
+  assertCanMentionEveryone(input.tokens, input.context.canManageChannels);
+  const audienceIds = new Set(input.channelAudienceIds);
+
+  if (input.channel.visibility === "PRIVATE") {
+    const sponsorRows = await ctx.db
+      .query("clubSponsors")
+      .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
+      .take(MAX_MENTION_GROUP_ROWS);
+    if (sponsorRows.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
+      throw new ConvexError("Mention groups can include at most 50 people");
+    }
+    for (const sponsor of sponsorRows) audienceIds.add(sponsor.userId);
+  }
+
+  const rows: PlannedMention[] = [];
+  const recipients = new Map<Id<"users">, "USER" | "GROUP">();
+  const recipientIds = new Set<Id<"users">>();
+
+  const addRecipients = (
+    ids: Iterable<Id<"users">>,
+    kind: "USER" | "GROUP",
+  ) => {
+    const readableIds = Array.from(ids).filter(
+      (userId) => audienceIds.has(userId) && userId !== input.authorId,
+    );
+    addBoundedMentionRecipients(recipientIds, readableIds);
+    for (const userId of readableIds) {
+      if (kind === "USER" || !recipients.has(userId)) recipients.set(userId, kind);
+    }
+  };
+
+  for (const token of input.tokens) {
+    const normalizedToken = token.toLowerCase();
+
+    if (normalizedToken === "all") {
+      rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
+      addRecipients(audienceIds, "GROUP");
+      continue;
+    }
+
+    if (normalizedToken === "leaders") {
+      const [leaders, roleSponsors] = await Promise.all([
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_role", (q) =>
+            q.eq("clubId", input.channel.clubId).eq("role", "LEADER"),
+          )
+          .take(MAX_MENTION_GROUP_ROWS),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_role", (q) =>
+            q.eq("clubId", input.channel.clubId).eq("role", "SPONSOR"),
+          )
+          .take(MAX_MENTION_GROUP_ROWS),
+      ]);
+      rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
+      addRecipients(
+        [...leaders, ...roleSponsors].map((member) => member.userId),
+        "GROUP",
+      );
+      continue;
+    }
+
+    if (normalizedToken === "sponsors") {
+      const sponsors = await ctx.db
+        .query("clubSponsors")
+        .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
+        .take(MAX_MENTION_GROUP_ROWS);
+      if (sponsors.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
+        throw new ConvexError("Mention groups can include at most 50 people");
+      }
+      rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
+      addRecipients(
+        sponsors.map((sponsor) => sponsor.userId),
+        "GROUP",
+      );
+      continue;
+    }
+
+    const tag = await ctx.db
+      .query("clubTags")
+      .withIndex("by_clubId_and_slug", (q) =>
+        q.eq("clubId", input.channel.clubId).eq("slug", normalizedToken),
+      )
+      .unique();
+    if (tag) {
+      const tagMembers = await ctx.db
+        .query("clubTagMembers")
+        .withIndex("by_tagId", (q) => q.eq("tagId", tag._id))
+        .take(MAX_MENTION_GROUP_ROWS);
+      if (tagMembers.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
+        throw new ConvexError("Mention groups can include at most 50 people");
+      }
+      rows.push({ kind: "CUSTOM_TAG", token: normalizedToken, tagId: tag._id });
+      addRecipients(
+        tagMembers.map((member) => member.userId),
+        "GROUP",
+      );
+      continue;
+    }
+
+    const mentioned = await ctx.db
+      .query("users")
+      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", token))
+      .unique();
+    if (mentioned && audienceIds.has(mentioned._id)) {
+      rows.push({ kind: "USER", token, userId: mentioned._id });
+      addRecipients([mentioned._id], "USER");
+    }
+  }
+
+  return { rows, recipients };
+}
 
 async function getChannelMemberships(
   ctx: ChannelDbCtx,
@@ -193,6 +341,18 @@ export const postMessage = mutation({
       }
     }
 
+    const channelAudienceIds = await channelAudience(ctx, channel);
+    const mentionTokens = boundedPortableMentionTokens(trimmedBody, bodyMarkdown);
+    const mentionPlan = mentionTokens.length
+      ? await resolveChannelMentionPlan(ctx, {
+          channel,
+          context,
+          tokens: mentionTokens,
+          channelAudienceIds,
+          authorId: user._id,
+        })
+      : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
+
     const messageId = await ctx.db.insert("clubChannelMessages", {
       channelId: args.channelId,
       authorId: user._id,
@@ -213,6 +373,17 @@ export const postMessage = mutation({
       messageId,
     });
 
+    for (const mention of mentionPlan.rows) {
+      await ctx.db.insert("clubChannelMessageMentions", {
+        messageId,
+        userId: mention.userId,
+        tagId: mention.tagId,
+        kind: mention.kind,
+        token: mention.token,
+        createdAt: Date.now(),
+      });
+    }
+
     const href = `/clubs/${channel.clubId}/channels/${channel._id}`;
     const subject = {
       kind: "clubMessage" as const,
@@ -221,7 +392,9 @@ export const postMessage = mutation({
       messageId,
     };
     const preview = trimmedBody || "New channel message.";
-    const allAudience = (await channelAudience(ctx, channel)).filter((id) => id !== user._id);
+    const allAudience = channelAudienceIds.filter(
+      (id) => id !== user._id && !mentionPlan.recipients.has(id),
+    );
 
     await deliverMany(ctx, allAudience, {
       category: "CLUB_CHANNEL_MESSAGE",
@@ -233,7 +406,11 @@ export const postMessage = mutation({
 
     if (args.parentMessageId) {
       const parent = await ctx.db.get(args.parentMessageId);
-      if (parent && parent.authorId !== user._id) {
+      if (
+        parent &&
+        parent.authorId !== user._id &&
+        !mentionPlan.recipients.has(parent.authorId)
+      ) {
         await deliverNotification(ctx, {
           userId: parent.authorId,
           category: "CLUB_CHANNEL_THREAD",
@@ -245,39 +422,21 @@ export const postMessage = mutation({
       }
     }
 
-    const tokens = portableMentionTokens(trimmedBody, bodyMarkdown);
-    if (tokens.includes("all")) {
-      await deliverMany(ctx, allAudience, {
-        category: "CLUB_CHANNEL_TAG_MENTION",
-        title: `@all in #${channel.name}`,
+    for (const [recipientId, mentionKind] of mentionPlan.recipients) {
+      await deliverNotification(ctx, {
+        userId: recipientId,
+        category:
+          mentionKind === "USER"
+            ? "CLUB_CHANNEL_MENTION"
+            : "CLUB_CHANNEL_TAG_MENTION",
+        title:
+          mentionKind === "USER"
+            ? `Mention in #${channel.name}`
+            : `Group mention in #${channel.name}`,
         body: preview,
         href,
         subject,
       });
-    }
-
-    for (const token of tokens.filter((token) => token !== "all")) {
-      const mentioned = await ctx.db
-        .query("users")
-        .withIndex("by_uniqueId", (q) => q.eq("uniqueId", token))
-        .unique();
-      if (mentioned && mentioned._id !== user._id && allAudience.includes(mentioned._id)) {
-        await ctx.db.insert("clubChannelMessageMentions", {
-          messageId,
-          userId: mentioned._id,
-          kind: "USER",
-          token,
-          createdAt: Date.now(),
-        });
-        await deliverNotification(ctx, {
-          userId: mentioned._id,
-          category: "CLUB_CHANNEL_MENTION",
-          title: `Mention in #${channel.name}`,
-          body: preview,
-          href,
-          subject,
-        });
-      }
     }
 
     return messageId;

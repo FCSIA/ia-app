@@ -528,7 +528,7 @@ export default function ClubChannelPage({
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
-  const submitReport = useMutation(api.moderation.reports.submit);
+  const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
 
   const submitMessage = async ({
     body,
@@ -656,10 +656,7 @@ export default function ClubChannelPage({
   const handleSubmitReport = async () => {
     if (!reportingMessage || !reportReason.trim()) return;
     await submitReport({
-      contentType: 'CLUB_CHANNEL_MESSAGE',
-      contentId: reportingMessage._id,
-      clubId,
-      reportedUserId: reportingMessage.author._id,
+      messageId: reportingMessage._id as Id<'clubChannelMessages'>,
       reason: reportReason.trim(),
     });
     toast({ title: 'Report submitted' });
