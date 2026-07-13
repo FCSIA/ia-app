@@ -20,7 +20,12 @@ import {
   useToast,
 } from "@/components/ui";
 import { shortDate, timeRange } from "@/lib/format";
-import { useCurrentUser } from "@/lib/auth";
+import {
+  getAppPersona,
+  useCurrentUser,
+  useLiveCurrentUser,
+  type AppUser,
+} from "@/lib/auth";
 import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -40,7 +45,150 @@ const EMPTY_ARGS = {};
 const UNREAD_ANNOUNCEMENTS_ARGS = { unreadOnly: true };
 
 export default function DashboardScreen() {
-  const user = useCurrentUser();
+  const cachedUser = useCurrentUser();
+  const liveUser = useLiveCurrentUser();
+  const user = liveUser === undefined ? cachedUser : liveUser;
+  const persona = getAppPersona(user);
+
+  if (persona === "unknown") {
+    return <DashboardLoading />;
+  }
+
+  if (persona === "student") {
+    return <StudentDashboardScreen user={user!} />;
+  }
+
+  return <OperationalDashboardScreen user={user!} />;
+}
+
+function DashboardLoading() {
+  return (
+    <Screen
+      header={<AppHeader title="Home" />}
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+    >
+      <HomeSkeleton count={4} />
+      <HomeSkeleton count={3} />
+    </Screen>
+  );
+}
+
+function OperationalDashboardScreen({ user }: { user: AppUser }) {
+  const { color } = useTheme();
+  const schoolDay = useMemo(getDashboardSchoolDay, []);
+  const calendarWindow = useMemo(() => {
+    const startDate = Date.now();
+    return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
+  }, []);
+  const schedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
+  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
+  const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
+  const flexFridays = useQuery(api.flexFriday.fridays.list, EMPTY_ARGS);
+  const schoolStatus = resolveSchoolDayStatus(schedule?.blocks ?? [], schoolDay);
+  const nextFlexFriday = resolveNextFlexFriday(flexFridays ?? []);
+
+  return (
+    <Screen
+      header={<AppHeader title={user.firstName ? `Hi, ${user.firstName}` : "Home"} />}
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+    >
+      <Section title="School day">
+        {schedule === undefined ? (
+          <HomeSkeleton />
+        ) : (
+          <HomeSurface>
+            <HomeRow
+              title={schoolStatus.title}
+              subtitle={schoolStatus.subtitle}
+              meta={schoolStatus.meta}
+            />
+          </HomeSurface>
+        )}
+      </Section>
+
+      <Section
+        title="Announcements"
+        action={<SectionLink label="Open feed" onPress={() => router.push("/announcements" as never)} />}
+      >
+        {announcements === undefined ? (
+          <HomeSkeleton count={3} />
+        ) : (
+          <HomeSurface>
+            {announcements.length ? announcements.slice(0, 3).map((item: any, index: number) => (
+              <HomeRow
+                key={item._id}
+                divider={index > 0}
+                leading={
+                  <View
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: radii.pill,
+                      backgroundColor: color("primary"),
+                    }}
+                  />
+                }
+                title={item.title}
+                subtitle={item.body}
+                onPress={() => router.push(`/announcements/${item._id}` as never)}
+              />
+            )) : <HomeEmpty text="You’re caught up." />}
+          </HomeSurface>
+        )}
+      </Section>
+
+      <Section
+        title="Coming up"
+        action={<SectionLink label="Open calendar" onPress={() => router.push("/calendar" as never)} />}
+      >
+        {calendarEntries === undefined ? (
+          <HomeSkeleton count={3} />
+        ) : (
+          <HomeSurface>
+            {calendarEntries.length ? calendarEntries.slice(0, 4).map((entry: any, index: number) => (
+              <HomeRow
+                key={entry._id}
+                divider={index > 0}
+                title={entry.title}
+                subtitle={entry.location}
+                meta={`${shortDate(entry.startAt)} · ${timeRange(entry.startAt)}`}
+                onPress={() => entry.eventId
+                  ? router.push(`/events/${entry.eventId}` as never)
+                  : router.push("/calendar" as never)}
+              />
+            )) : <HomeEmpty text="Nothing coming up." />}
+          </HomeSurface>
+        )}
+      </Section>
+
+      <Section
+        title="Flex Friday"
+        action={<SectionLink label="Open Flex" onPress={() => router.push("/flex-friday" as never)} />}
+      >
+        {flexFridays === undefined ? (
+          <HomeSkeleton />
+        ) : (
+          <HomeSurface>
+            {nextFlexFriday ? (
+              <HomeRow
+                title={shortDate(nextFlexFriday.date)}
+                subtitle={[
+                  sentenceCase(nextFlexFriday.type),
+                  `${nextFlexFriday._count?.sessions ?? 0} session${(nextFlexFriday._count?.sessions ?? 0) === 1 ? "" : "s"}`,
+                ].join(" · ")}
+                onPress={() => router.push("/flex-friday" as never)}
+              />
+            ) : (
+              <HomeEmpty text="No Flex Friday scheduled." />
+            )}
+          </HomeSurface>
+        )}
+      </Section>
+    </Screen>
+  );
+}
+
+function StudentDashboardScreen({ user }: { user: AppUser }) {
   const { color } = useTheme();
   const schoolDay = useMemo(getDashboardSchoolDay, []);
   const calendarWindow = useMemo(() => {
@@ -527,6 +675,54 @@ function isCurrentBlock(block: { startTime: string; endTime: string } | undefine
 function timeToMinutes(value: string) {
   const [hour = 0, minute = 0] = value.split(":").map(Number);
   return hour * 60 + minute;
+}
+
+function resolveSchoolDayStatus(blocks: any[], schoolDay: DashboardSchoolDay) {
+  const dayBlocks = blocks
+    .filter((block) => block.weekday === schoolDay.value)
+    .sort((left, right) => left.startTime.localeCompare(right.startTime));
+  const current = dayBlocks.find((block) => isCurrentBlock(block, schoolDay.isToday));
+
+  if (current) {
+    return {
+      title: current.label,
+      subtitle: "In progress",
+      meta: `${formatSchoolTime(current.startTime)}–${formatSchoolTime(current.endTime)}`,
+    };
+  }
+
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const next = schoolDay.isToday
+    ? dayBlocks.find((block) => timeToMinutes(block.startTime) > minutes)
+    : dayBlocks[0];
+
+  if (next) {
+    return {
+      title: next.label,
+      subtitle: schoolDay.isToday ? "Next today" : `Next school day · ${schoolDay.label}`,
+      meta: `${formatSchoolTime(next.startTime)}–${formatSchoolTime(next.endTime)}`,
+    };
+  }
+
+  return {
+    title: dayBlocks.length ? "School day complete" : `No ${schoolDay.label} blocks`,
+    subtitle: dayBlocks.length ? "No more scheduled blocks today." : "The school-day schedule is not configured.",
+    meta: undefined,
+  };
+}
+
+function resolveNextFlexFriday(fridays: any[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return fridays
+    .filter((friday) => friday.date >= today.getTime())
+    .sort((left, right) => left.date - right.date)[0];
+}
+
+function sentenceCase(value: string) {
+  const text = value.toLowerCase().replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function formatRole(role: string) {

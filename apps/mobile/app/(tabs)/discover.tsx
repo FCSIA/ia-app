@@ -1,9 +1,10 @@
 import { View } from "react-native";
 import { router } from "expo-router";
-import { BookOpen, ChevronRight, QrCode, Sparkles, type LucideIcon } from "lucide-react-native";
+import { BookOpen, ChevronRight, QrCode, Shield, Sparkles, type LucideIcon } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
 import { Screen } from "@/components/screen";
 import { PressableScale, Txt } from "@/components/ui";
+import { canAccessAdminWorkspace, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
@@ -29,13 +30,51 @@ const destinations = [
 ] as const;
 
 export default function DiscoverScreen() {
-  const { color } = useTheme();
+  const user = useLiveCurrentUser();
+  const showAdmin = canAccessAdminWorkspace(user);
 
   return (
     <Screen
       header={<AppHeader title="Discover" />}
       contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
     >
+      {showAdmin ? (
+        <DestinationGroup
+          title="Manage"
+          destinations={[
+            {
+              title: "Admin workspace",
+              detail: "People, school operations, safety, and audit",
+              href: "/admin",
+              icon: Shield,
+            },
+          ]}
+        />
+      ) : null}
+      <DestinationGroup title="Explore" destinations={destinations} />
+    </Screen>
+  );
+}
+
+function DestinationGroup({
+  title,
+  destinations: items,
+}: {
+  title: string;
+  destinations: ReadonlyArray<{
+    title: string;
+    detail: string;
+    href: string;
+    icon: LucideIcon;
+  }>;
+}) {
+  const { color } = useTheme();
+
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <Txt variant="overline" tone="muted">
+        {title}
+      </Txt>
       <View
         style={{
           overflow: "hidden",
@@ -43,15 +82,15 @@ export default function DiscoverScreen() {
           backgroundColor: color("secondary"),
         }}
       >
-        {destinations.map((destination, index) => (
+        {items.map((destination, index) => (
           <DestinationRow
             key={destination.href}
             {...destination}
-            showDivider={index < destinations.length - 1}
+            showDivider={index < items.length - 1}
           />
         ))}
       </View>
-    </Screen>
+    </View>
   );
 }
 
