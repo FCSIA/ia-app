@@ -14,11 +14,12 @@ import {
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import { AppBackHeader } from "@/components/screen";
 import { Empty, Txt, useToast } from "@/components/ui";
-import { useCurrentUser } from "@/lib/auth";
+import { useCurrentUser, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
+import type { ClubChannelReaction } from "~/apps/convex/src/validators";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
 import { ChatTimeline } from "./timeline";
@@ -29,6 +30,9 @@ import type {
   ClubChatData,
 } from "./types";
 import { useChatComposer } from "./use-chat-composer";
+import { useChatDraft } from "./use-chat-draft";
+import { chatMessageLengthError } from "./chat-markdown";
+import type { ChatMentionSuggestion } from "./rich-chat-input";
 
 type ClubChatScreenProps = {
   clubId: string;
@@ -48,6 +52,7 @@ export function ClubChatScreen({
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const user = useCurrentUser();
+  const liveUser = useLiveCurrentUser();
   const {
     results,
     status: paginationStatus,
@@ -115,6 +120,55 @@ export function ClubChatScreen({
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
   const composerPending = pendingAction === "composer";
+  const draftEnabled =
+    composer.mode.kind === "message" || composer.mode.kind === "reply";
+  const draftThreadId =
+    threadRootId ??
+    (composer.mode.kind === "reply" ? composer.mode.target._id : null);
+  const draftIdentity = useMemo(
+    () =>
+      liveUser?._id
+        ? {
+            userId: liveUser._id,
+            clubId,
+            channelId,
+            threadId: draftThreadId,
+          }
+        : null,
+    [channelId, clubId, draftThreadId, liveUser?._id],
+  );
+  const { clear: clearDraft, flush: flushDraft } = useChatDraft({
+    identity: draftIdentity,
+    enabled: draftEnabled,
+    getRevision: composer.getDraftRevision,
+    plainText: composer.draft,
+    markdown: composer.markdownDraft,
+    onRestore: composer.restoreDraft,
+  });
+  const mentionSuggestions = useMemo<ChatMentionSuggestion[]>(() => {
+    const builtIns: ChatMentionSuggestion[] = [
+      ...(canManage
+        ? [
+            {
+              token: "all",
+              label: "Everyone in this channel",
+              detail: "Managers only",
+            },
+          ]
+        : []),
+    ];
+    const people = (club?.directory ?? [])
+      .filter((person) => !!person.uniqueId)
+      .slice(0, 60)
+      .map((person) => ({
+        token: person.uniqueId!,
+        label:
+          [person.firstName, person.lastName].filter(Boolean).join(" ") ||
+          person.uniqueId!,
+        detail: person.clubRole || person.kind || "Club member",
+      }));
+    return [...builtIns, ...people];
+  }, [canManage, club?.directory]);
 
   const handleComposerLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -173,12 +227,18 @@ export function ClubChatScreen({
 
     if (mode.kind === "edit") {
       if (!draft) return;
+      const lengthError = chatMessageLengthError(draft, composer.markdownDraft);
+      if (lengthError) {
+        showToast({ title: lengthError, tone: "warning" });
+        return;
+      }
       const completed = await runPending(
         "composer",
         () =>
           updateMessage({
             messageId: mode.target._id as Id<"clubChannelMessages">,
             body: draft,
+            bodyMarkdown: composer.markdownDraft.trim() || undefined,
           }),
         "Message wasn’t updated",
       );
@@ -225,6 +285,13 @@ export function ClubChatScreen({
       return;
     }
     if (mode.kind !== "poll" && !draft) return;
+    if (mode.kind !== "poll") {
+      const lengthError = chatMessageLengthError(draft, composer.markdownDraft);
+      if (lengthError) {
+        showToast({ title: lengthError, tone: "warning" });
+        return;
+      }
+    }
     const parentMessageId = threadRootId
       ? (threadRootId as Id<"clubChannelMessages">)
       : mode.kind === "reply"
@@ -236,6 +303,10 @@ export function ClubChatScreen({
         postMessage({
           channelId: channelId as Id<"clubChannels">,
           body: draft,
+          bodyMarkdown:
+            mode.kind === "poll"
+              ? undefined
+              : composer.markdownDraft.trim() || undefined,
           parentMessageId,
           attachments: [],
           pollQuestion:
@@ -252,12 +323,17 @@ export function ClubChatScreen({
         ? "Reply wasn’t sent"
         : "Message wasn’t sent",
     );
-    if (completed) composer.reset();
+    if (completed) {
+      if (draftEnabled) await clearDraft();
+      composer.reset();
+    }
   }, [
     canPost,
     channelId,
     clubId,
     composer,
+    draftEnabled,
+    clearDraft,
     postMessage,
     reportMessage,
     runPending,
@@ -273,7 +349,7 @@ export function ClubChatScreen({
         () =>
           toggleReaction({
             messageId: message._id as Id<"clubChannelMessages">,
-            emoji,
+            emoji: emoji as ClubChannelReaction,
           }),
         "Reaction wasn’t updated",
       );
@@ -350,26 +426,39 @@ export function ClubChatScreen({
   const startReply = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
+      void flushDraft().catch(() => {});
       composer.startReply(message);
     },
-    [composer.startReply],
+    [composer.startReply, flushDraft],
   );
 
   const startEdit = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
+      void flushDraft().catch(() => {});
       composer.startEdit(message);
     },
-    [composer.startEdit],
+    [composer.startEdit, flushDraft],
   );
 
   const startReport = useCallback(
     (message: ChatMessage) => {
       setActionMessage(null);
+      void flushDraft().catch(() => {});
       composer.startReport(message);
     },
-    [composer.startReport],
+    [composer.startReport, flushDraft],
   );
+
+  const resetComposer = useCallback(() => {
+    void flushDraft().catch(() => {});
+    composer.reset();
+  }, [composer.reset, flushDraft]);
+
+  const startPoll = useCallback(() => {
+    void flushDraft().catch(() => {});
+    composer.startPoll();
+  }, [composer.startPoll, flushDraft]);
 
   const openThread = useCallback(
     (message: ChatMessage) => {
@@ -460,8 +549,12 @@ export function ClubChatScreen({
                 bottomInset={insets.bottom}
                 channelName={channel?.name}
                 threadMode={!!threadRootId}
+                canCreatePoll={canManage}
+                suggestions={mentionSuggestions}
                 inputNativeID={CHAT_INPUT_NATIVE_ID}
                 onLayout={handleComposerLayout}
+                onReset={resetComposer}
+                onStartPoll={startPoll}
                 onSubmit={() => void submitComposer()}
               />
             </KeyboardStickyView>
@@ -472,6 +565,7 @@ export function ClubChatScreen({
       <MessageActionsSheet
         message={actionMessage}
         currentUserId={user?._id}
+        canPost={canPost}
         canManage={canManage}
         pendingAction={pendingAction}
         onClose={() => setActionMessage(null)}

@@ -80,6 +80,14 @@ export type ClubChatData = {
   viewer?: {
     canManageChannels?: boolean;
   };
+  directory?: Array<{
+    _id: string;
+    uniqueId?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    kind?: string;
+    clubRole?: string | null;
+  }>;
 };
 
 export type QuickReaction = "LIKE" | "HEART" | "DONE";
@@ -92,12 +100,19 @@ export type ComposerMode =
   | { kind: "poll" };
 
 export function chatAuthorName(message: ChatMessage) {
-  return [message.author?.firstName, message.author?.lastName].filter(Boolean).join(" ") || "Member";
+  return (
+    [message.author?.firstName, message.author?.lastName]
+      .filter(Boolean)
+      .join(" ") || "Member"
+  );
 }
 
 export function isImageAttachment(attachment: ChatAttachment) {
   if (attachment.mimeType) {
-    return attachment.mimeType.startsWith("image/") && attachment.mimeType !== "image/svg+xml";
+    return (
+      attachment.mimeType.startsWith("image/") &&
+      attachment.mimeType !== "image/svg+xml"
+    );
   }
   const source = `${attachment.fileName} ${attachment.fileUrl}`.toLowerCase();
   return /\.(avif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);

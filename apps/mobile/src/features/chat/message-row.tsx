@@ -2,11 +2,18 @@ import { memo } from "react";
 import { Linking, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { format } from "date-fns";
-import { Check, FileText, MessageCircle, Pin } from "lucide-react-native";
-import { Avatar, PressableScale, Txt } from "@/components/ui";
+import {
+  Check,
+  FileText,
+  MessageCircle,
+  MoreHorizontal,
+  Pin,
+} from "lucide-react-native";
+import { Avatar, IconButton, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { QUICK_REACTIONS } from "./quick-reactions";
+import { RichMessageBody } from "./rich-message-body";
 import {
   chatAuthorName,
   formatAttachmentSize,
@@ -40,15 +47,14 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 }: MessageRowProps) {
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
-  const reactions = message.reactions?.filter((reaction) => reaction.count > 0) ?? [];
+  const reactions =
+    message.reactions?.filter((reaction) => reaction.count > 0) ?? [];
   const hasThread = message.hasReplies ?? message.replyCount > 0;
   const replyCountIsExact = message.replyCountIsExact !== false;
 
   return (
     <Pressable
-      accessible
-      accessibilityLabel={`${authorName}, ${format(new Date(message.createdAt), "h:mm a")}. ${message.body || "Attachment or poll"}`}
-      accessibilityHint="Long press for message actions"
+      accessible={false}
       delayLongPress={280}
       onLongPress={() => onLongPress(message)}
       style={({ pressed }) => ({
@@ -60,7 +66,12 @@ export const ChatMessageRow = memo(function ChatMessageRow({
         gap: spacing.sm,
         paddingHorizontal: spacing.md,
         paddingTop: groupedWithPrevious ? 3 : spacing.md,
-        paddingBottom: message.replyCount && showReplyPreview ? spacing.sm : groupedWithPrevious ? 3 : spacing.sm,
+        paddingBottom:
+          message.replyCount && showReplyPreview
+            ? spacing.sm
+            : groupedWithPrevious
+              ? 3
+              : spacing.sm,
         backgroundColor: message.isPinned
           ? color("secondary")
           : pressed
@@ -70,9 +81,19 @@ export const ChatMessageRow = memo(function ChatMessageRow({
         borderLeftColor: message.isPinned ? color("primary") : "transparent",
       })}
     >
-      <View style={{ width: 36, alignItems: "center", paddingTop: groupedWithPrevious ? 1 : 0 }}>
+      <View
+        style={{
+          width: 36,
+          alignItems: "center",
+          paddingTop: groupedWithPrevious ? 1 : 0,
+        }}
+      >
         {groupedWithPrevious ? (
-          <Txt variant="caption" tone="muted" style={{ fontSize: 10, opacity: 0 }}>
+          <Txt
+            variant="caption"
+            tone="muted"
+            style={{ fontSize: 10, opacity: 0 }}
+          >
             {format(new Date(message.createdAt), "h:mm")}
           </Txt>
         ) : (
@@ -82,64 +103,92 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 
       <View style={{ minWidth: 0, flex: 1, gap: spacing.xs }}>
         {!groupedWithPrevious ? (
-          <View style={{ minHeight: 20, flexDirection: "row", alignItems: "baseline", gap: spacing.sm }}>
-            <Txt variant="label" numberOfLines={1} style={{ maxWidth: "72%", fontWeight: "800" }}>
+          <View
+            style={{
+              minHeight: 20,
+              flexDirection: "row",
+              alignItems: "baseline",
+              gap: spacing.sm,
+            }}
+          >
+            <Txt
+              variant="label"
+              numberOfLines={1}
+              style={{ maxWidth: "72%", fontWeight: "800" }}
+            >
               {authorName}
             </Txt>
             <Txt variant="caption" tone="muted">
               {format(new Date(message.createdAt), "h:mm a")}
             </Txt>
-            {message.isPinned ? <Pin size={12} color={color("primary")} fill={color("primary")} /> : null}
+            {message.isPinned ? (
+              <Pin size={12} color={color("primary")} fill={color("primary")} />
+            ) : null}
           </View>
         ) : null}
 
-        {message.body ? (
-          <Txt selectable style={{ fontSize: 15, fontWeight: "500", lineHeight: 21 }}>
-            {message.body}
-          </Txt>
+        {message.body || message.bodyMarkdown ? (
+          <RichMessageBody
+            body={message.body}
+            bodyMarkdown={message.bodyMarkdown}
+          />
         ) : null}
 
         {message.attachments?.length ? (
           <View style={{ paddingTop: spacing.xs, gap: spacing.sm }}>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-              {message.attachments.filter(isImageAttachment).map((attachment, index, imageAttachments) => (
-                <PressableScale
-                  key={attachment._id}
-                  accessibilityLabel={`Open image ${attachment.fileName}`}
-                  accessibilityRole="link"
-                  haptic={false}
-                  onPress={() =>
-                    onOpenAttachment ? onOpenAttachment(attachment) : void Linking.openURL(attachment.fileUrl)
-                  }
-                  style={{
-                    width: imageAttachments.length === 1 ? "100%" : "48%",
-                    maxWidth: imageAttachments.length === 1 ? 440 : 216,
-                    aspectRatio: imageAttachments.length === 1 ? 16 / 10 : 1,
-                    overflow: "hidden",
-                    borderRadius: radii.md,
-                    backgroundColor: color("muted"),
-                  }}
-                >
-                  <Image
-                    source={{ uri: attachment.fileUrl }}
-                    alt={attachment.fileName}
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                    transition={140}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                </PressableScale>
-              ))}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: spacing.sm,
+              }}
+            >
+              {message.attachments
+                .filter(isImageAttachment)
+                .map((attachment, index, imageAttachments) => (
+                  <PressableScale
+                    key={attachment._id}
+                    accessibilityLabel={`Open image ${attachment.fileName}`}
+                    accessibilityRole="link"
+                    haptic={false}
+                    onPress={() =>
+                      onOpenAttachment
+                        ? onOpenAttachment(attachment)
+                        : void Linking.openURL(attachment.fileUrl)
+                    }
+                    style={{
+                      width: imageAttachments.length === 1 ? "100%" : "48%",
+                      maxWidth: imageAttachments.length === 1 ? 440 : 216,
+                      aspectRatio: imageAttachments.length === 1 ? 16 / 10 : 1,
+                      overflow: "hidden",
+                      borderRadius: radii.md,
+                      backgroundColor: color("muted"),
+                    }}
+                  >
+                    <Image
+                      source={{ uri: attachment.fileUrl }}
+                      alt={attachment.fileName}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={140}
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  </PressableScale>
+                ))}
             </View>
-            {message.attachments.filter((attachment) => !isImageAttachment(attachment)).map((attachment) => (
-              <FileAttachment
-                key={attachment._id}
-                attachment={attachment}
-                onPress={() =>
-                  onOpenAttachment ? onOpenAttachment(attachment) : void Linking.openURL(attachment.fileUrl)
-                }
-              />
-            ))}
+            {message.attachments
+              .filter((attachment) => !isImageAttachment(attachment))
+              .map((attachment) => (
+                <FileAttachment
+                  key={attachment._id}
+                  attachment={attachment}
+                  onPress={() =>
+                    onOpenAttachment
+                      ? onOpenAttachment(attachment)
+                      : void Linking.openURL(attachment.fileUrl)
+                  }
+                />
+              ))}
             {message.attachmentsTruncated ? (
               <Txt variant="caption" tone="muted">
                 Showing the latest attachments
@@ -149,7 +198,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
         ) : null}
 
         {message.poll ? (
-          <View style={{ maxWidth: 520, paddingTop: spacing.xs, gap: spacing.sm }}>
+          <View
+            style={{ maxWidth: 520, paddingTop: spacing.xs, gap: spacing.sm }}
+          >
             <Txt style={{ fontWeight: "800" }}>{message.poll.question}</Txt>
             {message.poll.options.map((option) => {
               const percent = message.poll?.totalVotes
@@ -160,7 +211,10 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                 <PressableScale
                   key={option.id}
                   accessibilityLabel={`${option.label}, ${option.count} ${option.count === 1 ? "vote" : "votes"}${option.votedByCurrentUser ? ", selected" : ""}`}
-                  accessibilityState={{ selected: option.votedByCurrentUser, disabled: pending }}
+                  accessibilityState={{
+                    selected: option.votedByCurrentUser,
+                    disabled: pending,
+                  }}
                   disabled={pending}
                   haptic={false}
                   onPress={() => onVotePoll(message, option.id)}
@@ -169,7 +223,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     overflow: "hidden",
                     borderRadius: radii.md,
                     borderWidth: 1,
-                    borderColor: option.votedByCurrentUser ? color("primary") : color("border"),
+                    borderColor: option.votedByCurrentUser
+                      ? color("primary")
+                      : color("border"),
                     backgroundColor: color("card"),
                     justifyContent: "center",
                     paddingHorizontal: spacing.md,
@@ -184,36 +240,64 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                       backgroundColor: color("secondary"),
                     }}
                   />
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: spacing.sm,
+                    }}
+                  >
                     <Txt variant="label" numberOfLines={2} style={{ flex: 1 }}>
                       {option.label}
                     </Txt>
                     <Txt variant="caption" tone="muted">
-                      {message.poll?.votesTruncated ? "~" : ""}{percent}%
+                      {message.poll?.votesTruncated ? "~" : ""}
+                      {percent}%
                     </Txt>
-                    {option.votedByCurrentUser ? <Check size={15} color={color("primary")} strokeWidth={2.5} /> : null}
+                    {option.votedByCurrentUser ? (
+                      <Check
+                        size={15}
+                        color={color("primary")}
+                        strokeWidth={2.5}
+                      />
+                    ) : null}
                   </View>
                 </PressableScale>
               );
             })}
             <Txt variant="caption" tone="muted">
               {message.poll.totalVotes}
-              {message.poll.votesTruncated ? "+" : ""} {message.poll.totalVotes === 1 ? "vote" : "votes"}
+              {message.poll.votesTruncated ? "+" : ""}{" "}
+              {message.poll.totalVotes === 1 ? "vote" : "votes"}
             </Txt>
           </View>
         ) : null}
 
         {reactions.length ? (
-          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.xs, paddingTop: 2 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: spacing.xs,
+              paddingTop: 2,
+            }}
+          >
             {reactions.map((reaction) => {
-              const quickReaction = QUICK_REACTIONS.find((entry) => entry.payload === reaction.emoji);
+              const quickReaction = QUICK_REACTIONS.find(
+                (entry) => entry.payload === reaction.emoji,
+              );
               const ReactionIcon = quickReaction?.icon;
-              const pending = pendingAction === `reaction:${message._id}:${reaction.emoji}`;
+              const pending =
+                pendingAction === `reaction:${message._id}:${reaction.emoji}`;
               return (
                 <PressableScale
                   key={reaction.emoji}
                   accessibilityLabel={`${quickReaction?.label ?? reaction.emoji}, ${reaction.count}`}
-                  accessibilityState={{ selected: reaction.reactedByCurrentUser, disabled: pending }}
+                  accessibilityState={{
+                    selected: reaction.reactedByCurrentUser,
+                    disabled: pending,
+                  }}
                   disabled={pending}
                   haptic={false}
                   onPress={() => onToggleReaction(message, reaction.emoji)}
@@ -222,8 +306,12 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     minHeight: 34,
                     borderRadius: radii.pill,
                     borderWidth: 1,
-                    borderColor: reaction.reactedByCurrentUser ? color("primary") : color("border"),
-                    backgroundColor: reaction.reactedByCurrentUser ? color("secondary") : color("card"),
+                    borderColor: reaction.reactedByCurrentUser
+                      ? color("primary")
+                      : color("border"),
+                    backgroundColor: reaction.reactedByCurrentUser
+                      ? color("secondary")
+                      : color("card"),
                     paddingHorizontal: spacing.sm,
                     flexDirection: "row",
                     alignItems: "center",
@@ -234,13 +322,26 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   {ReactionIcon ? (
                     <ReactionIcon
                       size={15}
-                      color={reaction.reactedByCurrentUser ? color("primary") : color("mutedForeground")}
-                      fill={reaction.emoji === "HEART" && reaction.reactedByCurrentUser ? color("primary") : "transparent"}
+                      color={
+                        reaction.reactedByCurrentUser
+                          ? color("primary")
+                          : color("mutedForeground")
+                      }
+                      fill={
+                        reaction.emoji === "HEART" &&
+                        reaction.reactedByCurrentUser
+                          ? color("primary")
+                          : "transparent"
+                      }
                     />
                   ) : (
                     <Txt variant="caption">{reaction.emoji}</Txt>
                   )}
-                  <Txt variant="caption" tone={reaction.reactedByCurrentUser ? "primary" : "muted"} style={{ fontWeight: "800" }}>
+                  <Txt
+                    variant="caption"
+                    tone={reaction.reactedByCurrentUser ? "primary" : "muted"}
+                    style={{ fontWeight: "800" }}
+                  >
                     {reaction.count}
                     {reaction.countIsCapped ? "+" : ""}
                   </Txt>
@@ -252,7 +353,11 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 
         {showReplyPreview && hasThread ? (
           <PressableScale
-            accessibilityLabel={!replyCountIsExact ? "Open message thread" : `Open thread with ${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
+            accessibilityLabel={
+              !replyCountIsExact
+                ? "Open message thread"
+                : `Open thread with ${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
+            }
             haptic={false}
             onPress={() => onOpenThread(message)}
             style={{
@@ -266,21 +371,44 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           >
             <MessageCircle size={16} color={color("primary")} />
             <Txt variant="label" tone="primary" style={{ fontWeight: "800" }}>
-              {!replyCountIsExact ? "View thread" : `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
+              {!replyCountIsExact
+                ? "View thread"
+                : `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
             </Txt>
             {message.latestReplyPreview || message.replies?.length ? (
-              <Txt variant="caption" tone="muted" numberOfLines={1} style={{ minWidth: 0, flex: 1 }}>
-                {message.latestReplyPreview?.body || message.replies?.[message.replies.length - 1]?.body || "Open thread"}
+              <Txt
+                variant="caption"
+                tone="muted"
+                numberOfLines={1}
+                style={{ minWidth: 0, flex: 1 }}
+              >
+                {message.latestReplyPreview?.body ||
+                  message.replies?.[message.replies.length - 1]?.body ||
+                  "Open thread"}
               </Txt>
             ) : null}
           </PressableScale>
         ) : null}
       </View>
+
+      <IconButton
+        icon={MoreHorizontal}
+        label={`Message actions for ${authorName}`}
+        size="sm"
+        variant="ghost"
+        onPress={() => onLongPress(message)}
+      />
     </Pressable>
   );
 });
 
-function FileAttachment({ attachment, onPress }: { attachment: ChatAttachment; onPress: () => void }) {
+function FileAttachment({
+  attachment,
+  onPress,
+}: {
+  attachment: ChatAttachment;
+  onPress: () => void;
+}) {
   const { color } = useTheme();
   const size = formatAttachmentSize(attachment.size);
   return (

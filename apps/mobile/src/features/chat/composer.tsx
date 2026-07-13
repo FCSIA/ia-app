@@ -10,6 +10,8 @@ import {
 import { Button, IconButton, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
+import { chatMessageLengthError } from "./chat-markdown";
+import { RichChatInput, type ChatMentionSuggestion } from "./rich-chat-input";
 import type { ChatComposerController } from "./use-chat-composer";
 import { chatAuthorName } from "./types";
 
@@ -20,8 +22,12 @@ type ChatComposerProps = {
   bottomInset: number;
   channelName?: string;
   threadMode?: boolean;
+  canCreatePoll?: boolean;
+  suggestions: ChatMentionSuggestion[];
   inputNativeID?: string;
   onLayout?: (event: LayoutChangeEvent) => void;
+  onReset: () => void;
+  onStartPoll: () => void;
   onSubmit: () => void;
 };
 
@@ -32,8 +38,12 @@ export function ChatComposer({
   bottomInset,
   channelName,
   threadMode = false,
+  canCreatePoll = false,
+  suggestions,
   inputNativeID,
   onLayout,
+  onReset,
+  onStartPoll,
   onSubmit,
 }: ChatComposerProps) {
   const { color } = useTheme();
@@ -42,6 +52,10 @@ export function ChatComposer({
     composer.mode.kind === "reply" ||
     composer.mode.kind === "poll";
   const unavailable = requiresPostingPermission && canPost !== true;
+  const lengthError = chatMessageLengthError(
+    composer.draft,
+    composer.markdownDraft,
+  );
 
   return (
     <View
@@ -77,21 +91,27 @@ export function ChatComposer({
             <ComposerModeHeader
               icon={Pencil}
               label="Edit message"
-              onClose={composer.reset}
+              onClose={onReset}
             />
-            <PlainChatInput
+            <RichChatInput
               accessibilityLabel="Edit message"
               placeholder="Message"
-              value={composer.draft}
-              onChangeText={composer.setDraft}
+              plainText={composer.draft}
+              markdown={composer.markdownDraft}
+              onChange={composer.setRichDraft}
               editable={!isPending}
               nativeID={inputNativeID}
+              suggestions={suggestions}
+            />
+            <ComposerLengthStatus
+              error={lengthError}
+              markdownLength={composer.markdownDraft.length}
             />
             <Button
               title="Save changes"
               size="sm"
               loading={isPending}
-              disabled={!composer.draft.trim()}
+              disabled={!composer.draft.trim() || !!lengthError}
               onPress={onSubmit}
             />
           </>
@@ -100,7 +120,7 @@ export function ChatComposer({
             <ComposerModeHeader
               icon={ShieldAlert}
               label="Report message"
-              onClose={composer.reset}
+              onClose={onReset}
             />
             <Txt variant="caption" tone="muted">
               Tell school moderators what needs review. The message author will
@@ -127,7 +147,7 @@ export function ChatComposer({
             <ComposerModeHeader
               icon={BarChart3}
               label="Create a poll"
-              onClose={composer.reset}
+              onClose={onReset}
             />
             <TextField
               accessibilityLabel="Poll question"
@@ -181,7 +201,7 @@ export function ChatComposer({
                 icon={MessageCircle}
                 label={`Replying to ${chatAuthorName(composer.mode.target)}`}
                 detail={composer.mode.target.body}
-                onClose={composer.reset}
+                onClose={onReset}
               />
             ) : null}
             <View
@@ -191,7 +211,7 @@ export function ChatComposer({
                 gap: spacing.sm,
               }}
             >
-              <PlainChatInput
+              <RichChatInput
                 accessibilityLabel={
                   threadMode || composer.mode.kind === "reply"
                     ? "Reply"
@@ -204,20 +224,23 @@ export function ChatComposer({
                       ? "Write a reply"
                       : `Message #${channelName ?? "channel"}`
                 }
-                value={composer.draft}
-                onChangeText={composer.setDraft}
+                plainText={composer.draft}
+                markdown={composer.markdownDraft}
+                onChange={composer.setRichDraft}
                 editable={!isPending}
                 nativeID={inputNativeID}
-                style={{ flex: 1 }}
+                suggestions={suggestions}
               />
-              <IconButton
-                icon={BarChart3}
-                label="Create poll"
-                size="sm"
-                variant="ghost"
-                disabled={isPending}
-                onPress={composer.startPoll}
-              />
+              {canCreatePoll ? (
+                <IconButton
+                  icon={BarChart3}
+                  label="Create poll"
+                  size="sm"
+                  variant="ghost"
+                  disabled={isPending}
+                  onPress={onStartPoll}
+                />
+              ) : null}
               <IconButton
                 icon={Send}
                 label={
@@ -227,14 +250,34 @@ export function ChatComposer({
                 }
                 size="sm"
                 variant="primary"
-                disabled={isPending || !composer.draft.trim()}
+                disabled={isPending || !composer.draft.trim() || !!lengthError}
                 onPress={onSubmit}
               />
             </View>
+            <ComposerLengthStatus
+              error={lengthError}
+              markdownLength={composer.markdownDraft.length}
+            />
           </>
         )}
       </View>
     </View>
+  );
+}
+
+function ComposerLengthStatus({
+  error,
+  markdownLength,
+}: {
+  error: string | null;
+  markdownLength: number;
+}) {
+  if (!error && markdownLength < 10_000) return null;
+  return (
+    <Txt variant="caption" tone={error ? "destructive" : "muted"}>
+      {error ??
+        `${markdownLength.toLocaleString()} / 12,000 Markdown characters`}
+    </Txt>
   );
 }
 

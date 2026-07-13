@@ -5,7 +5,8 @@ const easProjectId = process.env.EAS_PROJECT_ID;
 const expoOwner = process.env.EXPO_ACCOUNT_OWNER;
 const personalTeamBuild = process.env.EXPO_IOS_PERSONAL_TEAM === "1";
 const universalLinkHost =
-  process.env.EXPO_PUBLIC_UNIVERSAL_LINK_HOST ?? "app.innovationacademy.fcsia.org";
+  process.env.EXPO_PUBLIC_UNIVERSAL_LINK_HOST ??
+  "app.innovationacademy.fcsia.org";
 
 const notificationsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
   "expo-notifications",
@@ -22,7 +23,9 @@ const notificationsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 const withoutPaidAppleCapabilities: ConfigPlugin = (config) =>
   withEntitlementsPlist(config, (entitlementsConfig) => {
     delete entitlementsConfig.modResults["aps-environment"];
-    delete entitlementsConfig.modResults["com.apple.developer.associated-domains"];
+    delete entitlementsConfig.modResults[
+      "com.apple.developer.associated-domains"
+    ];
     return entitlementsConfig;
   });
 
@@ -49,7 +52,9 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? "org.fcsia.app",
     buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
-    associatedDomains: personalTeamBuild ? undefined : [`applinks:${universalLinkHost}`],
+    associatedDomains: personalTeamBuild
+      ? undefined
+      : [`applinks:${universalLinkHost}`],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSFaceIDUsageDescription:
@@ -87,7 +92,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-secure-store",
-    "react-native-enriched-markdown",
+    ["react-native-enriched-markdown", { enableMath: false }],
     ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
     notificationsPlugin,
   ],
