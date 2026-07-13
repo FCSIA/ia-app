@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { File } from "expo-file-system";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
@@ -12,6 +13,7 @@ import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } fro
 import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import type { Id } from "~/apps/convex/src/_generated/dataModel";
 
 export default function ProfileScreen() {
   const user = useCurrentUser();
@@ -34,20 +36,23 @@ export default function ProfileScreen() {
       if (result.canceled || !result.assets[0]) return;
 
       const asset = result.assets[0];
+      const file = new File(asset.uri);
+      const mimeType = asset.mimeType || file.type || "image/jpeg";
       const uploadUrl = await generateUploadUrl({});
-      const blob = await (await fetch(asset.uri)).blob();
-      const upload = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
-        body: blob,
+      const upload = await file.upload(uploadUrl, {
+        httpMethod: "POST",
+        headers: { "Content-Type": mimeType },
+        mimeType,
       });
-      if (!upload.ok) throw new Error("The image could not be uploaded.");
-      const { storageId } = await upload.json();
+      if (upload.status < 200 || upload.status >= 300) {
+        throw new Error("The image could not be uploaded.");
+      }
+      const { storageId } = JSON.parse(upload.body) as { storageId: Id<"_storage"> };
       await saveImage({
         kind: "avatar",
         storageId,
-        mimeType: asset.mimeType ?? "image/jpeg",
-        size: asset.fileSize ?? blob.size,
+        mimeType,
+        size: asset.fileSize ?? file.size,
       });
       showToast({ title: "Photo updated", tone: "success" });
     } catch (error) {
