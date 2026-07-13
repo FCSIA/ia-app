@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import { router } from "expo-router";
-import { Bookmark, BookmarkCheck, CheckCircle2, Circle, MessageCircle, Pin } from "lucide-react-native";
+import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
 import { useMutation } from "convex/react";
-import { IconButton, PressableScale, Txt, useToast } from "@/components/ui";
+import { PressableScale, Txt, useToast } from "@/components/ui";
+import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { relativeTime } from "@/lib/format";
 import { success } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
@@ -42,119 +43,100 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
   }
 
   return (
-    <PressableScale
-      accessibilityLabel={`${announcement.isRead ? "" : "Unread: "}${announcement.title}`}
-      onPress={() => router.push(`/announcements/${announcement._id}` as never)}
+    <View
+      style={{
+        borderRadius: radii.md,
+        borderWidth: themeName === "high-contrast" ? 1 : 0,
+        borderColor: color("border"),
+        backgroundColor: announcement.isRead ? "transparent" : color("secondary"),
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: spacing.sm,
+      }}
     >
-      <View
-        style={{
-          borderRadius: radii.lg,
-          borderWidth: themeName === "high-contrast" ? 1 : 0,
-          borderColor: color("border"),
-          backgroundColor: announcement.isRead ? color("card") : color("secondary"),
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          gap: spacing.sm,
-        }}
+      <PressableScale
+        accessibilityRole="link"
+        accessibilityLabel={`${announcement.isRead ? "" : "Unread: "}${announcement.title}`}
+        onPress={() => router.push(`/announcements/${announcement._id}` as never)}
+        style={{ flex: 1 }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-          {!announcement.isRead ? (
-            <View
-              accessible
-              accessibilityLabel="Unread"
-              style={{
-                width: spacing.sm,
-                height: spacing.sm,
-                borderRadius: radii.pill,
-                backgroundColor: color("primary"),
-              }}
-            />
-          ) : null}
-          <Txt
-            variant="overline"
-            tone={announcement.isRead ? "muted" : "default"}
-            numberOfLines={1}
-            style={{ flexShrink: 1 }}
-          >
-            {audience}
-          </Txt>
-          {announcement.isPinned ? (
-            <View
-              accessibilityLabel="Pinned announcement"
-              style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+        <View style={{ gap: spacing.xs }}>
+          <View style={{ minHeight: 20, flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            {!announcement.isRead ? (
+              <View
+                accessible
+                accessibilityLabel="Unread"
+                style={{
+                  width: spacing.sm,
+                  height: spacing.sm,
+                  borderRadius: radii.pill,
+                  backgroundColor: color("primary"),
+                }}
+              />
+            ) : null}
+            <Txt
+              variant="overline"
+              tone={announcement.isRead ? "muted" : "default"}
+              numberOfLines={1}
+              style={{ flexShrink: 1 }}
             >
-              <Txt variant="caption" tone="muted">•</Txt>
-              <Pin size={12} color={color("mutedForeground")} />
-              <Txt variant="caption" tone="muted">Pinned</Txt>
-            </View>
-          ) : null}
-          <Txt variant="caption" tone="muted" style={{ marginLeft: "auto" }}>
-            {relativeTime(announcement.createdAt)}
-          </Txt>
-        </View>
+              {audience}
+            </Txt>
+            {announcement.isPinned ? (
+              <View accessible accessibilityLabel="Pinned announcement">
+                <Pin size={13} color={color("mutedForeground")} />
+              </View>
+            ) : null}
+          </View>
 
-        <Txt
-          variant="section"
-          numberOfLines={2}
-          style={{ fontWeight: announcement.isRead ? "700" : "800" }}
-        >
-          {announcement.title}
-        </Txt>
-        <Txt tone="muted" numberOfLines={2}>{announcement.body}</Txt>
-
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm }}>
-          <Txt variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
-            {authorName || "Innovation Academy"}
+          <Txt
+            variant="section"
+            numberOfLines={2}
+            style={{ fontWeight: announcement.isRead ? "700" : "800" }}
+          >
+            {announcement.title}
           </Txt>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+          <Txt tone="muted" numberOfLines={2}>{announcement.body}</Txt>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingTop: spacing.xs }}>
+            <Txt variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {authorName || "Innovation Academy"}
+            </Txt>
+            <Txt variant="caption" tone="muted">·</Txt>
+            <Txt variant="caption" tone="muted">
+              {relativeTime(announcement.createdAt)}
+            </Txt>
             {announcement.allowComments ? (
               <View
+                accessible
                 accessibilityLabel={`${announcement.commentCount ?? 0} comments`}
-                style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+                style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: spacing.xs }}
               >
-                <MessageCircle size={14} color={color("mutedForeground")} />
+                <MessageCircle size={13} color={color("mutedForeground")} />
                 <Txt variant="caption" tone="muted">{announcement.commentCount ?? 0}</Txt>
               </View>
             ) : null}
-            <IconButton
-              icon={announcement.isRead ? Circle : CheckCircle2}
-              label={announcement.isRead ? "Mark unread" : "Mark read"}
-              size="sm"
-              variant="ghost"
-              onPress={(event) => {
-                event?.stopPropagation();
-                void toggleRead();
-              }}
-            />
-            <IconButton
-              icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
-              label={announcement.isBookmarked ? "Unsave announcement" : "Save announcement"}
-              size="sm"
-              variant="ghost"
-              onPress={(event) => {
-                event?.stopPropagation();
-                void toggleBookmark();
-              }}
-            />
           </View>
         </View>
-      </View>
-    </PressableScale>
-  );
-}
+      </PressableScale>
 
-function announcementAudience(announcement: any) {
-  if (announcement.club?.name) return announcement.club.name;
-  if (announcement.targetType === "GRADE") {
-    const grades = Array.from(
-      new Set([announcement.targetGrade, ...(announcement.targetGrades ?? [])].filter(Boolean)),
-    );
-    if (grades.length === 1) return `Grade ${grades[0]}`;
-    if (grades.length > 1) return `Grades ${grades.join(", ")}`;
-    return "Grade";
-  }
-  if (announcement.targetType === "PATHWAY") return "Pathway";
-  if (announcement.targetType === "CLUB") return "Club";
-  if (announcement.targetType === "INTERSECTION") return "Student group";
-  return "School";
+      <View style={{ flexDirection: "row", marginRight: -spacing.sm, marginTop: -spacing.sm }}>
+        <AnnouncementIconAction
+          icon={announcement.isRead ? Mail : MailOpen}
+          label={announcement.isRead ? "Mark unread" : "Mark read"}
+          selected={announcement.isRead}
+          onPress={() => void toggleRead()}
+        />
+        <AnnouncementIconAction
+          icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
+          label={announcement.isBookmarked ? "Unsave announcement" : "Save announcement"}
+          selected={announcement.isBookmarked}
+          accentWhenSelected
+          onPress={() => void toggleBookmark()}
+        />
+      </View>
+    </View>
+  );
 }

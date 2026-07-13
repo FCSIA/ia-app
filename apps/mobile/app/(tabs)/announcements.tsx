@@ -50,7 +50,7 @@ export default function AnnouncementsScreen() {
       />
       <DataBoundary data={filtered} emptyTitle={emptyTitle}>
         {(items) => (
-          <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: spacing.xs }}>
             {items.map((item: any) => (
               <AnnouncementCard key={item._id} announcement={item} />
             ))}

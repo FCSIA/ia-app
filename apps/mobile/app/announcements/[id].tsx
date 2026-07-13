@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { Bookmark, BookmarkCheck, CheckCircle2, Circle, Pin } from "lucide-react-native";
+import { Bookmark, BookmarkCheck, Mail, MailOpen, Pin, SendHorizontal } from "lucide-react-native";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Button, Section, TextField, Txt, useToast } from "@/components/ui";
+import { Avatar, TextField, Txt, useToast } from "@/components/ui";
+import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { relativeTime } from "@/lib/format";
 import { success } from "@/lib/haptics";
 import { useTheme } from "@/lib/theme";
-import { spacing } from "@/lib/tokens";
+import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function AnnouncementDetailScreen() {
@@ -74,8 +75,8 @@ export default function AnnouncementDetailScreen() {
             .join(" ");
 
           return (
-            <View style={{ gap: spacing.xl }}>
-              <View style={{ gap: spacing.md }}>
+            <View style={{ gap: spacing["2xl"] }}>
+              <View style={{ gap: spacing.lg }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                   {!announcement.isRead ? (
                     <View
@@ -89,91 +90,107 @@ export default function AnnouncementDetailScreen() {
                       }}
                     />
                   ) : null}
-                  <Txt variant="overline" tone="muted">
+                  <Txt
+                    variant="overline"
+                    tone={announcement.isRead ? "muted" : "default"}
+                    numberOfLines={1}
+                    style={{ flexShrink: 1 }}
+                  >
                     {announcementAudience(announcement)}
                   </Txt>
                   {announcement.isPinned ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                      <Txt variant="caption" tone="muted">•</Txt>
+                    <View accessible accessibilityLabel="Pinned announcement">
                       <Pin size={13} color={color("mutedForeground")} />
-                      <Txt variant="caption" tone="muted">Pinned</Txt>
                     </View>
                   ) : null}
+                  <View style={{ marginLeft: "auto", marginRight: -spacing.sm, flexDirection: "row" }}>
+                    <AnnouncementIconAction
+                      icon={announcement.isRead ? Mail : MailOpen}
+                      label={announcement.isRead ? "Mark unread" : "Mark read"}
+                      selected={announcement.isRead}
+                      onPress={() => void toggleRead(announcement.isRead)}
+                    />
+                    <AnnouncementIconAction
+                      icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
+                      label={announcement.isBookmarked ? "Unsave announcement" : "Save announcement"}
+                      selected={announcement.isBookmarked}
+                      accentWhenSelected
+                      onPress={() => void toggleBookmark(announcement.isBookmarked)}
+                    />
+                  </View>
                 </View>
 
-                <Txt variant="title">{announcement.title}</Txt>
-                <Txt variant="caption" tone="muted">
-                  {authorName || "Innovation Academy"} · {relativeTime(announcement.createdAt)}
-                </Txt>
-                <Txt style={{ lineHeight: 24 }}>{announcement.body}</Txt>
-
-                <View
-                  style={{
-                    borderTopWidth: 1,
-                    borderBottomWidth: 1,
-                    borderColor: color("border"),
-                    paddingVertical: spacing.sm,
-                    flexDirection: "row",
-                    gap: spacing.sm,
-                  }}
-                >
-                  <Button
-                    title={announcement.isRead ? "Mark unread" : "Mark read"}
-                    icon={announcement.isRead ? Circle : CheckCircle2}
-                    size="sm"
-                    variant="secondary"
-                    onPress={() => void toggleRead(announcement.isRead)}
-                  />
-                  <Button
-                    title={announcement.isBookmarked ? "Unsave" : "Save"}
-                    icon={announcement.isBookmarked ? BookmarkCheck : Bookmark}
-                    size="sm"
-                    variant="ghost"
-                    onPress={() => void toggleBookmark(announcement.isBookmarked)}
-                  />
+                <View style={{ gap: spacing.sm }}>
+                  <Txt variant="display">{announcement.title}</Txt>
+                  <Txt variant="caption" tone="muted">
+                    {authorName || "Innovation Academy"} · {relativeTime(announcement.createdAt)}
+                  </Txt>
                 </View>
+
+                <Txt style={{ lineHeight: 25 }}>{announcement.body}</Txt>
               </View>
 
               {announcement.allowComments ? (
-                <Section title="Comments">
+                <View style={{ gap: spacing.lg }}>
+                  <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.sm }}>
+                    <Txt variant="section">Comments</Txt>
+                    {data.comments.length ? (
+                      <Txt variant="caption" tone="muted">{data.comments.length}</Txt>
+                    ) : null}
+                  </View>
                   {data.comments.length ? (
-                    data.comments.map((row: any, index: number) => {
-                      const commentAuthor = [row.author?.firstName, row.author?.lastName]
-                        .filter(Boolean)
-                        .join(" ");
-                      return (
-                        <View
-                          key={row._id}
-                          style={{
-                            gap: spacing.xs,
-                            paddingTop: index ? spacing.md : 0,
-                            borderTopWidth: index ? 1 : 0,
-                            borderColor: color("border"),
-                          }}
-                        >
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                            <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
-                              {commentAuthor || "Community member"}
-                            </Txt>
-                            <Txt variant="caption" tone="muted">{relativeTime(row.createdAt)}</Txt>
+                    <View style={{ gap: spacing.xl }}>
+                      {data.comments.map((row: any) => {
+                        const commentAuthor = [row.author?.firstName, row.author?.lastName]
+                          .filter(Boolean)
+                          .join(" ");
+                        return (
+                          <View
+                            key={row._id}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "flex-start",
+                              gap: spacing.md,
+                            }}
+                          >
+                            <Avatar
+                              uri={row.author?.avatarUrl}
+                              name={commentAuthor || "Community member"}
+                              size={36}
+                            />
+                            <View style={{ flex: 1, gap: spacing.xs }}>
+                              <View style={{ flexDirection: "row", alignItems: "baseline", gap: spacing.sm }}>
+                                <Txt variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
+                                  {commentAuthor || "Community member"}
+                                </Txt>
+                                <Txt variant="caption" tone="muted">{relativeTime(row.createdAt)}</Txt>
+                              </View>
+                              <Txt>{row.body}</Txt>
+                            </View>
                           </View>
-                          <Txt tone="muted">{row.body}</Txt>
-                        </View>
-                      );
-                    })
+                        );
+                      })}
+                    </View>
                   ) : (
-                    <Txt variant="caption" tone="muted">No comments yet.</Txt>
+                    <Txt tone="muted">No comments yet.</Txt>
                   )}
-                  <View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-end", gap: spacing.sm }}>
                     <TextField
                       placeholder="Write a comment…"
                       value={comment}
                       onChangeText={setComment}
                       multiline
+                      style={{ flex: 1, maxHeight: 128 }}
                     />
-                    <Button title="Post" onPress={() => void submitComment()} disabled={!comment.trim()} />
+                    <AnnouncementIconAction
+                      icon={SendHorizontal}
+                      label="Post comment"
+                      disabled={!comment.trim()}
+                      tone="primary"
+                      onPress={() => void submitComment()}
+                    />
                   </View>
-                </Section>
+                </View>
               ) : null}
             </View>
           );
@@ -181,20 +198,4 @@ export default function AnnouncementDetailScreen() {
       </DataBoundary>
     </Screen>
   );
-}
-
-function announcementAudience(announcement: any) {
-  if (announcement.club?.name) return announcement.club.name;
-  if (announcement.targetType === "GRADE") {
-    const grades = Array.from(
-      new Set([announcement.targetGrade, ...(announcement.targetGrades ?? [])].filter(Boolean)),
-    );
-    if (grades.length === 1) return `Grade ${grades[0]}`;
-    if (grades.length > 1) return `Grades ${grades.join(", ")}`;
-    return "Grade";
-  }
-  if (announcement.targetType === "PATHWAY") return "Pathway";
-  if (announcement.targetType === "CLUB") return "Club";
-  if (announcement.targetType === "INTERSECTION") return "Student group";
-  return "School";
 }
