@@ -81,7 +81,7 @@ export function ChatComposer({
         width: "100%",
         borderTopWidth: 1,
         borderTopColor: color("border"),
-        backgroundColor: color("card"),
+        backgroundColor: color("background"),
       }}
     >
       <View
@@ -90,9 +90,9 @@ export function ChatComposer({
           maxWidth: 760,
           alignSelf: "center",
           paddingHorizontal: spacing.md,
-          paddingTop: spacing.sm,
+          paddingTop: spacing.xs,
           paddingBottom: Math.max(spacing.sm, bottomInset),
-          gap: spacing.sm,
+          gap: spacing.xs,
         }}
       >
         {unavailable ? (
@@ -226,70 +226,68 @@ export function ChatComposer({
               disabled={isPending}
               onRemove={onRemoveAttachment}
             />
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "flex-end",
-                gap: spacing.sm,
-              }}
-            >
-              <RichChatInput
-                accessibilityLabel={
-                  threadMode || composer.mode.kind === "reply"
-                    ? "Reply"
-                    : "Message channel"
-                }
-                placeholder={
-                  threadMode
-                    ? "Reply in thread"
-                    : composer.mode.kind === "reply"
-                      ? "Write a reply"
-                      : `Message #${channelName ?? "channel"}`
-                }
-                plainText={composer.draft}
-                markdown={composer.markdownDraft}
-                onChange={composer.setRichDraft}
-                editable={!isPending}
-                nativeID={inputNativeID}
-                suggestions={suggestions}
-              />
-              <IconButton
-                icon={Paperclip}
-                label="Attach files"
-                size="sm"
-                variant="ghost"
-                disabled={isPending || !canPickAttachments}
-                onPress={onPickAttachments}
-              />
-              {canCreatePoll ? (
+            <RichChatInput
+              accessibilityLabel={
+                threadMode || composer.mode.kind === "reply"
+                  ? "Reply"
+                  : "Message channel"
+              }
+              placeholder={
+                threadMode
+                  ? "Reply in thread"
+                  : composer.mode.kind === "reply"
+                    ? "Write a reply"
+                    : `Message #${channelName ?? "channel"}`
+              }
+              plainText={composer.draft}
+              markdown={composer.markdownDraft}
+              onChange={composer.setRichDraft}
+              editable={!isPending}
+              nativeID={inputNativeID}
+              suggestions={suggestions}
+              toolbarActions={
+                <>
+                  <IconButton
+                    icon={Paperclip}
+                    label="Attach files"
+                    size="sm"
+                    variant="ghost"
+                    disabled={isPending || !canPickAttachments}
+                    onPress={onPickAttachments}
+                  />
+                  {canCreatePoll ? (
+                    <IconButton
+                      icon={BarChart3}
+                      label="Create poll"
+                      size="sm"
+                      variant="ghost"
+                      disabled={isPending}
+                      onPress={onStartPoll}
+                    />
+                  ) : null}
+                </>
+              }
+              toolbarTrailing={
                 <IconButton
-                  icon={BarChart3}
-                  label="Create poll"
+                  icon={Send}
+                  label={
+                    threadMode || composer.mode.kind === "reply"
+                      ? "Send reply"
+                      : "Send message"
+                  }
                   size="sm"
-                  variant="ghost"
-                  disabled={isPending}
-                  onPress={onStartPoll}
+                  variant="primary"
+                  disabled={
+                    isPending ||
+                    attachmentPickerBusy ||
+                    attachmentSubmissionBlocked ||
+                    (!composer.draft.trim() && !hasReadyAttachments) ||
+                    !!lengthError
+                  }
+                  onPress={onSubmit}
                 />
-              ) : null}
-              <IconButton
-                icon={Send}
-                label={
-                  threadMode || composer.mode.kind === "reply"
-                    ? "Send reply"
-                    : "Send message"
-                }
-                size="sm"
-                variant="primary"
-                disabled={
-                  isPending ||
-                  attachmentPickerBusy ||
-                  attachmentSubmissionBlocked ||
-                  (!composer.draft.trim() && !hasReadyAttachments) ||
-                  !!lengthError
-                }
-                onPress={onSubmit}
-              />
-            </View>
+              }
+            />
             <ComposerLengthStatus
               error={lengthError}
               markdownLength={composer.markdownDraft.length}

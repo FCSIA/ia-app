@@ -548,9 +548,7 @@ export function ClubChatScreen({
           )}
 
           {!threadIsMissing ? (
-            <KeyboardStickyView
-              offset={{ opened: Math.max(0, insets.bottom - spacing.sm) }}
-            >
+            <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
               <ChatComposer
                 composer={composer}
                 canPost={canPost}
@@ -613,23 +611,34 @@ function ChatHeader({
 }) {
   const { color } = useTheme();
   return (
-    <View style={{ borderBottomWidth: 1, borderBottomColor: color("border") }}>
+    <View
+      style={{
+        zIndex: 2,
+        borderBottomWidth: 1,
+        borderBottomColor: color("border"),
+        backgroundColor: color("background"),
+      }}
+    >
       <View
         style={{
           width: "100%",
           maxWidth: 760,
-          minHeight: 58,
+          minHeight: 64,
           alignSelf: "center",
-          paddingHorizontal: spacing.sm,
-          paddingVertical: spacing.xs,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
           flexDirection: "row",
           alignItems: "center",
-          gap: spacing.xs,
+          gap: spacing.sm,
         }}
       >
         <AppBackHeader forceVisible />
-        <View style={{ minWidth: 0, flex: 1 }}>
-          <Txt variant="section" numberOfLines={1}>
+        <View style={{ minWidth: 0, flex: 1, gap: 1 }}>
+          <Txt
+            variant="section"
+            numberOfLines={1}
+            style={{ fontSize: 17, lineHeight: 21 }}
+          >
             {title}
           </Txt>
           {description ? (

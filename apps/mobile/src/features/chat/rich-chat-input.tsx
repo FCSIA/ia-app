@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { ScrollView, View } from "react-native";
 import {
   EnrichedMarkdownTextInput,
   type EnrichedMarkdownTextInputInstance,
@@ -34,6 +41,8 @@ type RichChatInputProps = {
   editable: boolean;
   nativeID?: string;
   suggestions: ChatMentionSuggestion[];
+  toolbarActions?: ReactNode;
+  toolbarTrailing?: ReactNode;
   onChange: (plainText: string, markdown: string) => void;
 };
 
@@ -45,6 +54,8 @@ export function RichChatInput({
   editable,
   nativeID,
   suggestions,
+  toolbarActions,
+  toolbarTrailing,
   onChange,
 }: RichChatInputProps) {
   const { color } = useTheme();
@@ -251,59 +262,65 @@ export function RichChatInput({
         }}
       />
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 2,
-        }}
-      >
-        <FormatButton
-          icon={Bold}
-          label="Bold"
-          active={!!styleState?.bold.isActive}
-          disabled={!editable}
-          onPress={() => inputRef.current?.toggleBold()}
-        />
-        <FormatButton
-          icon={Italic}
-          label="Italic"
-          active={!!styleState?.italic.isActive}
-          disabled={!editable}
-          onPress={() => inputRef.current?.toggleItalic()}
-        />
-        <FormatButton
-          icon={Underline}
-          label="Underline"
-          active={!!styleState?.underline.isActive}
-          disabled={!editable}
-          onPress={() => inputRef.current?.toggleUnderline()}
-        />
-        <FormatButton
-          icon={Link2}
-          label={styleState?.link.isActive ? "Remove link" : "Add link"}
-          active={!!styleState?.link.isActive || linkOpen}
-          disabled={!editable}
-          onPress={() => {
-            if (styleState?.link.isActive) {
-              inputRef.current?.removeLink();
-            } else {
-              setLinkOpen((open) => !open);
-              setLinkError(null);
-            }
-          }}
-        />
-        <FormatButton
-          icon={AtSign}
-          label="Mention someone"
-          active={mentionOpen}
-          disabled={!editable || suggestions.length === 0}
-          onPress={() => {
-            inputRef.current?.focus();
-            inputRef.current?.startMention("@");
-          }}
-        />
+      <View style={{ minWidth: 0, flexDirection: "row", alignItems: "center" }}>
+        <ScrollView
+          horizontal
+          bounces={false}
+          keyboardShouldPersistTaps="always"
+          showsHorizontalScrollIndicator={false}
+          style={{ minWidth: 0, flex: 1 }}
+          contentContainerStyle={{ alignItems: "center", gap: 2 }}
+        >
+          <FormatButton
+            icon={Bold}
+            label="Bold"
+            active={!!styleState?.bold.isActive}
+            disabled={!editable}
+            onPress={() => inputRef.current?.toggleBold()}
+          />
+          <FormatButton
+            icon={Italic}
+            label="Italic"
+            active={!!styleState?.italic.isActive}
+            disabled={!editable}
+            onPress={() => inputRef.current?.toggleItalic()}
+          />
+          <FormatButton
+            icon={Underline}
+            label="Underline"
+            active={!!styleState?.underline.isActive}
+            disabled={!editable}
+            onPress={() => inputRef.current?.toggleUnderline()}
+          />
+          <FormatButton
+            icon={Link2}
+            label={styleState?.link.isActive ? "Remove link" : "Add link"}
+            active={!!styleState?.link.isActive || linkOpen}
+            disabled={!editable}
+            onPress={() => {
+              if (styleState?.link.isActive) {
+                inputRef.current?.removeLink();
+              } else {
+                setLinkOpen((open) => !open);
+                setLinkError(null);
+              }
+            }}
+          />
+          <FormatButton
+            icon={AtSign}
+            label="Mention someone"
+            active={mentionOpen}
+            disabled={!editable || suggestions.length === 0}
+            onPress={() => {
+              inputRef.current?.focus();
+              inputRef.current?.startMention("@");
+            }}
+          />
+          {toolbarActions}
+        </ScrollView>
+        {toolbarTrailing ? (
+          <View style={{ marginLeft: spacing.xs }}>{toolbarTrailing}</View>
+        ) : null}
       </View>
 
       {linkOpen ? (
@@ -378,8 +395,8 @@ function FormatButton({
       haptic={false}
       onPress={onPress}
       style={{
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: radii.pill,
         alignItems: "center",
         justifyContent: "center",
