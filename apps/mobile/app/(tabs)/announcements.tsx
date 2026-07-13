@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { RefreshControl, View } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "convex/react";
 import { AppHeader } from "@/components/app-header";
 import { AnnouncementCard } from "@/components/announcement-card";
@@ -19,10 +18,16 @@ export default function AnnouncementsScreen() {
   const announcements = useQuery(api.announcements.feed.list, filter === "unread" ? { unreadOnly: true } : {});
   const filtered = filter === "saved" ? announcements?.filter((item: any) => item.isBookmarked) : announcements;
   const { color } = useTheme();
+  const emptyTitle =
+    filter === "unread"
+      ? "You're all caught up"
+      : filter === "saved"
+        ? "No saved announcements"
+        : "No announcements yet";
 
   return (
     <Screen
-      header={<AppHeader title="Feed" subtitle="School, pathway, grade, and club updates." />}
+      header={<AppHeader title="Feed" />}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -43,15 +48,12 @@ export default function AnnouncementsScreen() {
           { label: "Saved", value: "saved" },
         ]}
       />
-      <DataBoundary data={filtered} emptyTitle="No announcements">
+      <DataBoundary data={filtered} emptyTitle={emptyTitle}>
         {(items) => (
-          <View style={{ minHeight: Math.max(1, items.length) * 190 }}>
-            <FlashList
-              data={items}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-              renderItem={({ item }) => <AnnouncementCard announcement={item} />}
-            />
+          <View style={{ gap: spacing.sm }}>
+            {items.map((item: any) => (
+              <AnnouncementCard key={item._id} announcement={item} />
+            ))}
           </View>
         )}
       </DataBoundary>
