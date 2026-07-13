@@ -1,24 +1,46 @@
+import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import { Check, ChevronRight } from "lucide-react-native";
+import { Check, ChevronRight, Plus } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Avatar, PressableScale, Txt } from "@/components/ui";
+import { Avatar, IconButton, PressableScale, Txt } from "@/components/ui";
+import { CreateClubSheet } from "@/features/clubs/club-management-create-sheet";
+import { hasRole, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubsScreen() {
+  const user = useLiveCurrentUser();
   const all = useQuery(api.clubs.management.getAll, {});
   const mine = useQuery(api.clubs.management.getMyClubs, {});
+  const [createOpen, setCreateOpen] = useState(false);
+  const canCreate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER");
   const memberIds = new Set((mine?.memberOf ?? []).map((club: any) => club._id));
   const sponsorIds = new Set((mine?.sponsoring ?? []).map((club: any) => club._id));
   const clubsReady = all === undefined || mine === undefined ? undefined : all;
 
   return (
-    <Screen header={<AppHeader title="Clubs" />}>
+    <Screen
+      header={
+        <AppHeader
+          title="Clubs"
+          action={
+            canCreate ? (
+              <IconButton
+                icon={Plus}
+                label="Create club"
+                variant="primary"
+                onPress={() => setCreateOpen(true)}
+              />
+            ) : undefined
+          }
+        />
+      }
+    >
       <DataBoundary data={clubsReady} emptyTitle="No clubs yet">
         {(clubs) => {
           const joinedClubs = clubs.filter((club: any) => memberIds.has(club._id));
@@ -52,6 +74,7 @@ export default function ClubsScreen() {
           );
         }}
       </DataBoundary>
+      {canCreate ? <CreateClubSheet open={createOpen} onClose={() => setCreateOpen(false)} /> : null}
     </Screen>
   );
 }
