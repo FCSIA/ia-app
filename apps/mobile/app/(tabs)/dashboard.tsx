@@ -106,6 +106,8 @@ export default function DashboardScreen() {
         >
           {schedule.value === undefined ? (
             <HomeSkeleton count={4} />
+          ) : schedule.value === null ? (
+            <HomeSurface><HomeEmpty text="No schedule saved." /></HomeSurface>
           ) : (
             <ScheduleSummary data={schedule.value} schoolDay={schoolDay} />
           )}
@@ -333,10 +335,10 @@ export default function DashboardScreen() {
 
 function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardSchoolDay }) {
   const { color } = useTheme();
-  const entries = (data.mySchedule?.entries ?? [])
+  const entries = (data?.mySchedule?.entries ?? [])
     .filter((entry: any) => entry.weekday === schoolDay.value)
     .sort((left: any, right: any) => left.periodNumber - right.periodNumber);
-  const blocks = data.blocks.filter((block: any) => block.weekday === schoolDay.value);
+  const blocks = (data?.blocks ?? []).filter((block: any) => block.weekday === schoolDay.value);
 
   return (
     <HomeSurface>
@@ -373,7 +375,7 @@ function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardS
           />
         );
       }) : (
-        <HomeEmpty text={data.mySchedule ? "No classes this day." : "No schedule saved."} />
+        <HomeEmpty text={data?.mySchedule ? "No classes this day." : "No schedule saved."} />
       )}
     </HomeSurface>
   );

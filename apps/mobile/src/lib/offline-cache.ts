@@ -20,7 +20,7 @@ export async function writeOfflineCache<T>(key: string, value: T) {
 }
 
 export function useOfflineValue<T>(key: string, liveValue: T | undefined | null) {
-  const [cachedValue, setCachedValue] = useState<T | null>(null);
+  const [cachedValue, setCachedValue] = useState<T | null | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);
   const lastLiveSnapshot = useRef<string | null>(null);
 
