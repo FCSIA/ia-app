@@ -1,0 +1,20 @@
+appId: org.fcsia.app
+---
+- launchApp
+- tapOn: "Clubs"
+- assertVisible: "Clubs"
+- tapOn:
+    text: ".*"
+    index: 0
+- assertVisible: "Channels"
+- tapOn:
+    text: "#.*"
+    index: 0
+- tapOn: "Message this channel"
+- inputText: "Mobile smoke test message"
+- tapOn: "Send"
+- assertVisible: "Mobile smoke test message"
+- tapOn: "Report"
+- tapOn: "Reason"
+- inputText: "Maestro smoke test report"
+- tapOn: "Submit"

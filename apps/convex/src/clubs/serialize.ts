@@ -1,7 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { canReadChannel } from "./access";
+import { canPostInChannel, canReadChannel } from "./access";
 
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
 export function toClubUserRef(user: Doc<"users">) {
@@ -27,6 +27,19 @@ export function toViewerState(context: ClubContext) {
     canManageMembership: context.canManageMembership,
     canApproveJoinRequests: context.canApproveJoinRequests,
     hasPendingJoinRequest: context.hasPendingJoinRequest,
+  };
+}
+
+export function toChannelViewerState(
+  channel: Doc<"clubChannels"> & {
+    memberships: Doc<"clubChannelMemberships">[];
+  },
+  context: ClubContext,
+  userId: Id<"users">,
+) {
+  return {
+    viewerCanRead: canReadChannel(channel, context, userId),
+    viewerCanPost: canPostInChannel(channel, context, userId),
   };
 }
 
@@ -72,7 +85,8 @@ export async function getVisibleChannels(
       .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
       .collect();
     const channelDoc = { ...channel, memberships };
-    if (!canReadChannel(channelDoc, context, userId)) continue;
+    const viewer = toChannelViewerState(channelDoc, context, userId);
+    if (!viewer.viewerCanRead) continue;
 
     const messages = await ctx.db
       .query("clubChannelMessages")
@@ -83,8 +97,7 @@ export async function getVisibleChannels(
 
     result.push({
       ...channel,
-      viewerCanRead: true,
-      viewerCanPost: context.hasClubRole || context.isSponsor || context.isAdmin,
+      ...viewer,
       memberships: memberships.map((m) => ({ userId: m.userId })),
       _count: { messages: messages.length },
     });

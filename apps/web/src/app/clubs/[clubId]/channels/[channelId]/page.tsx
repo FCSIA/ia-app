@@ -4,10 +4,6 @@ import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import Image from 'next/image';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import {
   BarChart3,
   FileText,
@@ -52,14 +48,7 @@ import type {
   ClubDetail,
 } from '@/components/clubs/types';
 
-type ClubChannelMessageRichBody = NonNullable<ClubChannelMessage['bodyRich']>;
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
-type ChatAttachmentUploadResponse = {
-  fileName: string;
-  url: string;
-  mimeType: string;
-  size: number;
-};
 import {
   ChannelMessageComposer,
   type ChannelMentionSuggestion,
@@ -71,7 +60,10 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { MentionBody } from '@/components/clubs/mention-body';
+import {
+  MentionBody,
+  type ClubChannelMessageRichBody,
+} from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,7 +83,24 @@ import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👀'];
+const QUICK_REACTIONS = [
+  { value: 'LIKE', label: '👍', name: 'Like' },
+  { value: 'HEART', label: '❤️', name: 'Love' },
+  { value: 'FIRE', label: '🔥', name: 'Fire' },
+  { value: 'CELEBRATE', label: '🎉', name: 'Celebrate' },
+  { value: 'EYES', label: '👀', name: 'Watching' },
+  { value: 'DONE', label: '✅', name: 'Done' },
+] as const;
+
+const REACTION_LABELS = Object.fromEntries(
+  QUICK_REACTIONS.map((reaction) => [reaction.value, reaction.label]),
+) as Record<string, string>;
+
+type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
+
+function isChannelReaction(value: string): value is ChannelReaction {
+  return QUICK_REACTIONS.some((reaction) => reaction.value === value);
+}
 
 const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
   'STUDENT',
@@ -101,6 +110,7 @@ const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
 
 type ComposerSubmitArgs = {
   body: string;
+  bodyMarkdown: string;
   bodyRich: ClubChannelMessageRichBody | null;
   parentMessageId?: string;
   files: File[];
@@ -196,28 +206,19 @@ function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAtt
   );
 }
 
-function MarkdownMessage({ body }: { body: string }) {
-  return (
-    <div className="prose prose-sm dark:prose-invert mt-1 max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {body}
-      </ReactMarkdown>
-    </div>
-  );
-}
-
 function MessageBody({ message }: { message: ClubChannelMessage }) {
-  if (Array.isArray(message.bodyRich) && message.bodyRich.length > 0) {
-    return (
-      <MentionBody
-        body={message.body}
-        bodyRich={message.bodyRich}
-        className="mt-1"
-      />
-    );
-  }
-
-  return message.body ? <MarkdownMessage body={message.body} /> : null;
+  return (
+    <MentionBody
+      body={message.body}
+      bodyMarkdown={message.bodyMarkdown}
+      bodyRich={
+        Array.isArray(message.bodyRich)
+          ? (message.bodyRich as ClubChannelMessageRichBody)
+          : null
+      }
+      className="mt-1"
+    />
+  );
 }
 
 function MessageAuthorPreview({
@@ -370,7 +371,7 @@ function MessageRow({
 }: {
   message: ClubChannelMessage;
   onOpenThread: (messageId: string) => void;
-  onToggleReaction: (messageId: string, emoji: string) => void;
+  onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
   onVotePoll: (messageId: string, optionId: string) => void;
   onStartEdit: (messageId: string) => void;
@@ -391,7 +392,8 @@ function MessageRow({
   compact?: boolean;
 }) {
   const isAuthor = message.author._id === currentUserId;
-  const isEdited = message.updatedAt !== message.createdAt;
+  const isDeleted = message.isDeleted;
+  const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
 
   return (
     <div
@@ -435,7 +437,9 @@ function MessageRow({
           ) : null}
         </div>
 
-        {isEditing ? (
+        {isDeleted ? (
+          <p className="mt-1 text-sm italic text-muted-foreground">Message deleted</p>
+        ) : isEditing ? (
           <div className="mt-2" />
         ) : (
           <>
@@ -447,74 +451,81 @@ function MessageRow({
 
         {!isEditing && (
           <>
-            {message.reactions.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {message.reactions.map((reaction) => (
-                  <Button
-                    key={`${message._id}-${reaction.emoji}`}
-                    variant="tertiary"
-                    size="sm"
-                    className={cn(
-                      'h-6 gap-1 px-2 text-xs',
-                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                    )}
-                    disabled={isReactionPending}
-                    onClick={() => onToggleReaction(message._id, reaction.emoji)}
-                  >
-                    <span>{reaction.emoji}</span>
-                    {reaction.count}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
+            {!isDeleted ? (
+              <>
+                {message.reactions.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {message.reactions.map((reaction) => (
+                      <Button
+                        key={`${message._id}-${reaction.emoji}`}
+                        variant="tertiary"
+                        size="sm"
+                        className={cn(
+                          'h-6 gap-1 px-2 text-xs',
+                          reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+                        )}
+                        disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+                        onClick={() => {
+                          if (isChannelReaction(reaction.emoji)) {
+                            onToggleReaction(message._id, reaction.emoji);
+                          }
+                        }}
+                      >
+                        <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
+                        {reaction.count}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
 
-            <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {QUICK_REACTIONS.map((emoji) => (
-                <Button
-                  key={`${message._id}-${emoji}-quick`}
-                  variant="ghost"
-                  size="sm"
-                  className="size-6 p-0 text-sm"
-                  disabled={isReactionPending}
-                  onClick={() => onToggleReaction(message._id, emoji)}
-                >
-                  {emoji}
-                </Button>
-              ))}
-              {!compact ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onOpenThread(message.threadRootId)}
-                >
-                  <Reply className="size-3" />
-                  Reply
-                </Button>
-              ) : null}
-              {isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onStartEdit(message._id)}
-                >
-                  <Pencil className="size-3" />
-                  Edit
-                </Button>
-              )}
-              {!isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
-                  onClick={() => onReport?.(message._id)}
-                >
-                  <Flag className="size-3" />
-                  Report
-                </Button>
-              )}
-              {(isAuthor || canModerate) && (
+                <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {QUICK_REACTIONS.map((reaction) => (
+                    <Button
+                      key={`${message._id}-${reaction.value}-quick`}
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 p-0 text-sm"
+                      disabled={isReactionPending}
+                      aria-label={reaction.name}
+                      onClick={() => onToggleReaction(message._id, reaction.value)}
+                    >
+                      {reaction.label}
+                    </Button>
+                  ))}
+                  {!compact ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onOpenThread(message.threadRootId)}
+                    >
+                      <Reply className="size-3" />
+                      Reply
+                    </Button>
+                  ) : null}
+                  {isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onStartEdit(message._id)}
+                    >
+                      <Pencil className="size-3" />
+                      Edit
+                    </Button>
+                  )}
+                  {!isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
+                      onClick={() => onReport?.(message._id)}
+                    >
+                      <Flag className="size-3" />
+                      Report
+                    </Button>
+                  )}
+                  {(isAuthor || canModerate) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -532,13 +543,12 @@ function MessageRow({
                       <AlertDialogTitle>Delete Message?</AlertDialogTitle>
                       <AlertDialogDescription asChild>
                         <div className="text-sm text-muted-foreground">
-                          This will remove the message for everyone in the channel.
+                          This removes the message content for everyone in the channel.
                           <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
                             <AlertTriangle className="size-5 shrink-0 text-amber-500" />
                             <div className="text-xs">
-                              <strong>Note:</strong> While the message will be hidden from the UI,
-                              all message activity is still logged and visible to school administrators
-                              in the audit panel.
+                              <strong>Note:</strong> The deletion is logged for school administrators.
+                              If the message has replies, a content-free placeholder keeps the thread intact.
                             </div>
                           </div>
                         </div>
@@ -555,8 +565,8 @@ function MessageRow({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
-              {canModerate && !compact ? (
+                  )}
+                  {canModerate && !compact ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -567,8 +577,10 @@ function MessageRow({
                   {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
                   {message.isPinned ? 'Unpin' : 'Pin'}
                 </Button>
-              ) : null}
-            </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {!compact && message.replyCount > 0 ? (
               <button
@@ -615,17 +627,19 @@ export default function ClubChannelPage({
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
+  const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
-  const submitReport = useMutation(api.moderation.reports.submit);
+  const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const submitMessage = async ({
     body,
+    bodyMarkdown,
     bodyRich,
     parentMessageId,
     files,
@@ -633,34 +647,28 @@ export default function ClubChannelPage({
     pollOptions,
     mode,
   }: ComposerSubmitArgs) => {
+    const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
     try {
-      const uploadedAttachments = await Promise.all(
-        files.map(async (file) => {
-          const storageId = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({}) },
-            file,
-          );
-          return finalizeChatAttachment({
-            storageId,
-            fileName: file.name,
-            mimeType: file.type || 'application/octet-stream',
-            size: file.size,
-          });
-        }),
-      );
+      for (const file of files) {
+        const storageId = await uploadFileToConvex(
+          { generateUploadUrl: () => generateUploadUrl({}) },
+          file,
+        );
+        const staged = await finalizeChatAttachment({
+          storageId,
+          fileName: file.name,
+        });
+        attachmentUploadIds.push(staged.attachmentUploadId);
+      }
       await postMessage({
         channelId,
         body: body.trim(),
+        bodyMarkdown: bodyMarkdown.trim() || undefined,
         bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
         parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
         pollQuestion,
         pollOptions,
-        attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
-          fileName: a.fileName,
-          fileUrl: a.url,
-          mimeType: a.mimeType,
-          size: a.size,
-        })),
+        attachments: attachmentUploadIds,
       });
       if (mode === 'thread') {
         setReplyComposerResetKey((current) => current + 1);
@@ -668,6 +676,11 @@ export default function ClubChannelPage({
         setRootComposerResetKey((current) => current + 1);
       }
     } catch {
+      await Promise.allSettled(
+        attachmentUploadIds.map((attachmentUploadId) =>
+          discardChatAttachment({ attachmentUploadId }),
+        ),
+      );
       toast({ title: 'Failed to send message', variant: 'destructive' });
     }
   };
@@ -750,10 +763,7 @@ export default function ClubChannelPage({
   const handleSubmitReport = async () => {
     if (!reportingMessage || !reportReason.trim()) return;
     await submitReport({
-      contentType: 'CLUB_CHANNEL_MESSAGE',
-      contentId: reportingMessage._id,
-      clubId,
-      reportedUserId: reportingMessage.author._id,
+      messageId: reportingMessage._id as Id<'clubChannelMessages'>,
       reason: reportReason.trim(),
     });
     toast({ title: 'Report submitted' });
@@ -828,15 +838,24 @@ export default function ClubChannelPage({
         {isEditing && (
           <div className="ml-12 mr-3 mt-1">
             <ChannelMessageComposer
+              key={`edit-${message._id}`}
               suggestionEntries={suggestionEntries}
               placeholder="Edit message..."
               submitLabel="Save Changes"
               isPending={false}
-              resetKey={0}
-              onSubmit={({ body, bodyRich }) =>
+              canAttach={false}
+              initialBody={message.body}
+              initialBodyMarkdown={message.bodyMarkdown}
+              initialBodyRich={
+                Array.isArray(message.bodyRich)
+                  ? (message.bodyRich as ClubChannelMessageRichBody)
+                  : null
+              }
+              onSubmit={({ body, bodyMarkdown, bodyRich }) =>
                 void updateMessage({
                   messageId: message._id,
                   body,
+                  bodyMarkdown: bodyMarkdown.trim() || undefined,
                   bodyRich: bodyRich ?? undefined,
                 }).then(() => setEditingMessageId(null))
               }
@@ -906,9 +925,9 @@ export default function ClubChannelPage({
       </div>
 
       <div className="border-t p-3">
-        {canPost ? (
+        {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
-            resetKey={replyComposerResetKey}
+            key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
             onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
             isPending={false}
             suggestionEntries={suggestionEntries}
@@ -916,6 +935,10 @@ export default function ClubChannelPage({
             submitLabel="Reply"
             canCreatePoll={canModerateChannel}
           />
+        ) : selectedThread.isDeleted ? (
+          <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+            Replies are closed because the original message was deleted.
+          </div>
         ) : (
           <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
             {getClubChannelVisibilityLabel(channel.visibility)} channel. Only club leaders, sponsors,
@@ -1004,7 +1027,7 @@ export default function ClubChannelPage({
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <ChannelMessageComposer
-              resetKey={rootComposerResetKey}
+              key={`root-${rootComposerResetKey}`}
               onSubmit={(args) => void submitMessage({ ...args, mode: 'root' })}
               isPending={false}
               suggestionEntries={suggestionEntries}
