@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Text, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { router } from "expo-router";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextField } from "@/components/ui/text-field";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, TextField, Txt } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 
 export default function LoginScreen() {
   const { color } = useTheme();
@@ -15,70 +15,88 @@ export default function LoginScreen() {
   const canSubmit = !!uniqueId.trim() && !!password;
 
   async function signIn() {
+    if (!canSubmit || loading) return;
     setLoading(true);
-    const result = await authClient.signIn.username({
-      username: uniqueId.trim().toUpperCase(),
-      password
-    } as any);
-    setLoading(false);
-
-    if (result.error) {
-      Alert.alert("Unable to sign in", result.error.message ?? "Check your ID and password.");
-      return;
+    try {
+      const result = await authClient.signIn.username({
+        username: uniqueId.trim().toUpperCase(),
+        password,
+      } as any);
+      if (result.error) {
+        Alert.alert("Unable to sign in", result.error.message ?? "Check your ID and password.");
+        return;
+      }
+      router.replace("/dashboard" as never);
+    } catch {
+      Alert.alert("Unable to sign in", "Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    router.replace("/dashboard");
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        padding: 20,
-        backgroundColor: color("background")
-      }}
-    >
-      <View style={{ gap: 18 }}>
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: color("foreground"), fontSize: 32, fontWeight: "900" }}>
-            Innovation Academy
-          </Text>
-          <Text style={{ color: color("mutedForeground"), fontSize: 15 }}>
-            Sign in with your school ID.
-          </Text>
-        </View>
-        <Card style={{ gap: 12 }}>
-          <TextField
-            autoCapitalize="characters"
-            autoCorrect={false}
-            placeholder="Unique ID"
-            value={uniqueId}
-            onChangeText={setUniqueId}
-            returnKeyType="next"
-          />
-          <TextField
-            placeholder="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            returnKeyType="go"
-            onSubmitEditing={signIn}
-          />
-          <Button
-            title={canSubmit ? "Sign in" : "Enter ID and password"}
-            loading={loading}
-            disabled={!canSubmit}
-            onPress={signIn}
-          />
-          {!canSubmit ? (
-            <Text style={{ color: color("mutedForeground"), fontSize: 12, textAlign: "center" }}>
-              Use the same school ID and password as the web app.
-            </Text>
-          ) : null}
-        </Card>
-      </View>
-    </KeyboardAvoidingView>
+    <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.xl,
+          }}
+        >
+          <View style={{ width: "100%", maxWidth: 460, alignSelf: "center", gap: spacing.xl }}>
+            <View style={{ gap: spacing.sm }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: radii.md,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: color("primary"),
+                  marginBottom: spacing.sm,
+                }}
+              >
+                <Txt variant="section" style={{ color: color("primaryForeground") }}>IA</Txt>
+              </View>
+              <Txt variant="display">Sign in</Txt>
+              <Txt tone="muted">Use your school ID and password.</Txt>
+            </View>
+
+            <View style={{ gap: spacing.md }}>
+              <View style={{ gap: spacing.xs }}>
+                <Txt variant="label">School ID</Txt>
+                <TextField
+                  accessibilityLabel="School ID"
+                  autoCapitalize="characters"
+                  autoComplete="username"
+                  autoCorrect={false}
+                  placeholder="School ID"
+                  value={uniqueId}
+                  onChangeText={setUniqueId}
+                  returnKeyType="next"
+                />
+              </View>
+              <View style={{ gap: spacing.xs }}>
+                <Txt variant="label">Password</Txt>
+                <TextField
+                  accessibilityLabel="Password"
+                  autoComplete="current-password"
+                  placeholder="Password"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  returnKeyType="go"
+                  onSubmitEditing={() => void signIn()}
+                />
+              </View>
+              <Button title="Sign in" loading={loading} disabled={!canSubmit} onPress={() => void signIn()} />
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

@@ -14,9 +14,10 @@ type SwitchProps = {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  label?: string;
 };
 
-export function Switch({ value, onValueChange, disabled }: SwitchProps) {
+export function Switch({ value, onValueChange, disabled, label }: SwitchProps) {
   const { color } = useTheme();
   const progress = useSharedValue(value ? 1 : 0);
 
@@ -34,6 +35,7 @@ export function Switch({ value, onValueChange, disabled }: SwitchProps) {
   return (
     <Pressable
       accessibilityRole="switch"
+      accessibilityLabel={label}
       accessibilityState={{ checked: value, disabled }}
       disabled={disabled}
       hitSlop={4}

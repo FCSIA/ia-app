@@ -3,12 +3,12 @@ import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
-import { Bell, KeyRound, Palette, Trash2 } from "lucide-react-native";
+import { Camera, KeyRound, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import { unregisterStoredNativePushToken } from "@/lib/push";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
-import { Avatar, Button, Card, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
+import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
 import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -26,28 +26,33 @@ export default function ProfileScreen() {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   async function pickAvatar() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return;
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
 
-    const asset = result.assets[0];
-    const uploadUrl = await generateUploadUrl({});
-    const blob = await (await fetch(asset.uri)).blob();
-    const upload = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
-      body: blob,
-    });
-    const { storageId } = await upload.json();
-    await saveImage({
-      kind: "avatar",
-      storageId,
-      mimeType: asset.mimeType ?? "image/jpeg",
-      size: asset.fileSize ?? blob.size,
-    });
-    showToast({ title: "Avatar updated", tone: "success" });
+      const asset = result.assets[0];
+      const uploadUrl = await generateUploadUrl({});
+      const blob = await (await fetch(asset.uri)).blob();
+      const upload = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": asset.mimeType ?? "image/jpeg" },
+        body: blob,
+      });
+      if (!upload.ok) throw new Error("The image could not be uploaded.");
+      const { storageId } = await upload.json();
+      await saveImage({
+        kind: "avatar",
+        storageId,
+        mimeType: asset.mimeType ?? "image/jpeg",
+        size: asset.fileSize ?? blob.size,
+      });
+      showToast({ title: "Photo updated", tone: "success" });
+    } catch (error) {
+      showToast({ title: "Photo wasn't updated", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
+    }
   }
 
   async function logout() {
@@ -67,6 +72,7 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,
@@ -81,35 +87,35 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Screen title="Profile" subtitle="Account, appearance, and notification settings.">
-      <Card style={{ alignItems: "center", gap: spacing.md }}>
-        <Avatar uri={user?.avatarUrl} name={fullName} size={84} />
-        <View style={{ alignItems: "center", gap: 2 }}>
+    <Screen title="Profile">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <Avatar uri={user?.avatarUrl} name={fullName} size={72} />
+        <View style={{ flex: 1, gap: spacing.xs }}>
           <Txt variant="title">{fullName || "Innovation Academy"}</Txt>
           <Txt tone="muted">{user?.uniqueId}</Txt>
         </View>
-        <Button title="Update avatar" variant="secondary" onPress={pickAvatar} />
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        <Button title="Change photo" icon={Camera} variant="secondary" onPress={() => void pickAvatar()} />
         {user?.avatarUrl ? (
           <Button
-            title="Remove avatar"
-            variant="tertiary"
-            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Avatar removed", tone: "success" })).catch((error) => showToast({ title: "Avatar", body: error instanceof Error ? error.message : "Try again." }))}
+            title="Remove"
+            variant="ghost"
+            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Photo removed", tone: "success" })).catch((error) => showToast({ title: "Photo wasn't removed", body: error instanceof Error ? error.message : "Try again.", tone: "warning" }))}
           />
         ) : null}
-      </Card>
+      </View>
 
-      <Section title="Settings">
-        <ListRow icon={Palette} title="Appearance" subtitle="Theme and color preferences" onPress={() => router.push("/settings/theme" as never)} />
-        <ListRow icon={Bell} title="Notifications" subtitle="Push devices and categories" onPress={() => router.push("/settings/notifications" as never)} />
+      <Section title="Security">
         <ListRow icon={KeyRound} title="Password" subtitle="Change your account password" onPress={() => setPasswordOpen(true)} />
       </Section>
 
       <Section title="Account">
         <ListRow
           icon={Trash2}
-          title="Account deletion"
-          subtitle="School-managed accounts are handled by IA support."
-          onPress={() => showToast({ title: "Account deletion", body: "Contact IA support or the front office to request account removal or deactivation." })}
+          title="Delete account"
+          subtitle="Contact IA support to request deletion"
+          onPress={() => showToast({ title: "Delete account", body: "Contact IA support or the front office to request account removal or deactivation." })}
         />
         <Button title="Sign out" variant="ghost" onPress={logout} />
       </Section>
@@ -120,31 +126,41 @@ export default function ProfileScreen() {
         </Txt>
       ) : null}
 
-      <Sheet open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change Password">
-        <TextField
+      <Sheet open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change password">
+        <PasswordField
+          label="Current password"
           value={passwordForm.currentPassword}
           onChangeText={(currentPassword) => setPasswordForm((current) => ({ ...current, currentPassword }))}
-          placeholder="Current password"
-          secureTextEntry
         />
-        <TextField
+        <PasswordField
+          label="New password"
           value={passwordForm.newPassword}
           onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
-          placeholder="New password"
-          secureTextEntry
+          hint="At least 8 characters"
         />
-        <TextField
+        <PasswordField
+          label="Confirm password"
           value={passwordForm.confirmPassword}
           onChangeText={(confirmPassword) => setPasswordForm((current) => ({ ...current, confirmPassword }))}
-          placeholder="Confirm new password"
-          secureTextEntry
         />
         <Button
           title="Change password"
-          disabled={!passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
-          onPress={submitPassword}
+          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
+          onPress={() => void submitPassword()}
         />
       </Sheet>
     </Screen>
+  );
+}
+
+function PasswordField({ label, hint, value, onChangeText }: { label: string; hint?: string; value: string; onChangeText: (value: string) => void }) {
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+        <Txt variant="label">{label}</Txt>
+        {hint ? <Txt variant="caption" tone="muted">{hint}</Txt> : null}
+      </View>
+      <TextField accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry />
+    </View>
   );
 }
