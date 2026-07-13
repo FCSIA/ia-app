@@ -24,22 +24,26 @@ function message(
   };
 }
 
+function localTimestamp(day: number, hour: number, minute: number) {
+  return new Date(2026, 6, day, hour, minute).toISOString();
+}
+
 describe("mobile chat timeline layout", () => {
   it("groups consecutive messages from one author within five minutes", () => {
-    const first = message("one", "alex", "2026-07-13T13:00:00.000Z");
-    const second = message("two", "alex", "2026-07-13T13:04:59.000Z");
+    const first = message("one", "alex", localTimestamp(13, 13, 0));
+    const second = message("two", "alex", localTimestamp(13, 13, 4));
 
     expect(shouldGroupMessages(first, second)).toBe(true);
     expect(
       shouldGroupMessages(
         first,
-        message("three", "alex", "2026-07-13T13:05:01.000Z"),
+        message("three", "alex", localTimestamp(13, 13, 6)),
       ),
     ).toBe(false);
     expect(
       shouldGroupMessages(
         first,
-        message("five", "alex", "2026-07-14T03:59:30.000Z", {
+        message("five", "alex", localTimestamp(13, 13, 1), {
           deliveryState: "sending",
         }),
       ),
@@ -47,24 +51,24 @@ describe("mobile chat timeline layout", () => {
   });
 
   it("keeps author, day, and pinned boundaries visually explicit", () => {
-    const first = message("one", "alex", "2026-07-14T03:59:00.000Z");
+    const first = message("one", "alex", localTimestamp(13, 23, 59));
 
     expect(
       shouldGroupMessages(
         first,
-        message("two", "sam", "2026-07-14T03:59:30.000Z"),
+        message("two", "sam", localTimestamp(13, 23, 59)),
       ),
     ).toBe(false);
     expect(
       shouldGroupMessages(
         first,
-        message("three", "alex", "2026-07-14T04:01:00.000Z"),
+        message("three", "alex", localTimestamp(14, 0, 1)),
       ),
     ).toBe(false);
     expect(
       shouldGroupMessages(
         first,
-        message("four", "alex", "2026-07-14T03:59:30.000Z", {
+        message("four", "alex", localTimestamp(13, 23, 59), {
           isPinned: true,
         }),
       ),
@@ -74,11 +78,11 @@ describe("mobile chat timeline layout", () => {
   it("sorts rows, inserts date markers, and resets grouping after a marker", () => {
     const rows = buildTimelineRows(
       [
-        message("new", "alex", "2026-07-13T13:02:00.000Z"),
-        message("old", "alex", "2026-07-13T13:00:00.000Z"),
+        message("new", "alex", localTimestamp(13, 13, 2)),
+        message("old", "alex", localTimestamp(13, 13, 0)),
       ],
       null,
-      new Date("2026-07-13T18:00:00.000Z"),
+      new Date(2026, 6, 13, 18),
     );
 
     expect(rows.map((row) => row.key)).toEqual([
@@ -91,14 +95,14 @@ describe("mobile chat timeline layout", () => {
   });
 
   it("uses concise relative labels only for today and yesterday", () => {
-    const now = new Date("2026-07-13T18:00:00.000Z");
-    expect(formatDateLabel(new Date("2026-07-13T09:00:00.000Z"), now)).toBe(
+    const now = new Date(2026, 6, 13, 18);
+    expect(formatDateLabel(new Date(2026, 6, 13, 9), now)).toBe(
       "Today",
     );
-    expect(formatDateLabel(new Date("2026-07-12T09:00:00.000Z"), now)).toBe(
+    expect(formatDateLabel(new Date(2026, 6, 12, 9), now)).toBe(
       "Yesterday",
     );
-    expect(formatDateLabel(new Date("2026-06-10T09:00:00.000Z"), now)).toBe(
+    expect(formatDateLabel(new Date(2026, 5, 10, 9), now)).toBe(
       "Wednesday, Jun 10",
     );
   });
