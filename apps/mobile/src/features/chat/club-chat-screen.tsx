@@ -19,7 +19,6 @@ import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-import type { ClubChannelReaction } from "~/apps/convex/src/validators";
 import { AttachmentViewer } from "./attachment-viewer";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
@@ -33,10 +32,12 @@ import type {
   ChatMessage,
   ChatThread,
   ClubChatData,
+  QuickReaction,
 } from "./types";
 import { useChatComposer } from "./use-chat-composer";
 import { useChatDraft } from "./use-chat-draft";
 import { useManagedChatAttachments } from "./use-managed-chat-attachments";
+import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 
@@ -121,11 +122,13 @@ export function ClubChatScreen({
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [viewedAttachment, setViewedAttachment] =
     useState<ChatAttachment | null>(null);
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [pendingActions, setPendingActions] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [composerBaseHeight, setComposerBaseHeight] = useState(0);
   const composerBaseHeightRef = useRef(0);
   const extraContentPadding = useSharedValue(0);
-  const pendingRef = useRef(false);
+  const pendingKeysRef = useRef(new Set<string>());
   const channel = channelContext?.channel;
   const canPost = channelContext === undefined ? undefined : !!channel?.viewerCanPost;
   const canManage = !!channelContext?.canManageChannels;
@@ -139,10 +142,18 @@ export function ClubChatScreen({
       ? undefined
       : (thread?.replies ?? [])
     : messages;
+  const liveActionMessage = useMemo(() => {
+    if (!actionMessage) return null;
+    if (threadRoot?._id === actionMessage._id) return threadRoot;
+    return (
+      timelineMessages?.find((message) => message._id === actionMessage._id) ??
+      actionMessage
+    );
+  }, [actionMessage, threadRoot, timelineMessages]);
   const threadIsMissing = !!threadRootId && thread !== undefined && !thread;
   const canLoadOlder = !threadRootId && paginationStatus === "CanLoadMore";
   const isLoadingOlder = !threadRootId && paginationStatus === "LoadingMore";
-  const composerPending = pendingAction !== null;
+  const composerPending = pendingActions.has("composer");
   const draftEnabled =
     composer.mode.kind === "message" || composer.mode.kind === "reply";
   const draftThreadId =
@@ -221,9 +232,9 @@ export function ClubChatScreen({
       operation: () => Promise<unknown>,
       errorTitle: string,
     ) => {
-      if (pendingRef.current) return false;
-      pendingRef.current = true;
-      setPendingAction(key);
+      if (pendingKeysRef.current.has(key)) return false;
+      pendingKeysRef.current.add(key);
+      setPendingActions(new Set(pendingKeysRef.current));
       try {
         await operation();
         return true;
@@ -235,15 +246,15 @@ export function ClubChatScreen({
         });
         return false;
       } finally {
-        pendingRef.current = false;
-        setPendingAction(null);
+        pendingKeysRef.current.delete(key);
+        setPendingActions(new Set(pendingKeysRef.current));
       }
     },
     [showToast],
   );
 
   const submitComposer = useCallback(async () => {
-    if (pendingRef.current) return;
+    if (pendingKeysRef.current.has("composer")) return;
     const mode = composer.mode;
     const draft = composer.draft.trim();
 
@@ -373,13 +384,22 @@ export function ClubChatScreen({
   ]);
 
   const handleToggleReaction = useCallback(
-    async (message: ChatMessage, emoji: string) => {
+    async (message: ChatMessage, emoji: QuickReaction) => {
+      const reaction = normalizeReactionPayload(emoji);
+      if (!reaction) {
+        showToast({
+          title: "Reaction wasn’t updated",
+          body: "That reaction is no longer supported.",
+          tone: "warning",
+        });
+        return;
+      }
       await runPending(
-        `reaction:${message._id}:${emoji}`,
+        `reaction:${message._id}:${reaction}`,
         () =>
           toggleReaction({
             messageId: message._id as Id<"clubChannelMessages">,
-            emoji: emoji as ClubChannelReaction,
+            emoji: reaction,
           }),
         "Reaction wasn’t updated",
       );
@@ -519,7 +539,7 @@ export function ClubChatScreen({
           description={
             threadRootId
               ? `#${channel?.name ?? "channel"}`
-              : (channel?.description ?? channelContext?.clubName)
+              : channelContext?.clubName
           }
         />
 
@@ -554,7 +574,7 @@ export function ClubChatScreen({
               isLoadingOlder={isLoadingOlder}
               keyboardOffset={composerBaseHeight}
               extraContentPadding={extraContentPadding}
-              pendingAction={pendingAction}
+              pendingActions={pendingActions}
               onLoadOlder={loadOlderMessages}
               onLongPress={setActionMessage}
               onOpenThread={openThread}
@@ -598,11 +618,11 @@ export function ClubChatScreen({
       </View>
 
       <MessageActionsSheet
-        message={actionMessage}
+        message={liveActionMessage}
         currentUserId={user?._id}
         canPost={canPost}
         canManage={canManage}
-        pendingAction={pendingAction}
+        pendingActions={pendingActions}
         onClose={() => setActionMessage(null)}
         onReply={startReply}
         onEdit={startEdit}
@@ -651,11 +671,7 @@ function ChatHeader({
       >
         <AppBackHeader forceVisible />
         <View style={{ minWidth: 0, flex: 1, gap: 1 }}>
-          <Txt
-            variant="section"
-            numberOfLines={1}
-            style={{ fontSize: 17, lineHeight: 21 }}
-          >
+          <Txt variant="section" numberOfLines={1}>
             {title}
           </Txt>
           {description ? (

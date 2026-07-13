@@ -1,3 +1,5 @@
+import type { ClubChannelReaction } from "~/apps/convex/src/validators";
+
 export type ChatUser = {
   _id: string;
   firstName?: string | null;
@@ -86,7 +88,7 @@ export type ClubChatData = {
   }>;
 };
 
-export type QuickReaction = "LIKE" | "HEART" | "DONE";
+export type QuickReaction = ClubChannelReaction;
 
 export type ComposerMode =
   | { kind: "message" }

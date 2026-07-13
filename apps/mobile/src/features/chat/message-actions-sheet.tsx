@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 import {
   Flag,
   MessageCircle,
@@ -11,22 +11,29 @@ import {
 import { PressableScale, Sheet, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
-import { QUICK_REACTIONS } from "./quick-reactions";
-import { chatAuthorName, type ChatMessage } from "./types";
+import {
+  normalizeReactionSummaries,
+  QUICK_REACTIONS,
+} from "./quick-reactions";
+import {
+  chatAuthorName,
+  type ChatMessage,
+  type QuickReaction,
+} from "./types";
 
 type MessageActionsSheetProps = {
   message: ChatMessage | null;
   currentUserId?: string;
   canPost?: boolean;
   canManage: boolean;
-  pendingAction?: string | null;
+  pendingActions: ReadonlySet<string>;
   onClose: () => void;
   onReply: (message: ChatMessage) => void;
   onEdit: (message: ChatMessage) => void;
   onReport: (message: ChatMessage) => void;
   onDelete: (message: ChatMessage) => void;
   onTogglePin: (message: ChatMessage) => void;
-  onToggleReaction: (message: ChatMessage, emoji: string) => void;
+  onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
 };
 
 export function MessageActionsSheet({
@@ -34,7 +41,7 @@ export function MessageActionsSheet({
   currentUserId,
   canPost,
   canManage,
-  pendingAction,
+  pendingActions,
   onClose,
   onReply,
   onEdit,
@@ -46,7 +53,10 @@ export function MessageActionsSheet({
   const { color } = useTheme();
   const mine = !!message && message.authorId === currentUserId;
   const canModerateMessage = mine || canManage;
-  const disabled = !!pendingAction;
+  const disabled =
+    !!message &&
+    [...pendingActions].some((key) => key.includes(message._id));
+  const reactions = normalizeReactionSummaries(message?.reactions ?? []);
 
   return (
     <Sheet
@@ -59,14 +69,19 @@ export function MessageActionsSheet({
     >
       {message ? (
         <>
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            {QUICK_REACTIONS.map(({ payload, label, icon: ReactionIcon }) => {
-              const reaction = message.reactions?.find(
+          <ScrollView
+            horizontal
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.sm }}
+          >
+            {QUICK_REACTIONS.map(({ payload, label, glyph }) => {
+              const reaction = reactions.find(
                 (entry) => entry.emoji === payload,
               );
               const selected = !!reaction?.reactedByCurrentUser;
               const reactionPending =
-                pendingAction === `reaction:${message._id}:${payload}`;
+                pendingActions.has(`reaction:${message._id}:${payload}`);
               return (
                 <PressableScale
                   key={payload}
@@ -78,45 +93,46 @@ export function MessageActionsSheet({
                   disabled={disabled || reactionPending}
                   onPress={() => onToggleReaction(message, payload)}
                   style={{
-                    minHeight: 52,
-                    flex: 1,
-                    borderRadius: radii.md,
-                    borderWidth: 1,
-                    borderColor: selected ? color("primary") : color("border"),
+                    width: 44,
+                    height: 44,
+                    borderRadius: radii.pill,
                     backgroundColor: selected
                       ? color("secondary")
-                      : color("muted"),
-                    flexDirection: "row",
+                      : "transparent",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: spacing.xs,
                   }}
                 >
-                  <ReactionIcon
-                    size={19}
-                    color={
-                      selected ? color("primary") : color("mutedForeground")
-                    }
-                    fill={
-                      payload === "HEART" && selected
-                        ? color("primary")
-                        : "transparent"
-                    }
-                    strokeWidth={selected ? 2.3 : 1.9}
-                  />
+                  <Txt style={{ fontSize: 23, lineHeight: 28 }}>{glyph}</Txt>
                   {reaction?.count ? (
-                    <Txt
-                      variant="caption"
-                      tone={selected ? "primary" : "muted"}
-                      style={{ fontWeight: "800" }}
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: "absolute",
+                        right: -2,
+                        bottom: -2,
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: radii.pill,
+                        backgroundColor: color("card"),
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingHorizontal: 3,
+                      }}
                     >
-                      {reaction.count}
-                    </Txt>
+                      <Txt
+                        variant="caption"
+                        tone={selected ? "primary" : "muted"}
+                        style={{ fontSize: 10, lineHeight: 12, fontWeight: "800" }}
+                      >
+                        {reaction.count}
+                      </Txt>
+                    </View>
                   ) : null}
                 </PressableScale>
               );
             })}
-          </View>
+          </ScrollView>
 
           <View style={{ gap: 2 }}>
             {canPost === true ? (

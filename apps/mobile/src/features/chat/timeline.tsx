@@ -30,7 +30,7 @@ import {
   buildTimelineRows,
   type TimelineRow,
 } from "./timeline-layout";
-import type { ChatAttachment, ChatMessage } from "./types";
+import type { ChatAttachment, ChatMessage, QuickReaction } from "./types";
 
 type ChatTimelineProps = {
   messages?: ChatMessage[];
@@ -41,11 +41,11 @@ type ChatTimelineProps = {
   isLoadingOlder?: boolean;
   keyboardOffset: number;
   extraContentPadding: SharedValue<number>;
-  pendingAction?: string | null;
+  pendingActions: ReadonlySet<string>;
   onLoadOlder?: () => void;
   onLongPress: (message: ChatMessage) => void;
   onOpenThread: (message: ChatMessage) => void;
-  onToggleReaction: (message: ChatMessage, emoji: string) => void;
+  onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
   onOpenAttachment: (attachment: ChatAttachment) => void;
 };
@@ -88,7 +88,7 @@ export function ChatTimeline({
   isLoadingOlder = false,
   keyboardOffset,
   extraContentPadding,
-  pendingAction,
+  pendingActions,
   onLoadOlder,
   onLongPress,
   onOpenThread,
@@ -139,7 +139,7 @@ export function ChatTimeline({
           message={item.message}
           groupedWithPrevious={item.groupedWithPrevious}
           showReplyPreview={!threadRoot}
-          pendingAction={pendingAction}
+          pendingActions={pendingActions}
           onLongPress={onLongPress}
           onOpenThread={onOpenThread}
           onToggleReaction={onToggleReaction}
@@ -154,7 +154,7 @@ export function ChatTimeline({
       onOpenThread,
       onToggleReaction,
       onVotePoll,
-      pendingAction,
+      pendingActions,
       threadHasMoreReplies,
       threadRoot,
     ],
@@ -280,7 +280,7 @@ const DateMarker = memo(function DateMarker({ label }: { label: string }) {
       <Txt
         variant="caption"
         tone="muted"
-        style={{ fontSize: 11, fontWeight: "700" }}
+        style={{ fontWeight: "700" }}
       >
         {label}
       </Txt>

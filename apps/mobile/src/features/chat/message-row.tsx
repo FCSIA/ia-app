@@ -13,7 +13,11 @@ import {
 import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
-import { QUICK_REACTIONS } from "./quick-reactions";
+import {
+  normalizeReactionPayload,
+  normalizeReactionSummaries,
+  reactionDefinition,
+} from "./quick-reactions";
 import { RichMessageBody } from "./rich-message-body";
 import {
   chatAuthorName,
@@ -21,16 +25,17 @@ import {
   isImageAttachment,
   type ChatAttachment,
   type ChatMessage,
+  type QuickReaction,
 } from "./types";
 
 type MessageRowProps = {
   message: ChatMessage;
   groupedWithPrevious: boolean;
   showReplyPreview: boolean;
-  pendingAction?: string | null;
+  pendingActions: ReadonlySet<string>;
   onLongPress: (message: ChatMessage) => void;
   onOpenThread: (message: ChatMessage) => void;
-  onToggleReaction: (message: ChatMessage, emoji: string) => void;
+  onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
   onOpenAttachment?: (attachment: ChatAttachment) => void;
   onRetry?: (message: ChatMessage) => void;
@@ -40,7 +45,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   message,
   groupedWithPrevious,
   showReplyPreview,
-  pendingAction,
+  pendingActions,
   onLongPress,
   onOpenThread,
   onToggleReaction,
@@ -50,8 +55,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 }: MessageRowProps) {
   const { color } = useTheme();
   const authorName = chatAuthorName(message);
-  const reactions =
-    message.reactions?.filter((reaction) => reaction.count > 0) ?? [];
+  const reactions = normalizeReactionSummaries(
+    message.reactions?.filter((reaction) => reaction.count > 0) ?? [],
+  );
   const hasThread = message.hasReplies ?? message.replyCount > 0;
   const replyCountIsExact = message.replyCountIsExact !== false;
   const isSending = message.deliveryState === "sending";
@@ -227,7 +233,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
               const percent = message.poll?.totalVotes
                 ? Math.round((option.count / message.poll.totalVotes) * 100)
                 : 0;
-              const pending = pendingAction === `poll:${message._id}`;
+              const pending = pendingActions.has(`poll:${message._id}`);
               return (
                 <PressableScale
                   key={option.id}
@@ -305,12 +311,11 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             }}
           >
             {reactions.map((reaction) => {
-              const quickReaction = QUICK_REACTIONS.find(
-                (entry) => entry.payload === reaction.emoji,
-              );
-              const ReactionIcon = quickReaction?.icon;
+              const quickReaction = reactionDefinition(reaction.emoji);
+              const payload = normalizeReactionPayload(reaction.emoji);
               const pending =
-                pendingAction === `reaction:${message._id}:${reaction.emoji}`;
+                !!payload &&
+                pendingActions.has(`reaction:${message._id}:${payload}`);
               return (
                 <PressableScale
                   key={reaction.emoji}
@@ -319,53 +324,49 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     selected: reaction.reactedByCurrentUser,
                     disabled: pending,
                   }}
-                  disabled={pending}
+                  disabled={pending || !payload}
                   haptic={false}
-                  onPress={() => onToggleReaction(message, reaction.emoji)}
+                  onPress={() => {
+                    if (payload) onToggleReaction(message, payload);
+                  }}
                   style={{
-                    minWidth: 38,
+                    minWidth: 44,
                     minHeight: 44,
-                    borderRadius: radii.pill,
-                    borderWidth: 1,
-                    borderColor: reaction.reactedByCurrentUser
-                      ? color("primary")
-                      : color("border"),
-                    backgroundColor: reaction.reactedByCurrentUser
-                      ? color("secondary")
-                      : color("card"),
-                    paddingHorizontal: spacing.sm,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: spacing.xs,
                   }}
                 >
-                  {ReactionIcon ? (
-                    <ReactionIcon
-                      size={15}
-                      color={
-                        reaction.reactedByCurrentUser
-                          ? color("primary")
-                          : color("mutedForeground")
-                      }
-                      fill={
-                        reaction.emoji === "HEART" &&
-                        reaction.reactedByCurrentUser
-                          ? color("primary")
-                          : "transparent"
-                      }
-                    />
-                  ) : (
-                    <Txt variant="caption">{reaction.emoji}</Txt>
-                  )}
-                  <Txt
-                    variant="caption"
-                    tone={reaction.reactedByCurrentUser ? "primary" : "muted"}
-                    style={{ fontWeight: "800" }}
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      minWidth: 40,
+                      height: 32,
+                      borderRadius: radii.pill,
+                      backgroundColor: reaction.reactedByCurrentUser
+                        ? color("secondary")
+                        : color("muted"),
+                      paddingHorizontal: spacing.sm,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: spacing.xs,
+                    }}
                   >
-                    {reaction.count}
-                    {reaction.countIsCapped ? "+" : ""}
-                  </Txt>
+                    <Txt style={{ fontSize: 17, lineHeight: 20 }}>
+                      {quickReaction?.glyph ?? reaction.emoji}
+                    </Txt>
+                    <Txt
+                      variant="caption"
+                      tone={
+                        reaction.reactedByCurrentUser ? "primary" : "muted"
+                      }
+                      style={{ fontWeight: "800" }}
+                    >
+                      {reaction.count}
+                      {reaction.countIsCapped ? "+" : ""}
+                    </Txt>
+                  </View>
                 </PressableScale>
               );
             })}
@@ -393,7 +394,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             <MessageCircle size={16} color={color("primary")} />
             <Txt variant="label" tone="primary" style={{ fontWeight: "800" }}>
               {!replyCountIsExact
-                ? "View thread"
+                ? "Thread"
                 : `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
             </Txt>
             {message.latestReplyPreview || message.replies?.length ? (
