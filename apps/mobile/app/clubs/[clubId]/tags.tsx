@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
+import { AtSign } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextField } from "@/components/ui/text-field";
+import { Button, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubTagsScreen() {
@@ -20,46 +19,98 @@ export default function ClubTagsScreen() {
   const { color } = useTheme();
 
   return (
-    <Screen title="Tags" subtitle="Mention groups for club channels.">
+    <Screen title="Tags">
       <DataBoundary data={club} emptyTitle="Club unavailable">
         {(data: any) => (
-          <View style={{ gap: 12 }}>
+          <View style={{ width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.xl }}>
+            <Txt variant="label" tone="muted">
+              {data.name}
+            </Txt>
+
             {data.viewer?.canManageMembership ? (
-              <Card style={{ gap: 10 }}>
-                <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Create Tag</Text>
-                <TextField value={name} onChangeText={setName} placeholder="Tag name, e.g. Build Team" />
+              <View style={{ gap: spacing.md }}>
+                <Txt variant="section">New mention group</Txt>
+                <TextField
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Group name, e.g. Build Team"
+                  accessibilityLabel="Mention group name"
+                  returnKeyType="done"
+                />
                 <Button
-                  title="Create tag"
+                  title="Create group"
                   disabled={!name.trim()}
                   onPress={() =>
-                    createTag({ clubId: clubId as any, name, memberIds: [] }).then(() => setName("")).catch((error) =>
-                      Alert.alert("Tag failed", error instanceof Error ? error.message : "Try again."),
-                    )
+                    createTag({ clubId: clubId as any, name: name.trim(), memberIds: [] })
+                      .then(() => setName(""))
+                      .catch((error) => Alert.alert("Group not created", error instanceof Error ? error.message : "Try again."))
                   }
                 />
-              </Card>
+              </View>
             ) : null}
 
-            <DataBoundary data={tags} emptyTitle="No tags yet">
-              {(items) => (
-                <View style={{ gap: 12 }}>
-                  {items.map((tag: any) => (
-                    <Card key={tag._id} style={{ gap: 8 }}>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                        <Badge label={`@${tag.slug}`} color="blue" />
-                        <Badge label={`${tag.members?.length ?? 0} members`} color="gray" />
-                      </View>
-                      <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>{tag.name}</Text>
-                      {tag.members?.slice(0, 8).map((member: any) => (
-                        <Text key={member.user._id} style={{ color: color("mutedForeground") }}>
-                          {member.user.firstName} {member.user.lastName}
-                        </Text>
-                      ))}
-                    </Card>
-                  ))}
-                </View>
-              )}
-            </DataBoundary>
+            <View style={{ gap: spacing.sm }}>
+              <Txt variant="section">Mention groups</Txt>
+              <DataBoundary data={tags} emptyTitle="No mention groups yet">
+                {(items) => (
+                  <View>
+                    {items.map((tag: any, index: number) => {
+                      const members = tag.members ?? [];
+                      const memberNames = members
+                        .slice(0, 5)
+                        .map((member: any) => [member.user?.firstName, member.user?.lastName].filter(Boolean).join(" "))
+                        .filter(Boolean);
+                      const remaining = Math.max(0, members.length - memberNames.length);
+                      const people = `${memberNames.join(", ")}${remaining ? ` +${remaining}` : ""}`;
+                      const memberLabel = members.length
+                        ? `${members.length} ${members.length === 1 ? "member" : "members"}`
+                        : "No members";
+
+                      return (
+                        <View
+                          key={tag._id}
+                          style={{
+                            minHeight: 70,
+                            paddingVertical: spacing.md,
+                            borderBottomWidth: index === items.length - 1 ? 0 : 1,
+                            borderBottomColor: color("border"),
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            gap: spacing.md,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: radii.md,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: color("secondary"),
+                            }}
+                          >
+                            <AtSign size={19} color={color("foreground")} strokeWidth={1.9} />
+                          </View>
+                          <View style={{ flex: 1, gap: spacing.xs }}>
+                            <Txt style={{ fontWeight: "700" }} numberOfLines={1}>
+                              {tag.name}
+                            </Txt>
+                            <Txt variant="caption" tone="muted">
+                              @{tag.slug} · {memberLabel}
+                            </Txt>
+                            {people ? (
+                              <Txt variant="caption" tone="muted" numberOfLines={2}>
+                                {people}
+                              </Txt>
+                            ) : null}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </DataBoundary>
+            </View>
           </View>
         )}
       </DataBoundary>
