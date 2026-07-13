@@ -23,6 +23,10 @@ import type { ClubChannelReaction } from "~/apps/convex/src/validators";
 import { AttachmentViewer } from "./attachment-viewer";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
+import {
+  createClientMessageIdentity,
+  optimisticallyInsertPostedMessage,
+} from "./optimistic-message";
 import { ChatTimeline } from "./timeline";
 import type {
   ChatAttachment,
@@ -92,7 +96,18 @@ export function ClubChatScreen({
   );
   const thread = rawThread as ChatThread | null | undefined;
   const channelContext = rawChannelContext as ClubChatData | null | undefined;
-  const postMessage = useMutation(api.clubs.channels.postMessage);
+  const postMessageMutation = useMutation(api.clubs.channels.postMessage);
+  const postMessage = useMemo(
+    () =>
+      postMessageMutation.withOptimisticUpdate((localStore, args) => {
+        if (!liveUser) return;
+        optimisticallyInsertPostedMessage(localStore, args, {
+          clubId: clubId as Id<"clubs">,
+          author: liveUser,
+        });
+      }),
+    [clubId, liveUser, postMessageMutation],
+  );
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
@@ -302,6 +317,7 @@ export function ClubChatScreen({
       : mode.kind === "reply"
         ? (mode.target._id as Id<"clubChannelMessages">)
         : undefined;
+    const clientIdentity = createClientMessageIdentity();
     const completed = await runPending(
       "composer",
       () =>
@@ -315,6 +331,7 @@ export function ClubChatScreen({
           parentMessageId,
           attachments:
             mode.kind === "poll" ? [] : attachments.readyAttachmentUploadIds,
+          ...clientIdentity,
           pollQuestion:
             mode.kind === "poll" ? composer.pollQuestion.trim() : undefined,
           pollOptions:

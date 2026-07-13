@@ -36,7 +36,7 @@ export type ChatPoll = {
 
 export type ChatMessage = {
   _id: string;
-  clientTempId?: string;
+  clientGeneratedId?: string;
   deliveryState?: "sending" | "failed";
   authorId: string;
   parentMessageId?: string;
