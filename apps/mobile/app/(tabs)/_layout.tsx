@@ -1,16 +1,12 @@
 import { Redirect, Tabs } from "expo-router";
+import { StyleSheet } from "react-native";
 import { CalendarDays, Compass, Home, Megaphone, UsersRound } from "lucide-react-native";
-import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "~/apps/convex/src/_generated/api";
+import { useConvexAuth } from "convex/react";
 import { useTheme } from "@/lib/theme";
 import { tapLight } from "@/lib/haptics";
-import { spacing } from "@/lib/tokens";
-
-const EMPTY_ARGS = {};
 
 export default function TabsLayout() {
   const auth = useConvexAuth();
-  const unread = useQuery(api.notifications.inbox.unreadCount, auth.isAuthenticated ? EMPTY_ARGS : "skip");
   const { color } = useTheme();
 
   if (!auth.isLoading && !auth.isAuthenticated) return <Redirect href="/login" />;
@@ -22,18 +18,18 @@ export default function TabsLayout() {
         tabBarActiveTintColor: color("primary"),
         tabBarInactiveTintColor: color("mutedForeground"),
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "800"
+          fontWeight: "600"
         },
-        tabBarItemStyle: {
-          paddingTop: spacing.xs
+        tabBarHideOnKeyboard: true,
+        sceneStyle: {
+          backgroundColor: color("background")
         },
         tabBarStyle: {
           backgroundColor: color("card"),
           borderTopColor: color("border"),
-          height: 74,
-          paddingBottom: 10,
-          paddingTop: 4
+          borderTopWidth: StyleSheet.hairlineWidth,
+          elevation: 0,
+          shadowOpacity: 0
         }
       }}
     >
@@ -46,9 +42,7 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           href: null,
-          title: "Inbox",
-          tabBarBadge: unread?.count ? unread.count : undefined,
-          tabBarIcon: ({ color: c }) => <Megaphone color={c} size={21} />
+          title: "Inbox"
         }}
       />
     </Tabs>
