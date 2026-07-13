@@ -1,76 +1,120 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Section, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 function pathwayLabel(value?: string | null) {
-  if (!value) return "No pathway";
   if (value === "INFORMATION_TECHNOLOGY") return "Information Technology";
   if (value === "HEALTH_SCIENCE") return "Health Science";
   if (value === "ENGINEERING") return "Engineering";
-  return value;
+  return null;
+}
+
+function sourceLabel(value?: string | null) {
+  if (value === "AP_CATALOG") return "AP catalog";
+  if (value === "MERGED") return "IA and AP catalogs";
+  if (value === "COURSE_CATALOG") return "IA course catalog";
+  return null;
+}
+
+function gradeLabel(item: any) {
+  if (item.gradeText) return item.gradeText;
+  if (item.minGrade && item.minGrade === item.maxGrade) return `Grade ${item.minGrade}`;
+  return `Grades ${item.minGrade ?? "?"}–${item.maxGrade ?? "?"}`;
 }
 
 export default function CourseDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const course = useQuery(api.courses.catalog.get, slug ? { slug } : "skip");
-  const { color } = useTheme();
 
   return (
-    <Screen>
+    <Screen contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}>
       <DataBoundary data={course} emptyTitle="Course unavailable">
-        {(item: any) => (
-          <View style={{ gap: 14 }}>
-            <Card style={{ gap: 12 }}>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <Badge label={item.department} color="blue" />
-                <Badge label={pathwayLabel(item.pathway)} color={item.pathway ? "emerald" : "gray"} />
-                {item.catalogSource !== "COURSE_CATALOG" ? <Badge label="AP / merged" color="amber" /> : null}
+        {(item: any) => {
+          const pathway = pathwayLabel(item.pathway);
+
+          return (
+            <View style={{ gap: spacing.xl }}>
+              <View style={{ gap: spacing.sm }}>
+                <Txt variant="overline" tone="primary">
+                  {[item.department, pathway].filter(Boolean).join(" · ")}
+                </Txt>
+                <Txt variant="display">{item.title}</Txt>
+                <Txt tone="muted">
+                  {[gradeLabel(item), item.courseNumbers?.join(", ")].filter(Boolean).join(" · ")}
+                </Txt>
               </View>
-              <Text style={{ color: color("foreground"), fontSize: 28, fontWeight: "900" }}>{item.title}</Text>
-              <Text style={{ color: color("mutedForeground"), lineHeight: 21 }}>
-                {item.gradeText ?? `Grades ${item.minGrade ?? "?"}-${item.maxGrade ?? "?"}`}
-                {item.courseNumbers?.length ? ` - ${item.courseNumbers.join(", ")}` : ""}
-              </Text>
-            </Card>
 
-            <Card style={{ gap: 10 }}>
-              <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Catalog Notes</Text>
-              <Text style={{ color: color("mutedForeground"), lineHeight: 21 }}>
-                {item.summary ?? item.prerequisitesText ?? "No additional catalog notes are available for this class."}
-              </Text>
-              {item.prerequisitesText && item.summary ? (
-                <Text style={{ color: color("mutedForeground"), lineHeight: 21 }}>Prerequisites: {item.prerequisitesText}</Text>
-              ) : null}
-              {item.majorTopics ? <Text style={{ color: color("mutedForeground"), lineHeight: 21 }}>Major topics: {item.majorTopics}</Text> : null}
-              {item.essentialSkills ? <Text style={{ color: color("mutedForeground"), lineHeight: 21 }}>Skills: {item.essentialSkills}</Text> : null}
-            </Card>
+              {item.summary ? <CourseSection title="Overview" body={item.summary} /> : null}
+              {item.prerequisitesText ? <CourseSection title="Prerequisites" body={item.prerequisitesText} /> : null}
+              {item.majorTopics ? <CourseSection title="Topics" body={item.majorTopics} /> : null}
+              {item.essentialSkills ? <CourseSection title="Skills you’ll build" body={item.essentialSkills} /> : null}
+              {item.studentWorkload ? <CourseSection title="Student workload" body={item.studentWorkload} /> : null}
 
-            <Card style={{ gap: 8 }}>
-              <Text style={{ color: color("foreground"), fontSize: 18, fontWeight: "900" }}>Details</Text>
-              <Detail label="Term" value={item.term} />
-              <Detail label="Grades" value={item.gradeText} />
-              <Detail label="Source" value={item.catalogSource} />
-            </Card>
-          </View>
-        )}
+              <Section title="Course details">
+                <View>
+                  <DetailRow label="Department" value={item.department} />
+                  <DetailRow label="Pathway" value={pathway} />
+                  <DetailRow label="Term" value={item.term ? sentenceCase(item.term) : null} />
+                  <DetailRow label="Grades" value={gradeLabel(item)} />
+                  <DetailRow label="Course number" value={item.courseNumbers?.join(", ")} />
+                  <DetailRow label="Source" value={sourceLabel(item.catalogSource)} last />
+                </View>
+              </Section>
+            </View>
+          );
+        }}
       </DataBoundary>
     </Screen>
   );
 }
 
-function Detail({ label, value }: { label: string; value?: string | number | null }) {
+function CourseSection({ title, body }: { title: string; body: string }) {
+  return (
+    <Section title={title}>
+      <Txt tone="muted">{body}</Txt>
+    </Section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value?: string | number | null;
+  last?: boolean;
+}) {
   const { color } = useTheme();
   if (value == null || value === "") return null;
+
   return (
-    <View style={{ flexDirection: "row", gap: 10 }}>
-      <Text style={{ color: color("mutedForeground"), width: 84, fontWeight: "800" }}>{label}</Text>
-      <Text style={{ color: color("foreground"), flex: 1 }}>{String(value).replaceAll("_", " ")}</Text>
+    <View
+      style={{
+        minHeight: 48,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.md,
+        paddingVertical: spacing.sm,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: color("border"),
+      }}
+    >
+      <Txt variant="label" tone="muted" style={{ width: 112 }}>
+        {label}
+      </Txt>
+      <Txt style={{ flex: 1 }}>{String(value)}</Txt>
     </View>
   );
+}
+
+function sentenceCase(value: string) {
+  const text = value.toLowerCase().replaceAll("_", " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

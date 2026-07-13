@@ -1,16 +1,14 @@
-import { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useMemo, useState, type ReactNode } from "react";
+import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
-import { BookOpen, Search } from "lucide-react-native";
+import { ChevronRight, Search } from "lucide-react-native";
 import { useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextField } from "@/components/ui/text-field";
+import { FilterChip, PressableScale, TextField, Txt } from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 const pathways = [
@@ -23,11 +21,22 @@ const pathways = [
 const grades = ["ALL", "9", "10", "11", "12"] as const;
 
 function pathwayLabel(value?: string | null) {
-  if (!value) return "All pathways";
   if (value === "INFORMATION_TECHNOLOGY") return "Information Technology";
   if (value === "HEALTH_SCIENCE") return "Health Science";
   if (value === "ENGINEERING") return "Engineering";
-  return value;
+  return null;
+}
+
+function gradeLabel(course: any) {
+  if (course.gradeText) return course.gradeText;
+  if (course.minGrade && course.minGrade === course.maxGrade) return `Grade ${course.minGrade}`;
+  return `Grades ${course.minGrade ?? "?"}–${course.maxGrade ?? "?"}`;
+}
+
+function sourceLabel(value: string) {
+  if (value === "AP_CATALOG") return "AP catalog";
+  if (value === "MERGED") return "IA + AP catalogs";
+  return null;
 }
 
 export default function CoursesScreen() {
@@ -53,89 +62,146 @@ export default function CoursesScreen() {
   );
 
   return (
-    <Screen title="Courses" subtitle="Browse IA classes, pathways, departments, and grade eligibility.">
-      <Card style={{ gap: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Search size={18} color={color("mutedForeground")} />
-          <TextField
-            style={{ flex: 1 }}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search title, course number, or department"
-            returnKeyType="search"
+    <Screen
+      title="Courses"
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View
+        style={{
+          minHeight: 48,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
+          paddingHorizontal: spacing.md,
+          borderRadius: radii.lg,
+          backgroundColor: color("secondary"),
+        }}
+      >
+        <Search size={19} color={color("mutedForeground")} />
+        <TextField
+          accessibilityLabel="Search courses"
+          style={{ flex: 1, borderWidth: 0, backgroundColor: "transparent", paddingHorizontal: 0 }}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Title, number, or department"
+          returnKeyType="search"
+        />
+      </View>
+
+      <FilterRail label="Pathway">
+        {pathways.map((item) => (
+          <FilterChip
+            key={item.value}
+            label={item.label}
+            selected={pathway === item.value}
+            onPress={() => setPathway(item.value)}
           />
-        </View>
-        {user?.gradeLevel ? (
-          <Button title={`Show my grade (${user.gradeLevel})`} variant="secondary" onPress={() => setGrade(String(user.gradeLevel) as any)} />
-        ) : null}
-      </Card>
+        ))}
+      </FilterRail>
 
-      <Card style={{ gap: 10 }}>
-        <Text style={{ color: color("foreground"), fontWeight: "900", fontSize: 18 }}>Filters</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {pathways.map((item) => (
-            <Button
-              key={item.value}
-              title={item.label}
-              size="sm"
-              variant={pathway === item.value ? "primary" : "secondary"}
-              onPress={() => setPathway(item.value)}
-            />
-          ))}
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {grades.map((item) => (
-            <Button
-              key={item}
-              title={item === "ALL" ? "All grades" : `Grade ${item}`}
-              size="sm"
-              variant={grade === item ? "primary" : "secondary"}
-              onPress={() => setGrade(item)}
-            />
-          ))}
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {departments.slice(0, 12).map((item) => (
-            <Button
-              key={item}
-              title={item === "ALL" ? "All departments" : item}
-              size="sm"
-              variant={department === item ? "primary" : "secondary"}
-              onPress={() => setDepartment(item)}
-            />
-          ))}
-        </View>
-      </Card>
+      <FilterRail label="Grade">
+        {grades.map((item) => (
+          <FilterChip
+            key={item}
+            label={item === "ALL" ? "All" : item === String(user?.gradeLevel) ? `${item} · mine` : item}
+            selected={grade === item}
+            onPress={() => setGrade(item)}
+          />
+        ))}
+      </FilterRail>
 
-      <DataBoundary data={courses} emptyTitle="No courses matched">
+      <FilterRail label="Department">
+        {departments.map((item) => (
+          <FilterChip
+            key={item}
+            label={item === "ALL" ? "All" : item}
+            selected={department === item}
+            onPress={() => setDepartment(item)}
+          />
+        ))}
+      </FilterRail>
+
+      <DataBoundary data={courses} emptyTitle="No courses match these filters">
         {(items) => (
-          <View style={{ gap: 12 }}>
-            <Text style={{ color: color("mutedForeground"), fontWeight: "700" }}>
-              {items.length} loaded course{items.length === 1 ? "" : "s"}
-            </Text>
-            {items.map((course: any) => (
-              <Pressable key={course.id} onPress={() => router.push(`/courses/${course.slug}` as any)}>
-                <Card style={{ gap: 9 }}>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    <Badge label={course.department} color="blue" />
-                    {course.pathway ? <Badge label={pathwayLabel(course.pathway)} color="emerald" /> : null}
-                    {course.catalogSource !== "COURSE_CATALOG" ? <Badge label="AP / merged" color="amber" /> : null}
-                  </View>
-                  <Text style={{ color: color("foreground"), fontWeight: "900", fontSize: 18 }}>{course.title}</Text>
-                  <Text style={{ color: color("mutedForeground"), lineHeight: 20 }}>
-                    {course.gradeText ?? `Grades ${course.minGrade ?? "?"}-${course.maxGrade ?? "?"}`}
-                    {course.courseNumbers?.length ? ` - ${course.courseNumbers.join(", ")}` : ""}
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <BookOpen size={16} color={color("mutedForeground")} />
-                    <Text style={{ color: color("mutedForeground"), fontWeight: "700" }}>Open class details</Text>
-                  </View>
-                </Card>
-              </Pressable>
+          <View
+            style={{
+              overflow: "hidden",
+              borderRadius: radii.lg,
+              backgroundColor: color("card"),
+            }}
+          >
+            {items.map((course: any, index) => (
+              <CourseRow key={course.id} course={course} showDivider={index < items.length - 1} />
             ))}
           </View>
         )}
       </DataBoundary>
     </Screen>
+  );
+}
+
+function FilterRail({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <Txt variant="overline" tone="muted">
+        {label}
+      </Txt>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+function CourseRow({ course, showDivider }: { course: any; showDivider: boolean }) {
+  const { color } = useTheme();
+  const pathway = pathwayLabel(course.pathway);
+  const source = sourceLabel(course.catalogSource);
+  const secondary = [pathway, source].filter(Boolean).join(" · ");
+  const metadata = [gradeLabel(course), course.courseNumbers?.join(", ")].filter(Boolean).join(" · ");
+
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${course.title}`}
+      onPress={() => router.push(`/courses/${course.slug}` as never)}
+      style={{ minHeight: 92, paddingHorizontal: spacing.md }}
+    >
+      <View
+        style={{
+          flex: 1,
+          minHeight: 92,
+          paddingVertical: spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.md,
+          borderBottomWidth: showDivider ? 1 : 0,
+          borderBottomColor: color("border"),
+        }}
+      >
+        <View style={{ flex: 1, gap: 3 }}>
+          <Txt variant="overline" tone="primary" numberOfLines={1}>
+            {course.department}
+          </Txt>
+          <Txt variant="section" numberOfLines={2}>
+            {course.title}
+          </Txt>
+          {secondary ? (
+            <Txt variant="caption" tone="muted" numberOfLines={1}>
+              {secondary}
+            </Txt>
+          ) : null}
+          <Txt variant="caption" tone="muted" numberOfLines={1}>
+            {metadata}
+          </Txt>
+        </View>
+        <ChevronRight size={20} color={color("mutedForeground")} />
+      </View>
+    </PressableScale>
   );
 }
