@@ -50,12 +50,14 @@ export function JoinPolicyControl({
 export function MemberLimitField({
   value,
   onChange,
+  optional = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  optional?: boolean;
 }) {
   return (
-    <ClubFormField label="Member limit" hint="10–200">
+    <ClubFormField label="Member limit" hint={optional ? "Optional · 10–200" : "10–200"}>
       <TextField
         accessibilityLabel="Member limit"
         keyboardType="number-pad"

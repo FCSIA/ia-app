@@ -1,10 +1,10 @@
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronRight, Hash, Tags, UsersRound } from "lucide-react-native";
+import { ChevronRight, Hash, Settings2, Tags, UsersRound } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Avatar, Button, PressableScale, Txt } from "@/components/ui";
+import { Avatar, Button, IconButton, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -49,6 +49,14 @@ export default function ClubDetailScreen() {
                       {data._count?.members ?? 0} {(data._count?.members ?? 0) === 1 ? "member" : "members"}
                     </Txt>
                   </View>
+                  {data.viewer?.canManageMembership ? (
+                    <IconButton
+                      icon={Settings2}
+                      label="Club settings"
+                      variant="ghost"
+                      onPress={() => router.push(`/clubs/${clubId}/settings` as never)}
+                    />
+                  ) : null}
                 </View>
                 {data.overview ?? data.description ? (
                   <Txt tone="muted" style={{ lineHeight: 23 }}>
