@@ -37,7 +37,7 @@ import {
 } from "./channelValidation";
 import {
   clubChannelPollOptionValidator,
-  clubChannelReactionValidator,
+  clubChannelReactionInputValidator,
 } from "../validators";
 import {
   assertStagedChatAttachmentIds,
@@ -55,6 +55,10 @@ import {
   MAX_CHANNEL_CONTEXT_SOURCE_ROWS,
   selectChannelContextMemberCandidates,
 } from "./channelContext";
+import {
+  clubChannelReactionStorageValues,
+  normalizeClubChannelReaction,
+} from "./channelReactions";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -588,9 +592,10 @@ async function serializeMessage(
     { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
   >();
   for (const reaction of reactions) {
+    const emoji = normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
     const reactor = await ctx.db.get(reaction.userId);
-    const entry = reactionMap.get(reaction.emoji) ?? {
-      emoji: reaction.emoji,
+    const entry = reactionMap.get(emoji) ?? {
+      emoji,
       count: 0,
       reactedByCurrentUser: false,
       reactors: [],
@@ -598,7 +603,7 @@ async function serializeMessage(
     entry.count += 1;
     if (reaction.userId === currentUserId) entry.reactedByCurrentUser = true;
     if (reactor) entry.reactors.push(toClubUserRef(reactor));
-    reactionMap.set(reaction.emoji, entry);
+    reactionMap.set(emoji, entry);
   }
 
   const attachments = isDeleted
@@ -707,15 +712,16 @@ async function serializeMessageSummary(
     { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
   >();
   for (const reaction of reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS)) {
-    const entry = reactionMap.get(reaction.emoji) ?? {
-      emoji: reaction.emoji,
+    const emoji = normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
+    const entry = reactionMap.get(emoji) ?? {
+      emoji,
       count: 0,
       reactedByCurrentUser: false,
       reactors: [],
     };
     entry.count += 1;
     if (reaction.userId === currentUserId) entry.reactedByCurrentUser = true;
-    reactionMap.set(reaction.emoji, entry);
+    reactionMap.set(emoji, entry);
   }
 
   const attachmentRowsNewest = isDeleted
@@ -1172,29 +1178,42 @@ export const deleteMessage = mutation({
 export const toggleReaction = mutation({
   args: {
     messageId: v.id("clubChannelMessages"),
-    emoji: clubChannelReactionValidator,
+    emoji: clubChannelReactionInputValidator,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { message } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
-    const existing = await ctx.db
-      .query("clubChannelMessageReactions")
-      .withIndex("by_messageId_and_userId_and_emoji", (q) =>
-        q.eq("messageId", args.messageId).eq("userId", user._id).eq("emoji", args.emoji),
+    const emoji = normalizeClubChannelReaction(args.emoji);
+    if (!emoji) throw new ConvexError("Reaction is not supported");
+
+    const existing = (
+      await Promise.all(
+        clubChannelReactionStorageValues(emoji).map((storedValue) =>
+          ctx.db
+            .query("clubChannelMessageReactions")
+            .withIndex("by_messageId_and_userId_and_emoji", (q) =>
+              q
+                .eq("messageId", args.messageId)
+                .eq("userId", user._id)
+                .eq("emoji", storedValue),
+            )
+            .take(4),
+        ),
       )
-      .first();
-    if (existing) {
-      await ctx.db.delete(existing._id);
-      return;
+    ).flat();
+    if (existing.length) {
+      await Promise.all(existing.map((reaction) => ctx.db.delete(reaction._id)));
+      return null;
     }
     await ctx.db.insert("clubChannelMessageReactions", {
       messageId: args.messageId,
       userId: user._id,
-      emoji: args.emoji,
+      emoji,
       createdAt: Date.now(),
     });
+    return null;
   },
 });
 
