@@ -45,6 +45,7 @@ const config: ExpoConfig = {
     backgroundColor: "#ffffff",
   },
   ios: {
+    icon: "./assets/ia-orbit.icon",
     supportsTablet: true,
     bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? "org.fcsia.app",
     buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
