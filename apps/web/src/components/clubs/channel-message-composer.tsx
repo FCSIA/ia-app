@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Bold, AtSign, BarChart3, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
-  createEmptyClubChannelMessageValue,
   deserializeClubChannelMessageBody,
   serializeClubChannelMessageMarkdown,
   serializeClubChannelMessagePlainText,
@@ -36,7 +35,6 @@ type ChannelMessageComposerProps = {
   placeholder: string;
   submitLabel: string;
   isPending: boolean;
-  resetKey: number;
   initialBody?: string;
   initialBodyMarkdown?: string | null;
   initialBodyRich?: ClubChannelMessageRichBody | null;
@@ -101,7 +99,6 @@ export function ChannelMessageComposer({
   placeholder,
   submitLabel,
   isPending,
-  resetKey,
   initialBody = '',
   initialBodyMarkdown,
   initialBodyRich,
@@ -109,6 +106,12 @@ export function ChannelMessageComposer({
   canAttach = true,
   canCreatePoll = false,
 }: ChannelMessageComposerProps) {
+  const initialValue = useMemo(
+    () =>
+      initialBodyRich ??
+      deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
+    [initialBody, initialBodyMarkdown, initialBodyRich],
+  );
   const editor = usePlateEditor(
     {
       plugins: [
@@ -118,40 +121,22 @@ export function ChannelMessageComposer({
         MentionPlugin.withComponent(MentionElement),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
-      value:
-        initialBodyRich ??
-        deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
+      value: initialValue,
     },
     [],
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [plainText, setPlainText] = useState('');
-  const [richValue, setRichValue] = useState<Value>(createEmptyClubChannelMessageValue());
+  const [plainText, setPlainText] = useState(() =>
+    serializeClubChannelMessagePlainText(initialValue),
+  );
+  const [richValue, setRichValue] = useState<Value>(initialValue);
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
-  const [isMarkdownSource, setIsMarkdownSource] = useState(
-    !initialBodyRich && !!initialBodyMarkdown?.trim(),
-  );
+  const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
   const [markdownSource, setMarkdownSource] = useState(initialBodyMarkdown ?? '');
-
-  useEffect(() => {
-    const nextValue =
-      initialBodyRich ??
-      deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody);
-    setFiles([]);
-    setAttachmentError(null);
-    setPlainText(serializeClubChannelMessagePlainText(nextValue));
-    setRichValue(nextValue);
-    setIsMarkdownSource(!initialBodyRich && !!initialBodyMarkdown?.trim());
-    setMarkdownSource(initialBodyMarkdown ?? '');
-    setPollOpen(false);
-    setPollQuestion('');
-    setPollOptions(['', '']);
-    editor.tf.setValue(nextValue);
-  }, [editor, initialBody, initialBodyMarkdown, initialBodyRich, resetKey]);
 
   const mentionables = useMemo<MentionableItem[]>(
     () =>

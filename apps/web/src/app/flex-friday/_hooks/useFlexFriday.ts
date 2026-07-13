@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -9,8 +9,8 @@ import { FlexFridayDoc, FlexSessionDoc, FlexWorkshopDoc } from '../_types';
 export function useFlexFriday() {
   const user = useCurrentUser();
 
-  const [selectedFriday, setSelectedFriday] = useState<FlexFridayDoc | null>(null);
-  const [selectedSession, setSelectedSession] = useState<FlexSessionDoc | null>(null);
+  const [selectedFridayId, setSelectedFridayId] = useState<Id<'flexFridays'> | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<Id<'flexSessions'> | null>(null);
   const [activeView, setActiveView] = useState<'schedule' | 'audit'>('schedule');
 
   const [sessionSearch, setSessionSearch] = useState('');
@@ -22,28 +22,19 @@ export function useFlexFriday() {
   const canCreateSession = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
   const isStudent = !!user && hasRole(user, 'STUDENT');
 
-  const fridays = useQuery(api.flexFriday.fridays.list, {}) ?? [];
-  const isLoading = fridays.length === 0 && !selectedFriday;
-
-  // Auto-select first Friday when data loads
-  useEffect(() => {
-    if (fridays.length > 0 && !selectedFriday) {
-      setSelectedFriday(fridays[0]);
-    }
-  }, [fridays, selectedFriday]);
+  const fridaysQuery = useQuery(api.flexFriday.fridays.list, {});
+  const fridays = fridaysQuery ?? [];
+  const selectedFriday =
+    fridays.find((friday) => friday._id === selectedFridayId) ?? fridays[0] ?? null;
+  const isLoading = fridaysQuery === undefined;
 
   const sessions =
     useQuery(
       api.flexFriday.sessions.listByFriday,
       selectedFriday ? { flexFridayId: selectedFriday._id as Id<'flexFridays'> } : 'skip',
     ) ?? [];
-
-  // Auto-select first session when sessions load
-  useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) {
-      setSelectedSession(sessions[0]);
-    }
-  }, [sessions, selectedSession]);
+  const selectedSession =
+    sessions.find((session) => session._id === selectedSessionId) ?? sessions[0] ?? null;
 
   const workshops =
     useQuery(
@@ -103,11 +94,13 @@ export function useFlexFriday() {
     
     selectedFriday,
     setSelectedFriday: (f: FlexFridayDoc | null) => {
-      setSelectedFriday(f);
-      setSelectedSession(null); 
+      setSelectedFridayId(f?._id ?? null);
+      setSelectedSessionId(null);
     },
     selectedSession,
-    setSelectedSession,
+    setSelectedSession: (session: FlexSessionDoc | null) => {
+      setSelectedSessionId(session?._id ?? null);
+    },
     activeView,
     setActiveView,
 

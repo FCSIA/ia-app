@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
@@ -58,12 +58,9 @@ export function NotificationScopeSwitch({
   const disabled = locked || pending || preferences === undefined;
   const stateLabel = pending ? 'Saving' : preferences === undefined ? '...' : enabled ? 'On' : 'Off';
 
-  useEffect(() => {
-    if (optimisticEnabled === null || preferences === undefined) return;
-    if (storedEnabled === optimisticEnabled) {
-      setOptimisticEnabled(null);
-    }
-  }, [optimisticEnabled, preferences, storedEnabled]);
+  if (optimisticEnabled !== null && preferences !== undefined && storedEnabled === optimisticEnabled) {
+    setOptimisticEnabled(null);
+  }
 
   const togglePreference = async () => {
     if (disabled) return;
@@ -90,8 +87,8 @@ export function NotificationScopeSwitch({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-3 py-2 transition-colors hover:bg-muted/25',
-        compact && 'border-transparent bg-transparent px-0 py-0 hover:bg-transparent',
+        'flex min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/25',
+        compact && 'px-0 py-0 hover:bg-transparent',
         locked && 'opacity-80',
         className,
       )}

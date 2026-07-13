@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -44,19 +44,22 @@ export function ChannelDialog({ clubId, channel, open, onOpenChange }: Props) {
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<ClubChannelVisibility>('PUBLIC');
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const channelId = channel?._id ?? null;
+  const [previousTarget, setPreviousTarget] = useState({ open, channelId });
 
   const isEdit = !!channel;
   const createChannel = useMutation(api.clubs.channels.create);
   const updateChannel = useMutation(api.clubs.channels.update);
 
-  useEffect(() => {
+  if (previousTarget.open !== open || previousTarget.channelId !== channelId) {
+    setPreviousTarget({ open, channelId });
     if (open) {
       setName(channel?.name ?? '');
       setDescription(channel?.description ?? '');
       setVisibility(channel?.visibility ?? 'PUBLIC');
       setMemberIds(channel?.memberships?.map((m) => m.userId) ?? []);
     }
-  }, [open, channel]);
+  }
 
   const club = useQuery(api.clubs.detail.get, open ? { clubId } : 'skip') as ClubDetail | undefined;
 

@@ -17,6 +17,7 @@ import {
   Trash2,
   AlertTriangle,
   Flag,
+  UserPlus,
   X,
 } from 'lucide-react';
 import {
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import type {
   ClubChannelMessage,
@@ -65,6 +67,7 @@ import {
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Empty,
   EmptyDescription,
@@ -98,6 +101,12 @@ type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
 function isChannelReaction(value: string): value is ChannelReaction {
   return QUICK_REACTIONS.some((reaction) => reaction.value === value);
 }
+
+const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
+  'STUDENT',
+  'STUDENT_LEADER',
+  'STUDENT_ADMIN',
+]);
 
 type ComposerSubmitArgs = {
   body: string;
@@ -135,6 +144,10 @@ function getSearchableText(message: ClubChannelMessage) {
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
+}
+
+function hasStudentScheduleRole(roles?: AppRole[] | null) {
+  return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
 }
 
 function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
@@ -208,6 +221,83 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
   );
 }
 
+function MessageAuthorPreview({
+  author,
+  compact,
+  currentUserId,
+  canSendFriendRequest,
+  friendRequestPendingId,
+  onSendFriendRequest,
+}: {
+  author: ClubChannelMessage['author'];
+  compact: boolean;
+  currentUserId?: string;
+  canSendFriendRequest: boolean;
+  friendRequestPendingId?: string | null;
+  onSendFriendRequest: (userId: string) => void;
+}) {
+  const name = fullName(author);
+  const isCurrentUser = author._id === currentUserId;
+  const isStudentProfile = hasStudentScheduleRole(author.roles);
+  const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
+  const isPending = friendRequestPendingId === author._id;
+  const canOfferFriendRequest = canSendFriendRequest && !isCurrentUser && isStudentProfile;
+
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`View ${name} profile`}
+          className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <ClubAvatar
+            person={author}
+            className={compact ? 'size-7' : 'size-9'}
+            fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+          />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent side="right" align="start" className="w-72 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <ClubAvatar person={author} className="size-12" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+            <p className="font-mono text-xs text-muted-foreground">{author.uniqueId}</p>
+            {roleLabels.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {roleLabels.map((role) => (
+                  <Badge key={role} variant="dot" className="h-5 text-[10px]">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+          <span className="text-xs text-muted-foreground">
+            {isCurrentUser ? 'This is you' : isStudentProfile ? 'Student IA profile' : 'Public IA profile'}
+          </span>
+          {canOfferFriendRequest ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="tertiary"
+              leadingIcon={UserPlus}
+              disabled={isPending}
+              loading={isPending}
+              onClick={() => onSendFriendRequest(author._id)}
+            >
+              Add friend
+            </Button>
+          ) : null}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
 function PollCard({
   message,
   onVote,
@@ -266,11 +356,14 @@ function MessageRow({
   onDelete,
   onShowHistory,
   onReport,
+  canSendFriendRequest,
+  onSendFriendRequest,
   isEditing,
   isReactionPending,
   isPinPending,
   isVotePending,
   isDeletePending,
+  friendRequestPendingId,
   highlighted,
   canModerate,
   currentUserId,
@@ -285,11 +378,14 @@ function MessageRow({
   onDelete: (messageId: string) => void;
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
+  canSendFriendRequest: boolean;
+  onSendFriendRequest: (userId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
   isPinPending: boolean;
   isVotePending: boolean;
   isDeletePending: boolean;
+  friendRequestPendingId?: string | null;
   highlighted: boolean;
   canModerate: boolean;
   currentUserId?: string;
@@ -308,10 +404,13 @@ function MessageRow({
         isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
       )}
     >
-      <ClubAvatar
-        person={message.author}
-        className={compact ? 'size-7' : 'size-9'}
-        fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+      <MessageAuthorPreview
+        author={message.author}
+        compact={compact}
+        currentUserId={currentUserId}
+        canSendFriendRequest={canSendFriendRequest}
+        friendRequestPendingId={friendRequestPendingId}
+        onSendFriendRequest={onSendFriendRequest}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -517,6 +616,7 @@ export default function ClubChannelPage({
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   const user = useCurrentUser();
@@ -535,6 +635,7 @@ export default function ClubChannelPage({
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
   const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const submitMessage = async ({
     body,
@@ -670,6 +771,22 @@ export default function ClubChannelPage({
     setReportReason('');
   };
 
+  const handleSendFriendRequest = async (friendId: string) => {
+    if (!hasStudentScheduleRole(user?.roles) || friendRequestPendingId) return;
+    setFriendRequestPendingId(friendId);
+    try {
+      await sendFriendRequest({ friendId: friendId as Id<'users'> });
+      toast({ title: 'Friend request sent' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to send friend request',
+        variant: 'destructive',
+      });
+    } finally {
+      setFriendRequestPendingId(null);
+    }
+  };
+
   const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
     const isEditing = editingMessageId === message._id;
 
@@ -706,11 +823,14 @@ export default function ClubChannelPage({
             )
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
+          canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
+          onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
           isEditing={isEditing}
           isReactionPending={false}
           isPinPending={false}
           isVotePending={false}
           isDeletePending={false}
+          friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
           canModerate={canModerateChannel}
           compact={compact}
@@ -718,11 +838,11 @@ export default function ClubChannelPage({
         {isEditing && (
           <div className="ml-12 mr-3 mt-1">
             <ChannelMessageComposer
+              key={`edit-${message._id}`}
               suggestionEntries={suggestionEntries}
               placeholder="Edit message..."
               submitLabel="Save Changes"
               isPending={false}
-              resetKey={0}
               canAttach={false}
               initialBody={message.body}
               initialBodyMarkdown={message.bodyMarkdown}
@@ -807,7 +927,7 @@ export default function ClubChannelPage({
       <div className="border-t p-3">
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
-            resetKey={replyComposerResetKey}
+            key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
             onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
             isPending={false}
             suggestionEntries={suggestionEntries}
@@ -907,7 +1027,7 @@ export default function ClubChannelPage({
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <ChannelMessageComposer
-              resetKey={rootComposerResetKey}
+              key={`root-${rootComposerResetKey}`}
               onSubmit={(args) => void submitMessage({ ...args, mode: 'root' })}
               isPending={false}
               suggestionEntries={suggestionEntries}

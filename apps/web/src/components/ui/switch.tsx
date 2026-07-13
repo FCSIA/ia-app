@@ -29,6 +29,13 @@ const PILL_EXTEND = 2;
 const PRESS_EXTEND = 4;
 const PRESS_SHRINK = 4;
 const DRAG_DEAD_ZONE = 2;
+const SWITCH_ON_BACKGROUND = "hsl(var(--primary))";
+const SWITCH_ON_BACKGROUND_HOVER =
+  "color-mix(in oklab, hsl(var(--primary)), hsl(var(--foreground)) 8%)";
+const SWITCH_OFF_BACKGROUND =
+  "color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 9%)";
+const SWITCH_OFF_BACKGROUND_HOVER =
+  "color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 15%)";
 
 const Switch = forwardRef<HTMLDivElement, SwitchProps>(
   ({ label, checked, onToggle, disabled = false, className, ...props }, ref) => {
@@ -189,10 +196,13 @@ const Switch = forwardRef<HTMLDivElement, SwitchProps>(
             width: TRACK_WIDTH,
             height: TRACK_HEIGHT,
             backgroundColor: checked
-              ? hovered ? "#5C89F2" : "#6B97FF"
+              ? hovered ? SWITCH_ON_BACKGROUND_HOVER : SWITCH_ON_BACKGROUND
               : hovered
-                ? "color-mix(in oklab, var(--accent), var(--foreground) 10%)"
-                : "var(--accent)",
+                ? SWITCH_OFF_BACKGROUND_HOVER
+                : SWITCH_OFF_BACKGROUND,
+            boxShadow: checked
+              ? "inset 0 0 0 1px hsl(var(--primary) / 0.2)"
+              : "inset 0 0 0 1px hsl(var(--border) / 0.95)",
           }}
           onClick={(e) => e.stopPropagation()}
         >

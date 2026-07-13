@@ -27,6 +27,7 @@ import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { uploadUserImage } from '@/lib/upload-user-image';
 import { compressImageForUpload } from '@/lib/compress-image';
+import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 
 export default function ProfilePage() {
   const user = useCurrentUser();
@@ -72,13 +73,7 @@ export default function ProfilePage() {
     prefs.map((p) => [`${p.category}:${p.clubId || 'null'}`, p.enabled])
   );
 
-  const categories: Array<{ key: NotificationCategory; label: string }> = [
-    { key: 'SCHOOL_ANNOUNCEMENT', label: 'School Announcements' },
-    { key: 'CLUB_JOIN_REQUEST', label: 'Club Join Requests' },
-    { key: 'EVENT', label: 'Events' },
-    { key: 'FLEX_FRIDAY', label: 'Flex Friday' },
-    { key: 'CONTENT_MODERATED', label: 'Content Moderation Alerts' },
-  ];
+  const categories = NOTIFICATION_CATEGORY_OPTIONS;
 
   return (
     <AppShell>
