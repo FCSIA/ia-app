@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
-import { UserMinus } from "lucide-react-native";
+import { router } from "expo-router";
+import { ChevronRight, UserMinus } from "lucide-react-native";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -9,6 +10,7 @@ import {
   Button,
   IconButton,
   ListRow,
+  PressableScale,
   Section,
   SegmentedControl,
   Switch,
@@ -16,6 +18,7 @@ import {
   Txt,
   useToast,
 } from "@/components/ui";
+import { PeriodBadge } from "@/features/schedule/period-badge";
 import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -534,6 +537,7 @@ function ScheduleTable({
         >
           Time
         </Txt>
+        <View style={{ width: 18 }} />
       </View>
 
       {rows.map((row, index) => {
@@ -543,6 +547,7 @@ function ScheduleTable({
             : null;
         const selectable = !!onSelectPeriod && typeof row.periodNumber === "number";
         const selected = row.periodNumber === selectedPeriod;
+        const courseSlug = !selectable ? entry?.course?.slug : undefined;
         const content = (
           <View
             style={{
@@ -566,13 +571,7 @@ function ScheduleTable({
               }}
             >
               {typeof row.periodNumber === "number" ? (
-                <Txt
-                  variant="label"
-                  tone={selected ? "primary" : "default"}
-                  style={{ fontVariant: ["tabular-nums"] }}
-                >
-                  {row.periodNumber}
-                </Txt>
+                <PeriodBadge periodNumber={row.periodNumber} emphasized={selected} />
               ) : null}
             </View>
             <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
@@ -601,6 +600,11 @@ function ScheduleTable({
             >
               {formatSchoolTime(row.startTime, row.endTime)}
             </Txt>
+            <View style={{ width: 18, alignItems: "flex-end" }}>
+              {courseSlug ? (
+                <ChevronRight size={18} color={color("mutedForeground")} />
+              ) : null}
+            </View>
           </View>
         );
 
@@ -614,6 +618,15 @@ function ScheduleTable({
           >
             {content}
           </Pressable>
+        ) : courseSlug ? (
+          <PressableScale
+            key={row.key}
+            accessibilityRole="link"
+            accessibilityLabel={`Period ${row.periodNumber}, ${entry.className}. Open course details`}
+            onPress={() => router.push(`/courses/${courseSlug}` as never)}
+          >
+            {content}
+          </PressableScale>
         ) : (
           <View key={row.key}>{content}</View>
         );

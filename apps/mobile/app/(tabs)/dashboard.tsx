@@ -21,6 +21,7 @@ import {
   resolveDashboardLayout,
   type DashboardWidgetId,
 } from "@/features/dashboard/dashboard-layout";
+import { PeriodBadge } from "@/features/schedule/period-badge";
 import {
   getAppPersona,
   useCurrentUser,
@@ -388,7 +389,6 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
 }
 
 function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardSchoolDay }) {
-  const { color } = useTheme();
   const entries = (data?.mySchedule?.entries ?? [])
     .filter((entry: any) => entry.weekday === schoolDay.value)
     .sort((left: any, right: any) => left.periodNumber - right.periodNumber);
@@ -403,29 +403,15 @@ function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardS
           <HomeRow
             key={entry.id ?? `${entry.weekday}-${entry.periodNumber}`}
             divider={index > 0}
-            leading={
-              <View
-                accessibilityLabel={`Period ${entry.periodNumber}`}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: radii.pill,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isCurrent ? color("primary") : color("muted"),
-                }}
-              >
-                <Txt
-                  variant="label"
-                  tone={isCurrent ? "default" : "muted"}
-                  style={{ color: isCurrent ? color("primaryForeground") : undefined, fontWeight: "800" }}
-                >
-                  {entry.periodNumber}
-                </Txt>
-              </View>
-            }
+            leading={<PeriodBadge periodNumber={entry.periodNumber} emphasized={isCurrent} />}
             title={entry.className}
             meta={block ? formatSchoolTime(block.startTime) : undefined}
+            accessibilityLabel={entry.course?.slug
+              ? `Period ${entry.periodNumber}, ${entry.className}. Open course details`
+              : undefined}
+            onPress={entry.course?.slug
+              ? () => router.push(`/courses/${entry.course.slug}` as never)
+              : undefined}
           />
         );
       }) : (
@@ -473,6 +459,7 @@ function HomeRow({
   leading,
   divider = false,
   onPress,
+  accessibilityLabel,
 }: {
   title: string;
   subtitle?: string;
@@ -480,6 +467,7 @@ function HomeRow({
   leading?: ReactNode;
   divider?: boolean;
   onPress?: () => void;
+  accessibilityLabel?: string;
 }) {
   const { color } = useTheme();
   const content = (
@@ -517,7 +505,15 @@ function HomeRow({
   );
 
   if (!onPress) return content;
-  return <PressableScale onPress={onPress}>{content}</PressableScale>;
+  return (
+    <PressableScale
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="link"
+      onPress={onPress}
+    >
+      {content}
+    </PressableScale>
+  );
 }
 
 function HomeEmpty({ text }: { text: string }) {
