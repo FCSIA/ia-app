@@ -259,24 +259,25 @@ export default function DashboardScreen() {
   }
 
   return (
-    <Screen
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
-      header={
-        <AppHeader
-          title={user?.firstName ? `Hi, ${user.firstName}` : "Home"}
-          action={
-            <IconButton
-              icon={SlidersHorizontal}
-              label="Customize home"
-              onPress={() => setCustomizing(true)}
-            />
-          }
-        />
-      }
-    >
-      {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
-      {layout.length ? layout.map((id) => renderWidget(id)) : <HomeEmpty text="No sections shown." />}
-
+    <>
+      <Screen
+        contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+        header={
+          <AppHeader
+            title={user?.firstName ? `Hi, ${user.firstName}` : "Home"}
+            action={
+              <IconButton
+                icon={SlidersHorizontal}
+                label="Customize home"
+                onPress={() => setCustomizing(true)}
+              />
+            }
+          />
+        }
+      >
+        {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
+        {layout.length ? layout.map((id) => renderWidget(id)) : <HomeEmpty text="No sections shown." />}
+      </Screen>
       <Sheet open={customizing} onClose={() => setCustomizing(false)} title="Customize home" snapPoints={["68%", "90%"]}>
         <Txt tone="muted">Hold a handle to reorder. Hide sections you don’t use.</Txt>
         <DraggableFlatList
@@ -329,7 +330,7 @@ export default function DashboardScreen() {
           </Section>
         ) : null}
       </Sheet>
-    </Screen>
+    </>
   );
 }
 
