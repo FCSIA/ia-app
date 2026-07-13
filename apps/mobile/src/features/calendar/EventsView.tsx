@@ -1,13 +1,24 @@
 import { useMemo, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
+import { ChevronRight, Plus, X } from "lucide-react-native";
 import { router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
-import { Badge, Button, Card, ChipGroup, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
+import {
+  Button,
+  ChipGroup,
+  IconButton,
+  PressableScale,
+  Sheet,
+  TextField,
+  Txt,
+  useToast,
+} from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth";
-import { shortDate, timeRange } from "@/lib/format";
-import { spacing } from "@/lib/tokens";
+import { timeRange } from "@/lib/format";
 import { warning } from "@/lib/haptics";
+import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export function EventsView() {
@@ -18,19 +29,34 @@ export function EventsView() {
   const cancelEvent = useMutation(api.events.events.cancel);
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ title: "", description: "", location: "", startAt: "", endAt: "", clubId: "" });
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    startAt: "",
+    endAt: "",
+    clubId: "",
+  });
   const { showToast } = useToast();
-  const canCreateGeneral = !!user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role));
+  const canCreateGeneral = !!user?.roles?.some((role) =>
+    ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
+  );
   const availableClubs = useMemo(
     () =>
       [
-        ...((myClubs?.memberOf ?? []).filter((club: any) => club.role === "LEADER" || club.role === "SPONSOR")),
+        ...((myClubs?.memberOf ?? []).filter(
+          (club: any) => club.role === "LEADER" || club.role === "SPONSOR",
+        )),
         ...(myClubs?.sponsoring ?? []),
-      ].filter((club: any, index: number, list: any[]) => list.findIndex((item) => item._id === club._id) === index),
+      ].filter(
+        (club: any, index: number, list: any[]) =>
+          list.findIndex((item) => item._id === club._id) === index,
+      ),
     [myClubs],
   );
   const canCreate = canCreateGeneral || availableClubs.length > 0;
-  const selectedClubId = form.clubId || (!canCreateGeneral ? availableClubs[0]?._id ?? "" : "");
+  const selectedClubId =
+    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? "") : "");
   const filteredEvents = useMemo(() => {
     const value = search.trim().toLowerCase();
     return (events ?? []).filter((event: any) => {
@@ -40,16 +66,24 @@ export function EventsView() {
         .some((item) => String(item).toLowerCase().includes(value));
     });
   }, [events, search]);
+  const groupedEvents = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    for (const event of filteredEvents) {
+      const key = new Date(event.startAt).toDateString();
+      groups.set(key, [...(groups.get(key) ?? []), event]);
+    }
+    return [...groups.entries()];
+  }, [filteredEvents]);
 
   async function submitCreate() {
     const startAt = parseLocalDateTime(form.startAt);
     const endAt = form.endAt ? parseLocalDateTime(form.endAt) : undefined;
     if (!form.title.trim() || !startAt) {
-      showToast({ title: "Add event details", body: "Use YYYY-MM-DD HH:mm for the start." });
+      showToast({ title: "Add a title and valid start time" });
       return;
     }
     if (!canCreateGeneral && !selectedClubId) {
-      showToast({ title: "Choose a club", body: "Club-scoped creators need an eligible club." });
+      showToast({ title: "Choose a club" });
       return;
     }
     try {
@@ -59,80 +93,268 @@ export function EventsView() {
         location: form.location || undefined,
         startAt,
         endAt: endAt ?? undefined,
-        clubId: selectedClubId ? selectedClubId as any : undefined,
+        clubId: selectedClubId ? (selectedClubId as any) : undefined,
       });
-      setForm({ title: "", description: "", location: "", startAt: "", endAt: "", clubId: "" });
+      setForm({
+        title: "",
+        description: "",
+        location: "",
+        startAt: "",
+        endAt: "",
+        clubId: "",
+      });
       setShowCreate(false);
       showToast({ title: "Event submitted", tone: "success" });
     } catch (error) {
-      showToast({ title: "Could not create event", body: error instanceof Error ? error.message : "Try again." });
+      showToast({
+        title: "Event not submitted",
+        body: error instanceof Error ? error.message : "Try again.",
+      });
     }
   }
 
-  return (
-    <View style={{ gap: spacing.md }}>
-      <Card style={{ gap: spacing.md }}>
-        <TextField value={search} onChangeText={setSearch} placeholder="Search events" />
-        {canCreate ? <Button title="Create event" variant="secondary" onPress={() => setShowCreate(true)} /> : null}
-      </Card>
+  function confirmCancel(event: any) {
+    void warning();
+    Alert.alert(`Cancel “${event.title}”?`, "It will disappear from published calendars.", [
+      { text: "Keep", style: "cancel" },
+      {
+        text: "Cancel event",
+        style: "destructive",
+        onPress: () =>
+          cancelEvent({ eventId: event._id }).catch((error) =>
+            showToast({
+              title: "Event not cancelled",
+              body: error instanceof Error ? error.message : "Try again.",
+            }),
+          ),
+      },
+    ]);
+  }
 
-      <DataBoundary data={events} emptyTitle="No events">
-        {() => (
-          <Section title="Events">
-            {filteredEvents.map((event: any) => (
-              <Card key={event._id} onPress={() => router.push(`/events/${event._id}` as any)} style={{ gap: spacing.sm }}>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                  <Badge label={event.status?.replaceAll("_", " ") ?? "Event"} color={event.status === "PUBLISHED" ? "emerald" : "amber"} />
-                  <Badge label={event.club?.name ?? "General"} color={event.club ? "blue" : "gray"} />
-                </View>
-                <Txt variant="section">{event.title}</Txt>
-                {event.description ? <Txt tone="muted" numberOfLines={3}>{event.description}</Txt> : null}
-                <Txt variant="caption" tone="muted">
-                  {shortDate(event.startAt)} - {timeRange(event.startAt, event.endAt)}
-                  {event.location ? ` - ${event.location}` : ""}
-                </Txt>
-                {event.status === "PUBLISHED" && (event.authorId === user?._id || canCreateGeneral) ? (
-                  <Button
-                    title="Cancel event"
-                    size="sm"
-                    variant="tertiary"
-                    onPress={() => {
-                      void warning();
-                      Alert.alert("Cancel event?", "This removes it from the published event list.", [
-                        { text: "Keep", style: "cancel" },
-                        {
-                          text: "Cancel event",
-                          style: "destructive",
-                          onPress: () => cancelEvent({ eventId: event._id }).catch((error) => showToast({ title: "Could not cancel", body: error instanceof Error ? error.message : "Try again." })),
-                        },
-                      ]);
-                    }}
-                  />
-                ) : null}
-              </Card>
-            ))}
-            {filteredEvents.length === 0 ? <Txt tone="muted" style={{ textAlign: "center" }}>No events match your search.</Txt> : null}
-          </Section>
-        )}
+  return (
+    <View style={{ gap: spacing.xl }}>
+      <View style={{ gap: spacing.md }}>
+        <TextField value={search} onChangeText={setSearch} placeholder="Search events" />
+        {canCreate ? (
+          <Button
+            title="Create"
+            size="sm"
+            variant="tertiary"
+            icon={Plus}
+            onPress={() => setShowCreate(true)}
+            style={{ alignSelf: "flex-end" }}
+          />
+        ) : null}
+      </View>
+
+      <DataBoundary data={events} emptyTitle="No events scheduled">
+        {() =>
+          groupedEvents.length ? (
+            <View style={{ gap: spacing.lg }}>
+              {groupedEvents.map(([date, dateEvents]) => (
+                <EventDayGroup
+                  key={date}
+                  date={new Date(date)}
+                  events={dateEvents}
+                  canCancel={(event) =>
+                    event.status === "PUBLISHED" &&
+                    (event.authorId === user?._id || canCreateGeneral)
+                  }
+                  onCancel={confirmCancel}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={{ alignItems: "center", paddingVertical: spacing.xl }}>
+              <Txt tone="muted">No matches.</Txt>
+            </View>
+          )
+        }
       </DataBoundary>
 
-      <Sheet open={showCreate} onClose={() => setShowCreate(false)} title="New Event">
-        <TextField value={form.title} onChangeText={(title) => setForm((current) => ({ ...current, title }))} placeholder="Title" />
-        <TextField value={form.description} onChangeText={(description) => setForm((current) => ({ ...current, description }))} placeholder="Description optional" multiline />
-        <TextField value={form.location} onChangeText={(location) => setForm((current) => ({ ...current, location }))} placeholder="Location optional" />
-        <TextField value={form.startAt} onChangeText={(startAt) => setForm((current) => ({ ...current, startAt }))} placeholder="Start YYYY-MM-DD HH:mm" />
-        <TextField value={form.endAt} onChangeText={(endAt) => setForm((current) => ({ ...current, endAt }))} placeholder="End YYYY-MM-DD HH:mm optional" />
+      <Sheet open={showCreate} onClose={() => setShowCreate(false)} title="New event">
+        <TextField
+          value={form.title}
+          onChangeText={(title) => setForm((current) => ({ ...current, title }))}
+          placeholder="Title"
+        />
+        <TextField
+          value={form.description}
+          onChangeText={(description) =>
+            setForm((current) => ({ ...current, description }))
+          }
+          placeholder="Description (optional)"
+          multiline
+        />
+        <TextField
+          value={form.location}
+          onChangeText={(location) => setForm((current) => ({ ...current, location }))}
+          placeholder="Location (optional)"
+        />
+        <TextField
+          value={form.startAt}
+          onChangeText={(startAt) => setForm((current) => ({ ...current, startAt }))}
+          placeholder="Starts · YYYY-MM-DD HH:mm"
+        />
+        <TextField
+          value={form.endAt}
+          onChangeText={(endAt) => setForm((current) => ({ ...current, endAt }))}
+          placeholder="Ends · YYYY-MM-DD HH:mm (optional)"
+        />
+        <Txt variant="overline" tone="muted">
+          Organizer
+        </Txt>
         {canCreateGeneral ? (
-          <ChipGroup values={["GENERAL"] as const} selected={!form.clubId ? ["GENERAL"] : []} onToggle={() => setForm((current) => ({ ...current, clubId: "" }))} />
+          <ChipGroup
+            values={["GENERAL"] as const}
+            selected={!form.clubId ? ["GENERAL"] : []}
+            labels={{ GENERAL: "School" }}
+            onToggle={() => setForm((current) => ({ ...current, clubId: "" }))}
+          />
         ) : null}
         <ChipGroup
           values={availableClubs.map((club: any) => club._id)}
           selected={selectedClubId ? [selectedClubId] : []}
-          labels={Object.fromEntries(availableClubs.map((club: any) => [club._id, club.name]))}
+          labels={Object.fromEntries(
+            availableClubs.map((club: any) => [club._id, club.name]),
+          )}
           onToggle={(clubId) => setForm((current) => ({ ...current, clubId }))}
         />
-        <Button title="Submit event" onPress={submitCreate} />
+        <Button title="Submit" onPress={submitCreate} />
       </Sheet>
+    </View>
+  );
+}
+
+function EventDayGroup({
+  date,
+  events,
+  canCancel,
+  onCancel,
+}: {
+  date: Date;
+  events: any[];
+  canCancel: (event: any) => boolean;
+  onCancel: (event: any) => void;
+}) {
+  const { color } = useTheme();
+  const weekday = date.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase();
+  const calendarDate = date
+    .toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    .toUpperCase();
+
+  return (
+    <View style={{ gap: spacing.sm }}>
+      <Txt variant="overline" tone="muted">
+        {weekday} · {calendarDate}
+      </Txt>
+      <View
+        style={{
+          overflow: "hidden",
+          borderRadius: radii.xl,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: color("border"),
+          backgroundColor: color("card"),
+        }}
+      >
+        {events.map((event, index) => (
+          <EventRow
+            key={event._id}
+            event={event}
+            last={index === events.length - 1}
+            canCancel={canCancel(event)}
+            onCancel={() => onCancel(event)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function EventRow({
+  event,
+  last,
+  canCancel,
+  onCancel,
+}: {
+  event: any;
+  last: boolean;
+  canCancel: boolean;
+  onCancel: () => void;
+}) {
+  const { color } = useTheme();
+  const schedule = [
+    timeRange(event.startAt, event.endAt).replace(" - ", "–"),
+    event.location,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const context = [
+    event.club?.name ?? "School",
+    event.status === "PUBLISHED"
+      ? null
+      : event.status?.replaceAll("_", " ").toLowerCase(),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <View
+      style={{
+        minHeight: spacing.xl * 3,
+        flexDirection: "row",
+        alignItems: "center",
+        borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
+        borderColor: color("border"),
+      }}
+    >
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${event.title}`}
+        onPress={() => router.push(`/events/${event._id}` as any)}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          paddingLeft: spacing.lg,
+          paddingVertical: spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.md,
+        }}
+      >
+        <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+          <Txt variant="caption" tone="muted" numberOfLines={1}>
+            {context}
+          </Txt>
+          <Txt variant="label" numberOfLines={2}>
+            {event.title}
+          </Txt>
+          {schedule ? (
+            <Txt variant="caption" tone="muted" numberOfLines={2}>
+              {schedule}
+            </Txt>
+          ) : null}
+          {event.description ? (
+            <Txt variant="caption" tone="muted" numberOfLines={2}>
+              {event.description}
+            </Txt>
+          ) : null}
+        </View>
+        <ChevronRight size={spacing.lg} color={color("mutedForeground")} />
+      </PressableScale>
+      {canCancel ? (
+        <View style={{ paddingHorizontal: spacing.sm }}>
+          <IconButton
+            icon={X}
+            label={`Cancel ${event.title}`}
+            size="sm"
+            variant="destructive"
+            onPress={onCancel}
+          />
+        </View>
+      ) : (
+        <View style={{ width: spacing.sm }} />
+      )}
     </View>
   );
 }

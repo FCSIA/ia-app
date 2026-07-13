@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
-import { Alert, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { UserMinus } from "lucide-react-native";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import {
   Avatar,
-  Badge,
   Button,
-  Card,
-  ChipGroup,
+  IconButton,
   ListRow,
   Section,
   SegmentedControl,
@@ -18,11 +17,13 @@ import {
   useToast,
 } from "@/components/ui";
 import { useOfflineValue } from "@/lib/offline-cache";
-import { spacing } from "@/lib/tokens";
+import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
 const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
-const periods = ["1", "2", "3", "4", "5", "6", "7", "8"] as const;
+const fallbackPeriods = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+type Weekday = (typeof weekdays)[number];
 
 export function MyWeekView() {
   const liveData = useQuery(api.schedule.dashboard.get, {});
@@ -33,11 +34,12 @@ export function MyWeekView() {
   const acceptFriendRequest = useMutation(api.schedule.friends.acceptRequest);
   const removeFriend = useMutation(api.schedule.friends.remove);
   const { showToast } = useToast();
+  const { color } = useTheme();
   const [editing, setEditing] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
   const [draftEntries, setDraftEntries] = useState<any[]>([]);
-  const [selectedDay, setSelectedDay] = useState<(typeof weekdays)[number]>("MONDAY");
-  const [selectedPeriod, setSelectedPeriod] = useState("1");
+  const [selectedDay, setSelectedDay] = useState<Weekday>(initialWeekday);
+  const [selectedPeriod, setSelectedPeriod] = useState(1);
   const [courseSearch, setCourseSearch] = useState("");
   const [friendSearch, setFriendSearch] = useState("");
   const searchResults = useQuery(
@@ -47,14 +49,14 @@ export function MyWeekView() {
 
   const courseMatches = useMemo(() => {
     const search = courseSearch.trim().toLowerCase();
-    const list = !search
-      ? courses.slice(0, 8)
-      : courses.filter((course: any) =>
-          [course.title, ...(course.courseNumbers ?? []), course.department].filter(Boolean).some((value) =>
-            String(value).toLowerCase().includes(search),
-          ),
-        ).slice(0, 12);
-    return list;
+    if (!search) return [];
+    return courses
+      .filter((course: any) =>
+        [course.title, ...(course.courseNumbers ?? []), course.department]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(search)),
+      )
+      .slice(0, 10);
   }, [courses, courseSearch]);
 
   function startEditing(schedule: any) {
@@ -65,175 +67,574 @@ export function MyWeekView() {
 
   function setCourse(course: any) {
     setDraftEntries((current) => {
-      const periodNumber = Number(selectedPeriod);
-      const without = current.filter((entry) => !(entry.weekday === selectedDay && entry.periodNumber === periodNumber));
+      const without = current.filter(
+        (entry) => !(entry.weekday === selectedDay && entry.periodNumber === selectedPeriod),
+      );
       return [
         ...without,
         {
           weekday: selectedDay,
-          periodNumber,
+          periodNumber: selectedPeriod,
           courseId: course.id,
           className: course.title,
           course,
         },
-      ].sort((left, right) => left.weekday.localeCompare(right.weekday) || left.periodNumber - right.periodNumber);
+      ].sort(
+        (left, right) =>
+          weekdays.indexOf(left.weekday) - weekdays.indexOf(right.weekday) ||
+          left.periodNumber - right.periodNumber,
+      );
     });
+    setCourseSearch("");
   }
 
   function clearCourse() {
-    const periodNumber = Number(selectedPeriod);
-    setDraftEntries((current) => current.filter((entry) => !(entry.weekday === selectedDay && entry.periodNumber === periodNumber)));
+    setDraftEntries((current) =>
+      current.filter(
+        (entry) => !(entry.weekday === selectedDay && entry.periodNumber === selectedPeriod),
+      ),
+    );
   }
 
   async function saveDraft() {
     try {
       await saveSchedule({
         isPublic,
-        entries: draftEntries.filter((entry) => entry.courseId).map((entry) => ({
-          weekday: entry.weekday,
-          periodNumber: entry.periodNumber,
-          courseId: entry.courseId,
-        })),
+        entries: draftEntries
+          .filter((entry) => entry.courseId)
+          .map((entry) => ({
+            weekday: entry.weekday,
+            periodNumber: entry.periodNumber,
+            courseId: entry.courseId,
+          })),
       });
       setEditing(false);
       showToast({ title: "Schedule saved", tone: "success" });
     } catch (error) {
-      showToast({ title: "Schedule not saved", body: error instanceof Error ? error.message : "Try again." });
+      showToast({
+        title: "Schedule not saved",
+        body: error instanceof Error ? error.message : "Try again.",
+      });
     }
   }
 
   return (
-    <View style={{ gap: spacing.md }}>
+    <View style={{ gap: spacing.xl }}>
       {data.isOffline || data.isStale ? <OfflineBanner stale={data.isStale} /> : null}
       <DataBoundary data={data.value} emptyTitle="Schedule unavailable">
-        {(schedule) => (
-          <View style={{ gap: spacing.md }}>
-            <Card style={{ gap: spacing.md }}>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                <Badge label={schedule.mySchedule?.isPublic ? "Public to friends" : "Private"} color={schedule.mySchedule?.isPublic ? "emerald" : "gray"} />
-                <Badge label={`${schedule.friends.length} friend${schedule.friends.length === 1 ? "" : "s"}`} color="blue" />
-              </View>
-              <Button title={editing ? "Done editing" : "Edit my schedule"} variant="secondary" onPress={() => editing ? setEditing(false) : startEditing(schedule)} />
-            </Card>
+        {(schedule) => {
+          const visibleEntries = editing
+            ? draftEntries
+            : (schedule.mySchedule?.entries ?? []);
+          const selectedEntry = visibleEntries.find(
+            (entry: any) =>
+              entry.weekday === selectedDay && entry.periodNumber === selectedPeriod,
+          );
 
-            {editing ? (
-              <Card style={{ gap: spacing.md }}>
-                <Section title="Edit Schedule">
-                  <ListRow
-                    title="Visible to friends"
-                    subtitle={isPublic ? "Friends can see your class schedule." : "Only you can see your schedule."}
-                    trailing={<Switch value={isPublic} onValueChange={setIsPublic} />}
+          return (
+            <View style={{ gap: spacing.xl }}>
+              <Section
+                title="My schedule"
+                action={
+                  <Button
+                    title={editing ? "Cancel" : "Edit"}
+                    size="sm"
+                    variant="ghost"
+                    onPress={() =>
+                      editing ? setEditing(false) : startEditing(schedule)
+                    }
                   />
-                  <SegmentedControl
-                    value={selectedDay}
-                    onChange={setSelectedDay}
-                    segments={weekdays.map((day) => ({ value: day, label: day.slice(0, 3) }))}
-                  />
-                  <ChipGroup values={periods} selected={[selectedPeriod]} labels={periods.reduce((acc, period) => ({ ...acc, [period]: `P${period}` }), {})} onToggle={setSelectedPeriod} />
-                  <TextField value={courseSearch} onChangeText={setCourseSearch} placeholder="Search courses to assign" />
-                  <Button title="Clear selected period" variant="tertiary" onPress={clearCourse} />
-                  {courseMatches.map((course: any) => (
-                    <ListRow key={course.id} title={course.title} subtitle={course.department} onPress={() => setCourse(course)} />
-                  ))}
-                  <Button title="Save schedule" onPress={saveDraft} />
-                </Section>
-              </Card>
-            ) : null}
+                }
+              >
+                <SegmentedControl
+                  value={selectedDay}
+                  onChange={(day) => {
+                    setSelectedDay(day);
+                    setCourseSearch("");
+                  }}
+                  segments={weekdays.map((day) => ({
+                    value: day,
+                    label: `${day[0]}${day.slice(1, 3).toLowerCase()}`,
+                  }))}
+                />
 
-            <Section title="Week">
-              {renderSchedule(editing ? draftEntries : schedule.mySchedule?.entries ?? [])}
-            </Section>
+                <ScheduleTable
+                  day={selectedDay}
+                  entries={visibleEntries}
+                  blocks={schedule.blocks}
+                  selectedPeriod={editing ? selectedPeriod : undefined}
+                  onSelectPeriod={editing ? setSelectedPeriod : undefined}
+                />
+              </Section>
 
-            <Section title="Friends">
-              <TextField value={friendSearch} onChangeText={setFriendSearch} placeholder="Search students by name or ID" />
-              {(searchResults ?? []).map((student: any) => (
-                <ListRow
-                  key={student._id}
-                  leading={<Avatar name={`${student.firstName} ${student.lastName}`} size={36} />}
-                  title={`${student.firstName} ${student.lastName}`}
-                  subtitle={`${student.friendshipStatus.replaceAll("_", " ")} - ${student.visibility.toLowerCase()} schedule`}
-                  trailing={
+              {editing ? (
+                <View
+                  style={{
+                    gap: spacing.md,
+                    borderRadius: radii.xl,
+                    backgroundColor: color("secondary"),
+                    padding: spacing.lg,
+                  }}
+                >
+                  <View
+                    style={{
+                      minHeight: spacing.xl * 2,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: spacing.md,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: spacing.xs }}>
+                      <Txt variant="label">Share with friends</Txt>
+                      <Txt variant="caption" tone="muted">
+                        {isPublic ? "Friends can compare schedules." : "Only you can see this."}
+                      </Txt>
+                    </View>
+                    <Switch label="Share schedule with friends" value={isPublic} onValueChange={setIsPublic} />
+                  </View>
+
+                  <View style={{ gap: spacing.sm }}>
+                    <Txt variant="overline" tone="muted">
+                      Period {selectedPeriod}
+                    </Txt>
+                    <TextField
+                      value={courseSearch}
+                      onChangeText={setCourseSearch}
+                      placeholder={selectedEntry?.className ?? "Search courses"}
+                    />
+                    {courseMatches.map((course: any) => (
+                      <ListRow
+                        key={course.id}
+                        title={course.title}
+                        subtitle={course.department}
+                        onPress={() => setCourse(course)}
+                      />
+                    ))}
+                    {courseSearch.trim() && courseMatches.length === 0 ? (
+                      <Txt variant="caption" tone="muted">
+                        No matching courses.
+                      </Txt>
+                    ) : null}
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: spacing.sm }}>
                     <Button
-                      title={student.friendshipStatus === "REQUEST_RECEIVED" ? "Accept" : student.friendshipStatus === "NONE" ? "Add" : "Connected"}
-                      size="sm"
-                      disabled={student.friendshipStatus === "FRIENDS" || student.friendshipStatus === "REQUEST_SENT"}
-                      onPress={() =>
-                        (student.friendshipStatus === "REQUEST_RECEIVED"
-                          ? acceptFriendRequest({ requesterId: student._id })
-                          : sendFriendRequest({ friendId: student._id })
-                        ).catch((error) => showToast({ title: "Friend request", body: error instanceof Error ? error.message : "Try again." }))
+                      title="Clear"
+                      variant="tertiary"
+                      disabled={!selectedEntry}
+                      onPress={clearCourse}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      title="Save"
+                      onPress={saveDraft}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              <Section
+                title="Friends"
+                action={
+                  schedule.friends.length ? (
+                    <Txt variant="caption" tone="muted">
+                      {schedule.friends.length}
+                    </Txt>
+                  ) : null
+                }
+              >
+                <TextField
+                  value={friendSearch}
+                  onChangeText={setFriendSearch}
+                  placeholder="Find a student"
+                />
+
+                {(searchResults ?? []).map((student: any) => {
+                  const canRespond =
+                    student.friendshipStatus === "REQUEST_RECEIVED" ||
+                    student.friendshipStatus === "NONE";
+                  return (
+                    <ListRow
+                      key={student._id}
+                      leading={
+                        <Avatar
+                          name={`${student.firstName} ${student.lastName}`}
+                          size={36}
+                        />
+                      }
+                      title={`${student.firstName} ${student.lastName}`}
+                      subtitle={student.uniqueId}
+                      trailing={
+                        canRespond ? (
+                          <Button
+                            title={
+                              student.friendshipStatus === "REQUEST_RECEIVED"
+                                ? "Accept"
+                                : "Add"
+                            }
+                            size="sm"
+                            onPress={() =>
+                              (student.friendshipStatus === "REQUEST_RECEIVED"
+                                ? acceptFriendRequest({ requesterId: student._id })
+                                : sendFriendRequest({ friendId: student._id })
+                              ).catch((error) =>
+                                showToast({
+                                  title: "Friend request",
+                                  body:
+                                    error instanceof Error ? error.message : "Try again.",
+                                }),
+                              )
+                            }
+                          />
+                        ) : (
+                          <Txt variant="caption" tone="muted">
+                            {student.friendshipStatus === "FRIENDS" ? "Added" : "Pending"}
+                          </Txt>
+                        )
                       }
                     />
-                  }
-                />
-              ))}
-              {schedule.incomingRequests.map((request: any) => (
-                <ListRow
-                  key={request.id}
-                  leading={<Avatar name={`${request.user.firstName} ${request.user.lastName}`} size={36} />}
-                  title={`${request.user.firstName} ${request.user.lastName}`}
-                  subtitle="Wants schedule access"
-                  trailing={<Button title="Accept" size="sm" onPress={() => acceptFriendRequest({ requesterId: request.user._id })} />}
-                />
-              ))}
-              {schedule.outgoingRequests.map((request: any) => (
-                <Txt key={request.id} tone="muted">
-                  Pending: {request.user.firstName} {request.user.lastName}
-                </Txt>
-              ))}
-            </Section>
+                  );
+                })}
 
-            {schedule.friends.map((friend: any) => (
-              <Card key={friend.id} style={{ gap: spacing.sm }}>
-                <Badge label={friend.visibility} color={friend.visibility === "PUBLIC" ? "emerald" : "gray"} />
-                <Txt variant="section">{friend.user.firstName} {friend.user.lastName}</Txt>
-                {friend.schedule?.entries?.slice(0, 8).map((entry: any) => (
-                  <Txt key={entry.id ?? `${entry.weekday}-${entry.periodNumber}`} tone="muted">
-                    {entry.weekday.slice(0, 3)} P{entry.periodNumber}: {entry.className}
-                  </Txt>
+                {schedule.incomingRequests.map((request: any) => (
+                  <ListRow
+                    key={request.id}
+                    leading={
+                      <Avatar
+                        name={`${request.user.firstName} ${request.user.lastName}`}
+                        size={36}
+                      />
+                    }
+                    title={`${request.user.firstName} ${request.user.lastName}`}
+                    subtitle="Wants to compare schedules"
+                    trailing={
+                      <Button
+                        title="Accept"
+                        size="sm"
+                        onPress={() =>
+                          acceptFriendRequest({ requesterId: request.user._id }).catch(
+                            (error) =>
+                              showToast({
+                                title: "Friend request",
+                                body: error instanceof Error ? error.message : "Try again.",
+                              }),
+                          )
+                        }
+                      />
+                    }
+                  />
                 ))}
-                {!friend.schedule ? <Txt tone="muted">Schedule is private.</Txt> : null}
-                <Button
-                  title="Remove friend"
-                  size="sm"
-                  variant="tertiary"
-                  onPress={() =>
-                    Alert.alert("Remove friend?", "They will lose access to your schedule.", [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Remove",
-                        style: "destructive",
-                        onPress: () => removeFriend({ otherUserId: friend.user._id }).catch((error) => showToast({ title: "Friend", body: error instanceof Error ? error.message : "Try again." })),
-                      },
-                    ])
-                  }
-                />
-              </Card>
-            ))}
-          </View>
-        )}
+
+                {schedule.outgoingRequests.map((request: any) => (
+                  <ListRow
+                    key={request.id}
+                    leading={
+                      <Avatar
+                        name={`${request.user.firstName} ${request.user.lastName}`}
+                        size={36}
+                      />
+                    }
+                    title={`${request.user.firstName} ${request.user.lastName}`}
+                    subtitle="Request pending"
+                    trailing={
+                      <Txt variant="caption" tone="muted">
+                        Pending
+                      </Txt>
+                    }
+                  />
+                ))}
+
+                {!friendSearch.trim() &&
+                schedule.friends.length === 0 &&
+                schedule.incomingRequests.length === 0 &&
+                schedule.outgoingRequests.length === 0 ? (
+                  <Txt tone="muted">Search for a classmate to compare schedules.</Txt>
+                ) : null}
+
+                {schedule.friends.map((friend: any) => (
+                  <View
+                    key={friend.id}
+                    style={{
+                      overflow: "hidden",
+                      borderRadius: radii.xl,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: color("border"),
+                      backgroundColor: color("card"),
+                    }}
+                  >
+                    <View
+                      style={{
+                        minHeight: spacing.xl * 2 + spacing.sm,
+                        paddingHorizontal: spacing.lg,
+                        paddingVertical: spacing.md,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: spacing.md,
+                      }}
+                    >
+                      <Avatar
+                        name={`${friend.user.firstName} ${friend.user.lastName}`}
+                        size={36}
+                      />
+                      <View style={{ flex: 1, gap: spacing.xs }}>
+                        <Txt variant="label" numberOfLines={1}>
+                          {friend.user.firstName} {friend.user.lastName}
+                        </Txt>
+                        <Txt variant="caption" tone="muted">
+                          {friend.visibility === "PUBLIC"
+                            ? friend.user.uniqueId
+                            : friend.visibility === "PRIVATE"
+                              ? "Private schedule"
+                              : "No schedule yet"}
+                        </Txt>
+                      </View>
+                      <IconButton
+                        icon={UserMinus}
+                        label={`Remove ${friend.user.firstName}`}
+                        size="sm"
+                        variant="ghost"
+                        onPress={() =>
+                          Alert.alert(
+                            `Remove ${friend.user.firstName}?`,
+                            "You will no longer be able to compare schedules.",
+                            [
+                              { text: "Keep", style: "cancel" },
+                              {
+                                text: "Remove",
+                                style: "destructive",
+                                onPress: () =>
+                                  removeFriend({ otherUserId: friend.user._id }).catch(
+                                    (error) =>
+                                      showToast({
+                                        title: "Friend not removed",
+                                        body:
+                                          error instanceof Error
+                                            ? error.message
+                                            : "Try again.",
+                                      }),
+                                  ),
+                              },
+                            ],
+                          )
+                        }
+                      />
+                    </View>
+                    {friend.schedule ? (
+                      <ScheduleTable
+                        day={selectedDay}
+                        entries={friend.schedule.entries}
+                        blocks={schedule.blocks}
+                        embedded
+                      />
+                    ) : null}
+                  </View>
+                ))}
+              </Section>
+            </View>
+          );
+        }}
       </DataBoundary>
     </View>
   );
 }
 
-function renderSchedule(entries: any[]) {
-  return weekdays.map((day) => {
-    const dayEntries = entries.filter((entry: any) => entry.weekday === day);
-    return (
-      <Card key={day} variant="flat" style={{ gap: spacing.sm }}>
-        <Badge label={day} color="blue" />
-        {dayEntries.length === 0 ? (
-          <Txt tone="muted">No classes saved.</Txt>
-        ) : (
-          dayEntries.map((entry: any) => (
-            <View key={entry.id ?? `${day}-${entry.periodNumber}`} style={{ gap: 2 }}>
-              <Txt variant="label">Period {entry.periodNumber}</Txt>
-              <Txt tone="muted">{entry.className}</Txt>
+function ScheduleTable({
+  day,
+  entries,
+  blocks,
+  selectedPeriod,
+  onSelectPeriod,
+  embedded = false,
+}: {
+  day: Weekday;
+  entries: any[];
+  blocks: any[];
+  selectedPeriod?: number;
+  onSelectPeriod?: (period: number) => void;
+  embedded?: boolean;
+}) {
+  const { color } = useTheme();
+  const dayEntries = entries.filter((entry) => entry.weekday === day);
+  const dayBlocks = blocks
+    .filter((block) => block.weekday === day)
+    .sort((left, right) => left.startTime.localeCompare(right.startTime));
+  const blockPeriods = new Set(
+    dayBlocks
+      .map((block) => block.periodNumber)
+      .filter((period): period is number => typeof period === "number"),
+  );
+  const displayedPeriods = dayBlocks.length
+    ? blockPeriods
+    : new Set<number>(fallbackPeriods);
+  const rows = [
+    ...(dayBlocks.length
+      ? dayBlocks.map((block) => ({
+          key: block.id,
+          periodNumber: block.periodNumber as number | null,
+          label: block.label as string,
+          startTime: block.startTime as string,
+          endTime: block.endTime as string,
+        }))
+      : fallbackPeriods.map((period) => ({
+          key: `${day}-${period}`,
+          periodNumber: period as number | null,
+          label: `Period ${period}`,
+          startTime: "",
+          endTime: "",
+        }))),
+    ...dayEntries
+      .filter((entry) => !displayedPeriods.has(entry.periodNumber))
+      .map((entry) => ({
+        key: entry.id ?? `${day}-${entry.periodNumber}`,
+        periodNumber: entry.periodNumber as number,
+        label: `Period ${entry.periodNumber}`,
+        startTime: "",
+        endTime: "",
+      })),
+  ];
+
+  return (
+    <View
+      style={{
+        overflow: "hidden",
+        borderRadius: embedded ? 0 : radii.xl,
+        borderWidth: embedded ? 0 : StyleSheet.hairlineWidth,
+        borderColor: color("border"),
+        backgroundColor: color("card"),
+      }}
+    >
+      <View
+        style={{
+          minHeight: spacing.xl + spacing.md,
+          paddingHorizontal: spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
+          borderTopWidth: embedded ? StyleSheet.hairlineWidth : 0,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderColor: color("border"),
+          backgroundColor: color("muted"),
+        }}
+      >
+        <Txt
+          variant="overline"
+          tone="muted"
+          style={{ width: spacing["2xl"], textAlign: "center" }}
+        >
+          P
+        </Txt>
+        <Txt variant="overline" tone="muted" style={{ flex: 1 }}>
+          Class
+        </Txt>
+        <Txt
+          variant="overline"
+          tone="muted"
+          style={{ width: spacing.xl * 3, textAlign: "right" }}
+        >
+          Time
+        </Txt>
+      </View>
+
+      {rows.map((row, index) => {
+        const entry =
+          typeof row.periodNumber === "number"
+            ? dayEntries.find((item) => item.periodNumber === row.periodNumber)
+            : null;
+        const selectable = !!onSelectPeriod && typeof row.periodNumber === "number";
+        const selected = row.periodNumber === selectedPeriod;
+        const content = (
+          <View
+            style={{
+              minHeight: spacing.xl * 2,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.sm,
+              borderBottomWidth:
+                index === rows.length - 1 ? 0 : StyleSheet.hairlineWidth,
+              borderColor: color("border"),
+              backgroundColor: selected ? color("accent") : "transparent",
+            }}
+          >
+            <View
+              style={{
+                width: spacing["2xl"],
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {typeof row.periodNumber === "number" ? (
+                <Txt
+                  variant="label"
+                  tone={selected ? "primary" : "default"}
+                  style={{ fontVariant: ["tabular-nums"] }}
+                >
+                  {row.periodNumber}
+                </Txt>
+              ) : null}
             </View>
-          ))
-        )}
-      </Card>
-    );
-  });
+            <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+              <Txt
+                variant="label"
+                tone={entry || row.periodNumber === null ? "default" : "muted"}
+                numberOfLines={2}
+              >
+                {entry?.className ?? (row.periodNumber === null ? row.label : "—")}
+              </Txt>
+              {entry?.course?.department ? (
+                <Txt variant="caption" tone="muted" numberOfLines={1}>
+                  {entry.course.department}
+                </Txt>
+              ) : null}
+            </View>
+            <Txt
+              variant="caption"
+              tone="muted"
+              numberOfLines={1}
+              style={{
+                width: spacing.xl * 3,
+                textAlign: "right",
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {formatSchoolTime(row.startTime, row.endTime)}
+            </Txt>
+          </View>
+        );
+
+        return selectable ? (
+          <Pressable
+            key={row.key}
+            accessibilityRole="button"
+            accessibilityLabel={`Period ${row.periodNumber}${entry ? `, ${entry.className}` : ", unassigned"}`}
+            accessibilityState={{ selected }}
+            onPress={() => onSelectPeriod(row.periodNumber as number)}
+          >
+            {content}
+          </Pressable>
+        ) : (
+          <View key={row.key}>{content}</View>
+        );
+      })}
+    </View>
+  );
+}
+
+function initialWeekday(): Weekday {
+  const day = new Date().getDay();
+  return weekdays[day - 1] ?? "MONDAY";
+}
+
+function formatSchoolTime(startTime: string, endTime: string) {
+  if (!startTime || !endTime) return "—";
+  return `${formatClock(startTime)}–${formatClock(endTime)}`;
+}
+
+function formatClock(value: string) {
+  const [hours, minutes] = value.split(":");
+  const hour = Number(hours);
+  if (!Number.isFinite(hour)) return value;
+  return `${hour % 12 || 12}:${minutes}`;
 }
