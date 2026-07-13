@@ -74,6 +74,7 @@ export function shouldGroupMessages(
 ) {
   if (!previous || previous.authorId !== current.authorId) return false;
   if (previous.isPinned || current.isPinned) return false;
+  if (previous.deliveryState || current.deliveryState) return false;
 
   const previousDate = new Date(previous.createdAt);
   const currentDate = new Date(current.createdAt);

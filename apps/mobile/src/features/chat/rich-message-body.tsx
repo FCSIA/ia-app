@@ -76,8 +76,9 @@ export function RichMessageBody({ body, bodyMarkdown }: RichMessageBodyProps) {
     }),
     [color],
   );
+  const canRenderAsPlainText = !markdown || markdown === body.trim();
 
-  if (!markdown) {
+  if (canRenderAsPlainText) {
     return body ? (
       <Txt
         selectable

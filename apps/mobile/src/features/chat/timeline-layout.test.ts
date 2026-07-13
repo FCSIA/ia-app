@@ -36,6 +36,14 @@ describe("mobile chat timeline layout", () => {
         message("three", "alex", "2026-07-13T13:05:01.000Z"),
       ),
     ).toBe(false);
+    expect(
+      shouldGroupMessages(
+        first,
+        message("five", "alex", "2026-07-14T03:59:30.000Z", {
+          deliveryState: "sending",
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("keeps author, day, and pinned boundaries visually explicit", () => {
