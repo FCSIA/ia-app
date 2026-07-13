@@ -85,6 +85,23 @@ tar instead of GNU tar from the Nix CocoaPods closure. After the app is
 installed, restart Metro with `pnpm --filter mobile dev:client`; a native rebuild
 is only needed after native dependency or app-config changes.
 
+### Remote device development
+
+An installed development build can load JavaScript updates while the phone is
+unplugged. For a phone that is not on the Mac's network, keep the Mac awake and
+online, then start Metro through Expo's development-client tunnel:
+
+```bash
+pnpm dev:mobile:tunnel
+```
+
+Open the printed QR code or `exp+innovation-academy://` URL on the phone. The
+link opens the installed InnovationAcademy development build, not Expo Go. Both
+devices need internet access, and the tunnel is available only while the Metro
+process remains running. Reconnect and rebuild the native app after changing a
+native dependency, entitlement, config plugin, app icon, or native project
+source.
+
 This build can validate the app on a real iPhone but cannot validate APNs token
 registration, remote iOS delivery, or universal links. Keep those checks for a
 development build signed by the school Apple Developer team. Android push
