@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { CheckCircle2, School } from "lucide-react-native";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
-import { Txt } from "@/components/ui";
+import { Skeleton, Txt } from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth";
 import { shortDate } from "@/lib/format";
 import { useOfflineValue } from "@/lib/offline-cache";
@@ -18,6 +18,7 @@ export default function FlexPassScreen() {
   const registrations = useOfflineValue("flex-pass-registrations", liveRegistrations);
   const assignments = useOfflineValue("flex-pass-assignments", liveAssignments);
   const { color } = useTheme();
+  const isLoading = registrations.value === undefined || assignments.value === undefined;
   const items = [...(assignments.value ?? []), ...(registrations.value ?? [])];
   const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "IA member";
 
@@ -79,20 +80,25 @@ export default function FlexPassScreen() {
             gap: spacing.sm,
             paddingHorizontal: spacing.xl,
             paddingVertical: spacing.md,
-            backgroundColor: items.length ? color("primary") : color("secondary"),
+            backgroundColor: !isLoading && items.length ? color("primary") : color("secondary"),
           }}
         >
-          {items.length ? <CheckCircle2 size={21} color={color("primaryForeground")} /> : null}
+          {!isLoading && items.length ? <CheckCircle2 size={21} color={color("primaryForeground")} /> : null}
           <Txt
             variant="section"
-            style={{ color: items.length ? color("primaryForeground") : color("foreground") }}
+            style={{ color: !isLoading && items.length ? color("primaryForeground") : color("foreground") }}
           >
-            {items.length ? "Ready for check-in" : "No active check-in"}
+            {isLoading ? "Checking pass…" : items.length ? "Ready for check-in" : "No active check-in"}
           </Txt>
         </View>
 
         <View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md }}>
-          {items.length === 0 ? (
+          {isLoading ? (
+            <View style={{ minHeight: 68, justifyContent: "center", gap: spacing.sm }}>
+              <Skeleton style={{ width: "64%", height: 18 }} />
+              <Skeleton style={{ width: "42%", height: 14 }} />
+            </View>
+          ) : items.length === 0 ? (
             <Txt tone="muted">Your assigned or registered workshop will appear here.</Txt>
           ) : (
             items.map((item: any, index) => (

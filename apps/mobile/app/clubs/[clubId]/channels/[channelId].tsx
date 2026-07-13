@@ -360,7 +360,17 @@ export default function ChannelScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1, backgroundColor: color("background") }}
       >
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.sm, gap: spacing.sm }}>
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 760,
+            alignSelf: "center",
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.sm,
+            paddingBottom: spacing.sm,
+            gap: spacing.sm,
+          }}
+        >
           <AppBackHeader forceVisible />
           <View style={{ gap: 2 }}>
             <Txt variant="title" numberOfLines={1}>
@@ -386,6 +396,9 @@ export default function ChannelScreen() {
 
         <View
           style={{
+            width: "100%",
+            maxWidth: 760,
+            alignSelf: "center",
             borderTopWidth: 1,
             borderTopColor: color("border"),
             backgroundColor: color("card"),

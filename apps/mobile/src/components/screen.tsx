@@ -23,6 +23,9 @@ export function Screen({ title, subtitle, header, children, contentContainerStyl
       <ScrollView
         contentContainerStyle={[
           {
+            width: "100%",
+            maxWidth: 760,
+            alignSelf: "center",
             paddingHorizontal: spacing.lg,
             paddingTop: Math.max(spacing.lg, insets.top ? spacing.md : spacing.lg),
             paddingBottom: isTabRoute ? 112 : Math.max(spacing.xl, insets.bottom + spacing.lg),
