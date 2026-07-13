@@ -41,7 +41,7 @@ export default function ClubPeopleScreen() {
                   value={inviteId}
                   onChangeText={setInviteId}
                   placeholder="School ID"
-                  accessibilityLabel="Student ID"
+                  accessibilityLabel="School ID"
                   autoCapitalize="characters"
                   returnKeyType="send"
                 />

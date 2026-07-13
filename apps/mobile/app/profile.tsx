@@ -3,7 +3,7 @@ import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
-import { Camera, KeyRound, Trash2 } from "lucide-react-native";
+import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import { unregisterStoredNativePushToken } from "@/lib/push";
 import { useCurrentUser } from "@/lib/auth";
@@ -105,6 +105,11 @@ export default function ProfileScreen() {
           />
         ) : null}
       </View>
+
+      <Section title="Preferences">
+        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme" as never)} />
+        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications" as never)} />
+      </Section>
 
       <Section title="Security">
         <ListRow icon={KeyRound} title="Password" subtitle="Change your account password" onPress={() => setPasswordOpen(true)} />
