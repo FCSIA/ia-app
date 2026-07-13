@@ -28,7 +28,7 @@ export function NotificationScopeSwitch({
   announcementId,
   eventId,
   scopeKey,
-  locked = false,
+  locked: lockedProp = false,
   compact = false,
   className,
 }: NotificationScopeSwitchProps) {
@@ -45,11 +45,12 @@ export function NotificationScopeSwitch({
             ? `club:${clubId}`
             : 'global');
 
-  const preferences = useQuery(api.notifications.preferences.list) ?? [];
+  const preferences = useQuery(api.notifications.preferences.list);
 
-  const preference = preferences.find(
+  const preference = preferences?.find(
     (pref) => pref.category === category && pref.scopeKey === resolvedScopeKey,
   );
+  const locked = lockedProp || preference?.locked === true;
   const enabled = locked || preference?.enabled !== false;
 
   const togglePreference = () =>
@@ -71,13 +72,13 @@ export function NotificationScopeSwitch({
         locked && 'opacity-80',
         className,
       )}
-      title={locked ? 'Push notifications to everyone cannot be disabled' : undefined}
+      title={locked ? 'This notification is required' : undefined}
     >
       <Switch
         label={compact ? (enabled ? 'On' : 'Off') : label}
         checked={enabled}
         onToggle={() => void togglePreference()}
-        disabled={locked}
+        disabled={locked || preferences === undefined}
         className="min-w-0 flex-1 px-0 py-0"
       />
       {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}

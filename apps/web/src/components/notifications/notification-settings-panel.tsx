@@ -39,12 +39,6 @@ export function NotificationSettingsPanel() {
           ].map(([category, label]) => (
             <NotificationScopeSwitch key={category} category={category as any} label={label} />
           ))}
-          <NotificationScopeSwitch
-            category="SCHOOL_ANNOUNCEMENT"
-            label="Push notifications to everyone"
-            scopeKey="admin-push"
-            locked
-          />
         </div>
       </section>
       <section className="flex flex-col gap-3">
