@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ChevronRight, UserMinus } from "lucide-react-native";
+import { ChevronDown, ChevronRight, UserMinus } from "lucide-react-native";
 import { useMutation, useQuery } from "convex/react";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
@@ -45,6 +45,9 @@ export function MyWeekView() {
   const [selectedPeriod, setSelectedPeriod] = useState(1);
   const [courseSearch, setCourseSearch] = useState("");
   const [friendSearch, setFriendSearch] = useState("");
+  const [expandedFriendIds, setExpandedFriendIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const searchResults = useQuery(
     api.schedule.friends.search,
     friendSearch.trim().length >= 2 ? { query: friendSearch, limit: 10 } : "skip",
@@ -355,9 +358,13 @@ export function MyWeekView() {
                   <Txt tone="muted">Search for a classmate to compare schedules.</Txt>
                 ) : null}
 
-                {schedule.friends.map((friend: any) => (
-                  <View
-                    key={friend.id}
+                {schedule.friends.map((friend: any) => {
+                  const friendId = String(friend.id);
+                  const isExpanded = expandedFriendIds.has(friendId);
+
+                  return (
+                    <View
+                      key={friend.id}
                     style={{
                       overflow: "hidden",
                       borderRadius: radii.xl,
@@ -392,6 +399,22 @@ export function MyWeekView() {
                               : "No schedule yet"}
                         </Txt>
                       </View>
+                      {friend.schedule ? (
+                        <IconButton
+                          icon={isExpanded ? ChevronDown : ChevronRight}
+                          label={`${isExpanded ? "Collapse" : "Expand"} ${friend.user.firstName}'s schedule`}
+                          size="sm"
+                          variant="ghost"
+                          onPress={() =>
+                            setExpandedFriendIds((current) => {
+                              const next = new Set(current);
+                              if (next.has(friendId)) next.delete(friendId);
+                              else next.add(friendId);
+                              return next;
+                            })
+                          }
+                        />
+                      ) : null}
                       <IconButton
                         icon={UserMinus}
                         label={`Remove ${friend.user.firstName}`}
@@ -423,7 +446,7 @@ export function MyWeekView() {
                         }
                       />
                     </View>
-                    {friend.schedule ? (
+                    {friend.schedule && isExpanded ? (
                       <ScheduleTable
                         day={selectedDay}
                         entries={friend.schedule.entries}
@@ -431,8 +454,9 @@ export function MyWeekView() {
                         embedded
                       />
                     ) : null}
-                  </View>
-                ))}
+                    </View>
+                  );
+                })}
               </Section>
             </View>
           );
