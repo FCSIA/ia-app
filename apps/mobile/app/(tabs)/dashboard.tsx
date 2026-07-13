@@ -1,25 +1,26 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
-import DraggableFlatList, { type RenderItemParams } from "react-native-draggable-flatlist";
-import { ChevronRight, EyeOff, GripVertical, RefreshCw, SlidersHorizontal } from "lucide-react-native";
+import { useQuery } from "convex/react";
+import { ChevronRight, RefreshCw, SlidersHorizontal } from "lucide-react-native";
 import { pickNavigationLoadingMessage } from "@ia/fun-facts";
 import { AppHeader } from "@/components/app-header";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import {
-  Button,
   IconButton,
-  ListRow,
   PressableScale,
   Section,
-  Sheet,
   Skeleton,
   Txt,
-  useToast,
 } from "@/components/ui";
 import { shortDate, timeRange } from "@/lib/format";
+import {
+  DEFAULT_DASHBOARD_WIDGETS,
+  dashboardLayoutsEqual,
+  resolveDashboardLayout,
+  type DashboardWidgetId,
+} from "@/features/dashboard/dashboard-layout";
 import {
   getAppPersona,
   useCurrentUser,
@@ -31,16 +32,6 @@ import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const DEFAULT_WIDGETS = ["schedule", "announcements", "calendar", "flex", "clubs", "funFact"] as const;
-const WIDGET_LABELS: Record<string, string> = {
-  schedule: "Schedule",
-  announcements: "Announcements",
-  calendar: "Coming up",
-  events: "Coming up",
-  flex: "Flex Friday",
-  clubs: "Clubs",
-  funFact: "Fun fact",
-};
 const EMPTY_ARGS = {};
 const UNREAD_ANNOUNCEMENTS_ARGS = { unreadOnly: true };
 
@@ -201,50 +192,18 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
   const myClubs = useQuery(api.clubs.management.getMyClubs, EMPTY_ARGS);
   const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, EMPTY_ARGS);
   const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, EMPTY_ARGS);
-  const updateLayout = useMutation(api.users.me.updateDashboardLayout);
   const schedule = useOfflineValue("dashboard-schedule", liveSchedule);
-  const [customizing, setCustomizing] = useState(false);
   const [funFact, setFunFact] = useState(pickNavigationLoadingMessage);
-  const [layout, setLayout] = useState<string[]>([...DEFAULT_WIDGETS]);
-  const { showToast } = useToast();
+  const [layout, setLayout] = useState<DashboardWidgetId[]>([...DEFAULT_DASHBOARD_WIDGETS]);
 
   useEffect(() => {
-    const saved = user?.dashboardLayout?.filter((id) => id in WIDGET_LABELS);
-    if (saved?.length) {
-      const normalized = normalizeLayout(saved);
-      setLayout((current) => (arraysEqual(current, normalized) ? current : normalized));
-    }
+    const resolved = resolveDashboardLayout(user.dashboardLayout);
+    setLayout((current) =>
+      dashboardLayoutsEqual(current, resolved) ? current : resolved,
+    );
   }, [user?.dashboardLayout]);
 
-  const hiddenWidgets = useMemo(() => DEFAULT_WIDGETS.filter((id) => !layout.includes(id)), [layout]);
-
-  async function saveLayout(next = layout) {
-    const normalized = normalizeLayout(next);
-    setLayout(normalized);
-    try {
-      await updateLayout({ layout: normalized });
-      showToast({ title: "Home updated", tone: "success" });
-    } catch (error) {
-      showToast({
-        title: "Home not updated",
-        body: error instanceof Error ? error.message : "Try again.",
-      });
-    }
-  }
-
-  function hideWidget(id: string) {
-    if (layout.length === 1) {
-      showToast({ title: "Keep one home section" });
-      return;
-    }
-    void saveLayout(layout.filter((item) => item !== id));
-  }
-
-  function addWidget(id: string) {
-    void saveLayout([...layout, id]);
-  }
-
-  function renderWidget(id: string) {
+  function renderWidget(id: DashboardWidgetId) {
     if (id === "schedule") {
       return (
         <Section
@@ -407,78 +366,24 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
   }
 
   return (
-    <>
-      <Screen
-        contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
-        header={
-          <AppHeader
-            title={user?.firstName ? `Hi, ${user.firstName}` : "Home"}
-            action={
-              <IconButton
-                icon={SlidersHorizontal}
-                label="Customize home"
-                onPress={() => setCustomizing(true)}
-              />
-            }
-          />
-        }
-      >
-        {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
-        {layout.length ? layout.map((id) => renderWidget(id)) : <HomeEmpty text="No sections shown." />}
-      </Screen>
-      <Sheet open={customizing} onClose={() => setCustomizing(false)} title="Customize home" snapPoints={["68%", "90%"]}>
-        <Txt tone="muted">Hold a handle to reorder. Hide sections you don’t use.</Txt>
-        <DraggableFlatList
-          data={layout}
-          keyExtractor={(item) => item}
-          activationDistance={12}
-          style={{ maxHeight: 360 }}
-          contentContainerStyle={{ gap: spacing.sm }}
-          onDragEnd={({ data }) => {
-            void saveLayout(data);
-          }}
-          renderItem={({ item, drag, isActive }: RenderItemParams<string>) => (
-            <View style={{ opacity: isActive ? 0.72 : 1 }}>
-              <ListRow
-                title={WIDGET_LABELS[item]}
-                trailing={
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                    <IconButton
-                      icon={EyeOff}
-                      label={`Hide ${WIDGET_LABELS[item]}`}
-                      size="sm"
-                      variant="ghost"
-                      disabled={layout.length === 1}
-                      onPress={() => hideWidget(item)}
-                    />
-                    <PressableScale
-                      accessibilityLabel={`Reorder ${WIDGET_LABELS[item]}`}
-                      onLongPress={drag}
-                      delayLongPress={180}
-                      style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
-                    >
-                      <GripVertical size={20} color={color("mutedForeground")} />
-                    </PressableScale>
-                  </View>
-                }
-              />
-            </View>
-          )}
+    <Screen
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      header={
+        <AppHeader
+          title={user?.firstName ? `Hi, ${user.firstName}` : "Home"}
+          action={
+            <IconButton
+              icon={SlidersHorizontal}
+              label="Customize home"
+              onPress={() => router.push("/settings/home" as never)}
+            />
+          }
         />
-        {hiddenWidgets.length ? (
-          <Section title="Hidden">
-            {hiddenWidgets.map((id) => (
-              <Button
-                key={id}
-                title={`Show ${WIDGET_LABELS[id]}`}
-                variant="tertiary"
-                onPress={() => addWidget(id)}
-              />
-            ))}
-          </Section>
-        ) : null}
-      </Sheet>
-    </>
+      }
+    >
+      {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
+      {layout.length ? layout.map((id) => renderWidget(id)) : <HomeEmpty text="No sections shown." />}
+    </Screen>
   );
 }
 
@@ -727,14 +632,4 @@ function sentenceCase(value: string) {
 
 function formatRole(role: string) {
   return role.toLowerCase().replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
-}
-
-function arraysEqual(left: string[], right: string[]) {
-  return left.length === right.length && left.every((item, index) => item === right[index]);
-}
-
-function normalizeLayout(layout: readonly string[]) {
-  const allowed = new Set<string>(DEFAULT_WIDGETS);
-  const migrated = layout.map((id) => id === "events" ? "calendar" : id);
-  return [...new Set(migrated.filter((id) => allowed.has(id)))] as string[];
 }
