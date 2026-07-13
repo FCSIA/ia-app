@@ -80,6 +80,14 @@
   chips, switches, avatar, skeletons, icon buttons, bottom sheets, stats,
   press-scale motion, haptics, and toast feedback. Dashboard customization now
   uses a bottom sheet with drag-to-reorder.
+- Mobile club chat now keeps its composer above the iOS home indicator and
+  keyboard, renders emoji reactions with canonical token payloads, and allows
+  independent message operations without freezing the composer.
+- Mobile schedule rows use readable semantic period badges and open the linked
+  course detail from Home and My Week while preserving edit-mode selection.
+- Mobile announcement feed/detail views use flat editorial rows, restrained
+  unread tinting, compact top-right read/save controls, and divider-free comment
+  threads.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 - `packages/fun-facts` centralizes the shared school-appropriate fun fact bank
@@ -119,6 +127,7 @@
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass
+- Focused mobile chat tests - pass (4 files, 10 tests)
 - `pnpm build` - pass
 - `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
