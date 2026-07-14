@@ -70,6 +70,13 @@ rich representations so mobile and web show the same message.
 Person mentions show the member's name while their portable `user://` link
 keeps the stable school unique ID used for backend resolution.
 
+The club workspace shell uses a narrow navigation query rather than subscribing
+every club route to the full member, tag, request, and message-count payload.
+Channel pages fetch only their header and permission context at first; the
+bounded people/tag mention audience is loaded when a composer receives focus.
+This keeps live chat subscriptions focused on data that can actually change the
+conversation being viewed.
+
 ## Permissions
 
 Admins create clubs. Sponsors and leaders manage most club-local settings.

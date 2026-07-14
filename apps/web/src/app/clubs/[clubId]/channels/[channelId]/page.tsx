@@ -53,10 +53,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
-import type {
-  ClubChannelMessage,
-  ClubDetail,
-} from '@/components/clubs/types';
+import type { ClubChannelMessage } from '@/components/clubs/types';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 import {
@@ -691,6 +688,7 @@ export default function ClubChannelPage({
   const [reportReason, setReportReason] = useState('');
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
   const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(null);
+  const [mentionContextRequested, setMentionContextRequested] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const normalizedSearch = useMemo(
     () => normalizeSearchQuery(deferredSearch),
@@ -699,7 +697,14 @@ export default function ClubChannelPage({
 
   const user = useCurrentUser();
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
+  const conversationContext = useQuery(api.clubs.channels.getConversationContext, {
+    clubId,
+    channelId,
+  });
+  const mentionContext = useQuery(
+    api.clubs.channels.getMentionContext,
+    mentionContextRequested ? { clubId, channelId } : 'skip',
+  );
   const {
     results: messageResults,
     status: messagePageStatus,
@@ -810,20 +815,10 @@ export default function ClubChannelPage({
     }
   };
 
-  const channel = useMemo(
-    () => club?.channels?.find((entry) => entry._id === channelId),
-    [channelId, club?.channels],
-  );
-
-  const audience = useMemo(() => {
-    if (!club || !channel) return [];
-    if (channel.visibility !== 'PRIVATE') return club.directory;
-    const explicitIds = new Set(channel.memberships?.map((m) => m.userId) ?? []);
-    return club.directory.filter((p) => p.kind === 'SPONSOR' || explicitIds.has(p._id));
-  }, [channel, club]);
+  const channel = conversationContext?.channel;
 
   const suggestionEntries = useMemo<ChannelMentionSuggestion[]>(() => {
-    const canUseAll = !!club?.viewer?.canManageChannels;
+    const canUseAll = !!mentionContext?.canMentionEveryone;
     const builtIns: ChannelMentionSuggestion[] = [
       ...(canUseAll
         ? [{ token: 'all', label: 'Everyone', detail: '', kind: 'built-in' as const }]
@@ -831,24 +826,21 @@ export default function ClubChannelPage({
       { token: 'leaders', label: 'Leaders', detail: '', kind: 'built-in' },
       { token: 'sponsors', label: 'Sponsors', detail: '', kind: 'built-in' },
     ];
-    const tags = club?.tags?.map((tag) => ({
+    const tags = mentionContext?.tags.map((tag) => ({
       token: tag.slug,
       label: tag.name,
-      detail: `${tag.members.length} member${tag.members.length === 1 ? '' : 's'}`,
+      detail: '',
       kind: 'tag' as const,
     })) ?? [];
-    const people = audience
-      .filter((person) => !!person.uniqueId)
+    const people = (mentionContext?.members ?? [])
       .map((person) => ({
-        token: person.uniqueId!,
-        label: fullName(person),
-        detail: person.clubRole
-          ? `${person.kind} · ${formatClubRole(person.clubRole)}`
-          : person.kind,
+        token: person.uniqueId,
+        label: `${person.firstName} ${person.lastName}`.trim(),
+        detail: '',
         kind: 'person' as const,
       }));
     return [...builtIns, ...tags, ...people];
-  }, [audience, club?.tags, club?.viewer?.canManageChannels]);
+  }, [mentionContext]);
 
   const selectedThread = selectedThreadResult?.root ?? null;
   const threadReplies = useMemo(
@@ -964,6 +956,7 @@ export default function ClubChannelPage({
               submitLabel="Save Changes"
               isPending={false}
               canAttach={false}
+              onMentionIntent={() => setMentionContextRequested(true)}
               initialBody={message.body}
               initialBodyMarkdown={message.bodyMarkdown}
               initialBodyRich={
@@ -994,7 +987,7 @@ export default function ClubChannelPage({
     );
   };
 
-  if (!club || !channel) {
+  if (!conversationContext || !channel) {
     return (
       <ClubWorkspace>
         <div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
@@ -1005,7 +998,7 @@ export default function ClubChannelPage({
   }
 
   const canPost = channel.viewerCanPost ?? true;
-  const canModerateChannel = !!club.viewer?.canManageChannels;
+  const canModerateChannel = conversationContext.canManageChannels;
   const pinnedMessages = messages.filter((message) => message.isPinned);
 
   const title: ReactNode = (
@@ -1071,6 +1064,7 @@ export default function ClubChannelPage({
             placeholder="Reply in thread…"
             submitLabel="Reply"
             canCreatePoll={canModerateChannel}
+            onMentionIntent={() => setMentionContextRequested(true)}
           />
         ) : selectedThread.isDeleted ? (
           <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
@@ -1203,6 +1197,7 @@ export default function ClubChannelPage({
               placeholder={`Message #${channel.name}`}
               submitLabel="Send"
               canCreatePoll={canModerateChannel}
+              onMentionIntent={() => setMentionContextRequested(true)}
             />
           ) : (
             <div className="rounded-[1.5rem] border bg-background/95 px-5 py-4 shadow-sm">
@@ -1215,7 +1210,7 @@ export default function ClubChannelPage({
             </div>
           )}
           <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-            {audience.length} {audience.length === 1 ? 'person' : 'people'} can see this channel · Messages tracked
+            Live channel · Messages tracked
           </p>
         </div>
       </div>

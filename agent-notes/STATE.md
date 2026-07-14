@@ -93,7 +93,10 @@
 - Web channel chat now uses paginated message summaries, bounded thread reads,
   shared optimistic message insertion, concurrent attachment staging, compact
   shadcn chat/composer primitives, names-only mention results, out-of-flow
-  message actions, and a compact animated channel-alert sheet.
+  message actions, and a compact animated channel-alert sheet. The club shell
+  now uses a narrow navigation subscription, channel permissions load
+  separately from the bounded mention audience, and notification preference
+  fanout uses exact indexed lookups.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -128,7 +131,7 @@
 
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
-- `pnpm --filter cvx test` - pass (3 files, 14 tests)
+- `pnpm --filter cvx test` - pass (14 files, 47 tests)
 - `pnpm --filter mobile typecheck` - pass after mobile redesign/IA refactor
 - Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
   Courses list/detail, Events empty state, Calendar personal create/delete,
@@ -147,11 +150,15 @@
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
 - `pnpm build` - pass
-- `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
+- `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex AI guidance and project skills were refreshed with `convex ai-files
 update`; current shadcn skills were installed project-locally from `shadcn/ui`.
+The dedicated Convex performance audit found no deployment Health issues over
+the last 72 hours. Runtime logs instead identified broad chat-route club shell
+subscriptions as the dominant read amplification; those subscriptions were
+narrowed in draft PR #45.
 
 ## Next Work
 

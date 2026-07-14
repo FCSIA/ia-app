@@ -861,10 +861,14 @@ const channelConversationContextValidator = v.union(
     channel: v.object({
       name: v.string(),
       description: v.union(v.string(), v.null()),
+      visibility: v.union(
+        v.literal("PUBLIC"),
+        v.literal("PRIVATE"),
+        v.literal("MEMBER_READONLY"),
+      ),
       viewerCanPost: v.boolean(),
     }),
     canManageChannels: v.boolean(),
-    members: v.array(channelContextMemberValidator),
   }),
   v.null(),
 );
@@ -882,7 +886,51 @@ export const getConversationContext = query({
     if (!readable) return null;
 
     const { channel, context, memberships } = readable;
-    const [sponsors, clubMembers, channelMembers] = await Promise.all([
+    return {
+      clubName: context.club.name,
+      channel: {
+        name: channel.name,
+        description: channel.description ?? null,
+        visibility: channel.visibility,
+        viewerCanPost: canPostInChannel(
+          { ...channel, memberships },
+          context,
+          user._id,
+        ),
+      },
+      canManageChannels: context.canManageChannels,
+    };
+  },
+});
+
+const channelMentionContextValidator = v.union(
+  v.object({
+    canMentionEveryone: v.boolean(),
+    members: v.array(channelContextMemberValidator),
+    tags: v.array(
+      v.object({
+        slug: v.string(),
+        name: v.string(),
+      }),
+    ),
+  }),
+  v.null(),
+);
+
+export const getMentionContext = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+  },
+  returns: channelMentionContextValidator,
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return null;
+
+    const { channel, context } = readable;
+    const [sponsors, clubMembers, channelMembers, tags] = await Promise.all([
       ctx.db
         .query("clubSponsors")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
@@ -897,6 +945,10 @@ export const getConversationContext = query({
             .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
             .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS)
         : Promise.resolve([]),
+      ctx.db
+        .query("clubTags")
+        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
     ]);
     const candidates = selectChannelContextMemberCandidates({
       visibility: channel.visibility,
@@ -920,18 +972,9 @@ export const getConversationContext = query({
     ).filter((member): member is NonNullable<typeof member> => !!member);
 
     return {
-      clubName: context.club.name,
-      channel: {
-        name: channel.name,
-        description: channel.description ?? null,
-        viewerCanPost: canPostInChannel(
-          { ...channel, memberships },
-          context,
-          user._id,
-        ),
-      },
-      canManageChannels: context.canManageChannels,
+      canMentionEveryone: context.canManageChannels,
       members,
+      tags: tags.map((tag) => ({ slug: tag.slug, name: tag.name })),
     };
   },
 });

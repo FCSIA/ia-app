@@ -76,6 +76,10 @@ The same public key must also be present in `apps/web/.env.local` as
 Push is a best-effort delivery channel. Expired browser subscriptions are
 disabled when push services return a permanent failure.
 
+Channel-message fanout runs in a scheduled mutation after the sender's message
+transaction commits. Preference resolution uses exact indexed scope and global
+fallback lookups, so fanout does not scan a user's full category preference set.
+
 ## Current Delivery
 
 The inbox, preference system, and Web Push subscription flow are active. Current

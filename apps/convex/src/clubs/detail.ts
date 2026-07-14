@@ -1,7 +1,14 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { anonymousClubContext, getViewerContext } from "./access";
+import {
+  anonymousClubContext,
+  canPostInChannel,
+  canReadChannel,
+  getChannelViewerContext,
+  getViewerContext,
+} from "./access";
 import {
   clubSummaryWithCounts,
   getVisibleChannels,
@@ -159,6 +166,85 @@ export const get = query({
                 : null,
             }
           : null,
+    };
+  },
+});
+
+/** Small, stable payload for the club shell on every workspace route. */
+export const getWorkspaceNavigation = query({
+  args: { clubId: v.id("clubs") },
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const club = await ctx.db.get(args.clubId);
+    if (!club || !club.isActive) return null;
+    const context = await getChannelViewerContext(ctx, club, user);
+    if (!context.canAccessWorkspace) return null;
+
+    const channelRows = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
+      .collect();
+    const channels = (
+      await Promise.all(
+        channelRows.map(async (channel) => {
+          let memberships: Doc<"clubChannelMemberships">[] = [];
+          if (channel.visibility === "PRIVATE") {
+            if (context.canManageChannels) {
+              memberships = await ctx.db
+                .query("clubChannelMemberships")
+                .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
+                .collect();
+            } else {
+              const viewerMembership = await ctx.db
+                .query("clubChannelMemberships")
+                .withIndex("by_channelId_and_userId", (q) =>
+                  q.eq("channelId", channel._id).eq("userId", user._id),
+                )
+                .unique();
+              memberships = viewerMembership ? [viewerMembership] : [];
+            }
+          }
+          const channelWithMemberships = { ...channel, memberships };
+          if (!canReadChannel(channelWithMemberships, context, user._id)) return null;
+          return {
+            ...channel,
+            memberships: memberships.map((membership) => ({ userId: membership.userId })),
+            viewerCanPost: canPostInChannel(channelWithMemberships, context, user._id),
+          };
+        }),
+      )
+    ).filter((channel): channel is NonNullable<typeof channel> => !!channel);
+
+    const [memberRows, sponsorRows] = await Promise.all([
+      ctx.db
+        .query("clubMembers")
+        .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("clubSponsors")
+        .withIndex("by_userId_and_clubId", (q) => q.eq("userId", user._id))
+        .collect(),
+    ]);
+    const clubRoles = new Map([
+      ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
+      ...sponsorRows.map((sponsorship) => [sponsorship.clubId, "SPONSOR" as const] as const),
+    ]);
+    const myClubs = (
+      await Promise.all(
+        Array.from(clubRoles, async ([clubId, role]) => {
+          const row = await ctx.db.get(clubId);
+          if (!row?.isActive) return null;
+          return { _id: row._id, name: row.name, logoUrl: row.logoUrl ?? null, role };
+        }),
+      )
+    ).filter((row): row is NonNullable<typeof row> => !!row);
+
+    return {
+      club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null },
+      viewer: { canManageChannels: context.canManageChannels },
+      channels,
+      myClubs,
     };
   },
 });

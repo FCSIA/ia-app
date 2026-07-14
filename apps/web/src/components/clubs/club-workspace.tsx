@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -34,13 +34,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-import { hasRole, useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type {
-  ClubChannel,
-  ClubDetail,
-  ClubSummary,
+  ClubNavigationChannel,
+  ClubNavigationSummary,
+  ClubWorkspaceNavigation,
 } from "@/components/clubs/types";
 
 function resolveMediaUrl(url?: string | null) {
@@ -54,7 +53,7 @@ function ClubPickerItem({
   active,
   index,
 }: {
-  club: ClubSummary;
+  club: ClubNavigationSummary;
   active: boolean;
   index: number;
 }) {
@@ -122,38 +121,19 @@ export function ClubWorkspace({
   contentClassName,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
-  const user = useCurrentUser();
   const clubId = useClubId();
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    | ClubDetail
+  const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
+    clubId,
+  }) as
+    | ClubWorkspaceNavigation
     | undefined;
   const { toast } = useToast();
   const deleteChannel = useMutation(api.clubs.channels.remove);
-  const myData = useQuery(api.clubs.management.getMyClubs);
-
-  const channels = club?.channels ?? [];
-  const myClubs = useMemo(() => {
-    const entries = [
-      ...(myData?.memberOf ?? []),
-      ...(myData?.sponsoring ?? []),
-    ];
-    const seen = new Set<string>();
-    return entries.filter((entry) => {
-      if (seen.has(entry._id)) return false;
-      seen.add(entry._id);
-      return true;
-    });
-  }, [myData]);
-
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
-  const isSponsor = club?.sponsors?.some(
-    (sponsor) => sponsor.userId === user?._id,
-  );
-  const myMembership = club?.members?.find(
-    (member) => member.userId === user?._id,
-  );
-  const canManageChannels = isSponsor || !!myMembership?.role || isAdmin;
+  const club = navigation?.club;
+  const channels = navigation?.channels ?? [];
+  const myClubs = navigation?.myClubs ?? [];
+  const canManageChannels = navigation?.viewer.canManageChannels ?? false;
 
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
@@ -232,8 +212,7 @@ export function ClubWorkspace({
                       {club?.name ?? "Loading…"}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {club?._count?.members ?? club?.members?.length ?? 0}{" "}
-                      members
+                      Club workspace
                     </p>
                   </div>
                   <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
@@ -412,7 +391,7 @@ function ChannelActionsTrigger({
   channel,
 }: {
   clubId: Id<"clubs">;
-  channel: ClubChannel;
+  channel: ClubNavigationChannel;
 }) {
   const [open, setOpen] = useState(false);
   return (

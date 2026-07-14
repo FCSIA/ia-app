@@ -4,6 +4,11 @@ import { api } from '~/apps/convex/src/_generated/api';
 /** Convex-backed club types — source of truth for ported club UI. */
 export type ClubSummary = FunctionReturnType<typeof api.clubs.management.getAll>[number];
 export type ClubDetail = NonNullable<FunctionReturnType<typeof api.clubs.detail.get>>;
+export type ClubWorkspaceNavigation = NonNullable<
+  FunctionReturnType<typeof api.clubs.detail.getWorkspaceNavigation>
+>;
+export type ClubNavigationSummary = ClubWorkspaceNavigation['myClubs'][number];
+export type ClubNavigationChannel = ClubWorkspaceNavigation['channels'][number];
 export type ClubMyClubs = FunctionReturnType<typeof api.clubs.management.getMyClubs>;
 export type ClubInvite = FunctionReturnType<typeof api.clubs.management.listMyInvites>[number];
 export type ClubChannel = NonNullable<ClubDetail['channels']>[number];

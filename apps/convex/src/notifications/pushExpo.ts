@@ -4,6 +4,10 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { notificationCategoryValidator } from "../validators";
+import {
+  preferenceAllowsPush,
+  resolveNotificationPreference,
+} from "./deliveryPreference";
 
 const nativePlatformValidator = v.union(v.literal("ios"), v.literal("android"));
 
@@ -186,15 +190,9 @@ export const getDeliveryTargets = internalQuery({
     token: v.string(),
   })),
   handler: async (ctx, args) => {
-    const preferences = await ctx.db
-      .query("notificationPreferences")
-      .withIndex("by_userId_and_category_and_scopeKey", (q) => q.eq("userId", args.userId).eq("category", args.category))
-      .take(100);
-    const preference =
-      preferences.find((pref) => pref.scopeKey === args.scopeKey) ??
-      preferences.find((pref) => pref.scopeKey === "global");
+    const preference = await resolveNotificationPreference(ctx, args);
 
-    if (!preference?.enabled || !["PUSH", "TIME_SENSITIVE"].includes(preference.level)) {
+    if (!preferenceAllowsPush(preference)) {
       return [];
     }
 

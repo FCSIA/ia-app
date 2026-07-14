@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type Props = {
   clubId: Id<'clubs'>;
-  channel?: ClubChannel | null;
+  channel?: Pick<ClubChannel, '_id' | 'name' | 'description' | 'visibility' | 'memberships'> | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };

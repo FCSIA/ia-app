@@ -2,6 +2,10 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { NotificationCategory } from "../validators";
+import {
+  preferenceAllowsPush,
+  resolveNotificationPreference,
+} from "./deliveryPreference";
 
 export type NotificationSubject =
   | { kind: "announcement"; announcementId: Id<"announcements">; clubId?: Id<"clubs"> }
@@ -29,7 +33,8 @@ function uniqueIds(ids: Id<"users">[]) {
 
 export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput) {
   const scope = preferenceScope(input.subject);
-  if (!(await shouldCreateDelivery(ctx, input.userId, input.category, scope.scopeKey))) {
+  const decision = await deliveryDecision(ctx, input.userId, input.category, scope.scopeKey);
+  if (!decision.create) {
     return;
   }
 
@@ -44,22 +49,24 @@ export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput
     createdAt: Date.now(),
   });
 
-  await ctx.scheduler.runAfter(0, internal.notifications.pushNode.sendForDelivery, {
-    userId: input.userId,
-    category: input.category,
-    title: input.title,
-    body: input.body,
-    href: input.href,
-    scopeKey: scope.scopeKey,
-  });
-  await ctx.scheduler.runAfter(0, internal.notifications.pushExpo.sendForDelivery, {
-    userId: input.userId,
-    category: input.category,
-    title: input.title,
-    body: input.body,
-    href: input.href,
-    scopeKey: scope.scopeKey,
-  });
+  if (decision.push) {
+    await ctx.scheduler.runAfter(0, internal.notifications.pushNode.sendForDelivery, {
+      userId: input.userId,
+      category: input.category,
+      title: input.title,
+      body: input.body,
+      href: input.href,
+      scopeKey: scope.scopeKey,
+    });
+    await ctx.scheduler.runAfter(0, internal.notifications.pushExpo.sendForDelivery, {
+      userId: input.userId,
+      category: input.category,
+      title: input.title,
+      body: input.body,
+      href: input.href,
+      scopeKey: scope.scopeKey,
+    });
+  }
 }
 
 export async function deliverMany(ctx: MutationCtx, userIds: Id<"users">[], input: Omit<DeliveryInput, "userId">) {
@@ -81,23 +88,20 @@ export function preferenceScope(subject: NotificationSubject) {
   return { scopeKey: "global" };
 }
 
-async function shouldCreateDelivery(
+async function deliveryDecision(
   ctx: MutationCtx,
   userId: Id<"users">,
   category: NotificationCategory,
   scopeKey: string,
 ) {
-  const preferences = await ctx.db
-    .query("notificationPreferences")
-    .withIndex("by_userId_and_category_and_scopeKey", (q) => q.eq("userId", userId).eq("category", category))
-    .take(100);
-  const preference =
-    preferences.find((pref) => pref.scopeKey === scopeKey) ??
-    preferences.find((pref) => pref.scopeKey === "global");
-
-  if (preference) return preference.enabled && preference.level !== "OFF";
-  if (category === "CLUB_CHANNEL_MESSAGE") return false;
-  return true;
+  const preference = await resolveNotificationPreference(ctx, { userId, category, scopeKey });
+  if (preference) {
+    return {
+      create: preference.enabled && preference.level !== "OFF",
+      push: preferenceAllowsPush(preference),
+    };
+  }
+  return { create: category !== "CLUB_CHANNEL_MESSAGE", push: false };
 }
 
 export async function activeUsers(ctx: MutationCtx) {

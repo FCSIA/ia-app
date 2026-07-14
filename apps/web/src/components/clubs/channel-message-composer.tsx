@@ -63,6 +63,7 @@ type ChannelMessageComposerProps = {
   }) => void;
   canAttach?: boolean;
   canCreatePoll?: boolean;
+  onMentionIntent?: () => void;
 };
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
@@ -118,6 +119,7 @@ export function ChannelMessageComposer({
   onSubmit,
   canAttach = true,
   canCreatePoll = false,
+  onMentionIntent,
 }: ChannelMessageComposerProps) {
   const initialValue = useMemo(
     () =>
@@ -188,6 +190,7 @@ export function ChannelMessageComposer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === '@') onMentionIntent?.();
     if (event.key === 'Enter') {
       if (event.metaKey || event.ctrlKey) {
         event.preventDefault();
@@ -216,7 +219,7 @@ export function ChannelMessageComposer({
       }}
     >
       <MentionablesProvider items={mentionables}>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" onFocusCapture={onMentionIntent}>
           {files.length > 0 ? (
             <AttachmentGroup className="gap-1.5 py-0">
               {files.map((file) => (
@@ -341,6 +344,7 @@ export function ChannelMessageComposer({
                         aria-label="Mention someone"
                         onMouseDown={(event) => {
                           event.preventDefault();
+                          onMentionIntent?.();
                           editor.tf.insertText('@');
                           editor.tf.focus();
                         }}
