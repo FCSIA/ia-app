@@ -117,10 +117,12 @@ export function FridayForm({
             )}
 
             <div className="py-2">
-              <Switch 
+              <Switch
                 label="Is School Day?"
-                checked={form.isSchoolDay} 
-                onToggle={() => setForm(f => ({ ...f, isSchoolDay: !f.isSchoolDay }))} 
+                checked={form.isSchoolDay}
+                onCheckedChange={(isSchoolDay) =>
+                  setForm((current) => ({ ...current, isSchoolDay }))
+                }
               />
             </div>
 

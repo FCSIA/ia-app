@@ -26,6 +26,7 @@ interface RadioGroupContextValue {
   selectedIndex: number | null;
   selectedValue?: string;
   onValueChange?: (value: string) => void;
+  hasSelection: boolean;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextValue | null>(null);
@@ -68,6 +69,11 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       value !== undefined
         ? childValues.findIndex((childValue) => childValue === value)
         : selectedIndex ?? -1;
+    const hasSelection =
+      resolvedSelectedIndex >= 0 ||
+      Children.toArray(children)
+        .filter(isValidElement)
+        .some((child) => (child.props as { selected?: boolean }).selected === true);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
@@ -106,7 +112,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         }}
         onKeyDown={(e) => {
           const items = Array.from(
-            containerRef.current?.querySelectorAll('[role="radio"]') ?? []
+            containerRef.current?.querySelectorAll('[data-proximity-index]') ?? []
           ) as HTMLElement[];
           const currentIdx = items.indexOf(e.target as HTMLElement);
           if (currentIdx === -1) return;
@@ -138,7 +144,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         {/* Selected background */}
         {selectedRect && (
           <motion.div
-            className={`absolute ${shape.bg} bg-selected/50 dark:bg-accent/40 pointer-events-none`}
+            className={`absolute ${shape.bg} bg-active pointer-events-none`}
             initial={false}
             animate={{
               top: selectedRect.top,
@@ -159,7 +165,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           {activeRect && (
             <motion.div
               key={sessionRef.current}
-              className={`absolute ${shape.bg} bg-accent/40 dark:bg-accent/25 pointer-events-none`}
+              className={`absolute ${shape.bg} bg-hover pointer-events-none`}
               initial={{
                 opacity: 0,
                 top: activeRect.top,
@@ -208,8 +214,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       </div>
     );
 
-    // If Radix value/onValueChange provided, wrap with Radix RadioGroup
-    if (value !== undefined && onValueChange) {
+    if (value !== undefined) {
       return (
         <RadioGroupContext.Provider
           value={{
@@ -218,11 +223,12 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
             selectedIndex: resolvedSelectedIndex >= 0 ? resolvedSelectedIndex : null,
             selectedValue: value,
             onValueChange,
+            hasSelection,
           }}
         >
           <RadioGroupPrimitive.Root
             value={value}
-            onValueChange={onValueChange}
+            onValueChange={(nextValue) => onValueChange?.(nextValue)}
             asChild
           >
             {content}
@@ -237,6 +243,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           registerItem,
           activeIndex,
           selectedIndex: selectedIndex ?? null,
+          hasSelection,
         }}
       >
         {content}
@@ -265,6 +272,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
       selectedIndex,
       selectedValue,
       onValueChange,
+      hasSelection,
     } = useRadioGroupContext();
 
     useEffect(() => {
@@ -299,7 +307,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
-        tabIndex={isSelected ? 0 : -1}
+        tabIndex={isSelected ? 0 : !hasSelection && index === 0 ? 0 : -1}
         role="radio"
         aria-checked={isSelected}
         aria-label={label}

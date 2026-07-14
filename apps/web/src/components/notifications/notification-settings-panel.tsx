@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
+import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
 import {
   AtSign,
@@ -16,43 +17,28 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
-const GLOBAL_SETTINGS: Array<{
-  category: NotificationCategory;
-  label: string;
-  Icon: LucideIcon;
-}> = [
-  {
-    category: 'SCHOOL_ANNOUNCEMENT',
-    label: 'School announcements',
-    Icon: Megaphone,
-  },
-  {
-    category: 'EVENT',
-    label: 'Events',
-    Icon: CalendarDays,
-  },
-  {
-    category: 'FLEX_FRIDAY',
-    label: 'Flex Friday',
-    Icon: Sparkles,
-  },
-  {
-    category: 'FRIEND_REQUEST',
-    label: 'Friend schedules',
-    Icon: Users,
-  },
-  {
-    category: 'CONTENT_MODERATED',
-    label: 'Moderation notices',
-    Icon: ShieldAlert,
-  },
-];
+const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
+  SCHOOL_ANNOUNCEMENT: Megaphone,
+  CLUB_ANNOUNCEMENT: Megaphone,
+  CLUB_JOIN_REQUEST: Users,
+  CLUB_CHANNEL_MESSAGE: BellRing,
+  CLUB_CHANNEL_MENTION: AtSign,
+  CLUB_CHANNEL_TAG_MENTION: Hash,
+  CLUB_CHANNEL_THREAD: Hash,
+  EVENT: CalendarDays,
+  FLEX_FRIDAY: Sparkles,
+  CONTENT_MODERATED: ShieldAlert,
+  FRIEND_REQUEST: Users,
+};
 
 export function NotificationSettingsPanel() {
+  const user = useCurrentUser();
   const myClubs = useQuery(api.clubs.management.getMyClubs);
+  const canSeeStaffCategories = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
 
   const involvedClubs = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
@@ -63,6 +49,14 @@ export function NotificationSettingsPanel() {
       return true;
     });
   }, [myClubs]);
+
+  const globalSettings = useMemo(
+    () =>
+      NOTIFICATION_CATEGORY_OPTIONS.filter(
+        (category) => !category.staffOnly || canSeeStaffCategories,
+      ),
+    [canSeeStaffCategories],
+  );
 
   const clubsLoading = myClubs === undefined;
 
@@ -75,11 +69,11 @@ export function NotificationSettingsPanel() {
           <h2 className="text-sm font-semibold">Global</h2>
         </div>
         <div className="flex flex-col gap-1">
-          {GLOBAL_SETTINGS.map((setting) => {
-            const Icon = setting.Icon;
+          {globalSettings.map((setting) => {
+            const Icon = CATEGORY_ICONS[setting.key];
             return (
               <div
-                key={setting.category}
+                key={setting.key}
                 className="flex min-w-0 items-center justify-between gap-3 py-1.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -87,8 +81,9 @@ export function NotificationSettingsPanel() {
                   <p className="truncate text-sm font-medium text-foreground">{setting.label}</p>
                 </div>
                 <NotificationScopeSwitch
-                  category={setting.category}
+                  category={setting.key}
                   label={setting.label}
+                  defaultEnabled={setting.defaultEnabled}
                   compact
                   className="shrink-0"
                 />

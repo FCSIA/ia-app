@@ -174,7 +174,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
           {/* Selected pill */}
           {selectedRect && (
             <motion.div
-              className={cn("absolute bg-selected/50 dark:bg-accent/40 pointer-events-none", shape.bg)}
+              className={cn("absolute bg-active pointer-events-none", shape.bg)}
               initial={false}
               animate={{
                 left: selectedRect.left,
@@ -194,7 +194,7 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
           <AnimatePresence>
             {hoverRect && !isHoveringSelected && selectedRect && (
               <motion.div
-                className={cn("absolute bg-accent/60 dark:bg-accent/30 pointer-events-none", shape.bg)}
+                className={cn("absolute bg-active pointer-events-none", shape.bg)}
                 initial={{
                   left: selectedRect.left,
                   width: selectedRect.width,
