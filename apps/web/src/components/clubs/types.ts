@@ -14,8 +14,8 @@ export type ClubSponsor = ClubDetail['sponsors'][number];
 export type ClubPerson = ClubMember['user'];
 export type ClubUserRef = ClubPerson;
 export type ClubChannelMessage = FunctionReturnType<
-  typeof api.clubs.channels.getMessages
->[number];
+  typeof api.clubs.channels.getMessagePage
+>['page'][number];
 
 export type { AppRole } from '~/apps/convex/lib/roles';
 

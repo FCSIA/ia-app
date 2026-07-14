@@ -499,6 +499,8 @@ export const schema = defineSchema({
     body: v.string(),
     bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
+    clientGeneratedId: v.optional(v.string()),
+    clientSentAt: v.optional(v.number()),
     isPinned: v.boolean(),
     pinnedAt: v.optional(v.number()),
     pollQuestion: v.optional(v.string()),

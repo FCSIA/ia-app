@@ -100,6 +100,17 @@ export function MentionInputElement(
   const { editor, element } = props;
   const [search, setSearch] = React.useState('');
   const items = React.useContext(MentionablesContext);
+  const visibleItems = React.useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const matches = query
+      ? items.filter((item) =>
+          [item.key, item.text, item.label, item.detail, ...(item.keywords ?? [])]
+            .filter(Boolean)
+            .some((value) => value!.toLowerCase().includes(query)),
+        )
+      : items;
+    return matches.slice(0, 12);
+  }, [items, search]);
 
   return (
     <PlateElement {...props} as="span">
@@ -114,13 +125,13 @@ export function MentionInputElement(
           <InlineComboboxInput className="min-w-12" />
         </span>
 
-        <InlineComboboxContent className="my-2 w-80 rounded-xl border border-border bg-popover p-1 shadow-lg">
+        <InlineComboboxContent className="my-2 w-64 rounded-xl border border-border bg-popover p-1 shadow-lg">
           <InlineComboboxEmpty className="px-3 py-2 text-sm text-muted-foreground">
             No matches found.
           </InlineComboboxEmpty>
 
           <InlineComboboxGroup>
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <InlineComboboxItem
                 key={item.key}
                 value={item.text}
@@ -128,18 +139,9 @@ export function MentionInputElement(
                 keywords={item.keywords}
                 onClick={() => onSelectItem(editor, item, search)}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">@{item.text}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {item.label}
-                    {item.detail ? ` · ${item.detail}` : ''}
-                  </p>
-                </div>
-                {item.kind ? (
-                  <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                    {item.kind}
-                  </span>
-                ) : null}
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  {item.label ?? item.text}
+                </span>
               </InlineComboboxItem>
             ))}
           </InlineComboboxGroup>

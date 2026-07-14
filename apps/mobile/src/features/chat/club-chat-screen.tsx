@@ -33,7 +33,7 @@ import { MessageActionsSheet } from "./message-actions-sheet";
 import {
   createClientMessageIdentity,
   optimisticallyInsertPostedMessage,
-} from "./optimistic-message";
+} from "~/apps/shared/chat/optimistic-message";
 import { ChatTimeline } from "./timeline";
 import { isPdfAttachment } from "./types";
 import type {

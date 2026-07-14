@@ -2,7 +2,7 @@
 
 import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import Image from 'next/image';
 import {
   BarChart3,
@@ -10,10 +10,12 @@ import {
   History,
   ImageIcon,
   MessageSquareText,
+  MoreHorizontal,
   Pencil,
   Pin,
   PinOff,
   Reply,
+  SmilePlus,
   Trash2,
   AlertTriangle,
   Flag,
@@ -29,7 +31,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Dialog,
@@ -39,6 +40,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
@@ -75,6 +85,12 @@ import {
   MessageScrollerProvider,
   MessageScrollerViewport,
 } from '@/components/ui/message-scroller';
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageHeader,
+} from '@/components/ui/message';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Empty,
@@ -90,6 +106,10 @@ import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  createClientMessageIdentity,
+  optimisticallyInsertPostedMessage,
+} from '~/apps/shared/chat/optimistic-message';
 
 const QUICK_REACTIONS = [
   { value: 'LIKE', label: '👍', name: 'Like' },
@@ -402,31 +422,40 @@ function MessageRow({
   const isAuthor = message.author._id === currentUserId;
   const isDeleted = message.isDeleted;
   const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
+  const isSending =
+    'deliveryState' in message && message.deliveryState === 'sending';
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
-    <div
+    <Message
       className={cn(
-        'group flex gap-3 rounded-md px-3 py-2 transition-colors',
+        'group relative gap-3 rounded-md px-3 py-2 transition-colors',
         highlighted && 'bg-primary/[0.04]',
         !compact && 'hover:bg-muted/40',
         isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
+        isSending &&
+          'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
       )}
     >
-      <MessageAuthorPreview
-        author={message.author}
-        compact={compact}
-        currentUserId={currentUserId}
-        canSendFriendRequest={canSendFriendRequest}
-        friendRequestPendingId={friendRequestPendingId}
-        onSendFriendRequest={onSendFriendRequest}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
+      <MessageAvatar className="self-start overflow-visible bg-transparent">
+        <MessageAuthorPreview
+          author={message.author}
+          compact={compact}
+          currentUserId={currentUserId}
+          canSendFriendRequest={canSendFriendRequest}
+          friendRequestPendingId={friendRequestPendingId}
+          onSendFriendRequest={onSendFriendRequest}
+        />
+      </MessageAvatar>
+      <MessageContent className="gap-0">
+        <MessageHeader className="gap-2 px-0 text-sm">
           <span className="text-sm font-semibold text-foreground">
             {fullName(message.author)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+            {isSending
+              ? 'Sending…'
+              : formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
           </span>
           {message.isPinned ? (
             <Badge variant="dot" color="amber" className="h-5 text-[10px]">
@@ -443,7 +472,7 @@ function MessageRow({
               <span>(edited)</span>
             </button>
           ) : null}
-        </div>
+        </MessageHeader>
 
         {isDeleted ? (
           <p className="mt-1 text-sm italic text-muted-foreground">Message deleted</p>
@@ -459,7 +488,7 @@ function MessageRow({
 
         {!isEditing && (
           <>
-            {!isDeleted ? (
+            {!isDeleted && !isSending ? (
               <>
                 {message.reactions.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1">
@@ -486,124 +515,160 @@ function MessageRow({
                   </div>
                 ) : null}
 
-                <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  {QUICK_REACTIONS.map((reaction) => (
-                    <Button
-                      key={`${message._id}-${reaction.value}-quick`}
-                      variant="ghost"
-                      size="sm"
-                      className="size-6 p-0 text-sm"
-                      disabled={isReactionPending}
-                      aria-label={reaction.name}
-                      onClick={() => onToggleReaction(message._id, reaction.value)}
+                <div className="absolute right-2 top-1 z-20 flex translate-y-1 items-center rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                  <Popover>
+                    <Tooltip content="Add reaction">
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-7"
+                          disabled={isReactionPending}
+                          aria-label="Add reaction"
+                        >
+                          <SmilePlus className="size-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                    </Tooltip>
+                    <PopoverContent
+                      side="top"
+                      align="end"
+                      className="flex w-auto gap-0.5 rounded-lg p-1"
                     >
-                      {reaction.label}
-                    </Button>
-                  ))}
+                      {QUICK_REACTIONS.map((reaction) => (
+                        <Tooltip key={reaction.value} content={reaction.name}>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-8 text-base"
+                            disabled={isReactionPending}
+                            aria-label={reaction.name}
+                            onClick={() => onToggleReaction(message._id, reaction.value)}
+                          >
+                            {reaction.label}
+                          </Button>
+                        </Tooltip>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
                   {!compact ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                      onClick={() => onOpenThread(message.threadRootId)}
-                    >
-                      <Reply className="size-3" />
-                      Reply
-                    </Button>
+                    <Tooltip content="Reply">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-7"
+                        aria-label="Reply"
+                        onClick={() => onOpenThread(message.threadRootId)}
+                      >
+                        <Reply className="size-3.5" />
+                      </Button>
+                    </Tooltip>
                   ) : null}
                   {isAuthor && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                      onClick={() => onStartEdit(message._id)}
-                    >
-                      <Pencil className="size-3" />
-                      Edit
-                    </Button>
-                  )}
-                  {!isAuthor && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
-                      onClick={() => onReport?.(message._id)}
-                    >
-                      <Flag className="size-3" />
-                      Report
-                    </Button>
-                  )}
-                  {(isAuthor || canModerate) && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      disabled={isDeletePending}
-                    >
-                      <Trash2 className="size-3" />
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Message?</AlertDialogTitle>
-                      <AlertDialogDescription asChild>
-                        <div className="text-sm text-muted-foreground">
-                          This removes the message content for everyone in the channel.
-                          <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
-                            <AlertTriangle className="size-5 shrink-0 text-amber-500" />
-                            <div className="text-xs">
-                              <strong>Note:</strong> The deletion is logged for school administrators.
-                              If the message has replies, a content-free placeholder keeps the thread intact.
-                            </div>
-                          </div>
-                        </div>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => onDelete(message._id)}
+                    <Tooltip content="Edit">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-7"
+                        aria-label="Edit"
+                        onClick={() => onStartEdit(message._id)}
                       >
-                        Delete for everyone
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    </Tooltip>
                   )}
-                  {canModerate && !compact ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  disabled={isPinPending}
-                  onClick={() => onTogglePin(message._id, !message.isPinned)}
-                >
-                  {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
-                  {message.isPinned ? 'Unpin' : 'Pin'}
-                </Button>
-                  ) : null}
+                  <DropdownMenu>
+                    <Tooltip content="More">
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-7"
+                          aria-label="More message actions"
+                        >
+                          <MoreHorizontal className="size-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </Tooltip>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {!isAuthor ? (
+                        <DropdownMenuItem onSelect={() => onReport?.(message._id)}>
+                          <Flag />
+                          Report
+                        </DropdownMenuItem>
+                      ) : null}
+                      {canModerate && !compact ? (
+                        <DropdownMenuItem
+                          disabled={isPinPending}
+                          onSelect={() => onTogglePin(message._id, !message.isPinned)}
+                        >
+                          {message.isPinned ? <PinOff /> : <Pin />}
+                          {message.isPinned ? 'Unpin' : 'Pin'}
+                        </DropdownMenuItem>
+                      ) : null}
+                      {(isAuthor || canModerate) && (!isAuthor || (canModerate && !compact)) ? (
+                        <DropdownMenuSeparator />
+                      ) : null}
+                      {(isAuthor || canModerate) ? (
+                        <DropdownMenuItem
+                          disabled={isDeletePending}
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() => setDeleteDialogOpen(true)}
+                        >
+                          <Trash2 />
+                          Delete
+                        </DropdownMenuItem>
+                      ) : null}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </>
             ) : null}
 
-            {!compact && message.replyCount > 0 ? (
+            {!compact && message.hasReplies ? (
               <button
                 type="button"
                 className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
                 onClick={() => onOpenThread(message.threadRootId)}
               >
                 <Reply className="size-3" />
-                {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
+                {message.replyCountIsExact
+                  ? `${message.replyCount} ${message.replyCount === 1 ? 'reply' : 'replies'}`
+                  : 'View thread'}
               </button>
             ) : null}
           </>
         )}
-      </div>
-    </div>
+      </MessageContent>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                This removes the message content for everyone in the channel.
+                <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="size-5 shrink-0 text-amber-500" />
+                  <div className="text-xs">
+                    Deletions are logged for school administrators. Threads keep a
+                    content-free placeholder when replies exist.
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => onDelete(message._id)}
+            >
+              Delete for everyone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Message>
   );
 }
 
@@ -625,18 +690,52 @@ export default function ClubChannelPage({
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
+  const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(null);
   const deferredSearch = useDeferredValue(search);
+  const normalizedSearch = useMemo(
+    () => normalizeSearchQuery(deferredSearch),
+    [deferredSearch],
+  );
 
   const user = useCurrentUser();
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
-  const messages =
-    useQuery(api.clubs.channels.getMessages, { clubId, channelId }) ?? [];
+  const {
+    results: messageResults,
+    status: messagePageStatus,
+    loadMore: loadMoreMessages,
+  } = usePaginatedQuery(
+    api.clubs.channels.getMessagePage,
+    { clubId, channelId },
+    { initialNumItems: 50 },
+  );
+  const messages = useMemo(
+    () =>
+      [...messageResults].sort(
+        (left, right) =>
+          new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+      ),
+    [messageResults],
+  );
+  const selectedThreadResult = useQuery(
+    api.clubs.channels.getThread,
+    selectedThreadId
+      ? { clubId, channelId, messageId: selectedThreadId }
+      : 'skip',
+  );
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
   const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
-  const postMessage = useMutation(api.clubs.channels.postMessage);
+  const postMessage = useMutation(api.clubs.channels.postMessage).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!user) return;
+      optimisticallyInsertPostedMessage(localStore, args, {
+        clubId,
+        author: user,
+      });
+    },
+  );
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
@@ -656,19 +755,33 @@ export default function ClubChannelPage({
     mode,
   }: ComposerSubmitArgs) => {
     const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
+    setSendingMode(mode);
     try {
-      for (const file of files) {
-        const storageId = await uploadFileToConvex(
-          { generateUploadUrl: () => generateUploadUrl({}) },
-          file,
-        );
-        const staged = await finalizeChatAttachment({
-          storageId,
-          fileName: file.name,
-        });
-        attachmentUploadIds.push(staged.attachmentUploadId);
-      }
-      await postMessage({
+      const uploadResults = await Promise.allSettled(
+        files.map(async (file) => {
+          const storageId = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({}) },
+            file,
+          );
+          return finalizeChatAttachment({
+            storageId,
+            fileName: file.name,
+          });
+        }),
+      );
+      attachmentUploadIds.push(
+        ...uploadResults.flatMap((result) =>
+          result.status === 'fulfilled'
+            ? [result.value.attachmentUploadId]
+            : [],
+        ),
+      );
+      const failedUpload = uploadResults.find(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      );
+      if (failedUpload) throw failedUpload.reason;
+      const messageIdentity = createClientMessageIdentity();
+      const postPromise = postMessage({
         channelId,
         body: body.trim(),
         bodyMarkdown: bodyMarkdown.trim() || undefined,
@@ -677,12 +790,14 @@ export default function ClubChannelPage({
         pollQuestion,
         pollOptions,
         attachments: attachmentUploadIds,
+        ...messageIdentity,
       });
       if (mode === 'thread') {
         setReplyComposerResetKey((current) => current + 1);
       } else {
         setRootComposerResetKey((current) => current + 1);
       }
+      await postPromise;
     } catch {
       await Promise.allSettled(
         attachmentUploadIds.map((attachmentUploadId) =>
@@ -690,6 +805,8 @@ export default function ClubChannelPage({
         ),
       );
       toast({ title: 'Failed to send message', variant: 'destructive' });
+    } finally {
+      setSendingMode(null);
     }
   };
 
@@ -708,9 +825,11 @@ export default function ClubChannelPage({
   const suggestionEntries = useMemo<ChannelMentionSuggestion[]>(() => {
     const canUseAll = !!club?.viewer?.canManageChannels;
     const builtIns: ChannelMentionSuggestion[] = [
-      ...(canUseAll ? [{ token: 'all', label: 'Everyone in this channel', detail: '', kind: 'built-in' as const }] : []),
-      { token: 'leaders', label: 'Members with club roles', detail: '', kind: 'built-in' },
-      { token: 'sponsors', label: 'Faculty sponsors', detail: '', kind: 'built-in' },
+      ...(canUseAll
+        ? [{ token: 'all', label: 'Everyone', detail: '', kind: 'built-in' as const }]
+        : []),
+      { token: 'leaders', label: 'Leaders', detail: '', kind: 'built-in' },
+      { token: 'sponsors', label: 'Sponsors', detail: '', kind: 'built-in' },
     ];
     const tags = club?.tags?.map((tag) => ({
       token: tag.slug,
@@ -731,37 +850,27 @@ export default function ClubChannelPage({
     return [...builtIns, ...tags, ...people];
   }, [audience, club?.tags, club?.viewer?.canManageChannels]);
 
+  const selectedThread = selectedThreadResult?.root ?? null;
+  const threadReplies = selectedThreadResult?.replies ?? [];
+
   const flattenedMessages = useMemo(
-    () =>
-      messages.flatMap((message) => [
-        message,
-        ...message.replies.map((reply) => ({ ...reply, threadRootId: message._id })),
-      ]),
-    [messages],
+    () => [...messages, ...threadReplies],
+    [messages, threadReplies],
   );
 
   const matchingIds = useMemo(() => {
-    const query = normalizeSearchQuery(deferredSearch);
-    if (!query) return new Set<string>();
+    if (!normalizedSearch) return new Set<string>();
     return new Set(
-      filterBySearchQuery(flattenedMessages, query, (message) => [
+      filterBySearchQuery(flattenedMessages, normalizedSearch, (message) => [
         getSearchableText(message),
       ]).map((message) => message._id),
     );
-  }, [deferredSearch, flattenedMessages]);
+  }, [flattenedMessages, normalizedSearch]);
 
   const visibleMessages = useMemo(() => {
-    if (matchingIds.size === 0) return messages;
-    return messages.filter(
-      (message) =>
-        matchingIds.has(message._id) || message.replies.some((r) => matchingIds.has(r._id)),
-    );
-  }, [matchingIds, messages]);
-
-  const selectedThread = useMemo(() => {
-    if (!selectedThreadId) return null;
-    return messages.find((m) => m._id === selectedThreadId) ?? null;
-  }, [messages, selectedThreadId]);
+    if (!normalizedSearch) return messages;
+    return messages.filter((message) => matchingIds.has(message._id));
+  }, [matchingIds, messages, normalizedSearch]);
 
   const reportingMessage = useMemo(
     () => flattenedMessages.find((message) => message._id === reportingMessageId) ?? null,
@@ -938,7 +1047,7 @@ export default function ClubChannelPage({
               <MessageScrollerItem messageId={selectedThread._id}>
                 {renderMessageRow(selectedThread)}
               </MessageScrollerItem>
-              {selectedThread.replies.map((reply) => (
+              {threadReplies.map((reply) => (
                 <MessageScrollerItem key={reply._id} messageId={reply._id}>
                   {renderMessageRow(reply, true)}
                 </MessageScrollerItem>
@@ -954,7 +1063,7 @@ export default function ClubChannelPage({
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
             onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
-            isPending={false}
+            isPending={sendingMode === 'thread'}
             suggestionEntries={suggestionEntries}
             placeholder="Reply in thread…"
             submitLabel="Reply"
@@ -1002,7 +1111,22 @@ export default function ClubChannelPage({
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
         <MessageScroller className="flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-48">
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-32">
+              {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
+                <MessageScrollerItem>
+                  <div className="flex justify-center py-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      loading={messagePageStatus === 'LoadingMore'}
+                      onClick={() => loadMoreMessages(50)}
+                    >
+                      Load older messages
+                    </Button>
+                  </div>
+                </MessageScrollerItem>
+              ) : null}
               {pinnedMessages.length > 0 ? (
                 <MessageScrollerItem>
                   <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
@@ -1033,7 +1157,7 @@ export default function ClubChannelPage({
                     {renderMessageRow(message)}
                   </MessageScrollerItem>
                 ))
-              ) : (
+              ) : messagePageStatus === 'LoadingFirstPage' ? null : (
                 <MessageScrollerItem>
                   <Empty className="mt-8 border border-dashed">
                     <EmptyHeader>
@@ -1056,13 +1180,13 @@ export default function ClubChannelPage({
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton className="data-[direction=end]:bottom-44" />
+          <MessageScrollerButton className="data-[direction=end]:bottom-28" />
         </MessageScroller>
       </MessageScrollerProvider>
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-card via-card/90 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card via-card/90 to-transparent"
       />
 
       <div className="absolute inset-x-0 bottom-0 p-3">
@@ -1071,7 +1195,7 @@ export default function ClubChannelPage({
             <ChannelMessageComposer
               key={`root-${rootComposerResetKey}`}
               onSubmit={(args) => void submitMessage({ ...args, mode: 'root' })}
-              isPending={false}
+              isPending={sendingMode === 'root'}
               suggestionEntries={suggestionEntries}
               placeholder={`Message #${channel.name}`}
               submitLabel="Send"

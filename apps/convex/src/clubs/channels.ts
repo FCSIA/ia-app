@@ -391,6 +391,8 @@ export const postMessage = mutation({
       body: trimmedBody,
       bodyMarkdown,
       bodyRich: args.bodyRich,
+      clientGeneratedId: args.clientGeneratedId,
+      clientSentAt: args.clientSentAt,
       pollQuestion: poll?.question,
       pollOptions: poll?.options,
       isPinned: false,

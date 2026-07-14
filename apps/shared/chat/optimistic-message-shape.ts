@@ -1,3 +1,4 @@
+/** Framework-neutral shape used by both chat clients. */
 export type OptimisticMessageShapeAuthor = {
   _id: string;
   uniqueId: string;

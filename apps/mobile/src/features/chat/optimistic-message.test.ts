@@ -3,7 +3,7 @@ import {
   createClientMessageIdentity,
   createOptimisticMessageShape,
   type OptimisticMessageShapeAuthor,
-} from "./optimistic-message-shape";
+} from "../../../../shared/chat/optimistic-message-shape";
 
 const author = {
   _id: "user-1",
