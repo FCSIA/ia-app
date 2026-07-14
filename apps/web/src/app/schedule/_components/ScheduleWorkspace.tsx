@@ -11,6 +11,7 @@ import { ManageBlocksPanel } from './ManageBlocksPanel';
 import { MySchedulePanel } from './MySchedulePanel';
 import { ScheduleStatusBar } from './ScheduleStatusBar';
 import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
+import { ScheduleWorkspaceSkeleton } from './ScheduleWorkspaceSkeleton';
 
 export function ScheduleWorkspace() {
   const {
@@ -27,13 +28,7 @@ export function ScheduleWorkspace() {
   } = useScheduleWorkspace();
 
   if (isLoading) {
-    return (
-      <AppShell>
-        <PageFrame>
-          <div className="py-20 text-center text-muted-foreground">Loading schedule workspace…</div>
-        </PageFrame>
-      </AppShell>
-    );
+    return <ScheduleWorkspaceSkeleton />;
   }
 
   return (
