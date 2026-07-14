@@ -1,10 +1,11 @@
+import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronRight, Hash, Settings2, Tags, UsersRound } from "lucide-react-native";
+import { ChevronRight, FolderOpen, Hash, Search, Settings2, UsersRound } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Avatar, Button, IconButton, PressableScale, Txt } from "@/components/ui";
+import { Avatar, Button, IconButton, PressableScale, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -15,7 +16,18 @@ export default function ClubDetailScreen() {
   const joinOpen = useMutation(api.clubs.invitations.joinOpenClub);
   const requestJoin = useMutation(api.clubs.invitations.requestToJoin);
   const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
+  const [channelQuery, setChannelQuery] = useState("");
+  const deferredChannelQuery = useDeferredValue(channelQuery.trim().toLocaleLowerCase());
   const { color } = useTheme();
+  const visibleChannels = useMemo(() => {
+    const channels = club?.channels ?? [];
+    if (!deferredChannelQuery) return channels;
+    return channels.filter((channel: any) =>
+      `${channel.name} ${channel.description ?? ""}`
+        .toLocaleLowerCase()
+        .includes(deferredChannelQuery),
+    );
+  }, [club?.channels, deferredChannelQuery]);
 
   return (
     <Screen>
@@ -83,11 +95,11 @@ export default function ClubDetailScreen() {
                       onPress={() => router.push(`/clubs/${clubId}/people`)}
                     />
                     <Button
-                      title="Tags"
-                      icon={Tags}
+                      title="Shared"
+                      icon={FolderOpen}
                       variant="secondary"
                       style={{ flex: 1 }}
-                      onPress={() => router.push(`/clubs/${clubId}/tags`)}
+                      onPress={() => router.push(`/clubs/${clubId}/shared` as never)}
                     />
                   </View>
 
@@ -95,11 +107,43 @@ export default function ClubDetailScreen() {
                     <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
                       <Txt variant="section">Channels</Txt>
                       <Txt variant="caption" tone="muted">
-                        {data.channels.length}
+                        {channelQuery.trim()
+                          ? `${visibleChannels.length} of ${data.channels.length}`
+                          : data.channels.length}
                       </Txt>
                     </View>
+                    {data.channels.length ? (
+                      <View
+                        style={{
+                          minHeight: 48,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: spacing.sm,
+                          paddingHorizontal: spacing.md,
+                          borderRadius: radii.lg,
+                          backgroundColor: color("secondary"),
+                        }}
+                      >
+                        <Search size={18} color={color("mutedForeground")} strokeWidth={1.9} />
+                        <TextField
+                          accessibilityLabel="Search club channels"
+                          value={channelQuery}
+                          onChangeText={setChannelQuery}
+                          placeholder="Find a channel"
+                          returnKeyType="search"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          style={{
+                            flex: 1,
+                            borderWidth: 0,
+                            backgroundColor: "transparent",
+                            paddingHorizontal: 0,
+                          }}
+                        />
+                      </View>
+                    ) : null}
                     <View>
-                      {data.channels.map((channel: any, index: number) => {
+                      {visibleChannels.map((channel: any, index: number) => {
                         const messageCount = channel._count?.messages ?? 0;
                         const metadata = [
                           channel.description,
@@ -114,7 +158,7 @@ export default function ClubDetailScreen() {
                             style={{
                               minHeight: 64,
                               paddingVertical: spacing.md,
-                              borderBottomWidth: index === data.channels.length - 1 ? 0 : 1,
+                              borderBottomWidth: index === visibleChannels.length - 1 ? 0 : 1,
                               borderBottomColor: color("border"),
                               flexDirection: "row",
                               alignItems: "center",
@@ -148,6 +192,8 @@ export default function ClubDetailScreen() {
                     </View>
                     {!data.channels.length ? (
                       <Txt tone="muted">No channels are available yet.</Txt>
+                    ) : !visibleChannels.length ? (
+                      <Txt tone="muted">No channels match “{channelQuery.trim()}”.</Txt>
                     ) : null}
                   </View>
                 </>

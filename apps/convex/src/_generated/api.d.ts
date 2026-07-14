@@ -36,6 +36,8 @@ import type * as clubs_invitations from "../clubs/invitations.js";
 import type * as clubs_management from "../clubs/management.js";
 import type * as clubs_seed from "../clubs/seed.js";
 import type * as clubs_serialize from "../clubs/serialize.js";
+import type * as clubs_shared from "../clubs/shared.js";
+import type * as clubs_sharedPagination from "../clubs/sharedPagination.js";
 import type * as clubs_tags from "../clubs/tags.js";
 import type * as courses__lib from "../courses/_lib.js";
 import type * as courses_catalog from "../courses/catalog.js";
@@ -117,6 +119,8 @@ declare const fullApi: ApiFromModules<{
   "clubs/management": typeof clubs_management;
   "clubs/seed": typeof clubs_seed;
   "clubs/serialize": typeof clubs_serialize;
+  "clubs/shared": typeof clubs_shared;
+  "clubs/sharedPagination": typeof clubs_sharedPagination;
   "clubs/tags": typeof clubs_tags;
   "courses/_lib": typeof courses__lib;
   "courses/catalog": typeof courses_catalog;

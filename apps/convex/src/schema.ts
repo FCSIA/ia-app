@@ -507,6 +507,7 @@ export const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_channelId_and_createdAt", ["channelId", "createdAt"])
     .index("by_channelId_and_parentMessageId_and_createdAt", [
       "channelId",
       "parentMessageId",

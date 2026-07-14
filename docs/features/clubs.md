@@ -13,6 +13,8 @@ join requests, join codes, tags, and a workspace UI.
 
 - Lists active clubs and the current user's club memberships.
 - Shows a club workspace with announcements, people, channels, and settings.
+- Lets members search channels and browse files and images previously shared in
+  each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
 - Supports public, private, and member-read-only channels.
@@ -47,6 +49,7 @@ join requests, join codes, tags, and a workspace UI.
 - `api.clubs.invitations.generateJoinCode`
 - `api.clubs.invitations.redeemJoinCode`
 - `api.clubs.channels.*`
+- `api.clubs.shared.listChannelAttachments`
 - `api.clubs.tags.*`
 
 ## Data Model
@@ -63,6 +66,8 @@ Channel messages keep `body` as a searchable plain-text projection. New rich
 clients may also write portable GFM to `bodyMarkdown`; the web client renders it
 first and falls back to legacy Plate `bodyRich` content. Edits replace stale
 rich representations so mobile and web show the same message.
+Person mentions show the member's name while their portable `user://` link
+keeps the stable school unique ID used for backend resolution.
 
 ## Permissions
 
@@ -81,6 +86,10 @@ does not become structurally orphaned. A bounded scheduled cleanup removes
 attachment storage objects and all message-owned relation rows; leaf messages
 and empty tombstones are then removed entirely. Deleted messages cannot be
 edited, reacted to, pinned, reported, or used as the parent of a new reply.
+
+Shared-content discovery pages through channel messages newest-first, then
+returns their attachment rows. This keeps reads bounded, includes thread
+replies, and reuses the same private/read-only channel access rules as chat.
 
 ## Side Effects
 

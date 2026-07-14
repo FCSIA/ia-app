@@ -19,7 +19,7 @@ export default function ClubTagsScreen() {
   const { color } = useTheme();
 
   return (
-    <Screen title="Tags">
+    <Screen title="Mention groups">
       <DataBoundary data={club} emptyTitle="Club unavailable">
         {(data: any) => (
           <View style={{ width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.xl }}>

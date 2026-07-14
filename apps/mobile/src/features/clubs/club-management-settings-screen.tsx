@@ -3,7 +3,7 @@ import { Alert, View } from "react-native";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Trash2 } from "lucide-react-native";
+import { AtSign, ChevronRight, Trash2 } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Button, PressableScale, Section, TextField, Txt, useToast } from "@/components/ui";
@@ -58,6 +58,7 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
   const [saving, setSaving] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const { showToast } = useToast();
+  const { color } = useTheme();
   const canDeactivate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
   const parsedMemberLimit = memberLimit.trim() ? parseMemberLimit(memberLimit) : undefined;
   const limitIsValid = parsedMemberLimit !== null && !(club.memberLimit !== undefined && parsedMemberLimit === undefined);
@@ -173,6 +174,28 @@ function ClubSettingsForm({ club }: { club: ClubDetail }) {
             Use a member limit from 10 to 200.
           </Txt>
         ) : null}
+      </Section>
+
+      <Section title="Workspace">
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel="Manage mention groups"
+          onPress={() => router.push(`/clubs/${club._id}/tags` as never)}
+          style={{
+            minHeight: 52,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+            paddingVertical: spacing.sm,
+          }}
+        >
+          <AtSign size={19} color={color("foreground")} strokeWidth={1.9} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt variant="label">Mention groups</Txt>
+            <Txt variant="caption" tone="muted">Organize groups for channel mentions</Txt>
+          </View>
+          <ChevronRight size={19} color={color("mutedForeground")} strokeWidth={1.8} />
+        </PressableScale>
       </Section>
 
       <Button
