@@ -38,6 +38,19 @@ describe("portable club message bodies", () => {
     ).toEqual(["sreyas", "leaders"]);
   });
 
+  test("resolves a named mention only through its stable link target", () => {
+    const markdown =
+      "Ask [@Alex Johnson](user://STU001) and [@Alex Johnson](user://STU002)";
+
+    expect(markdownToPlainText(markdown)).toBe(
+      "Ask @Alex Johnson and @Alex Johnson",
+    );
+    expect(portableMentionTokens("Ask @Alex Johnson", markdown)).toEqual([
+      "STU001",
+      "STU002",
+    ]);
+  });
+
   test("detects inline images so uploads stay inside the attachment boundary", () => {
     expect(hasInlineMarkdownImage("![tracking pixel](https://example.com/pixel.png)")).toBe(true);
     expect(hasInlineMarkdownImage("![reference][avatar]")).toBe(true);

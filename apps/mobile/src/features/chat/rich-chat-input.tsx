@@ -36,12 +36,12 @@ import {
   normalizeExternalChatLink,
   sanitizeChatMarkdown,
 } from "./chat-markdown";
+import {
+  mentionInsertion,
+  type ChatMentionSuggestion,
+} from "./mention-format";
 
-export type ChatMentionSuggestion = {
-  token: string;
-  label: string;
-  detail?: string;
-};
+export type { ChatMentionSuggestion } from "./mention-format";
 
 type ComposerPanel = "tools" | "formatting" | null;
 
@@ -157,13 +157,11 @@ export function RichChatInput({
               <PressableScale
                 key={suggestion.token}
                 accessibilityRole="menuitem"
-                accessibilityLabel={`Mention ${suggestion.label}, @${suggestion.token}`}
+                accessibilityLabel={`Mention ${suggestion.label}`}
                 haptic={false}
                 onPress={() => {
-                  inputRef.current?.insertMention(
-                    `@${suggestion.token}`,
-                    `user://${suggestion.token}`,
-                  );
+                  const insertion = mentionInsertion(suggestion);
+                  inputRef.current?.insertMention(insertion.text, insertion.url);
                   setMentionOpen(false);
                   setMentionQuery("");
                 }}
@@ -181,7 +179,7 @@ export function RichChatInput({
                   tone="primary"
                   style={{ fontWeight: "800" }}
                 >
-                  @{suggestion.token}
+                  {suggestion.displayText}
                 </Txt>
                 <View style={{ minWidth: 0, flex: 1 }}>
                   <Txt variant="label" numberOfLines={1}>

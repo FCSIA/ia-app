@@ -3,6 +3,7 @@ const MARKDOWN_AUTOLINK = /<((?:https?:\/\/)[^>]+)>/g;
 const FENCED_CODE = /```[^\n]*\n([\s\S]*?)```/g;
 const INLINE_CODE = /`([^`\n]+)`/g;
 const INLINE_MARKDOWN_IMAGE = /!\[[^\]]*\]\s*(?:\([^)]*\)|\[[^\]]*\])|<img\b/i;
+const PORTABLE_MENTION_LINK = /\[[^\]]*\]\(user:\/\/([A-Za-z0-9_-]+)\)/g;
 
 export function hasInlineMarkdownImage(markdown: string) {
   return INLINE_MARKDOWN_IMAGE.test(markdown);
@@ -39,11 +40,17 @@ export function normalizePortableMessageBody(body: string, bodyMarkdown?: string
 }
 
 export function portableMentionTokens(body: string, bodyMarkdown?: string) {
-  const bareTokens = `${body}\n${bodyMarkdown ?? ""}`
+  // Markdown mention labels are deliberately human-readable (for example,
+  // `@Alex Johnson`) while the link target carries the stable unique id. Do
+  // not reinterpret the visible name as a second legacy mention token.
+  const bareMentionSource = bodyMarkdown
+    ? bodyMarkdown.replace(PORTABLE_MENTION_LINK, "")
+    : body;
+  const bareTokens = bareMentionSource
     .match(/@[A-Za-z0-9_-]+/g)
     ?.map((token) => token.slice(1)) ?? [];
   const linkedTokens = Array.from(
-    bodyMarkdown?.matchAll(/\]\(user:\/\/([A-Za-z0-9_-]+)\)/g) ?? [],
+    bodyMarkdown?.matchAll(PORTABLE_MENTION_LINK) ?? [],
     (match) => match[1],
   );
   return Array.from(new Set([...linkedTokens, ...bareTokens]));

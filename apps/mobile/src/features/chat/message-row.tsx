@@ -5,6 +5,15 @@ import {
   View,
   type GestureResponderEvent,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { Image } from "expo-image";
 import { format } from "date-fns";
 import {
@@ -17,7 +26,7 @@ import {
 } from "lucide-react-native";
 import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
-import { tapMedium } from "@/lib/haptics";
+import { tapLight, tapMedium } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
 import {
   normalizeReactionPayload,
@@ -25,6 +34,11 @@ import {
   reactionDefinition,
 } from "./quick-reactions";
 import { RichMessageBody } from "./rich-message-body";
+import {
+  resistedReplySwipeDistance,
+  shouldTriggerSwipeReply,
+  SWIPE_REPLY_THRESHOLD,
+} from "./swipe-reply";
 import {
   chatAuthorName,
   formatAttachmentSize,
@@ -39,7 +53,9 @@ type MessageRowProps = {
   groupedWithPrevious: boolean;
   showReplyPreview: boolean;
   pendingActions: ReadonlySet<string>;
+  canReply: boolean;
   onLongPress: (message: ChatMessage) => void;
+  onReply: (message: ChatMessage) => void;
   onOpenThread: (message: ChatMessage) => void;
   onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
@@ -52,7 +68,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   groupedWithPrevious,
   showReplyPreview,
   pendingActions,
+  canReply,
   onLongPress,
+  onReply,
   onOpenThread,
   onToggleReaction,
   onVotePoll,
@@ -68,27 +86,144 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   const replyCountIsExact = message.replyCountIsExact !== false;
   const isSending = message.deliveryState === "sending";
   const failedToSend = message.deliveryState === "failed";
+  const reduceMotion = useReducedMotion();
+  const swipeX = useSharedValue(0);
+  const replyThresholdReached = useSharedValue(false);
   const openContextMenu = (event?: GestureResponderEvent) => {
     event?.stopPropagation();
     void tapMedium();
     onLongPress(message);
   };
+  const swipeToReply = Gesture.Pan()
+    .enabled(canReply && !isSending && !failedToSend)
+    .activeOffsetX(-18)
+    .failOffsetX(12)
+    .failOffsetY([-14, 14])
+    .onUpdate((event) => {
+      const distance = Math.max(0, -event.translationX);
+      const resistedDistance = resistedReplySwipeDistance(distance);
+      swipeX.value = -Math.min(resistedDistance, 92);
+
+      const reached = distance >= SWIPE_REPLY_THRESHOLD;
+      if (reached !== replyThresholdReached.value) {
+        replyThresholdReached.value = reached;
+        if (reached) scheduleOnRN(tapLight);
+      }
+    })
+    .onEnd((event) => {
+      const shouldReply = shouldTriggerSwipeReply(
+        event.translationX,
+        event.velocityX,
+        replyThresholdReached.value,
+      );
+      if (shouldReply) scheduleOnRN(onReply, message);
+      replyThresholdReached.value = false;
+      swipeX.value = reduceMotion
+        ? 0
+        : withTiming(0, { duration: shouldReply ? 140 : 170 });
+    })
+    .onFinalize((_event, success) => {
+      if (success) return;
+      replyThresholdReached.value = false;
+      if (swipeX.value !== 0) {
+        swipeX.value = reduceMotion ? 0 : withTiming(0, { duration: 170 });
+      }
+    });
+  const messageSwipeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: swipeX.value }],
+  }));
+  const replyCueStyle = useAnimatedStyle(() => {
+    const distance = -swipeX.value;
+    return {
+      opacity: reduceMotion
+        ? distance >= SWIPE_REPLY_THRESHOLD
+          ? 1
+          : 0
+        : interpolate(
+            distance,
+            [14, 44, SWIPE_REPLY_THRESHOLD],
+            [0, 0.64, 1],
+            "clamp",
+          ),
+      transform: [
+        {
+          scale: reduceMotion
+            ? 1
+            : interpolate(
+                distance,
+                [14, SWIPE_REPLY_THRESHOLD],
+                [0.78, 1],
+                "clamp",
+              ),
+        },
+      ],
+    };
+  });
 
   return (
-    <Pressable
-      accessible={false}
-      delayLongPress={280}
-      onLongPress={openContextMenu}
-      style={({ pressed }) => ({
-        width: "100%",
-        backgroundColor: message.isPinned
-          ? color("secondary")
-          : pressed
-            ? color("muted")
-            : "transparent",
-        opacity: isSending ? 0.7 : 1,
-      })}
-    >
+    <GestureDetector gesture={swipeToReply}>
+      <View
+        style={{
+          width: "100%",
+          overflow: "hidden",
+          backgroundColor: color("background"),
+        }}
+      >
+        {canReply && !isSending && !failedToSend ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              right: spacing.md,
+              top: 0,
+              bottom: 0,
+              width: 56,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Animated.View
+              style={[
+                {
+                  width: 44,
+                  height: 44,
+                  borderRadius: radii.pill,
+                  backgroundColor: color("primary"),
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+                replyCueStyle,
+              ]}
+            >
+              <MessageCircle
+                size={20}
+                color={color("primaryForeground")}
+                strokeWidth={2.2}
+              />
+            </Animated.View>
+          </View>
+        ) : null}
+
+        <Animated.View
+          style={[
+            { width: "100%", backgroundColor: color("background") },
+            messageSwipeStyle,
+          ]}
+        >
+          <Pressable
+            accessible={false}
+            delayLongPress={280}
+            onLongPress={openContextMenu}
+            style={({ pressed }) => ({
+              width: "100%",
+              backgroundColor: message.isPinned
+                ? color("secondary")
+                : pressed
+                  ? color("muted")
+                  : "transparent",
+              opacity: isSending ? 0.7 : 1,
+            })}
+          >
       <View
         style={{
           width: "100%",
@@ -453,7 +588,10 @@ export const ChatMessageRow = memo(function ChatMessageRow({
         ) : null}
         </View>
       </View>
-    </Pressable>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 });
 

@@ -8,6 +8,11 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react-native";
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  useReducedMotion,
+} from "react-native-reanimated";
 import { Button, IconButton, TextField, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -330,8 +335,11 @@ function ComposerModeHeader({
   onClose: () => void;
 }) {
   const { color } = useTheme();
+  const reduceMotion = useReducedMotion();
   return (
-    <View
+    <Animated.View
+      entering={reduceMotion ? undefined : FadeInDown.duration(160)}
+      exiting={reduceMotion ? undefined : FadeOutDown.duration(120)}
       style={{
         minHeight: 44,
         flexDirection: "row",
@@ -357,6 +365,6 @@ function ComposerModeHeader({
         variant="ghost"
         onPress={onClose}
       />
-    </View>
+    </Animated.View>
   );
 }

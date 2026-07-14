@@ -1,4 +1,4 @@
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { format } from "date-fns";
 import {
   Flag,
@@ -105,70 +105,66 @@ export function MessageActionsSheet({
             </View>
           </View>
 
-          <ScrollView
-            horizontal
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.sm }}
-          >
-            {QUICK_REACTIONS.map(({ payload, label, glyph }) => {
-              const reaction = reactions.find(
-                (entry) => entry.emoji === payload,
-              );
-              const selected = !!reaction?.reactedByCurrentUser;
-              const reactionPending =
-                pendingActions.has(`reaction:${message._id}:${payload}`);
-              return (
-                <PressableScale
-                  key={payload}
-                  accessibilityLabel={`${label}${reaction?.count ? `, ${reaction.count}` : ""}`}
-                  accessibilityState={{
-                    selected,
-                    disabled: disabled || reactionPending,
-                  }}
-                  disabled={disabled || reactionPending}
-                  onPress={() => onToggleReaction(message, payload)}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: radii.pill,
-                    backgroundColor: selected
-                      ? color("secondary")
-                      : "transparent",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Txt style={{ fontSize: 23, lineHeight: 28 }}>{glyph}</Txt>
-                  {reaction?.count ? (
-                    <View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        right: -2,
-                        bottom: -2,
-                        minWidth: 18,
-                        height: 18,
-                        borderRadius: radii.pill,
-                        backgroundColor: color("card"),
-                        alignItems: "center",
-                        justifyContent: "center",
-                        paddingHorizontal: 3,
-                      }}
+          <View style={{ gap: spacing.xs }}>
+            <Txt variant="caption" tone="muted" style={{ fontWeight: "800" }}>
+              React
+            </Txt>
+            <View
+              accessibilityLabel="Choose a reaction"
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: spacing.xs,
+              }}
+            >
+              {QUICK_REACTIONS.map(({ payload, label, glyph }) => {
+                const reaction = reactions.find(
+                  (entry) => entry.emoji === payload,
+                );
+                const selected = !!reaction?.reactedByCurrentUser;
+                const reactionPending =
+                  pendingActions.has(`reaction:${message._id}:${payload}`);
+                return (
+                  <PressableScale
+                    key={payload}
+                    accessibilityLabel={`${selected ? "Remove" : "Add"} ${label.toLowerCase()} reaction${reaction?.count ? `, ${reaction.count}` : ""}`}
+                    accessibilityState={{
+                      selected,
+                      disabled: disabled || reactionPending,
+                    }}
+                    disabled={disabled || reactionPending}
+                    onPress={() => {
+                      onClose();
+                      onToggleReaction(message, payload);
+                    }}
+                    style={{
+                      width: "31.5%",
+                      minHeight: 56,
+                      borderRadius: radii.md,
+                      backgroundColor: selected
+                        ? color("secondary")
+                        : "transparent",
+                      paddingHorizontal: spacing.xs,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Txt style={{ fontSize: 22, lineHeight: 25 }}>{glyph}</Txt>
+                    <Txt
+                      variant="caption"
+                      tone={selected ? "primary" : "muted"}
+                      numberOfLines={1}
+                      style={{ fontSize: 11, fontWeight: "700" }}
                     >
-                      <Txt
-                        variant="caption"
-                        tone={selected ? "primary" : "muted"}
-                        style={{ fontSize: 10, lineHeight: 12, fontWeight: "800" }}
-                      >
-                        {reaction.count}
-                      </Txt>
-                    </View>
-                  ) : null}
-                </PressableScale>
-              );
-            })}
-          </ScrollView>
+                      {label}
+                      {reaction?.count ? ` · ${reaction.count}` : ""}
+                    </Txt>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
 
           <View style={{ gap: 2 }}>
             {canPost === true ? (
@@ -179,20 +175,20 @@ export function MessageActionsSheet({
                 onPress={() => onReply(message)}
               />
             ) : null}
-            {canModerateMessage ? (
-              <ActionRow
-                icon={message.isPinned ? PinOff : Pin}
-                label={message.isPinned ? "Unpin message" : "Pin message"}
-                disabled={disabled}
-                onPress={() => onTogglePin(message)}
-              />
-            ) : null}
             {mine ? (
               <ActionRow
                 icon={Pencil}
                 label="Edit message"
                 disabled={disabled}
                 onPress={() => onEdit(message)}
+              />
+            ) : null}
+            {canModerateMessage ? (
+              <ActionRow
+                icon={message.isPinned ? PinOff : Pin}
+                label={message.isPinned ? "Unpin message" : "Pin message"}
+                disabled={disabled}
+                onPress={() => onTogglePin(message)}
               />
             ) : null}
             <ActionRow

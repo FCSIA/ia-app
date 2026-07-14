@@ -44,6 +44,7 @@ type ChatTimelineProps = {
   pendingActions: ReadonlySet<string>;
   onLoadOlder?: () => void;
   onLongPress: (message: ChatMessage) => void;
+  onReply: (message: ChatMessage) => void;
   onOpenThread: (message: ChatMessage) => void;
   onToggleReaction: (message: ChatMessage, reaction: QuickReaction) => void;
   onVotePoll: (message: ChatMessage, optionId: string) => void;
@@ -91,6 +92,7 @@ export function ChatTimeline({
   pendingActions,
   onLoadOlder,
   onLongPress,
+  onReply,
   onOpenThread,
   onToggleReaction,
   onVotePoll,
@@ -140,7 +142,9 @@ export function ChatTimeline({
           groupedWithPrevious={item.groupedWithPrevious}
           showReplyPreview={!threadRoot}
           pendingActions={pendingActions}
+          canReply={canPost === true}
           onLongPress={onLongPress}
+          onReply={onReply}
           onOpenThread={onOpenThread}
           onToggleReaction={onToggleReaction}
           onVotePoll={onVotePoll}
@@ -150,6 +154,7 @@ export function ChatTimeline({
     },
     [
       onLongPress,
+      onReply,
       onOpenAttachment,
       onOpenThread,
       onToggleReaction,

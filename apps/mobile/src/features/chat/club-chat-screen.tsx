@@ -196,19 +196,24 @@ export function ClubChatScreen({
             {
               token: "all",
               label: "Everyone in this channel",
+              displayText: "@all",
               detail: "Managers only",
             },
           ]
         : []),
     ];
     const people = (channelContext?.members ?? [])
-      .map((person) => ({
-        token: person.uniqueId,
-        label:
+      .map((person) => {
+        const name =
           [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-          person.uniqueId,
-        detail: formatClubRole(person.role),
-      }));
+          person.uniqueId;
+        return {
+          token: person.uniqueId,
+          label: name,
+          displayText: `@${name}`,
+          detail: formatClubRole(person.role),
+        };
+      });
     return [...builtIns, ...people];
   }, [canManage, channelContext?.members]);
 
@@ -608,6 +613,7 @@ export function ClubChatScreen({
               pendingActions={pendingActions}
               onLoadOlder={loadOlderMessages}
               onLongPress={setActionMessage}
+              onReply={startReply}
               onOpenThread={openThread}
               onToggleReaction={handleToggleReaction}
               onVotePoll={handleVotePoll}
