@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import {
   EnrichedMarkdownTextInput,
   type EnrichedMarkdownTextInputInstance,
@@ -188,139 +188,161 @@ export function RichChatInput({
         </View>
       ) : null}
 
-      <EnrichedMarkdownTextInput
-        ref={inputRef}
-        nativeID={nativeID}
-        accessibilityLabel={accessibilityLabel}
-        defaultValue={nativeMarkdownRef.current}
-        placeholder={placeholder}
-        placeholderTextColor={color("mutedForeground")}
-        editable={editable}
-        multiline
-        scrollEnabled
-        cursorColor={color("primary")}
-        selectionColor={color("secondary")}
-        mentionIndicators={["@"]}
-        linkRegex={/https?:\/\/[^\s]+/i}
-        formatMenuConfig={{
-          bold: { enabled: true },
-          italic: { enabled: true },
-          underline: { enabled: true },
-          // The native edit menu cannot constrain URI schemes. Keep links on
-          // our validated toolbar so only http(s) URLs enter the document.
-          link: { enabled: false },
-          strikethrough: { enabled: false },
-          spoiler: { enabled: false },
-        }}
-        markdownStyle={{
-          strong: { color: color("foreground") },
-          em: { color: color("foreground") },
-          link: { color: color("primary"), underline: true },
-          linkVariants: {
-            "^user:": {
-              color: color("primary"),
-              backgroundColor: color("secondary"),
-              underline: false,
-            },
-          },
-        }}
-        onChangeText={(nextPlainText) => {
-          nativePlainTextRef.current = nextPlainText;
-          emitChange(nextPlainText, nativeMarkdownRef.current);
-        }}
-        onChangeMarkdown={(nextMarkdown) => {
-          const sanitized = sanitizeChatMarkdown(nextMarkdown);
-          nativeMarkdownRef.current = sanitized;
-          emitChange(nativePlainTextRef.current, sanitized);
-        }}
-        onChangeSelection={setSelection}
-        onChangeState={setStyleState}
-        onStartMention={() => {
-          setMentionOpen(true);
-          setMentionQuery("");
-        }}
-        onChangeMention={({ text }) => {
-          setMentionOpen(true);
-          setMentionQuery(text);
-        }}
-        onEndMention={() => {
-          setMentionOpen(false);
-          setMentionQuery("");
-        }}
+      <View
         style={{
-          minHeight: 48,
-          maxHeight: 140,
-          borderRadius: radii.md,
-          borderWidth: 1,
+          width: "100%",
+          overflow: "hidden",
+          borderRadius: radii.xl,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: color("border"),
-          backgroundColor: color("background"),
-          color: color("foreground"),
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          fontSize: 15,
-          lineHeight: 21,
+          backgroundColor: color("card"),
         }}
-      />
+      >
+        <EnrichedMarkdownTextInput
+          ref={inputRef}
+          nativeID={nativeID}
+          accessibilityLabel={accessibilityLabel}
+          defaultValue={nativeMarkdownRef.current}
+          placeholder={placeholder}
+          placeholderTextColor={color("mutedForeground")}
+          editable={editable}
+          multiline
+          scrollEnabled
+          cursorColor={color("primary")}
+          selectionColor={color("secondary")}
+          mentionIndicators={["@"]}
+          linkRegex={/https?:\/\/[^\s]+/i}
+          formatMenuConfig={{
+            bold: { enabled: true },
+            italic: { enabled: true },
+            underline: { enabled: true },
+            // The native edit menu cannot constrain URI schemes. Keep links on
+            // our validated toolbar so only http(s) URLs enter the document.
+            link: { enabled: false },
+            strikethrough: { enabled: false },
+            spoiler: { enabled: false },
+          }}
+          markdownStyle={{
+            strong: { color: color("foreground") },
+            em: { color: color("foreground") },
+            link: { color: color("primary"), underline: true },
+            linkVariants: {
+              "^user:": {
+                color: color("primary"),
+                backgroundColor: color("secondary"),
+                underline: false,
+              },
+            },
+          }}
+          onChangeText={(nextPlainText) => {
+            nativePlainTextRef.current = nextPlainText;
+            emitChange(nextPlainText, nativeMarkdownRef.current);
+          }}
+          onChangeMarkdown={(nextMarkdown) => {
+            const sanitized = sanitizeChatMarkdown(nextMarkdown);
+            nativeMarkdownRef.current = sanitized;
+            emitChange(nativePlainTextRef.current, sanitized);
+          }}
+          onChangeSelection={setSelection}
+          onChangeState={setStyleState}
+          onStartMention={() => {
+            setMentionOpen(true);
+            setMentionQuery("");
+          }}
+          onChangeMention={({ text }) => {
+            setMentionOpen(true);
+            setMentionQuery(text);
+          }}
+          onEndMention={() => {
+            setMentionOpen(false);
+            setMentionQuery("");
+          }}
+          style={{
+            minHeight: 50,
+            maxHeight: 140,
+            borderWidth: 0,
+            backgroundColor: "transparent",
+            color: color("foreground"),
+            paddingHorizontal: spacing.md,
+            paddingTop: spacing.md,
+            paddingBottom: spacing.sm,
+            fontSize: 15,
+            lineHeight: 21,
+          }}
+        />
 
-      <View style={{ minWidth: 0, flexDirection: "row", alignItems: "center" }}>
-        <ScrollView
-          horizontal
-          bounces={false}
-          keyboardShouldPersistTaps="always"
-          showsHorizontalScrollIndicator={false}
-          style={{ minWidth: 0, flex: 1 }}
-          contentContainerStyle={{ alignItems: "center", gap: 2 }}
+        <View
+          style={{
+            minWidth: 0,
+            minHeight: 45,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: color("border"),
+            backgroundColor: color("muted"),
+            paddingLeft: spacing.xs,
+            paddingRight: spacing.xs,
+            flexDirection: "row",
+            alignItems: "center",
+          }}
         >
-          <FormatButton
-            icon={Bold}
-            label="Bold"
-            active={!!styleState?.bold.isActive}
-            disabled={!editable}
-            onPress={() => inputRef.current?.toggleBold()}
-          />
-          <FormatButton
-            icon={Italic}
-            label="Italic"
-            active={!!styleState?.italic.isActive}
-            disabled={!editable}
-            onPress={() => inputRef.current?.toggleItalic()}
-          />
-          <FormatButton
-            icon={Underline}
-            label="Underline"
-            active={!!styleState?.underline.isActive}
-            disabled={!editable}
-            onPress={() => inputRef.current?.toggleUnderline()}
-          />
-          <FormatButton
-            icon={Link2}
-            label={styleState?.link.isActive ? "Remove link" : "Add link"}
-            active={!!styleState?.link.isActive || linkOpen}
-            disabled={!editable}
-            onPress={() => {
-              if (styleState?.link.isActive) {
-                inputRef.current?.removeLink();
-              } else {
-                setLinkOpen((open) => !open);
-                setLinkError(null);
-              }
-            }}
-          />
-          <FormatButton
-            icon={AtSign}
-            label="Mention someone"
-            active={mentionOpen}
-            disabled={!editable || suggestions.length === 0}
-            onPress={() => {
-              inputRef.current?.focus();
-              inputRef.current?.startMention("@");
-            }}
-          />
-          {toolbarActions}
-        </ScrollView>
-        {toolbarTrailing ? (
-          <View style={{ marginLeft: spacing.xs }}>{toolbarTrailing}</View>
-        ) : null}
+          <ScrollView
+            horizontal
+            bounces={false}
+            keyboardShouldPersistTaps="always"
+            showsHorizontalScrollIndicator={false}
+            style={{ minWidth: 0, flex: 1 }}
+            contentContainerStyle={{ alignItems: "center", gap: 2 }}
+          >
+            <FormatButton
+              icon={Bold}
+              label="Bold"
+              active={!!styleState?.bold.isActive}
+              disabled={!editable}
+              onPress={() => inputRef.current?.toggleBold()}
+            />
+            <FormatButton
+              icon={Italic}
+              label="Italic"
+              active={!!styleState?.italic.isActive}
+              disabled={!editable}
+              onPress={() => inputRef.current?.toggleItalic()}
+            />
+            <FormatButton
+              icon={Underline}
+              label="Underline"
+              active={!!styleState?.underline.isActive}
+              disabled={!editable}
+              onPress={() => inputRef.current?.toggleUnderline()}
+            />
+            <FormatButton
+              icon={Link2}
+              label={styleState?.link.isActive ? "Remove link" : "Add link"}
+              active={!!styleState?.link.isActive || linkOpen}
+              disabled={!editable}
+              onPress={() => {
+                if (styleState?.link.isActive) {
+                  inputRef.current?.removeLink();
+                } else {
+                  setLinkOpen((open) => !open);
+                  setLinkError(null);
+                }
+              }}
+            />
+            <FormatButton
+              icon={AtSign}
+              label="Mention someone"
+              active={mentionOpen}
+              disabled={!editable || suggestions.length === 0}
+              onPress={() => {
+                inputRef.current?.focus();
+                inputRef.current?.startMention("@");
+              }}
+            />
+            {toolbarActions}
+          </ScrollView>
+          {toolbarTrailing ? (
+            <View style={{ marginLeft: spacing.xs }}>{toolbarTrailing}</View>
+          ) : null}
+        </View>
       </View>
 
       {linkOpen ? (

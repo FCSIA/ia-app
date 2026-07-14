@@ -77,8 +77,6 @@ export function ChatComposer({
       onLayout={onLayout}
       style={{
         width: "100%",
-        borderTopWidth: 1,
-        borderTopColor: color("border"),
         backgroundColor: color("background"),
       }}
     >
@@ -88,7 +86,7 @@ export function ChatComposer({
           maxWidth: 760,
           alignSelf: "center",
           paddingHorizontal: spacing.md,
-          paddingTop: spacing.xs,
+          paddingTop: spacing.sm,
           paddingBottom: spacing.sm,
           gap: spacing.xs,
         }}
