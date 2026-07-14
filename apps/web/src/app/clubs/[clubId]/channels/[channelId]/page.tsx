@@ -851,7 +851,10 @@ export default function ClubChannelPage({
   }, [audience, club?.tags, club?.viewer?.canManageChannels]);
 
   const selectedThread = selectedThreadResult?.root ?? null;
-  const threadReplies = selectedThreadResult?.replies ?? [];
+  const threadReplies = useMemo(
+    () => selectedThreadResult?.replies ?? [],
+    [selectedThreadResult],
+  );
 
   const flattenedMessages = useMemo(
     () => [...messages, ...threadReplies],
