@@ -1,5 +1,6 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { admin, username } from "better-auth/plugins";
 import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
@@ -16,7 +17,20 @@ const siteUrl =
 
 const configuredTrustedOrigins = [
   siteUrl,
+  "ia-app://",
+  "ia-app://*",
   process.env.NEXT_PUBLIC_SITE_URL,
+  process.env.EXPO_PUBLIC_SITE_URL,
+  process.env.EXPO_PUBLIC_APP_SCHEME
+    ? `${process.env.EXPO_PUBLIC_APP_SCHEME}://`
+    : undefined,
+  process.env.EXPO_PUBLIC_APP_SCHEME
+    ? `${process.env.EXPO_PUBLIC_APP_SCHEME}://*`
+    : undefined,
+  process.env.NODE_ENV === "development" ? "exp://" : undefined,
+  process.env.NODE_ENV === "development" ? "exp://**" : undefined,
+  process.env.NODE_ENV === "development" ? "http://localhost:8081" : undefined,
+  process.env.NODE_ENV === "development" ? "http://127.0.0.1:8081" : undefined,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter((origin): origin is string => Boolean(origin));
 
@@ -28,13 +42,32 @@ const configuredSiteHostname = (() => {
   }
 })();
 
+function hostFromEnvUrl(value?: string) {
+  if (!value) return null;
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const configuredAuthHostnames = Array.from(
+  new Set(
+    [
+      configuredSiteHostname,
+      hostFromEnvUrl(process.env.CONVEX_SITE_URL),
+      hostFromEnvUrl(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
+      process.env.MOBILE_CONVEX_HOST,
+      "localhost",
+      "127.0.0.1",
+      "10.0.2.2",
+      "*-sreyassabbanis-projects.vercel.app",
+    ].filter((host): host is string => Boolean(host)),
+  ),
+);
+
 const authBaseURL: BetterAuthOptions["baseURL"] = {
-  allowedHosts: [
-    configuredSiteHostname,
-    "localhost",
-    "127.0.0.1",
-    "*-sreyassabbanis-projects.vercel.app",
-  ],
+  allowedHosts: configuredAuthHostnames,
   fallback: siteUrl,
   protocol: "auto",
 };
@@ -114,6 +147,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
           user: userAc,
         },
       }),
+      expo(),
       convex({ authConfig }),
     ],
   }) satisfies BetterAuthOptions;

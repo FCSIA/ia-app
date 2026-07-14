@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,13 @@ type UsersPage = {
 
 type UsersPageStatus = 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
 
+type DisplayedUsersPageState = {
+  activeTab: AdminTabId;
+  search: string;
+  userRoleGroup: AdminUserRoleGroup;
+  page: UsersPage | undefined;
+};
+
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();
   const { toast } = useToast();
@@ -31,7 +38,12 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [previousCursors, setPreviousCursors] = useState<(string | null)[]>([]);
-  const [displayedPage, setDisplayedPage] = useState<UsersPage | undefined>(undefined);
+  const [displayedPageState, setDisplayedPageState] = useState<DisplayedUsersPageState>({
+    activeTab,
+    search: deferredSearch,
+    userRoleGroup,
+    page: undefined,
+  });
 
   const canManageUser = (targetUser: AdminUserRecord) => {
     if (!user) return false;
@@ -58,15 +70,26 @@ export function useAdminUsers(activeTab: AdminTabId) {
       : 'skip',
   );
 
-  useEffect(() => {
-    setDisplayedPage(undefined);
-  }, [deferredSearch, userRoleGroup]);
-
-  useEffect(() => {
-    if (usersPage) {
-      setDisplayedPage(usersPage);
-    }
-  }, [usersPage]);
+  let displayedPage = displayedPageState.page;
+  if (
+    displayedPageState.activeTab !== activeTab ||
+    displayedPageState.search !== deferredSearch ||
+    displayedPageState.userRoleGroup !== userRoleGroup
+  ) {
+    displayedPage = undefined;
+    setDisplayedPageState({
+      activeTab,
+      search: deferredSearch,
+      userRoleGroup,
+      page: undefined,
+    });
+  } else if (usersPage && displayedPageState.page !== usersPage) {
+    displayedPage = usersPage;
+    setDisplayedPageState({
+      ...displayedPageState,
+      page: usersPage,
+    });
+  }
 
   // Actual total count for the selected role group (shown in the header badge).
   const totalCount = useQuery(

@@ -130,6 +130,46 @@ export const clubMentionKindValidator = v.union(
 
 export type ClubMentionKind = Infer<typeof clubMentionKindValidator>;
 
+export const clubChannelPollOptionValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+});
+
+export type ClubChannelPollOption = Infer<typeof clubChannelPollOptionValidator>;
+
+export const clubChannelReactionValidator = v.union(
+  v.literal("LIKE"),
+  v.literal("HEART"),
+  v.literal("FIRE"),
+  v.literal("CELEBRATE"),
+  v.literal("EYES"),
+  v.literal("DONE"),
+);
+
+export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
+
+// Keep canonical tokens as the stored/public representation, while accepting
+// the glyphs emitted by older mobile builds long enough to normalize them at
+// the mutation boundary.
+export const clubChannelReactionInputValidator = v.union(
+  v.literal("LIKE"),
+  v.literal("HEART"),
+  v.literal("FIRE"),
+  v.literal("CELEBRATE"),
+  v.literal("EYES"),
+  v.literal("DONE"),
+  v.literal("👍"),
+  v.literal("❤️"),
+  v.literal("🔥"),
+  v.literal("🎉"),
+  v.literal("👀"),
+  v.literal("✅"),
+);
+
+export type ClubChannelReactionInput = Infer<
+  typeof clubChannelReactionInputValidator
+>;
+
 export const eventStatusValidator = v.union(
   v.literal("DRAFT"),
   v.literal("PENDING_APPROVAL"),

@@ -2,8 +2,8 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Convex-first IA app; broad backend/data/routing hardening pass completed.
+- **Branch**: `mobile`
+- **Goal**: Native Expo mobile app advanced to repo-local store-ready v1 on top of the Convex-first IA app.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -19,6 +19,7 @@
 | Wrapped | **Done** |
 | Announcements | **Done for current web flows** |
 | Moderation, uploads | **Done for current web flows** |
+| Native mobile push tokens | **Added for Expo clients** |
 
 ### Hardening Completed
 
@@ -29,6 +30,9 @@
   access the club workspace.
 - Channel reads/writes/reactions/polls now validate channel access, parent
   message channel ownership, and poll option membership.
+- Channel message deletion now erases content immediately, retains roots only
+  while they anchor replies, and removes attachments/storage plus related
+  reactions, mentions, and poll votes in bounded scheduled batches.
 - General events require an event-manager role; club events require admin,
   sponsor, or club leader authority.
 - Calendar creation no longer lets regular users create non-personal calendar
@@ -50,25 +54,53 @@
 - Event creation UI only offers eligible clubs to non-general creators and
   blocks club-scoped submissions without an eligible club.
 - Event author cancellation checks both current user id shapes used by the app.
-- Profile settings now use a responsive two-column composition with identity
-  and vertical section navigation in the left rail. Account, notifications,
-  appearance, and role-aware moderation render one at a time on the right.
-- User and club image editors share `EditableAvatar`; editable avatars reveal
-  their controls on hover or keyboard focus.
-- The shared switch is a dumb controlled Fluid/Radix primitive with visible
-  off/disabled states, an 80ms spring, accessible labels, and no padded empty
-  footprint. Optimistic Convex state stays in feature containers.
-- Profile appearance choices use the Fluid radio group as a linear list with
-  keyboard and roving-tabindex fixes; Fluid buttons drive the left rail.
-- Fluid controls now share substrate-relative interaction colors: `bg-hover`
-  mixes the current foreground at 6%, while `bg-active` uses 10%. Selected and
-  hover layers no longer depend on undefined `bg-selected` or dark-only accent
-  fallbacks, so Light, Dark, Contrast, Bubblegum, and Custom stay consistent.
+- `apps/mobile` now contains an Expo SDK 57 app with Expo Router, Better Auth
+  Expo/SecureStore auth, Convex live data, shared design tokens, IA app assets,
+  production-shaped dynamic Expo config, redesigned 5-tab mobile IA,
+  announcements/feed, clubs/chat/reporting/join approvals/people/tags,
+  Calendar hub (My Week, Month, Events), Discover for Courses/Flex/Wrapped,
+  Flex Friday browse/register/pass, notifications inbox plus settings,
+  profile/avatar/password, persisted themes with editable custom mobile
+  colors, dev-only design-system gallery, offline cached dashboard/schedule/
+  pass state, notification deep-link routing, native push device/test-push
+  validation in settings, and Maestro smoke flows.
+- Mobile config now supports opt-in `EXPO_IOS_PERSONAL_TEAM=1` builds that omit
+  paid-team-only iOS push and Associated Domains entitlements, use a
+  developer-supplied bundle identifier, and leave Android/school builds
+  unchanged. The app explains that remote push is unavailable in this mode.
+- Android Expo Go QA now uses safe-area in-app headers instead of native stack
+  headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
+  colors, visible disabled/primary buttons, and Android emulator Convex env
+  sync via `pnpm sync:convex-env -- --android`.
+- Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
+  Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
+  are reachable from every tab through the shared in-app header, and Profile
+  owns Appearance and Notification settings.
+- Mobile UI has a shared primitive layer for headers, rows, segmented controls,
+  chips, switches, avatar, skeletons, icon buttons, bottom sheets, stats,
+  press-scale motion, haptics, and toast feedback. Dashboard customization now
+  uses a bottom sheet with drag-to-reorder.
+- Mobile club chat now keeps its composer above the iOS home indicator and
+  keyboard, renders emoji reactions with canonical token payloads, and allows
+  independent message operations without freezing the composer.
+- Mobile schedule rows use readable semantic period badges and open the linked
+  course detail from Home and My Week while preserving edit-mode selection.
+- Mobile announcement feed/detail views use flat editorial rows, restrained
+  unread tinting, compact top-right read/save controls, and divider-free comment
+  threads.
+- `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
+  tokens for web/mobile consumption. Web imports the Tailwind token bridge.
+- `packages/fun-facts` centralizes the shared school-appropriate fun fact bank
+  and picker used by both the web loading/dashboard widget and the mobile Home
+  Fun Fact card.
 
 ### Remaining Debt
 
-- Channel delete is still a direct row delete and does not cascade related
-  messages/reactions/memberships.
+- Mobile v1 is repo-local store-ready. Remaining mobile launch blockers are
+  external: school-controlled EAS project id/account owner, Apple/Google store
+  accounts, universal-link domain files, reviewer credentials on a demo
+  deployment, physical iOS/Android push validation, screenshot capture, and
+  TestFlight/Play internal-track builds. See `apps/mobile/STORE_READY.md`.
 - Announcement feed still has pagination/read-amplification room for improvement.
 - `bodyRich` and poll option payloads are still `v.any()` shaped data.
 - Web still has a localStorage-backed user cache that may need a privacy pass.
@@ -80,20 +112,27 @@
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (3 files, 14 tests)
+- `pnpm --filter mobile typecheck` - pass after mobile redesign/IA refactor
+- Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
+  Courses list/detail, Events empty state, Calendar personal create/delete,
+  Schedule view/edit-mode controls, Clubs list/request-only detail state,
+  Wrapped closed state, Profile avatar/password controls, safe-area back
+  spacing, and More navigation. Alex STU001 has no approved club memberships in
+  the hosted dataset, so member-only club channel/people/tag runtime actions
+  were source/typecheck verified but hidden for that user.
+- Latest design/tab pass was typechecked. Android Expo Go visual rerun was
+  blocked because Expo Go stopped requesting the Metro bundle after reload even
+  though Metro `/status` returned `packager-status:running` and `adb reverse`
+  mappings existed; restart Expo Go/Metro before the next visual QA pass.
+- `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
+  a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass
+- Focused mobile chat tests - pass (4 files, 10 tests)
 - `pnpm build` - pass
 - `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
 Convex also reported that optional Convex AI guidance files are behind upstream.
-
-For the latest profile/avatar UI slice, focused web TypeScript and ESLint checks
-plus `git diff --check` pass. A build and browser smoke test were intentionally
-not rerun per the user's instruction.
-
-For the shared Fluid interaction-surface refactor, focused web TypeScript and
-ESLint checks plus `git diff --check` pass. A build and browser smoke test were
-again intentionally not run.
 
 ## Next Work
 

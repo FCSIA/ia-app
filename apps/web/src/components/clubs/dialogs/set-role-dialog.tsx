@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useClubId } from '@/app/clubs/club-route';
@@ -34,13 +34,17 @@ export function SetRoleDialog({ person, onOpenChange }: Props) {
   const clubId = useClubId();
   const { toast } = useToast();
   const [role, setRole] = useState<string>('NONE');
+  const personId = person?._id ?? null;
+  const [previousPersonId, setPreviousPersonId] = useState<string | null>(personId);
   const setMemberRole = useMutation(api.clubs.management.setMemberRole);
 
-  useEffect(() => {
-    if (!person) return;
-    const current = person.clubRole?.toUpperCase() || 'NONE';
-    setRole(current === 'LEADER' ? 'LEADER' : 'NONE');
-  }, [person]);
+  if (previousPersonId !== personId) {
+    setPreviousPersonId(personId);
+    if (person) {
+      const current = person.clubRole?.toUpperCase() || 'NONE';
+      setRole(current === 'LEADER' ? 'LEADER' : 'NONE');
+    }
+  }
 
   return (
     <Dialog open={!!person} onOpenChange={onOpenChange}>

@@ -66,16 +66,28 @@ export const saveUserImage = mutation({
     const user = await getCurrentAppUser(ctx);
     const maxBytes =
       args.kind === "avatar" ? MAX_USER_AVATAR_BYTES : MAX_USER_BACKGROUND_BYTES;
+    const metadata = await ctx.db.system.get("_storage", args.storageId);
 
-    if (!args.mimeType.startsWith("image/")) {
+    if (!metadata) {
+      throw new ConvexError("Upload not found");
+    }
+
+    const mimeType = (metadata.contentType ?? args.mimeType).toLowerCase();
+
+    if (!mimeType.startsWith("image/")) {
+      await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Only image uploads are allowed");
     }
-    if (args.size > maxBytes) {
+    if (metadata.size > maxBytes) {
+      await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Image too large");
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
-    if (!url) throw new ConvexError("Upload failed");
+    if (!url) {
+      await deleteStoredFile(ctx, args.storageId);
+      throw new ConvexError("Upload failed");
+    }
 
     if (args.kind === "avatar") {
       await deleteStoredFile(ctx, user.avatarStorageId);

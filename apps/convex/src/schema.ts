@@ -12,6 +12,7 @@ import {
   clubMemberRoleValidator,
   inviteStatusValidator,
   clubChannelVisibilityValidator,
+  clubChannelPollOptionValidator,
   clubJoinPolicyValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
@@ -206,6 +207,23 @@ export const schema = defineSchema({
     .index("by_endpoint", ["endpoint"])
     .index("by_userId_and_enabled", ["userId", "enabled"]),
 
+  notificationNativePushTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android")),
+    deviceId: v.optional(v.string()),
+    deviceName: v.optional(v.string()),
+    enabled: v.boolean(),
+    failureCount: v.number(),
+    lastError: v.optional(v.string()),
+    lastSentAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_token", ["userId", "token"])
+    .index("by_token", ["token"])
+    .index("by_userId_and_enabled", ["userId", "enabled"]),
+
   courses: defineTable({
     slug: v.string(),
     title: v.string(),
@@ -385,6 +403,7 @@ export const schema = defineSchema({
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"])
+    .index("by_clubId_and_role", ["clubId", "role"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
     .index("by_userId_and_clubId", ["userId", "clubId"]),
 
@@ -478,11 +497,13 @@ export const schema = defineSchema({
     authorId: v.id("users"),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
     body: v.string(),
+    bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
     isPinned: v.boolean(),
     pinnedAt: v.optional(v.number()),
     pollQuestion: v.optional(v.string()),
-    pollOptions: v.optional(v.any()),
+    pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
+    deletedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -514,12 +535,25 @@ export const schema = defineSchema({
 
   clubChannelMessageAttachments: defineTable({
     messageId: v.id("clubChannelMessages"),
+    storageId: v.optional(v.id("_storage")),
+    uploaderId: v.optional(v.id("users")),
     fileName: v.string(),
     fileUrl: v.string(),
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+
+  clubChannelAttachmentUploads: defineTable({
+    uploaderId: v.id("users"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),

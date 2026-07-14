@@ -30,6 +30,13 @@ const TRACK_HEIGHT = 20;
 const THUMB_SIZE = 16;
 const THUMB_OFFSET = 2;
 const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - THUMB_OFFSET * 2;
+const SWITCH_ON_BACKGROUND = 'hsl(var(--primary))';
+const SWITCH_ON_BACKGROUND_HOVER =
+  'color-mix(in oklab, hsl(var(--primary)), hsl(var(--foreground)) 8%)';
+const SWITCH_OFF_BACKGROUND =
+  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 9%)';
+const SWITCH_OFF_BACKGROUND_HOVER =
+  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 15%)';
 
 function Switch({
   'aria-label': ariaLabel,
@@ -108,11 +115,14 @@ function Switch({
           height: TRACK_HEIGHT,
           backgroundColor: checked
             ? hovered
-              ? '#5C89F2'
-              : '#6B97FF'
+              ? SWITCH_ON_BACKGROUND_HOVER
+              : SWITCH_ON_BACKGROUND
             : hovered
-              ? 'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 16%)'
-              : 'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 9%)',
+              ? SWITCH_OFF_BACKGROUND_HOVER
+              : SWITCH_OFF_BACKGROUND,
+          boxShadow: checked
+            ? 'inset 0 0 0 1px hsl(var(--primary) / 0.2)'
+            : 'inset 0 0 0 1px hsl(var(--border) / 0.95)',
         }}
         {...props}
       >

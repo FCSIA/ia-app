@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Bold, AtSign, BarChart3, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
-  createEmptyClubChannelMessageValue,
+  deserializeClubChannelMessageBody,
+  serializeClubChannelMessageMarkdown,
   serializeClubChannelMessagePlainText,
   type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
@@ -34,18 +35,25 @@ type ChannelMessageComposerProps = {
   placeholder: string;
   submitLabel: string;
   isPending: boolean;
-  resetKey: number;
+  initialBody?: string;
+  initialBodyMarkdown?: string | null;
+  initialBodyRich?: ClubChannelMessageRichBody | null;
   onSubmit: (args: {
     body: string;
+    bodyMarkdown: string;
     bodyRich: ClubChannelMessageRichBody | null;
     files: File[];
     pollQuestion?: string;
     pollOptions?: Array<{ id: string; label: string }>;
   }) => void;
+  canAttach?: boolean;
   canCreatePoll?: boolean;
 };
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
+
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 function MarkButton({
   icon: Icon,
@@ -91,10 +99,19 @@ export function ChannelMessageComposer({
   placeholder,
   submitLabel,
   isPending,
-  resetKey,
+  initialBody = '',
+  initialBodyMarkdown,
+  initialBodyRich,
   onSubmit,
+  canAttach = true,
   canCreatePoll = false,
 }: ChannelMessageComposerProps) {
+  const initialValue = useMemo(
+    () =>
+      initialBodyRich ??
+      deserializeClubChannelMessageBody(initialBodyMarkdown?.trim() || initialBody),
+    [initialBody, initialBodyMarkdown, initialBodyRich],
+  );
   const editor = usePlateEditor(
     {
       plugins: [
@@ -104,28 +121,22 @@ export function ChannelMessageComposer({
         MentionPlugin.withComponent(MentionElement),
         MentionInputPlugin.withComponent(MentionInputElement),
       ],
-      value: createEmptyClubChannelMessageValue(),
+      value: initialValue,
     },
     [],
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [plainText, setPlainText] = useState('');
-  const [richValue, setRichValue] = useState<Value>(createEmptyClubChannelMessageValue());
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [plainText, setPlainText] = useState(() =>
+    serializeClubChannelMessagePlainText(initialValue),
+  );
+  const [richValue, setRichValue] = useState<Value>(initialValue);
   const [pollOpen, setPollOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
-
-  useEffect(() => {
-    const emptyValue = createEmptyClubChannelMessageValue();
-    setFiles([]);
-    setPlainText('');
-    setRichValue(emptyValue);
-    setPollOpen(false);
-    setPollQuestion('');
-    setPollOptions(['', '']);
-    editor.tf.setValue(emptyValue);
-  }, [editor, resetKey]);
+  const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
+  const [markdownSource, setMarkdownSource] = useState(initialBodyMarkdown ?? '');
 
   const mentionables = useMemo<MentionableItem[]>(
     () =>
@@ -143,14 +154,18 @@ export function ChannelMessageComposer({
     .map((label, index) => ({ id: `option-${index + 1}`, label: label.trim() }))
     .filter((option) => option.label);
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
-  const canSend = !isPending && (plainText.trim().length > 0 || files.length > 0 || !!hasPoll);
+  const currentBody = isMarkdownSource ? markdownSource : plainText;
+  const canSend = !isPending && (currentBody.trim().length > 0 || files.length > 0 || !!hasPoll);
 
   const handleSubmit = () => {
     if (!canSend) return;
 
     onSubmit({
-      body: plainText,
-      bodyRich: plainText.trim()
+      body: currentBody,
+      bodyMarkdown: isMarkdownSource
+        ? markdownSource.trim()
+        : serializeClubChannelMessageMarkdown(richValue),
+      bodyRich: plainText.trim() && !isMarkdownSource
         ? (richValue as unknown as ClubChannelMessageRichBody)
         : null,
       files,
@@ -171,6 +186,13 @@ export function ChannelMessageComposer({
     }
   };
 
+  const handleMarkdownSourceKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
     <Plate
       editor={editor}
@@ -183,34 +205,45 @@ export function ChannelMessageComposer({
       <MentionablesProvider items={mentionables}>
         <div className="overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm">
           <div className="flex flex-wrap items-center gap-1 border-b px-2 py-2">
-            <MarkButton icon={Bold} label="Bold" mark="bold" />
-            <MarkButton icon={Italic} label="Italic" mark="italic" />
-            <MarkButton icon={Underline} label="Underline" mark="underline" />
-            <Separator orientation="vertical" className="mx-1 h-5" />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-muted-foreground"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                editor.tf.insertText('@');
-                editor.tf.focus();
-              }}
-            >
-              <AtSign className="size-4" />
-              Mention
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 px-2 text-muted-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="size-4" />
-              Attach
-            </Button>
+            {isMarkdownSource ? (
+              <span className="px-1 text-xs font-medium text-muted-foreground">
+                Markdown source · ⌘/Ctrl+Enter to save
+              </span>
+            ) : (
+              <>
+                <MarkButton icon={Bold} label="Bold" mark="bold" />
+                <MarkButton icon={Italic} label="Italic" mark="italic" />
+                <MarkButton icon={Underline} label="Underline" mark="underline" />
+                <Separator orientation="vertical" className="mx-1 h-5" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1.5 px-2 text-muted-foreground"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    editor.tf.insertText('@');
+                    editor.tf.focus();
+                  }}
+                >
+                  <AtSign className="size-4" />
+                  Mention
+                </Button>
+              </>
+            )}
+            {canAttach ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-muted-foreground"
+                disabled={files.length >= MAX_ATTACHMENTS}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="size-4" />
+                Attach
+              </Button>
+            ) : null}
             {canCreatePoll ? (
               <Button
                 type="button"
@@ -226,9 +259,11 @@ export function ChannelMessageComposer({
                 Poll
               </Button>
             ) : null}
-            <div className="ml-auto text-[11px] text-muted-foreground">
-              Type @ to search mentions
-            </div>
+            {!isMarkdownSource ? (
+              <div className="ml-auto text-[11px] text-muted-foreground">
+                Type @ to search mentions
+              </div>
+            ) : null}
           </div>
 
           {files.length > 0 ? (
@@ -239,15 +274,24 @@ export function ChannelMessageComposer({
                   <button
                     type="button"
                     className="rounded p-0.5 hover:bg-muted"
-                    onClick={() =>
-                      setFiles((current) => current.filter((entry) => entry.name !== file.name))
-                    }
+                    onClick={() => {
+                      setAttachmentError(null);
+                      setFiles((current) =>
+                        current.filter((entry) => entry.name !== file.name),
+                      );
+                    }}
                   >
                     <X className="size-3" />
                   </button>
                 </Badge>
               ))}
             </div>
+          ) : null}
+
+          {attachmentError ? (
+            <p role="alert" className="border-b px-3 py-2 text-xs text-destructive">
+              {attachmentError}
+            </p>
           ) : null}
 
           {pollOpen ? (
@@ -279,8 +323,8 @@ export function ChannelMessageComposer({
                 type="button"
                 size="sm"
                 variant="tertiary"
-                onClick={() => setPollOptions((current) => [...current, ''].slice(0, 8))}
-                disabled={pollOptions.length >= 8}
+                onClick={() => setPollOptions((current) => [...current, ''])}
+                disabled={pollOptions.length >= 6}
               >
                 <Plus className="size-3.5" />
                 Add option
@@ -290,14 +334,24 @@ export function ChannelMessageComposer({
 
           <div className="flex items-end gap-3 px-3 py-3">
             <div className="flex-1 min-w-0">
-              <PlateContent
-                placeholder={placeholder}
-                onKeyDown={handleKeyDown}
-                className={cn(
-                  'max-h-64 min-h-[40px] overflow-y-auto py-2 text-sm leading-6 outline-none',
-                  '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-2',
-                )}
-              />
+              {isMarkdownSource ? (
+                <textarea
+                  aria-label="Markdown message source"
+                  value={markdownSource}
+                  onChange={(event) => setMarkdownSource(event.target.value)}
+                  onKeyDown={handleMarkdownSourceKeyDown}
+                  className="max-h-64 min-h-24 w-full resize-y bg-transparent py-2 font-mono text-sm leading-6 outline-none placeholder:text-muted-foreground"
+                />
+              ) : (
+                <PlateContent
+                  placeholder={placeholder}
+                  onKeyDown={handleKeyDown}
+                  className={cn(
+                    'max-h-64 min-h-[40px] overflow-y-auto py-2 text-sm leading-6 outline-none',
+                    '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-2',
+                  )}
+                />
+              )}
             </div>
 
             <Button
@@ -314,22 +368,32 @@ export function ChannelMessageComposer({
         </div>
       </MentionablesProvider>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const nextFiles = Array.from(event.target.files ?? []);
-          if (nextFiles.length > 0) {
-            setFiles((current) => [
-              ...current,
-              ...nextFiles.filter((file) => !current.some((entry) => entry.name === file.name)),
-            ]);
-          }
-          event.currentTarget.value = '';
-        }}
-      />
+      {canAttach ? (
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            const nextFiles = Array.from(event.target.files ?? []);
+            const oversized = nextFiles.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+            if (oversized) {
+              setAttachmentError(`${oversized.name} is larger than 10 MB.`);
+            } else if (nextFiles.length > 0) {
+              const additions = nextFiles.filter(
+                (file) => !files.some((entry) => entry.name === file.name),
+              );
+              if (files.length + additions.length > MAX_ATTACHMENTS) {
+                setAttachmentError('You can attach up to 5 files.');
+              } else {
+                setAttachmentError(null);
+                setFiles((current) => [...current, ...additions]);
+              }
+            }
+            event.currentTarget.value = '';
+          }}
+        />
+      ) : null}
     </Plate>
   );
 }

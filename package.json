@@ -5,6 +5,8 @@
   "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "turbo run dev --filter=web --filter=cvx",
+    "dev:mobile": "pnpm --filter mobile dev",
+    "dev:mobile:tunnel": "pnpm --filter mobile dev:client:tunnel",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
@@ -12,6 +14,8 @@
     "convex:dev": "pnpm --filter cvx dev",
     "db:generate": "pnpm --filter cvx codegen",
     "db:studio": "pnpm --filter cvx exec convex dashboard",
+    "mobile:ios": "pnpm --filter mobile ios",
+    "mobile:android": "pnpm --filter mobile android",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {
@@ -20,7 +24,7 @@
     "vercel": "^54.5.1"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=20.19.0",
     "pnpm": ">=9.0.0"
   },
   "dependencies": {

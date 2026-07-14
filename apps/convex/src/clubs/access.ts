@@ -79,6 +79,57 @@ export async function getViewerContext(
       .first(),
   ]);
 
+  return buildClubContext({
+    club,
+    user,
+    membership,
+    sponsor,
+    hasPendingJoinRequest: !!pendingJoinRequest,
+  });
+}
+
+export async function getChannelViewerContext(
+  ctx: ClubDbCtx,
+  club: Doc<"clubs">,
+  user: Doc<"users">,
+): Promise<ClubContext> {
+  const [membership, sponsor] = await Promise.all([
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", club._id).eq("userId", user._id),
+      )
+      .first(),
+    ctx.db
+      .query("clubSponsors")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", club._id).eq("userId", user._id),
+      )
+      .first(),
+  ]);
+
+  return buildClubContext({
+    club,
+    user,
+    membership,
+    sponsor,
+    hasPendingJoinRequest: false,
+  });
+}
+
+function buildClubContext({
+  club,
+  user,
+  membership,
+  sponsor,
+  hasPendingJoinRequest,
+}: {
+  club: Doc<"clubs">;
+  user: Doc<"users">;
+  membership: Doc<"clubMembers"> | null;
+  sponsor: Doc<"clubSponsors"> | null;
+  hasPendingJoinRequest: boolean;
+}): ClubContext {
   const userIsAdmin = isAdmin(user.roles as string[]);
   const isMember = !!membership;
   const hasClubRole =
@@ -102,7 +153,7 @@ export async function getViewerContext(
     canManageMembership,
     canApproveJoinRequests,
     canSeePrivateChannels,
-    hasPendingJoinRequest: !!pendingJoinRequest,
+    hasPendingJoinRequest,
   };
 }
 

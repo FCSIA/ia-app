@@ -4,10 +4,6 @@ import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import Image from 'next/image';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
 import {
   BarChart3,
   FileText,
@@ -21,6 +17,7 @@ import {
   Trash2,
   AlertTriangle,
   Flag,
+  UserPlus,
   X,
 } from 'lucide-react';
 import {
@@ -44,20 +41,14 @@ import {
 } from '@/components/ui/dialog';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import type {
   ClubChannelMessage,
   ClubDetail,
 } from '@/components/clubs/types';
 
-type ClubChannelMessageRichBody = NonNullable<ClubChannelMessage['bodyRich']>;
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
-type ChatAttachmentUploadResponse = {
-  fileName: string;
-  url: string;
-  mimeType: string;
-  size: number;
-};
 import {
   ChannelMessageComposer,
   type ChannelMentionSuggestion,
@@ -69,10 +60,14 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { MentionBody } from '@/components/clubs/mention-body';
+import {
+  MentionBody,
+  type ClubChannelMessageRichBody,
+} from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Empty,
   EmptyDescription,
@@ -88,10 +83,34 @@ import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const QUICK_REACTIONS = ['👍', '❤️', '🔥', '🎉', '👀'];
+const QUICK_REACTIONS = [
+  { value: 'LIKE', label: '👍', name: 'Like' },
+  { value: 'HEART', label: '❤️', name: 'Love' },
+  { value: 'FIRE', label: '🔥', name: 'Fire' },
+  { value: 'CELEBRATE', label: '🎉', name: 'Celebrate' },
+  { value: 'EYES', label: '👀', name: 'Watching' },
+  { value: 'DONE', label: '✅', name: 'Done' },
+] as const;
+
+const REACTION_LABELS = Object.fromEntries(
+  QUICK_REACTIONS.map((reaction) => [reaction.value, reaction.label]),
+) as Record<string, string>;
+
+type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
+
+function isChannelReaction(value: string): value is ChannelReaction {
+  return QUICK_REACTIONS.some((reaction) => reaction.value === value);
+}
+
+const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
+  'STUDENT',
+  'STUDENT_LEADER',
+  'STUDENT_ADMIN',
+]);
 
 type ComposerSubmitArgs = {
   body: string;
+  bodyMarkdown: string;
   bodyRich: ClubChannelMessageRichBody | null;
   parentMessageId?: string;
   files: File[];
@@ -125,6 +144,10 @@ function getSearchableText(message: ClubChannelMessage) {
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
+}
+
+function hasStudentScheduleRole(roles?: AppRole[] | null) {
+  return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
 }
 
 function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
@@ -183,28 +206,96 @@ function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAtt
   );
 }
 
-function MarkdownMessage({ body }: { body: string }) {
+function MessageBody({ message }: { message: ClubChannelMessage }) {
   return (
-    <div className="prose prose-sm dark:prose-invert mt-1 max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {body}
-      </ReactMarkdown>
-    </div>
+    <MentionBody
+      body={message.body}
+      bodyMarkdown={message.bodyMarkdown}
+      bodyRich={
+        Array.isArray(message.bodyRich)
+          ? (message.bodyRich as ClubChannelMessageRichBody)
+          : null
+      }
+      className="mt-1"
+    />
   );
 }
 
-function MessageBody({ message }: { message: ClubChannelMessage }) {
-  if (Array.isArray(message.bodyRich) && message.bodyRich.length > 0) {
-    return (
-      <MentionBody
-        body={message.body}
-        bodyRich={message.bodyRich}
-        className="mt-1"
-      />
-    );
-  }
+function MessageAuthorPreview({
+  author,
+  compact,
+  currentUserId,
+  canSendFriendRequest,
+  friendRequestPendingId,
+  onSendFriendRequest,
+}: {
+  author: ClubChannelMessage['author'];
+  compact: boolean;
+  currentUserId?: string;
+  canSendFriendRequest: boolean;
+  friendRequestPendingId?: string | null;
+  onSendFriendRequest: (userId: string) => void;
+}) {
+  const name = fullName(author);
+  const isCurrentUser = author._id === currentUserId;
+  const isStudentProfile = hasStudentScheduleRole(author.roles);
+  const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
+  const isPending = friendRequestPendingId === author._id;
+  const canOfferFriendRequest = canSendFriendRequest && !isCurrentUser && isStudentProfile;
 
-  return message.body ? <MarkdownMessage body={message.body} /> : null;
+  return (
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <button
+          type="button"
+          aria-label={`View ${name} profile`}
+          className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <ClubAvatar
+            person={author}
+            className={compact ? 'size-7' : 'size-9'}
+            fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+          />
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent side="right" align="start" className="w-72 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <ClubAvatar person={author} className="size-12" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+            <p className="font-mono text-xs text-muted-foreground">{author.uniqueId}</p>
+            {roleLabels.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {roleLabels.map((role) => (
+                  <Badge key={role} variant="dot" className="h-5 text-[10px]">
+                    {role}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+          <span className="text-xs text-muted-foreground">
+            {isCurrentUser ? 'This is you' : isStudentProfile ? 'Student IA profile' : 'Public IA profile'}
+          </span>
+          {canOfferFriendRequest ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="tertiary"
+              leadingIcon={UserPlus}
+              disabled={isPending}
+              loading={isPending}
+              onClick={() => onSendFriendRequest(author._id)}
+            >
+              Add friend
+            </Button>
+          ) : null}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
 }
 
 function PollCard({
@@ -265,11 +356,14 @@ function MessageRow({
   onDelete,
   onShowHistory,
   onReport,
+  canSendFriendRequest,
+  onSendFriendRequest,
   isEditing,
   isReactionPending,
   isPinPending,
   isVotePending,
   isDeletePending,
+  friendRequestPendingId,
   highlighted,
   canModerate,
   currentUserId,
@@ -277,25 +371,29 @@ function MessageRow({
 }: {
   message: ClubChannelMessage;
   onOpenThread: (messageId: string) => void;
-  onToggleReaction: (messageId: string, emoji: string) => void;
+  onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
   onVotePoll: (messageId: string, optionId: string) => void;
   onStartEdit: (messageId: string) => void;
   onDelete: (messageId: string) => void;
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
+  canSendFriendRequest: boolean;
+  onSendFriendRequest: (userId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
   isPinPending: boolean;
   isVotePending: boolean;
   isDeletePending: boolean;
+  friendRequestPendingId?: string | null;
   highlighted: boolean;
   canModerate: boolean;
   currentUserId?: string;
   compact?: boolean;
 }) {
   const isAuthor = message.author._id === currentUserId;
-  const isEdited = message.updatedAt !== message.createdAt;
+  const isDeleted = message.isDeleted;
+  const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
 
   return (
     <div
@@ -306,10 +404,13 @@ function MessageRow({
         isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
       )}
     >
-      <ClubAvatar
-        person={message.author}
-        className={compact ? 'size-7' : 'size-9'}
-        fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+      <MessageAuthorPreview
+        author={message.author}
+        compact={compact}
+        currentUserId={currentUserId}
+        canSendFriendRequest={canSendFriendRequest}
+        friendRequestPendingId={friendRequestPendingId}
+        onSendFriendRequest={onSendFriendRequest}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -336,7 +437,9 @@ function MessageRow({
           ) : null}
         </div>
 
-        {isEditing ? (
+        {isDeleted ? (
+          <p className="mt-1 text-sm italic text-muted-foreground">Message deleted</p>
+        ) : isEditing ? (
           <div className="mt-2" />
         ) : (
           <>
@@ -348,74 +451,81 @@ function MessageRow({
 
         {!isEditing && (
           <>
-            {message.reactions.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {message.reactions.map((reaction) => (
-                  <Button
-                    key={`${message._id}-${reaction.emoji}`}
-                    variant="tertiary"
-                    size="sm"
-                    className={cn(
-                      'h-6 gap-1 px-2 text-xs',
-                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                    )}
-                    disabled={isReactionPending}
-                    onClick={() => onToggleReaction(message._id, reaction.emoji)}
-                  >
-                    <span>{reaction.emoji}</span>
-                    {reaction.count}
-                  </Button>
-                ))}
-              </div>
-            ) : null}
+            {!isDeleted ? (
+              <>
+                {message.reactions.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {message.reactions.map((reaction) => (
+                      <Button
+                        key={`${message._id}-${reaction.emoji}`}
+                        variant="tertiary"
+                        size="sm"
+                        className={cn(
+                          'h-6 gap-1 px-2 text-xs',
+                          reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+                        )}
+                        disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+                        onClick={() => {
+                          if (isChannelReaction(reaction.emoji)) {
+                            onToggleReaction(message._id, reaction.emoji);
+                          }
+                        }}
+                      >
+                        <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
+                        {reaction.count}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
 
-            <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {QUICK_REACTIONS.map((emoji) => (
-                <Button
-                  key={`${message._id}-${emoji}-quick`}
-                  variant="ghost"
-                  size="sm"
-                  className="size-6 p-0 text-sm"
-                  disabled={isReactionPending}
-                  onClick={() => onToggleReaction(message._id, emoji)}
-                >
-                  {emoji}
-                </Button>
-              ))}
-              {!compact ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onOpenThread(message.threadRootId)}
-                >
-                  <Reply className="size-3" />
-                  Reply
-                </Button>
-              ) : null}
-              {isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground"
-                  onClick={() => onStartEdit(message._id)}
-                >
-                  <Pencil className="size-3" />
-                  Edit
-                </Button>
-              )}
-              {!isAuthor && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
-                  onClick={() => onReport?.(message._id)}
-                >
-                  <Flag className="size-3" />
-                  Report
-                </Button>
-              )}
-              {(isAuthor || canModerate) && (
+                <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {QUICK_REACTIONS.map((reaction) => (
+                    <Button
+                      key={`${message._id}-${reaction.value}-quick`}
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 p-0 text-sm"
+                      disabled={isReactionPending}
+                      aria-label={reaction.name}
+                      onClick={() => onToggleReaction(message._id, reaction.value)}
+                    >
+                      {reaction.label}
+                    </Button>
+                  ))}
+                  {!compact ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onOpenThread(message.threadRootId)}
+                    >
+                      <Reply className="size-3" />
+                      Reply
+                    </Button>
+                  ) : null}
+                  {isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+                      onClick={() => onStartEdit(message._id)}
+                    >
+                      <Pencil className="size-3" />
+                      Edit
+                    </Button>
+                  )}
+                  {!isAuthor && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-amber-600"
+                      onClick={() => onReport?.(message._id)}
+                    >
+                      <Flag className="size-3" />
+                      Report
+                    </Button>
+                  )}
+                  {(isAuthor || canModerate) && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -433,13 +543,12 @@ function MessageRow({
                       <AlertDialogTitle>Delete Message?</AlertDialogTitle>
                       <AlertDialogDescription asChild>
                         <div className="text-sm text-muted-foreground">
-                          This will remove the message for everyone in the channel.
+                          This removes the message content for everyone in the channel.
                           <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
                             <AlertTriangle className="size-5 shrink-0 text-amber-500" />
                             <div className="text-xs">
-                              <strong>Note:</strong> While the message will be hidden from the UI,
-                              all message activity is still logged and visible to school administrators
-                              in the audit panel.
+                              <strong>Note:</strong> The deletion is logged for school administrators.
+                              If the message has replies, a content-free placeholder keeps the thread intact.
                             </div>
                           </div>
                         </div>
@@ -456,8 +565,8 @@ function MessageRow({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              )}
-              {canModerate && !compact ? (
+                  )}
+                  {canModerate && !compact ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -468,8 +577,10 @@ function MessageRow({
                   {message.isPinned ? <PinOff className="size-3" /> : <Pin className="size-3" />}
                   {message.isPinned ? 'Unpin' : 'Pin'}
                 </Button>
-              ) : null}
-            </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
 
             {!compact && message.replyCount > 0 ? (
               <button
@@ -505,6 +616,7 @@ export default function ClubChannelPage({
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
 
   const user = useCurrentUser();
@@ -515,16 +627,19 @@ export default function ClubChannelPage({
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
+  const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage);
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
   const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
-  const submitReport = useMutation(api.moderation.reports.submit);
+  const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const submitMessage = async ({
     body,
+    bodyMarkdown,
     bodyRich,
     parentMessageId,
     files,
@@ -532,34 +647,28 @@ export default function ClubChannelPage({
     pollOptions,
     mode,
   }: ComposerSubmitArgs) => {
+    const attachmentUploadIds: Id<'clubChannelAttachmentUploads'>[] = [];
     try {
-      const uploadedAttachments = await Promise.all(
-        files.map(async (file) => {
-          const storageId = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({}) },
-            file,
-          );
-          return finalizeChatAttachment({
-            storageId,
-            fileName: file.name,
-            mimeType: file.type || 'application/octet-stream',
-            size: file.size,
-          });
-        }),
-      );
+      for (const file of files) {
+        const storageId = await uploadFileToConvex(
+          { generateUploadUrl: () => generateUploadUrl({}) },
+          file,
+        );
+        const staged = await finalizeChatAttachment({
+          storageId,
+          fileName: file.name,
+        });
+        attachmentUploadIds.push(staged.attachmentUploadId);
+      }
       await postMessage({
         channelId,
         body: body.trim(),
+        bodyMarkdown: bodyMarkdown.trim() || undefined,
         bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
         parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
         pollQuestion,
         pollOptions,
-        attachments: uploadedAttachments.map((a: ChatAttachmentUploadResponse) => ({
-          fileName: a.fileName,
-          fileUrl: a.url,
-          mimeType: a.mimeType,
-          size: a.size,
-        })),
+        attachments: attachmentUploadIds,
       });
       if (mode === 'thread') {
         setReplyComposerResetKey((current) => current + 1);
@@ -567,6 +676,11 @@ export default function ClubChannelPage({
         setRootComposerResetKey((current) => current + 1);
       }
     } catch {
+      await Promise.allSettled(
+        attachmentUploadIds.map((attachmentUploadId) =>
+          discardChatAttachment({ attachmentUploadId }),
+        ),
+      );
       toast({ title: 'Failed to send message', variant: 'destructive' });
     }
   };
@@ -649,15 +763,28 @@ export default function ClubChannelPage({
   const handleSubmitReport = async () => {
     if (!reportingMessage || !reportReason.trim()) return;
     await submitReport({
-      contentType: 'CLUB_CHANNEL_MESSAGE',
-      contentId: reportingMessage._id,
-      clubId,
-      reportedUserId: reportingMessage.author._id,
+      messageId: reportingMessage._id as Id<'clubChannelMessages'>,
       reason: reportReason.trim(),
     });
     toast({ title: 'Report submitted' });
     setReportingMessageId(null);
     setReportReason('');
+  };
+
+  const handleSendFriendRequest = async (friendId: string) => {
+    if (!hasStudentScheduleRole(user?.roles) || friendRequestPendingId) return;
+    setFriendRequestPendingId(friendId);
+    try {
+      await sendFriendRequest({ friendId: friendId as Id<'users'> });
+      toast({ title: 'Friend request sent' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to send friend request',
+        variant: 'destructive',
+      });
+    } finally {
+      setFriendRequestPendingId(null);
+    }
   };
 
   const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
@@ -696,11 +823,14 @@ export default function ClubChannelPage({
             )
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
+          canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
+          onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
           isEditing={isEditing}
           isReactionPending={false}
           isPinPending={false}
           isVotePending={false}
           isDeletePending={false}
+          friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
           canModerate={canModerateChannel}
           compact={compact}
@@ -708,15 +838,24 @@ export default function ClubChannelPage({
         {isEditing && (
           <div className="ml-12 mr-3 mt-1">
             <ChannelMessageComposer
+              key={`edit-${message._id}`}
               suggestionEntries={suggestionEntries}
               placeholder="Edit message..."
               submitLabel="Save Changes"
               isPending={false}
-              resetKey={0}
-              onSubmit={({ body, bodyRich }) =>
+              canAttach={false}
+              initialBody={message.body}
+              initialBodyMarkdown={message.bodyMarkdown}
+              initialBodyRich={
+                Array.isArray(message.bodyRich)
+                  ? (message.bodyRich as ClubChannelMessageRichBody)
+                  : null
+              }
+              onSubmit={({ body, bodyMarkdown, bodyRich }) =>
                 void updateMessage({
                   messageId: message._id,
                   body,
+                  bodyMarkdown: bodyMarkdown.trim() || undefined,
                   bodyRich: bodyRich ?? undefined,
                 }).then(() => setEditingMessageId(null))
               }
@@ -786,9 +925,9 @@ export default function ClubChannelPage({
       </div>
 
       <div className="border-t p-3">
-        {canPost ? (
+        {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
-            resetKey={replyComposerResetKey}
+            key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
             onSubmit={(args) => void submitMessage({ ...args, parentMessageId: selectedThread._id, mode: 'thread' })}
             isPending={false}
             suggestionEntries={suggestionEntries}
@@ -796,6 +935,10 @@ export default function ClubChannelPage({
             submitLabel="Reply"
             canCreatePoll={canModerateChannel}
           />
+        ) : selectedThread.isDeleted ? (
+          <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+            Replies are closed because the original message was deleted.
+          </div>
         ) : (
           <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
             {getClubChannelVisibilityLabel(channel.visibility)} channel. Only club leaders, sponsors,
@@ -884,7 +1027,7 @@ export default function ClubChannelPage({
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <ChannelMessageComposer
-              resetKey={rootComposerResetKey}
+              key={`root-${rootComposerResetKey}`}
               onSubmit={(args) => void submitMessage({ ...args, mode: 'root' })}
               isPending={false}
               suggestionEntries={suggestionEntries}
