@@ -116,6 +116,13 @@ export function isImageAttachment(attachment: ChatAttachment) {
   return /\.(avif|heic|heif|jpe?g|png|webp)(?:\?|#|\s|$)/.test(source);
 }
 
+export function isPdfAttachment(attachment: ChatAttachment) {
+  if (attachment.mimeType?.split(";", 1)[0].trim().toLowerCase() === "application/pdf") {
+    return true;
+  }
+  return /\.pdf(?:\?|#|$)/i.test(attachment.fileName);
+}
+
 export function formatAttachmentSize(size?: number) {
   if (!size || size < 1) return null;
   if (size < 1024) return `${size} B`;

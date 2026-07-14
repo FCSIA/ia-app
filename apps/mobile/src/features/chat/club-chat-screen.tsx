@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Alert, View, type LayoutChangeEvent } from "react-native";
+import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import {
   SafeAreaView,
@@ -20,6 +20,7 @@ import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { AttachmentViewer } from "./attachment-viewer";
+import { safeRemoteAttachmentUrl } from "./chat-attachments";
 import { chatSafeAreaOffset } from "./chat-keyboard-layout";
 import { ChatComposer } from "./composer";
 import { MessageActionsSheet } from "./message-actions-sheet";
@@ -28,6 +29,7 @@ import {
   optimisticallyInsertPostedMessage,
 } from "./optimistic-message";
 import { ChatTimeline } from "./timeline";
+import { isPdfAttachment } from "./types";
 import type {
   ChatAttachment,
   ChatMessage,
@@ -532,9 +534,30 @@ export function ClubChatScreen({
     [channelId, clubId],
   );
 
-  const openAttachment = useCallback((attachment: ChatAttachment) => {
-    setViewedAttachment(attachment);
-  }, []);
+  const openAttachment = useCallback(
+    (attachment: ChatAttachment) => {
+      if (!isPdfAttachment(attachment)) {
+        setViewedAttachment(attachment);
+        return;
+      }
+
+      const safeUrl = safeRemoteAttachmentUrl(attachment.fileUrl);
+      if (!safeUrl) {
+        setViewedAttachment(attachment);
+        return;
+      }
+
+      void Linking.openURL(safeUrl).catch((error) => {
+        setViewedAttachment(attachment);
+        showToast({
+          title: "PDF could not be opened",
+          body: errorMessage(error),
+          tone: "warning",
+        });
+      });
+    },
+    [showToast],
+  );
 
   return (
     <SafeAreaView

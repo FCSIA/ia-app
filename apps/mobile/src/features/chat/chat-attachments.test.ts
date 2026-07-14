@@ -6,6 +6,7 @@ import {
   safeRemoteAttachmentUrl,
   validatePickedChatAttachment,
 } from "./chat-attachments";
+import { isPdfAttachment } from "./types";
 
 describe("mobile managed chat attachments", () => {
   test("validates size, names, and active content before upload", () => {
@@ -57,5 +58,23 @@ describe("mobile managed chat attachments", () => {
       "ia-chat-idunsafe.pdf",
     );
     expect(attachmentCacheFileName("page.html", "id-1")).toBe("ia-chat-id-1");
+  });
+
+  test("recognizes PDFs from either MIME metadata or the file name", () => {
+    expect(
+      isPdfAttachment({
+        _id: "attachment-1",
+        fileName: "student-handbook",
+        fileUrl: "https://files.example.edu/attachment-1",
+        mimeType: "application/pdf; charset=binary",
+      }),
+    ).toBe(true);
+    expect(
+      isPdfAttachment({
+        _id: "attachment-2",
+        fileName: "permission-form.PDF",
+        fileUrl: "https://files.example.edu/attachment-2",
+      }),
+    ).toBe(true);
   });
 });

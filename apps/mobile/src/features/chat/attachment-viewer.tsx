@@ -15,6 +15,7 @@ import {
 import {
   formatAttachmentSize,
   isImageAttachment,
+  isPdfAttachment,
   type ChatAttachment,
 } from "./types";
 
@@ -45,6 +46,7 @@ export function AttachmentViewer({
     : null;
   const canUseAttachment = !!attachment && !!safeUrl && !safetyError;
   const image = !!attachment && isImageAttachment(attachment);
+  const pdf = !!attachment && isPdfAttachment(attachment);
   const sizeLabel = formatAttachmentSize(attachment?.size);
 
   useEffect(() => {
@@ -71,8 +73,6 @@ export function AttachmentViewer({
       return;
     }
     try {
-      const supported = await Linking.canOpenURL(safeUrl);
-      if (!supported) throw new Error("No app can open this attachment.");
       await Linking.openURL(safeUrl);
     } catch (error) {
       showToast({
@@ -113,6 +113,7 @@ export function AttachmentViewer({
       await Sharing.shareAsync(downloaded.uri, {
         dialogTitle: `Share ${attachment.fileName}`,
         mimeType: attachment.mimeType,
+        UTI: pdf ? "com.adobe.pdf" : undefined,
       });
     } catch (error) {
       if (!(error instanceof Error && error.name === "AbortError")) {
@@ -235,20 +236,19 @@ export function AttachmentViewer({
             style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
           >
             <Button
-              title="Share"
+              title={pdf ? "Open PDF" : "Open"}
+              icon={ExternalLink}
+              disabled={!canUseAttachment || sharing}
+              onPress={() => void openExternally()}
+              style={{ flexGrow: 1 }}
+            />
+            <Button
+              title={pdf ? "Preview or share" : "Share"}
               icon={Share2}
               variant="secondary"
               loading={sharing}
               disabled={!canUseAttachment}
               onPress={() => void shareAttachment()}
-              style={{ flexGrow: 1 }}
-            />
-            <Button
-              title="Open"
-              icon={ExternalLink}
-              variant="tertiary"
-              disabled={!canUseAttachment || sharing}
-              onPress={() => void openExternally()}
               style={{ flexGrow: 1 }}
             />
           </View>
