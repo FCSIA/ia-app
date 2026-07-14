@@ -1,5 +1,10 @@
 import { memo } from "react";
-import { Linking, Pressable, View } from "react-native";
+import {
+  Linking,
+  Pressable,
+  View,
+  type GestureResponderEvent,
+} from "react-native";
 import { Image } from "expo-image";
 import { format } from "date-fns";
 import {
@@ -12,6 +17,7 @@ import {
 } from "lucide-react-native";
 import { Avatar, PressableScale, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { tapMedium } from "@/lib/haptics";
 import { radii, spacing } from "@/lib/tokens";
 import {
   normalizeReactionPayload,
@@ -62,12 +68,17 @@ export const ChatMessageRow = memo(function ChatMessageRow({
   const replyCountIsExact = message.replyCountIsExact !== false;
   const isSending = message.deliveryState === "sending";
   const failedToSend = message.deliveryState === "failed";
+  const openContextMenu = (event?: GestureResponderEvent) => {
+    event?.stopPropagation();
+    void tapMedium();
+    onLongPress(message);
+  };
 
   return (
     <Pressable
       accessible={false}
       delayLongPress={280}
-      onLongPress={() => onLongPress(message)}
+      onLongPress={openContextMenu}
       style={({ pressed }) => ({
         width: "100%",
         backgroundColor: message.isPinned
@@ -178,6 +189,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     accessibilityLabel={`Open image ${attachment.fileName}`}
                     accessibilityRole="link"
                     haptic={false}
+                    onLongPress={openContextMenu}
                     onPress={() =>
                       onOpenAttachment
                         ? onOpenAttachment(attachment)
@@ -209,6 +221,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                 <FileAttachment
                   key={attachment._id}
                   attachment={attachment}
+                  onLongPress={openContextMenu}
                   onPress={() =>
                     onOpenAttachment
                       ? onOpenAttachment(attachment)
@@ -244,6 +257,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   }}
                   disabled={pending}
                   haptic={false}
+                  onLongPress={openContextMenu}
                   onPress={() => onVotePoll(message, option.id)}
                   style={{
                     minHeight: 44,
@@ -326,6 +340,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   }}
                   disabled={pending || !payload}
                   haptic={false}
+                  onLongPress={openContextMenu}
                   onPress={() => {
                     if (payload) onToggleReaction(message, payload);
                   }}
@@ -381,6 +396,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                 : `Open thread with ${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`
             }
             haptic={false}
+            onLongPress={openContextMenu}
             onPress={() => onOpenThread(message)}
             style={{
               minHeight: 44,
@@ -415,6 +431,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           <PressableScale
             accessibilityLabel="Retry sending message"
             haptic={false}
+            onLongPress={openContextMenu}
             onPress={() => onRetry?.(message)}
             style={{
               minHeight: 44,
@@ -442,9 +459,11 @@ export const ChatMessageRow = memo(function ChatMessageRow({
 
 function FileAttachment({
   attachment,
+  onLongPress,
   onPress,
 }: {
   attachment: ChatAttachment;
+  onLongPress: (event?: GestureResponderEvent) => void;
   onPress: () => void;
 }) {
   const { color } = useTheme();
@@ -454,6 +473,7 @@ function FileAttachment({
       accessibilityLabel={`Open file ${attachment.fileName}${size ? `, ${size}` : ""}`}
       accessibilityRole="link"
       haptic={false}
+      onLongPress={onLongPress}
       onPress={onPress}
       style={{
         minHeight: 48,

@@ -1,4 +1,5 @@
 import { ScrollView, View } from "react-native";
+import { format } from "date-fns";
 import {
   Flag,
   MessageCircle,
@@ -8,7 +9,7 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react-native";
-import { PressableScale, Sheet, Txt } from "@/components/ui";
+import { Avatar, PressableScale, Sheet, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import {
@@ -62,13 +63,48 @@ export function MessageActionsSheet({
     <Sheet
       open={!!message}
       onClose={onClose}
-      title={
-        message ? `Message from ${chatAuthorName(message)}` : "Message actions"
-      }
+      title="Message actions"
       scrollable
     >
       {message ? (
         <>
+          <View
+            style={{
+              minHeight: 52,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: spacing.sm,
+            }}
+          >
+            <Avatar
+              uri={message.author?.avatarUrl}
+              name={chatAuthorName(message)}
+              size={36}
+            />
+            <View style={{ minWidth: 0, flex: 1, gap: 2 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                  gap: spacing.xs,
+                }}
+              >
+                <Txt variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {chatAuthorName(message)}
+                </Txt>
+                <Txt variant="caption" tone="muted">
+                  {format(new Date(message.createdAt), "h:mm a")}
+                </Txt>
+              </View>
+              <Txt variant="body" numberOfLines={3}>
+                {message.body ||
+                  (message.attachments?.length
+                    ? `${message.attachments.length} ${message.attachments.length === 1 ? "attachment" : "attachments"}`
+                    : "Message")}
+              </Txt>
+            </View>
+          </View>
+
           <ScrollView
             horizontal
             bounces={false}
