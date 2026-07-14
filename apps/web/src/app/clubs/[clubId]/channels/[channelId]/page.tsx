@@ -67,6 +67,14 @@ import {
 import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from '@/components/ui/message-scroller';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Empty,
@@ -791,7 +799,7 @@ export default function ClubChannelPage({
     const isEditing = editingMessageId === message._id;
 
     return (
-      <div key={message._id}>
+      <div>
         <MessageRow
           message={message}
           currentUserId={user?._id}
@@ -919,10 +927,27 @@ export default function ClubChannelPage({
         </Button>
       </div>
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {selectedThread && renderMessageRow(selectedThread)}
-        {selectedThread?.replies.map((reply) => renderMessageRow(reply, true))}
-      </div>
+      <MessageScrollerProvider
+        key={selectedThread._id}
+        autoScroll
+        defaultScrollPosition="end"
+      >
+        <MessageScroller className="flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent className="gap-2 p-2">
+              <MessageScrollerItem messageId={selectedThread._id}>
+                {renderMessageRow(selectedThread)}
+              </MessageScrollerItem>
+              {selectedThread.replies.map((reply) => (
+                <MessageScrollerItem key={reply._id} messageId={reply._id}>
+                  {renderMessageRow(reply, true)}
+                </MessageScrollerItem>
+              ))}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
 
       <div className="border-t p-3">
         {canPost && !selectedThread.isDeleted ? (
@@ -955,68 +980,85 @@ export default function ClubChannelPage({
       rightPane={rightPane}
       contentClassName="relative flex flex-col bg-card"
     >
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl space-y-1 p-3 pb-48">
-          <div className="mb-3 flex items-center gap-2">
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              placeholder="Search messages"
-              className="w-full sm:ml-auto sm:w-72"
-            />
+      <div className="shrink-0 border-b px-3 py-2">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-2">
+          <SearchInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder="Search messages"
+            className="w-full sm:ml-auto sm:w-72"
+          />
 
-            <div className="shrink-0">
-              <ChannelNotificationSettings
-                clubId={clubId}
-                channelId={channelId}
-                channelName={channel.name}
-              />
-            </div>
+          <div className="shrink-0">
+            <ChannelNotificationSettings
+              clubId={clubId}
+              channelId={channelId}
+              channelName={channel.name}
+            />
           </div>
-          {pinnedMessages.length > 0 ? (
-            <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
-              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                <Pin className="size-3.5" />
-                Pinned
-              </div>
-              <div className="space-y-1">
-                {pinnedMessages.map((message) => (
-                  <button
-                    key={message._id}
-                    type="button"
-                    className="block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/50"
-                    onClick={() => setSelectedThreadId(message.threadRootId)}
-                  >
-                    <span className="font-medium">{fullName(message.author)}:</span>{' '}
-                    {message.poll?.question || message.body || 'Attachment'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {visibleMessages.length > 0 ? (
-            visibleMessages.map((message) => renderMessageRow(message))
-          ) : (
-            <Empty className="mt-8 border border-dashed">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <MessageSquareText />
-                </EmptyMedia>
-                <EmptyTitle>
-                  {deferredSearch.trim() ? 'No matches' : 'No messages yet'}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {deferredSearch.trim()
-                    ? 'No messages match this search.'
-                    : canPost
-                      ? `Start the conversation in #${channel.name}.`
-                      : `No posts have been shared in #${channel.name} yet.`}
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
         </div>
       </div>
+
+      <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+        <MessageScroller className="flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-48">
+              {pinnedMessages.length > 0 ? (
+                <MessageScrollerItem>
+                  <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      <Pin className="size-3.5" />
+                      Pinned
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {pinnedMessages.map((message) => (
+                        <button
+                          key={message._id}
+                          type="button"
+                          className="block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/50"
+                          onClick={() => setSelectedThreadId(message.threadRootId)}
+                        >
+                          <span className="font-medium">{fullName(message.author)}:</span>{' '}
+                          {message.poll?.question || message.body || 'Attachment'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </MessageScrollerItem>
+              ) : null}
+
+              {visibleMessages.length > 0 ? (
+                visibleMessages.map((message) => (
+                  <MessageScrollerItem key={message._id} messageId={message._id}>
+                    {renderMessageRow(message)}
+                  </MessageScrollerItem>
+                ))
+              ) : (
+                <MessageScrollerItem>
+                  <Empty className="mt-8 border border-dashed">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <MessageSquareText />
+                      </EmptyMedia>
+                      <EmptyTitle>
+                        {deferredSearch.trim() ? 'No matches' : 'No messages yet'}
+                      </EmptyTitle>
+                      <EmptyDescription>
+                        {deferredSearch.trim()
+                          ? 'No messages match this search.'
+                          : canPost
+                            ? `Start the conversation in #${channel.name}.`
+                            : `No posts have been shared in #${channel.name} yet.`}
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </MessageScrollerItem>
+              )}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton className="data-[direction=end]:bottom-44" />
+        </MessageScroller>
+      </MessageScrollerProvider>
 
       <div
         aria-hidden

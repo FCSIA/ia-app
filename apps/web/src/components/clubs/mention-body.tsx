@@ -210,7 +210,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
     return (
       <div
         className={cn(
-          'prose prose-sm dark:prose-invert max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5',
+          'typeset typeset-chat max-w-none',
           className,
         )}
       >
@@ -255,7 +255,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
   }
 
   return (
-    <div className={cn('space-y-2 text-sm leading-6 text-foreground', className)}>
+    <div className={cn('typeset typeset-chat text-foreground', className)}>
       {value.map((node, index) => renderBlockNode(node, index))}
     </div>
   );

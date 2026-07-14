@@ -121,6 +121,19 @@ Every mapped item needs a stable key:
 ))}
 ```
 
+## Chat Surfaces
+
+Use the local `MessageScroller` components for message timelines and threads.
+They wrap shadcn's headless `@shadcn/react` behavior so streaming updates,
+live-edge following, restored transcripts, and stable message anchors do not
+need to be rebuilt at each call site. Give each `MessageScrollerItem` a stable
+message ID.
+
+Rendered Markdown and rich-text message bodies use the global shadcn typeset
+stylesheet with the compact `typeset-chat` preset. Keep message chrome and
+controls outside the typeset container so typography rules only affect the
+rendered body.
+
 ## Forms
 
 Use controlled inputs for simple forms:
