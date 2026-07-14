@@ -2,8 +2,8 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Native Expo mobile app advanced to repo-local store-ready v1 on top of the Convex-first IA app.
+- **Branch**: `agent/web-chat-modernization` (draft PR #45)
+- **Goal**: Modernize web chat behavior and presentation while preserving the shared Convex-first mobile/web model.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -90,6 +90,10 @@
 - Club workspaces now prioritize People and Shared content over internal mention
   groups, search channel names and access-checked message history, and collect
   paginated files and images for each readable channel.
+- Web channel chat now uses paginated message summaries, bounded thread reads,
+  shared optimistic message insertion, concurrent attachment staging, compact
+  shadcn chat/composer primitives, names-only mention results, out-of-flow
+  message actions, and a compact animated channel-alert sheet.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -140,22 +144,25 @@
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
 - `pnpm lint` - pass
-- Focused mobile chat tests - pass (4 files, 10 tests)
+- Focused optimistic chat tests - pass (2 tests after moving the helper to
+  `apps/shared/chat`)
 - `pnpm build` - pass
 - `pnpm test` - pass (`cvx` Vitest, 3 files, 14 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
-Convex also reported that optional Convex AI guidance files are behind upstream.
+Convex AI guidance and project skills were refreshed with `convex ai-files
+update`; current shadcn skills were installed project-locally from `shadcn/ui`.
 
 ## Next Work
 
-1. Deploy the Convex schema/index/function changes to the target deployment
+1. Review and merge draft PR #45 after the web chat visual/interaction pass.
+2. Deploy the Convex schema/index/function changes to the target deployment
    before production student/staff use.
-2. Coordinate with the FERPA session before touching `docs/compliance/` or the
+3. Coordinate with the FERPA session before touching `docs/compliance/` or the
    FERPA entry in `docs/index.md`.
-3. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+4. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-4. Address the remaining lower-priority hardening debt listed above.
+5. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 
