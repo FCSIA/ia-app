@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import {
@@ -6,14 +12,14 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { MessageCircle } from "lucide-react-native";
+import { FolderOpen, MessageCircle, Search } from "lucide-react-native";
 import {
   KeyboardGestureArea,
   KeyboardStickyView,
 } from "react-native-keyboard-controller";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import { AppBackHeader } from "@/components/screen";
-import { Empty, Txt, useToast } from "@/components/ui";
+import { Empty, IconButton, Txt, useToast } from "@/components/ui";
 import { useCurrentUser, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -577,6 +583,34 @@ export function ClubChatScreen({
               ? `#${channel?.name ?? "channel"}`
               : channelContext?.clubName
           }
+          actions={
+            threadRootId ? null : (
+              <>
+                <IconButton
+                  icon={Search}
+                  label="Search channel"
+                  size="sm"
+                  variant="ghost"
+                  onPress={() =>
+                    router.push(
+                      `/clubs/${clubId}/channels/${channelId}/search` as never,
+                    )
+                  }
+                />
+                <IconButton
+                  icon={FolderOpen}
+                  label="Shared files"
+                  size="sm"
+                  variant="ghost"
+                  onPress={() =>
+                    router.push(
+                      `/clubs/${clubId}/shared?channelId=${channelId}` as never,
+                    )
+                  }
+                />
+              </>
+            )
+          }
         />
 
         <KeyboardGestureArea
@@ -680,9 +714,11 @@ export function ClubChatScreen({
 function ChatHeader({
   title,
   description,
+  actions,
 }: {
   title: string;
   description?: string | null;
+  actions?: ReactNode;
 }) {
   const { color } = useTheme();
   return (
@@ -718,6 +754,11 @@ function ChatHeader({
             </Txt>
           ) : null}
         </View>
+        {actions ? (
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {actions}
+          </View>
+        ) : null}
       </View>
     </View>
   );

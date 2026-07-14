@@ -13,8 +13,9 @@ join requests, join codes, tags, and a workspace UI.
 
 - Lists active clubs and the current user's club memberships.
 - Shows a club workspace with announcements, people, channels, and settings.
-- Lets members search channels and browse files and images previously shared in
-  each readable channel.
+- Lets members search channel names and message history, then open a result in
+  its conversation.
+- Collects files and images previously shared in each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
 - Supports public, private, and member-read-only channels.

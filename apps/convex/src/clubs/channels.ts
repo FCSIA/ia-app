@@ -68,6 +68,7 @@ const MAX_SUMMARY_POLL_VOTES = 500;
 const MAX_THREAD_PARENT_DEPTH = 8;
 const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
+const MAX_CHANNEL_SEARCH_RESULTS = 30;
 
 type PlannedMention = {
   kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG";
@@ -991,6 +992,42 @@ export const getMessagePage = query({
       ...result,
       page: page.filter((message): message is NonNullable<typeof message> => !!message),
     };
+  },
+});
+
+export const searchMessages = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    search: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
+    if (!readable) return [];
+
+    const search = args.search.trim().slice(0, 120);
+    if (search.length < 2) return [];
+    const matches = await ctx.db
+      .query("clubChannelMessages")
+      .withSearchIndex("search_body", (q) =>
+        q.search("body", search).eq("channelId", readable.channel._id),
+      )
+      .take(MAX_CHANNEL_SEARCH_RESULTS);
+    const serialized = await Promise.all(
+      matches.map((message) =>
+        serializeMessageSummary(ctx, message, user._id, false),
+      ),
+    );
+    return serialized.filter(
+      (message): message is NonNullable<typeof message> => !!message,
+    );
   },
 });
 

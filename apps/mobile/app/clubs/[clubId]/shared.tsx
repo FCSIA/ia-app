@@ -26,14 +26,23 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 
 export default function ClubSharedScreen() {
-  const { clubId } = useLocalSearchParams<{ clubId: string }>();
+  const { clubId, channelId: initialChannelId } = useLocalSearchParams<{
+    clubId: string;
+    channelId?: string;
+  }>();
   const club = useQuery(
     api.clubs.detail.get,
     clubId ? { clubId: clubId as Id<"clubs"> } : "skip",
   );
-  const [channelId, setChannelId] = useState<string | null>(null);
+  const [channelId, setChannelId] = useState<string | null>(
+    initialChannelId ?? null,
+  );
   const [query, setQuery] = useState("");
-  const selectedChannelId = channelId ?? club?.channels[0]?._id ?? null;
+  const selectedChannelId = club?.channels.some(
+    (channel: any) => channel._id === channelId,
+  )
+    ? channelId
+    : (club?.channels[0]?._id ?? null);
   const { results, status, loadMore } = usePaginatedQuery(
     api.clubs.shared.listChannelAttachments,
     clubId && selectedChannelId

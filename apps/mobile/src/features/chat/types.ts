@@ -42,6 +42,7 @@ export type ChatMessage = {
   deliveryState?: "sending" | "failed";
   authorId: string;
   parentMessageId?: string;
+  threadRootId?: string;
   body: string;
   bodyMarkdown?: string;
   bodyRich?: unknown;

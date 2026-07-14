@@ -523,7 +523,11 @@ export const schema = defineSchema({
       "authorId",
       "channelId",
       "createdAt",
-    ]),
+    ])
+    .searchIndex("search_body", {
+      searchField: "body",
+      filterFields: ["channelId"],
+    }),
 
   clubChannelMessagePollVotes: defineTable({
     messageId: v.id("clubChannelMessages"),
