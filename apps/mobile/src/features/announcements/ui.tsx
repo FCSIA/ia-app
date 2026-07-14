@@ -4,6 +4,8 @@ import { PressableScale } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii } from "@/lib/tokens";
 
+export { announcementAudience } from "./model";
+
 export function AnnouncementIconAction({
   icon: Icon,
   label,
@@ -12,6 +14,7 @@ export function AnnouncementIconAction({
   accentWhenSelected = false,
   tone = "muted",
   disabled = false,
+  iconColor,
 }: {
   icon: LucideIcon;
   label: string;
@@ -20,6 +23,7 @@ export function AnnouncementIconAction({
   accentWhenSelected?: boolean;
   tone?: "muted" | "primary";
   disabled?: boolean;
+  iconColor?: string;
 }) {
   const { color } = useTheme();
 
@@ -44,27 +48,12 @@ export function AnnouncementIconAction({
         size={19}
         strokeWidth={selected ? 2.2 : 1.8}
         color={
-          tone === "primary" || (accentWhenSelected && selected)
+          iconColor ??
+          (tone === "primary" || (accentWhenSelected && selected)
             ? color("primary")
-            : color("mutedForeground")
+            : color("mutedForeground"))
         }
       />
     </PressableScale>
   );
-}
-
-export function announcementAudience(announcement: any) {
-  if (announcement.club?.name) return announcement.club.name;
-  if (announcement.targetType === "GRADE") {
-    const grades = Array.from(
-      new Set([announcement.targetGrade, ...(announcement.targetGrades ?? [])].filter(Boolean)),
-    );
-    if (grades.length === 1) return `Grade ${grades[0]}`;
-    if (grades.length > 1) return `Grades ${grades.join(", ")}`;
-    return "Grade";
-  }
-  if (announcement.targetType === "PATHWAY") return "Pathway";
-  if (announcement.targetType === "CLUB") return "Club";
-  if (announcement.targetType === "INTERSECTION") return "Student group";
-  return "School";
 }
