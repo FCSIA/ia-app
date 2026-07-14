@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { useQuery } from "convex/react";
-import { CheckCircle2, School } from "lucide-react-native";
+import { Check, CircleDashed, MapPin, School } from "lucide-react-native";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import { Skeleton, Txt } from "@/components/ui";
@@ -23,7 +23,15 @@ export default function FlexPassScreen() {
   const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "IA member";
 
   return (
-    <Screen title="Flex pass" contentContainerStyle={{ width: "100%", maxWidth: 680, alignSelf: "center" }}>
+    <Screen
+      title="Flex pass"
+      contentContainerStyle={{
+        width: "100%",
+        maxWidth: 680,
+        alignSelf: "center",
+        gap: spacing.xl,
+      }}
+    >
       {registrations.isOffline || assignments.isOffline || registrations.isStale || assignments.isStale ? (
         <OfflineBanner stale={registrations.isStale || assignments.isStale} />
       ) : null}
@@ -32,45 +40,33 @@ export default function FlexPassScreen() {
         accessible
         accessibilityLabel={`Flex pass for ${name}`}
         style={{
-          overflow: "hidden",
-          borderRadius: radii.xl,
-          borderWidth: 1,
-          borderColor: color("border"),
-          backgroundColor: color("card"),
+          borderRadius: radii.lg,
+          backgroundColor: color("secondary"),
+          padding: spacing.lg,
+          gap: spacing.xl,
         }}
       >
-        <View style={{ padding: spacing.xl, gap: spacing.lg }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <View
-              style={{
-                width: 46,
-                height: 46,
-                borderRadius: radii.md,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: color("primary"),
-              }}
-            >
-              <School size={23} color={color("primaryForeground")} strokeWidth={1.9} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Txt variant="overline" tone="muted">
-                Innovation Academy
-              </Txt>
-              <Txt variant="section">Flex Friday</Txt>
-            </View>
-          </View>
-
-          <View style={{ gap: 3 }}>
-            <Txt variant="display" numberOfLines={2}>
-              {name}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+          <School size={22} color={color("primary")} strokeWidth={1.9} />
+          <View style={{ minWidth: 0, flex: 1 }}>
+            <Txt variant="overline" tone="muted">
+              Innovation Academy
             </Txt>
-            {user?.uniqueId ? (
-              <Txt variant="label" tone="muted">
-                {user.uniqueId}
-              </Txt>
-            ) : null}
+            <Txt variant="label" style={{ fontWeight: "800" }}>
+              Flex Friday
+            </Txt>
           </View>
+        </View>
+
+        <View style={{ gap: spacing.xs }}>
+          <Txt variant="display" numberOfLines={2}>
+            {name}
+          </Txt>
+          {user?.uniqueId ? (
+            <Txt variant="label" tone="muted">
+              {user.uniqueId}
+            </Txt>
+          ) : null}
         </View>
 
         <View
@@ -78,21 +74,28 @@ export default function FlexPassScreen() {
             flexDirection: "row",
             alignItems: "center",
             gap: spacing.sm,
-            paddingHorizontal: spacing.xl,
-            paddingVertical: spacing.md,
-            backgroundColor: !isLoading && items.length ? color("primary") : color("secondary"),
           }}
         >
-          {!isLoading && items.length ? <CheckCircle2 size={21} color={color("primaryForeground")} /> : null}
+          {isLoading ? (
+            <CircleDashed size={18} color={color("mutedForeground")} />
+          ) : items.length ? (
+            <Check size={18} color={color("primary")} strokeWidth={2.4} />
+          ) : (
+            <CircleDashed size={18} color={color("mutedForeground")} />
+          )}
           <Txt
-            variant="section"
-            style={{ color: !isLoading && items.length ? color("primaryForeground") : color("foreground") }}
+            variant="label"
+            tone={!isLoading && items.length ? "primary" : "muted"}
+            style={{ fontWeight: "800" }}
           >
             {isLoading ? "Checking pass…" : items.length ? "Ready for check-in" : "No active check-in"}
           </Txt>
         </View>
+      </View>
 
-        <View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md }}>
+      <View style={{ gap: spacing.md }}>
+        <Txt variant="section">Check-in schedule</Txt>
+        <View style={{ gap: spacing.lg }}>
           {isLoading ? (
             <View style={{ minHeight: 68, justifyContent: "center", gap: spacing.sm }}>
               <Skeleton style={{ width: "64%", height: 18 }} />
@@ -101,9 +104,7 @@ export default function FlexPassScreen() {
           ) : items.length === 0 ? (
             <Txt tone="muted">Your assigned or registered workshop will appear here.</Txt>
           ) : (
-            items.map((item: any, index) => (
-              <CheckInRow key={item._id} item={item} showDivider={index < items.length - 1} />
-            ))
+            items.map((item: any) => <CheckInRow key={item._id} item={item} />)
           )}
         </View>
       </View>
@@ -111,13 +112,12 @@ export default function FlexPassScreen() {
   );
 }
 
-function CheckInRow({ item, showDivider }: { item: any; showDivider: boolean }) {
+function CheckInRow({ item }: { item: any }) {
   const { color } = useTheme();
   const session = item.workshop?.sessions?.[0]?.session;
-  const details = [
+  const schedule = [
     session?.flexFriday?.date ? shortDate(session.flexFriday.date) : null,
     session?.title,
-    item.workshop?.location,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -125,21 +125,25 @@ function CheckInRow({ item, showDivider }: { item: any; showDivider: boolean }) 
   return (
     <View
       style={{
-        minHeight: 68,
-        justifyContent: "center",
-        gap: 3,
-        paddingVertical: spacing.md,
-        borderBottomWidth: showDivider ? 1 : 0,
-        borderBottomColor: color("border"),
+        minHeight: 64,
+        gap: spacing.xs,
       }}
     >
       <Txt variant="section" numberOfLines={2}>
         {item.workshop?.title ?? "Workshop"}
       </Txt>
-      {details ? (
+      {schedule ? (
         <Txt variant="caption" tone="muted" numberOfLines={2}>
-          {details}
+          {schedule}
         </Txt>
+      ) : null}
+      {item.workshop?.location ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <MapPin size={13} color={color("mutedForeground")} />
+          <Txt variant="caption" tone="muted" numberOfLines={1}>
+            {item.workshop.location}
+          </Txt>
+        </View>
       ) : null}
     </View>
   );

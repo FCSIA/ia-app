@@ -2,11 +2,23 @@ import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronRight, QrCode } from "lucide-react-native";
+import {
+  Check,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  QrCode,
+} from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
-import { Badge, Button, FilterChip, PressableScale, Section, Txt, useToast } from "@/components/ui";
+import {
+  Button,
+  PressableScale,
+  Section,
+  Txt,
+  useToast,
+} from "@/components/ui";
 import { shortDate } from "@/lib/format";
 import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
@@ -69,7 +81,15 @@ export default function FlexFridayScreen() {
   const activeCount = (registrations ?? []).length + (assignments ?? []).length;
 
   return (
-    <Screen title="Flex Friday" contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}>
+    <Screen
+      title="Flex Friday"
+      contentContainerStyle={{
+        width: "100%",
+        maxWidth: 760,
+        alignSelf: "center",
+        gap: spacing.xl,
+      }}
+    >
       {fridays.isOffline || fridays.isStale ? <OfflineBanner stale={fridays.isStale} /> : null}
 
       <PressableScale
@@ -79,40 +99,41 @@ export default function FlexFridayScreen() {
       >
         <View
           style={{
-            minHeight: 84,
+            minHeight: 76,
             flexDirection: "row",
             alignItems: "center",
             gap: spacing.md,
             padding: spacing.md,
-            borderRadius: radii.lg,
-            backgroundColor: color("primary"),
+            borderRadius: radii.md,
+            backgroundColor: color("secondary"),
           }}
         >
-          <QrCode size={23} color={color("primaryForeground")} strokeWidth={1.9} />
+          <QrCode size={22} color={color("primary")} strokeWidth={1.9} />
           <View style={{ flex: 1, gap: 2 }}>
-            <Txt variant="section" style={{ color: color("primaryForeground") }}>
-              Flex pass
+            <Txt variant="label" style={{ fontWeight: "800" }}>
+              My pass
             </Txt>
-            <Txt variant="caption" style={{ color: color("primaryForeground") }}>
+            <Txt variant="caption" tone="muted">
               {credits?.earned ?? 0} of {credits?.required ?? 12} credits · {activeCount} active
             </Txt>
           </View>
-          <ChevronRight size={20} color={color("primaryForeground")} />
+          <ChevronRight size={19} color={color("mutedForeground")} />
         </View>
       </PressableScale>
 
       <DataBoundary data={fridays.value} emptyTitle="No Flex Fridays scheduled">
         {(items) => (
-          <Section title="Choose a Friday">
+          <Section title="Dates">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
             >
               {items.map((friday: any) => (
-                <FilterChip
+                <DateOption
                   key={friday._id}
-                  label={shortDate(friday.date)}
+                  date={friday.date}
+                  type={sentenceCase(friday.type)}
                   selected={selectedFriday?._id === friday._id}
                   onPress={() => {
                     setSelectedFridayId(friday._id);
@@ -123,7 +144,7 @@ export default function FlexFridayScreen() {
             </ScrollView>
             {selectedFriday ? (
               <Txt variant="caption" tone="muted">
-                {sentenceCase(selectedFriday.type)} · {selectedFriday._count?.sessions ?? 0} session
+                {selectedFriday._count?.sessions ?? 0} session
                 {(selectedFriday._count?.sessions ?? 0) === 1 ? "" : "s"}
                 {selectedFriday.notes ? ` · ${selectedFriday.notes}` : ""}
               </Txt>
@@ -133,46 +154,44 @@ export default function FlexFridayScreen() {
       </DataBoundary>
 
       {sessions?.length ? (
-        <Section title="Session">
+        <Section title="Sessions">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
           >
             {sessions.map((session: any) => (
-              <FilterChip
+              <SessionOption
                 key={session._id}
-                label={session.title}
+                title={session.title}
+                time={[session.startTime, session.endTime]
+                  .filter(Boolean)
+                  .join("–")}
                 selected={selectedSession?._id === session._id}
                 onPress={() => setSelectedSessionId(session._id)}
               />
             ))}
           </ScrollView>
-          {selectedSession?.startTime ? (
-            <Txt variant="caption" tone="muted">
-              {[selectedSession.startTime, selectedSession.endTime].filter(Boolean).join("–")}
-            </Txt>
-          ) : null}
         </Section>
       ) : null}
 
       {selectedFriday && selectedSession ? (
         <DataBoundary data={workshops} emptyTitle="No workshops in this session">
           {(items) => (
-            <Section title="Workshops">
-              <View
-                style={{
-                  overflow: "hidden",
-                  borderRadius: radii.lg,
-                  backgroundColor: color("card"),
-                }}
-              >
-                {items.map((workshop: any, index) => (
+            <Section
+              title="Workshops"
+              action={
+                <Txt variant="caption" tone="muted">
+                  {items.length}
+                </Txt>
+              }
+            >
+              <View style={{ gap: spacing.xl }}>
+                {items.map((workshop: any) => (
                   <WorkshopRow
                     key={workshop._id}
                     workshop={workshop}
                     pending={pendingWorkshopId === workshop._id}
-                    showDivider={index < items.length - 1}
                     onUpdate={updateRegistration}
                   />
                 ))}
@@ -188,12 +207,10 @@ export default function FlexFridayScreen() {
 function WorkshopRow({
   workshop,
   pending,
-  showDivider,
   onUpdate,
 }: {
   workshop: any;
   pending: boolean;
-  showDivider: boolean;
   onUpdate: (workshop: any, isRegistered: boolean) => void;
 }) {
   const { color } = useTheme();
@@ -202,52 +219,173 @@ function WorkshopRow({
   const capacity = workshop.capacity
     ? `${workshop._count?.registrations ?? 0}/${workshop.capacity} seats`
     : null;
-  const metadata = [workshop.location, capacity].filter(Boolean).join(" · ");
+  const isFull =
+    !!workshop.capacity &&
+    (workshop._count?.registrations ?? 0) >= workshop.capacity;
 
   return (
-    <View style={{ paddingHorizontal: spacing.md }}>
+    <View style={{ gap: spacing.sm }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
+        <View style={{ minWidth: 0, flex: 1, gap: spacing.xs }}>
+          <Txt variant="section" numberOfLines={2}>
+            {workshop.title}
+          </Txt>
+          {workshop.description ? (
+            <Txt variant="body" tone="muted" numberOfLines={3}>
+              {workshop.description}
+            </Txt>
+          ) : null}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: spacing.sm,
+            }}
+          >
+            {workshop.location ? (
+              <WorkshopDetail icon={MapPin} label={workshop.location} />
+            ) : null}
+            {capacity ? <WorkshopDetail label={capacity} /> : null}
+          </View>
+        </View>
+      </View>
+
       <View
         style={{
-          paddingVertical: spacing.md,
+          minHeight: 44,
+          flexDirection: "row",
+          alignItems: "center",
           gap: spacing.sm,
-          borderBottomWidth: showDivider ? 1 : 0,
-          borderBottomColor: color("border"),
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
-          <View style={{ flex: 1, gap: 3 }}>
-            <Txt variant="section" numberOfLines={2}>
-              {workshop.title}
+        {isAssigned || isRegistered ? (
+          <View
+            style={{
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.xs,
+            }}
+          >
+            <Check size={16} color={color("primary")} strokeWidth={2.4} />
+            <Txt variant="label" tone="primary">
+              {isAssigned ? "Assigned to you" : "Registered"}
             </Txt>
-            {workshop.description ? (
-              <Txt variant="caption" tone="muted" numberOfLines={2}>
-                {workshop.description}
-              </Txt>
-            ) : null}
-            {metadata ? (
-              <Txt variant="caption" tone="muted" numberOfLines={1}>
-                {metadata}
-              </Txt>
-            ) : null}
           </View>
-          {isAssigned ? (
-            <Badge label="Assigned" color="blue" />
-          ) : isRegistered ? (
-            <Badge label="Registered" color="emerald" />
-          ) : null}
-        </View>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
         {!isAssigned ? (
           <Button
-            title={isRegistered ? "Remove registration" : "Register"}
+            title={isRegistered ? "Remove" : isFull ? "Full" : "Register"}
             size="sm"
-            variant={isRegistered ? "ghost" : "primary"}
+            variant={isRegistered ? "ghost" : "secondary"}
             loading={pending}
-            disabled={pending}
-            style={{ alignSelf: "flex-start" }}
+            disabled={pending || (isFull && !isRegistered)}
             onPress={() => onUpdate(workshop, isRegistered)}
           />
         ) : null}
       </View>
+    </View>
+  );
+}
+
+function DateOption({
+  date,
+  type,
+  selected,
+  onPress,
+}: {
+  date: number;
+  type: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { color } = useTheme();
+  return (
+    <PressableScale
+      accessibilityLabel={`${shortDate(date)}, ${type}`}
+      accessibilityState={{ selected }}
+      haptic={false}
+      onPress={onPress}
+      style={{
+        minWidth: 112,
+        minHeight: 58,
+        borderRadius: radii.md,
+        backgroundColor: selected ? color("secondary") : "transparent",
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        justifyContent: "center",
+        gap: 2,
+      }}
+    >
+      <Txt variant="label" tone={selected ? "primary" : "default"}>
+        {shortDate(date)}
+      </Txt>
+      <Txt variant="caption" tone="muted" numberOfLines={1}>
+        {type}
+      </Txt>
+    </PressableScale>
+  );
+}
+
+function SessionOption({
+  title,
+  time,
+  selected,
+  onPress,
+}: {
+  title: string;
+  time: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { color } = useTheme();
+  return (
+    <PressableScale
+      accessibilityLabel={`${title}, ${time}`}
+      accessibilityState={{ selected }}
+      haptic={false}
+      onPress={onPress}
+      style={{
+        minWidth: 136,
+        minHeight: 58,
+        borderRadius: radii.md,
+        backgroundColor: selected ? color("secondary") : "transparent",
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        justifyContent: "center",
+        gap: 2,
+      }}
+    >
+      <Txt variant="label" tone={selected ? "primary" : "default"} numberOfLines={1}>
+        {title}
+      </Txt>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+        <Clock3 size={12} color={color("mutedForeground")} />
+        <Txt variant="caption" tone="muted" numberOfLines={1}>
+          {time}
+        </Txt>
+      </View>
+    </PressableScale>
+  );
+}
+
+function WorkshopDetail({
+  icon: Icon,
+  label,
+}: {
+  icon?: typeof MapPin;
+  label: string;
+}) {
+  const { color } = useTheme();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {Icon ? <Icon size={13} color={color("mutedForeground")} /> : null}
+      <Txt variant="caption" tone="muted" numberOfLines={1}>
+        {label}
+      </Txt>
     </View>
   );
 }
