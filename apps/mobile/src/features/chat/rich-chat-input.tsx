@@ -12,7 +12,17 @@ import {
   type EnrichedMarkdownTextInputInstance,
   type StyleState,
 } from "react-native-enriched-markdown";
-import { AtSign, Bold, Italic, Link2, Underline, X } from "lucide-react-native";
+import {
+  ALargeSmall,
+  AtSign,
+  Bold,
+  Italic,
+  Link2,
+  Plus,
+  Underline,
+  X,
+  type LucideIcon,
+} from "lucide-react-native";
 import {
   Button,
   IconButton,
@@ -32,6 +42,8 @@ export type ChatMentionSuggestion = {
   label: string;
   detail?: string;
 };
+
+type ComposerPanel = "tools" | "formatting" | null;
 
 type RichChatInputProps = {
   accessibilityLabel: string;
@@ -70,6 +82,8 @@ export function RichChatInput({
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<ComposerPanel>(null);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const nextMarkdown = sanitizeChatMarkdown(markdown);
@@ -97,6 +111,15 @@ export function RichChatInput({
       })
       .slice(0, 6);
   }, [mentionQuery, suggestions]);
+
+  const togglePanel = useCallback((panel: Exclude<ComposerPanel, null>) => {
+    const next = activePanel === panel ? null : panel;
+    setActivePanel(next);
+    if (next !== "formatting") {
+      setLinkOpen(false);
+      setLinkError(null);
+    }
+  }, [activePanel]);
 
   const applyLink = useCallback(() => {
     const normalized = normalizeExternalChatLink(linkUrl);
@@ -194,7 +217,8 @@ export function RichChatInput({
           overflow: "hidden",
           borderRadius: radii.xl,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: color("border"),
+          borderColor:
+            focused || activePanel ? color("primary") : color("border"),
           backgroundColor: color("card"),
         }}
       >
@@ -257,6 +281,8 @@ export function RichChatInput({
             setMentionOpen(false);
             setMentionQuery("");
           }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           style={{
             minHeight: 50,
             maxHeight: 140,
@@ -274,23 +300,79 @@ export function RichChatInput({
         <View
           style={{
             minWidth: 0,
-            minHeight: 45,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: color("border"),
-            backgroundColor: color("muted"),
-            paddingLeft: spacing.xs,
-            paddingRight: spacing.xs,
+            minHeight: 52,
+            paddingHorizontal: spacing.xs,
+            paddingBottom: spacing.xs,
             flexDirection: "row",
             alignItems: "center",
+            gap: 2,
           }}
         >
+          {toolbarActions ? (
+            <CompactControl
+              icon={Plus}
+              label={
+                activePanel === "tools"
+                  ? "Hide message tools"
+                  : "Add to message"
+              }
+              active={activePanel === "tools"}
+              disabled={!editable}
+              onPress={() => togglePanel("tools")}
+            />
+          ) : null}
+          <CompactControl
+            icon={ALargeSmall}
+            label={
+              activePanel === "formatting"
+                ? "Hide formatting"
+                : "Show formatting"
+            }
+            active={activePanel === "formatting"}
+            disabled={!editable}
+            onPress={() => togglePanel("formatting")}
+          />
+          <View style={{ flex: 1 }} />
+          {toolbarTrailing ? (
+            <View>{toolbarTrailing}</View>
+          ) : null}
+        </View>
+
+        {activePanel === "tools" && toolbarActions ? (
+          <View
+            accessibilityLabel="Message tools"
+            style={{
+              minHeight: 52,
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: color("border"),
+              paddingHorizontal: spacing.sm,
+              paddingVertical: spacing.xs,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.xs,
+            }}
+          >
+            {toolbarActions}
+          </View>
+        ) : null}
+
+        {activePanel === "formatting" ? (
           <ScrollView
             horizontal
             bounces={false}
             keyboardShouldPersistTaps="always"
             showsHorizontalScrollIndicator={false}
-            style={{ minWidth: 0, flex: 1 }}
-            contentContainerStyle={{ alignItems: "center", gap: 2 }}
+            style={{
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: color("border"),
+            }}
+            contentContainerStyle={{
+              minHeight: 52,
+              alignItems: "center",
+              gap: 2,
+              paddingHorizontal: spacing.xs,
+              paddingVertical: spacing.xs,
+            }}
           >
             <FormatButton
               icon={Bold}
@@ -337,12 +419,8 @@ export function RichChatInput({
                 inputRef.current?.startMention("@");
               }}
             />
-            {toolbarActions}
           </ScrollView>
-          {toolbarTrailing ? (
-            <View style={{ marginLeft: spacing.xs }}>{toolbarTrailing}</View>
-          ) : null}
-        </View>
+        ) : null}
       </View>
 
       {linkOpen ? (
@@ -392,6 +470,83 @@ export function RichChatInput({
         </View>
       ) : null}
     </View>
+  );
+}
+
+export function ComposerToolButton({
+  icon: Icon,
+  label,
+  disabled,
+  onPress,
+}: {
+  icon: LucideIcon;
+  label: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const { color } = useTheme();
+  return (
+    <PressableScale
+      accessibilityLabel={label}
+      disabled={disabled}
+      haptic={false}
+      onPress={onPress}
+      style={{
+        minHeight: 44,
+        borderRadius: radii.md,
+        backgroundColor: color("muted"),
+        paddingHorizontal: spacing.md,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.xs,
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <Icon size={17} color={color("foreground")} strokeWidth={2} />
+      <Txt variant="label" numberOfLines={1}>
+        {label}
+      </Txt>
+    </PressableScale>
+  );
+}
+
+function CompactControl({
+  icon: Icon,
+  label,
+  active,
+  disabled,
+  onPress,
+}: {
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const { color } = useTheme();
+  return (
+    <PressableScale
+      accessibilityLabel={label}
+      accessibilityState={{ expanded: active, disabled }}
+      disabled={disabled}
+      haptic={false}
+      onPress={onPress}
+      style={{
+        width: 44,
+        height: 44,
+        borderRadius: radii.pill,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: active ? color("secondary") : "transparent",
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <Icon
+        size={19}
+        color={active ? color("primary") : color("mutedForeground")}
+        strokeWidth={2.1}
+      />
+    </PressableScale>
   );
 }
 

@@ -13,7 +13,11 @@ import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 import { AttachmentComposer } from "./attachment-composer";
 import { chatMessageLengthError } from "./chat-markdown";
-import { RichChatInput, type ChatMentionSuggestion } from "./rich-chat-input";
+import {
+  ComposerToolButton,
+  RichChatInput,
+  type ChatMentionSuggestion,
+} from "./rich-chat-input";
 import type { ChatComposerController } from "./use-chat-composer";
 import type { ManagedChatAttachment } from "./use-managed-chat-attachments";
 import { chatAuthorName } from "./types";
@@ -243,20 +247,16 @@ export function ChatComposer({
               suggestions={suggestions}
               toolbarActions={
                 <>
-                  <IconButton
+                  <ComposerToolButton
                     icon={Paperclip}
-                    label="Attach files"
-                    size="sm"
-                    variant="ghost"
+                    label="Attach"
                     disabled={isPending || !canPickAttachments}
                     onPress={onPickAttachments}
                   />
                   {canCreatePoll ? (
-                    <IconButton
+                    <ComposerToolButton
                       icon={BarChart3}
-                      label="Create poll"
-                      size="sm"
-                      variant="ghost"
+                      label="Poll"
                       disabled={isPending}
                       onPress={onStartPoll}
                     />
