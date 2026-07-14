@@ -2,7 +2,7 @@
 
 ## Active Focus
 
-- **Branch**: `mobile`
+- **Branch**: `main`
 - **Goal**: Native Expo mobile app advanced to repo-local store-ready v1 on top of the Convex-first IA app.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
@@ -83,11 +83,24 @@
 - Mobile club chat now keeps its composer above the iOS home indicator and
   keyboard, renders emoji reactions with canonical token payloads, and allows
   independent message operations without freezing the composer.
+- Mobile club chat shows people mentions by name while retaining stable IDs in
+  portable links, offers a labeled reaction picker and author-only edit action
+  on long press, and supports deliberate swipe-to-reply with reduced-motion
+  behavior.
+- Club workspaces now prioritize People and Shared content over internal mention
+  groups, search channel names and access-checked message history, and collect
+  paginated files and images for each readable channel.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
   unread tinting, compact top-right read/save controls, and divider-free comment
   threads.
+- Mobile announcement search composes with All, Unread, and Saved filters, and
+  unread rows choose the perceptually furthest accessible theme surface rather
+  than assuming a lighter or darker direction.
+- Mobile Flex Friday uses a flat pass/date/session/workshop hierarchy with
+  compact selectors, inline status, capacity, and location details instead of
+  nested card and pill stacks.
 - `packages/design-tokens` centralizes theme, badge, radius, spacing, and type
   tokens for web/mobile consumption. Web imports the Tailwind token bridge.
 - `packages/fun-facts` centralizes the shared school-appropriate fun fact bank
