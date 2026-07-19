@@ -16,3 +16,6 @@ export * from "./switch";
 export * from "./text-field";
 export * from "./toast";
 export * from "./typography";
+export * from "./progress";
+export * from "./date-time-picker";
+export * from "./ia-loading-mark";

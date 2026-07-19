@@ -67,7 +67,7 @@ export function FridayForm({
           <SheetTitle>Schedule Flex Friday</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={() => handleSubmit()} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date *</Label>

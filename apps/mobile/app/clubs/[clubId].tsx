@@ -2,10 +2,11 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
-import { ChevronRight, FolderOpen, Hash, Search, Settings2, UsersRound } from "lucide-react-native";
+import { CalendarPlus, ChevronRight, FolderOpen, Hash, Search, Settings2, UsersRound } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, IconButton, PressableScale, TextField, Txt } from "@/components/ui";
+import { CreateEventSheet } from "@/features/calendar/create-event-sheet";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -17,6 +18,7 @@ export default function ClubDetailScreen() {
   const requestJoin = useMutation(api.clubs.invitations.requestToJoin);
   const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
   const [channelQuery, setChannelQuery] = useState("");
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
   const deferredChannelQuery = useDeferredValue(channelQuery.trim().toLocaleLowerCase());
   const { color } = useTheme();
   const visibleChannels = useMemo(() => {
@@ -101,6 +103,15 @@ export default function ClubDetailScreen() {
                       style={{ flex: 1 }}
                       onPress={() => router.push(`/clubs/${clubId}/shared` as never)}
                     />
+                    {data.viewer?.canManageMembership && (
+                      <Button
+                        title="Event"
+                        icon={CalendarPlus}
+                        variant="secondary"
+                        style={{ flex: 1 }}
+                        onPress={() => setShowCreateEvent(true)}
+                      />
+                    )}
                   </View>
 
                   <View style={{ gap: spacing.sm }}>
@@ -266,6 +277,12 @@ export default function ClubDetailScreen() {
                   })}
                 </View>
               ) : null}
+              
+              <CreateEventSheet
+                open={showCreateEvent}
+                onClose={() => setShowCreateEvent(false)}
+                defaultClubId={clubId}
+              />
             </View>
           );
         }}

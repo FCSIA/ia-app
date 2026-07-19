@@ -118,24 +118,26 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
   return (
     <GestureDetector gesture={pan}>
       <Animated.View
-        accessibilityLiveRegion="polite"
-        accessibilityRole="alert"
         entering={reduceMotion ? undefined : FadeInDown.duration(180)}
         exiting={reduceMotion ? undefined : FadeOutUp.duration(160)}
-        style={[
-          {
-            borderRadius: radii.lg,
-            borderWidth: 1,
-            borderColor: color("border"),
-            backgroundColor: toast.tone === "success" ? color("primary") : color("card"),
-            padding: spacing.md,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: spacing.sm,
-          },
-          animatedStyle,
-        ]}
       >
+        <Animated.View
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          style={[
+            {
+              borderRadius: radii.lg,
+              borderWidth: 1,
+              borderColor: color("border"),
+              backgroundColor: toast.tone === "success" ? color("primary") : color("card"),
+              padding: spacing.md,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing.sm,
+            },
+            animatedStyle,
+          ]}
+        >
         <View style={{ flex: 1, gap: 2 }}>
           <Txt variant="label" style={{ color: foreground }}>
             {toast.title}
@@ -155,6 +157,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
         >
           <X color={foreground} size={19} strokeWidth={2} />
         </Pressable>
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   );

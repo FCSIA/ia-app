@@ -83,7 +83,7 @@ export function SessionForm({
           <SheetTitle>{editingSessionId ? 'Edit Session' : 'New Session'}</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={() => handleSubmit()} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Session Title *</Label>

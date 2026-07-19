@@ -61,7 +61,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       if (!open) setMounted(false);
     };
 
-    if (!mounted) return null;
+    if (!open && !mounted) return null;
 
     return (
       <DialogPrimitive.Portal forceMount>
@@ -73,7 +73,24 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             transition={open ? springs.slow : springs.moderate}
           />
         </DialogPrimitive.Overlay>
-        <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
+        <DialogPrimitive.Content 
+          ref={ref} 
+          asChild 
+          forceMount
+          onPointerDownOutside={(e) => {
+            if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault();
+            }
+            props.onPointerDownOutside?.(e);
+          }}
+          onInteractOutside={(e) => {
+            if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault();
+            }
+            props.onInteractOutside?.(e);
+          }}
+          {...props}
+        >
           <motion.div
             className={cn(
               "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
