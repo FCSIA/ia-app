@@ -11,6 +11,7 @@ import { createOptimisticMessageShape } from "./optimistic-message-shape";
 
 export { createClientMessageIdentity } from "./optimistic-message-shape";
 
+/** Applies the same optimistic channel behavior on web and mobile. */
 type PostMessageArgs = FunctionArgs<typeof api.clubs.channels.postMessage>;
 type ChannelPageMessage = PaginatedQueryItem<
   typeof api.clubs.channels.getMessagePage

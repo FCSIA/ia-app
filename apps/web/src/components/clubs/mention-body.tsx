@@ -64,9 +64,33 @@ function escapeMarkdownText(text: string) {
   return text.replace(/([\\`*_[\]~])/g, '\\$1');
 }
 
+const inlineMarkdownLinkPattern =
+  /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/gi;
+
+function serializeMarkdownText(text: string) {
+  let markdown = '';
+  let cursor = 0;
+
+  for (const match of text.matchAll(inlineMarkdownLinkPattern)) {
+    const index = match.index;
+    if (index === undefined) continue;
+
+    const [source, label, href] = match;
+    markdown += escapeMarkdownText(text.slice(cursor, index));
+
+    const safeHref = allowedMessageHref(href);
+    markdown += safeHref
+      ? `[${escapeMarkdownText(label)}](${safeHref})`
+      : escapeMarkdownText(source);
+    cursor = index + source.length;
+  }
+
+  return markdown + escapeMarkdownText(text.slice(cursor));
+}
+
 function serializeNodeMarkdown(node: RichTextNode): string {
   if (isRichTextLeaf(node)) {
-    let content = escapeMarkdownText(node.text);
+    let content = serializeMarkdownText(node.text);
     if (!content) return content;
     if (node.bold) content = `**${content}**`;
     if (node.italic) content = `_${content}_`;
@@ -210,7 +234,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
     return (
       <div
         className={cn(
-          'prose prose-sm dark:prose-invert max-w-none text-sm leading-6 prose-p:my-1 prose-pre:my-2 prose-pre:rounded-xl prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5',
+          'typeset typeset-chat max-w-none',
           className,
         )}
       >
@@ -255,7 +279,7 @@ export function MentionBody({ body, bodyMarkdown, bodyRich, className }: Mention
   }
 
   return (
-    <div className={cn('space-y-2 text-sm leading-6 text-foreground', className)}>
+    <div className={cn('typeset typeset-chat text-foreground', className)}>
       {value.map((node, index) => renderBlockNode(node, index))}
     </div>
   );

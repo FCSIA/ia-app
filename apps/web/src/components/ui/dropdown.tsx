@@ -122,7 +122,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <AnimatePresence>
             {checkedRect && (
               <motion.div
-                className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                className={cn(
+                  "absolute bg-active pointer-events-none",
+                  shape.bg,
+                )}
                 initial={false}
                 animate={{
                   top: checkedRect.top,
@@ -145,7 +148,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             {activeRect && (
               <motion.div
                 key={sessionRef.current}
-                className={`absolute ${shape.bg} bg-hover pointer-events-none`}
+                className={cn(
+                  "absolute bg-hover pointer-events-none",
+                  shape.bg,
+                )}
                 initial={{
                   opacity: 0,
                   top: checkedRect?.top ?? activeRect.top,
@@ -173,7 +179,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
+                className={cn(
+                  "absolute pointer-events-none z-20 border border-[#6B97FF]",
+                  shape.focusRing,
+                )}
                 initial={false}
                 animate={{
                   left: focusRect.left - 2,

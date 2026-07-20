@@ -441,6 +441,7 @@ export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
       icon={Palette}
       title="Appearance"
       description="Set the interface theme for this browser."
+      contentClassName="flex flex-col gap-3"
     >
       <RadioGroup
         value={theme ?? 'system'}

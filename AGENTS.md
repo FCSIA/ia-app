@@ -29,6 +29,8 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 
 - Fluid Functionalism, shadcn, and Tailwind are the primary UI layers for the web
   app.
+- Before adding, updating, or migrating a Fluid, shadcn, Base UI, or Radix
+  primitive, read `agent-notes/UI_PRIMITIVE_COMPATIBILITY.md`.
 - For UI work, prefer current Fluid primitives and registry APIs over old local
   assumptions. Use Radix/shadcn directly only where Fluid does not cover the
   required accessibility or semantic behavior.

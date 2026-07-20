@@ -20,6 +20,8 @@
             pnpm
             openssl
             pkg-config
+            cocoapods
+            gh
           ];
         };
       }

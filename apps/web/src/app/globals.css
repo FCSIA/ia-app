@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "shadcn/tailwind.css";
+@import "./typeset.css";
 @import "katex/dist/katex.min.css";
 @import "../../../../packages/design-tokens/src/web.css";
 
