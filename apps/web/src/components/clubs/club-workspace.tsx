@@ -47,6 +47,37 @@ function resolveMediaUrl(url?: string | null) {
   return url;
 }
 
+function BrowseAllClubsItem({
+  index,
+}: {
+  index: number;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  const { registerItem, activeIndex } = useDropdown();
+  const isHovered = activeIndex === index;
+
+  useEffect(() => {
+    registerItem(index, ref.current);
+    return () => registerItem(index, null);
+  }, [index, registerItem]);
+  return (
+    <Link
+      ref={ref}
+      data-proximity-index={index}
+      role="menuitemradio"
+      href="/clubs"
+      className={cn(
+        "text-sm relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
+        isHovered
+          ? "text-foreground"
+          : "text-muted-foreground",
+      )}
+    >
+      Browse all clubs
+    </Link>
+  )
+}
+
 function ClubPickerItem({
   club,
   active,
@@ -217,14 +248,14 @@ export function ClubWorkspace({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="border-0 bg-transparent p-0 shadow-none"
+                className="bg-transparent border-border p-0 shadow-none rounded-lg"
               >
                 <Dropdown
                   checkedIndex={
                     activeClubIndex >= 0 ? activeClubIndex : undefined
                   }
                   itemShapeClassName="rounded-lg"
-                  className="w-64 !rounded-lg"
+                  className="w-64 !rounded-sm border-0"
                 >
                   {myClubs.length > 0 ? (
                     myClubs.map((entry, index) => (
@@ -241,12 +272,9 @@ export function ClubWorkspace({
                     </div>
                   )}
                   <DropdownSeparator className="!mx-1" />
-                  <Link
-                    href="/clubs"
-                    className="relative z-10 flex rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Browse all clubs
-                  </Link>
+                  <BrowseAllClubsItem
+                    index={myClubs.length}
+                  />
                 </Dropdown>
               </DropdownMenuContent>
             </DropdownMenu>

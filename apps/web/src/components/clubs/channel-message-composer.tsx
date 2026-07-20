@@ -93,7 +93,7 @@ function MarkToolButton({
   return (
     <InputGroupButton
       type="button"
-      size="icon-xs"
+      size="icon-sm"
       aria-label={label}
       className={cn(active && 'bg-accent text-accent-foreground')}
       onMouseDown={(event) => {
@@ -228,7 +228,7 @@ export function ChannelMessageComposer({
           {files.length > 0 ? (
             <AttachmentGroup className="gap-1.5 py-0">
               {files.map((file) => (
-                <Attachment key={file.name} size="xs" className="max-w-56 flex-nowrap">
+                <Attachment key={file.name} size="sm" className="max-w-56 flex-nowrap">
                   <AttachmentMedia>
                     <FileText />
                   </AttachmentMedia>
@@ -255,7 +255,7 @@ export function ChannelMessageComposer({
           ) : null}
 
           {attachmentError ? (
-            <p role="alert" className="px-1 text-xs text-destructive">
+            <p role="alert" className="px-1 text-sm text-destructive">
               {attachmentError}
             </p>
           ) : null}
@@ -263,7 +263,7 @@ export function ChannelMessageComposer({
           {pollOpen ? (
             <div className="flex flex-col gap-2 rounded-xl border bg-background p-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground">Poll</span>
+                <span className="text-sm font-medium text-muted-foreground">Poll</span>
                 <Button
                   type="button"
                   size="icon-sm"
@@ -362,7 +362,7 @@ export function ChannelMessageComposer({
                       {canAttach ? (
                         <InputGroupButton
                           type="button"
-                          size="icon-xs"
+                          size="icon-sm"
                           aria-label="Attach files"
                           disabled={files.length >= MAX_ATTACHMENTS}
                           onClick={() => {
@@ -376,7 +376,7 @@ export function ChannelMessageComposer({
                       {canCreatePoll ? (
                         <InputGroupButton
                           type="button"
-                          size="icon-xs"
+                          size="icon-sm"
                           aria-label={pollOpen ? 'Remove poll' : 'Create a poll'}
                           className={cn(pollOpen && 'bg-accent text-accent-foreground')}
                           onClick={() => {
@@ -412,7 +412,7 @@ export function ChannelMessageComposer({
                           />
                           <InputGroupButton
                             type="button"
-                            size="icon-xs"
+                            size="icon-sm"
                             aria-label="Mention someone"
                             onMouseDown={(event) => {
                               event.preventDefault();

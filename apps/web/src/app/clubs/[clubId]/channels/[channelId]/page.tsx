@@ -1096,7 +1096,7 @@ export default function ClubChannelPage({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="border-t p-3">
+      <div>
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
