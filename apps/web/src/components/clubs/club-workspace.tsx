@@ -240,7 +240,7 @@ export function ClubWorkspace({
                       No club memberships yet.
                     </div>
                   )}
-                  <DropdownSeparator />
+                  <DropdownSeparator className="!mx-1" />
                   <Link
                     href="/clubs"
                     className="relative z-10 flex rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
