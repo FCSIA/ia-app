@@ -33,11 +33,10 @@ export function useDropdown() {
 interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndex?: number;
-  itemShapeClassName?: string;
 }
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
-  ({ children, checkedIndex, itemShapeClassName, className, ...props }, ref) => {
+  ({ children, checkedIndex, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
@@ -62,8 +61,6 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const isHoveringOther =
       activeIndex !== null && activeIndex !== checkedIndex;
     const shape = useShape();
-    const itemShape = itemShapeClassName ?? shape.bg;
-    const focusRingShape = itemShapeClassName ?? shape.focusRing;
 
     return (
       <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
@@ -127,7 +124,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
               <motion.div
                 className={cn(
                   "absolute bg-active pointer-events-none",
-                  itemShape,
+                  shape.bg,
                 )}
                 initial={false}
                 animate={{
@@ -153,7 +150,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
                 key={sessionRef.current}
                 className={cn(
                   "absolute bg-hover pointer-events-none",
-                  itemShape,
+                  shape.bg,
                 )}
                 initial={{
                   opacity: 0,
@@ -184,7 +181,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
               <motion.div
                 className={cn(
                   "absolute pointer-events-none z-20 border border-[#6B97FF]",
-                  focusRingShape,
+                  shape.focusRing,
                 )}
                 initial={false}
                 animate={{

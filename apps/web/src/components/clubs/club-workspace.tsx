@@ -248,14 +248,13 @@ export function ClubWorkspace({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="bg-transparent border-border p-0 shadow-none rounded-lg"
+                className="border-0 bg-transparent p-0 shadow-none"
               >
                 <Dropdown
                   checkedIndex={
                     activeClubIndex >= 0 ? activeClubIndex : undefined
                   }
-                  itemShapeClassName="rounded-lg"
-                  className="w-64 !rounded-sm border-0"
+                  className="w-64"
                 >
                   {myClubs.length > 0 ? (
                     myClubs.map((entry, index) => (
