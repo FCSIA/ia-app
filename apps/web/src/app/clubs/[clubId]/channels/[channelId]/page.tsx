@@ -1108,7 +1108,7 @@ export default function ClubChannelPage({
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
         <MessageScroller className="flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-32">
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-24">
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
                 <MessageScrollerItem>
                   <div className="flex justify-center py-2">
@@ -1177,13 +1177,13 @@ export default function ClubChannelPage({
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton className="data-[direction=end]:bottom-28" />
+          <MessageScrollerButton className="data-[direction=end]:bottom-20" />
         </MessageScroller>
       </MessageScrollerProvider>
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-card via-card/90 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card via-card/90 to-transparent"
       />
 
       <div className="absolute inset-x-0 bottom-0 p-3">
@@ -1209,9 +1209,6 @@ export default function ClubChannelPage({
               </p>
             </div>
           )}
-          <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
-            Live channel · Messages tracked
-          </p>
         </div>
       </div>
       <Dialog

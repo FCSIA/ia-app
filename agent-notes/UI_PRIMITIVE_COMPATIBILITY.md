@@ -1,0 +1,99 @@
+# UI Primitive Compatibility
+
+Read this before adding, updating, composing, or migrating anything under
+`apps/web/src/components/ui/`.
+
+## The rule
+
+Treat copied registry components as source code with dependencies on a specific
+primitive contract, not as interchangeable styling snippets.
+
+Fluid, shadcn, Radix UI, and Base UI can expose similar component names while
+differing in:
+
+- rendered DOM shape and wrapper elements;
+- trigger composition (`asChild` for Radix versus `render` for Base UI);
+- required companion components and nesting;
+- event, focus, portal, and dismissal behavior;
+- state and data attributes used by selectors;
+- icon ownership, sizing, and wrapper behavior;
+- default padding, negative margins, height, and radius assumptions.
+
+Those differences often compile cleanly. The failure appears only in the
+rendered UI as wrong spacing, oversized icons, broken focus, or a trigger that
+does not open. Do not begin by tweaking page-level Tailwind classes when the
+primitive contract may be wrong.
+
+## Concrete failure: `InputGroupButton`
+
+The copied shadcn `InputGroupButton` assumed that its icon was a direct SVG
+child. The local Fluid `Button` wraps children and icons in nested spans. A
+selector such as `&>svg` therefore matched nothing, leaving Lucide's default
+24px SVG inside a 24px tool button. The result looked like a padding problem,
+but the control had no breathing room because the icon-sizing contract was
+broken.
+
+The correct fix belongs in the primitive adapter:
+
+- use a descendant selector that matches the actual local DOM (`&_svg`);
+- define icon size as part of each `InputGroupButton` size variant;
+- remove inherited negative button margins that assume upstream shadcn button
+  geometry;
+- keep call-site padding concerned only with local layout.
+
+This is the model for similar bugs: inspect the rendered contract, then repair
+the narrowest shared primitive that owns it.
+
+## Base UI and Radix are different implementations
+
+The project currently reports `base: radix` from `pnpm dlx shadcn@latest info
+--json`. New shadcn projects default to Base UI, but shadcn explicitly says
+working Radix projects do not need to migrate.
+
+Never paste the default/Base example into this Radix project without switching
+the docs tab and registry base. Components such as comboboxes and dropdowns may
+need a different component file, companion primitives, trigger API, and content
+structure. Replacing an import or changing `asChild` to `render` is not a
+complete migration.
+
+When a migration is intentional, migrate one component family at a time and
+keep both implementations explicit until every call site is verified. Follow
+the project `migrate-radix-to-base` skill and the current official shadcn docs.
+
+References:
+
+- [Base UI as the default](https://ui.shadcn.com/docs/changelog/2026-07-base-ui-default)
+- [Base UI combobox](https://ui.shadcn.com/docs/components/base/combobox)
+- [Radix UI combobox](https://ui.shadcn.com/docs/components/radix/combobox)
+
+## Required audit workflow
+
+1. Run `pnpm dlx shadcn@latest info --json` from `apps/web` and record the
+   configured base, style, icon library, aliases, and installed components.
+2. Fetch the current docs for the configured base with `pnpm dlx shadcn@latest
+   docs <component>`. Compare Base and Radix docs when a migration or copied
+   example is involved.
+3. Before updating an installed component, use `add --dry-run` and `add --diff`.
+   Do not overwrite local Fluid adaptations blindly.
+4. Inspect the local dependency primitives and the rendered DOM. Check wrappers,
+   direct-child selectors, `data-*` states, trigger props, portals, and focus
+   ownership.
+5. Verify computed control geometry: outer height, content box, icon size,
+   padding, gaps, and any negative margin. Test both resting and open states.
+6. Fix a shared contract mismatch in `components/ui`; use page-level classes
+   only for layout that is genuinely unique to that page.
+7. Typecheck and lint, then visually exercise open/close, hover, focus, keyboard,
+   disabled, selected, and narrow-width states. Type safety alone is not proof.
+
+## Review questions
+
+- Is this source from the project's configured registry base?
+- Does the component render the DOM its selectors expect?
+- Does the local `Button`, `Input`, or trigger wrap children differently?
+- Is a selector accidentally limited to direct children?
+- Are negative margins compensating for upstream geometry we no longer have?
+- Does the target base require a different companion component or nesting?
+- Would fixing the primitive remove several call-site overrides?
+
+If any answer is uncertain, stop styling the page and inspect the primitive
+boundary first.

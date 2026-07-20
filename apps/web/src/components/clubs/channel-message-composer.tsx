@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { Bold, AtSign, BarChart3, FileText, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
+import { AtSign, BarChart3, Bold, FileText, Italic, Paperclip, Plus, Send, Underline, X } from 'lucide-react';
 import type { Value } from 'platejs';
 import { Plate, PlateContent, useEditorRef, useEditorSelection, usePlateEditor } from 'platejs/react';
 import { BoldPlugin, ItalicPlugin, UnderlinePlugin } from '@platejs/basic-nodes/react';
@@ -16,13 +16,15 @@ import {
   AttachmentTitle,
 } from '@/components/ui/attachment';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
 } from '@/components/ui/input-group';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip } from '@/components/ui/tooltip';
 import {
   deserializeClubChannelMessageBody,
@@ -66,19 +68,21 @@ type ChannelMessageComposerProps = {
   onMentionIntent?: () => void;
 };
 
-type ComposerMark = 'bold' | 'italic' | 'underline';
-
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
-function MarkButton({
+type ComposerMark = 'bold' | 'italic' | 'underline';
+
+function MarkToolButton({
   icon: Icon,
   label,
   mark,
+  onApply,
 }: {
   icon: typeof Bold;
   label: string;
   mark: ComposerMark;
+  onApply: () => void;
 }) {
   const editor = useEditorRef();
   useEditorSelection();
@@ -87,24 +91,23 @@ function MarkButton({
   const active = !!marks[mark];
 
   return (
-    <Tooltip content={label}>
-      <InputGroupButton
-        type="button"
-        size="icon-xs"
-        aria-label={label}
-        className={cn(active && 'bg-accent text-accent-foreground')}
-        onMouseDown={(event) => {
-          event.preventDefault();
-          const transform = (
-            editor.tf as unknown as Record<string, { toggle?: () => void }>
-          )[mark];
-          transform?.toggle?.();
-          editor.tf.focus();
-        }}
-      >
-        <Icon />
-      </InputGroupButton>
-    </Tooltip>
+    <InputGroupButton
+      type="button"
+      size="icon-xs"
+      aria-label={label}
+      className={cn(active && 'bg-accent text-accent-foreground')}
+      onMouseDown={(event) => {
+        event.preventDefault();
+        const transform = (
+          editor.tf as unknown as Record<string, { toggle?: () => void }>
+        )[mark];
+        transform?.toggle?.();
+        onApply();
+        requestAnimationFrame(() => editor.tf.focus());
+      }}
+    >
+      <Icon data-icon="inline-start" />
+    </InputGroupButton>
   );
 }
 
@@ -148,6 +151,7 @@ export function ChannelMessageComposer({
   );
   const [richValue, setRichValue] = useState<Value>(initialValue);
   const [pollOpen, setPollOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptions, setPollOptions] = useState(['', '']);
   const isMarkdownSource = !initialBodyRich && !!initialBodyMarkdown?.trim();
@@ -171,6 +175,7 @@ export function ChannelMessageComposer({
   const hasPoll = pollOpen && pollQuestion.trim() && normalizedPollOptions.length >= 2;
   const currentBody = isMarkdownSource ? markdownSource : plainText;
   const canSend = !isPending && (currentBody.trim().length > 0 || files.length > 0 || !!hasPoll);
+  const hasComposerTools = canAttach || canCreatePoll || !isMarkdownSource;
 
   const handleSubmit = () => {
     if (!canSend) return;
@@ -233,7 +238,6 @@ export function ChannelMessageComposer({
                   <AttachmentActions>
                     <AttachmentAction
                       size="icon-sm"
-                      className="size-6"
                       aria-label={`Remove ${file.name}`}
                       onClick={() => {
                         setAttachmentError(null);
@@ -242,7 +246,7 @@ export function ChannelMessageComposer({
                         );
                       }}
                     >
-                      <X className="size-3" />
+                      <X data-icon="inline-start" />
                     </AttachmentAction>
                   </AttachmentActions>
                 </Attachment>
@@ -257,18 +261,17 @@ export function ChannelMessageComposer({
           ) : null}
 
           {pollOpen ? (
-            <div className="flex flex-col gap-2 rounded-xl border bg-muted/20 p-3">
-              <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 rounded-xl border bg-background p-2">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted-foreground">Poll</span>
                 <Button
                   type="button"
                   size="icon-sm"
                   variant="ghost"
-                  className="size-6"
                   aria-label="Remove poll"
                   onClick={() => setPollOpen(false)}
                 >
-                  <X className="size-3.5" />
+                  <X data-icon="inline-start" />
                 </Button>
               </div>
               <Input
@@ -302,13 +305,18 @@ export function ChannelMessageComposer({
                 onClick={() => setPollOptions((current) => [...current, ''])}
                 disabled={pollOptions.length >= 6}
               >
-                <Plus className="size-3.5" />
+                <Plus data-icon="inline-start" />
                 Add option
               </Button>
             </div>
           ) : null}
 
-          <InputGroup className="h-auto min-h-20 overflow-hidden rounded-xl border-border/80 bg-background shadow-sm">
+          <InputGroup
+            className={cn(
+              'h-auto min-h-11 overflow-hidden',
+              'rounded-2xl border-border/80 bg-background shadow-sm',
+            )}
+          >
             {isMarkdownSource ? (
               <InputGroupTextarea
                 aria-label="Markdown message source"
@@ -316,7 +324,10 @@ export function ChannelMessageComposer({
                 onChange={(event) => setMarkdownSource(event.target.value)}
                 onKeyDown={handleMarkdownSourceKeyDown}
                 placeholder={placeholder}
-                className="max-h-64 min-h-16 resize-y font-mono text-sm leading-6"
+                className={cn(
+                  'max-h-40 min-h-10 resize-none py-2.5',
+                  'font-mono text-sm leading-5',
+                )}
               />
             ) : (
               <PlateContent
@@ -324,78 +335,115 @@ export function ChannelMessageComposer({
                 placeholder={placeholder}
                 onKeyDown={handleKeyDown}
                 className={cn(
-                  'max-h-64 min-h-12 w-full overflow-y-auto px-3 pt-3 text-sm leading-6 outline-none',
-                  '[&_[data-slate-placeholder=true]]:text-muted-foreground [&_[data-slate-placeholder=true]]:top-3',
+                  'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
+                  'py-2.5 pl-1 pr-2 text-sm leading-5 outline-none',
+                  '[&_[data-slate-placeholder=true]]:top-2.5',
+                  '[&_[data-slate-placeholder=true]]:text-muted-foreground',
                 )}
               />
             )}
 
-            <InputGroupAddon align="block-end" className="justify-between gap-2 px-2 pb-2 pt-1">
-              <div className="flex min-w-0 items-center gap-0.5">
-                {!isMarkdownSource ? (
-                  <>
-                    <MarkButton icon={Bold} label="Bold" mark="bold" />
-                    <MarkButton icon={Italic} label="Italic" mark="italic" />
-                    <MarkButton icon={Underline} label="Underline" mark="underline" />
-                    <Tooltip content="Mention someone">
-                      <InputGroupButton
-                        type="button"
-                        size="icon-xs"
-                        aria-label="Mention someone"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          onMentionIntent?.();
-                          editor.tf.insertText('@');
-                          editor.tf.focus();
-                        }}
-                      >
-                        <AtSign />
-                      </InputGroupButton>
-                    </Tooltip>
-                  </>
-                ) : null}
-                {canAttach ? (
-                  <Tooltip content="Attach files">
-                    <InputGroupButton
+            {hasComposerTools ? (
+              <InputGroupAddon align="inline-start" className="self-end p-1 pl-2 pr-0">
+                <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
                       type="button"
-                      size="icon-xs"
-                      aria-label="Attach files"
-                      disabled={files.length >= MAX_ATTACHMENTS}
-                      onClick={() => fileInputRef.current?.click()}
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label="Message tools"
+                      aria-expanded={toolsOpen}
                     >
-                      <Paperclip />
-                    </InputGroupButton>
-                  </Tooltip>
-                ) : null}
-                {canCreatePoll ? (
-                  <Tooltip content="Create a poll">
-                    <InputGroupButton
-                      type="button"
-                      size="icon-xs"
-                      aria-label="Create a poll"
-                      className={cn(pollOpen && 'bg-accent text-accent-foreground')}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        setPollOpen((current) => !current);
-                      }}
-                    >
-                      <BarChart3 />
-                    </InputGroupButton>
-                  </Tooltip>
-                ) : null}
-              </div>
+                      <Plus data-icon="inline-start" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-auto p-1">
+                    <div className="flex items-center gap-0.5">
+                      {canAttach ? (
+                        <InputGroupButton
+                          type="button"
+                          size="icon-xs"
+                          aria-label="Attach files"
+                          disabled={files.length >= MAX_ATTACHMENTS}
+                          onClick={() => {
+                            setToolsOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                        >
+                          <Paperclip data-icon="inline-start" />
+                        </InputGroupButton>
+                      ) : null}
+                      {canCreatePoll ? (
+                        <InputGroupButton
+                          type="button"
+                          size="icon-xs"
+                          aria-label={pollOpen ? 'Remove poll' : 'Create a poll'}
+                          className={cn(pollOpen && 'bg-accent text-accent-foreground')}
+                          onClick={() => {
+                            setPollOpen((current) => !current);
+                            setToolsOpen(false);
+                          }}
+                        >
+                          <BarChart3 data-icon="inline-start" />
+                        </InputGroupButton>
+                      ) : null}
+                      {!isMarkdownSource && (canAttach || canCreatePoll) ? (
+                        <Separator orientation="vertical" className="mx-0.5 h-4" />
+                      ) : null}
+                      {!isMarkdownSource ? (
+                        <>
+                          <MarkToolButton
+                            icon={Bold}
+                            label="Bold"
+                            mark="bold"
+                            onApply={() => setToolsOpen(false)}
+                          />
+                          <MarkToolButton
+                            icon={Italic}
+                            label="Italic"
+                            mark="italic"
+                            onApply={() => setToolsOpen(false)}
+                          />
+                          <MarkToolButton
+                            icon={Underline}
+                            label="Underline"
+                            mark="underline"
+                            onApply={() => setToolsOpen(false)}
+                          />
+                          <InputGroupButton
+                            type="button"
+                            size="icon-xs"
+                            aria-label="Mention someone"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              onMentionIntent?.();
+                              editor.tf.insertText('@');
+                              setToolsOpen(false);
+                              requestAnimationFrame(() => editor.tf.focus());
+                            }}
+                          >
+                            <AtSign data-icon="inline-start" />
+                          </InputGroupButton>
+                        </>
+                      ) : null}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </InputGroupAddon>
+            ) : null}
 
+            <InputGroupAddon align="inline-end" className="self-end p-1 pl-0 pr-2">
               <Tooltip content={isPending ? 'Sending…' : submitLabel}>
                 <Button
                   type="button"
                   size="icon-sm"
-                  className="size-8 shrink-0"
+                  className="shrink-0"
                   aria-label={isPending ? 'Sending message' : submitLabel}
                   disabled={!canSend}
                   loading={isPending}
                   onClick={handleSubmit}
                 >
-                  <Send className="size-4" />
+                  <Send data-icon="inline-start" />
                 </Button>
               </Tooltip>
             </InputGroupAddon>
