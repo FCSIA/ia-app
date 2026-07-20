@@ -8,7 +8,6 @@ import {
   BarChart3,
   FileText,
   History,
-  ImageIcon,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
@@ -72,8 +71,18 @@ import {
   type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
 import { formatClubRole, fullName } from '@/components/clubs/types';
+import {
+  Attachment,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentTrigger,
+} from '@/components/ui/attachment';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Bubble, BubbleContent, BubbleReactions } from '@/components/ui/bubble';
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -84,6 +93,7 @@ import {
 } from '@/components/ui/message-scroller';
 import {
   Message,
+  MessageActions,
   MessageAvatar,
   MessageContent,
   MessageHeader,
@@ -175,59 +185,68 @@ function hasStudentScheduleRole(roles?: AppRole[] | null) {
   return roles?.some((role) => STUDENT_SCHEDULE_ROLES.has(role)) ?? false;
 }
 
-function AttachmentGallery({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
+function getAttachmentDescription(attachment: ClubChannelMessageAttachment) {
+  const extension = attachment.fileName.split('.').pop()?.trim().toUpperCase();
+  return [
+    extension || (isImageAttachment(attachment) ? 'Image' : 'File'),
+    formatBytes(attachment.size),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAttachment[] }) {
   if (attachments.length === 0) return null;
 
   return (
-    <div className="mt-2 space-y-2">
+    <AttachmentGroup className="mt-2 max-w-full gap-2 py-0">
       {attachments.map((attachment) => {
         const href = attachment.fileUrl;
-        const sizeLabel = formatBytes(attachment.size);
-
-        if (isImageAttachment(attachment)) {
-          return (
-            <a
-              key={attachment._id}
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              className="block overflow-hidden rounded-md border bg-muted/30"
-            >
-              <Image
-                src={href}
-                alt={attachment.fileName}
-                width={1200}
-                height={800}
-                unoptimized
-                className="max-h-72 w-full object-cover"
-              />
-              <div className="flex items-center justify-between gap-3 border-t px-3 py-2 text-xs">
-                <span className="truncate">{attachment.fileName}</span>
-                <ImageIcon className="size-3.5 shrink-0 text-muted-foreground" />
-              </div>
-            </a>
-          );
-        }
+        const isImage = isImageAttachment(attachment);
 
         return (
-          <a
+          <Attachment
             key={attachment._id}
-            href={href}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 rounded-md border bg-muted/20 px-3 py-2 transition-colors hover:bg-muted/40"
+            size="sm"
+            orientation={isImage ? 'vertical' : 'horizontal'}
+            className={cn(
+              isImage
+                ? 'w-52 max-w-[75vw] has-data-[slot=attachment-content]:w-full'
+                : 'max-w-72',
+            )}
           >
-            <FileText className="size-4 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm">{attachment.fileName}</p>
-              {sizeLabel ? (
-                <p className="text-xs text-muted-foreground">{sizeLabel}</p>
-              ) : null}
-            </div>
-          </a>
+            {isImage ? (
+              <AttachmentMedia
+                variant="image"
+                className="aspect-[3/2] w-full rounded-b-none"
+              >
+                <Image
+                  src={href}
+                  alt={attachment.fileName}
+                  width={1200}
+                  height={800}
+                  unoptimized
+                  className="size-full object-cover"
+                />
+              </AttachmentMedia>
+            ) : (
+              <AttachmentMedia>
+                <FileText />
+              </AttachmentMedia>
+            )}
+            <AttachmentContent>
+              <AttachmentTitle>{attachment.fileName}</AttachmentTitle>
+              <AttachmentDescription>
+                {getAttachmentDescription(attachment)}
+              </AttachmentDescription>
+            </AttachmentContent>
+            <AttachmentTrigger asChild aria-label={`Open ${attachment.fileName} in a new tab`}>
+              <a href={href} target="_blank" rel="noreferrer" />
+            </AttachmentTrigger>
+          </Attachment>
         );
       })}
-    </div>
+    </AttachmentGroup>
   );
 }
 
@@ -241,7 +260,6 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
           ? (message.bodyRich as ClubChannelMessageRichBody)
           : null
       }
-      className="mt-1"
     />
   );
 }
@@ -421,16 +439,16 @@ function MessageRow({
   const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
   const isSending =
     'deliveryState' in message && message.deliveryState === 'sending';
+  const hasBody = message.body.trim().length > 0;
+  const hasReactions =
+    !isDeleted && !isEditing && !isSending && message.reactions.length > 0;
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
     <Message
       className={cn(
-        'group relative gap-3 rounded-md px-3 py-2 transition-colors',
-        highlighted && 'bg-primary/[0.04]',
-        !compact && 'hover:bg-muted/40',
-        isEditing && 'bg-primary/[0.04] hover:bg-primary/[0.04]',
+        'gap-3 px-3 py-2',
         isSending &&
           'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
       )}
@@ -472,50 +490,68 @@ function MessageRow({
           ) : null}
         </MessageHeader>
 
-        {isDeleted ? (
-          <p className="mt-1 text-sm italic text-muted-foreground">Message deleted</p>
-        ) : isEditing ? (
+        {isEditing ? (
           <div className="mt-2" />
         ) : (
-          <>
-            <MessageBody message={message} />
-            <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
-            <AttachmentGallery attachments={message.attachments} />
-          </>
+          <Bubble
+            variant="secondary"
+            align="start"
+            className={cn('mt-1', hasReactions && 'mb-3')}
+          >
+            {isDeleted || hasBody ? (
+              <BubbleContent
+                className={cn(
+                  'text-sm leading-normal',
+                  highlighted && 'ring-2 ring-primary/30',
+                )}
+              >
+                {isDeleted ? (
+                  <p className="text-sm italic text-muted-foreground">Message deleted</p>
+                ) : (
+                  <MessageBody message={message} />
+                )}
+              </BubbleContent>
+            ) : null}
+            {!isDeleted ? (
+              <>
+                <PollCard message={message} onVote={onVotePoll} isPending={isVotePending} />
+                <MessageAttachments attachments={message.attachments} />
+              </>
+            ) : null}
+            {hasReactions ? (
+              <BubbleReactions side="bottom" align="start">
+                {message.reactions.map((reaction) => (
+                  <Button
+                    key={`${message._id}-${reaction.emoji}`}
+                    variant="tertiary"
+                    size="sm"
+                    className={cn(
+                      'h-6 gap-1 px-2 text-xs',
+                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+                    )}
+                    disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+                    onClick={() => {
+                      if (isChannelReaction(reaction.emoji)) {
+                        onToggleReaction(message._id, reaction.emoji);
+                      }
+                    }}
+                  >
+                    <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
+                    {reaction.count}
+                  </Button>
+                ))}
+              </BubbleReactions>
+            ) : null}
+          </Bubble>
         )}
 
         {!isEditing && (
           <>
             {!isDeleted && !isSending ? (
               <>
-                {message.reactions.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {message.reactions.map((reaction) => (
-                      <Button
-                        key={`${message._id}-${reaction.emoji}`}
-                        variant="tertiary"
-                        size="sm"
-                        className={cn(
-                          'h-6 gap-1 px-2 text-xs',
-                          reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                        )}
-                        disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
-                        onClick={() => {
-                          if (isChannelReaction(reaction.emoji)) {
-                            onToggleReaction(message._id, reaction.emoji);
-                          }
-                        }}
-                      >
-                        <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
-                        {reaction.count}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div
+                <MessageActions
                   className={cn(
-                    'absolute right-2 top-1 z-20 flex translate-y-1 items-center rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100',
+                    'translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
                     (actionsMenuOpen || deleteDialogOpen) && 'translate-y-0 opacity-100',
                   )}
                 >
@@ -624,7 +660,7 @@ function MessageRow({
                       ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
+                </MessageActions>
               </>
             ) : null}
 

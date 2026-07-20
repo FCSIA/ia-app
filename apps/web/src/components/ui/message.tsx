@@ -56,6 +56,19 @@ function MessageContent({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+function MessageActions({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="message-actions"
+      className={cn(
+        "absolute end-2 top-1 z-20 flex items-center",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function MessageHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -86,6 +99,7 @@ export {
   MessageGroup,
   Message,
   MessageAvatar,
+  MessageActions,
   MessageContent,
   MessageFooter,
   MessageHeader,

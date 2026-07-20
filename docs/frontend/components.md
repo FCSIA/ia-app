@@ -127,7 +127,15 @@ Use the local `MessageScroller` components for message timelines and threads.
 They wrap shadcn's headless `@shadcn/react` behavior so streaming updates,
 live-edge following, restored transcripts, and stable message anchors do not
 need to be rebuilt at each call site. Give each `MessageScrollerItem` a stable
-message ID.
+message ID. Compose each row with `Message`, use `Bubble` for its visible
+surface, and use `AttachmentGroup` plus `Attachment` for sent and pending files.
+`Message` is a transparent, full-width positioning canvas for row-level
+`MessageActions`; `Bubble` stays fit-content and owns its reactions. Do not
+stretch or decorate the row just to place the action toolbar, and do not anchor
+reactions to the row.
+
+The scrollable viewports use shadcn's CSS-only `scroll-fade` utilities so edge
+hints follow the current scroll position without adding React scroll state.
 
 The chat text stack has separate jobs:
 
