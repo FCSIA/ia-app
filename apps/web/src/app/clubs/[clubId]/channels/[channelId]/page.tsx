@@ -442,6 +442,7 @@ function MessageRow({
   const hasBody = message.body.trim().length > 0;
   const hasReactions =
     !isDeleted && !isEditing && !isSending && message.reactions.length > 0;
+  const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -552,10 +553,11 @@ function MessageRow({
                 <MessageActions
                   className={cn(
                     'translate-y-1 rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover/message:translate-y-0 group-hover/message:opacity-100 group-focus-within/message:translate-y-0 group-focus-within/message:opacity-100',
-                    (actionsMenuOpen || deleteDialogOpen) && 'translate-y-0 opacity-100',
+                    (reactionPickerOpen || actionsMenuOpen || deleteDialogOpen) &&
+                      'translate-y-0 opacity-100',
                   )}
                 >
-                  <Popover>
+                  <Popover open={reactionPickerOpen} onOpenChange={setReactionPickerOpen}>
                     <Tooltip content="Add reaction">
                       <PopoverTrigger asChild>
                         <Button
@@ -629,15 +631,22 @@ function MessageRow({
                         </Button>
                       </DropdownMenuTrigger>
                     </Tooltip>
-                    <DropdownMenuContent align="end" className="w-32">
+                    <DropdownMenuContent
+                      align="end"
+                      className="min-w-0 w-[7.5rem] rounded-2xl"
+                    >
                       {!isAuthor ? (
-                        <DropdownMenuItem onSelect={() => onReport?.(message._id)}>
+                        <DropdownMenuItem
+                          className="rounded-xl"
+                          onSelect={() => onReport?.(message._id)}
+                        >
                           <Flag />
                           Report
                         </DropdownMenuItem>
                       ) : null}
                       {canModerate && !compact ? (
                         <DropdownMenuItem
+                          className="rounded-xl"
                           disabled={isPinPending}
                           onSelect={() => onTogglePin(message._id, !message.isPinned)}
                         >
@@ -651,7 +660,7 @@ function MessageRow({
                       {(isAuthor || canModerate) ? (
                         <DropdownMenuItem
                           disabled={isDeletePending}
-                          className="text-destructive focus:text-destructive"
+                          className="rounded-xl text-destructive focus:text-destructive"
                           onSelect={() => setDeleteDialogOpen(true)}
                         >
                           <Trash2 />
