@@ -44,6 +44,22 @@ The correct fix belongs in the primitive adapter:
 This is the model for similar bugs: inspect the rendered contract, then repair
 the narrowest shared primitive that owns it.
 
+## Counterexample: actual compounded spacing
+
+Not every oversized primitive is a contract mismatch. The chat mention menu
+rendered the DOM its Plate/Ariakit selectors expected, but accumulated spacing
+at three nested levels: popup padding, group padding, and item margin/minimum
+height. It also carried a fixed width that was unnecessary for names-only rows.
+
+In that case the correct fix was geometry, applied where each layer owned it:
+
+- the shared inline-combobox item owns row height and horizontal inset;
+- the group owns only a minimal list-edge inset;
+- the mention call site owns its popup width and maximum height.
+
+Inspect first so a real padding problem is not misdiagnosed as a migration bug,
+and a contract mismatch is not buried under padding overrides.
+
 ## Base UI and Radix are different implementations
 
 The project currently reports `base: radix` from `pnpm dlx shadcn@latest info

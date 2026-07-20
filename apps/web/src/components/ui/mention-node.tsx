@@ -125,8 +125,13 @@ export function MentionInputElement(
           <InlineComboboxInput className="min-w-12" />
         </span>
 
-        <InlineComboboxContent className="my-2 w-64 rounded-xl border border-border bg-popover p-1 shadow-lg">
-          <InlineComboboxEmpty className="px-3 py-2 text-sm text-muted-foreground">
+        <InlineComboboxContent
+          className={cn(
+            'my-2 max-h-60 w-56',
+            'rounded-xl border border-border bg-popover p-1 shadow-lg',
+          )}
+        >
+          <InlineComboboxEmpty className="px-2 py-1.5 text-sm text-muted-foreground">
             No matches found.
           </InlineComboboxEmpty>
 
