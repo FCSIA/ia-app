@@ -136,6 +136,9 @@ reactions to the row.
 
 The scrollable viewports use shadcn's CSS-only `scroll-fade` utilities so edge
 hints follow the current scroll position without adding React scroll state.
+On wide channel layouts, compose the main timeline and thread with shadcn
+`ResizablePanelGroup`; each panel owns its own `MessageScroller`, while the
+thread composer remains a non-scrolling flex sibling below the thread viewport.
 
 The chat text stack has separate jobs:
 

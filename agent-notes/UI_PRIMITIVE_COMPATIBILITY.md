@@ -44,6 +44,20 @@ The correct fix belongs in the primitive adapter:
 This is the model for similar bugs: inspect the rendered contract, then repair
 the narrowest shared primitive that owns it.
 
+## Concrete failure: `ResizableHandle` after v4
+
+`react-resizable-panels` v4 renamed the group primitives and removed the old
+`data-panel-group-direction` styling hook. Its separator now exposes
+`aria-orientation`, but that value describes the separator line: a horizontal
+panel group has a **vertical** separator. Treating it as the panel-group
+direction makes the handle consume the full width and collapses both panels.
+
+Keep the v4 `Group`/`Panel`/`Separator` adapter explicit, use
+`aria-orientation="horizontal"` only for the horizontal separator styling used
+by a vertical panel stack, and verify actual panel and handle bounding boxes.
+For stable initial sizing, give the group and panels stable IDs and pass a
+matching `defaultLayout` map.
+
 ## Counterexample: actual compounded spacing
 
 Not every oversized primitive is a contract mismatch. The chat mention menu

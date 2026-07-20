@@ -1065,8 +1065,8 @@ export default function ClubChannelPage({
   );
 
   const rightPane = selectedThread ? (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-3">
+    <div className="flex size-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
@@ -1088,7 +1088,7 @@ export default function ClubChannelPage({
         autoScroll
         defaultScrollPosition="end"
       >
-        <MessageScroller className="flex-1">
+        <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
             <MessageScrollerContent className="gap-2 p-2">
               <MessageScrollerItem messageId={selectedThread._id}>
@@ -1105,7 +1105,7 @@ export default function ClubChannelPage({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div>
+      <div className="shrink-0 border-t bg-card p-3">
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
@@ -1135,6 +1135,7 @@ export default function ClubChannelPage({
     <ClubWorkspace
       title={title}
       rightPane={rightPane}
+      resizableRightPane
       contentClassName="relative flex flex-col bg-card"
     >
       <div className="shrink-0 border-b px-3 py-2">

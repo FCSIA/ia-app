@@ -30,6 +30,11 @@ import {
   useDropdown,
 } from "@/components/ui/dropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
@@ -138,6 +143,7 @@ function ClubPickerItem({
 type ClubWorkspaceProps = {
   children: ReactNode;
   rightPane?: ReactNode;
+  resizableRightPane?: boolean;
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
@@ -146,12 +152,25 @@ type ClubWorkspaceProps = {
 export function ClubWorkspace({
   children,
   rightPane,
+  resizableRightPane = false,
   title,
   actions,
   contentClassName,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
   const clubId = useClubId();
+  const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
+
+  useEffect(() => {
+    if (!resizableRightPane) return;
+
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const syncViewport = () => setIsResizablePaneViewport(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, [resizableRightPane]);
 
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
@@ -379,16 +398,59 @@ export function ClubWorkspace({
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1">
-          <div
-            className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto", contentClassName)}
-          >
-            {children}
-          </div>
-          {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-y-auto border-l xl:block">
-              {rightPane}
-            </aside>
-          ) : null}
+          {rightPane && resizableRightPane && isResizablePaneViewport ? (
+            <ResizablePanelGroup
+              id="club-channel-thread-layout"
+              orientation="horizontal"
+              defaultLayout={{
+                "club-channel-main-panel": 68,
+                "club-channel-thread-panel": 32,
+              }}
+              className="min-w-0"
+            >
+              <ResizablePanel
+                id="club-channel-main-panel"
+                defaultSize="68%"
+                minSize="55%"
+                style={{ overflow: "hidden" }}
+              >
+                <div
+                  className={cn(
+                    "h-full min-h-0 min-w-0 overflow-y-auto",
+                    contentClassName,
+                  )}
+                >
+                  {children}
+                </div>
+              </ResizablePanel>
+              <ResizableHandle id="club-channel-thread-handle" withHandle />
+              <ResizablePanel
+                id="club-channel-thread-panel"
+                defaultSize="32%"
+                minSize="18rem"
+                maxSize="45%"
+                style={{ overflow: "hidden" }}
+              >
+                <aside className="h-full min-h-0 overflow-hidden">{rightPane}</aside>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "min-h-0 min-w-0 flex-1 overflow-y-auto",
+                  contentClassName,
+                )}
+              >
+                {children}
+              </div>
+              {rightPane ? (
+                <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
+                  {rightPane}
+                </aside>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     </AppShell>
