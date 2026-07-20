@@ -64,9 +64,33 @@ function escapeMarkdownText(text: string) {
   return text.replace(/([\\`*_[\]~])/g, '\\$1');
 }
 
+const inlineMarkdownLinkPattern =
+  /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/gi;
+
+function serializeMarkdownText(text: string) {
+  let markdown = '';
+  let cursor = 0;
+
+  for (const match of text.matchAll(inlineMarkdownLinkPattern)) {
+    const index = match.index;
+    if (index === undefined) continue;
+
+    const [source, label, href] = match;
+    markdown += escapeMarkdownText(text.slice(cursor, index));
+
+    const safeHref = allowedMessageHref(href);
+    markdown += safeHref
+      ? `[${escapeMarkdownText(label)}](${safeHref})`
+      : escapeMarkdownText(source);
+    cursor = index + source.length;
+  }
+
+  return markdown + escapeMarkdownText(text.slice(cursor));
+}
+
 function serializeNodeMarkdown(node: RichTextNode): string {
   if (isRichTextLeaf(node)) {
-    let content = escapeMarkdownText(node.text);
+    let content = serializeMarkdownText(node.text);
     if (!content) return content;
     if (node.bold) content = `**${content}**`;
     if (node.italic) content = `_${content}_`;

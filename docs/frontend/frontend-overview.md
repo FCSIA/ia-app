@@ -11,10 +11,13 @@ development and talks to Convex through generated function references.
 
 ## Stack
 
-- Next.js 15 App Router
+- Next.js 16 App Router
 - React 19
 - Tailwind CSS v4
-- shadcn/ui and local Fluid-style primitives
+- shadcn/ui, shadcn/typeset, and local Fluid-style primitives
+- `@shadcn/react` behavior primitives for chat scrolling
+- Plate for rich chat authoring and structured mentions
+- `react-markdown` with `remark-gfm` for read-only message rendering
 - Convex React hooks
 - Better Auth through `ConvexBetterAuthProvider`
 

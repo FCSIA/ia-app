@@ -66,7 +66,10 @@ Core tables:
 Channel messages keep `body` as a searchable plain-text projection. New rich
 clients may also write portable GFM to `bodyMarkdown`; the web client renders it
 first and falls back to legacy Plate `bodyRich` content. Edits replace stale
-rich representations so mobile and web show the same message.
+rich representations so mobile and web show the same message. Web authoring
+uses Plate for rich marks and structured mentions, while read-only timelines use
+`react-markdown`, `remark-gfm`, and shadcn/typeset. Markdown-style `http` and
+`https` links remain clickable after Plate content is serialized.
 Person mentions show the member's name while their portable `user://` link
 keeps the stable school unique ID used for backend resolution.
 
