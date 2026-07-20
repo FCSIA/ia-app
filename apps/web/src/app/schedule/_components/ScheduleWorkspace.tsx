@@ -6,6 +6,7 @@ import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
+import { Toggle } from '@/components/ui/toggle';
 import { FriendSchedulesPanel } from './FriendSchedulesPanel';
 import { ManageBlocksPanel } from './ManageBlocksPanel';
 import { MySchedulePanel } from './MySchedulePanel';
@@ -25,6 +26,11 @@ export function ScheduleWorkspace() {
     selectedTab,
     setActiveTab,
     setIsPublic,
+    isBulkEditing,
+    setIsBulkEditing,
+    handleBulkSaveAdminBlocks,
+    setDraftAdminBlocks,
+    blocks,
   } = useScheduleWorkspace();
 
   if (isLoading) {
@@ -38,11 +44,35 @@ export function ScheduleWorkspace() {
 
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList className="w-full overflow-x-auto sm:w-auto">
-              {canEditOwnSchedule ? <TabItem value="my" label="My Schedule" /> : null}
-              {canEditOwnSchedule ? <TabItem value="friends" label="Friend Schedules" /> : null}
-              {canManageBlocks ? <TabItem value="admin" label="Manage Blocks" /> : null}
-            </TabsList>
+            <div className="flex items-center gap-2">
+              {canEditOwnSchedule ? (
+                <TabsList className="w-full overflow-x-auto sm:w-auto">
+                  <TabItem value="my" label="My Schedule" />
+                  <TabItem value="friends" label="Friend Schedules" />
+                </TabsList>
+              ) : null}
+              
+              {canManageBlocks ? (
+                <Toggle
+                  pressed={isBulkEditing}
+                  onPressedChange={(pressed) => {
+                    if (pressed) {
+                      const drafts: Record<string, any> = {};
+                      blocks.forEach(b => drafts[b.id] = b);
+                      setDraftAdminBlocks(drafts);
+                      setIsBulkEditing(true);
+                      setActiveTab('admin');
+                    } else {
+                      handleBulkSaveAdminBlocks();
+                    }
+                  }}
+                  className="rounded-full px-3 py-1.5 h-auto data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:bg-muted data-[state=off]:text-muted-foreground"
+                >
+                  Manage Blocks
+                </Toggle>
+              ) : null}
+            </div>
+            
             {selectedTab === 'my' && canEditOwnSchedule ? (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

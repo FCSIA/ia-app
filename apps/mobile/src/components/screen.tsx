@@ -17,7 +17,9 @@ export function Screen({ title, subtitle, header, children, contentContainerStyl
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
-  const isTabRoute = segments[0] === "(tabs)";
+  const isTabRoute =
+    (segments as string[]).includes("(tabs)") ||
+    (segments as string[]).some((s) => ["dashboard", "calendar", "clubs", "announcements", "discover"].includes(s));
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }} edges={["top", "left", "right"]}>
       <ScrollView

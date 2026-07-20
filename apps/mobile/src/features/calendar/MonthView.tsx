@@ -12,6 +12,7 @@ import {
   Txt,
   useToast,
 } from "@/components/ui";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { timeRange } from "@/lib/format";
 import { warning } from "@/lib/haptics";
 import { useTheme } from "@/lib/theme";
@@ -44,11 +45,10 @@ export function MonthView() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     title: "",
-    date: "",
-    time: "",
     location: "",
     description: "",
   });
+  const [startAt, setStartAt] = useState<Date | undefined>(undefined);
   const range = monthRange(offset);
   const entries = useQuery(api.events.calendar.list, {
     startDate: range.start.getTime(),
@@ -79,8 +79,7 @@ export function MonthView() {
   }, [filteredEntries]);
 
   async function submit() {
-    const dateTime = parseLocalDateTime(form.date, form.time);
-    if (!form.title.trim() || !dateTime) {
+    if (!form.title.trim() || !startAt) {
       showToast({ title: "Add a title and valid date" });
       return;
     }
@@ -89,10 +88,11 @@ export function MonthView() {
         title: form.title,
         description: form.description || undefined,
         location: form.location || undefined,
-        startAt: dateTime,
+        startAt: startAt.getTime(),
         source: "PERSONAL",
       });
-      setForm({ title: "", date: "", time: "", location: "", description: "" });
+      setForm({ title: "", location: "", description: "" });
+      setStartAt(undefined);
       setShowCreate(false);
       showToast({ title: "Added to calendar", tone: "success" });
     } catch (error) {
@@ -201,15 +201,11 @@ export function MonthView() {
           onChangeText={(title) => setForm((current) => ({ ...current, title }))}
           placeholder="Title"
         />
-        <TextField
-          value={form.date}
-          onChangeText={(date) => setForm((current) => ({ ...current, date }))}
-          placeholder="Date · YYYY-MM-DD"
-        />
-        <TextField
-          value={form.time}
-          onChangeText={(time) => setForm((current) => ({ ...current, time }))}
-          placeholder="Time · HH:mm (optional)"
+        <DateTimePicker
+          value={startAt}
+          onChange={setStartAt}
+          mode="datetime"
+          placeholder="Starts"
         />
         <TextField
           value={form.location}
@@ -336,10 +332,4 @@ function CalendarEntryRow({
   );
 }
 
-function parseLocalDateTime(date: string, time: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
-  const safeTime = time.trim() || "08:00";
-  if (!/^\d{2}:\d{2}$/.test(safeTime)) return null;
-  const value = new Date(`${date.trim()}T${safeTime}:00`);
-  return Number.isNaN(value.getTime()) ? null : value.getTime();
-}
+

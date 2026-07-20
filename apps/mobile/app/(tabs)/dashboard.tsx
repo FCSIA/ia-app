@@ -2,14 +2,20 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "convex/react";
-import { ChevronRight, RefreshCw, SlidersHorizontal } from "lucide-react-native";
+import { format, differenceInMinutes } from "date-fns";
+import { CheckCircle2, ChevronRight, Clock, RefreshCw, SlidersHorizontal, Timer } from "lucide-react-native";
 import { pickNavigationLoadingMessage } from "@ia/fun-facts";
 import { AppHeader } from "@/components/app-header";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import {
+  Badge,
+  Card,
   IconButton,
   PressableScale,
+  Progress,
+  ScreenLoader,
+  IaLoadingMark,
   Section,
   Skeleton,
   Txt,
@@ -54,15 +60,7 @@ export default function DashboardScreen() {
 }
 
 function DashboardLoading() {
-  return (
-    <Screen
-      header={<AppHeader title="Home" />}
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
-    >
-      <HomeSkeleton count={4} />
-      <HomeSkeleton count={3} />
-    </Screen>
-  );
+  return <ScreenLoader />;
 }
 
 function OperationalDashboardScreen({ user }: { user: AppUser }) {
@@ -84,19 +82,14 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
       header={<AppHeader title={user.firstName ? `Hi, ${user.firstName}` : "Home"} />}
       contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
     >
-      <Section title="School day">
-        {schedule === undefined ? (
-          <HomeSkeleton />
-        ) : (
-          <HomeSurface>
-            <HomeRow
-              title={schoolStatus.title}
-              subtitle={schoolStatus.subtitle}
-              meta={schoolStatus.meta}
-            />
-          </HomeSurface>
-        )}
-      </Section>
+      {schedule === undefined ? (
+        <Section title="School day"><HomeSkeleton /></Section>
+      ) : (
+        <>
+          <WelcomeWidget user={user} schedule={schedule} schoolDay={schoolDay} />
+          <DayProgressWidget schedule={schedule} schoolDay={schoolDay} />
+        </>
+      )}
 
       <Section
         title="Announcements"
@@ -383,6 +376,8 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
       }
     >
       {schedule.isOffline || schedule.isStale ? <OfflineBanner stale={schedule.isStale} /> : null}
+      <WelcomeWidget user={user} schedule={schedule.value} schoolDay={schoolDay} />
+      <DayProgressWidget schedule={schedule.value} schoolDay={schoolDay} />
       {layout.length ? layout.map((id) => renderWidget(id)) : <HomeEmpty text="No sections shown." />}
     </Screen>
   );
@@ -437,18 +432,10 @@ function SectionLink({ label, onPress }: { label: string; onPress: () => void })
 }
 
 function HomeSurface({ children }: { children: ReactNode }) {
-  const { color } = useTheme();
   return (
-    <View
-      style={{
-        overflow: "hidden",
-        borderRadius: radii.xl,
-        backgroundColor: color("secondary"),
-        paddingHorizontal: spacing.md,
-      }}
-    >
+    <Card style={{ padding: 0, paddingHorizontal: spacing.md, overflow: "hidden" }}>
       {children}
-    </View>
+    </Card>
   );
 }
 
@@ -526,21 +513,9 @@ function HomeEmpty({ text }: { text: string }) {
 
 function HomeSkeleton({ count = 1 }: { count?: number }) {
   return (
-    <HomeSurface>
-      {Array.from({ length: count }, (_, index) => (
-        <View
-          key={index}
-          style={{
-            minHeight: 52,
-            justifyContent: "center",
-            borderTopWidth: index ? StyleSheet.hairlineWidth : 0,
-            borderTopColor: "transparent",
-          }}
-        >
-          <Skeleton style={{ width: index % 2 ? "72%" : "58%", height: 14 }} />
-        </View>
-      ))}
-    </HomeSurface>
+    <View style={{ paddingVertical: 48, alignItems: "center", justifyContent: "center" }}>
+      <IaLoadingMark size="sm" />
+    </View>
   );
 }
 
@@ -628,4 +603,125 @@ function sentenceCase(value: string) {
 
 function formatRole(role: string) {
   return role.toLowerCase().replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule: any; schoolDay: DashboardSchoolDay }) {
+  const { color } = useTheme();
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const schoolStatus = useMemo(() => resolveSchoolDayStatus(schedule?.blocks ?? [], schoolDay), [schedule?.blocks, schoolDay]);
+  
+  const firstName = user?.firstName ?? "";
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+  return (
+    <Card style={{ padding: spacing.xl, gap: spacing.xl, marginBottom: spacing.xs, marginTop: spacing.xs }}>
+      <View style={{ flexDirection: "column", gap: spacing.xl }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: spacing.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+            <Clock size={20} color={color("primary")} opacity={0.6} />
+            <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, fontVariant: ["tabular-nums"] }}>
+              {format(now, "h:mm")}
+            </Txt>
+          </View>
+          <Txt variant="caption" tone="muted">
+            {format(now, "EEEE, MMM d")}
+          </Txt>
+        </View>
+
+        <View style={{ flex: 1, gap: spacing.md }}>
+          <Txt variant="title" style={{ fontSize: 28, lineHeight: 34 }}>
+            {greeting}{firstName ? `, ${firstName}` : ""}.
+          </Txt>
+          <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+            <Txt variant="overline" tone="muted">Current Status</Txt>
+            <Txt variant="section">{schoolStatus.title}</Txt>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs }}>
+              {schoolStatus.subtitle === "In progress" && (
+                <Badge label="Active" color="green" />
+              )}
+              <Txt variant="caption" tone="muted">{schoolStatus.meta ?? schoolStatus.subtitle}</Txt>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+function DayProgressWidget({ schedule, schoolDay }: { schedule: any; schoolDay: DashboardSchoolDay }) {
+  const { color } = useTheme();
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const progress = useMemo(() => {
+    if (!schedule?.blocks || schedule.blocks.length === 0) return null;
+    if (!schoolDay.isToday) return null;
+
+    const blocks = schedule.blocks.filter((b: any) => b.weekday === schoolDay.value);
+    if (blocks.length === 0) return null;
+
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    
+    const startTimes = blocks.map((b: any) => new Date(`${todayStr}T${b.startTime}:00`)).filter((d: any) => !isNaN(d.getTime()));
+    const endTimes = blocks.map((b: any) => new Date(`${todayStr}T${b.endTime}:00`)).filter((d: any) => !isNaN(d.getTime()));
+
+    if (startTimes.length === 0 || endTimes.length === 0) return null;
+
+    const dayStart = new Date(Math.min(...startTimes.map((d: any) => d.getTime())));
+    const dayEnd = new Date(Math.max(...endTimes.map((d: any) => d.getTime())));
+
+    const totalMinutes = differenceInMinutes(dayEnd, dayStart);
+    const elapsedMinutes = differenceInMinutes(now, dayStart);
+
+    if (totalMinutes <= 0 || isNaN(totalMinutes)) return null;
+
+    if (now < dayStart) return { percent: 0, status: "Not started", remaining: totalMinutes };
+    if (now > dayEnd) return { percent: 100, status: "Done for the day", remaining: 0 };
+
+    const percent = Math.max(0, Math.min(100, (elapsedMinutes / totalMinutes) * 100));
+    const remaining = totalMinutes - elapsedMinutes;
+
+    return { percent, status: "In progress", remaining };
+  }, [schedule?.blocks, schoolDay, now]);
+
+  if (!progress) return null;
+
+  return (
+    <Card style={{ padding: spacing.lg, gap: spacing.lg, marginBottom: spacing.md }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <Timer size={18} color={color("mutedForeground")} />
+          <Txt variant="section">Day Progress</Txt>
+        </View>
+      </View>
+      
+      <View style={{ gap: spacing.md }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <View>
+            <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, letterSpacing: -0.5 }}>
+              {Math.round(progress.percent)}%
+            </Txt>
+            <Txt variant="caption" tone="muted" style={{ marginTop: 2 }}>
+              {progress.percent >= 100 ? "School day complete" : `${progress.remaining} mins remaining`}
+            </Txt>
+          </View>
+          {progress.percent >= 100 && (
+            <CheckCircle2 size={32} color={color("primary")} />
+          )}
+        </View>
+        <Progress value={progress.percent} indicatorColor={progress.percent >= 100 ? "#10b981" : undefined} />
+      </View>
+    </Card>
+  );
 }

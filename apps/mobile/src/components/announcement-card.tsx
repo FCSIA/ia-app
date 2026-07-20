@@ -85,7 +85,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
               variant="overline"
               tone={announcement.isRead ? "muted" : "default"}
               numberOfLines={1}
-              style={{ flexShrink: 1, color: foreground }}
+              style={[{ flexShrink: 1 }, foreground ? { color: foreground } : undefined]}
             >
               {audience}
             </Txt>
@@ -99,11 +99,11 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
           <Txt
             variant="section"
             numberOfLines={2}
-            style={{ fontWeight: announcement.isRead ? "700" : "800", color: foreground }}
+            style={[{ fontWeight: announcement.isRead ? "700" : "800" }, foreground ? { color: foreground } : undefined]}
           >
             {announcement.title}
           </Txt>
-          <Txt tone="muted" numberOfLines={2} style={{ color: mutedForeground }}>
+          <Txt tone="muted" numberOfLines={2} style={mutedForeground ? { color: mutedForeground } : undefined}>
             {announcement.body}
           </Txt>
 
@@ -112,12 +112,12 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
               variant="caption"
               tone="muted"
               numberOfLines={1}
-              style={{ flexShrink: 1, color: mutedForeground }}
+              style={[{ flexShrink: 1 }, mutedForeground ? { color: mutedForeground } : undefined]}
             >
               {authorName || "Innovation Academy"}
             </Txt>
-            <Txt variant="caption" tone="muted" style={{ color: mutedForeground }}>·</Txt>
-            <Txt variant="caption" tone="muted" style={{ color: mutedForeground }}>
+            <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>·</Txt>
+            <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>
               {relativeTime(announcement.createdAt)}
             </Txt>
             {announcement.allowComments ? (
@@ -127,7 +127,7 @@ export function AnnouncementCard({ announcement }: { announcement: any }) {
                 style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: spacing.xs }}
               >
                 <MessageCircle size={13} color={mutedForeground ?? color("mutedForeground")} />
-                <Txt variant="caption" tone="muted" style={{ color: mutedForeground }}>
+                <Txt variant="caption" tone="muted" style={mutedForeground ? { color: mutedForeground } : undefined}>
                   {announcement.commentCount ?? 0}
                 </Txt>
               </View>

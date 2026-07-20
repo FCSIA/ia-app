@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
-import type { BottomSheetBackdropProps } from "@gorhom/bottom-sheet";
+  Animated,
+  Modal,
+  PanResponder,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
@@ -16,7 +20,7 @@ type SheetProps = {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  snapPoints?: string[];
+  snapPoints?: string[]; // Kept for type compatibility but ignored
   scrollable?: boolean;
 };
 
@@ -25,66 +29,142 @@ export function Sheet({
   onClose,
   title,
   children,
-  snapPoints,
   scrollable = false,
 }: SheetProps) {
-  const ref = useRef<BottomSheetModal>(null);
   const { color } = useTheme();
   const insets = useSafeAreaInsets();
-  const points = useMemo(
-    () => (scrollable ? undefined : (snapPoints ?? ["55%", "86%"])),
-    [scrollable, snapPoints],
-  );
+  const translateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (open) ref.current?.present();
-    else ref.current?.dismiss();
-  }, [open]);
+    if (open) {
+      translateY.setValue(0);
+    }
+  }, [open, translateY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 80 || gestureState.vy > 0.4) {
+          Animated.timing(translateY, {
+            toValue: 600,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            translateY.setValue(0);
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 120,
+            friction: 8,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   return (
-    <BottomSheetModal
-      ref={ref}
-      snapPoints={points}
-      enableDynamicSizing={scrollable}
-      bottomInset={insets.bottom}
-      onDismiss={onClose}
-      backgroundStyle={{
-        backgroundColor: color("card"),
-        borderRadius: radii.xl,
-      }}
-      handleIndicatorStyle={{ backgroundColor: color("mutedForeground") }}
-      backdropComponent={(props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          appearsOnIndex={0}
-          disappearsOnIndex={-1}
-          opacity={0.35}
-        />
-      )}
+    <Modal
+      visible={open}
+      onRequestClose={onClose}
+      animationType="slide"
+      transparent={true}
+      statusBarTranslucent
     >
-      {scrollable ? (
-        <BottomSheetScrollView
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.xl,
-            gap: spacing.md,
-          }}
-        >
-          {title ? <Txt variant="section">{title}</Txt> : null}
-          {children}
-        </BottomSheetScrollView>
-      ) : (
-        <BottomSheetView
-          style={{
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.xl,
-            gap: spacing.md,
-          }}
-        >
-          {title ? <Txt variant="section">{title}</Txt> : null}
-          {children}
-        </BottomSheetView>
-      )}
-    </BottomSheetModal>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback>
+            <Animated.View
+              style={[
+                styles.sheetContent,
+                {
+                  transform: [{ translateY }],
+                  backgroundColor: color("card"),
+                  borderTopLeftRadius: radii.xl,
+                  borderTopRightRadius: radii.xl,
+                  paddingBottom: Math.max(spacing.xl, insets.bottom),
+                },
+              ]}
+            >
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ width: "100%" }}
+              >
+                {/* Drag handle visual bar & touch area */}
+                <View {...panResponder.panHandlers} style={styles.handleContainer}>
+                  <View style={[styles.handle, { backgroundColor: color("border") }]} />
+                </View>
+
+                {title ? (
+                  <View {...panResponder.panHandlers} style={styles.header}>
+                    <Txt variant="section">{title}</Txt>
+                  </View>
+                ) : null}
+
+                {scrollable ? (
+                  <ScrollView
+                    contentContainerStyle={{
+                      paddingHorizontal: spacing.lg,
+                      paddingBottom: spacing.xl,
+                      gap: spacing.md,
+                    }}
+                    style={styles.scrollView}
+                  >
+                    {children}
+                  </ScrollView>
+                ) : (
+                  <View
+                    style={{
+                      paddingHorizontal: spacing.lg,
+                      paddingBottom: spacing.xl,
+                      gap: spacing.md,
+                    }}
+                  >
+                    {children}
+                  </View>
+                )}
+              </KeyboardAvoidingView>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "flex-end",
+  },
+  sheetContent: {
+    width: "100%",
+    maxHeight: "85%",
+  },
+  handleContainer: {
+    alignItems: "center",
+    paddingVertical: spacing.md,
+  },
+  handle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+  },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  scrollView: {
+    flexGrow: 0,
+  },
+});

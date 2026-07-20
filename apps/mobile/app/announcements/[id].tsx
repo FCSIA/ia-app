@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, Pin, SendHorizontal } from "lucide-react-native";
@@ -24,6 +24,12 @@ export default function AnnouncementDetailScreen() {
   const [comment, setComment] = useState("");
   const { color } = useTheme();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (id && detail?.announcement && !detail.announcement.isRead) {
+      markRead({ announcementId: id as any }).catch(() => {});
+    }
+  }, [id, detail?.announcement?.isRead, markRead]);
 
   async function submitComment() {
     if (!comment.trim() || !id) return;

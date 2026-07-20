@@ -456,6 +456,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             left,
             minWidth: triggerRect.width,
             zIndex: 80,
+            pointerEvents: "auto",
           }}
         >
           <motion.div
@@ -484,6 +485,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             }}
             onMouseMove={handlers.onMouseMove}
             onMouseLeave={handlers.onMouseLeave}
+            onPointerDown={(e) => e.stopPropagation()}
             onFocus={(e) => {
               const indexAttr = (e.target as HTMLElement)
                 .closest("[data-proximity-index]")
@@ -668,6 +670,12 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         }
         onClick={() => {
           if (!disabled) selectCtx.onChange(value);
+        }}
+        onPointerUp={(e) => {
+          if (!disabled) {
+            e.preventDefault();
+            selectCtx.onChange(value);
+          }
         }}
         onKeyDown={(e) => {
           if ((e.key === "Enter" || e.key === " ") && !disabled) {

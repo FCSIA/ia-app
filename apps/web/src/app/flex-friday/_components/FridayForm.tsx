@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
+import { parseISO } from 'date-fns';
 import { FridayForm as FridayFormType, PATHWAY_OPTIONS } from '../_types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -41,12 +43,12 @@ export function FridayForm({
     }
 
     const payload: any = {
-      date: new Date(form.date).getTime(),
+      date: parseISO(form.date).getTime(),
       type: form.type,
       isSchoolDay: form.isSchoolDay,
     };
-    if (form.type === 'GRADE_LEVEL') payload.gradeLevel = parseInt(form.gradeLevel, 10);
-    if (form.type === 'PATHWAY') payload.pathway = form.pathway;
+    if (form.type === 'GRADE_SPECIFIC') payload.gradeLevel = parseInt(form.gradeLevel, 10);
+    if (form.type === 'PATHWAY_SPECIFIC') payload.pathway = form.pathway;
     if (form.notes.trim()) payload.notes = form.notes.trim();
 
     try {
@@ -67,12 +69,14 @@ export function FridayForm({
           <SheetTitle>Schedule Flex Friday</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={() => handleSubmit()} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date *</Label>
-              <Input type="date" value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              <DatePicker 
+                value={form.date}
+                onChange={(date) => setForm({ ...form, date })}
+              />
             </div>
 
             <div className="space-y-2">
@@ -81,13 +85,14 @@ export function FridayForm({
                 <SelectTrigger placeholder="Select type" />
                 <SelectContent>
                   <SelectItem value="ALL_STUDENT" index={0}>All Students</SelectItem>
-                  <SelectItem value="GRADE_LEVEL" index={1}>Specific Grade</SelectItem>
-                  <SelectItem value="PATHWAY" index={2}>Specific Pathway</SelectItem>
+                  <SelectItem value="GRADE_SPECIFIC" index={1}>Specific Grade</SelectItem>
+                  <SelectItem value="PATHWAY_SPECIFIC" index={2}>Specific Pathway</SelectItem>
+                  <SelectItem value="TEACHER_PD" index={3}>Teacher PD</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {form.type === 'GRADE_LEVEL' && (
+            {form.type === 'GRADE_SPECIFIC' && (
               <div className="space-y-2">
                 <Label>Grade Level</Label>
                 <Select value={form.gradeLevel} onValueChange={(v: string) => setForm({ ...form, gradeLevel: v })}>
@@ -102,7 +107,7 @@ export function FridayForm({
               </div>
             )}
 
-            {form.type === 'PATHWAY' && (
+            {form.type === 'PATHWAY_SPECIFIC' && (
               <div className="space-y-2">
                 <Label>Pathway</Label>
                 <Select value={form.pathway} onValueChange={(v: string) => setForm({ ...form, pathway: v })}>

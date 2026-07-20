@@ -14,6 +14,7 @@ import {
   Txt,
   useToast,
 } from "@/components/ui";
+import { CreateEventSheet } from "./create-event-sheet";
 import { useCurrentUser } from "@/lib/auth";
 import { timeRange } from "@/lib/format";
 import { warning } from "@/lib/haptics";
@@ -29,14 +30,6 @@ export function EventsView() {
   const cancelEvent = useMutation(api.events.events.cancel);
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    location: "",
-    startAt: "",
-    endAt: "",
-    clubId: "",
-  });
   const { showToast } = useToast();
   const canCreateGeneral = !!user?.roles?.some((role) =>
     ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"].includes(role),
@@ -55,8 +48,7 @@ export function EventsView() {
     [myClubs],
   );
   const canCreate = canCreateGeneral || availableClubs.length > 0;
-  const selectedClubId =
-    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? "") : "");
+  
   const filteredEvents = useMemo(() => {
     const value = search.trim().toLowerCase();
     return (events ?? []).filter((event: any) => {
@@ -66,6 +58,7 @@ export function EventsView() {
         .some((item) => String(item).toLowerCase().includes(value));
     });
   }, [events, search]);
+  
   const groupedEvents = useMemo(() => {
     const groups = new Map<string, any[]>();
     for (const event of filteredEvents) {
@@ -74,44 +67,6 @@ export function EventsView() {
     }
     return [...groups.entries()];
   }, [filteredEvents]);
-
-  async function submitCreate() {
-    const startAt = parseLocalDateTime(form.startAt);
-    const endAt = form.endAt ? parseLocalDateTime(form.endAt) : undefined;
-    if (!form.title.trim() || !startAt) {
-      showToast({ title: "Add a title and valid start time" });
-      return;
-    }
-    if (!canCreateGeneral && !selectedClubId) {
-      showToast({ title: "Choose a club" });
-      return;
-    }
-    try {
-      await createEvent({
-        title: form.title,
-        description: form.description || undefined,
-        location: form.location || undefined,
-        startAt,
-        endAt: endAt ?? undefined,
-        clubId: selectedClubId ? (selectedClubId as any) : undefined,
-      });
-      setForm({
-        title: "",
-        description: "",
-        location: "",
-        startAt: "",
-        endAt: "",
-        clubId: "",
-      });
-      setShowCreate(false);
-      showToast({ title: "Event submitted", tone: "success" });
-    } catch (error) {
-      showToast({
-        title: "Event not submitted",
-        body: error instanceof Error ? error.message : "Try again.",
-      });
-    }
-  }
 
   function confirmCancel(event: any) {
     void warning();
@@ -172,56 +127,7 @@ export function EventsView() {
         }
       </DataBoundary>
 
-      <Sheet open={showCreate} onClose={() => setShowCreate(false)} title="New event">
-        <TextField
-          value={form.title}
-          onChangeText={(title) => setForm((current) => ({ ...current, title }))}
-          placeholder="Title"
-        />
-        <TextField
-          value={form.description}
-          onChangeText={(description) =>
-            setForm((current) => ({ ...current, description }))
-          }
-          placeholder="Description (optional)"
-          multiline
-        />
-        <TextField
-          value={form.location}
-          onChangeText={(location) => setForm((current) => ({ ...current, location }))}
-          placeholder="Location (optional)"
-        />
-        <TextField
-          value={form.startAt}
-          onChangeText={(startAt) => setForm((current) => ({ ...current, startAt }))}
-          placeholder="Starts · YYYY-MM-DD HH:mm"
-        />
-        <TextField
-          value={form.endAt}
-          onChangeText={(endAt) => setForm((current) => ({ ...current, endAt }))}
-          placeholder="Ends · YYYY-MM-DD HH:mm (optional)"
-        />
-        <Txt variant="overline" tone="muted">
-          Organizer
-        </Txt>
-        {canCreateGeneral ? (
-          <ChipGroup
-            values={["GENERAL"] as const}
-            selected={!form.clubId ? ["GENERAL"] : []}
-            labels={{ GENERAL: "School" }}
-            onToggle={() => setForm((current) => ({ ...current, clubId: "" }))}
-          />
-        ) : null}
-        <ChipGroup
-          values={availableClubs.map((club: any) => club._id)}
-          selected={selectedClubId ? [selectedClubId] : []}
-          labels={Object.fromEntries(
-            availableClubs.map((club: any) => [club._id, club.name]),
-          )}
-          onToggle={(clubId) => setForm((current) => ({ ...current, clubId }))}
-        />
-        <Button title="Submit" onPress={submitCreate} />
-      </Sheet>
+      <CreateEventSheet open={showCreate} onClose={() => setShowCreate(false)} />
     </View>
   );
 }
@@ -359,9 +265,4 @@ function EventRow({
   );
 }
 
-function parseLocalDateTime(value: string) {
-  const trimmed = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(trimmed)) return null;
-  const date = new Date(trimmed.replace(" ", "T"));
-  return Number.isNaN(date.getTime()) ? null : date.getTime();
-}
+

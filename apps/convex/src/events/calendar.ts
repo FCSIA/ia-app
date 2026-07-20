@@ -97,3 +97,37 @@ export const remove = mutation({
     await ctx.db.delete(args.entryId);
   },
 });
+
+export const update = mutation({
+  args: {
+    entryId: v.id("calendarEntries"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const entry = await ctx.db.get(args.entryId);
+    if (!entry) throw new Error("Calendar entry not found");
+
+    if (entry.source !== "PERSONAL" || entry.createdById !== user._id) {
+      throw new Error("You can only edit your own personal entries");
+    }
+
+    const title = args.title.trim();
+    if (!title) throw new ConvexError("Title is required");
+    if (args.endAt !== undefined && args.endAt < args.startAt) {
+      throw new ConvexError("End time must be after start time");
+    }
+
+    await ctx.db.patch(args.entryId, {
+      title,
+      description: args.description?.trim(),
+      location: args.location?.trim(),
+      startAt: args.startAt,
+      endAt: args.endAt,
+    });
+  },
+});

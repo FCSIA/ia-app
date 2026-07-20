@@ -8,12 +8,15 @@ import {
   Clock3,
   MapPin,
   QrCode,
+  Plus,
 } from "lucide-react-native";
+import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
 import {
   Button,
+  IconButton,
   PressableScale,
   Section,
   Txt,
@@ -23,9 +26,14 @@ import { shortDate } from "@/lib/format";
 import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { useCurrentUser } from "@/lib/auth";
+import { CreateFlexFridaySheet } from "@/features/flex-friday/create-flex-friday-sheet";
 import { api } from "~/apps/convex/src/_generated/api";
 
 export default function FlexFridayScreen() {
+  const user = useCurrentUser();
+  const isAdmin = !!user?.roles?.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role));
+  const [showCreate, setShowCreate] = useState(false);
   const liveFridays = useQuery(api.flexFriday.fridays.list, {});
   const fridays = useOfflineValue("flex-fridays", liveFridays);
   const [selectedFridayId, setSelectedFridayId] = useState<string | null>(null);
@@ -81,9 +89,23 @@ export default function FlexFridayScreen() {
   const activeCount = (registrations ?? []).length + (assignments ?? []).length;
 
   return (
-    <Screen
-      title="Flex Friday"
-      contentContainerStyle={{
+    <>
+      <Screen
+        header={
+          <AppHeader
+            title="Flex Friday"
+            action={
+              isAdmin ? (
+                <IconButton
+                  icon={Plus}
+                  label="Create Flex Friday"
+                  onPress={() => setShowCreate(true)}
+                />
+              ) : undefined
+            }
+          />
+        }
+        contentContainerStyle={{
         width: "100%",
         maxWidth: 760,
         alignSelf: "center",
@@ -201,6 +223,13 @@ export default function FlexFridayScreen() {
         </DataBoundary>
       ) : null}
     </Screen>
+    {isAdmin ? (
+      <CreateFlexFridaySheet
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+      />
+    ) : null}
+    </>
   );
 }
 
