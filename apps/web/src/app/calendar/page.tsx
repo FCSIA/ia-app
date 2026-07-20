@@ -18,6 +18,7 @@ import {
 import { ChevronLeft, ChevronRight, Plus, Settings2, Calendar as CalendarIcon, AlignJustify, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
+import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -45,7 +46,7 @@ const calculateEventStyles = (startAt: number, endAt: number | undefined, startH
   const startDate = new Date(startAt);
   const startHours = startDate.getHours() + startDate.getMinutes() / 60;
   
-  // Calculate relative to the view's start hour
+  // Calculate relative to the view's start hour in pixels
   const top = Math.max(0, (startHours - startHour) * pixelsPerHour);
   
   // Default to 1 hour if endAt is missing
@@ -126,11 +127,26 @@ const processOverlaps = (events: any[]) => {
   return result;
 };
 
+function EventInteraction({ onOpen, children }: { onOpen: () => void, children: (props: { expanded: boolean, onClick: (e: any) => void, onDoubleClick: (e: any) => void }) => React.ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <>
+      {children({
+        expanded,
+        onClick: (e: any) => { e.stopPropagation(); setExpanded(!expanded); },
+        onDoubleClick: (e: any) => { e.stopPropagation(); onOpen(); }
+      })}
+    </>
+  );
+}
+
 export default function CalendarPage() {
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
-  const [view, setView] = useState<'month' | 'day' | 'resource'>('month');
+  const [view, setView] = useState<'month' | 'day' | 'resource'>('day');
+  
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -182,7 +198,7 @@ export default function CalendarPage() {
   // --- Views ---
 
   const renderMonthView = () => (
-    <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden min-h-0">
       {/* Day of week headers */}
       <div className="grid grid-cols-7 border-b border-white/10 shrink-0 bg-[#151515]">
         {DAY_LABELS.map((d) => (
@@ -193,7 +209,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendar days grid */}
-      <div className="grid grid-cols-7 flex-1 overflow-y-auto">
+      <div className="grid grid-cols-7 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {days.map((day, i) => {
           const dayEvents = getEventsForDay(day);
           const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
@@ -220,17 +236,46 @@ export default function CalendarPage() {
                   const color = getSourceColor(e.source as CalendarSource);
                   if (color.isMultiDay) {
                     return (
-                      <div key={e._id} className="relative z-10 mx-0.5 px-2 py-1 rounded text-xs font-medium truncate shadow-sm border border-black/10" style={{ backgroundColor: color.bg, color: color.text }}>
-                        {e.title}
-                      </div>
+                      <EditCalendarEntryDialog
+                        key={e._id}
+                        entry={e}
+                        trigger={(onOpen) => (
+                          <EventInteraction onOpen={onOpen}>
+                            {({ expanded, onClick, onDoubleClick }) => (
+                              <div 
+                                onClick={onClick}
+                                onDoubleClick={onDoubleClick}
+                                className={`relative mx-0.5 px-2 py-1 rounded text-xs font-medium shadow-sm border border-black/10 cursor-pointer hover:opacity-90 ${expanded ? 'z-50 h-auto whitespace-normal break-words' : 'z-10 truncate'}`} 
+                                style={{ backgroundColor: color.bg, color: color.text }}
+                              >
+                                {e.title}
+                              </div>
+                            )}
+                          </EventInteraction>
+                        )}
+                      />
                     );
                   }
                   return (
-                    <div key={e._id} className="flex items-center gap-1.5 mx-0.5 px-2 py-1 rounded border border-white/[0.08] bg-[#1a1a1a] text-xs font-medium text-white/90 shadow-sm transition-colors hover:bg-[#222]">
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
-                      <span className="truncate flex-1">{e.title}</span>
-                      <span className="text-white/40 text-[10px] whitespace-nowrap">{format(new Date(e.startAt), 'h:mm a')}</span>
-                    </div>
+                    <EditCalendarEntryDialog
+                      key={e._id}
+                      entry={e}
+                      trigger={(onOpen) => (
+                        <EventInteraction onOpen={onOpen}>
+                          {({ expanded, onClick, onDoubleClick }) => (
+                            <div 
+                              onClick={onClick}
+                              onDoubleClick={onDoubleClick}
+                              className={`flex items-center gap-1.5 mx-0.5 px-2 py-1 rounded border border-white/[0.08] bg-[#1a1a1a] text-xs font-medium text-white/90 shadow-sm transition-colors hover:bg-[#222] cursor-pointer ${expanded ? 'h-auto z-50 whitespace-normal break-words' : ''}`}
+                            >
+                              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
+                              <span className={`flex-1 ${expanded ? '' : 'truncate'}`}>{e.title}</span>
+                              <span className="text-white/40 text-[10px] whitespace-nowrap shrink-0">{format(new Date(e.startAt), 'h:mm a')}</span>
+                            </div>
+                          )}
+                        </EventInteraction>
+                      )}
+                    />
                   );
                 })}
                 {dayEvents.length > 3 && (
@@ -262,7 +307,7 @@ export default function CalendarPage() {
     const dayEvents = getEventsForDay(selectedDay);
 
     return (
-      <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden">
+      <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden min-h-0">
         {/* Day Header */}
         <div className="flex border-b border-white/10 shrink-0 bg-[#151515]">
           <div className="w-16 border-r border-white/10 shrink-0" />
@@ -282,13 +327,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Time Grid */}
-        <div className="flex-1 overflow-y-auto relative">
-          <div className="flex min-h-[800px]">
+        <div className="flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex min-h-[1920px]">
             {/* Time labels */}
             <div className="w-16 border-r border-white/10 shrink-0 relative bg-[#111]">
               {hours.map((hour) => (
                 <div key={hour} className="h-20 relative border-b border-white/[0.05]">
-                  <span className="absolute -top-2.5 right-2 text-[10px] font-medium text-white/40">
+                  <span className={`absolute right-2 text-[10px] font-medium text-white/40 ${hour === 0 ? 'top-1' : '-top-2.5'}`}>
                     {hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                   </span>
                 </div>
@@ -314,29 +359,40 @@ export default function CalendarPage() {
                 const color = getSourceColor(e.source as CalendarSource);
 
                 return (
-                  <div 
-                    key={e._id} 
-                    className="absolute rounded-md overflow-hidden border border-black/20 shadow-md p-2 flex flex-col"
-                    style={{ 
-                      top: `${top}px`, 
-                      height: `${height}px`, 
-                      left: `calc(0.5rem + ${leftPercent}%)`,
-                      width: `calc(${widthPercent}% - 1.5rem)`,
-                      backgroundColor: color.bg 
-                    }}
-                  >
-                    {/* The left border color block shown in the screenshot */}
-                    <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color.dot }} />
-                    <div className="pl-2 flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold">
-                        {e.title.charAt(0)}
-                      </div>
-                      <span className="text-sm font-semibold text-white/90 truncate">{e.title}</span>
-                    </div>
-                    <span className="pl-9 mt-0.5 text-xs font-medium text-white/60 truncate">
-                      {e.location && `${e.location} • `}{format(new Date(e.startAt), 'h:mm a')}
-                    </span>
-                  </div>
+                  <EditCalendarEntryDialog
+                    key={e._id}
+                    entry={e}
+                    trigger={(onOpen) => (
+                      <EventInteraction onOpen={onOpen}>
+                        {({ expanded, onClick, onDoubleClick }) => (
+                          <div 
+                            onClick={onClick}
+                            onDoubleClick={onDoubleClick}
+                            className={`absolute rounded-md overflow-hidden border border-black/20 shadow-md p-2 flex flex-col cursor-pointer hover:ring-2 hover:ring-white/20 transition-all ${expanded ? 'z-50' : ''}`}
+                            style={{ 
+                              top: `${top}px`, 
+                              height: expanded ? 'auto' : `${height}px`,
+                              minHeight: `${height}px`,
+                              left: `calc(0.5rem + ${leftPercent}%)`,
+                              width: `calc(${widthPercent}% - 1.5rem)`,
+                              backgroundColor: color.bg,
+                              borderLeft: `4px solid ${color.dot}`
+                            }}
+                          >
+                            <div className="pl-1 flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {e.title.charAt(0)}
+                              </div>
+                              <span className={`text-sm font-semibold text-white/90 ${expanded ? 'whitespace-normal break-words' : 'truncate'}`}>{e.title}</span>
+                            </div>
+                            <span className={`pl-9 mt-0.5 text-xs font-medium text-white/60 ${expanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                              {e.location && `${e.location} • `}{format(new Date(e.startAt), 'h:mm a')}
+                            </span>
+                          </div>
+                        )}
+                      </EventInteraction>
+                    )}
+                  />
                 );
               })}
             </div>
@@ -351,7 +407,7 @@ export default function CalendarPage() {
     const dayEvents = getEventsForDay(selectedDay);
 
     return (
-      <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden">
+      <div className="flex-1 flex flex-col bg-[#111111] overflow-hidden min-h-0">
         {/* Resource Headers */}
         <div className="flex border-b border-white/10 shrink-0 bg-[#151515]">
           <div className="w-16 border-r border-white/10 shrink-0" />
@@ -373,13 +429,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Time Grid & Resources */}
-        <div className="flex-1 overflow-y-auto relative">
-          <div className="flex min-h-[800px]">
+        <div className="flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex min-h-[2304px]">
             {/* Time labels */}
             <div className="w-16 border-r border-white/10 shrink-0 relative bg-[#111]">
               {hours.map((hour) => (
                 <div key={hour} className="h-24 relative border-b border-white/[0.05]">
-                  <span className="absolute -top-2.5 right-2 text-[10px] font-medium text-white/40">
+                  <span className={`absolute right-2 text-[10px] font-medium text-white/40 ${hour === 0 ? 'top-1' : '-top-2.5'}`}>
                     {hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                   </span>
                 </div>
@@ -402,25 +458,37 @@ export default function CalendarPage() {
                   const color = getSourceColor(e.source as CalendarSource);
                   
                   return (
-                    <div 
-                      key={e._id} 
-                      className="absolute rounded-sm overflow-hidden flex flex-col p-2 border border-black/20"
-                      style={{ 
-                        top: `${top}px`, 
-                        height: `${height}px`, 
-                        left: `calc(0.25rem + ${leftPercent}%)`,
-                        width: `calc(${widthPercent}% - 0.5rem)`,
-                        backgroundColor: '#1e293b',
-                        borderLeft: `3px solid ${color.dot}`
-                      }}
-                    >
-                      <span className="text-xs font-semibold text-white/90 truncate">
-                        {e.title}
-                      </span>
-                      <span className="mt-0.5 text-[10px] font-medium text-white/50 truncate">
-                        {format(new Date(e.startAt), 'h:mm a')}
-                      </span>
-                    </div>
+                    <EditCalendarEntryDialog
+                      key={e._id}
+                      entry={e}
+                      trigger={(onOpen) => (
+                        <EventInteraction onOpen={onOpen}>
+                          {({ expanded, onClick, onDoubleClick }) => (
+                            <div 
+                              onClick={onClick}
+                              onDoubleClick={onDoubleClick}
+                              className={`absolute rounded-sm overflow-hidden flex flex-col p-2 border border-black/20 cursor-pointer hover:ring-2 hover:ring-white/20 transition-all ${expanded ? 'z-50' : ''}`}
+                              style={{ 
+                                top: `${top}px`, 
+                                height: expanded ? 'auto' : `${height}px`,
+                                minHeight: `${height}px`,
+                                left: `calc(0.25rem + ${leftPercent}%)`,
+                                width: `calc(${widthPercent}% - 0.5rem)`,
+                                backgroundColor: '#1e293b',
+                                borderLeft: `3px solid ${color.dot}`
+                              }}
+                            >
+                              <span className={`text-xs font-semibold text-white/90 ${expanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                                {e.title}
+                              </span>
+                              <span className={`mt-0.5 text-[10px] font-medium text-white/50 ${expanded ? 'whitespace-normal break-words' : 'truncate'}`}>
+                                {format(new Date(e.startAt), 'h:mm a')}
+                              </span>
+                            </div>
+                          )}
+                        </EventInteraction>
+                      )}
+                    />
                   );
                 })}
               </div>
@@ -439,8 +507,11 @@ export default function CalendarPage() {
   };
 
   return (
-    <AppShell>
-      <div className="w-full h-[calc(100vh-2rem)] min-h-[600px] bg-[#121212] rounded-xl border border-white/10 overflow-hidden flex flex-col text-white font-sans shadow-2xl">
+    <AppShell 
+      mainClassName="flex-1 flex flex-col p-4 md:p-6 h-[calc(100vh-3.5rem)] overflow-hidden"
+      pageTransitionClassName="flex-1 flex flex-col min-h-0"
+    >
+      <div className="w-full flex-1 min-h-0 bg-[#121212] rounded-xl border border-white/10 overflow-hidden flex flex-col text-white font-sans shadow-2xl">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
