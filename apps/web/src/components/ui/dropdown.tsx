@@ -33,10 +33,11 @@ export function useDropdown() {
 interface DropdownProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   checkedIndex?: number;
+  itemShapeClassName?: string;
 }
 
 const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
-  ({ children, checkedIndex, className, ...props }, ref) => {
+  ({ children, checkedIndex, itemShapeClassName, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
@@ -61,6 +62,8 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     const isHoveringOther =
       activeIndex !== null && activeIndex !== checkedIndex;
     const shape = useShape();
+    const itemShape = itemShapeClassName ?? shape.bg;
+    const focusRingShape = itemShapeClassName ?? shape.focusRing;
 
     return (
       <DropdownContext.Provider value={{ registerItem, activeIndex, checkedIndex }}>
@@ -122,7 +125,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <AnimatePresence>
             {checkedRect && (
               <motion.div
-                className={`absolute ${shape.bg} bg-active pointer-events-none`}
+                className={cn(
+                  "absolute bg-active pointer-events-none",
+                  itemShape,
+                )}
                 initial={false}
                 animate={{
                   top: checkedRect.top,
@@ -145,7 +151,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             {activeRect && (
               <motion.div
                 key={sessionRef.current}
-                className={`absolute ${shape.bg} bg-hover pointer-events-none`}
+                className={cn(
+                  "absolute bg-hover pointer-events-none",
+                  itemShape,
+                )}
                 initial={{
                   opacity: 0,
                   top: checkedRect?.top ?? activeRect.top,
@@ -173,7 +182,10 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <AnimatePresence>
             {focusRect && (
               <motion.div
-                className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
+                className={cn(
+                  "absolute pointer-events-none z-20 border border-[#6B97FF]",
+                  focusRingShape,
+                )}
                 initial={false}
                 animate={{
                   left: focusRect.left - 2,

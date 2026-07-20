@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -8,7 +8,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import {
   AtSign,
   Check,
-  ChevronDown,
+  ChevronsUpDown,
   Home,
   Plus,
   Pencil,
@@ -22,11 +22,13 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dropdown,
+  DropdownSeparator,
+  useDropdown,
+} from "@/components/ui/dropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
@@ -48,47 +50,57 @@ function resolveMediaUrl(url?: string | null) {
 function ClubPickerItem({
   club,
   active,
+  index,
 }: {
   club: ClubNavigationSummary;
   active: boolean;
+  index: number;
 }) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  const { registerItem, activeIndex } = useDropdown();
+  const isHovered = activeIndex === index;
+
+  useEffect(() => {
+    registerItem(index, ref.current);
+    return () => registerItem(index, null);
+  }, [index, registerItem]);
+
   return (
-    <DropdownMenuItem
-      asChild
+    <Link
+      ref={ref}
+      href={`/clubs/${club._id}`}
+      data-proximity-index={index}
+      role="menuitemradio"
+      aria-checked={active}
       className={cn(
-        "group flex min-w-0 items-center gap-3 !rounded-[calc(var(--radius)-4px)] px-2.5 py-2.5 text-foreground outline-none transition-[background-color,color] duration-150 data-[highlighted]:bg-muted data-[highlighted]:text-foreground",
+        "relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
         active
-          ? "bg-primary/10 data-[highlighted]:bg-primary/15"
-          : "bg-transparent",
+          ? "text-foreground"
+          : "text-muted-foreground",
       )}
     >
-      <Link
-        href={`/clubs/${club._id}`}
-        aria-current={active ? "page" : undefined}
+      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+        {club.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolveMediaUrl(club.logoUrl)}
+            alt={club.name}
+            className="size-full bg-background object-cover"
+          />
+        ) : (
+          club.name.charAt(0).toUpperCase()
+        )}
+      </div>
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm font-medium",
+          isHovered || active ? "text-foreground" : "text-muted-foreground",
+        )}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-[calc(var(--radius)-6px)] border border-primary/15 bg-primary/10 text-xs font-semibold text-primary">
-          {club.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolveMediaUrl(club.logoUrl)}
-              alt=""
-              className="size-full bg-background object-cover"
-            />
-          ) : (
-            club.name.charAt(0).toUpperCase()
-          )}
-        </div>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {club.name}
-        </span>
-        {active ? (
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-[calc(var(--radius)-8px)] bg-primary/10 text-primary">
-            <Check aria-hidden="true" className="size-3.5" />
-            <span className="sr-only">Current club</span>
-          </span>
-        ) : null}
-      </Link>
-    </DropdownMenuItem>
+        {club.name}
+      </span>
+      {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
+    </Link>
   );
 }
 
@@ -121,6 +133,7 @@ export function ClubWorkspace({
   const channels = navigation?.channels ?? [];
   const myClubs = navigation?.myClubs ?? [];
   const canManageChannels = navigation?.viewer.canManageChannels ?? false;
+  const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
@@ -175,68 +188,66 @@ export function ClubWorkspace({
     >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 flex-col border-r bg-muted/30 md:flex">
-          <div className="border-b p-3">
+          <div className="border-b px-3 py-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="group flex min-h-16 w-full items-center gap-3 rounded-[var(--radius)] border border-border/70 bg-card px-2.5 py-2 text-left outline-none transition-[background-color,border-color,box-shadow] duration-150 hover:border-primary/35 hover:bg-muted/50 focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-ring/30 data-[state=open]:border-primary/45 data-[state=open]:bg-muted/60 data-[state=open]:shadow-sm"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-[calc(var(--radius)-4px)] border border-primary/15 bg-primary/10 text-sm font-semibold text-primary">
+                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-xs font-semibold text-primary">
                     {club?.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={resolveMediaUrl(club.logoUrl)}
                         alt={club.name}
-                        className="size-full bg-background object-cover"
+                        className="size-full object-cover bg-background"
                       />
                     ) : (
                       (club?.name?.charAt(0).toUpperCase() ?? "C")
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {club?.name ?? "Loading…"}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      Switch club
-                    </p>
                   </div>
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-[calc(var(--radius)-6px)] bg-muted text-muted-foreground transition-[background-color,color,transform] duration-150 group-hover:bg-primary/10 group-hover:text-primary group-data-[state=open]:bg-primary/10 group-data-[state=open]:text-primary">
-                    <ChevronDown className="size-4 transition-transform duration-150 group-data-[state=open]:rotate-180" />
-                  </span>
+                  <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="w-[min(21rem,calc(100vw-2rem))] !rounded-[var(--radius)] border-border/80 bg-popover p-1.5 shadow-[0_18px_48px_hsl(var(--foreground)/0.16)]"
+                className="border-0 bg-transparent p-0 shadow-none"
               >
-                <DropdownMenuLabel className="px-2.5 pb-2 pt-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Your clubs
-                </DropdownMenuLabel>
-                {myClubs.length > 0 ? (
-                  myClubs.map((entry) => (
-                    <ClubPickerItem
-                      key={entry._id}
-                      club={entry}
-                      active={entry._id === clubId}
-                    />
-                  ))
-                ) : (
-                  <div className="px-2.5 py-2 text-sm text-muted-foreground">
-                    No club memberships yet.
-                  </div>
-                )}
-                <DropdownMenuSeparator className="mx-1 my-1.5 bg-border/70" />
-                <DropdownMenuItem
-                  asChild
-                  className="group !rounded-[calc(var(--radius)-4px)] px-2.5 py-2.5 text-muted-foreground transition-[background-color,color] duration-150 data-[highlighted]:bg-muted data-[highlighted]:text-foreground"
+                <Dropdown
+                  checkedIndex={
+                    activeClubIndex >= 0 ? activeClubIndex : undefined
+                  }
+                  itemShapeClassName="rounded-lg"
+                  className="w-64 !rounded-lg"
                 >
-                  <Link href="/clubs">
-                    <span className="flex-1">Browse all clubs</span>
-                    <ChevronDown className="size-4 -rotate-90 transition-transform duration-150 group-data-[highlighted]:translate-x-0.5" />
+                  {myClubs.length > 0 ? (
+                    myClubs.map((entry, index) => (
+                      <ClubPickerItem
+                        key={entry._id}
+                        club={entry}
+                        active={entry._id === clubId}
+                        index={index}
+                      />
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      No club memberships yet.
+                    </div>
+                  )}
+                  <DropdownSeparator />
+                  <Link
+                    href="/clubs"
+                    className="relative z-10 flex rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Browse all clubs
                   </Link>
-                </DropdownMenuItem>
+                </Dropdown>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
