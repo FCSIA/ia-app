@@ -65,6 +65,8 @@ function useScheduleWorkspaceValue() {
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+  const [draftAdminBlocks, setDraftAdminBlocks] = useState<Record<string, SchoolDayBlock>>({});
 
   const data = useQuery(api.schedule.dashboard.get);
   const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? EMPTY_COURSES;
@@ -164,6 +166,40 @@ function useScheduleWorkspaceValue() {
       'Schedule saved',
     );
 
+  const handleBulkSaveAdminBlocks = () => {
+    setIsBulkEditing(false);
+    if (!data?.blocks) return;
+    
+    void runScheduleAction(
+      'save-admin-blocks',
+      async () => {
+        const promises = [];
+        for (const block of data.blocks) {
+          const draft = draftAdminBlocks[block.id];
+          if (draft) {
+            const hasChanged = draft.label !== block.label || draft.startTime !== block.startTime || draft.endTime !== block.endTime;
+            if (hasChanged) {
+              promises.push(updateBlock({
+                blockId: block.id,
+                label: draft.periodNumber ? undefined : draft.label,
+                startTime: draft.startTime,
+                endTime: draft.endTime,
+                kind: draft.periodNumber ? 'PERIOD' : 'CUSTOM',
+                periodNumber: draft.periodNumber ?? undefined,
+                weekday: draft.weekday
+              }));
+            }
+          }
+        }
+        await Promise.all(promises);
+        if (canEditOwnSchedule) {
+          setActiveTab('my');
+        }
+      },
+      'Blocks saved successfully'
+    );
+  };
+
   const blocks = data?.blocks ?? EMPTY_BLOCKS;
   const draftSchedule = useMemo(
     () => buildScheduleRecord(scheduleEntries, isPublic),
@@ -241,6 +277,11 @@ function useScheduleWorkspaceValue() {
     updateBlock,
     updateScheduleEntry,
     user,
+    isBulkEditing,
+    setIsBulkEditing,
+    draftAdminBlocks,
+    setDraftAdminBlocks,
+    handleBulkSaveAdminBlocks,
   };
 }
 

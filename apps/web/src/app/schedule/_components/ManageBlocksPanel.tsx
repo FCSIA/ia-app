@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { SchoolDayBlockFormCard } from '@/components/schedule/school-day-block-form-card';
 import {
@@ -8,6 +9,7 @@ import {
   getBlocksForDay,
 } from '@/components/schedule/schedule-utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { TabPanel } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
@@ -26,7 +28,12 @@ export function ManageBlocksPanel() {
     setCreatingDay,
     setEditingBlockId,
     updateBlock,
+    isBulkEditing,
+    draftAdminBlocks: draftBlocks,
+    setDraftAdminBlocks: setDraftBlocks,
+    handleBulkSaveAdminBlocks: handleBulkSave,
   } = useScheduleWorkspace();
+  
   const weekdayBlocks = getBlocksForDay(blocks, adminWeekday);
 
   return (
@@ -47,17 +54,20 @@ export function ManageBlocksPanel() {
             {day.shortLabel}
           </button>
         ))}
-        <Button
-          size="sm"
-          className="mb-1 ml-auto h-7 text-xs"
-          onClick={() => {
-            setCreatingDay(adminWeekday);
-            setEditingBlockId(null);
-          }}
-        >
-          <Plus className="mr-1.5 size-3" />
-          Add block
-        </Button>
+        <div className="ml-auto flex items-center gap-4 mb-1">
+          <Button
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              setCreatingDay(adminWeekday);
+              setEditingBlockId(null);
+              if (isBulkEditing) handleBulkSave();
+            }}
+          >
+            <Plus className="mr-1.5 size-3" />
+            Add block
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -84,8 +94,64 @@ export function ManageBlocksPanel() {
 
         {weekdayBlocks.length > 0 ? (
           <div className="divide-y divide-border/30">
-            {weekdayBlocks.map((block) =>
-              editingBlockId === block.id ? (
+            {weekdayBlocks.map((block) => {
+              if (isBulkEditing) {
+                const draft = draftBlocks[block.id] || block;
+                return (
+                  <div key={block.id} className="group flex items-center justify-between gap-4 py-3">
+                    <div className="flex flex-1 items-center gap-3">
+                      <Input
+                        value={draft.periodNumber ? `Period ${draft.periodNumber}` : draft.label}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (draft.periodNumber && val.toLowerCase().startsWith('period ')) {
+                            const num = parseInt(val.replace(/[^0-9]/g, ''));
+                            setDraftBlocks(prev => ({ ...prev, [block.id]: { ...draft, periodNumber: isNaN(num) ? draft.periodNumber : num } }));
+                          } else {
+                            setDraftBlocks(prev => ({ ...prev, [block.id]: { ...draft, periodNumber: null, label: val } }));
+                          }
+                        }}
+                        className="h-8 w-full max-w-[200px] text-sm font-medium bg-muted/20 border-border/50"
+                        placeholder="Label"
+                      />
+                      
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={draft.startTime}
+                          onChange={(e) => setDraftBlocks(prev => ({ ...prev, [block.id]: { ...draft, startTime: e.target.value } }))}
+                          className="h-8 w-[130px] text-xs bg-muted/20 border-border/50"
+                        />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <Input
+                          type="time"
+                          value={draft.endTime}
+                          onChange={(e) => setDraftBlocks(prev => ({ ...prev, [block.id]: { ...draft, endTime: e.target.value } }))}
+                          className="h-8 w-[130px] text-xs bg-muted/20 border-border/50"
+                        />
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 text-xs text-destructive opacity-0 transition-opacity hover:text-destructive hover:bg-destructive/10 group-hover:opacity-100"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void runScheduleAction(
+                          `block-delete:${block.id}`,
+                          () => deleteBlock({ blockId: block.id }),
+                          'Block removed',
+                        );
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                );
+              }
+
+              return editingBlockId === block.id ? (
                 <SchoolDayBlockFormCard
                   key={block.id}
                   weekday={adminWeekday}
@@ -150,8 +216,8 @@ export function ManageBlocksPanel() {
                     Delete
                   </Button>
                 </div>
-              ),
-            )}
+              );
+            })}
           </div>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">
