@@ -421,6 +421,7 @@ function MessageRow({
   const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
   const isSending =
     'deliveryState' in message && message.deliveryState === 'sending';
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
@@ -515,7 +516,7 @@ function MessageRow({
                 <div
                   className={cn(
                     'absolute right-2 top-1 z-20 flex translate-y-1 items-center rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100',
-                    deleteDialogOpen && 'translate-y-0 opacity-100',
+                    (actionsMenuOpen || deleteDialogOpen) && 'translate-y-0 opacity-100',
                   )}
                 >
                   <Popover>
@@ -579,7 +580,7 @@ function MessageRow({
                       </Button>
                     </Tooltip>
                   )}
-                  <DropdownMenu>
+                  <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
                     <Tooltip content="More">
                       <DropdownMenuTrigger asChild>
                         <Button
