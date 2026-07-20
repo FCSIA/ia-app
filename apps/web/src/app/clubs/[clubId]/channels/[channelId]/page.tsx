@@ -512,7 +512,12 @@ function MessageRow({
                   </div>
                 ) : null}
 
-                <div className="absolute right-2 top-1 z-20 flex translate-y-1 items-center rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                <div
+                  className={cn(
+                    'absolute right-2 top-1 z-20 flex translate-y-1 items-center rounded-lg border bg-popover p-0.5 opacity-0 shadow-md transition-[opacity,transform] duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100',
+                    deleteDialogOpen && 'translate-y-0 opacity-100',
+                  )}
+                >
                   <Popover>
                     <Tooltip content="Add reaction">
                       <PopoverTrigger asChild>
