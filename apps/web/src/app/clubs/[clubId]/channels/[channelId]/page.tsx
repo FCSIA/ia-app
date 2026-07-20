@@ -629,7 +629,7 @@ function MessageRow({
                         </Button>
                       </DropdownMenuTrigger>
                     </Tooltip>
-                    <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuContent align="end" className="w-32">
                       {!isAuthor ? (
                         <DropdownMenuItem onSelect={() => onReport?.(message._id)}>
                           <Flag />
