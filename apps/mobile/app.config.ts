@@ -52,6 +52,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? "org.fcsia.app",
     buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
+    appleTeamId: "H597TPM2HA",
     associatedDomains: personalTeamBuild
       ? undefined
       : [`applinks:${universalLinkHost}`],
@@ -93,6 +94,14 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-secure-store",
     ["react-native-enriched-markdown", { enableMath: false }],
+    [
+      "expo-build-properties",
+      {
+        ios: {
+          deploymentTarget: "16.4",
+        },
+      },
+    ],
     ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
     notificationsPlugin,
   ],

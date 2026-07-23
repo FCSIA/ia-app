@@ -183,7 +183,7 @@ export default function NotificationsPage() {
                     </Empty>
                   ) : (
                     <div>
-                      <ul className="divide-y divide-border/60">
+                      <ul className="flex flex-col gap-2">
                         {filteredNotifications.map((n) => {
                           const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
                           const categoryColor = CATEGORY_COLORS[n.category] ?? 'gray';
@@ -193,7 +193,7 @@ export default function NotificationsPage() {
                                 type="button"
                                 onClick={() => openNotification(n)}
                                 className={cn(
-                                  'group flex w-full items-start gap-3 py-4 text-left transition-colors',
+                                  'group flex w-full items-start gap-3 p-4 rounded-2xl text-left transition-colors',
                                   'hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
                                   !n.isRead && 'bg-primary/[0.035]',
                                 )}
