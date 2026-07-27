@@ -79,6 +79,10 @@ The same public key must also be present in `apps/web/.env.local` as
 Push is a best-effort delivery channel. Expired browser subscriptions are
 disabled when push services return a permanent failure.
 
+Enabling Browser push registers the current browser and upgrades the user's
+active alert preferences to `PUSH`. A global `OFF` preference remains off, and
+all-message channel alerts remain separately opt-in in channel settings.
+
 Channel-message fanout runs in a scheduled mutation after the sender's message
 transaction commits. Preference resolution uses exact indexed scope and global
 fallback lookups, so fanout does not scan a user's full category preference set.

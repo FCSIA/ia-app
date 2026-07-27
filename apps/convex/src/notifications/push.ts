@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { notificationCategoryValidator } from "../validators";
+import { activatePushPreferences } from "./_pushActivation";
 import {
   preferenceAllowsPush,
   resolveNotificationPreference,
@@ -89,6 +90,8 @@ export const upsertSubscription = mutation({
         createdAt: now,
       });
     }
+
+    await activatePushPreferences(ctx, user._id, now);
 
     return { success: true };
   },
