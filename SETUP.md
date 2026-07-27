@@ -24,7 +24,7 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 3. Install dependencies: `pnpm install`
 4. Configure your Convex dev deployment:
    ```bash
-   pnpm convex:dev
+   pnpm cvx:dev
    ```
    Run this once interactively so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
 5. Start the development server: `pnpm dev`. This command starts:
@@ -32,7 +32,21 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 - The Next.js frontend at `http://localhost:3000`
 - The Convex dev server in the background, which auto-provisions schema and functions.
 
-6. To populate demo accounts, clubs, courses, and schedules, open the Convex Dashboard and run the internal function `bootstrap:resetAndSeed`, then check `bootstrap:seedStatus` for progress.
+6. Configure browser push keys if you want closed-tab push delivery:
+   ```bash
+   pnpm --filter cvx exec web-push generate-vapid-keys
+   ```
+   Copy the generated public key into `apps/web/.env.local` as
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, then set the matching Convex deployment
+   values:
+   ```bash
+   pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+   pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+   pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+   ```
+   Use `direnv exec . pnpm ...` for the same commands if your shell depends on
+   the repo's Nix/direnv environment.
+7. To populate demo accounts, clubs, courses, and schedules, open the Convex Dashboard and run the internal function `bootstrap:resetAndSeed`, then check `bootstrap:seedStatus` for progress.
 
 ---
 
@@ -99,10 +113,32 @@ If you receive the error:
 Run:
 
 ```bash
-pnpm convex:dev
+pnpm cvx:dev
 ```
 
 Convex writes the selected dev deployment to `apps/convex/.env.local`. The seed/reset commands cannot run until that deployment exists.
+
+### VAPID Keys Are Missing
+
+If browser push says VAPID keys are missing, generate one key pair and set it in
+both places:
+
+```bash
+pnpm --filter cvx exec web-push generate-vapid-keys
+```
+
+- `apps/web/.env.local`: `NEXT_PUBLIC_VAPID_PUBLIC_KEY=<public-key>`
+- Convex env: `VAPID_PUBLIC_KEY=<public-key>`
+- Convex env: `VAPID_PRIVATE_KEY=<private-key>`
+- Convex env: `VAPID_SUBJECT=mailto:admin@example.com`
+
+Set Convex env values from the repo root:
+
+```bash
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
 
 ### Stale Client or Build Issues
 

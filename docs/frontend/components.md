@@ -121,6 +121,44 @@ Every mapped item needs a stable key:
 ))}
 ```
 
+## Chat Surfaces
+
+Use the local `MessageScroller` components for message timelines and threads.
+They wrap shadcn's headless `@shadcn/react` behavior so streaming updates,
+live-edge following, restored transcripts, and stable message anchors do not
+need to be rebuilt at each call site. Give each `MessageScrollerItem` a stable
+message ID. Compose each row with `Message`, use `Bubble` for its visible
+surface, and use `AttachmentGroup` plus `Attachment` for sent and pending files.
+`Message` is a transparent, full-width positioning canvas for row-level
+`MessageActions`; `Bubble` stays fit-content and owns its reactions. Do not
+stretch or decorate the row just to place the action toolbar, and do not anchor
+reactions to the row.
+
+The scrollable viewports use shadcn's CSS-only `scroll-fade` utilities so edge
+hints follow the current scroll position without adding React scroll state.
+On wide channel layouts, compose the main timeline and thread with shadcn
+`ResizablePanelGroup`; each panel owns its own `MessageScroller`, while the
+thread composer remains a non-scrolling flex sibling below the thread viewport.
+
+The chat text stack has separate jobs:
+
+- Plate owns the interactive composer, rich marks, and structured mention
+  nodes. `bodyRich` preserves that editor structure while `body` remains the
+  searchable plain-text projection.
+- `bodyMarkdown` is the portable message format. The composer serializes its
+  supported Plate nodes to GFM, including `http`/`https` links and stable
+  `user://` mention links.
+- `react-markdown` with `remark-gfm` parses message history into read-only React
+  elements. Keep this display path lighter than mounting a read-only editor for
+  every message in a timeline.
+- The global shadcn/typeset stylesheet, with the compact `typeset-chat` preset,
+  styles those rendered elements. Typeset supplies typography, not Markdown
+  parsing or editor behavior.
+
+Keep message chrome and controls outside the typeset container so typography
+rules only affect the rendered body. External links open in a new tab; images
+and unsupported URL schemes are not rendered from message Markdown.
+
 ## Forms
 
 Use controlled inputs for simple forms:

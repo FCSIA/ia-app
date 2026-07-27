@@ -22,6 +22,7 @@ import { filterBySearchQuery } from '@/lib/search';
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
 
   return (
     <Card className="hover:-translate-y-0.5 transition-all duration-200">
@@ -58,7 +59,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
               <Button size="sm" variant="primary" onClick={() => onReject(event._id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
             </div>
           )}
-          {event.status === 'PUBLISHED' && (isAdmin || event.authorId === user?._id) && (
+          {event.status === 'PUBLISHED' && (isAdmin || isAuthor) && (
             <Button variant="ghost" size="sm" onClick={() => onCancel(event._id)} className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8">Cancel</Button>
           )}
         </div>
@@ -95,12 +96,23 @@ export default function EventsPage() {
       hydrated && !!user ? {} : 'skip',
     ) ?? [];
 
-  const availableClubs = [
-    ...((myClubs?.memberOf || []).filter((club) => !!club.role)),
-    ...(myClubs?.sponsoring || []),
-  ].filter((club, index, list) => list.findIndex((item) => item._id === club._id) === index);
+  const availableClubs = useMemo(
+    () =>
+      [
+        ...((myClubs?.memberOf || []).filter(
+          (club) => club.role === 'LEADER' || club.role === 'SPONSOR',
+        )),
+        ...(myClubs?.sponsoring || []),
+      ].filter(
+        (club, index, list) =>
+          list.findIndex((item) => item._id === club._id) === index,
+      ),
+    [myClubs],
+  );
 
   const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
+  const selectedClubId =
+    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? '') : '');
 
   const createEvent = useMutation(api.events.events.create);
   const approveEvent = useMutation(api.events.approvals.approveEvent);
@@ -114,6 +126,10 @@ export default function EventsPage() {
       toast({ title: 'Start date is required', variant: 'destructive' });
       return;
     }
+    if (!canCreateGeneral && !selectedClubId) {
+      toast({ title: 'Choose a club for this event', variant: 'destructive' });
+      return;
+    }
     setCreatePending(true);
     try {
       await createEvent({
@@ -122,7 +138,7 @@ export default function EventsPage() {
         location: form.location || undefined,
         startAt: new Date(form.startAt).getTime(),
         endAt: form.endAt ? new Date(form.endAt).getTime() : undefined,
-        clubId: form.clubId ? (form.clubId as Id<'clubs'>) : undefined,
+        clubId: selectedClubId ? (selectedClubId as Id<'clubs'>) : undefined,
       });
       setShowNew(false);
       toast({ title: 'Event created' });
@@ -276,7 +292,7 @@ export default function EventsPage() {
                       {canCreateGeneral ? (
                         <Button
                           type="button"
-                          variant={form.clubId ? 'tertiary' : 'primary'}
+                          variant={selectedClubId ? 'tertiary' : 'primary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: '' })}
                         >
@@ -287,7 +303,7 @@ export default function EventsPage() {
                         <Button
                           key={club._id}
                           type="button"
-                          variant={form.clubId === club._id ? 'primary' : 'tertiary'}
+                          variant={selectedClubId === club._id ? 'primary' : 'tertiary'}
                           className="rounded-full"
                           onClick={() => setForm({ ...form, clubId: club._id })}
                         >

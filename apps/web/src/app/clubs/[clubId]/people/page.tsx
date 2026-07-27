@@ -375,11 +375,10 @@ export default function ClubPeoplePage() {
   );
 
   return (
-    <ClubWorkspace title={title}>
-      <div className="mx-auto w-full max-w-4xl space-y-8 p-6">
-
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <ClubWorkspace title={title} contentClassName="flex flex-col overflow-hidden">
+      <div className="mx-auto flex w-full min-h-0 max-w-4xl flex-1 flex-col p-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <Tabs value={filter} onValueChange={setFilter} className="w-full sm:w-auto">
               <TabsList className="grid w-full grid-cols-4 rounded-3xl bg-muted p-1 sm:w-auto sm:inline-flex">
                 <TabItem value="all" className="rounded-lg text-xs sm:text-sm" label="All">
@@ -418,14 +417,14 @@ export default function ClubPeoplePage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
             {filtered.length > 0 ? (
-              <div className="divide-y divide-border/60">
+              <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
                 {filtered.map((person) => (
                   <PersonRow
                     key={person._id}
                     person={person}
-                    isCurrentUser={person._id === user?.id}
+                    isCurrentUser={person._id === user?._id}
                     canManage={canManage && person.kind === 'MEMBER'}
                     onSetRole={setRoleTarget}
                     onRemove={(memberId) =>
@@ -437,7 +436,7 @@ export default function ClubPeoplePage() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+              <div className="flex flex-1 flex-col items-center justify-center py-16 text-center px-4">
                 <div className="rounded-full bg-primary/10 p-4 mb-4">
                   <Users className="size-8 text-primary/60" />
                 </div>

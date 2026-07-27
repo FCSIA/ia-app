@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { docs } from "../../lib/docs";
@@ -45,6 +45,41 @@ export function isElevatedReader(roles: string[]) {
   );
 }
 
+export function isGlobalAnnouncementApprover(roles: string[]) {
+  return (
+    roles.includes("ADMIN") ||
+    roles.includes("SUPER_ADMIN") ||
+    roles.includes("SUPPORT_STAFF")
+  );
+}
+
+export async function canApproveAnnouncement(
+  ctx: QueryCtx | MutationCtx,
+  ann: Doc<"announcements">,
+  user: Doc<"users">,
+) {
+  if (isGlobalAnnouncementApprover(user.roles)) return true;
+  if (!ann.clubId) return false;
+
+  const sponsor = await ctx.db
+    .query("clubSponsors")
+    .withIndex("by_clubId_and_userId", (q) =>
+      q.eq("clubId", ann.clubId!).eq("userId", user._id),
+    )
+    .first();
+  return !!sponsor;
+}
+
+export async function assertCanApproveAnnouncement(
+  ctx: QueryCtx | MutationCtx,
+  ann: Doc<"announcements">,
+  user: Doc<"users">,
+) {
+  if (!(await canApproveAnnouncement(ctx, ann, user))) {
+    throw new ConvexError("Unauthorized");
+  }
+}
+
 export async function getViewerAudience(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   const viewer = await ctx.db.get(userId);
   if (!viewer) throw new Error("User not found");
@@ -62,7 +97,7 @@ export async function getAccessibleClubIds(ctx: QueryCtx | MutationCtx, userId: 
     .collect();
   const sponsors = await ctx.db
     .query("clubSponsors")
-    .filter((q) => q.eq(q.field("userId"), userId))
+    .withIndex("by_userId_and_clubId", (q) => q.eq("userId", userId))
     .collect();
 
   const ids = new Set<Id<"clubs">>();
@@ -146,6 +181,6 @@ export async function assertAnnouncementAccess(
   const viewer = await getViewerAudience(ctx, userId);
   const clubs = await getAccessibleClubIds(ctx, userId);
   if (!canViewAnnouncement(ann, userId, roles, clubs, viewer)) {
-    throw new Error("Announcement not found");
+    throw new ConvexError("Announcement not found");
   }
 }

@@ -3,14 +3,42 @@
 import { useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { Panel } from '@/components/layout/page-frame';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
+import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
+import {
+  AtSign,
+  BellRing,
+  CalendarDays,
+  Hash,
+  Megaphone,
+  ShieldAlert,
+  Sparkles,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import type { NotificationCategory } from '~/apps/convex/src/validators';
+
+const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
+  SCHOOL_ANNOUNCEMENT: Megaphone,
+  CLUB_ANNOUNCEMENT: Megaphone,
+  CLUB_JOIN_REQUEST: Users,
+  CLUB_CHANNEL_MESSAGE: BellRing,
+  CLUB_CHANNEL_MENTION: AtSign,
+  CLUB_CHANNEL_TAG_MENTION: Hash,
+  CLUB_CHANNEL_THREAD: Hash,
+  EVENT: CalendarDays,
+  FLEX_FRIDAY: Sparkles,
+  CONTENT_MODERATED: ShieldAlert,
+  FRIEND_REQUEST: Users,
+};
 
 export function NotificationSettingsPanel() {
-  const preferences = useQuery(api.notifications.preferences.list) ?? [];
+  const user = useCurrentUser();
   const myClubs = useQuery(api.clubs.management.getMyClubs);
+  const canSeeStaffCategories = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
 
   const involvedClubs = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
@@ -22,45 +50,66 @@ export function NotificationSettingsPanel() {
     });
   }, [myClubs]);
 
+  const globalSettings = useMemo(
+    () =>
+      NOTIFICATION_CATEGORY_OPTIONS.filter(
+        (category) => !category.staffOnly || canSeeStaffCategories,
+      ),
+    [canSeeStaffCategories],
+  );
+
   const clubsLoading = myClubs === undefined;
 
   return (
-    <Panel contentClassName="flex flex-col gap-5 p-5">
+    <div className="flex flex-col gap-6">
       <PushNotificationSettings />
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">Global</h2>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {[
-            ['SCHOOL_ANNOUNCEMENT', 'School announcements'],
-            ['EVENT', 'Events'],
-            ['FLEX_FRIDAY', 'Flex Friday'],
-            ['FRIEND_REQUEST', 'Friend schedules'],
-            ['CONTENT_MODERATED', 'Moderation notices'],
-          ].map(([category, label]) => (
-            <NotificationScopeSwitch key={category} category={category as any} label={label} />
-          ))}
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <BellRing className="size-4 text-muted-foreground" aria-hidden />
+          <h2 className="text-sm font-semibold">Global</h2>
+        </div>
+        <div className="flex flex-col gap-1">
+          {globalSettings.map((setting) => {
+            const Icon = CATEGORY_ICONS[setting.key];
+            return (
+              <div
+                key={setting.key}
+                className="flex min-w-0 items-center justify-between gap-3 py-1.5"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <p className="truncate text-sm font-medium text-foreground">{setting.label}</p>
+                </div>
+                <NotificationScopeSwitch
+                  category={setting.key}
+                  label={setting.label}
+                  defaultEnabled={setting.defaultEnabled}
+                  compact
+                  className="shrink-0"
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">Clubs and channels</h2>
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <AtSign className="size-4 text-muted-foreground" aria-hidden />
+          <h2 className="text-sm font-semibold">Clubs</h2>
+        </div>
         {clubsLoading ? (
-          <p className="text-sm text-muted-foreground">Loading club notification settings…</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         ) : involvedClubs.length > 0 ? (
-          <div className="grid gap-3">
+          <div className="flex flex-col gap-4">
             {involvedClubs.map((club) => (
               <ClubNotificationChannels key={club._id} clubId={club._id} clubName={club.name} />
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Join or sponsor clubs to configure club-specific notifications.
-          </p>
+          <p className="text-sm text-muted-foreground">No clubs.</p>
         )}
       </section>
-      <p className="text-xs text-muted-foreground">
-        {preferences.length} saved preference{preferences.length === 1 ? '' : 's'}.
-      </p>
-    </Panel>
+    </div>
   );
 }
 
@@ -74,26 +123,33 @@ function ClubNotificationChannels({
   const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
 
   return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-medium">{clubName}</p>
+    <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Megaphone className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <p className="truncate text-sm font-semibold text-foreground">{clubName}</p>
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground" title="Visible channels">
+            {channels.length}
+          </span>
+        </div>
         <NotificationScopeSwitch
           category="CLUB_ANNOUNCEMENT"
           label="Announcements"
           clubId={clubId}
           compact
+          className="shrink-0"
         />
       </div>
       {channels.length > 0 ? (
-        <div className="grid gap-2">
+        <div className="grid gap-1 pl-6">
           {channels.map((channel) => (
             <div
               key={channel._id}
-              className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-muted/30 px-3 py-2"
+              className="flex min-w-0 items-center justify-between gap-3 py-1"
             >
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <Hash className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 <p className="truncate text-sm font-medium">#{channel.name}</p>
-                <p className="truncate text-xs text-muted-foreground">Channel mentions</p>
               </div>
               <NotificationScopeSwitch
                 category="CLUB_CHANNEL_MENTION"
@@ -107,7 +163,7 @@ function ClubNotificationChannels({
           ))}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">No visible channels to configure yet.</p>
+        <p className="pl-6 text-xs text-muted-foreground">No channels.</p>
       )}
     </div>
   );

@@ -1,11 +1,13 @@
 import { ConvexError, v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { docs } from "../../lib/docs";
 import { activeAdmins, deliverMany } from "../notifications/delivery";
+import { canReadChannel, getViewerContext } from "../clubs/access";
+import { normalizeModerationReportReason } from "./reportValidation";
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -25,6 +27,12 @@ const reportValidator = docs.moderationReports.extend({
     v.null(),
   ),
 });
+
+const moderationReportStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("RESOLVED"),
+  v.literal("DISMISSED"),
+);
 
 async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) {
   const submitter = await ctx.db.get(report.submitterId);
@@ -55,9 +63,51 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
   };
 }
 
+async function createReport(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  input: {
+    contentType: string;
+    contentId: string;
+    reason: string;
+    reportedUserId?: Id<"users">;
+    clubId?: Id<"clubs">;
+  },
+) {
+  const reportId = await ctx.db.insert("moderationReports", {
+    submitterId: user._id,
+    contentType: input.contentType,
+    contentId: input.contentId,
+    reason: input.reason,
+    reportedUserId: input.reportedUserId,
+    clubId: input.clubId,
+    status: "PENDING",
+    isEscalated: false,
+    createdAt: Date.now(),
+  });
+
+  await deliverMany(ctx, (await activeAdmins(ctx)).map((admin) => admin._id), {
+    category: "CONTENT_MODERATED",
+    title: "Moderation report submitted",
+    body: `${user.firstName} ${user.lastName} submitted a moderation report.`,
+    href: "/admin?tab=moderation",
+    subject: { kind: "moderationReport", reportId },
+  });
+
+  await logAuditEvent(ctx, {
+    actorId: user._id,
+    action: "REPORT_SUBMITTED",
+    entityType: "Report",
+    entityId: reportId,
+    meta: { contentType: input.contentType, contentId: input.contentId },
+  });
+
+  return reportId;
+}
+
 export const list = query({
   args: {
-    status: v.optional(docs.moderationReports.fields.status),
+    status: v.optional(moderationReportStatusValidator),
     clubId: v.optional(v.id("clubs")),
     isEscalated: v.optional(v.boolean()),
   },
@@ -68,12 +118,30 @@ export const list = query({
       return [];
     }
 
-    let reports = await ctx.db.query("moderationReports").order("desc").take(200);
-
+    let reports: Doc<"moderationReports">[];
     if (args.status) {
-      reports = reports.filter((r) => r.status === args.status);
+      const status: Doc<"moderationReports">["status"] = args.status;
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_status_and_createdAt", (q) => q.eq("status", status))
+        .order("desc")
+        .take(200);
+    } else if (args.clubId) {
+      const clubId = args.clubId;
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", clubId))
+        .order("desc")
+        .take(200);
+    } else {
+      reports = await ctx.db
+        .query("moderationReports")
+        .withIndex("by_createdAt")
+        .order("desc")
+        .take(200);
     }
-    if (args.clubId) {
+
+    if (args.clubId && args.status) {
       reports = reports.filter((r) => r.clubId === args.clubId);
     }
     if (args.isEscalated !== undefined) {
@@ -95,38 +163,50 @@ export const submit = mutation({
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const reason = args.reason.trim();
-    if (!reason) throw new ConvexError("Reason required");
-
-    const reportId = await ctx.db.insert("moderationReports", {
-      submitterId: user._id,
-      contentType: args.contentType,
-      contentId: args.contentId,
-      reason,
-      reportedUserId: args.reportedUserId,
-      clubId: args.clubId,
-      status: "PENDING",
-      isEscalated: false,
-      createdAt: Date.now(),
+    return await createReport(ctx, user, {
+      ...args,
+      reason: normalizeModerationReportReason(args.reason),
     });
+  },
+});
 
-    await deliverMany(ctx, (await activeAdmins(ctx)).map((admin) => admin._id), {
-      category: "CONTENT_MODERATED",
-      title: "Moderation report submitted",
-      body: `${user.firstName} ${user.lastName} submitted a moderation report.`,
-      href: "/admin?tab=moderation",
-      subject: { kind: "moderationReport", reportId },
+export const submitClubChannelMessage = mutation({
+  args: {
+    messageId: v.id("clubChannelMessages"),
+    reason: v.string(),
+  },
+  returns: v.id("moderationReports"),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new ConvexError("Message not found");
+    if (message.deletedAt) throw new ConvexError("Message has been deleted");
+    const channel = await ctx.db.get(message.channelId);
+    if (!channel) throw new ConvexError("Message not found");
+    const context = await getViewerContext(ctx, channel.clubId, user);
+    const membership = await ctx.db
+      .query("clubChannelMemberships")
+      .withIndex("by_channelId_and_userId", (q) =>
+        q.eq("channelId", channel._id).eq("userId", user._id),
+      )
+      .first();
+    if (
+      !canReadChannel(
+        { ...channel, memberships: membership ? [membership] : [] },
+        context,
+        user._id,
+      )
+    ) {
+      throw new ConvexError("Not authorized");
+    }
+
+    return await createReport(ctx, user, {
+      contentType: "CLUB_CHANNEL_MESSAGE",
+      contentId: message._id,
+      clubId: channel.clubId,
+      reportedUserId: message.authorId,
+      reason: normalizeModerationReportReason(args.reason),
     });
-
-    await logAuditEvent(ctx, {
-      actorId: user._id,
-      action: "REPORT_SUBMITTED",
-      entityType: "Report",
-      entityId: reportId,
-      meta: { contentType: args.contentType, contentId: args.contentId },
-    });
-
-    return reportId;
   },
 });
 

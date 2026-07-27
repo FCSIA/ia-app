@@ -13,6 +13,14 @@ function canManageWorkshops(user: { roles: string[] }) {
   );
 }
 
+function validateWorkshopCapacity(capacity: number | null | undefined) {
+  if (capacity == null) return undefined;
+  if (!Number.isInteger(capacity) || capacity < 1) {
+    throw new Error("Workshop capacity must be a positive whole number");
+  }
+  return capacity;
+}
+
 async function serializeWorkshopForSession(
   ctx: QueryCtx,
   workshopId: Id<"flexWorkshops">,
@@ -122,7 +130,7 @@ export const create = mutation({
       title: args.title.trim(),
       description: args.description?.trim(),
       location: args.location?.trim(),
-      capacity: args.capacity,
+      capacity: validateWorkshopCapacity(args.capacity),
       targetGrades: args.targetGrades ?? [],
       targetMajorPathways: args.targetMajorPathways ?? [],
       targetMinorPathways: args.targetMinorPathways ?? [],
@@ -212,7 +220,9 @@ export const update = mutation({
         ? { description: args.description ?? undefined }
         : {}),
       ...(args.location !== undefined ? { location: args.location ?? undefined } : {}),
-      ...(args.capacity !== undefined ? { capacity: args.capacity ?? undefined } : {}),
+      ...(args.capacity !== undefined
+        ? { capacity: validateWorkshopCapacity(args.capacity) }
+        : {}),
       ...(args.targetGrades !== undefined ? { targetGrades: args.targetGrades } : {}),
       ...(args.targetMajorPathways !== undefined
         ? { targetMajorPathways: args.targetMajorPathways }

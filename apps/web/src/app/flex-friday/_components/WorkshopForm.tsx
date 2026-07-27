@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +36,14 @@ export function WorkshopForm({
 }: Props) {
   const { toast } = useToast();
   const [form, setForm] = useState<WorkshopFormType>(initialData);
+  const [previousTarget, setPreviousTarget] = useState({ isOpen, editingWorkshopId });
 
-  useEffect(() => {
+  if (previousTarget.isOpen !== isOpen || previousTarget.editingWorkshopId !== editingWorkshopId) {
+    setPreviousTarget({ isOpen, editingWorkshopId });
     if (isOpen) {
       setForm(initialData);
     }
-  }, [isOpen, initialData]);
+  }
 
   const handleSubmit = async () => {
     if (form.sessionIds.length === 0) {
@@ -95,7 +97,7 @@ export function WorkshopForm({
           <SheetTitle>{editingWorkshopId ? 'Edit Workshop' : 'New Workshop'}</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={() => handleSubmit()} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Workshop Title *</Label>

@@ -4,22 +4,9 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
-  type NotificationCategory,
 } from "../validators";
 import { preferenceValidator, scopeKey, toPreference } from "./_lib";
-
-const pushDefaultCategories: NotificationCategory[] = [
-  "SCHOOL_ANNOUNCEMENT",
-  "CLUB_ANNOUNCEMENT",
-  "CLUB_JOIN_REQUEST",
-  "CLUB_CHANNEL_MENTION",
-  "CLUB_CHANNEL_TAG_MENTION",
-  "CLUB_CHANNEL_THREAD",
-  "EVENT",
-  "FLEX_FRIDAY",
-  "CONTENT_MODERATED",
-  "FRIEND_REQUEST",
-];
+import { activatePushPreferences } from "./_pushActivation";
 
 export const list = query({
   args: {},
@@ -105,45 +92,7 @@ export const activatePush = mutation({
   returns: v.object({ updated: v.number() }),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    const now = Date.now();
-    const preferences = await ctx.db
-      .query("notificationPreferences")
-      .withIndex("by_userId_and_category_and_scopeKey", (q) => q.eq("userId", user._id))
-      .take(500);
-    let updated = 0;
-
-    for (const category of pushDefaultCategories) {
-      const categoryPreferences = preferences.filter((preference) => preference.category === category);
-      const globalPreference = categoryPreferences.find((preference) => preference.scopeKey === "global");
-
-      // A global OFF preference is an explicit opt-out and must win over the
-      // device-level opt-in.
-      if (globalPreference?.enabled === false || globalPreference?.level === "OFF") continue;
-
-      if (!globalPreference) {
-        await ctx.db.insert("notificationPreferences", {
-          userId: user._id,
-          category,
-          enabled: true,
-          level: "PUSH",
-          locked: false,
-          scopeKey: "global",
-          createdAt: now,
-          updatedAt: now,
-        });
-        updated++;
-      }
-
-      for (const preference of categoryPreferences) {
-        if (!preference.enabled || preference.level === "OFF" || preference.level === "PUSH") continue;
-        await ctx.db.patch(preference._id, {
-          level: "PUSH",
-          updatedAt: now,
-        });
-        updated++;
-      }
-    }
-
+    const updated = await activatePushPreferences(ctx, user._id);
     return { updated };
   },
 });

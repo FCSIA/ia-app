@@ -1,5 +1,7 @@
 # Dependencies
 node_modules
+node_modules.nosync
+.pnpm-store/
 
 # Build outputs
 dist
@@ -35,7 +37,8 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
-agent-notes/
+agent-notes/*
+!agent-notes/IDIOMATIC_CONVEX_TODO.md
 
 # Editors
 .idea

@@ -12,6 +12,8 @@ a club, inside club workflows.
 ## What It Does
 
 - Lists announcements visible to the current user.
+- Searches the visible feed by title, body, author, club, grade, and pathway
+  while preserving the all, unread, and saved filters.
 - Supports detail pages, comments, read/unread state, bookmarks, archives, and
   promoted/pinned announcements.
 - Supports school-wide, grade, pathway, club, and intersection targeting.
@@ -52,9 +54,10 @@ announcement document.
 
 ## Permissions
 
-Teachers and admins can create announcements. Admins and elevated readers can
-approve or reject pending announcements. Comment and archive permissions are
-enforced inside the Convex mutations.
+Teachers and admins can create announcements. Global announcement approval is
+limited to admin/support roles; club-scoped pending announcements can also be
+approved or rejected by that club's sponsors. Comment and archive permissions
+are enforced inside the Convex mutations.
 
 ## Side Effects
 

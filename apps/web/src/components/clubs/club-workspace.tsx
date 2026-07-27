@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { AppShell } from "@/components/layout/AppShell";
+import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,21 +26,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Dropdown,
-  DropdownLabel,
   DropdownSeparator,
   useDropdown,
 } from "@/components/ui/dropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-import { hasRole, useCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type {
-  ClubChannel,
-  ClubDetail,
-  ClubSummary,
+  ClubNavigationChannel,
+  ClubNavigationSummary,
+  ClubWorkspaceNavigation,
 } from "@/components/clubs/types";
 
 function resolveMediaUrl(url?: string | null) {
@@ -48,12 +52,43 @@ function resolveMediaUrl(url?: string | null) {
   return url;
 }
 
+function BrowseAllClubsItem({
+  index,
+}: {
+  index: number;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  const { registerItem, activeIndex } = useDropdown();
+  const isHovered = activeIndex === index;
+
+  useEffect(() => {
+    registerItem(index, ref.current);
+    return () => registerItem(index, null);
+  }, [index, registerItem]);
+  return (
+    <Link
+      ref={ref}
+      data-proximity-index={index}
+      role="menuitemradio"
+      href="/clubs"
+      className={cn(
+        "text-sm relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
+        isHovered
+          ? "text-foreground"
+          : "text-muted-foreground",
+      )}
+    >
+      Browse all clubs
+    </Link>
+  )
+}
+
 function ClubPickerItem({
   club,
   active,
   index,
 }: {
-  club: ClubSummary;
+  club: ClubNavigationSummary;
   active: boolean;
   index: number;
 }) {
@@ -74,13 +109,13 @@ function ClubPickerItem({
       role="menuitemradio"
       aria-checked={active}
       className={cn(
-        "relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 outline-none transition-colors",
+        "relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
         active
-          ? "bg-muted/70 text-foreground"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          ? "text-foreground"
+          : "text-muted-foreground",
       )}
     >
-      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-primary/10 text-[11px] font-semibold text-primary">
+      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
         {club.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -108,6 +143,7 @@ function ClubPickerItem({
 type ClubWorkspaceProps = {
   children: ReactNode;
   rightPane?: ReactNode;
+  resizableRightPane?: boolean;
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
@@ -116,43 +152,38 @@ type ClubWorkspaceProps = {
 export function ClubWorkspace({
   children,
   rightPane,
+  resizableRightPane = false,
   title,
   actions,
   contentClassName,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
-  const user = useCurrentUser();
   const clubId = useClubId();
+  const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
 
-  const club = useQuery(api.clubs.detail.get, { clubId }) as
-    | ClubDetail
+  useEffect(() => {
+    if (!resizableRightPane) return;
+
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const syncViewport = () => setIsResizablePaneViewport(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, [resizableRightPane]);
+
+  const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
+    clubId,
+  }) as
+    | ClubWorkspaceNavigation
     | undefined;
   const { toast } = useToast();
   const deleteChannel = useMutation(api.clubs.channels.remove);
-  const myData = useQuery(api.clubs.management.getMyClubs);
-
-  const channels = club?.channels ?? [];
-  const myClubs = useMemo(() => {
-    const entries = [
-      ...(myData?.memberOf ?? []),
-      ...(myData?.sponsoring ?? []),
-    ];
-    const seen = new Set<string>();
-    return entries.filter((entry) => {
-      if (seen.has(entry._id)) return false;
-      seen.add(entry._id);
-      return true;
-    });
-  }, [myData]);
-
-  const isAdmin = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
-  const isSponsor = club?.sponsors?.some(
-    (sponsor) => sponsor.userId === user?.id,
-  );
-  const myMembership = club?.members?.find(
-    (member) => member.userId === user?.id,
-  );
-  const canManageChannels = isSponsor || !!myMembership?.role || isAdmin;
+  const club = navigation?.club;
+  const channels = navigation?.channels ?? [];
+  const myClubs = navigation?.myClubs ?? [];
+  const canManageChannels = navigation?.viewer.canManageChannels ?? false;
+  const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
@@ -202,18 +233,19 @@ export function ClubWorkspace({
   return (
     <AppShell
       headerSlot={headerSlot}
-      mainClassName="flex h-[calc(100vh-4rem)] min-h-0"
+      mainClassName={FLUSH_MAIN_CLASS}
+      pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 flex-col border-r bg-background md:flex">
-          <div className="border-b p-3">
+        <aside className="hidden w-72 shrink-0 flex-col border-r bg-muted/30 md:flex">
+          <div className="border-b px-3 py-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-sm font-semibold text-primary border border-border/50">
+                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-xs font-semibold text-primary">
                     {club?.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -229,10 +261,6 @@ export function ClubWorkspace({
                     <p className="truncate text-sm font-semibold text-foreground">
                       {club?.name ?? "Loading…"}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {club?._count?.members ?? club?.members?.length ?? 0}{" "}
-                      members
-                    </p>
                   </div>
                   <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
                 </button>
@@ -241,10 +269,12 @@ export function ClubWorkspace({
                 align="start"
                 className="border-0 bg-transparent p-0 shadow-none"
               >
-                <Dropdown checkedIndex={-1} className="w-64">
-                  <DropdownLabel className="text-xs font-normal text-muted-foreground">
-                    Your clubs
-                  </DropdownLabel>
+                <Dropdown
+                  checkedIndex={
+                    activeClubIndex >= 0 ? activeClubIndex : undefined
+                  }
+                  className="w-64"
+                >
                   {myClubs.length > 0 ? (
                     myClubs.map((entry, index) => (
                       <ClubPickerItem
@@ -259,13 +289,10 @@ export function ClubWorkspace({
                       No club memberships yet.
                     </div>
                   )}
-                  <DropdownSeparator />
-                  <Link
-                    href="/clubs"
-                    className="relative z-10 flex rounded-xl px-2 py-2 text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground"
-                  >
-                    Browse all clubs
-                  </Link>
+                  <DropdownSeparator className="!mx-1" />
+                  <BrowseAllClubsItem
+                    index={myClubs.length}
+                  />
                 </Dropdown>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -370,17 +397,60 @@ export function ClubWorkspace({
           </ScrollArea>
         </aside>
 
-        <div className="flex min-w-0 flex-1">
-          <div
-            className={cn("min-w-0 flex-1 overflow-y-auto", contentClassName)}
-          >
-            {children}
-          </div>
-          {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-y-auto border-l xl:block">
-              {rightPane}
-            </aside>
-          ) : null}
+        <div className="flex min-h-0 min-w-0 flex-1">
+          {rightPane && resizableRightPane && isResizablePaneViewport ? (
+            <ResizablePanelGroup
+              id="club-channel-thread-layout"
+              orientation="horizontal"
+              defaultLayout={{
+                "club-channel-main-panel": 68,
+                "club-channel-thread-panel": 32,
+              }}
+              className="min-w-0"
+            >
+              <ResizablePanel
+                id="club-channel-main-panel"
+                defaultSize="68%"
+                minSize="55%"
+                style={{ overflow: "hidden" }}
+              >
+                <div
+                  className={cn(
+                    "h-full min-h-0 min-w-0 overflow-y-auto",
+                    contentClassName,
+                  )}
+                >
+                  {children}
+                </div>
+              </ResizablePanel>
+              <ResizableHandle id="club-channel-thread-handle" withHandle />
+              <ResizablePanel
+                id="club-channel-thread-panel"
+                defaultSize="32%"
+                minSize="18rem"
+                maxSize="45%"
+                style={{ overflow: "hidden" }}
+              >
+                <aside className="h-full min-h-0 overflow-hidden">{rightPane}</aside>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "min-h-0 min-w-0 flex-1 overflow-y-auto",
+                  contentClassName,
+                )}
+              >
+                {children}
+              </div>
+              {rightPane ? (
+                <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
+                  {rightPane}
+                </aside>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     </AppShell>
@@ -410,7 +480,7 @@ function ChannelActionsTrigger({
   channel,
 }: {
   clubId: Id<"clubs">;
-  channel: ClubChannel;
+  channel: ClubNavigationChannel;
 }) {
   const [open, setOpen] = useState(false);
   return (

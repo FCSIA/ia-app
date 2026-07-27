@@ -1,10 +1,8 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-
-// Define our own app role union type for internal checks
-type AppRoleType = "STUDENT" | "STUDENT_LEADER" | "STUDENT_ADMIN" | "TEACHER" | "SPONSOR" | "SUPPORT_STAFF" | "ADMIN" | "SUPER_ADMIN";
+type ClubDbCtx = QueryCtx | MutationCtx;
 
 export interface ClubContext {
   club: Doc<"clubs">;
@@ -53,7 +51,7 @@ export function isStaff(roles: string[]) {
 }
 
 export async function getViewerContext(
-  ctx: QueryCtx,
+  ctx: ClubDbCtx,
   clubId: Id<"clubs">,
   user: Doc<"users">
 ): Promise<ClubContext> {
@@ -63,26 +61,79 @@ export async function getViewerContext(
   const [membership, sponsor, pendingJoinRequest] = await Promise.all([
     ctx.db
       .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", user._id),
+      )
       .first(),
     ctx.db
       .query("clubSponsors")
-      .filter((q) => q.eq(q.field("clubId"), clubId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", clubId).eq("userId", user._id),
+      )
       .first(),
     ctx.db
       .query("clubJoinRequests")
-      .withIndex("by_clubId_and_status", (q) =>
-        q.eq("clubId", clubId).eq("status", "PENDING")
+      .withIndex("by_clubId_and_requesterId_and_status", (q) =>
+        q.eq("clubId", clubId).eq("requesterId", user._id).eq("status", "PENDING")
       )
-      .filter((q) => q.eq(q.field("requesterId"), user._id))
       .first(),
   ]);
 
+  return buildClubContext({
+    club,
+    user,
+    membership,
+    sponsor,
+    hasPendingJoinRequest: !!pendingJoinRequest,
+  });
+}
+
+export async function getChannelViewerContext(
+  ctx: ClubDbCtx,
+  club: Doc<"clubs">,
+  user: Doc<"users">,
+): Promise<ClubContext> {
+  const [membership, sponsor] = await Promise.all([
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", club._id).eq("userId", user._id),
+      )
+      .first(),
+    ctx.db
+      .query("clubSponsors")
+      .withIndex("by_clubId_and_userId", (q) =>
+        q.eq("clubId", club._id).eq("userId", user._id),
+      )
+      .first(),
+  ]);
+
+  return buildClubContext({
+    club,
+    user,
+    membership,
+    sponsor,
+    hasPendingJoinRequest: false,
+  });
+}
+
+function buildClubContext({
+  club,
+  user,
+  membership,
+  sponsor,
+  hasPendingJoinRequest,
+}: {
+  club: Doc<"clubs">;
+  user: Doc<"users">;
+  membership: Doc<"clubMembers"> | null;
+  sponsor: Doc<"clubSponsors"> | null;
+  hasPendingJoinRequest: boolean;
+}): ClubContext {
   const userIsAdmin = isAdmin(user.roles as string[]);
   const isMember = !!membership;
-  const hasClubRole = !!membership?.role;
+  const hasClubRole =
+    membership?.role === "LEADER" || membership?.role === "SPONSOR";
   const isSponsor = !!sponsor;
   const canAccessWorkspace = isMember || isSponsor || userIsAdmin;
   const canManageChannels = isSponsor || hasClubRole || userIsAdmin;
@@ -102,12 +153,12 @@ export async function getViewerContext(
     canManageMembership,
     canApproveJoinRequests,
     canSeePrivateChannels,
-    hasPendingJoinRequest: !!pendingJoinRequest,
+    hasPendingJoinRequest,
   };
 }
 
 export async function getClubContext(
-  ctx: QueryCtx,
+  ctx: ClubDbCtx,
   clubId: Id<"clubs">,
   user: Doc<"users">
 ): Promise<ClubContext> {

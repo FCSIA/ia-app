@@ -38,7 +38,7 @@ export const studentScheduleRecordValidator = v.object({
 });
 
 export const scheduleFriendUserValidator = v.object({
-  id: v.id("users"),
+  _id: v.id("users"),
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
@@ -66,7 +66,7 @@ export const scheduleDashboardValidator = v.object({
 });
 
 export const scheduleSearchResultValidator = v.object({
-  id: v.id("users"),
+  _id: v.id("users"),
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
@@ -157,7 +157,7 @@ export function serializeBlock(block: Doc<"schoolDayBlocks">) {
 
 export function serializeUser(user: Doc<"users">) {
   return {
-    id: user._id,
+    _id: user._id,
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,

@@ -1,0 +1,8 @@
+appId: org.fcsia.app
+---
+- launchApp
+- tapOn: "More"
+- tapOn: "Flex Friday"
+- assertVisible: "Flex Friday"
+- tapOn: "Open pass"
+- assertVisible: "Flex Pass"

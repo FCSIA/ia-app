@@ -16,9 +16,9 @@ export function FunFactWidget() {
   }, []);
 
   useEffect(() => {
-    const id = setInterval(nextMessage, ROTATE_MS);
-    return () => clearInterval(id);
-  }, [nextMessage]);
+    const id = setTimeout(nextMessage, ROTATE_MS);
+    return () => clearTimeout(id);
+  }, [message, nextMessage]);
 
   return (
     <Panel
@@ -36,11 +36,11 @@ export function FunFactWidget() {
         </Button>
       }
     >
-      <div className="flex gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5">
+      <div className="flex h-40 items-center gap-4 rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lightbulb className="size-5" aria-hidden />
         </div>
-        <p className="min-h-[3rem] text-sm leading-relaxed text-muted-foreground">{message}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{message}</p>
       </div>
     </Panel>
   );

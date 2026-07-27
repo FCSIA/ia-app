@@ -3,5 +3,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "files": []
+  "files": ["env.d.ts"]
 }

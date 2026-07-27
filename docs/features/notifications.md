@@ -67,8 +67,14 @@ Environment variables must include `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and
 web client. Generate keys with:
 
 ```bash
-direnv exec . pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
+
+The same public key must also be present in `apps/web/.env.local` as
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
 
 Push is a best-effort delivery channel. Expired browser subscriptions are
 disabled when push services return a permanent failure.
@@ -76,6 +82,10 @@ disabled when push services return a permanent failure.
 Enabling Browser push registers the current browser and upgrades the user's
 active alert preferences to `PUSH`. A global `OFF` preference remains off, and
 all-message channel alerts remain separately opt-in in channel settings.
+
+Channel-message fanout runs in a scheduled mutation after the sender's message
+transaction commits. Preference resolution uses exact indexed scope and global
+fallback lookups, so fanout does not scan a user's full category preference set.
 
 ## Current Delivery
 

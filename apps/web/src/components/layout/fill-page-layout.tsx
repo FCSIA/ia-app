@@ -22,7 +22,10 @@ export function FillPageLayout({
   mainClassName,
 }: FillPageLayoutProps) {
   return (
-    <AppShell mainClassName={mainClassName ?? FILL_MAIN_CLASS}>
+    <AppShell
+      mainClassName={mainClassName ?? FILL_MAIN_CLASS}
+      pageTransitionClassName="flex min-h-0 flex-1 flex-col"
+    >
       <PageFrame className={cn(FILL_PAGE_FRAME_CLASS, pageFrameClassName)}>
         {children}
       </PageFrame>

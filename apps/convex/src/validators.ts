@@ -83,24 +83,6 @@ export const notificationPreferenceLevelValidator = v.union(
 
 export type NotificationPreferenceLevel = Infer<typeof notificationPreferenceLevelValidator>;
 
-export const appUserPublicValidator = v.object({
-  id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
-  roles: v.array(appRoleValidator),
-  role: v.union(appRoleValidator, v.null()),
-  gradeLevel: v.union(v.number(), v.null()),
-  major: v.union(pathwayValidator, v.null()),
-  minor: v.union(pathwayValidator, v.null()),
-  email: v.union(v.string(), v.null()),
-  isActive: v.boolean(),
-  mustResetPassword: v.boolean(),
-  dashboardLayout: v.array(v.string()),
-  avatarUrl: v.union(v.string(), v.null()),
-  customBackgroundUrl: v.union(v.string(), v.null()),
-});
-
 export const clubMemberRoleValidator = v.union(
   v.literal("MEMBER"),
   v.literal("LEADER"),
@@ -147,6 +129,46 @@ export const clubMentionKindValidator = v.union(
 );
 
 export type ClubMentionKind = Infer<typeof clubMentionKindValidator>;
+
+export const clubChannelPollOptionValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+});
+
+export type ClubChannelPollOption = Infer<typeof clubChannelPollOptionValidator>;
+
+export const clubChannelReactionValidator = v.union(
+  v.literal("LIKE"),
+  v.literal("HEART"),
+  v.literal("FIRE"),
+  v.literal("CELEBRATE"),
+  v.literal("EYES"),
+  v.literal("DONE"),
+);
+
+export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
+
+// Keep canonical tokens as the stored/public representation, while accepting
+// the glyphs emitted by older mobile builds long enough to normalize them at
+// the mutation boundary.
+export const clubChannelReactionInputValidator = v.union(
+  v.literal("LIKE"),
+  v.literal("HEART"),
+  v.literal("FIRE"),
+  v.literal("CELEBRATE"),
+  v.literal("EYES"),
+  v.literal("DONE"),
+  v.literal("👍"),
+  v.literal("❤️"),
+  v.literal("🔥"),
+  v.literal("🎉"),
+  v.literal("👀"),
+  v.literal("✅"),
+);
+
+export type ClubChannelReactionInput = Infer<
+  typeof clubChannelReactionInputValidator
+>;
 
 export const eventStatusValidator = v.union(
   v.literal("DRAFT"),

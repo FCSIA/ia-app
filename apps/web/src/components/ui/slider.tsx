@@ -897,7 +897,7 @@ const Slider = forwardRef<HTMLDivElement, SliderProps>(
               {/* Filled range */}
               {!hideFill && (
               <motion.div
-                className={cn("absolute h-full bg-selected/50 dark:bg-accent/40", fillClassName)}
+                className={cn("absolute h-full bg-active", fillClassName)}
                 style={{
                   left: fillLeft,
                   width: fillWidth,

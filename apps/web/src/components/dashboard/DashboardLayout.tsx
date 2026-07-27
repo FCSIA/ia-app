@@ -80,13 +80,11 @@ function SortableWidget({
   widget,
   editing,
   onRemove,
-  onMeasure,
 }: {
   id: string;
   widget: WidgetDefinition;
   editing: boolean;
   onRemove: (id: string) => void;
-  onMeasure: (id: string, height: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
@@ -100,18 +98,6 @@ function SortableWidget({
 
   const Component = widget.Component;
 
-  // Measure height so the parent can balance columns.
-  const innerRef = useRef<HTMLDivElement | null>(null);
-  useLayoutEffect(() => {
-    if (!innerRef.current) return;
-    const el = innerRef.current;
-    const update = () => onMeasure(id, el.getBoundingClientRect().height);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [id, onMeasure]);
-
   return (
     <div
       ref={setNodeRef}
@@ -122,7 +108,7 @@ function SortableWidget({
         isDragging ? 'opacity-40' : '',
       )}
     >
-      <div ref={innerRef}>
+      <div>
         {editing && (
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-0.5 backdrop-blur">
             <button
@@ -173,7 +159,6 @@ export function DashboardLayout() {
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [heights, setHeights] = useState<Record<string, number>>({});
   const [columnCount, setColumnCount] = useState(2);
 
   // Sensor config — small drag distance to avoid accidental triggers
@@ -192,32 +177,19 @@ export function DashboardLayout() {
     return () => mq.removeEventListener('change', update);
   }, []);
 
-  const handleMeasure = useCallback((id: string, height: number) => {
-    setHeights((prev) => {
-      const cur = prev[id];
-      if (cur != null && Math.abs(cur - height) < 1) return prev;
-      return { ...prev, [id]: height };
-    });
-  }, []);
-
   // Load persisted layout once user is known
   useEffect(() => {
-    if (!user) {
-      setLayout(getDefaultLayout(undefined));
-      return;
-    }
+    const nextLayout =
+      !user
+        ? getDefaultLayout()
+        : user.dashboardLayout && user.dashboardLayout.length > 0
+          ? user.dashboardLayout.filter((id) => {
+              const widget = WIDGETS[id];
+              return widget && isWidgetAllowed(widget, user.roles);
+            })
+          : (loadLayout(user._id) ?? getDefaultLayout());
 
-    if (user.dashboardLayout && user.dashboardLayout.length > 0) {
-      const cleaned = user.dashboardLayout.filter((id) => {
-        const widget = WIDGETS[id];
-        return widget && isWidgetAllowed(widget, user.roles);
-      });
-      setLayout(cleaned);
-      return;
-    }
-
-    const persisted = loadLayout(user.id);
-    setLayout(persisted ?? getDefaultLayout(user.roles));
+    setLayout(nextLayout);
   }, [user]);
 
   const availableWidgets = useMemo(
@@ -228,7 +200,7 @@ export function DashboardLayout() {
   const handleSave = useCallback(() => {
     if (user && layout) {
       void updateDashboardLayout({ layout });
-      saveLayout(user.id, layout);
+      saveLayout(user._id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
     setEditing(false);
@@ -236,9 +208,9 @@ export function DashboardLayout() {
 
   const handleReset = useCallback(() => {
     if (!user) return;
-    const fresh = getDefaultLayout(user.roles);
+    const fresh = getDefaultLayout();
     setLayout(fresh);
-    saveLayout(user.id, fresh);
+    saveLayout(user._id, fresh);
     toast({ title: 'Dashboard reset to default' });
   }, [toast, user]);
 
@@ -283,25 +255,16 @@ export function DashboardLayout() {
     return { fixedIds: fixed, fullIds: full, columnIds: cols };
   }, [layout, user?.roles]);
 
-  // Distribute half-width widgets into N columns, always pushing to the
-  // currently shortest column. This produces dense, gap-free masonry packing
-  // without splitting items mid-card.
+  // Distribute half-width widgets into N columns, assigning by index
+  // so that layout is predictable and doesn't jump randomly.
   const columns = useMemo<string[][]>(() => {
     if (columnIds.length === 0) return [];
     const cols: string[][] = Array.from({ length: columnCount }, () => []);
-    const colHeights = new Array(columnCount).fill(0);
-    for (const id of columnIds) {
-      // Default unmeasured widgets to a tall-ish height so first paint roughly balances.
-      const h = heights[id] ?? 320;
-      let target = 0;
-      for (let i = 1; i < columnCount; i++) {
-        if (colHeights[i] < colHeights[target]) target = i;
-      }
-      cols[target].push(id);
-      colHeights[target] += h;
+    for (let i = 0; i < columnIds.length; i++) {
+      cols[i % columnCount].push(columnIds[i]);
     }
     return cols;
-  }, [columnIds, columnCount, heights]);
+  }, [columnIds, columnCount]);
 
   if (!layout) {
     return (
@@ -438,7 +401,6 @@ export function DashboardLayout() {
                       widget={widget}
                       editing={editing}
                       onRemove={handleRemove}
-                      onMeasure={handleMeasure}
                     />
                   );
                 })}
@@ -459,7 +421,6 @@ export function DashboardLayout() {
                               widget={widget}
                               editing={editing}
                               onRemove={handleRemove}
-                              onMeasure={handleMeasure}
                             />
                           );
                         })}

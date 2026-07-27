@@ -12,9 +12,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { api } from '~/apps/convex/src/_generated/api';
-import { cn } from '@/lib/utils';
 import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
 
 type PreferenceLevel = NotificationPreferenceLevel;
@@ -33,31 +34,26 @@ const THREAD_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_THREAD';
 const messageOptions: Array<{
   value: PreferenceLevel;
   label: string;
-  detail: string;
   icon: typeof Bell;
 }> = [
   {
     value: 'OFF',
-    label: 'No all-message alerts',
-    detail: 'Only direct mentions, tag mentions, and thread replies can notify you.',
+    label: 'Mentions',
     icon: BellOff,
   },
   {
     value: 'IN_APP',
-    label: 'Inbox only',
-    detail: 'Show every message in notifications without future push escalation.',
+    label: 'Inbox',
     icon: MessageSquare,
   },
   {
     value: 'PUSH',
     label: 'Push',
-    detail: 'Treat every message in this channel as push-worthy.',
     icon: Bell,
   },
   {
     value: 'TIME_SENSITIVE',
-    label: 'Time sensitive',
-    detail: 'Reserve for one-off channels where every update matters.',
+    label: 'Urgent',
     icon: Radio,
   },
 ];
@@ -65,25 +61,21 @@ const messageOptions: Array<{
 const mentionOptions: Array<{
   category: NotificationCategory;
   label: string;
-  detail: string;
   icon: typeof Bell;
 }> = [
   {
     category: DIRECT_CATEGORY,
     label: 'Direct mentions',
-    detail: 'When someone mentions your unique ID.',
     icon: Bell,
   },
   {
     category: TAG_CATEGORY,
-    label: 'Tag mentions',
-    detail: 'When someone mentions @all, @leaders, @sponsors, or a custom tag you belong to.',
+    label: 'Group mentions',
     icon: Tags,
   },
   {
     category: THREAD_CATEGORY,
     label: 'Thread replies',
-    detail: 'When someone replies to your message thread.',
     icon: MessageSquare,
   },
 ];
@@ -136,19 +128,19 @@ export function ChannelNotificationSettings({
   }, [messageLevel]);
 
   const setPreference = ({
+    category,
+    level,
+  }: {
+    category: NotificationCategory;
+    level: PreferenceLevel;
+  }) =>
+    upsertPreference({
       category,
+      enabled: level !== 'OFF',
+      clubId,
+      channelId,
       level,
-    }: {
-      category: NotificationCategory;
-      level: PreferenceLevel;
-    }) =>
-      upsertPreference({
-        category,
-        enabled: level !== 'OFF',
-        clubId,
-        channelId,
-        level,
-      });
+    });
 
   return (
     <Sheet>
@@ -159,97 +151,81 @@ export function ChannelNotificationSettings({
           </Button>
         </SheetTrigger>
       </Tooltip>
-      <SheetContent side="right" className="flex w-full flex-col gap-6 p-5 sm:max-w-md">
+      <SheetContent
+        side="right"
+        overlayClassName="bg-foreground/30 backdrop-blur-[1px]"
+        className="flex w-full flex-col gap-5 p-5 data-[state=closed]:duration-200 data-[state=open]:duration-300 sm:max-w-sm"
+      >
         <SheetHeader>
-          <SheetTitle>Notifications</SheetTitle>
+          <SheetTitle>Channel alerts</SheetTitle>
           <SheetDescription>
             #{channelName} · {summary}
           </SheetDescription>
         </SheetHeader>
 
-        <section className="flex flex-col gap-3">
-          <div>
-            <h3 className="text-sm font-medium text-foreground">All messages</h3>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Use this for channels that should break through normal mention-only behavior.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1">
-            {messageOptions.map((option, index) => {
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-foreground">Notify me for</h3>
+          <ToggleGroup
+            type="single"
+            value={messageLevel}
+            onValueChange={(level) => {
+              if (level) {
+                void setPreference({
+                  category: MESSAGE_CATEGORY,
+                  level: level as PreferenceLevel,
+                });
+              }
+            }}
+            variant="outline"
+            className="grid grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1"
+            aria-label="All-message notification level"
+          >
+            {messageOptions.map((option) => {
               const Icon = option.icon;
-              const selected = messageLevel === option.value;
               return (
-                <button
+                <ToggleGroupItem
                   key={option.value}
-                  type="button"
-                  data-proximity-index={index}
-                  className={cn(
-                    'flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60',
-                    selected ? 'bg-muted/70 text-foreground' : 'text-muted-foreground',
-                  )}
-                  onClick={() => setPreference({ category: MESSAGE_CATEGORY, level: option.value })}
+                  value={option.value}
+                  aria-label={option.label}
+                  className="h-auto min-w-0 flex-col gap-1 rounded-lg border-0 px-1.5 py-2 text-[11px] text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
                 >
-                  <span
-                    className={cn(
-                      'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border',
-                      selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                    )}
-                  >
-                    <Icon className="size-3" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-foreground">{option.label}</span>
-                    <span className="block text-xs leading-5 text-muted-foreground">
-                      {option.detail}
-                    </span>
-                  </span>
-                </button>
+                  <Icon className="size-4" />
+                  <span className="truncate">{option.label}</span>
+                </ToggleGroupItem>
               );
             })}
-          </div>
+          </ToggleGroup>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Mentions keeps the channel quiet unless someone needs you.
+          </p>
         </section>
 
-        <section className="flex flex-col gap-3">
-          <div>
-            <h3 className="text-sm font-medium text-foreground">Mentions and replies</h3>
-            <p className="text-xs leading-5 text-muted-foreground">
-              These stay separate from all-message alerts so important mentions can remain on.
-            </p>
-          </div>
-          <div className="flex flex-col gap-1">
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium text-foreground">Always notify</h3>
+          <div className="divide-y rounded-xl border bg-card">
             {mentionOptions.map((option) => {
               const enabled = preferenceEnabled(preferences, option.category, channelId);
               const Icon = option.icon;
               return (
-                <button
+                <div
                   key={option.category}
-                  type="button"
-                  className={cn(
-                    'flex items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60',
-                    enabled ? 'text-foreground' : 'text-muted-foreground',
-                  )}
-                  onClick={() =>
-                    setPreference({
-                      category: option.category,
-                      level: enabled ? 'OFF' : 'PUSH',
-                    })
-                  }
+                  className="flex items-center gap-3 px-3 py-3"
                 >
-                  <span
-                    className={cn(
-                      'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border',
-                      enabled ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
-                    )}
-                  >
-                    <Icon className="size-3" />
+                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {option.label}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium">{option.label}</span>
-                    <span className="block text-xs leading-5 text-muted-foreground">
-                      {option.detail}
-                    </span>
-                  </span>
-                </button>
+                  <Switch
+                    checked={enabled}
+                    aria-label={option.label}
+                    onCheckedChange={(checked) =>
+                      void setPreference({
+                        category: option.category,
+                        level: checked ? 'PUSH' : 'OFF',
+                      })
+                    }
+                  />
+                </div>
               );
             })}
           </div>

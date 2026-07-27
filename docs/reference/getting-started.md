@@ -11,15 +11,46 @@ longer part of the active local setup.
 
 ## First Run
 
+Use Node.js 20.19 or newer. The Codex/development environment currently uses
+Node 24.
+
 ```bash
 cp .env.example .env
 pnpm install
-pnpm convex:dev
+pnpm cvx:dev
 pnpm dev
 ```
 
-Run `pnpm convex:dev` once interactively so Convex can select or create a dev
+Run `pnpm cvx:dev` once interactively so Convex can select or create a dev
 deployment and write the deployment settings.
+
+## Browser Push Keys
+
+Browser push is optional for basic local development, but the notification
+settings page expects VAPID keys before push can be enabled.
+
+Generate one key pair:
+
+```bash
+pnpm --filter cvx exec web-push generate-vapid-keys
+```
+
+Set the generated public key in `apps/web/.env.local`:
+
+```env
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+```
+
+Set the matching Convex deployment variables:
+
+```bash
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
+
+If `pnpm` is provided by the repo's direnv shell, prefix these commands with
+`direnv exec .`.
 
 ## Demo Data
 

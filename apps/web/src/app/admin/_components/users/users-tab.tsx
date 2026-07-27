@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, KeyRound, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
-import { Empty, EmptyTitle } from '@/components/ui/empty';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,18 +18,128 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
+import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
+
+const ROLE_BADGE_LIMIT = 2;
+
+function roleLabel(role: string) {
+  return formatRoleLabel(role);
+}
+
+function RoleSummary({ roles }: { roles: string[] }) {
+  const visibleRoles = roles.slice(0, ROLE_BADGE_LIMIT);
+  const overflowCount = roles.length - visibleRoles.length;
+  const fullLabel = roles.map(roleLabel).join(', ') || 'No roles';
+
+  return (
+    <div
+      className="flex max-w-full flex-nowrap items-center gap-1 overflow-hidden"
+      aria-label={fullLabel}
+      title={fullLabel}
+    >
+      {visibleRoles.map((role) => (
+        <Badge key={role} variant="dot" size="sm" className="min-w-0 max-w-[118px] shrink-0">
+          <span className="truncate">{roleLabel(role)}</span>
+        </Badge>
+      ))}
+      {overflowCount > 0 ? (
+        <Badge variant="solid" color="gray" size="sm" className="shrink-0">
+          +{overflowCount}
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
+function IconActionButton({
+  label,
+  children,
+  onClick,
+  disabled,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <Tooltip content={label} side="top" delayDuration={250}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={label}
+        title={label}
+        onClick={onClick}
+        disabled={disabled}
+        className={className}
+      >
+        {children}
+      </Button>
+    </Tooltip>
+  );
+}
+
+function ResetPasswordAction({
+  user,
+  disabled,
+  onResetPassword,
+}: {
+  user: AdminUserRecord;
+  disabled: boolean;
+  onResetPassword: (user: AdminUserRecord) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = `Reset password for ${user.firstName} ${user.lastName}`;
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <IconActionButton
+        label={label}
+        disabled={disabled}
+        onClick={() => setOpen(true)}
+      >
+        <KeyRound className="size-4" />
+      </IconActionButton>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset password?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will generate a temporary password for {user.firstName} {user.lastName} and mark
+            their account to change it after signing in.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              onResetPassword(user);
+              setOpen(false);
+            }}
+          >
+            Reset password
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 function UserTableSection({
   title,
   emptyMessage,
   users,
   totalCount,
-  showGrade = false,
+  search,
+  onSearchChange,
+  userRoleGroup,
+  onUserRoleGroupChange,
   currentUserId,
   isSuperAdmin,
   canDeactivate,
@@ -41,13 +151,19 @@ function UserTableSection({
   isAssignRolesPending,
   onAssignRoles,
   status,
-  loadMore,
+  canLoadPrevious,
+  pageIndex,
+  loadNextPage,
+  loadPreviousPage,
 }: {
   title: string;
   emptyMessage: string;
   users: AdminUserRecord[];
   totalCount?: number;
-  showGrade?: boolean;
+  search: string;
+  onSearchChange: (value: string) => void;
+  userRoleGroup: AdminUserRoleGroup;
+  onUserRoleGroupChange: (value: AdminUserRoleGroup) => void;
   currentUserId?: string;
   isSuperAdmin: boolean;
   canDeactivate: (user: AdminUserRecord) => boolean;
@@ -57,51 +173,63 @@ function UserTableSection({
   onResetPassword: (user: AdminUserRecord) => void;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
-  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
+  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
-  loadMore: () => void;
+  canLoadPrevious: boolean;
+  pageIndex: number;
+  loadNextPage: () => void;
+  loadPreviousPage: () => void;
 }) {
   const d = dataTableClasses('compact');
-  const headers = showGrade
-    ? ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions']
-    : ['ID', 'Name', 'Roles', 'Status', 'Actions'];
+  const headers = ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
 
-  // Infinite scroll sentinel — triggers loadMore when visible.
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const handleIntersect = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0]?.isIntersecting && status === 'CanLoadMore') {
-        loadMore();
-      }
-    },
-    [status, loadMore],
-  );
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(handleIntersect, {
-      rootMargin: '200px',
-    });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [handleIntersect]);
-
-  const footer = (
-    <div className="flex items-center justify-center gap-2 px-4 py-2 text-xs text-muted-foreground">
-      {status === 'LoadingMore' && <span>Loading more users…</span>}
-      {status === 'Exhausted' && users.length > 0 && (
-        <span>
-          Showing all {users.length} user{users.length === 1 ? '' : 's'}
+  const toolbar = (
+    <div className="flex w-full min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-end">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row xl:justify-end">
+        <SearchInput
+          className="w-full min-w-0 sm:w-64"
+          placeholder="Search users..."
+          value={search}
+          onValueChange={onSearchChange}
+          size="sm"
+        />
+        <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
+          <SelectTrigger className="w-full sm:w-[190px]" placeholder="Filter by role" />
+          <SelectContent>
+            <SelectItem index={0} value="students">Students</SelectItem>
+            <SelectItem index={1} value="teachers">Teachers</SelectItem>
+            <SelectItem index={2} value="student-admin">Student Admins</SelectItem>
+            <SelectItem index={3} value="other">Other Roles</SelectItem>
+            <SelectItem index={4} value="all">All Users</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex shrink-0 items-center justify-between gap-2 text-xs text-muted-foreground xl:justify-end">
+        <span className="whitespace-nowrap">
+          Page {pageIndex + 1} · Showing {users.length}
+          {typeof totalCount === 'number' ? ` of ${totalCount}` : ''} user{users.length === 1 ? '' : 's'}
         </span>
-      )}
-      {status === 'CanLoadMore' && (
-        <Button variant="tertiary" size="sm" onClick={loadMore}>
-          Load more
-        </Button>
-      )}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="tertiary"
+            size="sm"
+            onClick={loadPreviousPage}
+            disabled={!canLoadPrevious || status === 'LoadingMore'}
+            leadingIcon={ChevronLeft}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="tertiary"
+            size="sm"
+            onClick={loadNextPage}
+            disabled={status !== 'CanLoadMore'}
+            trailingIcon={ChevronRight}
+          >
+            {status === 'LoadingMore' ? 'Loading...' : 'Next page'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 
@@ -111,10 +239,19 @@ function UserTableSection({
       count={totalCount}
       density="compact"
       fillHeight
-      footer={footer}
+      toolbar={toolbar}
+      contentClassName="overflow-auto"
     >
-      <Table className={d.table}>
-        <TableHeader className="bg-muted/50">
+      <Table className={`${d.table} table-fixed`}>
+        <colgroup>
+          <col className="w-[116px]" />
+          <col className="w-[200px]" />
+          <col className="w-[72px]" />
+          <col />
+          <col className="w-[92px]" />
+          <col className="w-[144px]" />
+        </colgroup>
+        <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
           <TableRow>
             {headers.map((header) => (
               <TableHead key={header} className={d.head}>
@@ -131,80 +268,62 @@ function UserTableSection({
               </TableCell>
             </TableRow>
           ) : (
-            users.map((user) => (
-              <TableRow key={user.id} className="hover:bg-muted/30">
-                <TableCell className={d.cell}>
+            users.map((user, index) => (
+              <TableRow key={user._id} index={index} className="h-10">
+                <TableCell className={`${d.cell} overflow-hidden`}>
                   <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
                 </TableCell>
-                <TableCell className={d.cell}>
-                  <span className="font-medium leading-tight">{user.firstName} {user.lastName}</span>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>
                 </TableCell>
-                {showGrade ? (
-                  <TableCell className={d.cell}>
-                    <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
-                  </TableCell>
-                ) : null}
                 <TableCell className={d.cell}>
-                  <div className="flex flex-wrap gap-1">
-                    {getUserRoles(user).map((role) => (
-                      <Badge key={role} variant="dot" size="sm">
-                        {formatRoleLabel(role)}
-                      </Badge>
-                    ))}
-                  </div>
+                  <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <RoleSummary roles={getUserRoles(user)} />
                 </TableCell>
                 <TableCell className={d.cell}>
                   <Badge variant="solid" color={user.isActive ? 'emerald' : 'red'} size="sm">
                     {user.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </TableCell>
-                <TableCell className={d.cell}>
-                  <div className="flex flex-wrap items-center gap-1">
+                <TableCell className={`${d.cell} overflow-hidden`}>
+                  <div className="grid grid-cols-[2rem_2rem_2rem] items-center justify-end gap-1">
                     <UserPermissionsPopover
                       user={user}
                       isSuperAdmin={isSuperAdmin}
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
                     />
-                    {canResetPassword(user) && user.id !== currentUserId ? (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7"
-                            disabled={isResetPasswordPending}
-                          >
-                            Reset password
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Reset password?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will generate a temporary password for {user.firstName} {user.lastName} and mark
-                              their account to change it after signing in.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onResetPassword(user)}>
-                              Reset password
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    ) : null}
-                    {user.isActive ? (
-                      canDeactivate(user) && user.id !== currentUserId ? (
-                        <Button variant="ghost" size="sm" onClick={() => onDeactivate(user.id)} className="h-7 text-destructive hover:bg-destructive/10 hover:text-destructive">
-                          Deactivate
-                        </Button>
-                      ) : null
+                    {canResetPassword(user) && user._id !== currentUserId ? (
+                      <ResetPasswordAction
+                        user={user}
+                        disabled={isResetPasswordPending}
+                        onResetPassword={onResetPassword}
+                      />
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => onActivate(user.id)} className="h-7 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600">
-                        Activate
-                      </Button>
+                      <span aria-hidden className="size-8" />
+                    )}
+                    {user.isActive ? (
+                      canDeactivate(user) && user._id !== currentUserId ? (
+                        <IconActionButton
+                          label={`Deactivate ${user.firstName} ${user.lastName}`}
+                          onClick={() => onDeactivate(user._id)}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <UserX className="size-4" />
+                        </IconActionButton>
+                      ) : (
+                        <span aria-hidden className="size-8" />
+                      )
+                    ) : (
+                      <IconActionButton
+                        label={`Activate ${user.firstName} ${user.lastName}`}
+                        onClick={() => onActivate(user._id)}
+                        className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-600"
+                      >
+                        <UserCheck className="size-4" />
+                      </IconActionButton>
                     )}
                   </div>
                 </TableCell>
@@ -213,9 +332,6 @@ function UserTableSection({
           )}
         </TableBody>
       </Table>
-
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-1" aria-hidden />
     </DataTablePanel>
   );
 }
@@ -229,7 +345,10 @@ export function AdminUsersTab({
   users,
   totalCount,
   status,
-  loadMore,
+  canLoadPrevious,
+  pageIndex,
+  loadNextPage,
+  loadPreviousPage,
   isUsersLoading,
   isUsersError,
   usersError,
@@ -253,7 +372,10 @@ export function AdminUsersTab({
   users: AdminUserRecord[];
   totalCount?: number;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
-  loadMore: () => void;
+  canLoadPrevious: boolean;
+  pageIndex: number;
+  loadNextPage: () => void;
+  loadPreviousPage: () => void;
   isUsersLoading: boolean;
   isUsersError: boolean;
   usersError: unknown;
@@ -267,64 +389,32 @@ export function AdminUsersTab({
   onResetPassword: (user: AdminUserRecord) => void;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
-  onAssignRoles: (payload: { id: string; roles: string[] }) => void;
+  onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <SearchInput
-          className="max-w-xs"
-          placeholder="Search users..."
-          value={search}
-          onValueChange={onSearchChange}
-          size="sm"
-        />
-        <Select value={userRoleGroup} onValueChange={(value) => onUserRoleGroupChange(value as AdminUserRoleGroup)}>
-          <SelectTrigger className="w-[220px]" placeholder="Filter by role" />
-          <SelectContent>
-            <SelectItem index={0} value="students">Students</SelectItem>
-            <SelectItem index={1} value="teachers">Teachers</SelectItem>
-            <SelectItem index={2} value="student-admin">Student Admins</SelectItem>
-            <SelectItem index={3} value="other">Other Roles</SelectItem>
-            <SelectItem index={4} value="all">All Users</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col">
         {isUsersLoading ? (
-          <Card className="flex min-h-0 flex-1">
-            <CardContent className="flex flex-1 items-center justify-center py-8 text-center text-sm text-muted-foreground">
-              Loading users...
-            </CardContent>
-          </Card>
+          <AdminNotice className="min-h-0 flex-1" message="Loading users..." />
         ) : isUsersError ? (
-          <Card className="flex min-h-0 flex-1">
-            <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
-              <div>
-                <p className="font-medium text-foreground">Could not load users.</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {(usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
-                </p>
-              </div>
-              <Button type="button" variant="tertiary" size="sm" onClick={refetchUsers}>
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : users.length === 0 && status === 'Exhausted' ? (
-          <Empty className="flex-1">
-            <EmptyTitle className="text-sm font-medium text-muted-foreground">
-              {selectedUserRoleMeta.emptyMessage}
-            </EmptyTitle>
-          </Empty>
+          <AdminNotice
+            className="min-h-0 flex-1"
+            tone="danger"
+            title="Could not load users."
+            message={(usersError as { response?: { data?: { message?: string } } })?.response?.data?.message || (usersError as Error)?.message || 'Request failed.'}
+            actionLabel="Try again"
+            onAction={refetchUsers}
+          />
         ) : (
           <UserTableSection
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
             totalCount={totalCount}
-            showGrade={selectedUserRoleMeta.showGrade}
+            search={search}
+            onSearchChange={onSearchChange}
+            userRoleGroup={userRoleGroup}
+            onUserRoleGroupChange={onUserRoleGroupChange}
             currentUserId={currentUserId}
             isSuperAdmin={isSuperAdmin}
             canDeactivate={canDeactivate}
@@ -336,7 +426,10 @@ export function AdminUsersTab({
             isAssignRolesPending={isAssignRolesPending}
             onAssignRoles={onAssignRoles}
             status={status}
-            loadMore={loadMore}
+            canLoadPrevious={canLoadPrevious}
+            pageIndex={pageIndex}
+            loadNextPage={loadNextPage}
+            loadPreviousPage={loadPreviousPage}
           />
         )}
       </div>

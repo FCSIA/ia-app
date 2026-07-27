@@ -4,7 +4,9 @@ import { format } from 'date-fns';
 import { Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { dataTableClasses } from '@/components/data/data-table-panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AdminNotice } from '../admin-ui';
 import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
 import type { AuditEventRecord } from '../../_lib/types';
 
@@ -29,128 +31,125 @@ export function AuditTable({
   onInspect,
   onLoadMore,
 }: AuditTableProps) {
+  const d = dataTableClasses('compact');
+  const headers = ['Time', 'Actor', 'Action', 'Entity', 'Inspect'];
+
+  if (isAuditLoading) {
+    return <AdminNotice message="Loading audit events..." />;
+  }
+
+  if (displayedAuditEvents.length === 0) {
+    return (
+      <AdminNotice
+        message={hasActiveAuditFilters ? 'No audit events match these filters.' : 'No audit events.'}
+        actionLabel={hasActiveAuditFilters ? 'Clear filters' : undefined}
+        onAction={hasActiveAuditFilters ? onClearFilters : undefined}
+      />
+    );
+  }
+
   return (
-    <>
-      <p className="text-xs text-muted-foreground">
-        Showing {displayedAuditEvents.length} matching event{displayedAuditEvents.length === 1 ? '' : 's'}
-        {auditEvents.length > displayedAuditEvents.length ? ` from ${auditEvents.length} loaded` : ''}.
-      </p>
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          Showing {displayedAuditEvents.length} matching event{displayedAuditEvents.length === 1 ? '' : 's'}
+          {auditEvents.length > displayedAuditEvents.length ? ` from ${auditEvents.length} loaded` : ''}
+        </span>
+        {auditStatus !== 'Exhausted' ? (
+          <Button
+            type="button"
+            variant="tertiary"
+            size="sm"
+            loading={auditStatus === 'LoadingMore'}
+            disabled={auditStatus !== 'CanLoadMore'}
+            onClick={() => onLoadMore(AUDIT_FETCH_LIMIT)}
+          >
+            Load more
+          </Button>
+        ) : null}
+      </div>
 
-      {isAuditLoading ? (
-                  <div className="py-12 text-center text-sm text-muted-foreground">
-                    Loading audit events…
-                  </div>
-                ) : displayedAuditEvents.length > 0 ? (
-                  <>
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow>
-                        {['Time', 'Actor', 'Action', 'Entity', 'Inspect'].map((h) => (
-                          <TableHead key={h} className="px-4 py-3 text-xs uppercase tracking-wide">
-                            {h}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {displayedAuditEvents.map((event) => {
-                        const meta = event.meta ?? {};
-                        const contextHint =
-                          (typeof meta.clubName === 'string' && typeof meta.channelName === 'string'
-                            ? `${meta.clubName} · #${meta.channelName}`
-                            : typeof meta.title === 'string'
-                              ? meta.title
-                              : typeof meta.name === 'string'
-                                ? meta.name
-                                : typeof meta.bodyPreview === 'string'
-                                  ? meta.bodyPreview
-                                  : null) ?? null;
+      <div className="overflow-auto rounded-lg border">
+        <Table className={`${d.table} table-fixed`}>
+          <colgroup>
+            <col className="w-[152px]" />
+            <col className="w-[180px]" />
+            <col className="w-[190px]" />
+            <col />
+            <col className="w-[104px]" />
+          </colgroup>
+          <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
+            <TableRow>
+              {headers.map((header) => (
+                <TableHead key={header} className={d.head}>
+                  {header}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {displayedAuditEvents.map((event, index) => {
+              const meta = event.meta ?? {};
+              const contextHint =
+                (typeof meta.clubName === 'string' && typeof meta.channelName === 'string'
+                  ? `${meta.clubName} · #${meta.channelName}`
+                  : typeof meta.title === 'string'
+                    ? meta.title
+                    : typeof meta.name === 'string'
+                      ? meta.name
+                      : typeof meta.bodyPreview === 'string'
+                        ? meta.bodyPreview
+                        : null) ?? null;
 
-                        return (
-                          <TableRow key={event.id} className="hover:bg-muted/30">
-                            <TableCell className="px-4 py-3 align-top text-xs whitespace-nowrap font-mono text-muted-foreground">
-                              {format(new Date(event.createdAt), 'MMM d, yyyy')}
-                              <div className="mt-1">{format(new Date(event.createdAt), 'h:mm:ss a')}</div>
-                            </TableCell>
-                            <TableCell className="px-4 py-3 align-top text-xs">
-                              <div className="font-medium text-foreground">
-                                {event.actor
-                                  ? `${event.actor.firstName} ${event.actor.lastName}`
-                                  : 'System'}
-                              </div>
-                              {event.actor?.uniqueId ? (
-                                <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                                  {event.actor.uniqueId}
-                                </div>
-                              ) : null}
-                            </TableCell>
-                            <TableCell className="px-4 py-3 align-top">
-                              <Badge
-                                variant="dot"
-                                className="font-mono text-[11px] text-accent-600 dark:text-accent-400"
-                              >
-                                {event.action}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="px-4 py-3 align-top text-xs text-muted-foreground">
-                              <div className="font-medium text-foreground">
-                                {event.entityType}
-                                {event.entityId ? ` #${event.entityId.slice(0, 8)}` : ''}
-                              </div>
-                              {contextHint ? (
-                                <div className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
-                                  {contextHint}
-                                </div>
-                              ) : null}
-                            </TableCell>
-                            <TableCell className="px-4 py-3 align-top">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="tertiary"
-                                className="rounded-xl"
-                                onClick={() => onInspect(event.id)}
-                              >
-                                <Eye className="mr-1.5 size-4" />
-                                Inspect
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                  {auditStatus !== 'Exhausted' ? (
-                    <div className="flex justify-center pt-4">
-                      <Button
-                        type="button"
-                        variant="tertiary"
-                        className="rounded-xl"
-                        disabled={auditStatus !== 'CanLoadMore'}
-                        onClick={() => onLoadMore(AUDIT_FETCH_LIMIT)}
-                      >
-                        {auditStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}
-                      </Button>
+              return (
+                <TableRow key={event.id} index={index} className="h-11">
+                  <TableCell className={`${d.cell} whitespace-nowrap align-top font-mono text-[11px]`}>
+                    {format(new Date(event.createdAt), 'MMM d, yyyy')}
+                    <div className="mt-1 text-muted-foreground">{format(new Date(event.createdAt), 'h:mm:ss a')}</div>
+                  </TableCell>
+                  <TableCell className={`${d.cell} min-w-0 align-top`}>
+                    <div className="truncate font-medium text-foreground">
+                      {event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : 'System'}
                     </div>
-                  ) : null}
-                  </>
-                ) : (
-                  <div className="text-center py-10">
-                    <p className="text-muted-foreground text-sm">
-                      {hasActiveAuditFilters ? 'No audit events match these filters' : 'No audit events'}
-                    </p>
-                    {hasActiveAuditFilters ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onClearFilters}
-                        className="mt-1 font-semibold text-accent-500"
-                      >
-                        Clear filters
-                      </Button>
+                    {event.actor?.uniqueId ? (
+                      <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                        {event.actor.uniqueId}
+                      </div>
                     ) : null}
-                  </div>
-                )}
-    </>
+                  </TableCell>
+                  <TableCell className={`${d.cell} min-w-0 align-top`}>
+                    <Badge variant="dot" size="sm" className="max-w-full font-mono text-[11px]">
+                      <span className="truncate">{event.action}</span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell className={`${d.cell} min-w-0 align-top`}>
+                    <div className="truncate font-medium text-foreground">
+                      {event.entityType}
+                      {event.entityId ? ` #${event.entityId.slice(0, 8)}` : ''}
+                    </div>
+                    {contextHint ? (
+                      <div className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                        {contextHint}
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className={`${d.cell} align-top`}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="tertiary"
+                      leadingIcon={Eye}
+                      onClick={() => onInspect(event.id)}
+                    >
+                      Inspect
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }

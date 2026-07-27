@@ -31,7 +31,7 @@ export interface WorkshopForm {
 
 export interface FridayForm {
   date: string;
-  type: 'ALL_STUDENT' | 'GRADE_LEVEL' | 'PATHWAY';
+  type: 'ALL_STUDENT' | 'GRADE_SPECIFIC' | 'PATHWAY_SPECIFIC' | 'TEACHER_PD';
   gradeLevel: string;
   pathway: string;
   notes: string;

@@ -95,7 +95,7 @@ on the Convex `users` table.
 Convex functions enforce permissions server-side. UI checks are only for
 presentation. Common helper locations:
 
-- `apps/convex/src/lib/currentUser.ts`
+- `apps/convex/lib/currentUser.ts`
 - `apps/convex/src/lib/roles.ts`
 - `apps/web/src/lib/auth.ts`
 

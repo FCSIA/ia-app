@@ -9,6 +9,7 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 ## What It Includes
 
 - Authentication with Better Auth on Convex and role-based access
+- Native Expo mobile app with secure sessions, shared Convex data, and native push
 - Announcements, comments, moderation, and notification preferences
 - Clubs, channels, invites, membership, and leader/sponsor workflows
 - Events, calendar entries, Flex Friday sessions, and student schedules
@@ -19,30 +20,35 @@ Read [AGENTS.md](./AGENTS.md) before making changes. Keep agent workflow and han
 | Layer              | Technology                                                  |
 | ------------------ | ----------------------------------------------------------- |
 | Web                | Next.js 16, React 19, Tailwind CSS, shadcn/ui               |
+| Mobile             | Expo SDK 57, React Native, Expo Router, NativeWind          |
 | Backend & Database | Convex (Reactive Functions, Database, Search, File Storage) |
-| Tooling            | pnpm workspaces, Turborepo                                  |
+| Design             | Shared `@ia/design-tokens` package                          |
+| Tooling            | pnpm workspaces, Turborepo, EAS                             |
 
 ## Project Structure
 
 ```text
 ia-app/
-├── apps/web/       # Next.js 16 web app
-├── apps/convex/    # Convex backend (schema, functions, auth, storage)
-├── docs/           # Current product, architecture, backend, frontend docs
-├── packages/       # Transitional shared packages
-├── AGENTS.md       # Agent workflow rules
-├── SETUP.md        # Full developer setup guide
-└── PORTING.md      # Historical backend-to-Convex migration context
+├── apps/web/              # Next.js 16 web app
+├── apps/mobile/           # Expo native mobile app
+├── apps/convex/           # Convex backend (schema, functions, auth, storage)
+├── packages/design-tokens/ # Shared color, radius, type, and badge tokens
+├── docs/                  # Current product, architecture, backend, frontend docs
+├── AGENTS.md              # Agent workflow rules
+├── SETUP.md               # Full developer setup guide
+└── PORTING.md             # Historical backend-to-Convex migration context
 ```
 
 ## Quick Start
 
 For a full setup walkthrough, use [SETUP.md](./SETUP.md).
 
+Requires Node.js 20.19 or newer and pnpm 10.29.3.
+
 ```bash
 git clone https://github.com/virajdas/ia-app.git
 cd ia-app
-cp .env.example .env.local
+cp .env.example .env
 pnpm install
 ```
 
@@ -51,6 +57,16 @@ Start the application (Next.js frontend and Convex dev server in parallel):
 ```bash
 pnpm dev
 ```
+
+Start the native mobile app with Expo:
+
+```bash
+pnpm dev:mobile
+```
+
+The mobile app has repo-local store assets and production-shaped Expo config.
+School-owned EAS, Apple, Google, and universal-link values are documented in
+[apps/mobile/STORE_READY.md](./apps/mobile/STORE_READY.md).
 
 Open Convex dashboard:
 
@@ -72,12 +88,23 @@ pnpm sync:convex-env           # copy Convex URLs into apps/web/.env.local
 Then set required secrets on the **new** deployment (once):
 
 ```bash
-cd apps/convex
-npx convex env set BETTER_AUTH_SECRET "<long-random-string>"
-npx convex env set SITE_URL http://localhost:3000
-npx convex run bootstrap:resetAndSeed
-npx convex run bootstrap:seedStatus   # repeat until users/clubs are populated
+pnpm --filter cvx exec convex env set BETTER_AUTH_SECRET "<long-random-string>"
+pnpm --filter cvx exec convex env set SITE_URL http://localhost:3000
 ```
+
+Browser push also needs VAPID keys. Generate one key pair, put the public key in
+`apps/web/.env.local`, and set the matching Convex deployment values:
+
+```bash
+pnpm --filter cvx exec web-push generate-vapid-keys
+pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "<public-key>"
+pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
+pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+```
+
+Then seed demo data from the Convex Dashboard by running the internal function
+`bootstrap:resetAndSeed`, and check `bootstrap:seedStatus` until users and clubs
+are populated.
 
 Run **both** `pnpm --filter cvx dev` and `pnpm --filter web dev` (or `pnpm dev` from the repo root) so localhost talks to the same deployment.
 
@@ -94,6 +121,7 @@ Demo accounts are seeded with their ID as the password, for example `STU001` / `
 
 ```bash
 pnpm dev          # Start web app and Convex dev server in parallel
+pnpm dev:mobile   # Start the Expo mobile app
 pnpm --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard console
 pnpm lint         # Lint all workspaces
 pnpm build        # Build all workspaces for production
@@ -108,7 +136,7 @@ The deployment shape should stay boring and maintainable. Production is modeled 
 
 **Full guide:** [docs/reference/deployment-options.md](./docs/reference/deployment-options.md) — Vercel vs Azure hosting options, Convex CI/CD, and scale planning (~1,600 students, few hundred online at peak).
 
-The detailed architecture and feature list lives in [docs/architecture/diagram-inventory.md](./docs/architecture/diagram-inventory.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
+The detailed architecture and feature list starts in [docs/architecture/overview.md](./docs/architecture/overview.md). Draw production as **Next.js → Convex Cloud** (not NestJS/PostgreSQL).
 
 **Typical choices:** Vercel + Convex (simplest ops), or **Azure Container Apps + Convex** if the frontend must stay in the school Azure subscription.
 
@@ -119,6 +147,8 @@ The detailed architecture and feature list lives in [docs/architecture/diagram-i
 - [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.
 - [docs/backend/convex-overview.md](./docs/backend/convex-overview.md) — Backend function layout and rules.
 - [docs/frontend/frontend-overview.md](./docs/frontend/frontend-overview.md) — Frontend structure and conventions.
+- [apps/mobile/README.md](./apps/mobile/README.md) - Native mobile setup and verification.
+- [apps/mobile/STORE_READY.md](./apps/mobile/STORE_READY.md) - External store/EAS/device steps for release.
 - [PORTING.md](./PORTING.md) — Historical migration context, not the active operating manual.
 
 ## License

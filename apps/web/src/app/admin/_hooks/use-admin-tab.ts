@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export const ADMIN_TABS = [
@@ -43,14 +43,9 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
   const searchParams = useSearchParams();
   const requestedTab = searchParams?.get('tab') ?? null;
 
-  const [activeTab, setActiveTab] = useState<AdminTabId>(() =>
-    resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped),
-  );
+  const activeTab = resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped);
 
   useEffect(() => {
-    const resolved = resolveAdminTab(requestedTab, isSuperAdmin, canManageWrapped);
-    setActiveTab(resolved);
-
     if (requestedTab && LEGACY_USER_TABS.has(requestedTab)) {
       const params = new URLSearchParams(searchParams?.toString() ?? '');
       params.delete('tab');
@@ -58,14 +53,11 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
       const path = pathname ?? '/admin';
       router.replace(query ? `${path}?${query}` : path, { scroll: false });
     }
-  }, [canManageWrapped, isSuperAdmin, pathname, requestedTab, router, searchParams]);
-
-  const selectedTab = resolveAdminTab(activeTab, isSuperAdmin, canManageWrapped);
+  }, [pathname, requestedTab, router, searchParams]);
 
   const setTab = useCallback(
     (tab: AdminTabId) => {
       const next = resolveAdminTab(tab, isSuperAdmin, canManageWrapped);
-      setActiveTab(next);
 
       const params = new URLSearchParams(searchParams?.toString() ?? '');
       if (next === 'users') {
@@ -82,8 +74,7 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
   );
 
   return {
-    activeTab: selectedTab,
+    activeTab,
     setActiveTab: setTab,
-    isUsersTab: selectedTab === 'users',
   };
 }

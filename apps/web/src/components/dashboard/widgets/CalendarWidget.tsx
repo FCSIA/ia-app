@@ -159,7 +159,7 @@ export function CalendarWidget() {
           <div className="mt-4 space-y-3">
             {selectedDayEvents.slice(0, 3).map((entry: any) => (
               <div
-                key={entry.id}
+                key={entry._id}
                 className="rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3"
               >
                 <p className="text-sm font-semibold text-foreground">{entry.title}</p>

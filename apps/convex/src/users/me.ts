@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser, toPublicUser } from "../../lib/currentUser";
-import { appUserPublicValidator } from "../validators";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -9,6 +8,7 @@ import {
   MAX_USER_AVATAR_BYTES,
   MAX_USER_BACKGROUND_BYTES,
 } from "../uploads/limits";
+import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 
@@ -26,11 +26,11 @@ async function deleteStoredFile(
 
 export const me = query({
   args: {},
-  returns: v.union(appUserPublicValidator, v.null()),
+  returns: v.union(userSelfProfileValidator, v.null()),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    return toPublicUser(user);
+    return toUserSelfProfile(user);
   },
 });
 
@@ -38,7 +38,7 @@ export const updateDashboardLayout = mutation({
   args: {
     layout: v.array(v.string()),
   },
-  returns: appUserPublicValidator,
+  returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     await ctx.db.patch(user._id, {
@@ -50,7 +50,7 @@ export const updateDashboardLayout = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toUserSelfProfile(updated);
   },
 });
 
@@ -61,21 +61,33 @@ export const saveUserImage = mutation({
     mimeType: v.string(),
     size: v.number(),
   },
-  returns: appUserPublicValidator,
+  returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const maxBytes =
       args.kind === "avatar" ? MAX_USER_AVATAR_BYTES : MAX_USER_BACKGROUND_BYTES;
+    const metadata = await ctx.db.system.get("_storage", args.storageId);
 
-    if (!args.mimeType.startsWith("image/")) {
+    if (!metadata) {
+      throw new ConvexError("Upload not found");
+    }
+
+    const mimeType = (metadata.contentType ?? args.mimeType).toLowerCase();
+
+    if (!mimeType.startsWith("image/")) {
+      await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Only image uploads are allowed");
     }
-    if (args.size > maxBytes) {
+    if (metadata.size > maxBytes) {
+      await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Image too large");
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
-    if (!url) throw new ConvexError("Upload failed");
+    if (!url) {
+      await deleteStoredFile(ctx, args.storageId);
+      throw new ConvexError("Upload failed");
+    }
 
     if (args.kind === "avatar") {
       await deleteStoredFile(ctx, user.avatarStorageId);
@@ -97,7 +109,7 @@ export const saveUserImage = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toUserSelfProfile(updated);
   },
 });
 
@@ -105,7 +117,7 @@ export const clearUserImage = mutation({
   args: {
     kind: userImageKindValidator,
   },
-  returns: appUserPublicValidator,
+  returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
 
@@ -129,6 +141,6 @@ export const clearUserImage = mutation({
     if (!updated) {
       throw new ConvexError("User not found.");
     }
-    return toPublicUser(updated);
+    return toUserSelfProfile(updated);
   },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,12 +33,14 @@ export function SessionForm({
 }: Props) {
   const { toast } = useToast();
   const [form, setForm] = useState<SessionFormType>(initialData);
+  const [previousTarget, setPreviousTarget] = useState({ isOpen, editingSessionId });
 
-  useEffect(() => {
+  if (previousTarget.isOpen !== isOpen || previousTarget.editingSessionId !== editingSessionId) {
+    setPreviousTarget({ isOpen, editingSessionId });
     if (isOpen) {
       setForm(initialData);
     }
-  }, [isOpen, initialData]);
+  }
 
   const handleSubmit = async () => {
 
@@ -81,7 +83,7 @@ export function SessionForm({
           <SheetTitle>{editingSessionId ? 'Edit Session' : 'New Session'}</SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={() => handleSubmit()} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Session Title *</Label>

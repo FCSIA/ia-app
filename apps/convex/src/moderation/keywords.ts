@@ -15,10 +15,11 @@ export const list = query({
 
     const rules = await ctx.db
       .query("moderationKeywordRules")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_isActive_and_createdAt", (q) => q.eq("isActive", true))
+      .order("desc")
       .collect();
 
-    return rules.sort((a, b) => b.createdAt - a.createdAt);
+    return rules;
   },
 });
 

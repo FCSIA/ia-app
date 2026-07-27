@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import {
@@ -137,7 +137,10 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const [commentPending, setCommentPending] = useState(false);
   const [deleteCommentPending, setDeleteCommentPending] = useState<string | null>(null);
   const [reportPending, setReportPending] = useState(false);
-  const [markedRead, setMarkedRead] = useState(false);
+  const markReadAttemptsRef = useRef<Set<string> | null>(null);
+  if (markReadAttemptsRef.current === null) {
+    markReadAttemptsRef.current = new Set<string>();
+  }
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
@@ -146,6 +149,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const announcement: AnnouncementDetail | null = detail
     ? { ...detail.announcement, comments: detail.comments }
     : null;
+  const shouldMarkRead = announcement !== null && !announcement.isRead;
 
   const markRead = useMutation(api.announcements.engagement.markRead);
   const addComment = useMutation(api.announcements.comments.add);
@@ -153,12 +157,13 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const submitReport = useMutation(api.moderation.reports.submit);
 
   useEffect(() => {
-    if (!announcement || announcement.isRead || markedRead) return;
-    setMarkedRead(true);
+    const markReadAttempts = markReadAttemptsRef.current;
+    if (!markReadAttempts || !shouldMarkRead || markReadAttempts.has(id)) return;
+    markReadAttempts.add(id);
     void markRead({ announcementId: id as Id<'announcements'> }).catch(() => {
-      setMarkedRead(false);
+      markReadAttempts.delete(id);
     });
-  }, [announcement, id, markRead, markedRead]);
+  }, [id, markRead, shouldMarkRead]);
 
   if (isLoading) {
     return (
@@ -193,7 +198,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const audienceLabel = formatAudience(announcement);
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
-    commentAuthorId === user?.id ||
+    commentAuthorId === user?._id ||
     !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
 
   return (
