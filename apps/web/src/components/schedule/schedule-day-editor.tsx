@@ -5,7 +5,9 @@ import { Lock } from 'lucide-react';
 
 import { CoursePicker } from '@/components/courses/course-picker';
 import type { CourseSummary } from '@/components/courses/types';
-import { getBlocksForDay, getPeriodNumbersForDay } from './schedule-utils';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { getBlocksForDay, getPeriodNumbersForDay, getCurrentScheduleStatus } from './schedule-utils';
 import { SchoolDayBlock, ScheduleWeekday, StudentScheduleDraftEntry } from './types';
 
 type ScheduleDayEditorProps = {
@@ -19,6 +21,12 @@ type ScheduleDayEditorProps = {
     periodNumber: number,
     course: CourseSummary | null,
   ) => void;
+  currentStatus?: {
+    weekday: ScheduleWeekday | null;
+    currentBlock: SchoolDayBlock | null;
+    currentEntry?: StudentScheduleDraftEntry | null;
+    nextBlock?: SchoolDayBlock | null;
+  } | null;
 };
 
 export function ScheduleDayEditor({
@@ -28,7 +36,13 @@ export function ScheduleDayEditor({
   courses,
   preferredGradeLevel,
   onChange,
+  currentStatus,
 }: ScheduleDayEditorProps) {
+  const activeStatus =
+    currentStatus !== undefined
+      ? currentStatus
+      : getCurrentScheduleStatus({ entries }, blocks);
+
   const dayBlocks = getBlocksForDay(blocks, weekday);
   const periodNumbers = getPeriodNumbersForDay(blocks, weekday);
   const customBlocks = dayBlocks.filter((block) => block.periodNumber == null);
@@ -38,18 +52,34 @@ export function ScheduleDayEditor({
       {/* Custom (non-period) blocks — rendered as a small inline notice */}
       {customBlocks.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {customBlocks.map((block) => (
-            <div
-              key={block.id}
-              className="inline-flex items-center gap-2 rounded-md border border-border/50 px-3 py-2 text-sm"
-            >
-              <Lock className="size-3 text-muted-foreground" />
-              <span className="font-medium text-foreground">{block.label}</span>
-              <span className="text-xs text-muted-foreground">
-                {block.startTime} – {block.endTime}
-              </span>
-            </div>
-          ))}
+          {customBlocks.map((block) => {
+            const isCurrentCustom =
+              activeStatus?.weekday === weekday &&
+              activeStatus?.currentBlock?.id === block.id;
+
+            return (
+              <div
+                key={block.id}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                  isCurrentCustom
+                    ? 'border-primary/60 bg-primary/10 text-primary font-medium shadow-xs'
+                    : 'border-border/50 text-foreground',
+                )}
+              >
+                <Lock className="size-3 text-muted-foreground" />
+                <span className="font-medium">{block.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {block.startTime} – {block.endTime}
+                </span>
+                {isCurrentCustom && (
+                  <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                    Now
+                  </Badge>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -67,16 +97,32 @@ export function ScheduleDayEditor({
             (item) => item.weekday === weekday && item.periodNumber === periodNumber,
           );
           const matchingBlock = dayBlocks.find((block) => block.periodNumber === periodNumber);
+          const isCurrent =
+            activeStatus?.weekday === weekday &&
+            activeStatus?.currentBlock?.periodNumber === periodNumber;
 
           return (
-            <div key={periodNumber} className="flex items-center gap-4 px-4 py-1.5 hover:bg-muted/30 transition-colors">
+            <div
+              key={periodNumber}
+              className={cn(
+                'flex items-center gap-4 px-4 py-2 transition-colors border-l-4',
+                isCurrent
+                  ? 'bg-primary/10 border-l-primary shadow-xs'
+                  : 'border-l-transparent hover:bg-muted/30',
+              )}
+            >
               {/* Period Number */}
-              <div className="w-8 shrink-0 text-center font-semibold text-foreground">
+              <div
+                className={cn(
+                  'w-8 shrink-0 text-center font-semibold',
+                  isCurrent ? 'text-primary font-bold' : 'text-foreground',
+                )}
+              >
                 {periodNumber}
               </div>
 
               {/* Course Selector / Link */}
-              <div className="flex-1 min-w-0 flex items-center gap-2">
+              <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
                 {entry?.course ? (
                   <>
                     <Link
@@ -106,10 +152,26 @@ export function ScheduleDayEditor({
                     />
                   </div>
                 )}
+
+                {isCurrent && (
+                  <Badge
+                    color="orange"
+                    size="sm"
+                    variant="dot"
+                    className="shrink-0 font-bold tracking-wider uppercase text-[10px]"
+                  >
+                    Current Class
+                  </Badge>
+                )}
               </div>
 
               {/* Time block */}
-              <div className="w-24 shrink-0 text-right hidden sm:block text-[11px] text-muted-foreground font-mono">
+              <div
+                className={cn(
+                  'w-24 shrink-0 text-right hidden sm:block text-[11px] font-mono',
+                  isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground',
+                )}
+              >
                 {matchingBlock ? `${matchingBlock.startTime} - ${matchingBlock.endTime}` : '—'}
               </div>
             </div>
@@ -119,3 +181,4 @@ export function ScheduleDayEditor({
     </div>
   );
 }
+

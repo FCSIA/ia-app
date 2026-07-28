@@ -11,11 +11,14 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import {
   WEEKDAYS,
   findScheduleEntry,
   getBlocksForDay,
   getPeriodNumbersForDay,
+  getCurrentScheduleStatus,
 } from './schedule-utils';
 import { ScheduleFriend, SchoolDayBlock, ScheduleWeekday } from './types';
 
@@ -36,6 +39,7 @@ export function FriendScheduleDialog({
       : 'MONDAY'
   );
 
+  const currentStatus = getCurrentScheduleStatus(friend.schedule, blocks);
   const dayBlocks = getBlocksForDay(blocks, selectedWeekday);
   const periodNumbers = getPeriodNumbersForDay(blocks, selectedWeekday);
 
@@ -91,13 +95,29 @@ export function FriendScheduleDialog({
               {periodNumbers.map((periodNumber) => {
                 const entry = findScheduleEntry(friend.schedule, selectedWeekday, periodNumber);
                 const matchingBlock = dayBlocks.find((block) => block.periodNumber === periodNumber);
+                const isCurrent =
+                  selectedWeekday === currentStatus.weekday &&
+                  currentStatus.currentBlock?.periodNumber === periodNumber;
 
                 return (
-                  <div key={periodNumber} className="flex items-center gap-4 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                    <div className="w-8 shrink-0 text-center font-semibold text-foreground text-sm">
+                  <div
+                    key={periodNumber}
+                    className={cn(
+                      'flex items-center gap-4 px-4 py-2.5 transition-colors border-l-4',
+                      isCurrent
+                        ? 'bg-primary/10 border-l-primary shadow-xs'
+                        : 'border-l-transparent hover:bg-muted/30',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'w-8 shrink-0 text-center font-semibold text-sm',
+                        isCurrent ? 'text-primary font-bold' : 'text-foreground',
+                      )}
+                    >
                       {periodNumber}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
                       {entry?.course ? (
                         <Link
                           href={`/courses/${entry.course.slug}`}
@@ -110,8 +130,18 @@ export function FriendScheduleDialog({
                           {entry?.className || 'Empty'}
                         </p>
                       )}
+                      {isCurrent && (
+                        <Badge color="orange" size="sm" variant="dot" className="shrink-0 font-bold uppercase text-[10px]">
+                          Current Class
+                        </Badge>
+                      )}
                     </div>
-                    <div className="w-24 shrink-0 text-right text-[11px] text-muted-foreground font-mono">
+                    <div
+                      className={cn(
+                        'w-24 shrink-0 text-right text-[11px] font-mono',
+                        isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground',
+                      )}
+                    >
                       {matchingBlock ? `${matchingBlock.startTime} - ${matchingBlock.endTime}` : '—'}
                     </div>
                   </div>
@@ -122,17 +152,32 @@ export function FriendScheduleDialog({
             {/* Non-period blocks */}
             {dayBlocks.filter(b => b.periodNumber == null).length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
-                {dayBlocks.filter(b => b.periodNumber == null).map((block) => (
-                  <div
-                    key={block.id}
-                    className="inline-flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-1.5 text-[11px] border border-border/30"
-                  >
-                    <span className="font-medium text-foreground">{block.label}</span>
-                    <span className="text-muted-foreground">
-                      {block.startTime} – {block.endTime}
-                    </span>
-                  </div>
-                ))}
+                {dayBlocks.filter(b => b.periodNumber == null).map((block) => {
+                  const isCurrentCustom =
+                    selectedWeekday === currentStatus.weekday &&
+                    currentStatus.currentBlock?.id === block.id;
+                  return (
+                    <div
+                      key={block.id}
+                      className={cn(
+                        'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] border transition-colors',
+                        isCurrentCustom
+                          ? 'border-primary/60 bg-primary/10 text-primary font-medium'
+                          : 'border-border/30 bg-muted/40 text-foreground',
+                      )}
+                    >
+                      <span className="font-medium">{block.label}</span>
+                      <span className="text-muted-foreground">
+                        {block.startTime} – {block.endTime}
+                      </span>
+                      {isCurrentCustom && (
+                        <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                          Now
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -141,3 +186,4 @@ export function FriendScheduleDialog({
     </Dialog>
   );
 }
+

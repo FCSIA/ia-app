@@ -103,11 +103,11 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
         setOpen(isOpen);
         if (isOpen) {
           setForm({
-            title: '',
-            description: '',
-            location: '',
-            date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-            time: '08:00',
+            title: entry.title,
+            description: entry.description || '',
+            location: entry.location || '',
+            date: format(new Date(entry.startAt), 'yyyy-MM-dd'),
+            time: format(new Date(entry.startAt), 'HH:mm'),
           });
         }
       }}
@@ -213,10 +213,10 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
             <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
               <Button
                 type="button"
-                variant="destructive"
+                variant="tertiary"
                 onClick={handleDelete}
                 disabled={pending}
-                className="flex-1 rounded-2xl h-12 text-base font-semibold"
+                className="flex-1 rounded-2xl h-12 text-base font-semibold text-destructive hover:bg-destructive/10 border-destructive/30"
               >
                 <Trash size={18} className="mr-2" /> Delete
               </Button>
