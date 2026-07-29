@@ -69,6 +69,8 @@ Use a developer-specific bundle identifier rather than the school-owned
 ```bash
 zsh -c '
   export PATH="/usr/bin:$PATH"
+  unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
+  export DEVELOPER_DIR="$(/usr/bin/xcode-select -p)"
   export EXPO_IOS_PERSONAL_TEAM=1
   export IOS_BUNDLE_IDENTIFIER=is.sreyas.innovationacademy.dev
 
@@ -82,9 +84,11 @@ zsh -c '
 In Xcode, enable **Automatically manage signing** for the
 **InnovationAcademy** target, select the Personal Team and connected phone, then
 press **Run**. The `/usr/bin` prefix makes Expo's precompiled-module inspection
-use macOS BSD tar instead of GNU tar from the Nix CocoaPods closure. After the
-app is installed, restart Metro with `pnpm --filter mobile dev:client`; a native
-rebuild is only needed after native dependency or app-config changes.
+use macOS BSD tar instead of GNU tar from the Nix CocoaPods closure. The
+environment cleanup ensures iOS builds use Xcode's compiler and iPhone SDK,
+rather than the Nix macOS toolchain. After the app is installed, restart Metro
+with `pnpm --filter mobile dev:client`; a native rebuild is only needed after
+native dependency or app-config changes.
 
 ### Renewing a Personal Team build
 

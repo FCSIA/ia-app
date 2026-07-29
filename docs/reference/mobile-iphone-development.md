@@ -31,6 +31,8 @@ This setup requires a Mac with Xcode and the phone connected by cable.
    ```bash
    zsh -c '
      export PATH="/usr/bin:$PATH"
+     unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
+     export DEVELOPER_DIR="$(/usr/bin/xcode-select -p)"
      export EXPO_IOS_PERSONAL_TEAM=1
      export IOS_BUNDLE_IDENTIFIER=is.yourname.innovationacademy.dev
 

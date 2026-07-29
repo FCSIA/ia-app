@@ -25,6 +25,16 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 ios_directory="$repo_root/apps/mobile/ios"
 workspace="$ios_directory/InnovationAcademy.xcworkspace"
 
+# The Nix development shell provides macOS compilers for non-iOS tooling. Do
+# not let those variables override the full Xcode iPhone toolchain.
+unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+if ! xcode_developer_directory="$(/usr/bin/xcode-select -p)"; then
+  echo "Select a full Xcode installation before refreshing an iPhone build." >&2
+  exit 1
+fi
+export DEVELOPER_DIR="$xcode_developer_directory"
+
 if [[ ! -d "$workspace" ]]; then
   echo "Missing $workspace." >&2
   echo "Complete the first-time iPhone setup before running this command." >&2
