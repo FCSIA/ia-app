@@ -75,15 +75,35 @@ zsh -c '
   pnpm --filter mobile exec expo prebuild --platform ios --clean --no-install
   cd apps/mobile/ios
   pod install
-  cd ../../..
-  pnpm --filter mobile exec expo run:ios --device --no-install
+  open InnovationAcademy.xcworkspace
 '
 ```
 
-The `/usr/bin` prefix makes Expo's precompiled-module inspection use macOS BSD
-tar instead of GNU tar from the Nix CocoaPods closure. After the app is
-installed, restart Metro with `pnpm --filter mobile dev:client`; a native rebuild
-is only needed after native dependency or app-config changes.
+In Xcode, enable **Automatically manage signing** for the
+**InnovationAcademy** target, select the Personal Team and connected phone, then
+press **Run**. The `/usr/bin` prefix makes Expo's precompiled-module inspection
+use macOS BSD tar instead of GNU tar from the Nix CocoaPods closure. After the
+app is installed, restart Metro with `pnpm --filter mobile dev:client`; a native
+rebuild is only needed after native dependency or app-config changes.
+
+### Renewing a Personal Team build
+
+After the one-time setup, a free Apple Personal Team build can be renewed from
+the terminal. Connect and unlock the phone, then find its UDID:
+
+```bash
+xcrun devicectl list devices
+```
+
+Run the refresh command with that UDID. It asks Xcode to renew the provisioning
+profile, rebuilds the app, and installs it on the phone:
+
+```bash
+pnpm mobile:ios:refresh -- "<iPhone UDID>"
+```
+
+The phone must already be trusted, and the Apple Account must already be signed
+in to Xcode. Those first-time authorization steps cannot be automated.
 
 ### Remote device development
 
