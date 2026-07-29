@@ -30,9 +30,13 @@ This setup requires a Mac with Xcode and the phone connected by cable.
 
    ```bash
    zsh -c '
-     export PATH="/usr/bin:$PATH"
+     xcode_developer_directory="${DEVELOPER_DIR:-}"
+     if [[ ! -d "$xcode_developer_directory/Platforms/iPhoneOS.platform" ]]; then
+       xcode_developer_directory="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p)"
+     fi
      unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
-     export DEVELOPER_DIR="$(/usr/bin/xcode-select -p)"
+     export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+     export DEVELOPER_DIR="$xcode_developer_directory"
      export EXPO_IOS_PERSONAL_TEAM=1
      export IOS_BUNDLE_IDENTIFIER=is.yourname.innovationacademy.dev
 

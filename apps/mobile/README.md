@@ -68,9 +68,13 @@ Use a developer-specific bundle identifier rather than the school-owned
 
 ```bash
 zsh -c '
-  export PATH="/usr/bin:$PATH"
+  xcode_developer_directory="${DEVELOPER_DIR:-}"
+  if [[ ! -d "$xcode_developer_directory/Platforms/iPhoneOS.platform" ]]; then
+    xcode_developer_directory="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p)"
+  fi
   unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
-  export DEVELOPER_DIR="$(/usr/bin/xcode-select -p)"
+  export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+  export DEVELOPER_DIR="$xcode_developer_directory"
   export EXPO_IOS_PERSONAL_TEAM=1
   export IOS_BUNDLE_IDENTIFIER=is.sreyas.innovationacademy.dev
 
@@ -85,10 +89,11 @@ In Xcode, enable **Automatically manage signing** for the
 **InnovationAcademy** target, select the Personal Team and connected phone, then
 press **Run**. The `/usr/bin` prefix makes Expo's precompiled-module inspection
 use macOS BSD tar instead of GNU tar from the Nix CocoaPods closure. The
-environment cleanup ensures iOS builds use Xcode's compiler and iPhone SDK,
-rather than the Nix macOS toolchain. After the app is installed, restart Metro
-with `pnpm --filter mobile dev:client`; a native rebuild is only needed after
-native dependency or app-config changes.
+environment cleanup works in ordinary macOS shells and prevents environment
+managers or CI tooling from overriding Xcode's compiler and iPhone SDK. After
+the app is installed, restart Metro with
+`pnpm --filter mobile dev:client`; a native rebuild is only needed after a
+native dependency or app-config change.
 
 ### Renewing a Personal Team build
 

@@ -25,12 +25,26 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 ios_directory="$repo_root/apps/mobile/ios"
 workspace="$ios_directory/InnovationAcademy.xcworkspace"
 
-# The Nix development shell provides macOS compilers for non-iOS tooling. Do
-# not let those variables override the full Xcode iPhone toolchain.
+# Shell managers and CI environments may provide compilers that are correct for
+# macOS tooling but not for an iPhone build. Preserve an explicitly selected
+# full Xcode installation; otherwise use the system selection from xcode-select.
+configured_developer_directory="${DEVELOPER_DIR:-}"
 unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
-export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-if ! xcode_developer_directory="$(/usr/bin/xcode-select -p)"; then
-  echo "Select a full Xcode installation before refreshing an iPhone build." >&2
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
+is_full_xcode_directory() {
+  [[ -d "$1/Platforms/iPhoneOS.platform" ]] &&
+    [[ -d "$1/Toolchains/XcodeDefault.xctoolchain" ]]
+}
+
+if is_full_xcode_directory "$configured_developer_directory"; then
+  xcode_developer_directory="$configured_developer_directory"
+elif xcode_developer_directory="$(/usr/bin/xcode-select -p 2>/dev/null)" &&
+  is_full_xcode_directory "$xcode_developer_directory"; then
+  :
+else
+  echo "A full Xcode installation with the iPhoneOS SDK is required." >&2
+  echo "Select it with: sudo xcode-select -s /Applications/Xcode.app" >&2
   exit 1
 fi
 export DEVELOPER_DIR="$xcode_developer_directory"
