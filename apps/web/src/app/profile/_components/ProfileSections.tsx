@@ -5,6 +5,7 @@ import {
   Bell,
   Lock,
   LockKeyhole,
+  LogOut,
   Palette,
   ShieldAlert,
   User,
@@ -198,6 +199,8 @@ export function ProfileSidebar({
 }
 
 type AccountSettingsCardProps = ChangePasswordCardProps & {
+  onSignOut: () => void;
+  signingOut: boolean;
   user: AppUser | null;
 };
 
@@ -205,9 +208,11 @@ export function AccountSettingsCard({
   changing,
   form,
   onCancel,
+  onSignOut,
   onStart,
   onSubmit,
   setForm,
+  signingOut,
   user,
 }: AccountSettingsCardProps) {
   const rows = [
@@ -343,6 +348,28 @@ export function AccountSettingsCard({
             </div>
           </form>
         ) : null}
+      </section>
+      <Separator />
+      <section className="flex items-center justify-between gap-4 p-5" aria-labelledby="sign-out-heading">
+        <div className="min-w-0">
+          <h2 id="sign-out-heading" className="text-sm font-semibold">
+            Sign out
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            End this session on this device.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="tertiary"
+          leadingIcon={LogOut}
+          loading={signingOut}
+          disabled={signingOut}
+          className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={onSignOut}
+        >
+          Sign out
+        </Button>
       </section>
     </SettingsCard>
   );

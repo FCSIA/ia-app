@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { useToast } from '@/hooks/use-toast';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
+import { authClient } from '@/lib/auth-client';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { PROFILE_NOTIFICATION_CATEGORIES } from './_constants';
@@ -31,11 +33,13 @@ type PreferenceState = {
 
 export default function ProfilePage() {
   const user = useCurrentUser();
+  const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>('account');
   const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
 
@@ -110,6 +114,18 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await authClient.signOut();
+    } catch {
+      // Continue clearing local state so a stale session cannot keep the user in the app.
+    }
+    clearAuth();
+    router.replace('/login');
+    toast({ title: 'Logged out' });
+  }
+
   function handlePreferenceToggle({
     category,
     enabled,
@@ -152,6 +168,8 @@ export default function ProfilePage() {
               onStart={() => setChangingPassword(true)}
               onCancel={() => setChangingPassword(false)}
               onSubmit={(data) => void handleChangePassword(data)}
+              onSignOut={() => void handleSignOut()}
+              signingOut={signingOut}
             />
           ) : null}
           {visibleSection === 'notifications' ? (
