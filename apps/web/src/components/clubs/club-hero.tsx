@@ -17,6 +17,7 @@ import { EditableAvatar } from "@/components/ui/editable-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function ClubHero({
     accentColor: club.accentColor ?? "",
     logoUrl: club.logoUrl ?? "",
     bannerUrl: club.bannerUrl ?? "",
+    memberLimit: club.memberLimit?.toString() ?? "",
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -87,6 +89,7 @@ export function ClubHero({
       accentColor: club.accentColor ?? "",
       logoUrl: club.logoUrl ?? "",
       bannerUrl: club.bannerUrl ?? "",
+      memberLimit: club.memberLimit?.toString() ?? "",
     });
     setEditing(true);
   };
@@ -111,12 +114,23 @@ export function ClubHero({
   };
 
   const handleSave = () => {
+    const memberLimitText = form.memberLimit.trim();
+    let memberLimit: number | null = null;
+    if (memberLimitText) {
+      memberLimit = Number(memberLimitText);
+      if (!Number.isInteger(memberLimit) || memberLimit < 1) {
+        toast({ title: "Member limit must be a positive whole number", variant: "destructive" });
+        return;
+      }
+    }
+
     void updateClub({
       clubId: club._id,
       overview: form.overview || undefined,
       accentColor: form.accentColor || undefined,
       logoUrl: form.logoUrl || undefined,
       bannerUrl: form.bannerUrl || undefined,
+      memberLimit,
     }).then(() => {
       toast({ title: "Club branding saved" });
       setEditing(false);
@@ -343,6 +357,23 @@ export function ClubHero({
                 }
               />
             </div>
+
+            <Field>
+              <FieldLabel htmlFor="club-member-limit">Member limit</FieldLabel>
+              <Input
+                id="club-member-limit"
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="Unlimited"
+                value={form.memberLimit}
+                onChange={(e) => setForm((current) => ({ ...current, memberLimit: e.target.value }))}
+              />
+              <FieldDescription>
+                Leave blank for no limit. New joins and approvals stop once the limit is reached.
+              </FieldDescription>
+            </Field>
 
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={handleSave}>

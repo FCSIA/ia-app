@@ -23,7 +23,7 @@ import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dial
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
-import { formatClubRole, fullName } from '@/components/clubs/types';
+import { formatClubRole, fullName, hasClubLeadershipRole } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -415,7 +415,7 @@ export default function ClubOverviewPage() {
   const myMembership = club.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
-  const canPost = isSponsor || !!myMembership?.role || isAdmin;
+  const canPost = isSponsor || hasClubLeadershipRole(myMembership?.role) || isAdmin;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
   const canInvite = canPost || isStaff;
   const { isFull, memberLimit } = getMemberLimitState(club);

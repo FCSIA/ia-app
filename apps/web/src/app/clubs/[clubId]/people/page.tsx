@@ -1,11 +1,13 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
+  Check,
   Copy,
   QrCode,
   Send,
@@ -323,23 +325,35 @@ function ManagePeopleDialog({
 
 export default function ClubPeoplePage() {
   const clubId = useClubId();
+  const searchParams = useSearchParams();
   const user = useCurrentUser();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [manageOpen, setManageOpen] = useState(false);
   const [roleTarget, setRoleTarget] = useState<ClubDirectoryEntry | null>(null);
+  const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
 
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(() =>
+    searchParams?.get('tab') === 'requests' ? 'requests' : 'all',
+  );
+
+  useEffect(() => {
+    if (searchParams?.get('tab') === 'requests') setFilter('requests');
+  }, [searchParams]);
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const removeMember = useMutation(api.clubs.management.removeMember);
+  const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
 
   const canManage = !!club?.viewer.canManageMembership;
+  const canApproveRequests = !!club?.viewer.canApproveJoinRequests;
   const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
   const canInvite = canManage || isStaff;
 
   const directory = club?.directory ?? [];
+  const pendingJoinRequests = club?.pendingJoinRequests ?? [];
+  const visibleFilter = filter === 'requests' && !canApproveRequests ? 'all' : filter;
 
   const stats = useMemo(() => {
     return {
@@ -358,12 +372,27 @@ export default function ClubPeoplePage() {
       person.clubRole,
     ]);
 
-    if (filter === 'sponsors') result = result.filter(p => p.kind === 'SPONSOR');
-    else if (filter === 'leaders') result = result.filter(p => !!p.clubRole);
-    else if (filter === 'members') result = result.filter(p => p.kind === 'MEMBER' && !p.clubRole);
+    if (visibleFilter === 'sponsors') result = result.filter(p => p.kind === 'SPONSOR');
+    else if (visibleFilter === 'leaders') result = result.filter(p => !!p.clubRole);
+    else if (visibleFilter === 'members') result = result.filter(p => p.kind === 'MEMBER' && !p.clubRole);
 
     return result;
-  }, [deferredSearch, directory, filter]);
+  }, [deferredSearch, directory, visibleFilter]);
+
+  async function respondToRequest(requestId: Id<'clubJoinRequests'>, accept: boolean) {
+    setRequestInFlight(requestId);
+    try {
+      await respondToJoinRequest({ clubId, requestId, accept });
+      toast({ title: accept ? 'Join request approved' : 'Join request declined' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Unable to update join request',
+        variant: 'destructive',
+      });
+    } finally {
+      setRequestInFlight(null);
+    }
+  }
 
   const title = (
     <div className="min-w-0">
@@ -379,8 +408,8 @@ export default function ClubPeoplePage() {
       <div className="mx-auto flex w-full min-h-0 max-w-4xl flex-1 flex-col p-6">
         <div className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <Tabs value={filter} onValueChange={setFilter} className="w-full sm:w-auto">
-              <TabsList className="grid w-full grid-cols-4 rounded-3xl bg-muted p-1 sm:w-auto sm:inline-flex">
+            <Tabs value={visibleFilter} onValueChange={setFilter} className="w-full sm:w-auto">
+              <TabsList className={`grid w-full ${canApproveRequests ? 'grid-cols-5' : 'grid-cols-4'} rounded-3xl bg-muted p-1 sm:w-auto sm:inline-flex`}>
                 <TabItem value="all" className="rounded-lg text-xs sm:text-sm" label="All">
                   All <span className="ml-1.5 opacity-50">{stats.all}</span>
                 </TabItem>
@@ -393,16 +422,23 @@ export default function ClubPeoplePage() {
                 <TabItem value="members" className="rounded-lg text-xs sm:text-sm" label="Members">
                   Members <span className="ml-1.5 opacity-50">{stats.members}</span>
                 </TabItem>
+                {canApproveRequests ? (
+                  <TabItem value="requests" className="rounded-lg text-xs sm:text-sm" label="Requests">
+                    Requests <span className="ml-1.5 opacity-50">{pendingJoinRequests.length}</span>
+                  </TabItem>
+                ) : null}
               </TabsList>
             </Tabs>
 
             <div className="flex w-full justify-end gap-2 sm:w-auto">
-              <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search roster..."
-                className="w-full sm:w-[280px]"
-              />
+              {visibleFilter !== 'requests' ? (
+                <SearchInput
+                  value={search}
+                  onValueChange={setSearch}
+                  placeholder="Search roster..."
+                  className="w-full sm:w-[280px]"
+                />
+              ) : null}
               {club && canInvite ? (
                 <Button
                   type="button"
@@ -418,7 +454,51 @@ export default function ClubPeoplePage() {
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
-            {filtered.length > 0 ? (
+            {visibleFilter === 'requests' ? (
+              pendingJoinRequests.length > 0 ? (
+                <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
+                  {pendingJoinRequests.map((request) => {
+                    const processing = requestInFlight === request._id;
+                    return (
+                      <div key={request._id} className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {fullName(request.requester)}
+                          </p>
+                          <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                            {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="tertiary"
+                            disabled={requestInFlight !== null}
+                            onClick={() => void respondToRequest(request._id, false)}
+                          >
+                            Decline
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            leadingIcon={Check}
+                            disabled={requestInFlight !== null}
+                            onClick={() => void respondToRequest(request._id, true)}
+                          >
+                            {processing ? 'Updating…' : 'Approve'}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                  No join requests are waiting for review.
+                </div>
+              )
+            ) : filtered.length > 0 ? (
               <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
                 {filtered.map((person) => (
                   <PersonRow

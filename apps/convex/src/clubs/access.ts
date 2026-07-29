@@ -50,6 +50,11 @@ export function isStaff(roles: string[]) {
   );
 }
 
+/** Ordinary `MEMBER` rows are not club leadership roles. */
+export function isClubLeadershipRole(role: string | null | undefined) {
+  return role === "LEADER" || role === "SPONSOR";
+}
+
 export async function getViewerContext(
   ctx: ClubDbCtx,
   clubId: Id<"clubs">,
@@ -132,8 +137,7 @@ function buildClubContext({
 }): ClubContext {
   const userIsAdmin = isAdmin(user.roles as string[]);
   const isMember = !!membership;
-  const hasClubRole =
-    membership?.role === "LEADER" || membership?.role === "SPONSOR";
+  const hasClubRole = isClubLeadershipRole(membership?.role);
   const isSponsor = !!sponsor;
   const canAccessWorkspace = isMember || isSponsor || userIsAdmin;
   const canManageChannels = isSponsor || hasClubRole || userIsAdmin;

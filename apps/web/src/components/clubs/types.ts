@@ -56,6 +56,11 @@ export function formatClubRole(role?: string | null) {
     .join(' ');
 }
 
+/** Ordinary members are stored with `MEMBER`; only these values grant club leadership. */
+export function hasClubLeadershipRole(role?: string | null) {
+  return role === 'LEADER' || role === 'SPONSOR';
+}
+
 export function isSponsorEligible(person: { roles?: string[] }) {
   return !!person.roles?.some((role) =>
     ['TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(role),

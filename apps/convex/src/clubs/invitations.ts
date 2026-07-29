@@ -183,7 +183,7 @@ export const requestToJoin = mutation({
         category: "CLUB_JOIN_REQUEST",
         title: "New club join request",
         body: `${user.firstName} ${user.lastName} requested to join ${club.name}.`,
-        href: `/clubs/${args.clubId}/people`,
+        href: `/clubs/${args.clubId}/people?tab=requests`,
         subject: { kind: "club", clubId: args.clubId },
       });
     }

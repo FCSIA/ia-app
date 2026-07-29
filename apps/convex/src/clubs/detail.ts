@@ -8,6 +8,7 @@ import {
   canReadChannel,
   getChannelViewerContext,
   getViewerContext,
+  isClubLeadershipRole,
 } from "./access";
 import {
   clubSummaryWithCounts,
@@ -83,7 +84,7 @@ export const get = query({
 
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
-    const leaders = hydratedMembers.filter((m) => !!m.role?.trim());
+    const leaders = hydratedMembers.filter((m) => isClubLeadershipRole(m.role));
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
     const serializedTags = await Promise.all(
@@ -129,7 +130,7 @@ export const get = query({
         .map((m) => ({
           ...m.user,
           kind: "MEMBER" as const,
-          clubRole: m.role,
+          clubRole: isClubLeadershipRole(m.role) ? m.role : null,
           joinedAt: new Date(
             uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
           ).toISOString(),

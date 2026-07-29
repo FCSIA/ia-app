@@ -108,11 +108,11 @@ export const update = mutation({
     bannerUrl: v.optional(v.string()),
     accentColor: v.optional(v.string()),
     joinPolicy: v.optional(v.union(v.literal("OPEN"), v.literal("REQUEST"))),
-    memberLimit: v.optional(v.number()),
+    memberLimit: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { clubId, ...updates } = args;
+    const { clubId, memberLimit, ...updates } = args;
     const context = await getClubContext(ctx, clubId, user);
     if (!context.canManageMembership) {
       throw new ConvexError("Not authorized to update this club");
@@ -138,8 +138,19 @@ export const update = mutation({
       throw new ConvexError("Club name is required");
     }
 
+    if (
+      memberLimit !== undefined &&
+      memberLimit !== null &&
+      (!Number.isInteger(memberLimit) || memberLimit < 1)
+    ) {
+      throw new ConvexError("Member limit must be a positive whole number.");
+    }
+
     await ctx.db.patch(clubId, {
       ...cleanUpdates,
+      ...(memberLimit !== undefined
+        ? { memberLimit: memberLimit ?? undefined }
+        : {}),
       updatedAt: Date.now(),
     });
 

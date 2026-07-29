@@ -7,7 +7,7 @@ import { AtSign, Plus } from 'lucide-react';
 import { useClubId } from '../../club-route';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { CreateTagDialog } from '@/components/clubs/dialogs/create-tag-dialog';
-import { fullName, type ClubDetail } from '@/components/clubs/types';
+import { fullName, hasClubLeadershipRole, type ClubDetail } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -29,7 +29,7 @@ export default function ClubTagsPage() {
   const isSponsor = club?.sponsors?.some((sponsor) => sponsor.userId === user?._id);
   const myMembership = club?.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canCreate = isSponsor || !!myMembership?.role || isAdmin;
+  const canCreate = isSponsor || hasClubLeadershipRole(myMembership?.role) || isAdmin;
 
   const tags = club?.tags ?? [];
 

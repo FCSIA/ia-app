@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { ClubContext } from "./access";
-import { canPostInChannel, canReadChannel } from "./access";
+import { canPostInChannel, canReadChannel, isClubLeadershipRole } from "./access";
 import { toChannelViewerState } from "./serialize";
 
 const clubId = "club" as Id<"clubs">;
@@ -46,6 +46,13 @@ function channel(
 }
 
 describe("club channel access", () => {
+  test("only leader and sponsor membership roles confer club leadership", () => {
+    expect(isClubLeadershipRole("MEMBER")).toBe(false);
+    expect(isClubLeadershipRole(undefined)).toBe(false);
+    expect(isClubLeadershipRole("LEADER")).toBe(true);
+    expect(isClubLeadershipRole("SPONSOR")).toBe(true);
+  });
+
   test("private channels require explicit membership or private-channel visibility", () => {
     const privateChannel = channel("PRIVATE", [{ userId }]);
 
