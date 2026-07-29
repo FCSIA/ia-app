@@ -50,7 +50,25 @@ workspace="$ios_directory/InnovationAcademy.xcworkspace"
 # macOS tooling but not for an iPhone build. Preserve an explicitly selected
 # full Xcode installation; otherwise use the system selection from xcode-select.
 configured_developer_directory="${DEVELOPER_DIR:-}"
-unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
+unset \
+  AR \
+  AS \
+  CC \
+  CXX \
+  LD \
+  LDPLUSPLUS \
+  LIBTOOL \
+  NM \
+  RANLIB \
+  STRIP \
+  CFLAGS \
+  CXXFLAGS \
+  CPPFLAGS \
+  LDFLAGS \
+  SDKROOT \
+  MACOSX_DEPLOYMENT_TARGET \
+  TOOLCHAINS \
+  DEVELOPER_DIR
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 is_full_xcode_directory() {

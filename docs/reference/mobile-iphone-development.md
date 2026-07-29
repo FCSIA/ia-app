@@ -34,7 +34,9 @@ This setup requires a Mac with Xcode and the phone connected by cable.
      if [[ ! -d "$xcode_developer_directory/Platforms/iPhoneOS.platform" ]]; then
        xcode_developer_directory="$(env -u DEVELOPER_DIR /usr/bin/xcode-select -p)"
      fi
-     unset CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET DEVELOPER_DIR
+     unset AR AS CC CXX LD LDPLUSPLUS LIBTOOL NM RANLIB STRIP
+     unset CFLAGS CXXFLAGS CPPFLAGS LDFLAGS SDKROOT MACOSX_DEPLOYMENT_TARGET
+     unset TOOLCHAINS DEVELOPER_DIR
      export PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
      export DEVELOPER_DIR="$xcode_developer_directory"
      export EXPO_IOS_PERSONAL_TEAM=1
