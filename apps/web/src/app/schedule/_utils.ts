@@ -2,6 +2,8 @@ import type { CourseSummary } from '@/components/courses/types';
 import type { StudentScheduleDraftEntry } from '@/components/schedule/types';
 import type { ScheduleTab } from './_types';
 
+export type ScheduleClassSelection = CourseSummary | { className: string };
+
 export function buildScheduleRecord(entries: StudentScheduleDraftEntry[], isPublic: boolean) {
   return {
     id: 'draft',
@@ -27,7 +29,7 @@ export function replaceScheduleEntry(
   entries: StudentScheduleDraftEntry[],
   weekday: StudentScheduleDraftEntry['weekday'],
   periodNumber: number,
-  course: CourseSummary | null,
+  course: ScheduleClassSelection | null,
 ) {
   const existingIndex = entries.findIndex(
     (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
@@ -39,13 +41,21 @@ export function replaceScheduleEntry(
     );
   }
 
-  const nextEntry = {
-    weekday,
-    periodNumber,
-    courseId: course.id,
-    course,
-    className: course.title,
-  };
+  const nextEntry = 'id' in course
+    ? {
+        weekday,
+        periodNumber,
+        courseId: course.id,
+        course,
+        className: course.title,
+      }
+    : {
+        weekday,
+        periodNumber,
+        courseId: null,
+        course: null,
+        className: course.className.trim(),
+      };
 
   if (existingIndex === -1) return [...entries, nextEntry];
 

@@ -268,7 +268,7 @@ export const schema = defineSchema({
   studentScheduleEntries: defineTable({
     scheduleId: v.id("studentSchedules"),
     userId: v.id("users"),
-    courseId: v.id("courses"),
+    courseId: v.union(v.id("courses"), v.null()),
     weekday: scheduleWeekdayValidator,
     periodNumber: v.number(),
     className: v.string(),

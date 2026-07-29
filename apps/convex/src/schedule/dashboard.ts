@@ -8,12 +8,12 @@ import {
   serializeUser,
   studentVisibility,
   scheduleDashboardValidator,
+  scheduleEntryInputValidator,
   studentScheduleRecordValidator,
   normalizeScheduleEntries,
   requireStudentUser,
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
-import { scheduleWeekdayValidator } from "../validators";
 import { Id, Doc } from "../_generated/dataModel";
 
 export const get = query({
@@ -99,11 +99,7 @@ export const get = query({
 export const save = mutation({
   args: {
     isPublic: v.boolean(),
-    entries: v.array(v.object({
-      weekday: scheduleWeekdayValidator,
-      periodNumber: v.number(),
-      courseId: v.id("courses"),
-    })),
+    entries: v.array(scheduleEntryInputValidator),
   },
   returns: v.union(studentScheduleRecordValidator, v.null()),
   handler: async (ctx, args) => {
@@ -114,6 +110,10 @@ export const save = mutation({
 
     const coursesById = new Map<Id<"courses">, Doc<"courses">>();
     for (const entry of entries) {
+      if (!entry.className.trim()) {
+        throw new ConvexError("Class names cannot be empty.");
+      }
+      if (!entry.courseId) continue;
       const course = await ctx.db.get(entry.courseId);
       if (!course) throw new ConvexError("One or more selected courses were not found.");
       coursesById.set(entry.courseId, course);
@@ -156,7 +156,7 @@ export const save = mutation({
         courseId: entry.courseId,
         weekday: entry.weekday,
         periodNumber: entry.periodNumber,
-        className: coursesById.get(entry.courseId)!.title,
+        className: entry.courseId ? coursesById.get(entry.courseId)!.title : entry.className.trim(),
         createdAt: now,
         updatedAt: now,
       });

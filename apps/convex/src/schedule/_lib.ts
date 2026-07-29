@@ -91,7 +91,8 @@ export const scheduleBlockPayloadValidator = v.object({
 export const scheduleEntryInputValidator = v.object({
   weekday: scheduleWeekdayValidator,
   periodNumber: v.number(),
-  courseId: v.id("courses"),
+  courseId: v.union(v.id("courses"), v.null()),
+  className: v.string(),
 });
 
 export const scheduleSeedResultValidator = v.object({
@@ -187,7 +188,7 @@ export async function serializeScheduleForUser(
 
   const serializedEntries = [];
   for (const entry of entries) {
-    const course = await ctx.db.get(entry.courseId);
+    const course = entry.courseId ? await ctx.db.get(entry.courseId) : null;
     serializedEntries.push({
       id: entry._id,
       weekday: entry.weekday,

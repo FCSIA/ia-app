@@ -112,6 +112,7 @@ export function MyWeekView() {
             weekday: entry.weekday,
             periodNumber: entry.periodNumber,
             courseId: entry.courseId,
+            className: entry.className ?? entry.course?.title ?? 'Class',
           })),
       });
       setEditing(false);

@@ -1,11 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 
 import { CoursePicker } from '@/components/courses/course-picker';
 import type { CourseSummary } from '@/components/courses/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { getBlocksForDay, getPeriodNumbersForDay, getCurrentScheduleStatus } from './schedule-utils';
 import { SchoolDayBlock, ScheduleWeekday, StudentScheduleDraftEntry } from './types';
@@ -19,7 +24,7 @@ type ScheduleDayEditorProps = {
   onChange: (
     weekday: ScheduleWeekday,
     periodNumber: number,
-    course: CourseSummary | null,
+    course: CourseSummary | { className: string } | null,
   ) => void;
   currentStatus?: {
     weekday: ScheduleWeekday | null;
@@ -38,6 +43,8 @@ export function ScheduleDayEditor({
   onChange,
   currentStatus,
 }: ScheduleDayEditorProps) {
+  const [manualPeriod, setManualPeriod] = useState<number | null>(null);
+  const [manualClassName, setManualClassName] = useState('');
   const activeStatus =
     currentStatus !== undefined
       ? currentStatus
@@ -46,6 +53,19 @@ export function ScheduleDayEditor({
   const dayBlocks = getBlocksForDay(blocks, weekday);
   const periodNumbers = getPeriodNumbersForDay(blocks, weekday);
   const customBlocks = dayBlocks.filter((block) => block.periodNumber == null);
+
+  const openManualEntry = (periodNumber: number) => {
+    const existing = entries.find(
+      (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
+    );
+    setManualClassName(existing?.courseId ? '' : existing?.className ?? '');
+    setManualPeriod(periodNumber);
+  };
+
+  const closeManualEntry = () => {
+    setManualPeriod(null);
+    setManualClassName('');
+  };
 
   return (
     <div className="space-y-5">
@@ -139,17 +159,38 @@ export function ScheduleDayEditor({
                       placeholder=""
                       iconOnly
                     />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                      Other
+                    </Button>
                   </>
-                ) : (
-                  <div className="w-full max-w-[320px]">
+                ) : entry ? (
+                  <>
+                    <span className="truncate text-sm font-medium text-foreground">{entry.className}</span>
                     <CoursePicker
                       courses={courses}
-                      selectedCourseId={entry?.courseId}
+                      selectedCourseId={null}
+                      preferredGradeLevel={preferredGradeLevel}
+                      onChange={(course) => onChange(weekday, periodNumber, course)}
+                      placeholder="Select class..."
+                      iconOnly
+                    />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                      Other
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex w-full max-w-[320px] items-center gap-1">
+                    <CoursePicker
+                      courses={courses}
+                      selectedCourseId={null}
                       preferredGradeLevel={preferredGradeLevel}
                       onChange={(course) => onChange(weekday, periodNumber, course)}
                       placeholder="Select class..."
                       className="h-8 min-h-0 bg-transparent border-transparent hover:bg-muted/50 px-2 py-0 rounded-md shadow-none text-muted-foreground"
                     />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                      Other
+                    </Button>
                   </div>
                 )}
 
@@ -178,6 +219,48 @@ export function ScheduleDayEditor({
           );
         })}
       </div>
+      <Dialog open={manualPeriod !== null} onOpenChange={(open) => !open && closeManualEntry()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a class not in the catalog</DialogTitle>
+            <DialogDescription>
+              Enter the class name shown on your schedule. You can change it later.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const className = manualClassName.trim();
+              if (manualPeriod == null || !className) return;
+              onChange(weekday, manualPeriod, { className });
+              closeManualEntry();
+            }}
+          >
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="manual-class-name">Class name</FieldLabel>
+                <Input
+                  id="manual-class-name"
+                  autoFocus
+                  value={manualClassName}
+                  onChange={(event) => setManualClassName(event.target.value)}
+                  placeholder="e.g. Work-based learning"
+                  required
+                />
+                <FieldDescription>This will not create a new catalog course.</FieldDescription>
+              </Field>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={closeManualEntry}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!manualClassName.trim()}>
+                  Add class
+                </Button>
+              </div>
+            </FieldGroup>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

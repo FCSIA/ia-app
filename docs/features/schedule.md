@@ -12,7 +12,7 @@ detection.
 
 ## What It Does
 
-- Students build a 5-day schedule from official courses.
+- Students build a 5-day schedule from official courses, with a manual class-name option when a class is not in the catalog.
 - Students choose public/private schedule visibility.
 - Students search classmates and send friend requests.
 - Accepted friends can compare public schedules.

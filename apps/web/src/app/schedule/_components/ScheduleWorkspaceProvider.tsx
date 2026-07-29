@@ -29,7 +29,12 @@ import { useToast } from '@/hooks/use-toast';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { ScheduleDraftState, ScheduleTabState } from '../_types';
-import { buildScheduleRecord, replaceScheduleEntry, resolveScheduleTab } from '../_utils';
+import {
+  buildScheduleRecord,
+  replaceScheduleEntry,
+  resolveScheduleTab,
+  type ScheduleClassSelection,
+} from '../_utils';
 
 const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
@@ -159,9 +164,12 @@ function useScheduleWorkspaceValue() {
       () =>
         saveSchedule({
           isPublic,
-          entries: scheduleEntries.flatMap(({ weekday, periodNumber, courseId }) =>
-            courseId ? [{ weekday, periodNumber, courseId }] : [],
-          ),
+          entries: scheduleEntries.map(({ weekday, periodNumber, courseId, className }) => ({
+            weekday,
+            periodNumber,
+            courseId,
+            className,
+          })),
         }),
       'Schedule saved',
     );
@@ -221,7 +229,7 @@ function useScheduleWorkspaceValue() {
   const updateScheduleEntry = (
     weekday: ScheduleWeekday,
     periodNumber: number,
-    course: CourseSummary | null,
+    course: ScheduleClassSelection | null,
   ) => {
     setScheduleEntries((current) =>
       replaceScheduleEntry(current, weekday, periodNumber, course),
