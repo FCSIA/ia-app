@@ -105,8 +105,10 @@ pnpm mobile:ios:refresh
 
 The command finds the only paired physical iOS device that Xcode can see, then
 asks Xcode to renew the provisioning profile, rebuilds the app, and installs it
-on the phone. It stops if there are zero or multiple devices. In the latter
-case, either disconnect the other device or select one explicitly:
+on the phone. Xcode output is quiet by default while warnings and errors remain
+visible. Pass `--verbose` to restore the complete build log. The command stops
+if there are zero or multiple devices. In the latter case, either disconnect
+the other device or select one explicitly:
 
 ```bash
 pnpm mobile:ios:refresh -- "<iPhone UDID>"

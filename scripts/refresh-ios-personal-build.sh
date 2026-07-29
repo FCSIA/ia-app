@@ -4,23 +4,44 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: pnpm mobile:ios:refresh [iPhone UDID]
+Usage: pnpm mobile:ios:refresh [--verbose] [iPhone UDID]
 
 Rebuilds and installs the existing Personal Team iOS development build. Run the
 one-time iPhone setup first so Xcode has the Apple Account, Personal Team,
 bundle identifier, and trusted device configured.
 
 Without an argument, the command uses the only paired physical iOS device that
-Xcode can see. It stops if zero or multiple devices are available.
+Xcode can see. It stops if zero or multiple devices are available. Build output
+is quiet by default; pass --verbose to show the complete Xcode log.
 EOF
 }
 
-if [[ $# -gt 1 ]]; then
-  usage >&2
-  exit 64
-fi
+device_udid=""
+verbose_build=0
+for argument in "$@"; do
+  case "$argument" in
+    --verbose)
+      verbose_build=1
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $argument" >&2
+      usage >&2
+      exit 64
+      ;;
+    *)
+      if [[ -n "$device_udid" ]]; then
+        usage >&2
+        exit 64
+      fi
+      device_udid="$argument"
+      ;;
+  esac
+done
 
-device_udid="${1:-}"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 ios_directory="$repo_root/apps/mobile/ios"
 workspace="$ios_directory/InnovationAcademy.xcworkspace"
@@ -111,11 +132,15 @@ NODE
 fi
 
 derived_data="$temporary_directory/DerivedData"
+xcodebuild_command=(xcodebuild)
+if [[ "$verbose_build" -eq 0 ]]; then
+  xcodebuild_command+=(-quiet)
+fi
 
 echo "Renewing provisioning and building Innovation Academy for $device_udid..."
 (
   cd "$ios_directory"
-  xcodebuild \
+  "${xcodebuild_command[@]}" \
     -workspace "InnovationAcademy.xcworkspace" \
     -scheme "InnovationAcademy" \
     -configuration Debug \
