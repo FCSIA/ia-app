@@ -23,6 +23,8 @@ same change.
 - [Convex local and production runtime](backend/convex-local-production.md) -
   how dev deployments, local backends, production Convex, and Azure web hosting
   fit together.
+- [iPhone mobile development](reference/mobile-iphone-development.md) - Expo Go
+  versus the installed development app, first-time iPhone setup, and renewals.
 - [Schema map](database/schema-map.md) - active Convex tables grouped by domain.
 
 ## Current Stack
