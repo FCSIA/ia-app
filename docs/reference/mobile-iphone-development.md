@@ -72,18 +72,19 @@ Open the installed **Innovation Academy** app, not Expo Go.
 ## Reinstalling the app
 
 With a free Apple Personal Team, the installed app expires after about seven
-days. After the first-time setup, renew it from the terminal:
+days. After the first-time setup, connect and unlock one iPhone, then renew it:
 
 ```bash
-xcrun devicectl list devices
-pnpm mobile:ios:refresh -- "<iPhone UDID>"
+pnpm mobile:ios:refresh
 ```
 
-The command asks Xcode to renew the provisioning profile, rebuilds the app, and
-installs it on the connected phone. The phone must already be trusted and the
-Apple Account must already be signed in to Xcode. Re-run prebuild and CocoaPods
-only after a native dependency or app-configuration change, or when starting
-from a fresh clone.
+The command only proceeds when Xcode can see one paired physical iOS device. It
+stops when it finds zero or multiple devices; disconnect the others, or select
+one explicitly with `pnpm mobile:ios:refresh -- "<iPhone UDID>"`. It asks Xcode
+to renew the provisioning profile, rebuilds the app, and installs it on the
+connected phone. The phone must already be trusted and the Apple Account must
+already be signed in to Xcode. Re-run prebuild and CocoaPods only after a native
+dependency or app-configuration change, or when starting from a fresh clone.
 
 A paid Apple Developer team or TestFlight avoids the weekly Personal Team
 expiration. Personal Team builds do not include the paid-team push-notification

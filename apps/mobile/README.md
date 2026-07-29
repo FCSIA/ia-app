@@ -88,15 +88,16 @@ rebuild is only needed after native dependency or app-config changes.
 
 ### Renewing a Personal Team build
 
-After the one-time setup, a free Apple Personal Team build can be renewed from
-the terminal. Connect and unlock the phone, then find its UDID:
+After the one-time setup, connect and unlock one iPhone, then run:
 
 ```bash
-xcrun devicectl list devices
+pnpm mobile:ios:refresh
 ```
 
-Run the refresh command with that UDID. It asks Xcode to renew the provisioning
-profile, rebuilds the app, and installs it on the phone:
+The command finds the only paired physical iOS device that Xcode can see, then
+asks Xcode to renew the provisioning profile, rebuilds the app, and installs it
+on the phone. It stops if there are zero or multiple devices. In the latter
+case, either disconnect the other device or select one explicitly:
 
 ```bash
 pnpm mobile:ios:refresh -- "<iPhone UDID>"
