@@ -45,10 +45,10 @@ export function IaLoadingMark({
 
   const cardDimensions =
     size === "sm"
-      ? { width: 220, height: 110, logoWidth: 140, logoHeight: 48 }
+      ? { width: 220, height: 110, logoWidth: 64, logoHeight: 64 }
       : size === "lg"
-      ? { width: 320, height: 160, logoWidth: 220, logoHeight: 72 }
-      : { width: 270, height: 135, logoWidth: 180, logoHeight: 60 };
+      ? { width: 320, height: 160, logoWidth: 104, logoHeight: 104 }
+      : { width: 270, height: 135, logoWidth: 80, logoHeight: 80 };
 
   return (
     <View style={styles.container}>

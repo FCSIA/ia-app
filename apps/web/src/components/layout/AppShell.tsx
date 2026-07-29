@@ -217,7 +217,7 @@ export function AppShell({
             className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/logo.png" alt="IA" className="size-full object-cover" />
+            <img src="/icons/logo.png" alt="Innovation Academy phoenix" className="size-full object-cover" />
           </Link>
 
           <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 px-0">
@@ -264,9 +264,8 @@ export function AppShell({
                   className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/icons/logo.png" alt="IA" className="size-full object-cover" />
+                  <img src="/icons/logo.png" alt="Innovation Academy phoenix" className="size-full object-cover" />
                 </Link>
-                <span className="text-sm font-semibold text-sidebar-foreground">IA</span>
               </div>
               <nav className="flex-1 space-y-1 overflow-y-auto p-3">
                 {primary.map((item) => (

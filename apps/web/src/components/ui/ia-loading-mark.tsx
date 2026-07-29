@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const sizeClasses = {
-  sm: 'h-16 w-48',
-  md: 'h-24 w-72',
-  lg: 'h-32 w-96',
+  sm: 'size-16',
+  md: 'size-24',
+  lg: 'size-32',
 } as const;
 
 type IaLoadingMarkProps = {
@@ -26,12 +26,12 @@ export function IaLoadingMark({
 }: IaLoadingMarkProps) {
   const content = (
     <Image
-      src="/icons/innovation-academy-logo.png"
-      alt="Innovation Academy"
-      width={384}
+      src="/icons/logo.png"
+      alt="Innovation Academy phoenix"
+      width={128}
       height={128}
       priority
-      className="h-full w-auto object-contain drop-shadow-sm"
+      className="size-full object-contain drop-shadow-sm"
     />
   );
 

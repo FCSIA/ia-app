@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, TextField, Txt } from "@/components/ui";
@@ -59,7 +59,12 @@ export default function LoginScreen() {
                   marginBottom: spacing.sm,
                 }}
               >
-                <Txt variant="section" style={{ color: color("primaryForeground") }}>IA</Txt>
+                <Image
+                  source={require("../../assets/logo.png")}
+                  accessibilityLabel="Innovation Academy phoenix"
+                  style={{ width: 40, height: 40 }}
+                  resizeMode="contain"
+                />
               </View>
               <Txt variant="display">Sign in</Txt>
               <Txt tone="muted">Use your school ID and password.</Txt>

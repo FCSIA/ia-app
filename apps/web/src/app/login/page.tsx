@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { clearAuth } from '@/lib/auth';
@@ -54,7 +55,14 @@ export default function LoginPage() {
               boxShadow: '0 8px 30px rgba(249,115,22,0.35)',
             }}
           >
-            <span className="text-2xl font-bold text-white">IA</span>
+            <Image
+              src="/icons/logo.png"
+              alt="Innovation Academy phoenix"
+              width={64}
+              height={64}
+              priority
+              className="size-full object-cover"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">IA School App</CardTitle>
           <CardDescription>Sign in to continue</CardDescription>
@@ -86,7 +94,7 @@ export default function LoginPage() {
                 required
               />
               <p className="text-xs text-muted-foreground mt-1 text-center">
-                First login: use the temporary password from your school
+                First login: use the given temporary password given from admin
               </p>
             </div>
 
