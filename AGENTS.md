@@ -14,7 +14,6 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 
 ## Working Rules
 
-- Use conventional commits, with concise multi-line bodies when the why matters.
 - Keep changes in coherent slices. Do not mix unrelated docs, infra, feature,
   and refactor work unless one cannot stand without the other.
 - Do not add broad lint/build ignores to get a green run. Fix the primitive or call site drift instead.
@@ -24,6 +23,39 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 - Update `agent-notes/STATE.md` only when the handoff state materially changes.
 - Do not let docs drift from code. If seed data, roles, env vars, commands, or
   setup behavior changes, update the relevant doc in the same slice.
+
+## Git
+
+- Commit regularly.
+- Prefer subsystem-first commit subjects: `subsystem: concise change`.
+  Do not default to Conventional Commit prefixes such as `feat`, `fix`, or
+  `chore`. Choose the subsystem people will search for later, such as `cli`,
+  `state`, `tui`, `api`, `docs`, `nix`, `test`, or a narrower module.
+- Keep messages compact. A small commit can use a subject line only; add a body
+  when the reason, tradeoff, or implementation detail matters.
+- Body bullets should explain why or how, not repeat the subject. Do not force
+  a fixed number of bullets.
+- Prefer backticks for literal paths, commands, package names, settings, and
+  similar identifiers when they improve scanability.
+
+```text
+cli: render activity as square heatmap
+
+- use one colored square per day instead of intensity glyphs
+- keep empty days visible as gray cells
+- orient the grid by week columns and weekday rows
+```
+
+```text
+state: record attempt events
+
+- keep `attempts.csv` as the latest per-question snapshot
+- append every answer to `events.csv` for streaks and activity
+```
+
+```text
+docs: tighten commit guidance
+```
 
 ## Frontend Rules
 
