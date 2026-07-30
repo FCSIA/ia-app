@@ -93,6 +93,12 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-secure-store",
+    "@react-native-community/datetimepicker",
+    "expo-font",
+    "expo-image",
+    "expo-sharing",
+    "expo-splash-screen",
+    "expo-status-bar",
     ["react-native-enriched-markdown", { enableMath: false }],
     [
       "expo-build-properties",
