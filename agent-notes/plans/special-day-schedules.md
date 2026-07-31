@@ -6,9 +6,10 @@
   New writes never represent both or neither. The chosen lunch period cannot also
   contain a course entry for any weekday.
 - Existing `studentSchedules` rows remain deployable while the field is widened
-  as optional. Reads resolve missing values to `PERIOD_5`; a bounded migration
-  backfills rows that already have an unambiguous Period 4/5 gap and reports
-  legacy conflicts instead of deleting course data.
+  as optional. Reads infer a missing value only when Period 4/5 has an
+  unambiguous gap; schedules with classes in both slots stay visibly unresolved.
+  A bounded migration backfills safe rows and reports legacy conflicts instead
+  of hiding or deleting course data.
 - Student course choices remain canonical by `(weekday, periodNumber)`. A dated
   schedule only references canonical Period 1…8 identities; it never copies or
   rewrites a student's course selection when blocks move.
