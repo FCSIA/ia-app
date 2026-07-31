@@ -1,24 +1,39 @@
 import { TextInput, type TextInputProps } from "react-native";
 import { useTheme } from "@/lib/theme";
 
-export function TextField(props: TextInputProps) {
+type FieldDensity = "compact" | "default";
+type FieldState = "default" | "invalid";
+
+type TextFieldProps = TextInputProps & {
+  density?: FieldDensity;
+  state?: FieldState;
+};
+
+export function TextField({
+  density = "default",
+  state = "default",
+  ...props
+}: TextFieldProps) {
   const { color } = useTheme();
   const { style, multiline, ...inputProps } = props;
+  const compact = density === "compact";
   return (
     <TextInput
       placeholderTextColor={color("mutedForeground")}
       selectionColor={color("primary")}
       multiline={multiline}
+      aria-invalid={state === "invalid"}
       style={[
         {
-          minHeight: 48,
-          borderRadius: 14,
+          minHeight: compact ? 44 : 48,
+          borderRadius: compact ? 10 : 14,
           borderWidth: 1,
-          borderColor: color("border"),
+          borderColor:
+            state === "invalid" ? color("destructive") : color("border"),
           backgroundColor: color("card"),
           color: color("foreground"),
-          paddingHorizontal: 14,
-          paddingVertical: multiline ? 12 : 0,
+          paddingHorizontal: compact ? 12 : 14,
+          paddingVertical: multiline ? (compact ? 10 : 12) : 0,
           fontSize: 15,
           textAlignVertical: multiline ? "top" : "center",
         },
