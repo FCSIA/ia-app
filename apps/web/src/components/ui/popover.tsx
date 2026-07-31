@@ -16,7 +16,7 @@ const PopoverAnchor = PopoverPrimitive.Anchor
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 6, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, align = "center", sideOffset = 6, collisionPadding = 8, ...props }, ref) => {
   const shape = useShape()
   return (
     <PopoverPrimitive.Portal>
@@ -37,7 +37,9 @@ const PopoverContent = React.forwardRef<
             shape.container,
             className
           )}
-        />
+        >
+          {children}
+        </Elevated>
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   )

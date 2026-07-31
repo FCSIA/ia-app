@@ -50,7 +50,7 @@ DropdownMenuSubTrigger.displayName =
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
   const shape = useShape()
 
   return (
@@ -67,7 +67,9 @@ const DropdownMenuSubContent = React.forwardRef<
           shape.container,
           className
         )}
-      />
+      >
+        {children}
+      </Elevated>
     </DropdownMenuPrimitive.SubContent>
   )
 })
@@ -77,7 +79,7 @@ DropdownMenuSubContent.displayName =
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 6, collisionPadding = 8, ...props }, ref) => {
+>(({ className, children, sideOffset = 6, collisionPadding = 8, ...props }, ref) => {
   const shape = useShape()
   return (
     <DropdownMenuPrimitive.Portal>
@@ -97,7 +99,9 @@ const DropdownMenuContent = React.forwardRef<
             shape.container,
             className
           )}
-        />
+        >
+          {children}
+        </Elevated>
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   )
