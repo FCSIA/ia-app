@@ -10,7 +10,11 @@ export interface ItemRect {
 }
 
 interface UseProximityHoverOptions {
-  axis?: "x" | "y";
+  /**
+   * Axis used to resolve the nearest registered item. Use `xy` for wrapping
+   * grids where rows and columns both contribute to proximity.
+   */
+  axis?: "x" | "y" | "xy";
 }
 
 interface UseProximityHoverReturn {
@@ -86,6 +90,56 @@ export function useProximityHover<T extends HTMLElement>(
         if (!container) return;
 
         const containerRect = container.getBoundingClientRect();
+
+        if (axis === "xy") {
+          let closestIndex: number | null = null;
+          let closestDistance = Infinity;
+          let containingIndex: number | null = null;
+          const scaleX =
+            container.offsetWidth > 0
+              ? containerRect.width / container.offsetWidth
+              : 1;
+          const scaleY =
+            container.offsetHeight > 0
+              ? containerRect.height / container.offsetHeight
+              : 1;
+
+          for (let index = 0; index < itemRectsRef.current.length; index++) {
+            const rect = itemRectsRef.current[index];
+            if (!rect) continue;
+
+            const left =
+              containerRect.left +
+              (container.clientLeft + rect.left - container.scrollLeft) * scaleX;
+            const top =
+              containerRect.top +
+              (container.clientTop + rect.top - container.scrollTop) * scaleY;
+            const width = rect.width * scaleX;
+            const height = rect.height * scaleY;
+
+            if (
+              mouseX >= left &&
+              mouseX <= left + width &&
+              mouseY >= top &&
+              mouseY <= top + height
+            ) {
+              containingIndex = index;
+            }
+
+            const distance = Math.hypot(
+              mouseX - (left + width / 2),
+              mouseY - (top + height / 2)
+            );
+            if (distance < closestDistance) {
+              closestDistance = distance;
+              closestIndex = index;
+            }
+          }
+
+          setActiveIndex(containingIndex ?? closestIndex);
+          return;
+        }
+
         const mousePos = axis === "x" ? mouseX : mouseY;
 
         let closestIndex: number | null = null;
