@@ -91,12 +91,13 @@
   groups, search channel names and access-checked message history, and collect
   paginated files and images for each readable channel.
 - Web channel chat now uses paginated message summaries, bounded thread reads,
-  shared optimistic message insertion, concurrent attachment staging, compact
-  shadcn chat/composer primitives, names-only mention results, out-of-flow
-  message actions, and a compact animated channel-alert sheet. The club shell
-  now uses a narrow navigation subscription, channel permissions load
-  separately from the bounded mention audience, and notification preference
-  fanout uses exact indexed lookups.
+  shared optimistic message insertion and reactions, concurrent attachment
+  staging, compact shadcn chat/composer primitives, names-only mention results,
+  out-of-flow message actions, and a nested Discord-style channel-alert
+  popover with persisted timed mutes. The club shell now uses a narrow
+  navigation subscription, channel permissions load separately from the
+  bounded mention audience, and notification preference fanout uses exact
+  indexed lookups.
 - Web club pages now use a compact, channel-first workspace inspired by Discord's
   conversational density: the shared club/channel navigation is available on
   desktop and mobile, messages render as a flat hover-action timeline, and the
@@ -104,6 +105,12 @@
   instead of spacious nested cards. Channel reactions now stay in document flow,
   the solid composer and message spacing preserve clear separation, channel
   alerts update optimistically, and pinned messages live in the channel toolbar.
+- Web club navigation and discovery use Fluid Card groups and nested surface
+  levels, with primitive-backed dropdown selection, compact custom scrollbars,
+  sticky personal clubs, and channel/global search switching. Notification
+  settings use visible surface states and hierarchical club gates: turning a
+  club off disables delivery for its channels while retaining each channel's
+  saved preference for restoration.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -158,7 +165,8 @@
   deprecation error; focused web lint passes with pre-existing warnings only.
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - pass
+- `pnpm build` - blocked in the unrelated mobile package by the same TypeScript
+  6 `baseUrl` deprecation error; `pnpm --filter web build` passes.
 - `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
