@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
+import { useToast } from '@/hooks/use-toast';
 
 type PreferenceLevel = NotificationPreferenceLevel;
 
@@ -87,6 +88,8 @@ type NotificationPreference = {
   level: PreferenceLevel;
 };
 
+const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreference[] = [];
+
 function scopePreference(
   preferences: NotificationPreference[],
   category: NotificationCategory,
@@ -98,13 +101,18 @@ function scopePreference(
   );
 }
 
-function preferenceEnabled(
+function storedPreferenceLevel(
   preferences: NotificationPreference[],
   category: NotificationCategory,
   channelId: string,
+  fallback: PreferenceLevel,
 ) {
   const preference = scopePreference(preferences, category, channelId);
-  return preference ? preference.enabled && preference.level !== 'OFF' : true;
+  return preference
+    ? preference.enabled
+      ? preference.level
+      : 'OFF'
+    : fallback;
 }
 
 export function ChannelNotificationSettings({
@@ -112,13 +120,39 @@ export function ChannelNotificationSettings({
   channelId,
   channelName,
 }: ChannelNotificationSettingsProps) {
+  const { toast } = useToast();
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
-  const preferences = useQuery(api.notifications.preferences.list) ?? [];
+  const preferences =
+    useQuery(api.notifications.preferences.list) ?? EMPTY_NOTIFICATION_PREFERENCES;
+  const [optimisticLevels, setOptimisticLevels] = useState<
+    Partial<Record<NotificationCategory, PreferenceLevel>>
+  >({});
+  const requestVersions = useRef<Partial<Record<NotificationCategory, number>>>({});
 
-  const messagePreference = scopePreference(preferences, MESSAGE_CATEGORY, channelId);
-  const messageLevel: PreferenceLevel = messagePreference?.enabled
-    ? messagePreference.level ?? 'PUSH'
-    : 'OFF';
+  const messageLevel =
+    optimisticLevels[MESSAGE_CATEGORY] ??
+    storedPreferenceLevel(preferences, MESSAGE_CATEGORY, channelId, 'OFF');
+
+  useEffect(() => {
+    setOptimisticLevels((current) => {
+      let changed = false;
+      const next = { ...current };
+      for (const [category, level] of Object.entries(current)) {
+        const fallback = category === MESSAGE_CATEGORY ? 'OFF' : 'PUSH';
+        const storedLevel = storedPreferenceLevel(
+          preferences,
+          category as NotificationCategory,
+          channelId,
+          fallback,
+        );
+        if (storedLevel === level) {
+          delete next[category as NotificationCategory];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [channelId, preferences]);
 
   const summary = useMemo(() => {
     if (messageLevel === 'TIME_SENSITIVE') return 'Time sensitive';
@@ -127,26 +161,49 @@ export function ChannelNotificationSettings({
     return 'Mentions';
   }, [messageLevel]);
 
-  const setPreference = ({
+  const setPreference = async ({
     category,
     level,
   }: {
     category: NotificationCategory;
     level: PreferenceLevel;
-  }) =>
-    upsertPreference({
-      category,
-      enabled: level !== 'OFF',
-      clubId,
-      channelId,
-      level,
-    });
+  }) => {
+    const requestVersion = (requestVersions.current[category] ?? 0) + 1;
+    requestVersions.current[category] = requestVersion;
+    setOptimisticLevels((current) => ({ ...current, [category]: level }));
+    try {
+      const saved = await upsertPreference({
+        category,
+        enabled: level !== 'OFF',
+        clubId,
+        channelId,
+        level,
+      });
+      if (requestVersions.current[category] !== requestVersion) return;
+      const confirmedLevel = saved.enabled ? saved.level : 'OFF';
+      setOptimisticLevels((current) => ({
+        ...current,
+        [category]: confirmedLevel,
+      }));
+    } catch (error) {
+      if (requestVersions.current[category] !== requestVersion) return;
+      setOptimisticLevels((current) => {
+        const next = { ...current };
+        delete next[category];
+        return next;
+      });
+      toast({
+        title: error instanceof Error ? error.message : 'Could not update channel alerts',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <Sheet>
       <Tooltip content="Channel notification settings">
         <SheetTrigger asChild>
-          <Button variant="tertiary" size="icon-sm" aria-label="Channel notification settings">
+          <Button variant="ghost" size="icon-sm" aria-label="Channel notification settings">
             <Bell className="size-4" />
           </Button>
         </SheetTrigger>
@@ -204,7 +261,10 @@ export function ChannelNotificationSettings({
           <h3 className="text-sm font-medium text-foreground">Always notify</h3>
           <div className="divide-y rounded-xl border bg-card">
             {mentionOptions.map((option) => {
-              const enabled = preferenceEnabled(preferences, option.category, channelId);
+              const level =
+                optimisticLevels[option.category] ??
+                storedPreferenceLevel(preferences, option.category, channelId, 'PUSH');
+              const enabled = level !== 'OFF';
               const Icon = option.icon;
               return (
                 <div

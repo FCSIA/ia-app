@@ -82,7 +82,7 @@ import {
 } from '@/components/ui/attachment';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bubble, BubbleContent, BubbleReactions } from '@/components/ui/bubble';
+import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -90,6 +90,7 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
+  useMessageScroller,
 } from '@/components/ui/message-scroller';
 import {
   Message,
@@ -199,7 +200,10 @@ function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAt
   if (attachments.length === 0) return null;
 
   return (
-    <AttachmentGroup className="mt-2 max-w-full gap-2 py-0">
+    <AttachmentGroup
+      className="mt-2 max-w-full gap-2 py-0"
+      style={{ WebkitMaskImage: 'none', maskImage: 'none' }}
+    >
       {attachments.map((attachment) => {
         const href = attachment.fileUrl;
         const isImage = isImageAttachment(attachment);
@@ -264,6 +268,98 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
   );
 }
 
+function PinnedMessagesButton({
+  messages,
+  onClearSearch,
+}: {
+  messages: ClubChannelMessage[];
+  onClearSearch: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { scrollToMessage } = useMessageScroller();
+
+  const jumpToMessage = (messageId: string) => {
+    onClearSearch();
+    setOpen(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToMessage(messageId, { align: 'center', behavior: 'smooth' });
+      });
+    });
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip content="Pinned messages">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="relative"
+            aria-label={`${messages.length} pinned ${messages.length === 1 ? 'message' : 'messages'}`}
+          >
+            <Pin className="size-4" />
+            {messages.length > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+                {messages.length > 9 ? '9+' : messages.length}
+              </span>
+            ) : null}
+          </Button>
+        </PopoverTrigger>
+      </Tooltip>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        className="w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg p-0"
+      >
+        <div className="flex items-center justify-between border-b px-3 py-2.5">
+          <p className="text-sm font-semibold">Pinned messages</p>
+          <span className="text-xs tabular-nums text-muted-foreground">{messages.length}</span>
+        </div>
+        {messages.length > 0 ? (
+          <div className="max-h-80 divide-y divide-border/70 overflow-y-auto">
+            {messages.map((message) => {
+              const preview =
+                message.poll?.question ||
+                message.body ||
+                message.attachments[0]?.fileName ||
+                'Attachment';
+              return (
+                <button
+                  key={message._id}
+                  type="button"
+                  className="flex w-full gap-3 px-3 py-3 text-left outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+                  onClick={() => jumpToMessage(message._id)}
+                >
+                  <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {fullName(message.author)}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
+                      {preview}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+            No pinned messages yet.
+          </p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function MessageAuthorPreview({
   author,
   compact,
@@ -301,7 +397,13 @@ function MessageAuthorPreview({
           />
         </button>
       </HoverCardTrigger>
-      <HoverCardContent side="right" align="start" className="w-72 rounded-xl p-4">
+      <HoverCardContent
+        side="left"
+        align="start"
+        sideOffset={8}
+        collisionPadding={12}
+        className="w-64 rounded-lg p-3"
+      >
         <div className="flex items-start gap-3">
           <ClubAvatar person={author} className="size-12" />
           <div className="min-w-0 flex-1">
@@ -318,7 +420,7 @@ function MessageAuthorPreview({
             ) : null}
           </div>
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
+        <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
           <span className="text-xs text-muted-foreground">
             {isCurrentUser ? 'This is you' : isStudentProfile ? 'Student IA profile' : 'Public IA profile'}
           </span>
@@ -449,7 +551,8 @@ function MessageRow({
   return (
     <Message
       className={cn(
-        'gap-3 px-3 py-1.5 transition-colors hover:bg-hover',
+        'gap-3 px-3 transition-colors hover:bg-hover',
+        compact ? 'py-1.5' : 'py-2.5',
         isSending &&
           'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
       )}
@@ -497,7 +600,7 @@ function MessageRow({
           <Bubble
             variant="ghost"
             align="start"
-            className={cn('mt-1', hasReactions && 'mb-3')}
+            className="mt-1"
           >
             {isDeleted || hasBody ? (
               <BubbleContent
@@ -520,14 +623,14 @@ function MessageRow({
               </>
             ) : null}
             {hasReactions ? (
-              <BubbleReactions side="bottom" align="start">
+              <div className="mt-1.5 flex flex-wrap items-center gap-1">
                 {message.reactions.map((reaction) => (
                   <Button
                     key={`${message._id}-${reaction.emoji}`}
                     variant="tertiary"
                     size="sm"
                     className={cn(
-                      'h-6 gap-1 px-2 text-xs',
+                      'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
                       reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
                     )}
                     disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
@@ -541,7 +644,7 @@ function MessageRow({
                     {reaction.count}
                   </Button>
                 ))}
-              </BubbleReactions>
+              </div>
             ) : null}
           </Bubble>
         )}
@@ -1138,30 +1241,32 @@ export default function ClubChannelPage({
       resizableRightPane
       contentClassName="relative flex flex-col bg-card"
     >
-      <div className="shrink-0 border-b px-2 py-1.5">
-        <div className="mx-auto flex w-full max-w-4xl items-center gap-2">
-          <SearchInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search messages"
-            size="sm"
-            className="w-full sm:ml-auto sm:w-64"
-          />
-
-          <div className="shrink-0">
+      <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+        <div className="shrink-0 border-b bg-card px-2 py-1.5">
+          <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
             <ChannelNotificationSettings
+              key={channelId}
               clubId={clubId}
               channelId={channelId}
               channelName={channel.name}
             />
+            <PinnedMessagesButton
+              messages={pinnedMessages}
+              onClearSearch={() => setSearch('')}
+            />
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder={`Search #${channel.name}`}
+              size="sm"
+              className="ml-auto min-w-0 flex-1 sm:w-64 sm:flex-none"
+            />
           </div>
         </div>
-      </div>
 
-      <MessageScrollerProvider autoScroll defaultScrollPosition="end">
         <MessageScroller className="flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-0 p-2 pb-20">
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-2 pb-24">
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
                 <MessageScrollerItem>
                   <div className="flex justify-center py-2">
@@ -1177,30 +1282,6 @@ export default function ClubChannelPage({
                   </div>
                 </MessageScrollerItem>
               ) : null}
-              {pinnedMessages.length > 0 ? (
-                <MessageScrollerItem>
-                  <div className="mb-2 rounded-lg border bg-muted/20 p-2">
-                    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Pin className="size-3.5" />
-                      Pinned
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      {pinnedMessages.map((message) => (
-                        <button
-                          key={message._id}
-                          type="button"
-                          className="block w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover"
-                          onClick={() => setSelectedThreadId(message.threadRootId)}
-                        >
-                          <span className="font-medium">{fullName(message.author)}:</span>{' '}
-                          {message.poll?.question || message.body || 'Attachment'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </MessageScrollerItem>
-              ) : null}
-
               {visibleMessages.length > 0 ? (
                 visibleMessages.map((message) => (
                   <MessageScrollerItem key={message._id} messageId={message._id}>
@@ -1230,16 +1311,11 @@ export default function ClubChannelPage({
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton className="data-[direction=end]:bottom-20" />
+          <MessageScrollerButton className="data-[direction=end]:bottom-24" />
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/90 to-transparent"
-      />
-
-      <div className="absolute inset-x-0 bottom-0 p-2">
+      <div className="absolute inset-x-0 bottom-0 z-10 border-t bg-card p-2">
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <ChannelMessageComposer

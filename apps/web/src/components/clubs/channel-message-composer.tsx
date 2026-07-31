@@ -314,7 +314,7 @@ export function ChannelMessageComposer({
           <InputGroup
             className={cn(
               'h-auto min-h-10 overflow-hidden rounded-lg',
-              'border-border/80 bg-background shadow-none',
+              'border-border bg-muted shadow-none',
             )}
           >
             {isMarkdownSource ? (

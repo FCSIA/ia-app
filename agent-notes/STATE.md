@@ -101,7 +101,9 @@
   conversational density: the shared club/channel navigation is available on
   desktop and mobile, messages render as a flat hover-action timeline, and the
   club directory, overview, people, tags, and composer use tighter flat rows
-  instead of spacious nested cards.
+  instead of spacious nested cards. Channel reactions now stay in document flow,
+  the solid composer and message spacing preserve clear separation, channel
+  alerts update optimistically, and pinned messages live in the channel toolbar.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -158,8 +160,9 @@
   `apps/shared/chat`)
 - `pnpm build` - pass
 - `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
-  after the compact club-workspace redesign; signed-in visual QA remains to be
-  run because no browser-control session was available.
+  after the compact club-workspace redesign and channel interaction polish;
+  signed-in visual QA remains to be run because no browser-control session was
+  available.
 - `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
