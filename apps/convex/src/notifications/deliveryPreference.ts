@@ -12,6 +12,25 @@ export async function resolveNotificationPreference(
     scopeKey: string;
   },
 ) {
+  if (input.scopeKey.startsWith("channel:")) {
+    const channelId = input.scopeKey.slice("channel:".length);
+    const mutePreference = await ctx.db
+      .query("notificationPreferences")
+      .withIndex("by_userId_and_category_and_scopeKey", (q) =>
+        q
+          .eq("userId", input.userId)
+          .eq("category", "CLUB_CHANNEL_MESSAGE")
+          .eq("scopeKey", `mute:channel:${channelId}`),
+      )
+      .unique();
+    if (
+      mutePreference?.isMuted &&
+      (mutePreference.mutedUntil == null || mutePreference.mutedUntil > Date.now())
+    ) {
+      return mutePreference;
+    }
+  }
+
   const scopedPreference = await ctx.db
     .query("notificationPreferences")
     .withIndex("by_userId_and_category_and_scopeKey", (q) =>

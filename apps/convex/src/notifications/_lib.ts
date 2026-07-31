@@ -70,6 +70,8 @@ export const preferenceValidator = v.object({
   announcementId: v.union(v.string(), v.null()),
   eventId: v.union(v.string(), v.null()),
   scopeKey: v.string(),
+  isMuted: v.boolean(),
+  mutedUntil: v.union(v.number(), v.null()),
 });
 
 export function scopeKey(opts?: {
@@ -118,5 +120,7 @@ export function toPreference(row: Doc<"notificationPreferences">) {
     announcementId: row.announcementId ?? null,
     eventId: row.eventId ?? null,
     scopeKey: row.scopeKey,
+    isMuted: row.isMuted ?? false,
+    mutedUntil: row.mutedUntil ?? null,
   };
 }

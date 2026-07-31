@@ -80,3 +80,82 @@ export const upsert = mutation({
     return toPreference(created);
   },
 });
+
+export const setChannelMute = mutation({
+  args: {
+    clubId: v.string(),
+    channelId: v.string(),
+    muted: v.boolean(),
+    mutedUntil: v.union(v.number(), v.null()),
+  },
+  returns: preferenceValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const key = `mute:channel:${args.channelId}`;
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("notificationPreferences")
+      .withIndex("by_userId_and_category_and_scopeKey", (q) =>
+        q
+          .eq("userId", user._id)
+          .eq("category", "CLUB_CHANNEL_MESSAGE")
+          .eq("scopeKey", key),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        isMuted: args.muted,
+        mutedUntil: args.muted ? args.mutedUntil : null,
+        updatedAt: now,
+      });
+      const updated = await ctx.db.get(existing._id);
+      if (!updated) throw new ConvexError("Preference not found.");
+      return toPreference(updated);
+    }
+
+    const id = await ctx.db.insert("notificationPreferences", {
+      userId: user._id,
+      category: "CLUB_CHANNEL_MESSAGE",
+      enabled: false,
+      level: "OFF",
+      locked: false,
+      clubId: args.clubId,
+      channelId: args.channelId,
+      scopeKey: key,
+      isMuted: args.muted,
+      mutedUntil: args.muted ? args.mutedUntil : null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const created = await ctx.db.get(id);
+    if (!created) throw new ConvexError("Preference not found.");
+    return toPreference(created);
+  },
+});
+
+export const resetChannel = mutation({
+  args: { channelId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const key = `channel:${args.channelId}`;
+    const categories = [
+      "CLUB_CHANNEL_MESSAGE",
+      "CLUB_CHANNEL_MENTION",
+      "CLUB_CHANNEL_TAG_MENTION",
+      "CLUB_CHANNEL_THREAD",
+    ] as const;
+
+    for (const category of categories) {
+      const preference = await ctx.db
+        .query("notificationPreferences")
+        .withIndex("by_userId_and_category_and_scopeKey", (q) =>
+          q.eq("userId", user._id).eq("category", category).eq("scopeKey", key),
+        )
+        .unique();
+      if (preference && !preference.locked) await ctx.db.delete(preference._id);
+    }
+    return null;
+  },
+});

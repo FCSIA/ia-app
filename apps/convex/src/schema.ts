@@ -182,6 +182,8 @@ export const schema = defineSchema({
     announcementId: v.optional(v.string()),
     eventId: v.optional(v.string()),
     scopeKey: v.string(),
+    isMuted: v.optional(v.boolean()),
+    mutedUntil: v.optional(v.union(v.number(), v.null())),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId_and_category_and_scopeKey", [

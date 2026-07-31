@@ -1,20 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { Bell, BellOff, MessageSquare, Radio, Tags } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { Switch } from '@/components/ui/switch';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
 import { useToast } from '@/hooks/use-toast';
@@ -32,60 +35,31 @@ const DIRECT_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_MENTION';
 const TAG_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_TAG_MENTION';
 const THREAD_CATEGORY: NotificationCategory = 'CLUB_CHANNEL_THREAD';
 
-const messageOptions: Array<{
-  value: PreferenceLevel;
-  label: string;
-  icon: typeof Bell;
-}> = [
-  {
-    value: 'OFF',
-    label: 'Mentions',
-    icon: BellOff,
-  },
-  {
-    value: 'IN_APP',
-    label: 'Inbox',
-    icon: MessageSquare,
-  },
-  {
-    value: 'PUSH',
-    label: 'Push',
-    icon: Bell,
-  },
-  {
-    value: 'TIME_SENSITIVE',
-    label: 'Urgent',
-    icon: Radio,
-  },
-];
+const CHANNEL_CATEGORIES = [
+  MESSAGE_CATEGORY,
+  DIRECT_CATEGORY,
+  TAG_CATEGORY,
+  THREAD_CATEGORY,
+] as const;
 
-const mentionOptions: Array<{
-  category: NotificationCategory;
-  label: string;
-  icon: typeof Bell;
-}> = [
-  {
-    category: DIRECT_CATEGORY,
-    label: 'Direct mentions',
-    icon: Bell,
-  },
-  {
-    category: TAG_CATEGORY,
-    label: 'Group mentions',
-    icon: Tags,
-  },
-  {
-    category: THREAD_CATEGORY,
-    label: 'Thread replies',
-    icon: MessageSquare,
-  },
-];
+type NotificationMode = 'default' | 'all' | 'mentions' | 'nothing';
+
+const MUTE_DURATIONS = [
+  { label: 'For 15 minutes', duration: 15 * 60_000 },
+  { label: 'For 1 hour', duration: 60 * 60_000 },
+  { label: 'For 3 hours', duration: 3 * 60 * 60_000 },
+  { label: 'For 8 hours', duration: 8 * 60 * 60_000 },
+  { label: 'For 24 hours', duration: 24 * 60 * 60_000 },
+  { label: 'Until I turn it back on', duration: null },
+] as const;
 
 type NotificationPreference = {
   category: NotificationCategory;
   scopeKey: string;
   enabled: boolean;
   level: PreferenceLevel;
+  isMuted: boolean;
+  mutedUntil: number | null;
 };
 
 const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreference[] = [];
@@ -115,6 +89,30 @@ function storedPreferenceLevel(
     : fallback;
 }
 
+function storedNotificationMode(
+  preferences: NotificationPreference[],
+  channelId: string,
+): NotificationMode {
+  const hasChannelOverride = CHANNEL_CATEGORIES.some((category) =>
+    scopePreference(preferences, category, channelId),
+  );
+  if (!hasChannelOverride) return 'default';
+
+  const messageLevel = storedPreferenceLevel(
+    preferences,
+    MESSAGE_CATEGORY,
+    channelId,
+    'OFF',
+  );
+  if (messageLevel !== 'OFF') return 'all';
+
+  const mentionsEnabled = [DIRECT_CATEGORY, TAG_CATEGORY, THREAD_CATEGORY].some(
+    (category) =>
+      storedPreferenceLevel(preferences, category, channelId, 'PUSH') !== 'OFF',
+  );
+  return mentionsEnabled ? 'mentions' : 'nothing';
+}
+
 export function ChannelNotificationSettings({
   clubId,
   channelId,
@@ -122,76 +120,69 @@ export function ChannelNotificationSettings({
 }: ChannelNotificationSettingsProps) {
   const { toast } = useToast();
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
+  const resetChannel = useMutation(api.notifications.preferences.resetChannel);
+  const setChannelMute = useMutation(api.notifications.preferences.setChannelMute);
   const preferences =
     useQuery(api.notifications.preferences.list) ?? EMPTY_NOTIFICATION_PREFERENCES;
-  const [optimisticLevels, setOptimisticLevels] = useState<
-    Partial<Record<NotificationCategory, PreferenceLevel>>
-  >({});
-  const requestVersions = useRef<Partial<Record<NotificationCategory, number>>>({});
+  const modeRequestVersion = useRef(0);
+  const muteRequestVersion = useRef(0);
+  const [optimisticMode, setOptimisticMode] = useState<NotificationMode | null>(null);
+  const [optimisticMuted, setOptimisticMuted] = useState<boolean | null>(null);
 
-  const messageLevel =
-    optimisticLevels[MESSAGE_CATEGORY] ??
-    storedPreferenceLevel(preferences, MESSAGE_CATEGORY, channelId, 'OFF');
+  const storedMode = storedNotificationMode(preferences, channelId);
+  const mode = optimisticMode ?? storedMode;
+  const mutePreference = preferences.find(
+    (preference) =>
+      preference.category === MESSAGE_CATEGORY &&
+      preference.scopeKey === `mute:channel:${channelId}`,
+  );
+  const storedMuted = Boolean(
+    mutePreference?.isMuted &&
+      (mutePreference.mutedUntil == null || mutePreference.mutedUntil > Date.now()),
+  );
+  const muted = optimisticMuted ?? storedMuted;
 
   useEffect(() => {
-    setOptimisticLevels((current) => {
-      let changed = false;
-      const next = { ...current };
-      for (const [category, level] of Object.entries(current)) {
-        const fallback = category === MESSAGE_CATEGORY ? 'OFF' : 'PUSH';
-        const storedLevel = storedPreferenceLevel(
-          preferences,
-          category as NotificationCategory,
-          channelId,
-          fallback,
-        );
-        if (storedLevel === level) {
-          delete next[category as NotificationCategory];
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-  }, [channelId, preferences]);
+    if (optimisticMode !== null && optimisticMode === storedMode) {
+      setOptimisticMode(null);
+    }
+  }, [optimisticMode, storedMode]);
 
-  const summary = useMemo(() => {
-    if (messageLevel === 'TIME_SENSITIVE') return 'Time sensitive';
-    if (messageLevel === 'PUSH') return 'All messages';
-    if (messageLevel === 'IN_APP') return 'Inbox only';
-    return 'Mentions';
-  }, [messageLevel]);
+  useEffect(() => {
+    if (optimisticMuted !== null && optimisticMuted === storedMuted) {
+      setOptimisticMuted(null);
+    }
+  }, [optimisticMuted, storedMuted]);
 
-  const setPreference = async ({
-    category,
-    level,
-  }: {
-    category: NotificationCategory;
-    level: PreferenceLevel;
-  }) => {
-    const requestVersion = (requestVersions.current[category] ?? 0) + 1;
-    requestVersions.current[category] = requestVersion;
-    setOptimisticLevels((current) => ({ ...current, [category]: level }));
+  const setMode = async (nextMode: NotificationMode) => {
+    const requestVersion = modeRequestVersion.current + 1;
+    modeRequestVersion.current = requestVersion;
+    setOptimisticMode(nextMode);
     try {
-      const saved = await upsertPreference({
-        category,
-        enabled: level !== 'OFF',
-        clubId,
-        channelId,
-        level,
-      });
-      if (requestVersions.current[category] !== requestVersion) return;
-      const confirmedLevel = saved.enabled ? saved.level : 'OFF';
-      setOptimisticLevels((current) => ({
-        ...current,
-        [category]: confirmedLevel,
-      }));
+      if (nextMode === 'default') {
+        await resetChannel({ channelId });
+      } else {
+        const levels: Partial<Record<NotificationCategory, PreferenceLevel>> = {
+          [MESSAGE_CATEGORY]: nextMode === 'all' ? 'PUSH' : 'OFF',
+          [DIRECT_CATEGORY]: nextMode === 'nothing' ? 'OFF' : 'PUSH',
+          [TAG_CATEGORY]: nextMode === 'nothing' ? 'OFF' : 'PUSH',
+          [THREAD_CATEGORY]: nextMode === 'nothing' ? 'OFF' : 'PUSH',
+        };
+        await Promise.all(
+          CHANNEL_CATEGORIES.map((category) =>
+            upsertPreference({
+              category,
+              enabled: levels[category]! !== 'OFF',
+              clubId,
+              channelId,
+              level: levels[category]!,
+            }),
+          ),
+        );
+      }
     } catch (error) {
-      if (requestVersions.current[category] !== requestVersion) return;
-      setOptimisticLevels((current) => {
-        const next = { ...current };
-        delete next[category];
-        return next;
-      });
+      if (modeRequestVersion.current !== requestVersion) return;
+      setOptimisticMode(null);
       toast({
         title: error instanceof Error ? error.message : 'Could not update channel alerts',
         variant: 'destructive',
@@ -199,98 +190,88 @@ export function ChannelNotificationSettings({
     }
   };
 
+  const setMuted = async (nextMuted: boolean, duration: number | null = null) => {
+    const requestVersion = muteRequestVersion.current + 1;
+    muteRequestVersion.current = requestVersion;
+    setOptimisticMuted(nextMuted);
+    try {
+      await setChannelMute({
+        clubId,
+        channelId,
+        muted: nextMuted,
+        mutedUntil: nextMuted && duration !== null ? Date.now() + duration : null,
+      });
+    } catch (error) {
+      if (muteRequestVersion.current !== requestVersion) return;
+      setOptimisticMuted(null);
+      toast({
+        title: error instanceof Error ? error.message : 'Could not update channel mute',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
-    <Sheet>
+    <DropdownMenu>
       <Tooltip content="Channel notification settings">
-        <SheetTrigger asChild>
+        <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label="Channel notification settings">
-            <Bell className="size-4" />
+            {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
           </Button>
-        </SheetTrigger>
+        </DropdownMenuTrigger>
       </Tooltip>
-      <SheetContent
-        side="right"
-        overlayClassName="bg-foreground/30 backdrop-blur-[1px]"
-        className="flex w-full flex-col gap-5 p-5 data-[state=closed]:duration-200 data-[state=open]:duration-300 sm:max-w-sm"
-      >
-        <SheetHeader>
-          <SheetTitle>Channel alerts</SheetTitle>
-          <SheetDescription>
-            #{channelName} · {summary}
-          </SheetDescription>
-        </SheetHeader>
-
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-foreground">Notify me for</h3>
-          <ToggleGroup
-            type="single"
-            value={messageLevel}
-            onValueChange={(level) => {
-              if (level) {
-                void setPreference({
-                  category: MESSAGE_CATEGORY,
-                  level: level as PreferenceLevel,
-                });
-              }
-            }}
-            variant="outline"
-            className="grid grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1"
-            aria-label="All-message notification level"
-          >
-            {messageOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <ToggleGroupItem
-                  key={option.value}
-                  value={option.value}
-                  aria-label={option.label}
-                  className="h-auto min-w-0 flex-col gap-1 rounded-lg border-0 px-1.5 py-2 text-[11px] text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm"
+      <DropdownMenuContent align="start" className="w-72 p-1.5">
+        <DropdownMenuLabel className="px-2 py-1.5">
+          <span className="block truncate text-sm">#{channelName}</span>
+          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+            {muted ? 'Muted' : mode === 'default' ? 'Using category default' : `${mode} notifications`}
+          </span>
+        </DropdownMenuLabel>
+        {muted ? (
+          <DropdownMenuItem onSelect={() => void setMuted(false)}>
+            <Bell className="size-4" />
+            Unmute channel
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <BellOff className="size-4" />
+              Mute channel
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-60 p-1.5">
+              {MUTE_DURATIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.label}
+                  onSelect={() => void setMuted(true, option.duration)}
                 >
-                  <Icon className="size-4" />
-                  <span className="truncate">{option.label}</span>
-                </ToggleGroupItem>
-              );
-            })}
-          </ToggleGroup>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Mentions keeps the channel quiet unless someone needs you.
-          </p>
-        </section>
-
-        <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium text-foreground">Always notify</h3>
-          <div className="divide-y rounded-xl border bg-card">
-            {mentionOptions.map((option) => {
-              const level =
-                optimisticLevels[option.category] ??
-                storedPreferenceLevel(preferences, option.category, channelId, 'PUSH');
-              const enabled = level !== 'OFF';
-              const Icon = option.icon;
-              return (
-                <div
-                  key={option.category}
-                  className="flex items-center gap-3 px-3 py-3"
-                >
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {option.label}
-                  </span>
-                  <Switch
-                    checked={enabled}
-                    aria-label={option.label}
-                    onCheckedChange={(checked) =>
-                      void setPreference({
-                        category: option.category,
-                        level: checked ? 'PUSH' : 'OFF',
-                      })
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </SheetContent>
-    </Sheet>
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          value={mode}
+          onValueChange={(value) => void setMode(value as NotificationMode)}
+        >
+          <DropdownMenuRadioItem value="default" className="items-start py-2">
+            <span>
+              <span className="block font-medium">Use category default</span>
+              <span className="block text-xs text-muted-foreground">Inherit club settings</span>
+            </span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="all" className="py-2">
+            All messages
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="mentions" className="py-2">
+            Only @mentions
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="nothing" className="py-2">
+            Nothing
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
