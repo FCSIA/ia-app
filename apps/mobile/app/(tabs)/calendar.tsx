@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { RefreshControl } from "react-native";
+import { RefreshControl, View } from "react-native";
 import { AppHeader } from "@/components/app-header";
-import { FeedScreen } from "@/components/screen";
-import { Stack } from "@/components/ui/layout";
-import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Screen } from "@/components/screen";
+import { SegmentedControl } from "@/components/ui";
 import { EventsView } from "@/features/calendar/EventsView";
 import { MonthView } from "@/features/calendar/MonthView";
 import { MyWeekView } from "@/features/calendar/MyWeekView";
 import { getAppPersona, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { spacing } from "@/lib/tokens";
 
 type CalendarSegment = "week" | "month" | "events";
 type NonStudentCalendarSegment = Exclude<CalendarSegment, "week">;
@@ -24,7 +24,7 @@ export default function CalendarScreen() {
   const segment = isStudent ? studentSegment : nonStudentSegment;
 
   return (
-    <FeedScreen
+    <Screen
       header={<AppHeader title="Calendar" />}
       refreshControl={
         <RefreshControl
@@ -37,26 +37,30 @@ export default function CalendarScreen() {
         />
       }
     >
-      <Stack gap="sm">
+      <View
+        style={{
+          width: "100%",
+          maxWidth: spacing.xl * 32,
+          alignSelf: "center",
+          gap: spacing.xl,
+        }}
+      >
         <SegmentedControl
-          density="compact"
           value={segment}
           onChange={(value) => {
             if (isStudent) setStudentSegment(value as CalendarSegment);
             else setNonStudentSegment(value as NonStudentCalendarSegment);
           }}
-          segments={
-            isStudent
-              ? [
-                  { label: "Schedule", value: "week" },
-                  { label: "Month", value: "month" },
-                  { label: "Events", value: "events" },
-                ]
-              : [
-                  { label: "Month", value: "month" },
-                  { label: "Events", value: "events" },
-                ]
-          }
+          segments={isStudent
+            ? [
+                { label: "Schedule", value: "week" },
+                { label: "Month", value: "month" },
+                { label: "Events", value: "events" },
+              ]
+            : [
+                { label: "Month", value: "month" },
+                { label: "Events", value: "events" },
+              ]}
         />
         {isStudent && segment === "week" ? (
           <MyWeekView />
@@ -65,7 +69,7 @@ export default function CalendarScreen() {
         ) : (
           <EventsView />
         )}
-      </Stack>
-    </FeedScreen>
+      </View>
+    </Screen>
   );
 }
