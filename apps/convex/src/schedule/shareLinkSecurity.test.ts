@@ -67,4 +67,3 @@ describe("friend share-link security", () => {
     ).toBe("ALREADY_FRIENDS");
   });
 });
-

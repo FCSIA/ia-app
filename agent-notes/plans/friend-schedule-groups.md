@@ -56,4 +56,3 @@
 - focused web ESLint and `pnpm --filter web exec tsc --noEmit`
 - `pnpm --filter web build` when feasible
 - `git diff --check`
-
