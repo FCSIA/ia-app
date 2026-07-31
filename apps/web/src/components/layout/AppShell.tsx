@@ -285,7 +285,6 @@ export function AppShell({
               </div>
               <ScrollArea
                 className="min-h-0 flex-1 text-sidebar-foreground"
-                viewportClassName="scroll-fade"
               >
                 <nav className="flex flex-col gap-1 p-3">
                   {primary.map((item) => (

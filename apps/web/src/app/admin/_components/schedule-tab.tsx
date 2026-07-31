@@ -117,7 +117,7 @@ export function AdminScheduleTab({
                 <p className="text-sm font-medium text-foreground">Skipped rows</p>
                 <ScrollArea
                   className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
-                  viewportClassName="max-h-48 scroll-fade p-3"
+                  viewportClassName="max-h-48 p-3"
                 >
                   {lastStudentImport.errors.map((error, index) => (
                     <p key={`${error}-${index}`} className="leading-5">{error}</p>

@@ -69,7 +69,7 @@ export function DataTablePanel({
         orientation="both"
         viewportRef={contentRef}
         className="min-h-0 flex-1"
-        viewportClassName={cn('scroll-fade-x', densityClasses.table, contentClassName)}
+        viewportClassName={cn(densityClasses.table, contentClassName)}
       >
         {children}
       </ScrollArea>

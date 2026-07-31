@@ -111,6 +111,7 @@ type ClubWorkspaceProps = {
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
+  scrollOwner?: "workspace" | "content";
   channelSearch?: ChannelSearchControl;
 };
 
@@ -121,6 +122,7 @@ export function ClubWorkspace({
   title,
   actions,
   contentClassName,
+  scrollOwner = "workspace",
   channelSearch,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
@@ -279,11 +281,23 @@ export function ClubWorkspace({
                 minSize="55%"
                 style={{ overflow: "hidden" }}
               >
-                <ScrollArea
-                  className="h-full min-h-0 min-w-0"
-                >
-                  <div className={cn("min-h-full", contentClassName)}>{children}</div>
-                </ScrollArea>
+                {scrollOwner === "content" ? (
+                  <div
+                    className={cn(
+                      "h-full min-h-0 min-w-0 overflow-hidden",
+                      contentClassName,
+                    )}
+                  >
+                    {children}
+                  </div>
+                ) : (
+                  <ScrollArea
+                    className="h-full min-h-0 min-w-0"
+                    viewportClassName={contentClassName}
+                  >
+                    {children}
+                  </ScrollArea>
+                )}
               </ResizablePanel>
               <ResizableHandle id="club-channel-thread-handle" withHandle />
               <ResizablePanel
@@ -298,11 +312,23 @@ export function ClubWorkspace({
             </ResizablePanelGroup>
           ) : (
             <>
-              <ScrollArea
-                className="min-h-0 min-w-0 flex-1"
-              >
-                <div className={cn("min-h-full", contentClassName)}>{children}</div>
-              </ScrollArea>
+              {scrollOwner === "content" ? (
+                <div
+                  className={cn(
+                    "min-h-0 min-w-0 flex-1 overflow-hidden",
+                    contentClassName,
+                  )}
+                >
+                  {children}
+                </div>
+              ) : (
+                <ScrollArea
+                  className="min-h-0 min-w-0 flex-1"
+                  viewportClassName={contentClassName}
+                >
+                  {children}
+                </ScrollArea>
+              )}
               {rightPane ? (
                 <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
                   {rightPane}
@@ -405,7 +431,7 @@ function ClubNavigationPanel({
         </DropdownMenu>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-2">
           <CardGroup
             orientation="inline"

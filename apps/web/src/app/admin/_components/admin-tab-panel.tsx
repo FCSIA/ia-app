@@ -17,7 +17,7 @@ type AdminTabPanelProps = {
 export function AdminScrollTabPanel({ value, children }: AdminTabPanelProps) {
   return (
     <TabPanel value={value} className={cn(TAB_PANEL_BASE, 'flex overflow-hidden')}>
-      <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade pb-6">
+      <ScrollArea className="min-h-0 flex-1" viewportClassName="pb-6">
         {children}
       </ScrollArea>
     </TabPanel>

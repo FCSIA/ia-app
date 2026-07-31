@@ -90,11 +90,11 @@ Use these before creating new page shells:
 
 Use the shared Fluid `ScrollArea` for app-owned panes with a bounded height or
 width, such as navigation lists, table workbenches, calendar grids, dialogs,
-and sheets. Set the constraint on `ScrollArea`, put content spacing on the
-viewport or its child, and choose `orientation="horizontal"` or `"both"` when
-the content can overflow on those axes. Add `scroll-fade`, `scroll-fade-x`, or
-`scroll-fade-b` through `viewportClassName` when an edge cue helps users
-discover more content.
+and sheets. Set a definite constraint on `ScrollArea`, put content spacing on
+the viewport, and choose `orientation="horizontal"` or `"both"` when the
+content can overflow on those axes. The visible Fluid scrollbar is the edge
+affordance for these generic panes; do not add a mask fade that can imply
+overflow when everything already fits.
 
 Do not wrap scrollports whose owning component depends on being the scrolling
 element. This includes `MessageScroller`, command/select/menu internals, rich

@@ -169,8 +169,8 @@ const ScrollBar = forwardRef<
       data-visible={visible ? "" : undefined}
       className={cn(
         "group/scrollbar z-20 flex touch-none select-none",
-        "pointer-events-none opacity-0 transition-opacity delay-160 duration-120 ease-out",
-        "data-[visible]:pointer-events-auto data-[visible]:opacity-100 data-[visible]:delay-0 data-[visible]:duration-160",
+        "opacity-70 transition-opacity duration-120 ease-out",
+        "data-[visible]:opacity-100 data-[visible]:duration-160",
         orientation === "vertical" && "h-full w-2.5",
         orientation === "horizontal" && "h-2.5 w-full flex-col",
         className,
@@ -180,8 +180,8 @@ const ScrollBar = forwardRef<
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
         className={cn(
-          "relative bg-[color-mix(in_oklab,currentColor_8%,transparent)] transition-[background-color,width,height] duration-160 ease-in-out",
-          "group-hover/scrollbar:bg-[color-mix(in_oklab,currentColor_12%,transparent)] active:!bg-[color-mix(in_oklab,currentColor_16%,transparent)]",
+          "relative bg-[color-mix(in_oklab,currentColor_18%,transparent)] transition-[background-color,width,height] duration-160 ease-in-out",
+          "group-hover/scrollbar:bg-[color-mix(in_oklab,currentColor_30%,transparent)] active:!bg-[color-mix(in_oklab,currentColor_40%,transparent)]",
           shape.bg,
           orientation === "vertical" &&
             "mx-auto my-1 w-1 -translate-x-0.5 group-hover/scrollbar:w-1.5",

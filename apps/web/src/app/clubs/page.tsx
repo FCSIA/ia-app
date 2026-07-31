@@ -124,7 +124,7 @@ export default function ClubsLandingPage() {
               <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
             </div>
             {myClubs.length > 0 ? (
-              <ScrollArea viewportClassName="max-h-72 scroll-fade">
+              <ScrollArea viewportClassName="max-h-72">
                 <CardGroup orientation="inline">
                   {myClubs.map((club) => (
                     <ClubListRow
@@ -149,7 +149,7 @@ export default function ClubsLandingPage() {
             )}
           </aside>
 
-          <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:max-h-[calc(100dvh-7.5rem)]">
+          <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:h-[calc(100dvh-7.5rem)]">
             <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Discover clubs</h2>
@@ -179,7 +179,7 @@ export default function ClubsLandingPage() {
                 ))}
               </CardGroup>
             ) : filteredClubs.length > 0 ? (
-              <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+              <ScrollArea className="min-h-0 flex-1">
                 <CardGroup orientation="inline">
                   {filteredClubs.map((club) => (
                     <ClubListRow

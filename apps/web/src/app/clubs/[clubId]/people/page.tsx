@@ -460,7 +460,6 @@ export default function ClubPeoplePage() {
               pendingJoinRequests.length > 0 ? (
                 <ScrollArea
                   className="min-h-0 flex-1"
-                  viewportClassName="scroll-fade"
                 >
                   <div className="divide-y divide-border/60">
                     {pendingJoinRequests.map((request) => {
@@ -508,7 +507,6 @@ export default function ClubPeoplePage() {
             ) : filtered.length > 0 ? (
               <ScrollArea
                 className="min-h-0 flex-1"
-                viewportClassName="scroll-fade"
               >
                 <div className="divide-y divide-border/60">
                   {filtered.map((person) => (

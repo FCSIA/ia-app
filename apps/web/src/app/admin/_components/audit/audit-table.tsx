@@ -73,7 +73,6 @@ export function AuditTable({
       <ScrollArea
         orientation="horizontal"
         className="rounded-lg border"
-        viewportClassName="scroll-fade-x"
       >
         <Table className={`${d.table} table-fixed`}>
           <colgroup>

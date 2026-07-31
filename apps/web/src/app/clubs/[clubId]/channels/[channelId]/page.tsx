@@ -320,7 +320,7 @@ function PinnedMessagesButton({
         </div>
         {messages.length > 0 ? (
           <ScrollArea
-            viewportClassName="max-h-80 scroll-fade"
+            viewportClassName="max-h-80"
           >
             <div className="divide-y divide-border/70">
               {messages.map((message) => {
@@ -1255,6 +1255,7 @@ export default function ClubChannelPage({
       rightPane={rightPane}
       resizableRightPane
       contentClassName="relative flex flex-col bg-card"
+      scrollOwner="content"
       channelSearch={{
         channelName: channel.name,
         value: search,

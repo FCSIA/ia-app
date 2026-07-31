@@ -98,7 +98,7 @@ export function WorkshopForm({
           <SheetTitle>{editingWorkshopId ? 'Edit Workshop' : 'New Workshop'}</SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+        <ScrollArea className="min-h-0 flex-1">
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">

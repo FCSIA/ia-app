@@ -63,7 +63,7 @@ export function FriendScheduleDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-6 p-6">
           {/* Weekday Selector */}
           <div className="flex items-center gap-1 border-b border-border/30">

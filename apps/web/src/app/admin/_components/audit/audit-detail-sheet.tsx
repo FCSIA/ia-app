@@ -37,7 +37,7 @@ export function AuditDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="mt-6 min-h-0 flex-1" viewportClassName="scroll-fade">
+        <ScrollArea className="mt-6 min-h-0 flex-1">
           <div className="space-y-5">
           {isDetailLoading ? (
             <AdminNotice message="Loading audit context..." />
@@ -114,7 +114,6 @@ export function AuditDetailSheet({
                   <ScrollArea
                     orientation="horizontal"
                     className="rounded-lg border bg-muted/20"
-                    viewportClassName="scroll-fade-x"
                   >
                     <pre className="w-max min-w-full p-3 text-xs leading-6 text-foreground/80">
                       {JSON.stringify(eventDetail.meta, null, 2)}
