@@ -74,7 +74,6 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
   const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
   const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
   const flexFridays = useQuery(api.flexFriday.fridays.list, EMPTY_ARGS);
-  const schoolStatus = resolveSchoolDayStatus(schedule?.blocks ?? [], schoolDay);
   const nextFlexFriday = resolveNextFlexFriday(flexFridays ?? []);
 
   return (
@@ -202,7 +201,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
       return (
         <Section
           key={id}
-          title={schoolDay.isToday ? "Today" : schoolDay.label}
+          title={schedule.value?.resolvedDay || schoolDay.isToday ? "Today" : schoolDay.label}
           action={<SectionLink label="View week" onPress={() => router.push("/calendar" as never)} />}
         >
           {schedule.value === undefined ? (
@@ -384,6 +383,85 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
 }
 
 function ScheduleSummary({ data, schoolDay }: { data: any; schoolDay: DashboardSchoolDay }) {
+  if (!data?.mySchedule) {
+    return <HomeSurface><HomeEmpty text="No schedule saved." /></HomeSurface>;
+  }
+
+  if (data.resolvedDay) {
+    const day = data.resolvedDay;
+    const dayBlocks = resolvedDayBlocks(day);
+    const isResolvedToday = day.dateKey === format(new Date(), "yyyy-MM-dd");
+    const omittedLabel = day.isSpecial && day.omittedPeriods.length
+      ? `Not meeting: ${day.omittedPeriods.map((period: number) => `Period ${period}`).join(", ")}`
+      : undefined;
+    const setupLabel = day.lunchNeedsResolution
+      ? "Choose whether Period 4 or Period 5 is lunch in My Week."
+      : undefined;
+
+    return (
+      <View style={{ gap: spacing.md }}>
+        {day.isSpecial || setupLabel ? (
+          <View
+            style={{
+              minHeight: 44,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: spacing.sm,
+              paddingHorizontal: spacing.xs,
+            }}
+          >
+            <Badge
+              label={day.isSpecial ? "Special day" : "Setup needed"}
+              color="orange"
+            />
+            <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+              <Txt variant="label" numberOfLines={1}>
+                {day.name}
+              </Txt>
+              {omittedLabel || setupLabel ? (
+                <Txt variant="caption" tone="muted">
+                  {[omittedLabel, setupLabel].filter(Boolean).join(" · ")}
+                </Txt>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        <HomeSurface>
+          {dayBlocks.length ? dayBlocks.map((block: any, index: number) => {
+            const isCurrent = isCurrentBlock(block, isResolvedToday);
+            const courseSlug = block.entry?.course?.slug;
+            const subtitle = block.kind === "LUNCH"
+              ? `Period ${block.periodNumber} lunch`
+              : block.kind === "CUSTOM"
+                ? "School-day activity"
+                : block.entry?.course?.department ?? (block.entry ? undefined : "No class assigned");
+            return (
+              <HomeRow
+                key={block.key}
+                divider={index > 0}
+                leading={typeof block.periodNumber === "number"
+                  ? <PeriodBadge periodNumber={block.periodNumber} emphasized={isCurrent} />
+                  : undefined}
+                title={resolvedBlockTitle(block)}
+                subtitle={subtitle}
+                meta={formatSchoolTime(block.startTime)}
+                accessibilityLabel={courseSlug
+                  ? `Period ${block.periodNumber}, ${block.entry.className}. Open course details`
+                  : undefined}
+                onPress={courseSlug
+                  ? () => router.push(`/courses/${courseSlug}` as never)
+                  : undefined}
+              />
+            );
+          }) : (
+            <HomeEmpty text="No school schedule today." />
+          )}
+        </HomeSurface>
+      </View>
+    );
+  }
+
   const entries = (data?.mySchedule?.entries ?? [])
     .filter((entry: any) => entry.weekday === schoolDay.value)
     .sort((left: any, right: any) => left.periodNumber - right.periodNumber);
@@ -541,9 +619,12 @@ function formatSchoolTime(value: string) {
   return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
 
-function isCurrentBlock(block: { startTime: string; endTime: string } | undefined, isToday: boolean) {
+function isCurrentBlock(
+  block: { startTime: string; endTime: string } | undefined,
+  isToday: boolean,
+  now: Date = new Date(),
+) {
   if (!block || !isToday) return false;
-  const now = new Date();
   const minutes = now.getHours() * 60 + now.getMinutes();
   return minutes >= timeToMinutes(block.startTime) && minutes < timeToMinutes(block.endTime);
 }
@@ -553,36 +634,81 @@ function timeToMinutes(value: string) {
   return hour * 60 + minute;
 }
 
-function resolveSchoolDayStatus(blocks: any[], schoolDay: DashboardSchoolDay) {
-  const dayBlocks = blocks
-    .filter((block) => block.weekday === schoolDay.value)
-    .sort((left, right) => left.startTime.localeCompare(right.startTime));
-  const current = dayBlocks.find((block) => isCurrentBlock(block, schoolDay.isToday));
+function getDashboardDayContext(schedule: any, schoolDay: DashboardSchoolDay) {
+  if (Array.isArray(schedule?.resolvedDay?.blocks)) {
+    return {
+      blocks: resolvedDayBlocks(schedule.resolvedDay).sort(
+        (left: any, right: any) => left.position - right.position,
+      ),
+      isToday: schedule.resolvedDay.dateKey === format(new Date(), "yyyy-MM-dd"),
+      isResolvedDay: true,
+    };
+  }
+
+  return {
+    blocks: (schedule?.blocks ?? [])
+      .filter((block: any) => block.weekday === schoolDay.value)
+      .sort((left: any, right: any) => left.startTime.localeCompare(right.startTime)),
+    isToday: schoolDay.isToday,
+    isResolvedDay: false,
+  };
+}
+
+function resolvedDayBlocks(day: any) {
+  const hasCanonicalLunch = day.blocks.some((block: any) => block.kind === "LUNCH");
+  return day.blocks.filter(
+    (block: any) =>
+      !(
+        hasCanonicalLunch &&
+        block.kind === "CUSTOM" &&
+        block.label.trim().toLowerCase() === "lunch"
+      ),
+  );
+}
+
+function resolvedBlockTitle(block: any) {
+  if (block.kind === "LUNCH") return "Lunch";
+  return block.entry?.className ?? block.displayLabel ?? block.label;
+}
+
+function resolveSchoolDayStatus(
+  schedule: any,
+  schoolDay: DashboardSchoolDay,
+  now: Date = new Date(),
+) {
+  const dayContext = getDashboardDayContext(schedule, schoolDay);
+  const dayBlocks = dayContext.blocks;
+  const current = dayBlocks.find((block: any) =>
+    isCurrentBlock(block, dayContext.isToday, now),
+  );
 
   if (current) {
     return {
-      title: current.label,
+      title: resolvedBlockTitle(current),
       subtitle: "In progress",
       meta: `${formatSchoolTime(current.startTime)}–${formatSchoolTime(current.endTime)}`,
     };
   }
 
-  const now = new Date();
   const minutes = now.getHours() * 60 + now.getMinutes();
-  const next = schoolDay.isToday
-    ? dayBlocks.find((block) => timeToMinutes(block.startTime) > minutes)
+  const next = dayContext.isToday
+    ? dayBlocks.find((block: any) => timeToMinutes(block.startTime) > minutes)
     : dayBlocks[0];
 
   if (next) {
     return {
-      title: next.label,
-      subtitle: schoolDay.isToday ? "Next today" : `Next school day · ${schoolDay.label}`,
+      title: resolvedBlockTitle(next),
+      subtitle: dayContext.isToday ? "Next today" : `Next school day · ${schoolDay.label}`,
       meta: `${formatSchoolTime(next.startTime)}–${formatSchoolTime(next.endTime)}`,
     };
   }
 
   return {
-    title: dayBlocks.length ? "School day complete" : `No ${schoolDay.label} blocks`,
+    title: dayBlocks.length
+      ? "School day complete"
+      : dayContext.isResolvedDay
+        ? "No school blocks today"
+        : `No ${schoolDay.label} blocks`,
     subtitle: dayBlocks.length ? "No more scheduled blocks today." : "The school-day schedule is not configured.",
     meta: undefined,
   };
@@ -614,7 +740,10 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
     return () => clearInterval(interval);
   }, []);
 
-  const schoolStatus = useMemo(() => resolveSchoolDayStatus(schedule?.blocks ?? [], schoolDay), [schedule?.blocks, schoolDay]);
+  const schoolStatus = useMemo(
+    () => resolveSchoolDayStatus(schedule, schoolDay, now),
+    [schedule, schoolDay, now],
+  );
   
   const firstName = user?.firstName ?? "";
   const hour = now.getHours();
@@ -665,10 +794,10 @@ function DayProgressWidget({ schedule, schoolDay }: { schedule: any; schoolDay: 
   }, []);
 
   const progress = useMemo(() => {
-    if (!schedule?.blocks || schedule.blocks.length === 0) return null;
-    if (!schoolDay.isToday) return null;
+    const dayContext = getDashboardDayContext(schedule, schoolDay);
+    if (!dayContext.isToday) return null;
 
-    const blocks = schedule.blocks.filter((b: any) => b.weekday === schoolDay.value);
+    const blocks = dayContext.blocks;
     if (blocks.length === 0) return null;
 
     const todayStr = format(new Date(), "yyyy-MM-dd");
@@ -693,7 +822,7 @@ function DayProgressWidget({ schedule, schoolDay }: { schedule: any; schoolDay: 
     const remaining = totalMinutes - elapsedMinutes;
 
     return { percent, status: "In progress", remaining };
-  }, [schedule?.blocks, schoolDay, now]);
+  }, [schedule, schoolDay, now]);
 
   if (!progress) return null;
 
