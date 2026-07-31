@@ -4,13 +4,12 @@ tags: [mobile, frontend, design-system, audit]
 
 # Mobile UI foundations
 
-The mobile app has useful shared colors, type roles, safe-area handling, and
-accessibility labels, but it does not yet have a strong composition or density
-system. Screens routinely assemble their own spacing, rows, controls, and
-states with inline style objects. The result is consistent at the token level
-but repetitive and visually generic: large rounded surfaces, icon-in-a-box
-rows, pill controls, 24px section rhythm, and the same title/subtitle/chevron
-hierarchy across unrelated tasks.
+The mobile app started with useful shared colors, type roles, safe-area
+handling, and accessibility labels, but without a strong composition or
+density system. Screens routinely assembled their own spacing, rows, controls,
+and states with inline style objects. The July 2026 foundation pass established
+shared compact composition and behavior APIs while preserving the existing
+NativeWind, theme, and routing architecture.
 
 This is an architecture problem before it is a theme problem. Installing a
 large themed component library will not, by itself, make the app feel more
@@ -49,16 +48,17 @@ mostly bypasses it with screen-local style objects. See the official
 [NativeWind overview](https://www.nativewind.dev/docs) and
 [state variants](https://www.nativewind.dev/docs/core-concepts/states).
 
-For behavior-heavy primitives, prefer a small, headless layer:
+For behavior-heavy primitives, use a small, headless layer:
 
-1. Evaluate [rn-primitives](https://rn-primitives.vercel.app/) directly for
-   dialog, alert dialog, menu, popover, select, tabs, collapsible, checkbox,
-   radio, separator, and portal behavior.
+1. Adopt [rn-primitives](https://rn-primitives.vercel.app/) incrementally for
+   behavior the app needs. Collapsible and separator are the first adapters;
+   dialog, alert dialog, menu, popover, select, tabs, checkbox, radio, and
+   portal remain candidates rather than preinstalled abstractions.
 2. Use [React Native Reusables](https://reactnativereusables.com/docs) as a
    source-owned component pattern when it saves work. It is specifically built
    around NativeWind and rn-primitives and follows a shadcn-style ownership
    model rather than imposing a theme.
-3. Replace the hand-built sheet implementation with the already-installed
+3. Keep the hand-built sheet API, but implement it with the already-installed
    [Gorhom Bottom Sheet](https://gorhom.dev/react-native-bottom-sheet/) behind a
    local adapter. This is higher value than introducing another UI kit.
 4. Consider [Expo UI](https://docs.expo.dev/versions/latest/sdk/ui/) selectively
@@ -74,6 +74,42 @@ while it requires a NativeWind v5 preview path for the recommended
 configuration. [React Native Paper](https://reactnativepaper.com/) is mature,
 but its Material Design visual language is not a natural match for the compact,
 school-centered IA direction.
+
+## Implementation status
+
+The shared foundation layer now includes:
+
+- `densityMetrics` defines compact, default, and comfortable control and row
+  measurements. Compact rows retain a 44px interaction envelope.
+- `FeedScreen`, `WorkspaceScreen`, and `FormScreen` own task-specific rhythm and
+  adapt their width and spacing for narrow and wide viewports.
+- `Stack`, `Inline`, `Inset`, `Divider`, `AdaptiveSplit`, and `AdaptivePane`
+  provide shared composition without imposing card chrome.
+- `CompactList`, `CompactListSectionHeader`, and `CompactListItem` cover
+  default, selected, unread, disabled, and destructive states with flat
+  separators and optional leading or trailing content.
+- `Field` and `CompactSearchField` compose labels, descriptions, validation,
+  and compact inputs. `TextField` exposes density and invalid state.
+- Local rn-primitives adapters now provide collapsible and separator behavior.
+- `Sheet` is backed by Gorhom Bottom Sheet, implements snap points, keyboard and
+  Android dismissal behavior, and automatically uses `BottomSheetTextInput`
+  for fields rendered inside a sheet.
+- The design-system route exercises density, list states, field states,
+  collapsible behavior, and separators.
+- Clubs and club chat remain the compact visual reference. Club channels are
+  single-line, visibility-aware, and intentionally omit descriptions.
+
+Expo UI was not added in this pass. Its platform-hosted API is useful when a
+specific flow benefits from native SwiftUI or Jetpack Compose behavior, but it
+does not replace the cross-platform primitive layer established here. React
+Native Reusables remains a pattern and source reference; adopting its full
+component set would duplicate local ownership without solving a current gap.
+
+Device QA also established an important boundary: compact single-line channel
+metrics must not be applied mechanically to two-line destinations, content
+feeds, forms, or dashboard sections. Dashboard, Discover, Calendar, Profile,
+and Settings retain their task-specific layouts until each workflow has a
+separately reviewed composition.
 
 ## Missing primitives
 
@@ -113,13 +149,14 @@ Build or adopt these in order:
 - Treat selected, unread, permission-limited, and loading states as part of the
   component API, not one-off screen styling.
 
-## Recommended rollout
+## Next foundation work
 
-1. Use Clubs and club chat as the compact workspace reference implementation.
-2. Extract the proven compact header, toolbar, section header, and list-row
-   metrics into shared variants.
-3. Replace the custom sheet and establish the overlay adapter.
-4. Migrate Discover, Calendar, and Dashboard one workflow at a time; avoid a
-   repository-wide visual rewrite.
-5. Add the state matrix before deleting old primitives, then remove unused
-   compatibility paths and barrel-import cycles.
+1. Extend the local headless adapters only when a real dialog, menu, popover,
+   select, or tab migration needs them.
+2. Add device-level state verification for large text, reduced motion,
+   keyboard movement, long content, offline, permission-denied, loading, empty,
+   and error cases.
+3. Migrate remaining screens in coherent workflows, then remove legacy
+   primitives only after their call sites reach zero.
+4. Continue replacing screen-local layout objects with composition primitives
+   where reuse is proven; do not pursue a mechanical repository-wide rewrite.

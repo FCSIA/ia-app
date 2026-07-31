@@ -2,8 +2,9 @@
 
 ## Active Focus
 
-- **Branch**: `agent/web-chat-modernization` (draft PR #45)
-- **Goal**: Modernize web chat behavior and presentation while preserving the shared Convex-first mobile/web model.
+- **Branch**: `main`
+- **Goal**: Establish durable mobile UI foundations and a readable, compact
+  club workspace without mechanically compressing unrelated workflows.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -76,10 +77,13 @@
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile
   owns Appearance and Notification settings.
-- Mobile UI has a shared primitive layer for headers, rows, segmented controls,
-  chips, switches, avatar, skeletons, icon buttons, bottom sheets, stats,
-  press-scale motion, haptics, and toast feedback. Dashboard customization now
-  uses a bottom sheet with drag-to-reorder.
+- Mobile UI has task-specific `FeedScreen`, `WorkspaceScreen`, and `FormScreen`
+  variants; density tokens; composition primitives; compact list and field
+  APIs; local rn-primitives collapsible/separator adapters; and a Gorhom-backed
+  sheet that uses `BottomSheetTextInput` for fields rendered inside it. The
+  existing shared headers, segmented controls, chips, switches, avatar,
+  skeletons, icon buttons, stats, press-scale motion, haptics, and toast
+  feedback remain available.
 - Mobile club chat now keeps its composer above the iOS home indicator and
   keyboard, renders emoji reactions with canonical token payloads, and allows
   independent message operations without freezing the composer.
@@ -88,16 +92,18 @@
   on long press, and supports deliberate swipe-to-reply with reduced-motion
   behavior.
 - Mobile club workspaces now use a compact Discord-inspired channel hierarchy:
-  an 8px workspace inset, compact search and actions, 40px single-line
-  visibility-aware channel entries without descriptions, and a 44px detail
-  header. Chat now uses tighter message gutters and date markers, while
-  formatting lives behind the composer tools button. Compact visual controls
-  preserve 44px interaction envelopes with hit slop.
-- The mobile UI foundation audit is recorded in
-  `docs/reference/mobile-ui-foundations.md`. The recommended direction is to
-  keep and consistently use NativeWind, evaluate rn-primitives/React Native
-  Reusables for headless behavior, replace the custom sheet with the installed
-  Gorhom implementation, and avoid a wholesale themed-library migration.
+  an 8px workspace inset, 44px search/actions and single-line visibility-aware
+  channel entries without descriptions, a horizontal 40px category header,
+  and a 44px detail header. Chat uses tighter message gutters and date markers,
+  while formatting lives behind the composer tools button.
+- The mobile UI foundation audit and implementation boundary are recorded in
+  `docs/reference/mobile-ui-foundations.md`. NativeWind remains the styling
+  layer, rn-primitives is adopted incrementally behind local adapters, the
+  sheet now uses Gorhom, and Expo UI/Tamagui/gluestack/Paper were not added.
+- Device screenshots caught an over-compressed first migration of Dashboard,
+  Discover, Calendar, Profile, and Settings. Those broad visual migrations were
+  reverted; compact density is scoped to single-line workspace tasks until
+  each other workflow receives its own reviewed composition.
 - Club workspaces now prioritize People and Shared content over internal mention
   groups, search channel names and access-checked message history, and collect
   paginated files and images for each readable channel.
@@ -157,10 +163,9 @@
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (14 files, 47 tests)
-- `pnpm --filter mobile typecheck` - currently stops at the existing TypeScript
-  6 `baseUrl` deprecation before checking source files
-- `pnpm --filter mobile exec tsc --noEmit --ignoreDeprecations 6.0` - pass after
-  the second compact club channels/chat density pass
+- `pnpm --filter mobile exec tsc --noEmit` - pass after removing the deprecated
+  mobile `baseUrl`, correcting compact density, and reverting the broad visual
+  migrations
 - Mobile Vitest suite - pass (14 files, 42 tests)
 - Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
   Courses list/detail, Events empty state, Calendar personal create/delete,
@@ -175,13 +180,11 @@
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - current rerun reaches the web checks but fails in the unrelated
-  mobile package because TypeScript 6 treats its `baseUrl` setting as a
-  deprecation error; focused web lint passes with pre-existing warnings only.
+- `pnpm lint` - pass; web reports 8 pre-existing unused-import warnings and no
+  errors
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
-- `pnpm build` - blocked in the unrelated mobile package by the same TypeScript
-  6 `baseUrl` deprecation error; `pnpm --filter web build` passes.
+- `pnpm build` - pass across design tokens, fun facts, Convex, mobile, and web
 - `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
   after the compact club-workspace redesign and channel interaction polish;
   signed-in visual QA remains to be run because no browser-control session was
@@ -198,14 +201,17 @@ narrowed in draft PR #45.
 
 ## Next Work
 
-1. Review and merge draft PR #45 after the web chat visual/interaction pass.
-2. Deploy the Convex schema/index/function changes to the target deployment
+1. Reload the mobile Club workspace on a physical device and verify the
+   horizontal category header, 44px channels, chat rhythm, keyboard, and sheet
+   behavior; no simulator was booted for the corrective pass.
+2. Review and merge draft PR #45 after the web chat visual/interaction pass.
+3. Deploy the Convex schema/index/function changes to the target deployment
    before production student/staff use.
-3. Coordinate with the FERPA session before touching `docs/compliance/` or the
+4. Coordinate with the FERPA session before touching `docs/compliance/` or the
    FERPA entry in `docs/index.md`.
-4. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+5. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-5. Address the remaining lower-priority hardening debt listed above.
+6. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 
