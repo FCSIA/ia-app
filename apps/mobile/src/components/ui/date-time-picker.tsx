@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Platform, View } from "react-native";
-import DateTimePickerNative, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import DateTimePickerNative, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Clock } from "lucide-react-native";
-import { Button, TextField, Txt } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 
@@ -32,12 +34,26 @@ export function DateTimePicker({
 
   const isTimeOnly = mode === "time";
   const formattedValue = value
-    ? format(value, isTimeOnly ? "h:mm a" : mode === "datetime" ? "MMM d, yyyy h:mm a" : "MMM d, yyyy")
+    ? format(
+        value,
+        isTimeOnly
+          ? "h:mm a"
+          : mode === "datetime"
+            ? "MMM d, yyyy h:mm a"
+            : "MMM d, yyyy",
+      )
     : "";
 
   if (Platform.OS === "ios") {
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", minHeight: 48, gap: spacing.sm }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          minHeight: 48,
+          gap: spacing.sm,
+        }}
+      >
         {value === undefined && (
           <Button
             title={placeholder}
