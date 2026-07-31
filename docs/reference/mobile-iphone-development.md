@@ -90,11 +90,21 @@ The command only proceeds when Xcode can see one paired physical iOS device. It
 stops when it finds zero or multiple devices; disconnect the others, or select
 one explicitly with `pnpm mobile:ios:refresh -- "<iPhone UDID>"`. It asks Xcode
 to renew the provisioning profile, rebuilds the app, and installs it on the
-connected phone. Build output is quiet by default while warnings and errors
-remain visible; add `--verbose` for the complete Xcode log. The phone must
-already be trusted and the Apple Account must already be signed in to Xcode.
-Re-run prebuild and CocoaPods only after a native dependency or
-app-configuration change, or when starting from a fresh clone.
+connected phone. It also selects the only Apple development team registered in
+Xcode, overriding a stale school team left by prebuild. When more than one
+development team is available, select one from Nushell with:
+
+```nu
+with-env { IOS_APPLE_TEAM_ID: "YOUR_TEAM_ID" } {
+  pnpm mobile:ios:refresh
+}
+```
+
+Build output is quiet by default while warnings and errors remain visible; add
+`--verbose` for the complete Xcode log. The phone must already be trusted and
+the Apple Account must already be signed in to Xcode. Re-run prebuild and
+CocoaPods only after a native dependency or app-configuration change, or when
+starting from a fresh clone.
 
 A paid Apple Developer team or TestFlight avoids the weekly Personal Team
 expiration. Personal Team builds do not include the paid-team push-notification

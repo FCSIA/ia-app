@@ -104,11 +104,73 @@ if ! xcrun devicectl --version >/dev/null 2>&1; then
   exit 1
 fi
 
+apple_team_id="${IOS_APPLE_TEAM_ID:-}"
+if [[ -z "$apple_team_id" ]]; then
+  apple_team_ids="$(
+    /usr/bin/defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier 2>/dev/null |
+      /usr/bin/sed -nE 's/^[[:space:]]*teamID = ([A-Z0-9]{10});/\1/p' |
+      /usr/bin/sort -u
+  )"
+  apple_team_count="$(
+    printf '%s\n' "$apple_team_ids" |
+      /usr/bin/awk 'NF { count++ } END { print count + 0 }'
+  )"
+
+  if [[ "$apple_team_count" -eq 0 ]]; then
+    echo "No Apple development team is registered with Xcode." >&2
+    echo "Sign in under Xcode Settings > Accounts, then retry." >&2
+    exit 1
+  fi
+
+  if [[ "$apple_team_count" -gt 1 ]]; then
+    echo "Multiple Apple development teams are registered with Xcode:" >&2
+    printf '%s\n' "$apple_team_ids" | /usr/bin/sed 's/^/  /' >&2
+    echo "Select one with IOS_APPLE_TEAM_ID, then retry." >&2
+    exit 1
+  fi
+
+  apple_team_id="$apple_team_ids"
+fi
+
+export EXPO_IOS_PERSONAL_TEAM=1
+export IOS_APPLE_TEAM_ID="$apple_team_id"
+
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/innovation-academy-ios.XXXXXX")"
 cleanup() {
   rm -rf "$temporary_directory"
 }
 trap cleanup EXIT
+
+build_settings_report="$temporary_directory/build-settings.json"
+(
+  cd "$ios_directory"
+  xcodebuild \
+    -workspace "InnovationAcademy.xcworkspace" \
+    -scheme "InnovationAcademy" \
+    -configuration Debug \
+    -destination "generic/platform=iOS" \
+    -showBuildSettings \
+    -json >"$build_settings_report"
+)
+
+if ! ios_bundle_identifier="$(node - "$build_settings_report" <<'NODE'
+const { readFileSync } = require('node:fs');
+
+const report = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const appTarget = report.find((entry) => entry.target === 'InnovationAcademy');
+const bundleIdentifier = appTarget?.buildSettings?.PRODUCT_BUNDLE_IDENTIFIER;
+
+if (typeof bundleIdentifier !== 'string' || bundleIdentifier.length === 0) {
+  console.error('Could not determine the iOS bundle identifier from Xcode.');
+  process.exit(1);
+}
+
+process.stdout.write(bundleIdentifier);
+NODE
+)"; then
+  exit 1
+fi
+export IOS_BUNDLE_IDENTIFIER="$ios_bundle_identifier"
 
 if [[ -z "$device_udid" ]]; then
   device_report="$temporary_directory/devices.json"
@@ -155,7 +217,7 @@ if [[ "$verbose_build" -eq 0 ]]; then
   xcodebuild_command+=(-quiet)
 fi
 
-echo "Renewing provisioning and building Innovation Academy for $device_udid..."
+echo "Renewing provisioning and building Innovation Academy for $device_udid with Apple team $apple_team_id..."
 (
   cd "$ios_directory"
   "${xcodebuild_command[@]}" \
@@ -166,6 +228,8 @@ echo "Renewing provisioning and building Innovation Academy for $device_udid..."
     -derivedDataPath "$derived_data" \
     -allowProvisioningUpdates \
     -allowProvisioningDeviceRegistration \
+    "CODE_SIGN_STYLE=Automatic" \
+    "DEVELOPMENT_TEAM=$apple_team_id" \
     build
 )
 

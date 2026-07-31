@@ -4,6 +4,7 @@ import { type ConfigPlugin, withEntitlementsPlist } from "expo/config-plugins";
 const easProjectId = process.env.EAS_PROJECT_ID;
 const expoOwner = process.env.EXPO_ACCOUNT_OWNER;
 const personalTeamBuild = process.env.EXPO_IOS_PERSONAL_TEAM === "1";
+const iosAppleTeamId = process.env.IOS_APPLE_TEAM_ID;
 const universalLinkHost =
   process.env.EXPO_PUBLIC_UNIVERSAL_LINK_HOST ??
   "app.innovationacademy.fcsia.org";
@@ -52,7 +53,9 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER ?? "org.fcsia.app",
     buildNumber: process.env.IOS_BUILD_NUMBER ?? "1",
-    appleTeamId: "H597TPM2HA",
+    appleTeamId: personalTeamBuild
+      ? iosAppleTeamId
+      : (iosAppleTeamId ?? "H597TPM2HA"),
     associatedDomains: personalTeamBuild
       ? undefined
       : [`applinks:${universalLinkHost}`],
