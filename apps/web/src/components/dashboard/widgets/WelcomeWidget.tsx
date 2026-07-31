@@ -1,42 +1,44 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { format } from 'date-fns';
-import { useQuery } from 'convex/react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { api } from '~/apps/convex/src/_generated/api';
-import { getCurrentScheduleStatus } from '@/components/schedule/schedule-utils';
-import { Badge } from '@/components/ui/badge';
-import { Clock } from 'lucide-react';
+import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
+import { useQuery } from "convex/react";
+import { hasRole, useCurrentUser } from "@/lib/auth";
+import { api } from "~/apps/convex/src/_generated/api";
+import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
+import { Badge } from "@/components/ui/badge";
+import { Clock } from "lucide-react";
 
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
   const user = useCurrentUser();
-  const isStudent = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
+  const isStudent =
+    !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(api.schedule.dashboard.get, isStudent ? {} : 'skip');
-
-  const currentStatus = useMemo(
-    () =>
-      getCurrentScheduleStatus(
-        scheduleData?.mySchedule ?? null,
-        scheduleData?.blocks ?? [],
-        now,
-      ),
-    [now, scheduleData?.blocks, scheduleData?.mySchedule],
+  const scheduleData = useQuery(
+    api.schedule.dashboard.get,
+    isStudent ? {} : "skip",
   );
 
-  const firstName = user?.firstName ?? '';
+  const currentStatus = useMemo(
+    () => getCurrentResolvedScheduleStatus(scheduleData?.resolvedDay, now),
+    [now, scheduleData?.resolvedDay],
+  );
+
+  const firstName = user?.firstName ?? "";
   const hour = now.getHours();
   const greeting =
-    hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  const currentClass = currentStatus.currentEntry?.className ?? null;
+  const currentClass =
+    currentStatus.currentEntry?.className ??
+    currentStatus.currentBlock?.displayLabel ??
+    null;
   const currentBlock = currentStatus.currentBlock;
   const nextBlock = currentStatus.nextBlock;
 
@@ -47,32 +49,37 @@ export function WelcomeWidget() {
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               {greeting}
-              {firstName ? `, ${firstName}` : ''}.
+              {firstName ? `, ${firstName}` : ""}.
             </h1>
           </div>
 
           {isStudent ? (
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                Current Class
-              </p>
-              <h2 className="text-xl font-semibold text-foreground">
-                {currentClass ?? 'No active class'}
-              </h2>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {currentBlock ? (
-                  <Badge variant="solid" className="rounded-full px-2 py-0 h-5 text-[10px]">
-                    {currentBlock.label}
-                  </Badge>
-                ) : null}
-                <span>
-                  {!currentClass && nextBlock
-                    ? `Next: ${nextBlock.label} at ${nextBlock.startTime}`
-                    : currentBlock ? `${currentBlock.startTime} - ${currentBlock.endTime}` : 'No more blocks today'}
-                </span>
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                  Now
+                </p>
+                <h2 className="text-xl font-semibold text-foreground">
+                  {currentClass ?? "No active class"}
+                </h2>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {currentBlock ? (
+                    <Badge
+                      variant="solid"
+                      className="rounded-full px-2 py-0 h-5 text-[10px]"
+                    >
+                      {currentBlock.label}
+                    </Badge>
+                  ) : null}
+                  <span>
+                    {!currentClass && nextBlock
+                      ? `Next: ${nextBlock.displayLabel} at ${nextBlock.startTime}`
+                      : currentBlock
+                        ? `${currentBlock.startTime} - ${currentBlock.endTime}`
+                        : "No more blocks today"}
+                  </span>
+                </div>
               </div>
-            </div>
             </div>
           ) : null}
         </div>
@@ -81,12 +88,12 @@ export function WelcomeWidget() {
           <div className="flex items-center gap-3 text-foreground">
             <Clock className="size-6 text-primary/60" />
             <p className="text-4xl font-semibold tracking-tighter tabular-nums sm:text-5xl">
-              {format(now, 'h:mm:ss a')}
+              {format(now, "h:mm:ss a")}
             </p>
           </div>
           <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <span className="size-1 rounded-full bg-primary/40" />
-            {format(now, 'EEEE, MMMM d, yyyy')}
+            {format(now, "EEEE, MMMM d, yyyy")}
           </div>
         </div>
       </div>
