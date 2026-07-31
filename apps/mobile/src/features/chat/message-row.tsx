@@ -174,7 +174,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             pointerEvents="none"
             style={{
               position: "absolute",
-              right: spacing.md,
+              right: spacing.sm,
               top: 0,
               bottom: 0,
               width: 56,
@@ -232,15 +232,15 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           flexDirection: "row",
           alignItems: "flex-start",
           gap: spacing.sm,
-          paddingLeft: message.isPinned ? spacing.sm : spacing.md,
+          paddingLeft: message.isPinned ? spacing.xs : spacing.md,
           paddingRight: spacing.md,
-          paddingTop: groupedWithPrevious ? 2 : spacing.sm,
+          paddingTop: groupedWithPrevious ? 0 : 6,
           paddingBottom:
             message.replyCount && showReplyPreview
-              ? spacing.xs
+              ? 2
               : groupedWithPrevious
-                ? 2
-                : spacing.xs,
+                ? 0
+                : 3,
           borderLeftWidth: message.isPinned ? 3 : 0,
           borderLeftColor: message.isPinned
             ? color("primary")
@@ -249,7 +249,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
       >
         <View
           style={{
-            width: 38,
+            width: 34,
             flexShrink: 0,
             alignItems: "center",
           }}
@@ -258,7 +258,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
             <Avatar
               uri={message.author?.avatarUrl}
               name={authorName}
-              size={36}
+              size={32}
             />
           )}
         </View>
@@ -267,7 +267,7 @@ export const ChatMessageRow = memo(function ChatMessageRow({
           {!groupedWithPrevious ? (
             <View
               style={{
-                minHeight: 20,
+                minHeight: 18,
                 flexDirection: "row",
                 alignItems: "baseline",
                 gap: spacing.xs,

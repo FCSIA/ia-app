@@ -74,6 +74,7 @@ export type ChatThread = {
 export type ChatChannel = {
   name: string;
   description?: string | null;
+  visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
   viewerCanPost: boolean;
 };
 
@@ -81,7 +82,7 @@ export type ClubChatData = {
   clubName: string;
   channel: ChatChannel;
   canManageChannels: boolean;
-  members: Array<{
+  members?: Array<{
     uniqueId: string;
     firstName: string;
     lastName: string;
@@ -118,7 +119,10 @@ export function isImageAttachment(attachment: ChatAttachment) {
 }
 
 export function isPdfAttachment(attachment: ChatAttachment) {
-  if (attachment.mimeType?.split(";", 1)[0].trim().toLowerCase() === "application/pdf") {
+  if (
+    attachment.mimeType?.split(";", 1)[0].trim().toLowerCase() ===
+    "application/pdf"
+  ) {
     return true;
   }
   return /\.pdf(?:\?|#|$)/i.test(attachment.fileName);

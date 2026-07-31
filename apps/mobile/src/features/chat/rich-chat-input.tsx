@@ -36,10 +36,7 @@ import {
   normalizeExternalChatLink,
   sanitizeChatMarkdown,
 } from "./chat-markdown";
-import {
-  mentionInsertion,
-  type ChatMentionSuggestion,
-} from "./mention-format";
+import { mentionInsertion, type ChatMentionSuggestion } from "./mention-format";
 
 export type { ChatMentionSuggestion } from "./mention-format";
 
@@ -112,14 +109,17 @@ export function RichChatInput({
       .slice(0, 6);
   }, [mentionQuery, suggestions]);
 
-  const togglePanel = useCallback((panel: Exclude<ComposerPanel, null>) => {
-    const next = activePanel === panel ? null : panel;
-    setActivePanel(next);
-    if (next !== "formatting") {
-      setLinkOpen(false);
-      setLinkError(null);
-    }
-  }, [activePanel]);
+  const togglePanel = useCallback(
+    (panel: Exclude<ComposerPanel, null>) => {
+      const next = activePanel === panel ? null : panel;
+      setActivePanel(next);
+      if (next !== "formatting") {
+        setLinkOpen(false);
+        setLinkError(null);
+      }
+    },
+    [activePanel],
+  );
 
   const applyLink = useCallback(() => {
     const normalized = normalizeExternalChatLink(linkUrl);
@@ -161,7 +161,10 @@ export function RichChatInput({
                 haptic={false}
                 onPress={() => {
                   const insertion = mentionInsertion(suggestion);
-                  inputRef.current?.insertMention(insertion.text, insertion.url);
+                  inputRef.current?.insertMention(
+                    insertion.text,
+                    insertion.url,
+                  );
                   setMentionOpen(false);
                   setMentionQuery("");
                 }}
@@ -213,97 +216,20 @@ export function RichChatInput({
         style={{
           width: "100%",
           overflow: "hidden",
-          borderRadius: radii.xl,
+          borderRadius: radii.md,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor:
             focused || activePanel ? color("primary") : color("border"),
           backgroundColor: color("card"),
         }}
       >
-        <EnrichedMarkdownTextInput
-          ref={inputRef}
-          nativeID={nativeID}
-          accessibilityLabel={accessibilityLabel}
-          defaultValue={nativeMarkdownRef.current}
-          placeholder={placeholder}
-          placeholderTextColor={color("mutedForeground")}
-          editable={editable}
-          multiline
-          scrollEnabled
-          cursorColor={color("primary")}
-          selectionColor={color("secondary")}
-          mentionIndicators={["@"]}
-          linkRegex={/https?:\/\/[^\s]+/i}
-          formatMenuConfig={{
-            bold: { enabled: true },
-            italic: { enabled: true },
-            underline: { enabled: true },
-            // The native edit menu cannot constrain URI schemes. Keep links on
-            // our validated toolbar so only http(s) URLs enter the document.
-            link: { enabled: false },
-            strikethrough: { enabled: false },
-            spoiler: { enabled: false },
-          }}
-          markdownStyle={{
-            strong: { color: color("foreground") },
-            em: { color: color("foreground") },
-            link: { color: color("primary"), underline: true },
-            linkVariants: {
-              "^user:": {
-                color: color("primary"),
-                backgroundColor: color("secondary"),
-                underline: false,
-              },
-            },
-          }}
-          onChangeText={(nextPlainText) => {
-            nativePlainTextRef.current = nextPlainText;
-            emitChange(nextPlainText, nativeMarkdownRef.current);
-          }}
-          onChangeMarkdown={(nextMarkdown) => {
-            const sanitized = sanitizeChatMarkdown(nextMarkdown);
-            nativeMarkdownRef.current = sanitized;
-            emitChange(nativePlainTextRef.current, sanitized);
-          }}
-          onChangeSelection={setSelection}
-          onChangeState={setStyleState}
-          onStartMention={() => {
-            setMentionOpen(true);
-            setMentionQuery("");
-          }}
-          onChangeMention={({ text }) => {
-            setMentionOpen(true);
-            setMentionQuery(text);
-          }}
-          onEndMention={() => {
-            setMentionOpen(false);
-            setMentionQuery("");
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          style={{
-            minHeight: 50,
-            maxHeight: 140,
-            borderWidth: 0,
-            backgroundColor: "transparent",
-            color: color("foreground"),
-            paddingHorizontal: spacing.md,
-            paddingTop: spacing.md,
-            paddingBottom: spacing.sm,
-            fontSize: 15,
-            lineHeight: 21,
-          }}
-        />
-
         <View
           style={{
             minWidth: 0,
             minHeight: 52,
-            paddingHorizontal: spacing.xs,
-            paddingBottom: spacing.xs,
             flexDirection: "row",
-            alignItems: "center",
-            gap: 2,
+            alignItems: "flex-end",
+            paddingHorizontal: 2,
           }}
         >
           {toolbarActions ? (
@@ -330,9 +256,83 @@ export function RichChatInput({
             disabled={!editable}
             onPress={() => togglePanel("formatting")}
           />
-          <View style={{ flex: 1 }} />
+          <EnrichedMarkdownTextInput
+            ref={inputRef}
+            nativeID={nativeID}
+            accessibilityLabel={accessibilityLabel}
+            defaultValue={nativeMarkdownRef.current}
+            placeholder={placeholder}
+            placeholderTextColor={color("mutedForeground")}
+            editable={editable}
+            multiline
+            scrollEnabled
+            cursorColor={color("primary")}
+            selectionColor={color("secondary")}
+            mentionIndicators={["@"]}
+            linkRegex={/https?:\/\/[^\s]+/i}
+            formatMenuConfig={{
+              bold: { enabled: true },
+              italic: { enabled: true },
+              underline: { enabled: true },
+              // The native edit menu cannot constrain URI schemes. Keep links on
+              // our validated toolbar so only http(s) URLs enter the document.
+              link: { enabled: false },
+              strikethrough: { enabled: false },
+              spoiler: { enabled: false },
+            }}
+            markdownStyle={{
+              strong: { color: color("foreground") },
+              em: { color: color("foreground") },
+              link: { color: color("primary"), underline: true },
+              linkVariants: {
+                "^user:": {
+                  color: color("primary"),
+                  backgroundColor: color("secondary"),
+                  underline: false,
+                },
+              },
+            }}
+            onChangeText={(nextPlainText) => {
+              nativePlainTextRef.current = nextPlainText;
+              emitChange(nextPlainText, nativeMarkdownRef.current);
+            }}
+            onChangeMarkdown={(nextMarkdown) => {
+              const sanitized = sanitizeChatMarkdown(nextMarkdown);
+              nativeMarkdownRef.current = sanitized;
+              emitChange(nativePlainTextRef.current, sanitized);
+            }}
+            onChangeSelection={setSelection}
+            onChangeState={setStyleState}
+            onStartMention={() => {
+              setMentionOpen(true);
+              setMentionQuery("");
+            }}
+            onChangeMention={({ text }) => {
+              setMentionOpen(true);
+              setMentionQuery(text);
+            }}
+            onEndMention={() => {
+              setMentionOpen(false);
+              setMentionQuery("");
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={{
+              minWidth: 0,
+              flex: 1,
+              minHeight: 50,
+              maxHeight: 120,
+              borderWidth: 0,
+              backgroundColor: "transparent",
+              color: color("foreground"),
+              paddingHorizontal: spacing.xs,
+              paddingVertical: spacing.md,
+              fontSize: 15,
+              lineHeight: 21,
+            }}
+          />
           {toolbarTrailing ? (
-            <View>{toolbarTrailing}</View>
+            <View style={{ paddingBottom: spacing.xs }}>{toolbarTrailing}</View>
           ) : null}
         </View>
 

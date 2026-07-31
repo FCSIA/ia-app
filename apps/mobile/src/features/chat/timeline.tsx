@@ -9,11 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ActivityIndicator,
-  View,
-  type ScrollViewProps,
-} from "react-native";
+import { ActivityIndicator, View, type ScrollViewProps } from "react-native";
 import {
   FlashList,
   type FlashListRef,
@@ -26,10 +22,7 @@ import { Empty, PressableScale, Skeleton, Txt } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { ChatMessageRow } from "./message-row";
-import {
-  buildTimelineRows,
-  type TimelineRow,
-} from "./timeline-layout";
+import { buildTimelineRows, type TimelineRow } from "./timeline-layout";
 import type { ChatAttachment, ChatMessage, QuickReaction } from "./types";
 
 type ChatTimelineProps = {
@@ -170,7 +163,11 @@ export function ChatTimeline({
     if (visible) setUnseenCount(0);
   }, []);
   const scrollContext = useMemo(
-    () => ({ keyboardOffset, extraContentPadding, onEndVisible: handleEndVisible }),
+    () => ({
+      keyboardOffset,
+      extraContentPadding,
+      onEndVisible: handleEndVisible,
+    }),
     [extraContentPadding, handleEndVisible, keyboardOffset],
   );
 
@@ -193,8 +190,8 @@ export function ChatTimeline({
           getItemType={timelineItemType}
           renderScrollComponent={ClubChatScrollView}
           contentContainerStyle={{
-            paddingTop: spacing.xs,
-            paddingBottom: spacing.lg,
+            paddingTop: 2,
+            paddingBottom: spacing.md,
           }}
           keyboardShouldPersistTaps="handled"
           maintainVisibleContentPosition={{
@@ -271,22 +268,18 @@ const DateMarker = memo(function DateMarker({ label }: { label: string }) {
     <View
       accessibilityRole="header"
       style={{
-        minHeight: 38,
+        minHeight: 30,
         maxWidth: 760,
         width: "100%",
         alignSelf: "center",
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: spacing.md,
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.sm,
       }}
     >
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />
-      <Txt
-        variant="caption"
-        tone="muted"
-        style={{ fontWeight: "700" }}
-      >
+      <Txt variant="caption" tone="muted" style={{ fontWeight: "700" }}>
         {label}
       </Txt>
       <View style={{ height: 1, flex: 1, backgroundColor: color("border") }} />
@@ -305,7 +298,7 @@ const ThreadDivider = memo(function ThreadDivider({
   return (
     <View
       style={{
-        minHeight: 44,
+        minHeight: 36,
         maxWidth: 760,
         width: "100%",
         alignSelf: "center",
@@ -341,8 +334,8 @@ function ChatTimelineSkeleton() {
     <View
       style={{
         paddingHorizontal: spacing.md,
-        paddingTop: spacing.lg,
-        gap: spacing.lg,
+        paddingTop: spacing.md,
+        gap: spacing.md,
       }}
     >
       {Array.from({ length: 5 }).map((_, index) => (

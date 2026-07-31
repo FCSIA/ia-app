@@ -1,4 +1,4 @@
-import { View, type LayoutChangeEvent } from "react-native";
+import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import {
   BarChart3,
   MessageCircle,
@@ -86,6 +86,8 @@ export function ChatComposer({
       onLayout={onLayout}
       style={{
         width: "100%",
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: color("border"),
         backgroundColor: color("background"),
       }}
     >
@@ -94,8 +96,8 @@ export function ChatComposer({
           width: "100%",
           maxWidth: 760,
           alignSelf: "center",
-          paddingHorizontal: spacing.md,
-          paddingTop: spacing.sm,
+          paddingHorizontal: spacing.sm,
+          paddingTop: 6,
           paddingBottom: spacing.sm,
           gap: spacing.xs,
         }}

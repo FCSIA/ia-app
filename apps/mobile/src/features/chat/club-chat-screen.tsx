@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import {
@@ -12,14 +6,21 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { FolderOpen, MessageCircle, Search } from "lucide-react-native";
+import {
+  FolderOpen,
+  Hash,
+  LockKeyhole,
+  Megaphone,
+  MessageCircle,
+  Search,
+} from "lucide-react-native";
 import {
   KeyboardGestureArea,
   KeyboardStickyView,
 } from "react-native-keyboard-controller";
 import { useSharedValue, withTiming } from "react-native-reanimated";
-import { AppBackHeader } from "@/components/screen";
-import { Empty, IconButton, Txt, useToast } from "@/components/ui";
+import { AppDetailHeader } from "@/components/screen";
+import { Empty, IconButton, useToast } from "@/components/ui";
 import { useCurrentUser, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
@@ -93,10 +94,13 @@ export function ClubChatScreen({
         }
       : "skip",
   );
-  const rawChannelContext = useQuery(api.clubs.channels.getConversationContext, {
-    clubId: clubId as Id<"clubs">,
-    channelId: channelId as Id<"clubChannels">,
-  });
+  const rawChannelContext = useQuery(
+    api.clubs.channels.getConversationContext,
+    {
+      clubId: clubId as Id<"clubs">,
+      channelId: channelId as Id<"clubChannels">,
+    },
+  );
   const messages = useMemo(
     () =>
       paginationStatus === "LoadingFirstPage"
@@ -139,7 +143,8 @@ export function ClubChatScreen({
   const extraContentPadding = useSharedValue(0);
   const pendingKeysRef = useRef(new Set<string>());
   const channel = channelContext?.channel;
-  const canPost = channelContext === undefined ? undefined : !!channel?.viewerCanPost;
+  const canPost =
+    channelContext === undefined ? undefined : !!channel?.viewerCanPost;
   const canManage = !!channelContext?.canManageChannels;
   const threadRoot = threadRootId
     ? thread === undefined
@@ -166,10 +171,7 @@ export function ClubChatScreen({
   // The composer is a normal-flow sibling, so its height already reduces the
   // timeline viewport. Only the safe-area correction belongs in the dynamic
   // KeyboardChatScrollView/KeyboardStickyView translation offset.
-  const keyboardSafeAreaOffset = chatSafeAreaOffset(
-    insets.bottom,
-    spacing.sm,
-  );
+  const keyboardSafeAreaOffset = chatSafeAreaOffset(insets.bottom, spacing.sm);
   const draftEnabled =
     composer.mode.kind === "message" || composer.mode.kind === "reply";
   const draftThreadId =
@@ -208,18 +210,17 @@ export function ClubChatScreen({
           ]
         : []),
     ];
-    const people = (channelContext?.members ?? [])
-      .map((person) => {
-        const name =
-          [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-          person.uniqueId;
-        return {
-          token: person.uniqueId,
-          label: name,
-          displayText: `@${name}`,
-          detail: formatClubRole(person.role),
-        };
-      });
+    const people = (channelContext?.members ?? []).map((person) => {
+      const name =
+        [person.firstName, person.lastName].filter(Boolean).join(" ") ||
+        person.uniqueId;
+      return {
+        token: person.uniqueId,
+        label: name,
+        displayText: `@${name}`,
+        detail: formatClubRole(person.role),
+      };
+    });
     return [...builtIns, ...people];
   }, [canManage, channelContext?.members]);
 
@@ -576,42 +577,62 @@ export function ClubChatScreen({
       edges={["top", "bottom", "left", "right"]}
     >
       <View style={{ flex: 1, backgroundColor: color("background") }}>
-        <ChatHeader
-          title={threadRootId ? "Thread" : `#${channel?.name ?? "channel"}`}
-          description={
-            threadRootId
-              ? `#${channel?.name ?? "channel"}`
-              : channelContext?.clubName
-          }
-          actions={
-            threadRootId ? null : (
-              <>
-                <IconButton
-                  icon={Search}
-                  label="Search channel"
-                  size="sm"
-                  variant="ghost"
-                  onPress={() =>
-                    router.push(
-                      `/clubs/${clubId}/channels/${channelId}/search` as never,
-                    )
-                  }
+        <View
+          style={{
+            zIndex: 2,
+            borderBottomWidth: 1,
+            borderBottomColor: color("border"),
+            backgroundColor: color("background"),
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 760,
+              alignSelf: "center",
+              paddingHorizontal: spacing.md,
+            }}
+          >
+            <AppDetailHeader
+              title={threadRootId ? "Thread" : (channel?.name ?? "Channel")}
+              subtitle={threadRootId ? channel?.name : channelContext?.clubName}
+              leading={
+                <ChannelHeaderMark
+                  thread={!!threadRootId}
+                  visibility={channel?.visibility}
                 />
-                <IconButton
-                  icon={FolderOpen}
-                  label="Shared files"
-                  size="sm"
-                  variant="ghost"
-                  onPress={() =>
-                    router.push(
-                      `/clubs/${clubId}/shared?channelId=${channelId}` as never,
-                    )
-                  }
-                />
-              </>
-            )
-          }
-        />
+              }
+              action={
+                threadRootId ? undefined : (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <IconButton
+                      icon={Search}
+                      label="Search channel"
+                      size="sm"
+                      variant="ghost"
+                      onPress={() =>
+                        router.push(
+                          `/clubs/${clubId}/channels/${channelId}/search` as never,
+                        )
+                      }
+                    />
+                    <IconButton
+                      icon={FolderOpen}
+                      label="Shared files"
+                      size="sm"
+                      variant="ghost"
+                      onPress={() =>
+                        router.push(
+                          `/clubs/${clubId}/shared?channelId=${channelId}` as never,
+                        )
+                      }
+                    />
+                  </View>
+                )
+              }
+            />
+          </View>
+        </View>
 
         <KeyboardGestureArea
           enableSwipeToDismiss
@@ -711,55 +732,31 @@ export function ClubChatScreen({
   );
 }
 
-function ChatHeader({
-  title,
-  description,
-  actions,
+function ChannelHeaderMark({
+  thread,
+  visibility,
 }: {
-  title: string;
-  description?: string | null;
-  actions?: ReactNode;
+  thread: boolean;
+  visibility?: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
 }) {
   const { color } = useTheme();
+  const Icon = thread
+    ? MessageCircle
+    : visibility === "PRIVATE"
+      ? LockKeyhole
+      : visibility === "MEMBER_READONLY"
+        ? Megaphone
+        : Hash;
   return (
     <View
       style={{
-        zIndex: 2,
-        borderBottomWidth: 1,
-        borderBottomColor: color("border"),
-        backgroundColor: color("background"),
+        width: 24,
+        height: 44,
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
-      <View
-        style={{
-          width: "100%",
-          maxWidth: 760,
-          minHeight: 64,
-          alignSelf: "center",
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.sm,
-        }}
-      >
-        <AppBackHeader forceVisible />
-        <View style={{ minWidth: 0, flex: 1, gap: 1 }}>
-          <Txt variant="section" numberOfLines={1}>
-            {title}
-          </Txt>
-          {description ? (
-            <Txt variant="caption" tone="muted" numberOfLines={1}>
-              {description}
-            </Txt>
-          ) : null}
-        </View>
-        {actions ? (
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {actions}
-          </View>
-        ) : null}
-      </View>
+      <Icon size={19} color={color("mutedForeground")} strokeWidth={2} />
     </View>
   );
 }
