@@ -2,12 +2,11 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   AtSign,
-  Check,
   ChevronDown,
   ChevronsUpDown,
   Compass,
@@ -24,12 +23,12 @@ import type { ChannelSearchControl } from "@/components/layout/AppShell";
 import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownContent,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  DropdownTrigger,
+} from "@/components/ui/dropdown";
 import { Card, CardAction, CardGroup } from "@/components/ui/card";
+import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -42,7 +41,6 @@ import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { useShape } from "@/lib/shape-context";
 import type {
   ClubNavigationChannel,
   ClubNavigationSummary,
@@ -58,49 +56,36 @@ function resolveMediaUrl(url?: string | null) {
 function ClubPickerItem({
   club,
   active,
+  index,
 }: {
   club: ClubNavigationSummary;
   active: boolean;
+  index: number;
 }) {
-  const shape = useShape();
+  const router = useRouter();
 
   return (
-    <DropdownMenuItem
-      asChild
-      className="group w-full p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
-    >
-      <Link href={`/clubs/${club._id}`} aria-current={active ? "page" : undefined}>
-        <Card
-          selected={active}
-          className={cn(
-            "pointer-events-none min-h-11 w-full gap-2.5 px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover",
-            shape.item,
+    <MenuItem
+      index={index}
+      label={club.name}
+      checked={active}
+      onSelect={() => router.push(`/clubs/${club._id}`)}
+      className="h-11 px-2.5"
+      leading={
+        <span className="flex size-7 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+          {club.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolveMediaUrl(club.logoUrl)}
+              alt={club.name}
+              className="size-full bg-background object-cover"
+            />
+          ) : (
+            club.name.charAt(0).toUpperCase()
           )}
-        >
-          <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-            {club.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={resolveMediaUrl(club.logoUrl)}
-                alt={club.name}
-                className="size-full bg-background object-cover"
-              />
-            ) : (
-              club.name.charAt(0).toUpperCase()
-            )}
-          </div>
-          <span
-            className={cn(
-              "min-w-0 flex-1 truncate text-sm font-medium group-data-[highlighted]:text-foreground",
-              active ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {club.name}
-          </span>
-          {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
-        </Card>
-      </Link>
-    </DropdownMenuItem>
+        </span>
+      }
+    />
   );
 }
 
@@ -375,59 +360,57 @@ function ClubNavigationPanel({
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
+  const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   return (
     <div className="flex size-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-border/70 p-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
-                {club?.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={resolveMediaUrl(club.logoUrl)}
-                    alt={club.name}
-                    className="size-full bg-background object-cover"
-                  />
-                ) : (
-                  (club?.name?.charAt(0).toUpperCase() ?? "C")
-                )}
-              </div>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                {club?.name ?? "Loading…"}
-              </span>
-              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-96 max-w-[calc(100vw-2rem)] p-1"
-          >
-            <CardGroup
-              orientation="inline"
-              separated
-              proximityHover={false}
-              className="gap-0.5"
-            >
-              {myClubs.length > 0 ? (
-                myClubs.map((entry) => (
-                  <ClubPickerItem
-                    key={entry._id}
-                    club={entry}
-                    active={entry._id === clubId}
-                  />
-                ))
-              ) : (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  No club memberships yet.
+          <DropdownTrigger
+            render={
+              <button
+                type="button"
+                className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+                  {club?.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={resolveMediaUrl(club.logoUrl)}
+                      alt={club.name}
+                      className="size-full bg-background object-cover"
+                    />
+                  ) : (
+                    (club?.name?.charAt(0).toUpperCase() ?? "C")
+                  )}
                 </div>
-              )}
-            </CardGroup>
-          </DropdownMenuContent>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                  {club?.name ?? "Loading…"}
+                </span>
+                <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+              </button>
+            }
+          />
+          <DropdownContent
+            align="start"
+            checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
+            className="w-96 max-w-[calc(100vw-2rem)]"
+          >
+            {myClubs.length > 0 ? (
+              myClubs.map((entry, index) => (
+                <ClubPickerItem
+                  key={entry._id}
+                  club={entry}
+                  active={entry._id === clubId}
+                  index={index}
+                />
+              ))
+            ) : (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                No club memberships yet.
+              </div>
+            )}
+          </DropdownContent>
         </DropdownMenu>
       </div>
 
