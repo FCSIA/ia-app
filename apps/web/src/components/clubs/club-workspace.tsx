@@ -279,14 +279,11 @@ export function ClubWorkspace({
                 minSize="55%"
                 style={{ overflow: "hidden" }}
               >
-                <div
-                  className={cn(
-                    "h-full min-h-0 min-w-0 overflow-y-auto",
-                    contentClassName,
-                  )}
+                <ScrollArea
+                  className="h-full min-h-0 min-w-0"
                 >
-                  {children}
-                </div>
+                  <div className={cn("min-h-full", contentClassName)}>{children}</div>
+                </ScrollArea>
               </ResizablePanel>
               <ResizableHandle id="club-channel-thread-handle" withHandle />
               <ResizablePanel
@@ -301,14 +298,11 @@ export function ClubWorkspace({
             </ResizablePanelGroup>
           ) : (
             <>
-              <div
-                className={cn(
-                  "min-h-0 min-w-0 flex-1 overflow-y-auto",
-                  contentClassName,
-                )}
+              <ScrollArea
+                className="min-h-0 min-w-0 flex-1"
               >
-                {children}
-              </div>
+                <div className={cn("min-h-full", contentClassName)}>{children}</div>
+              </ScrollArea>
               {rightPane ? (
                 <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
                   {rightPane}
@@ -411,7 +405,7 @@ function ClubNavigationPanel({
         </DropdownMenu>
       </div>
 
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
         <div className="p-2">
           <CardGroup
             orientation="inline"

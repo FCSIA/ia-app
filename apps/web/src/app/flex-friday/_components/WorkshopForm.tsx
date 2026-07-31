@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { GRADE_OPTIONS, PATHWAY_OPTIONS, WorkshopForm as WorkshopFormType } from '../_types';
 import { formatTimeRange, toggleInArray } from '../_utils';
@@ -92,12 +93,13 @@ export function WorkshopForm({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
-        <SheetHeader className="pb-4 border-b mb-6">
+      <SheetContent className="flex h-full flex-col overflow-hidden sm:max-w-md">
+        <SheetHeader className="mb-6 shrink-0 border-b pb-4">
           <SheetTitle>{editingWorkshopId ? 'Edit Workshop' : 'New Workshop'}</SheetTitle>
         </SheetHeader>
-        
-        <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
+
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Workshop Title *</Label>
@@ -212,7 +214,8 @@ export function WorkshopForm({
               {editingWorkshopId ? 'Save Changes' : 'Create Workshop'}
             </Button>
           </SheetFooter>
-        </form>
+          </form>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

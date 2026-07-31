@@ -4,6 +4,7 @@ import { Download, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { StudentImportResult } from '../_lib/types';
 import { AdminMetric, AdminPanel } from './admin-ui';
 
@@ -114,11 +115,14 @@ export function AdminScheduleTab({
             {lastStudentImport.errors.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-foreground">Skipped rows</p>
-                <div className="max-h-48 overflow-y-auto rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                <ScrollArea
+                  className="rounded-lg border bg-muted/30 text-xs text-muted-foreground"
+                  viewportClassName="max-h-48 scroll-fade p-3"
+                >
                   {lastStudentImport.errors.map((error, index) => (
                     <p key={`${error}-${index}`} className="leading-5">{error}</p>
                   ))}
-                </div>
+                </ScrollArea>
               </div>
             ) : null}
           </AdminPanel>

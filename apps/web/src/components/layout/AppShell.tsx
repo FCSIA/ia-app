@@ -41,6 +41,7 @@ import { Dropdown, DropdownLabel, DropdownSeparator } from '@/components/ui/drop
 import { MenuItem } from '@/components/ui/menu-item';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
@@ -282,32 +283,37 @@ export function AppShell({
                   <img src="/icons/logo.png" alt="Innovation Academy phoenix" className="size-full object-cover" />
                 </Link>
               </div>
-              <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-                {primary.map((item) => (
-                  <MobileNavLink
-                    key={item.href}
-                    item={item}
-                    active={isActive(item.href)}
-                    badge={item.href === '/notifications' ? unreadBadge : undefined}
-                    onHover={() => handlePrefetch(item.href)}
-                  />
-                ))}
-                <div className="my-3 h-px bg-sidebar-border" />
-                {accountNav.map((item) => (
-                  <MobileNavLink
-                    key={item.href}
-                    item={item}
-                    active={isActive(item.href)}
-                    badge={item.href === '/notifications' ? unreadBadge : undefined}
-                    onHover={() => handlePrefetch(item.href)}
-                  />
-                ))}
-                {showAdmin
-                  ? adminNav.map((item) => (
-                      <MobileNavLink key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
-                    ))
-                  : null}
-              </nav>
+              <ScrollArea
+                className="min-h-0 flex-1 text-sidebar-foreground"
+                viewportClassName="scroll-fade"
+              >
+                <nav className="flex flex-col gap-1 p-3">
+                  {primary.map((item) => (
+                    <MobileNavLink
+                      key={item.href}
+                      item={item}
+                      active={isActive(item.href)}
+                      badge={item.href === '/notifications' ? unreadBadge : undefined}
+                      onHover={() => handlePrefetch(item.href)}
+                    />
+                  ))}
+                  <div className="my-2 h-px bg-sidebar-border" />
+                  {accountNav.map((item) => (
+                    <MobileNavLink
+                      key={item.href}
+                      item={item}
+                      active={isActive(item.href)}
+                      badge={item.href === '/notifications' ? unreadBadge : undefined}
+                      onHover={() => handlePrefetch(item.href)}
+                    />
+                  ))}
+                  {showAdmin
+                    ? adminNav.map((item) => (
+                        <MobileNavLink key={item.href} item={item} active={isActive(item.href)} onHover={() => handlePrefetch(item.href)} />
+                      ))
+                    : null}
+                </nav>
+              </ScrollArea>
               <div className="flex items-center justify-between border-t border-sidebar-border p-3" />
             </div>
           </SheetContent>

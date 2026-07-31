@@ -17,6 +17,7 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Settings2, Calendar as CalendarIcon, AlignJustify, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
 import { EditCalendarEntryDialog } from '@/components/calendar/EditCalendarEntryDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -209,8 +210,9 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendar days grid */}
-      <div className="grid grid-cols-7 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {days.map((day, i) => {
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="grid grid-cols-7">
+          {days.map((day, i) => {
           const dayEvents = getEventsForDay(day);
           const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
           const isSelected = isSameDay(day, selectedDay);
@@ -296,8 +298,9 @@ export default function CalendarPage() {
               </div>
             </div>
           );
-        })}
-      </div>
+          })}
+        </div>
+      </ScrollArea>
     </div>
   );
 
@@ -327,7 +330,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Time Grid */}
-        <div className="flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <ScrollArea className="relative min-h-0 flex-1">
           <div className="flex min-h-[1920px]">
             {/* Time labels */}
             <div className="w-16 border-r border-white/10 shrink-0 relative bg-[#111]">
@@ -397,7 +400,7 @@ export default function CalendarPage() {
               })}
             </div>
           </div>
-        </div>
+        </ScrollArea>
       </div>
     );
   };
@@ -429,7 +432,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Time Grid & Resources */}
-        <div className="flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <ScrollArea className="relative min-h-0 flex-1">
           <div className="flex min-h-[2304px]">
             {/* Time labels */}
             <div className="w-16 border-r border-white/10 shrink-0 relative bg-[#111]">
@@ -501,7 +504,7 @@ export default function CalendarPage() {
               </div>
             )}
           </div>
-        </div>
+        </ScrollArea>
       </div>
     );
   };

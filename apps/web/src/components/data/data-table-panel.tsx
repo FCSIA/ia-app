@@ -2,7 +2,8 @@
 
 import type { ReactNode, Ref } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 export type DataTableDensity = 'compact' | 'comfortable';
@@ -64,16 +65,14 @@ export function DataTablePanel({
         </div>
         {toolbar && <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{toolbar}</div>}
       </CardHeader>
-      <CardContent
-        ref={contentRef}
-        className={cn(
-          'min-h-0 flex-1 overflow-auto p-0',
-          densityClasses.table,
-          contentClassName,
-        )}
+      <ScrollArea
+        orientation="both"
+        viewportRef={contentRef}
+        className="min-h-0 flex-1"
+        viewportClassName={cn('scroll-fade-x', densityClasses.table, contentClassName)}
       >
         {children}
-      </CardContent>
+      </ScrollArea>
       {footer && <div className="shrink-0">{footer}</div>}
     </Card>
   );

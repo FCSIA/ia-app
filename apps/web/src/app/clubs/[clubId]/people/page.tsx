@@ -47,6 +47,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { api } from '~/apps/convex/src/_generated/api';
 import { parseInviteCsv } from '@/lib/parse-invite-csv';
@@ -457,65 +458,75 @@ export default function ClubPeoplePage() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
             {visibleFilter === 'requests' ? (
               pendingJoinRequests.length > 0 ? (
-                <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
-                  {pendingJoinRequests.map((request) => {
-                    const processing = requestInFlight === request._id;
-                    return (
-                      <div key={request._id} className="flex flex-col gap-3 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {fullName(request.requester)}
-                          </p>
-                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                            {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                          </p>
+                <ScrollArea
+                  className="min-h-0 flex-1"
+                  viewportClassName="scroll-fade"
+                >
+                  <div className="divide-y divide-border/60">
+                    {pendingJoinRequests.map((request) => {
+                      const processing = requestInFlight === request._id;
+                      return (
+                        <div key={request._id} className="flex flex-col gap-3 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-foreground">
+                              {fullName(request.requester)}
+                            </p>
+                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                              {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="tertiary"
+                              disabled={requestInFlight !== null}
+                              onClick={() => void respondToRequest(request._id, false)}
+                            >
+                              Decline
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              leadingIcon={Check}
+                              disabled={requestInFlight !== null}
+                              onClick={() => void respondToRequest(request._id, true)}
+                            >
+                              {processing ? 'Updating…' : 'Approve'}
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex shrink-0 gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="tertiary"
-                            disabled={requestInFlight !== null}
-                            onClick={() => void respondToRequest(request._id, false)}
-                          >
-                            Decline
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            leadingIcon={Check}
-                            disabled={requestInFlight !== null}
-                            onClick={() => void respondToRequest(request._id, true)}
-                          >
-                            {processing ? 'Updating…' : 'Approve'}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
               ) : (
                 <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                   No join requests are waiting for review.
                 </div>
               )
             ) : filtered.length > 0 ? (
-              <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
-                {filtered.map((person) => (
-                  <PersonRow
-                    key={person._id}
-                    person={person}
-                    isCurrentUser={person._id === user?._id}
-                    canManage={canManage && person.kind === 'MEMBER'}
-                    onSetRole={setRoleTarget}
-                    onRemove={(memberId) =>
-                      void removeMember({ clubId, memberId: memberId as Id<'users'> }).then(() =>
-                        toast({ title: 'Member removed' }),
-                      )
-                    }
-                  />
-                ))}
-              </div>
+              <ScrollArea
+                className="min-h-0 flex-1"
+                viewportClassName="scroll-fade"
+              >
+                <div className="divide-y divide-border/60">
+                  {filtered.map((person) => (
+                    <PersonRow
+                      key={person._id}
+                      person={person}
+                      isCurrentUser={person._id === user?._id}
+                      canManage={canManage && person.kind === 'MEMBER'}
+                      onSetRole={setRoleTarget}
+                      onRemove={(memberId) =>
+                        void removeMember({ clubId, memberId: memberId as Id<'users'> }).then(() =>
+                          toast({ title: 'Member removed' }),
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
                 <Users className="mb-2 size-5 text-muted-foreground" />

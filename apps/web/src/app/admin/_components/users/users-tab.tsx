@@ -240,7 +240,6 @@ function UserTableSection({
       density="compact"
       fillHeight
       toolbar={toolbar}
-      contentClassName="overflow-auto"
     >
       <Table className={`${d.table} table-fixed`}>
         <colgroup>

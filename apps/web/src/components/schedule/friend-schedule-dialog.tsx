@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import {
   WEEKDAYS,
@@ -62,7 +63,8 @@ export function FriendScheduleDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+          <div className="flex flex-col gap-6 p-6">
           {/* Weekday Selector */}
           <div className="flex items-center gap-1 border-b border-border/30">
             {WEEKDAYS.map((day) => (
@@ -181,9 +183,9 @@ export function FriendScheduleDialog({
               </div>
             )}
           </div>
-        </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
 }
-

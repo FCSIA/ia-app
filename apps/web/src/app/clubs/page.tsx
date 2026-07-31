@@ -10,6 +10,7 @@ import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -123,25 +124,24 @@ export default function ClubsLandingPage() {
               <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
             </div>
             {myClubs.length > 0 ? (
-              <CardGroup
-                orientation="inline"
-                className="fluid-scrollbar max-h-72 overflow-y-auto"
-              >
-                {myClubs.map((club) => (
-                  <ClubListRow
-                    key={club._id}
-                    club={club}
-                    density="compact"
-                    badge={
-                      club.kind === 'sponsor' ? (
-                        <span title="Sponsor">
-                          <Shield className="size-3.5 text-primary" />
-                        </span>
-                      ) : undefined
-                    }
-                  />
-                ))}
-              </CardGroup>
+              <ScrollArea viewportClassName="max-h-72 scroll-fade">
+                <CardGroup orientation="inline">
+                  {myClubs.map((club) => (
+                    <ClubListRow
+                      key={club._id}
+                      club={club}
+                      density="compact"
+                      badge={
+                        club.kind === 'sponsor' ? (
+                          <span title="Sponsor">
+                            <Shield className="size-3.5 text-primary" />
+                          </span>
+                        ) : undefined
+                      }
+                    />
+                  ))}
+                </CardGroup>
+              </ScrollArea>
             ) : (
               <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
                 Clubs you join will show here.
@@ -179,19 +179,18 @@ export default function ClubsLandingPage() {
                 ))}
               </CardGroup>
             ) : filteredClubs.length > 0 ? (
-              <CardGroup
-                orientation="inline"
-                className="fluid-scrollbar min-h-0 overflow-y-auto"
-              >
-                {filteredClubs.map((club) => (
-                  <ClubListRow
-                    key={club._id}
-                    club={club}
-                    density="default"
-                    joined={myClubIds.has(club._id)}
-                  />
-                ))}
-              </CardGroup>
+              <ScrollArea className="min-h-0 flex-1" viewportClassName="scroll-fade">
+                <CardGroup orientation="inline">
+                  {filteredClubs.map((club) => (
+                    <ClubListRow
+                      key={club._id}
+                      club={club}
+                      density="default"
+                      joined={myClubIds.has(club._id)}
+                    />
+                  ))}
+                </CardGroup>
+              </ScrollArea>
             ) : (
               <div className="py-10 text-center text-sm text-muted-foreground">
                 No clubs match this search.

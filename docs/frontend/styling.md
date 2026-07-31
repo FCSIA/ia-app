@@ -86,6 +86,22 @@ Use these before creating new page shells:
 - `Panel`
 - `FeatureFilterBar`
 
+## Bounded Scrolling
+
+Use the shared Fluid `ScrollArea` for app-owned panes with a bounded height or
+width, such as navigation lists, table workbenches, calendar grids, dialogs,
+and sheets. Set the constraint on `ScrollArea`, put content spacing on the
+viewport or its child, and choose `orientation="horizontal"` or `"both"` when
+the content can overflow on those axes. Add `scroll-fade`, `scroll-fade-x`, or
+`scroll-fade-b` through `viewportClassName` when an edge cue helps users
+discover more content.
+
+Do not wrap scrollports whose owning component depends on being the scrolling
+element. This includes `MessageScroller`, command/select/menu internals, rich
+text editors, tabs, and snap-scrolling attachment rails. Those components keep
+their local scrolling contract. Touch-primary devices automatically use native
+overflow through the shared `ScrollArea` fallback.
+
 ## Theme Direction
 
 The current visual direction is warm, clean, and operational:

@@ -83,6 +83,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -318,38 +319,42 @@ function PinnedMessagesButton({
           <span className="text-xs tabular-nums text-muted-foreground">{messages.length}</span>
         </div>
         {messages.length > 0 ? (
-          <div className="fluid-scrollbar max-h-80 divide-y divide-border/70 overflow-y-auto">
-            {messages.map((message) => {
-              const preview =
-                message.poll?.question ||
-                message.body ||
-                message.attachments[0]?.fileName ||
-                'Attachment';
-              return (
-                <button
-                  key={message._id}
-                  type="button"
-                  className="flex w-full gap-3 px-3 py-3 text-left outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
-                  onClick={() => jumpToMessage(message._id)}
-                >
-                  <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-semibold">
-                        {fullName(message.author)}
+          <ScrollArea
+            viewportClassName="max-h-80 scroll-fade"
+          >
+            <div className="divide-y divide-border/70">
+              {messages.map((message) => {
+                const preview =
+                  message.poll?.question ||
+                  message.body ||
+                  message.attachments[0]?.fileName ||
+                  'Attachment';
+                return (
+                  <button
+                    key={message._id}
+                    type="button"
+                    className="flex w-full gap-3 px-3 py-3 text-left outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+                    onClick={() => jumpToMessage(message._id)}
+                  >
+                    <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline gap-2">
+                        <span className="truncate text-sm font-semibold">
+                          {fullName(message.author)}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                        </span>
                       </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                      <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
+                        {preview}
                       </span>
                     </span>
-                    <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
-                      {preview}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
         ) : (
           <p className="px-3 py-6 text-center text-sm text-muted-foreground">
             No pinned messages yet.

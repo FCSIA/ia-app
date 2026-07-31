@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
   SheetContent,
@@ -28,15 +29,16 @@ export function AuditDetailSheet({
 }: AuditDetailSheetProps) {
   return (
     <Sheet open={!!selectedEventId} onOpenChange={(open) => !open && onSelectedEventIdChange(null)}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
-        <SheetHeader>
+      <SheetContent className="flex h-full w-full flex-col overflow-hidden sm:max-w-xl">
+        <SheetHeader className="shrink-0">
           <SheetTitle>Audit Event Details</SheetTitle>
           <SheetDescription>
             Inspect the recorded action, resolved entity context, and raw metadata captured at the time.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
+        <ScrollArea className="mt-6 min-h-0 flex-1" viewportClassName="scroll-fade">
+          <div className="space-y-5">
           {isDetailLoading ? (
             <AdminNotice message="Loading audit context..." />
           ) : eventDetail ? (
@@ -109,16 +111,23 @@ export function AuditDetailSheet({
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Raw metadata
                   </p>
-                  <pre className="overflow-x-auto rounded-lg border bg-muted/20 p-3 text-xs leading-6 text-foreground/80">
-                    {JSON.stringify(eventDetail.meta, null, 2)}
-                  </pre>
+                  <ScrollArea
+                    orientation="horizontal"
+                    className="rounded-lg border bg-muted/20"
+                    viewportClassName="scroll-fade-x"
+                  >
+                    <pre className="w-max min-w-full p-3 text-xs leading-6 text-foreground/80">
+                      {JSON.stringify(eventDetail.meta, null, 2)}
+                    </pre>
+                  </ScrollArea>
                 </div>
               ) : null}
             </>
           ) : (
             <AdminNotice message="This audit event could not be loaded." />
           )}
-        </div>
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

@@ -5,6 +5,7 @@ import { Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { dataTableClasses } from '@/components/data/data-table-panel';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AdminNotice } from '../admin-ui';
 import { AUDIT_FETCH_LIMIT } from '../../_lib/admin-utils';
@@ -69,7 +70,11 @@ export function AuditTable({
         ) : null}
       </div>
 
-      <div className="overflow-auto rounded-lg border">
+      <ScrollArea
+        orientation="horizontal"
+        className="rounded-lg border"
+        viewportClassName="scroll-fade-x"
+      >
         <Table className={`${d.table} table-fixed`}>
           <colgroup>
             <col className="w-[152px]" />
@@ -149,7 +154,7 @@ export function AuditTable({
             })}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

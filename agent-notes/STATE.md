@@ -123,11 +123,16 @@
   the solid composer and message spacing preserve clear separation, channel
   alerts update optimistically, and pinned messages live in the channel toolbar.
 - Web club navigation and discovery use Fluid Card groups and nested surface
-  levels, with primitive-backed dropdown selection, compact custom scrollbars,
+  levels, with primitive-backed dropdown selection, Fluid ScrollArea panes,
   sticky personal clubs, and channel/global search switching. Notification
   settings use visible surface states and hierarchical club gates: turning a
   club off disables delivery for its channels while retaining each channel's
   saved preference for restoration.
+- Web app-owned bounded panes now share the Radix Fluid ScrollArea treatment:
+  desktop scrollbars reveal on hover or scroll, horizontal and dual-axis panes
+  use the same primitive, edge fades remain viewport-owned, and touch-primary
+  devices fall back to native momentum scrolling. Behavior-owned chat, menu,
+  editor, tab, and attachment scrollports retain their existing contracts.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
