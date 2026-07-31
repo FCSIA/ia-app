@@ -51,18 +51,11 @@ export function shouldNotifyFriendsOfScheduleChange(
   return next.isPublic && scheduleMateriallyChanged(previous, next);
 }
 
-export function uniqueFriendIds(
+export function uniquePageFriendIds(
   actorId: Id<"users">,
-  outgoing: readonly Pick<Doc<"studentScheduleFriends">, "addresseeId">[],
-  incoming: readonly Pick<Doc<"studentScheduleFriends">, "requesterId">[],
+  candidateIds: readonly Id<"users">[],
 ) {
-  return Array.from(
-    new Set(
-      [...outgoing.map((row) => row.addresseeId), ...incoming.map((row) => row.requesterId)].filter(
-        (userId) => userId !== actorId,
-      ),
-    ),
-  );
+  return Array.from(new Set(candidateIds.filter((userId) => userId !== actorId)));
 }
 
 export async function enqueueFriendScheduleChangeNotifications(
@@ -120,13 +113,15 @@ export const fanout = internalMutation({
               q.eq("addresseeId", user._id).eq("status", "ACCEPTED"),
             )
             .paginate({ numItems: 50, cursor: args.cursor });
-    const friendIds = new Set(
+    const friendIds = uniquePageFriendIds(
+      user._id,
       friendships.page.map((friendship) =>
         args.direction === "OUTGOING" ? friendship.addresseeId : friendship.requesterId,
       ),
     );
-    friendIds.delete(user._id);
     for (const friendId of friendIds) {
+      const friend = await ctx.db.get(friendId);
+      if (!friend?.isActive || !isStudentUser(friend)) continue;
       await deliverNotification(ctx, {
         userId: friendId,
         category: "FRIEND_SCHEDULE_CHANGE",

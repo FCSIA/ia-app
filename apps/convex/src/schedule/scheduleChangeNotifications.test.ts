@@ -3,7 +3,7 @@ import type { Id } from "../_generated/dataModel";
 import {
   scheduleMateriallyChanged,
   shouldNotifyFriendsOfScheduleChange,
-  uniqueFriendIds,
+  uniquePageFriendIds,
   type MaterialScheduleSnapshot,
 } from "./scheduleChangeNotifications";
 
@@ -54,10 +54,9 @@ describe("friend schedule change notifications", () => {
     const friendId = "friend" as Id<"users">;
     const otherId = "other" as Id<"users">;
     expect(
-      uniqueFriendIds(
+      uniquePageFriendIds(
         actorId,
-        [{ addresseeId: friendId }, { addresseeId: actorId }],
-        [{ requesterId: friendId }, { requesterId: otherId }],
+        [friendId, actorId, friendId, otherId],
       ),
     ).toEqual([friendId, otherId]);
   });

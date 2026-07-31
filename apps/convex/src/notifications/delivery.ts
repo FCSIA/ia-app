@@ -118,6 +118,13 @@ async function deliveryDecision(
   }
 
   const preference = await resolveNotificationPreference(ctx, { userId, category, scopeKey });
+  return preferenceDeliveryDecision(category, preference);
+}
+
+export function preferenceDeliveryDecision(
+  category: NotificationCategory,
+  preference: Awaited<ReturnType<typeof resolveNotificationPreference>>,
+) {
   if (preference) {
     return {
       create: preference.enabled && preference.level !== "OFF",
