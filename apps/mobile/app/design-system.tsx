@@ -1,26 +1,39 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { Bell, BookOpen, ChevronRight, Inbox } from "lucide-react-native";
 import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  ChipGroup,
-  Empty,
-  IconButton,
-  ListRow,
-  Section,
-  SegmentedControl,
-  SkeletonList,
-  Stat,
-  Switch,
-  TextField,
-  Txt,
-  useToast,
-} from "@/components/ui";
+  Bell,
+  BookOpen,
+  ChevronRight,
+  Hash,
+  Inbox,
+  LockKeyhole,
+  Megaphone,
+  Trash2,
+} from "lucide-react-native";
 import { Screen } from "@/components/screen";
-import { spacing } from "@/lib/tokens";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChipGroup } from "@/components/ui/chip";
+import {
+  CompactList,
+  CompactListItem,
+  CompactListSectionHeader,
+} from "@/components/ui/compact-list";
+import { Empty } from "@/components/ui/empty";
+import { IconButton } from "@/components/ui/icon-button";
+import { Inline, Stack } from "@/components/ui/layout";
+import { ListRow } from "@/components/ui/list-row";
+import { Section } from "@/components/ui/section";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { SkeletonList } from "@/components/ui/skeleton";
+import { Stat } from "@/components/ui/stat";
+import { Switch } from "@/components/ui/switch";
+import { TextField } from "@/components/ui/text-field";
+import { useToast } from "@/components/ui/toast";
+import { Txt } from "@/components/ui/typography";
+import { densityMetrics, spacing } from "@/lib/tokens";
 
 type DemoSegment = "one" | "two" | "three";
 
@@ -33,7 +46,12 @@ export default function DesignSystemScreen() {
   return (
     <Screen
       title="Design system"
-      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center", gap: spacing.xl }}
+      contentContainerStyle={{
+        width: "100%",
+        maxWidth: 760,
+        alignSelf: "center",
+        gap: spacing.xl,
+      }}
     >
       <Section title="Type">
         <View style={{ gap: spacing.xs }}>
@@ -42,15 +60,21 @@ export default function DesignSystemScreen() {
           <Txt variant="section">Section</Txt>
           <Txt>Body text for school workflows.</Txt>
           <Txt variant="label">Label</Txt>
-          <Txt variant="caption" tone="muted">Caption</Txt>
+          <Txt variant="caption" tone="muted">
+            Caption
+          </Txt>
         </View>
       </Section>
 
       <Section title="Actions">
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        <View
+          style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
+        >
           <Button
             title="Primary"
-            onPress={() => showToast({ title: "Primary action", tone: "success" })}
+            onPress={() =>
+              showToast({ title: "Primary action", tone: "success" })
+            }
             style={{ flexGrow: 1, minWidth: 160 }}
           />
           <Button
@@ -66,16 +90,37 @@ export default function DesignSystemScreen() {
             style={{ flexGrow: 1, minWidth: 130 }}
           />
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm }}>
-          <IconButton icon={Bell} label="Show inbox notice" onPress={() => showToast({ title: "Inbox opened" })} />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: spacing.sm,
+          }}
+        >
+          <IconButton
+            icon={Bell}
+            label="Show inbox notice"
+            onPress={() => showToast({ title: "Inbox opened" })}
+          />
           <IconButton
             icon={ChevronRight}
             label="Show next notice"
             variant="primary"
             onPress={() => showToast({ title: "Next action" })}
           />
-          <Button title="Disabled" variant="secondary" disabled style={{ minWidth: 120 }} />
-          <Button title="Saving" variant="tertiary" loading style={{ minWidth: 120 }} />
+          <Button
+            title="Disabled"
+            variant="secondary"
+            disabled
+            style={{ minWidth: 120 }}
+          />
+          <Button
+            title="Saving"
+            variant="tertiary"
+            loading
+            style={{ minWidth: 120 }}
+          />
         </View>
       </Section>
 
@@ -94,15 +139,107 @@ export default function DesignSystemScreen() {
           selected={chips}
           onToggle={(value) =>
             setChips((current) =>
-              current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+              current.includes(value)
+                ? current.filter((item) => item !== value)
+                : [...current, value],
             )
           }
         />
         <ListRow
           title="Push notifications"
           subtitle={enabled ? "Enabled" : "Disabled"}
-          trailing={<Switch label="Push notifications" value={enabled} onValueChange={setEnabled} />}
+          trailing={
+            <Switch
+              label="Push notifications"
+              value={enabled}
+              onValueChange={setEnabled}
+            />
+          }
         />
+      </Section>
+
+      <Section title="Density">
+        <Stack gap="sm">
+          {(["compact", "default", "comfortable"] as const).map((density) => (
+            <Stack key={density} gap="xs">
+              <Inline
+                gap="sm"
+                distribution="between"
+                style={{ paddingHorizontal: spacing.sm }}
+              >
+                <Txt variant="label" style={{ textTransform: "capitalize" }}>
+                  {density}
+                </Txt>
+                <Txt variant="caption" tone="muted">
+                  {densityMetrics[density].rowMinHeight}px row ·{" "}
+                  {densityMetrics[density].touchTarget}px touch
+                </Txt>
+              </Inline>
+              <CompactList density={density}>
+                <CompactListItem
+                  icon={Hash}
+                  title="student-life"
+                  detail={
+                    density === "comfortable"
+                      ? "Room for supporting context"
+                      : undefined
+                  }
+                  onPress={() => showToast({ title: `${density} row` })}
+                />
+              </CompactList>
+            </Stack>
+          ))}
+        </Stack>
+      </Section>
+
+      <Section title="Compact list states">
+        <Stack gap="none">
+          <CompactListSectionHeader
+            title="Text channels"
+            count={5}
+            action={
+              <Txt variant="caption" tone="muted">
+                Hold to preview press
+              </Txt>
+            }
+          />
+          <CompactList separation="full">
+            <CompactListItem
+              icon={Hash}
+              title="general"
+              onPress={() => showToast({ title: "Default row" })}
+            />
+            <CompactListItem
+              icon={Hash}
+              title="course-planning"
+              state="selected"
+              trailing={<StateLabel label="Selected" />}
+              onPress={() => showToast({ title: "Selected row" })}
+            />
+            <CompactListItem
+              icon={Megaphone}
+              title="announcements"
+              state="unread"
+              trailing={<StateLabel label="3 new" />}
+              onPress={() => showToast({ title: "Unread row" })}
+            />
+            <CompactListItem
+              icon={LockKeyhole}
+              title="sponsor-notes"
+              state="disabled"
+              trailing={<StateLabel label="Restricted" />}
+              onPress={() => showToast({ title: "Disabled rows do not open" })}
+            />
+            <CompactListItem
+              icon={Trash2}
+              title="Remove saved item"
+              state="destructive"
+              onPress={() =>
+                showToast({ title: "Destructive action", tone: "warning" })
+              }
+            />
+          </CompactList>
+        </Stack>
       </Section>
 
       <Section title="Content">
@@ -112,25 +249,42 @@ export default function DesignSystemScreen() {
           subtitle="Search pathways and courses"
           onPress={() => showToast({ title: "Course catalog row" })}
         />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.md,
+          }}
+        >
           <Avatar name="Innovation Academy" />
           <View style={{ flex: 1, gap: 2 }}>
             <Txt style={{ fontWeight: "700" }}>Innovation Academy</Txt>
-            <Txt variant="caption" tone="muted">Avatar and supporting text</Txt>
+            <Txt variant="caption" tone="muted">
+              Avatar and supporting text
+            </Txt>
           </View>
           <Badge label="School wide" color="blue" />
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        <View
+          style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
+        >
           <Badge label="Club" color="amber" />
           <Badge label="Saved" color="emerald" variant="dot" />
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        <View
+          style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
+        >
           <View style={{ flexGrow: 1, minWidth: 140 }}>
             <Stat value="24" label="Credits" />
           </View>
-          <Card variant="flat" style={{ flexGrow: 1, minWidth: 200, gap: spacing.xs }}>
+          <Card
+            variant="flat"
+            style={{ flexGrow: 1, minWidth: 200, gap: spacing.xs }}
+          >
             <Txt variant="label">Surface</Txt>
-            <Txt variant="caption" tone="muted">A single content boundary.</Txt>
+            <Txt variant="caption" tone="muted">
+              A single content boundary.
+            </Txt>
           </Card>
         </View>
       </Section>
@@ -142,7 +296,11 @@ export default function DesignSystemScreen() {
         </View>
         <View style={{ gap: spacing.xs }}>
           <Txt variant="label">Message</Txt>
-          <TextField placeholder="Write a message" accessibilityLabel="Message" multiline />
+          <TextField
+            placeholder="Write a message"
+            accessibilityLabel="Message"
+            multiline
+          />
         </View>
       </Section>
 
@@ -151,8 +309,20 @@ export default function DesignSystemScreen() {
       </Section>
 
       <Section title="Empty">
-        <Empty title="No announcements" body="New school updates will appear here." icon={Inbox} />
+        <Empty
+          title="No announcements"
+          body="New school updates will appear here."
+          icon={Inbox}
+        />
       </Section>
     </Screen>
+  );
+}
+
+function StateLabel({ label }: { label: string }) {
+  return (
+    <Txt variant="caption" tone="muted" numberOfLines={1}>
+      {label}
+    </Txt>
   );
 }

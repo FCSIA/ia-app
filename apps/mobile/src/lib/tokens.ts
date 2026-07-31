@@ -38,3 +38,48 @@ export const elevation = {
 } as const;
 
 export const duration = { fast: 150, base: 220, slow: 320 } as const;
+
+/**
+ * Task-level density, not a global display preference.
+ *
+ * Compact geometry is intentionally smaller than the minimum touch target.
+ * Interactive primitives should expand their hit area to `touchTarget` rather
+ * than making every visible row or control 44px tall.
+ */
+export const densityMetrics = {
+  compact: {
+    visualControlHeight: 36,
+    rowMinHeight: 40,
+    touchTarget: 44,
+    sectionHeaderHeight: 32,
+    horizontalInset: spacing.sm,
+    contentGap: spacing.sm,
+    verticalGap: spacing.xs,
+    iconSize: 18,
+    radius: 8,
+  },
+  default: {
+    visualControlHeight: 44,
+    rowMinHeight: 48,
+    touchTarget: 44,
+    sectionHeaderHeight: 36,
+    horizontalInset: spacing.md,
+    contentGap: 10,
+    verticalGap: spacing.sm,
+    iconSize: 20,
+    radius: radii.sm,
+  },
+  comfortable: {
+    visualControlHeight: 48,
+    rowMinHeight: 56,
+    touchTarget: 48,
+    sectionHeaderHeight: 40,
+    horizontalInset: spacing.lg,
+    contentGap: spacing.md,
+    verticalGap: spacing.md,
+    iconSize: 22,
+    radius: radii.md,
+  },
+} as const;
+
+export type Density = keyof typeof densityMetrics;
