@@ -3,79 +3,34 @@ import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useConvex, useMutation } from "convex/react";
-import {
-  Bell,
-  Camera,
-  ChevronRight,
-  KeyRound,
-  LogOut,
-  Palette,
-  Trash2,
-} from "lucide-react-native";
-import { AppDetailHeader, FormScreen } from "@/components/screen";
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  CompactList,
-  CompactListItem,
-  CompactListSectionHeader,
-} from "@/components/ui/compact-list";
-import { Field } from "@/components/ui/field";
-import { AdaptivePane, AdaptiveSplit } from "@/components/ui/layout";
-import { Sheet } from "@/components/ui/sheet";
-import { TextField } from "@/components/ui/text-field";
-import { useToast } from "@/components/ui/toast";
-import { Txt } from "@/components/ui/typography";
+import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import {
   discardPreparedAvatarImage,
   prepareAvatarImage,
   type PreparedAvatarImage,
 } from "@/lib/avatar-image";
-import { useCurrentUser } from "@/lib/auth";
-import { warning } from "@/lib/haptics";
 import { unregisterStoredNativePushToken } from "@/lib/push";
+import { useCurrentUser } from "@/lib/auth";
+import { Screen } from "@/components/screen";
+import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
+import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
-import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-
-const EMPTY_PASSWORD_FORM = {
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-};
 
 export default function ProfileScreen() {
   const user = useCurrentUser();
   const convex = useConvex();
-  const { color } = useTheme();
   const saveImage = useMutation(api.users.me.saveUserImage);
   const clearImage = useMutation(api.users.me.clearUserImage);
   const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
-  const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const { showToast } = useToast();
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
-  const newPasswordIsShort =
-    passwordForm.newPassword.length > 0 && passwordForm.newPassword.length < 8;
-  const confirmationDoesNotMatch =
-    passwordForm.confirmPassword.length > 0 &&
-    passwordForm.newPassword !== passwordForm.confirmPassword;
-  const passwordIsValid =
-    Boolean(passwordForm.currentPassword) &&
-    passwordForm.newPassword.length >= 8 &&
-    passwordForm.newPassword === passwordForm.confirmPassword;
-  const navigationChevron = (
-    <ChevronRight
-      accessibilityElementsHidden
-      color={color("mutedForeground")}
-      size={17}
-      strokeWidth={2}
-    />
-  );
 
   async function pickAvatar() {
     let prepared: PreparedAvatarImage | undefined;
@@ -98,9 +53,7 @@ export default function ProfileScreen() {
       if (upload.status < 200 || upload.status >= 300) {
         throw new Error("The image could not be uploaded.");
       }
-      const { storageId } = JSON.parse(upload.body) as {
-        storageId: Id<"_storage">;
-      };
+      const { storageId } = JSON.parse(upload.body) as { storageId: Id<"_storage"> };
       await saveImage({
         kind: "avatar",
         storageId,
@@ -109,27 +62,10 @@ export default function ProfileScreen() {
       });
       showToast({ title: "Photo updated", tone: "success" });
     } catch (error) {
-      showToast({
-        title: "Photo wasn't updated",
-        body: error instanceof Error ? error.message : "Try again.",
-        tone: "warning",
-      });
+      showToast({ title: "Photo wasn't updated", body: error instanceof Error ? error.message : "Try again.", tone: "warning" });
     } finally {
       discardPreparedAvatarImage(prepared);
       setAvatarUploading(false);
-    }
-  }
-
-  async function removeAvatar() {
-    try {
-      await clearImage({ kind: "avatar" });
-      showToast({ title: "Photo removed", tone: "success" });
-    } catch (error) {
-      showToast({
-        title: "Photo wasn't removed",
-        body: error instanceof Error ? error.message : "Try again.",
-        tone: "warning",
-      });
     }
   }
 
@@ -150,213 +86,107 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
-    if (!passwordIsValid) return;
-
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
-      setPasswordForm(EMPTY_PASSWORD_FORM);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setPasswordOpen(false);
       showToast({ title: "Password updated", tone: "success" });
     } catch (error) {
-      showToast({
-        title: "Password",
-        body: error instanceof Error ? error.message : "Try again.",
-      });
+      showToast({ title: "Password", body: error instanceof Error ? error.message : "Try again." });
     }
   }
 
   return (
-    <FormScreen navigation={<AppDetailHeader title="Profile" />}>
-      <AdaptiveSplit gap="md" style={{ paddingHorizontal: spacing.sm }}>
-        <AdaptivePane priority="primary">
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: spacing.md,
-            }}
-          >
-            <Avatar uri={user?.avatarUrl} name={fullName} size={64} />
-            <View style={{ minWidth: 0, flex: 1, gap: 2 }}>
-              <Txt variant="title" numberOfLines={2}>
-                {fullName || "Innovation Academy"}
-              </Txt>
-              {user?.uniqueId ? (
-                <Txt variant="label" tone="muted" numberOfLines={1}>
-                  {user.uniqueId}
-                </Txt>
-              ) : null}
-            </View>
-          </View>
-        </AdaptivePane>
-        <AdaptivePane priority="secondary">
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
-            <Button
-              title="Change photo"
-              icon={Camera}
-              size="sm"
-              variant="secondary"
-              loading={avatarUploading}
-              style={{ flex: 1 }}
-              onPress={() => void pickAvatar()}
-            />
-            {user?.avatarUrl ? (
-              <Button
-                title="Remove"
-                size="sm"
-                variant="ghost"
-                disabled={avatarUploading}
-                onPress={() => void removeAvatar()}
-              />
-            ) : null}
-          </View>
-        </AdaptivePane>
-      </AdaptiveSplit>
-
-      <View>
-        <CompactListSectionHeader title="Preferences" />
-        <CompactList separation="leading">
-          <CompactListItem
-            icon={Palette}
-            title="Appearance"
-            detail="Theme and colors"
-            trailing={navigationChevron}
-            onPress={() => router.push("/settings/theme" as never)}
+    <Screen title="Profile">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <Avatar uri={user?.avatarUrl} name={fullName} size={72} />
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Txt variant="title">{fullName || "Innovation Academy"}</Txt>
+          <Txt tone="muted">{user?.uniqueId}</Txt>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+        <Button
+          title="Change photo"
+          icon={Camera}
+          variant="secondary"
+          loading={avatarUploading}
+          onPress={() => void pickAvatar()}
+        />
+        {user?.avatarUrl ? (
+          <Button
+            title="Remove"
+            variant="ghost"
+            disabled={avatarUploading}
+            onPress={() => clearImage({ kind: "avatar" }).then(() => showToast({ title: "Photo removed", tone: "success" })).catch((error) => showToast({ title: "Photo wasn't removed", body: error instanceof Error ? error.message : "Try again.", tone: "warning" }))}
           />
-          <CompactListItem
-            icon={Bell}
-            title="Notifications"
-            detail="Push alerts and topics"
-            trailing={navigationChevron}
-            onPress={() => router.push("/settings/notifications" as never)}
-          />
-        </CompactList>
+        ) : null}
       </View>
 
-      <View>
-        <CompactListSectionHeader title="Security" />
-        <CompactList>
-          <CompactListItem
-            icon={KeyRound}
-            title="Password"
-            detail="Change your account password"
-            trailing={navigationChevron}
-            onPress={() => setPasswordOpen(true)}
-          />
-        </CompactList>
-      </View>
+      <Section title="Preferences">
+        <ListRow icon={Palette} title="Appearance" subtitle="Theme and colors" onPress={() => router.push("/settings/theme" as never)} />
+        <ListRow icon={Bell} title="Notifications" subtitle="Push alerts and topics" onPress={() => router.push("/settings/notifications" as never)} />
+      </Section>
 
-      <View>
-        <CompactListSectionHeader title="Account" />
-        <CompactList separation="leading">
-          <CompactListItem
-            icon={Trash2}
-            title="Delete account"
-            detail="Contact IA support to request deletion"
-            state="destructive"
-            onPress={() =>
-              showToast({
-                title: "Delete account",
-                body: "Contact IA support or the front office to request account removal or deactivation.",
-              })
-            }
-          />
-          <CompactListItem
-            icon={LogOut}
-            title="Sign out"
-            state="destructive"
-            onPress={() => void logout()}
-          />
-        </CompactList>
-      </View>
+      <Section title="Security">
+        <ListRow icon={KeyRound} title="Password" subtitle="Change your account password" onPress={() => setPasswordOpen(true)} />
+      </Section>
+
+      <Section title="Account">
+        <ListRow
+          icon={Trash2}
+          title="Delete account"
+          subtitle="Contact IA support to request deletion"
+          onPress={() => showToast({ title: "Delete account", body: "Contact IA support or the front office to request account removal or deactivation." })}
+        />
+        <Button title="Sign out" variant="ghost" onPress={logout} />
+      </Section>
 
       {__DEV__ ? (
-        <Txt
-          variant="caption"
-          tone="muted"
-          style={{ textAlign: "center" }}
-          onLongPress={() => router.push("/design-system" as never)}
-        >
+        <Txt variant="caption" tone="muted" style={{ textAlign: "center" }} onLongPress={() => router.push("/design-system" as never)}>
           IA Mobile v0.0.1
         </Txt>
       ) : null}
 
-      <Sheet
-        open={passwordOpen}
-        onClose={() => setPasswordOpen(false)}
-        title="Change password"
-      >
-        <Field.Root>
-          <Field.Label required>Current password</Field.Label>
-          <TextField
-            accessibilityLabel="Current password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            density="compact"
-            secureTextEntry
-            textContentType="password"
-            value={passwordForm.currentPassword}
-            onChangeText={(currentPassword) =>
-              setPasswordForm((current) => ({
-                ...current,
-                currentPassword,
-              }))
-            }
-          />
-        </Field.Root>
-        <Field.Root>
-          <Field.Label required>New password</Field.Label>
-          <TextField
-            accessibilityLabel="New password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            density="compact"
-            secureTextEntry
-            state={newPasswordIsShort ? "invalid" : "default"}
-            textContentType="newPassword"
-            value={passwordForm.newPassword}
-            onChangeText={(newPassword) =>
-              setPasswordForm((current) => ({ ...current, newPassword }))
-            }
-          />
-          {newPasswordIsShort ? (
-            <Field.Error>Use at least 8 characters.</Field.Error>
-          ) : (
-            <Field.Description>At least 8 characters.</Field.Description>
-          )}
-        </Field.Root>
-        <Field.Root>
-          <Field.Label required>Confirm password</Field.Label>
-          <TextField
-            accessibilityLabel="Confirm password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            density="compact"
-            secureTextEntry
-            state={confirmationDoesNotMatch ? "invalid" : "default"}
-            textContentType="newPassword"
-            value={passwordForm.confirmPassword}
-            onChangeText={(confirmPassword) =>
-              setPasswordForm((current) => ({
-                ...current,
-                confirmPassword,
-              }))
-            }
-          />
-          {confirmationDoesNotMatch ? (
-            <Field.Error>Passwords do not match.</Field.Error>
-          ) : null}
-        </Field.Root>
+      <Sheet open={passwordOpen} onClose={() => setPasswordOpen(false)} title="Change password">
+        <PasswordField
+          label="Current password"
+          value={passwordForm.currentPassword}
+          onChangeText={(currentPassword) => setPasswordForm((current) => ({ ...current, currentPassword }))}
+        />
+        <PasswordField
+          label="New password"
+          value={passwordForm.newPassword}
+          onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
+          hint="At least 8 characters"
+        />
+        <PasswordField
+          label="Confirm password"
+          value={passwordForm.confirmPassword}
+          onChangeText={(confirmPassword) => setPasswordForm((current) => ({ ...current, confirmPassword }))}
+        />
         <Button
           title="Change password"
-          size="sm"
-          disabled={!passwordIsValid}
+          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
           onPress={() => void submitPassword()}
         />
       </Sheet>
-    </FormScreen>
+    </Screen>
+  );
+}
+
+function PasswordField({ label, hint, value, onChangeText }: { label: string; hint?: string; value: string; onChangeText: (value: string) => void }) {
+  return (
+    <View style={{ gap: spacing.xs }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
+        <Txt variant="label">{label}</Txt>
+        {hint ? <Txt variant="caption" tone="muted">{hint}</Txt> : null}
+      </View>
+      <TextField accessibilityLabel={label} value={value} onChangeText={onChangeText} secureTextEntry />
+    </View>
   );
 }
