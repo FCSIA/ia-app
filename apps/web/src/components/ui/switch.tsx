@@ -34,9 +34,9 @@ const SWITCH_ON_BACKGROUND = 'hsl(var(--primary))';
 const SWITCH_ON_BACKGROUND_HOVER =
   'color-mix(in oklab, hsl(var(--primary)), hsl(var(--foreground)) 8%)';
 const SWITCH_OFF_BACKGROUND =
-  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 9%)';
+  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 18%)';
 const SWITCH_OFF_BACKGROUND_HOVER =
-  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 15%)';
+  'color-mix(in oklab, hsl(var(--muted)), hsl(var(--foreground)) 24%)';
 
 function Switch({
   'aria-label': ariaLabel,
@@ -107,7 +107,7 @@ function Switch({
         className={cn(
           'relative shrink-0 cursor-pointer rounded-full outline-none transition-colors duration-80',
           'focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-          'disabled:cursor-not-allowed disabled:opacity-50',
+          'disabled:cursor-not-allowed disabled:opacity-80',
           className,
         )}
         style={{
@@ -122,7 +122,7 @@ function Switch({
               : SWITCH_OFF_BACKGROUND,
           boxShadow: checked
             ? 'inset 0 0 0 1px hsl(var(--primary) / 0.2)'
-            : 'inset 0 0 0 1px hsl(var(--border) / 0.95)',
+            : 'inset 0 0 0 1px hsl(var(--foreground) / 0.28)',
         }}
         {...props}
       >

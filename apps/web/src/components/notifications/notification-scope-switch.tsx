@@ -63,7 +63,6 @@ export function NotificationScopeSwitch({
     || (preferences === undefined ? defaultEnabled : preference ? preference.enabled !== false : defaultEnabled);
   const enabled = parentEnabled && (optimisticEnabled ?? storedEnabled);
   const disabled = locked || !parentEnabled || pending || preferences === undefined;
-  const stateLabel = pending ? 'Saving' : preferences === undefined ? '...' : enabled ? 'On' : 'Off';
 
   useEffect(() => {
     if (optimisticEnabled !== null && preferences !== undefined && storedEnabled === optimisticEnabled) {
@@ -101,7 +100,6 @@ export function NotificationScopeSwitch({
         'flex min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/25',
         compact && 'px-0 py-0 hover:bg-transparent',
         locked && 'opacity-80',
-        !parentEnabled && 'opacity-60',
         className,
       )}
       title={
@@ -117,7 +115,8 @@ export function NotificationScopeSwitch({
       }
     >
       <Switch
-        label={compact ? stateLabel : label}
+        label={compact ? undefined : label}
+        aria-label={`${label}: ${enabled ? 'on' : 'off'}`}
         checked={enabled}
         onCheckedChange={(nextEnabled) => void togglePreference(nextEnabled)}
         disabled={disabled}
