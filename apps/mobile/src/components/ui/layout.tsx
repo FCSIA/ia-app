@@ -1,4 +1,10 @@
-import { StyleSheet, View, type ViewProps } from "react-native";
+import { createContext, use } from "react";
+import {
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type ViewProps,
+} from "react-native";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 
@@ -27,6 +33,17 @@ type DividerProps = Omit<ViewProps, "children"> & {
   orientation?: "horizontal" | "vertical";
   inset?: LayoutSpacing;
 };
+
+type AdaptiveSplitProps = ViewProps & {
+  breakpoint?: number;
+  gap?: LayoutSpacing;
+};
+
+type AdaptivePaneProps = ViewProps & {
+  priority?: "equal" | "primary" | "secondary";
+};
+
+const AdaptiveSplitContext = createContext(false);
 
 const gapClasses: Record<LayoutSpacing, string> = {
   none: "gap-0",
@@ -172,6 +189,53 @@ export function Divider({
           ? { height: thickness, marginHorizontal: insetValue }
           : { width: thickness, marginVertical: insetValue },
         { backgroundColor: color("border") },
+        style,
+      ]}
+      {...props}
+    />
+  );
+}
+
+export function AdaptiveSplit({
+  breakpoint = 768,
+  gap = "lg",
+  style,
+  ...props
+}: AdaptiveSplitProps) {
+  const { width } = useWindowDimensions();
+  const split = width >= breakpoint;
+
+  return (
+    <AdaptiveSplitContext value={split}>
+      <View
+        className="w-full"
+        style={[
+          {
+            flexDirection: split ? "row" : "column",
+            alignItems: "flex-start",
+            gap: spacingValues[gap],
+          },
+          style,
+        ]}
+        {...props}
+      />
+    </AdaptiveSplitContext>
+  );
+}
+
+export function AdaptivePane({
+  priority = "equal",
+  style,
+  ...props
+}: AdaptivePaneProps) {
+  const split = use(AdaptiveSplitContext);
+  const flex =
+    priority === "primary" ? 1.35 : priority === "secondary" ? 0.8 : 1;
+
+  return (
+    <View
+      style={[
+        split ? { minWidth: 0, flex } : { width: "100%", alignSelf: "stretch" },
         style,
       ]}
       {...props}
