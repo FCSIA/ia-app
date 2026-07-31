@@ -34,7 +34,16 @@ export function FriendScheduleCard({
   emphasized = false,
 }: FriendScheduleCardProps) {
   const current = getCurrentScheduleStatus(friend.schedule, blocks);
-  const currentLabel = current.currentBlock?.periodNumber
+  const lunchNumber =
+    friend.schedule?.lunchPeriod === 'PERIOD_4'
+      ? 4
+      : friend.schedule?.lunchPeriod === 'PERIOD_5'
+        ? 5
+        : null;
+  const currentIsLunch = current.currentBlock?.periodNumber === lunchNumber;
+  const currentLabel = currentIsLunch
+    ? 'Lunch'
+    : current.currentBlock?.periodNumber
     ? current.currentEntry?.course
       ? current.currentEntry.course.title
       : current.currentEntry?.className || `${current.currentBlock.label} (not filled in)`
@@ -108,7 +117,8 @@ export function FriendScheduleCard({
           <CollapsibleContent>
             <div className="divide-y divide-border/30 border-t border-border/30">
               {todayBlocks.map((block) => {
-                const entry = block.periodNumber
+                const isLunch = block.periodNumber === lunchNumber;
+                const entry = block.periodNumber && !isLunch
                   ? findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)
                   : null;
                 return (
@@ -123,7 +133,11 @@ export function FriendScheduleCard({
                         </Link>
                       ) : (
                         <p className="text-sm font-medium text-foreground truncate">
-                          {block.periodNumber ? entry?.className || block.label : block.label}
+                          {isLunch
+                            ? 'Lunch'
+                            : block.periodNumber
+                              ? entry?.className || block.label
+                              : block.label}
                         </p>
                       )}
                     </div>

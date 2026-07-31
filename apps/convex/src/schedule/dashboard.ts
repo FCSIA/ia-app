@@ -20,18 +20,42 @@ import {
   scheduleMateriallyChanged,
   type MaterialScheduleSnapshot,
 } from "./scheduleChangeNotifications";
+import { scheduleLunchPeriodValidator } from "../validators";
+import {
+  assertNoLunchCourseConflict,
+  dateKeyForSchoolTime,
+  normalizeDateKey,
+  resolveLunchPeriod,
+  resolveSchoolDay,
+} from "./dayResolver";
+import { loadDayPlanSource } from "./dayPlans";
 
 export const get = query({
-  args: {},
+  args: { dateKey: v.optional(v.string()) },
   returns: scheduleDashboardValidator,
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     const isStudent = user ? isStudentUser(user) : false;
+    const dateKey = args.dateKey
+      ? normalizeDateKey(args.dateKey)
+      : dateKeyForSchoolTime();
 
-    const [mySchedule, blocks] = await Promise.all([
+    const [mySchedule, blocks, dayPlanSource] = await Promise.all([
       isStudent && user ? serializeScheduleForUser(ctx, user._id) : Promise.resolve(null),
       ctx.db.query("schoolDayBlocks").take(250),
+      loadDayPlanSource(ctx, dateKey),
     ]);
+    const resolved = resolveSchoolDay({
+      dateKey,
+      lunchPeriod: mySchedule ? mySchedule.lunchPeriod : null,
+      entries: mySchedule?.entries ?? [],
+      regularBlocks:
+        dayPlanSource.source === "DATE_OVERRIDE" ? [] : dayPlanSource.blocks,
+      override:
+        dayPlanSource.source === "DATE_OVERRIDE"
+          ? { name: dayPlanSource.name, blocks: dayPlanSource.blocks }
+          : null,
+    });
 
     const friends = [];
     const incomingRequests = [];
@@ -94,6 +118,13 @@ export const get = query({
           left.weekday.localeCompare(right.weekday) ||
           left.startTime.localeCompare(right.startTime),
       ),
+      resolvedDay: {
+        ...resolved,
+        name: dayPlanSource.name,
+        source: dayPlanSource.source,
+        sourceId: dayPlanSource.sourceId,
+        sourceTemplateId: dayPlanSource.sourceTemplateId,
+      },
       friends,
       incomingRequests,
       outgoingRequests,
@@ -104,6 +135,7 @@ export const get = query({
 export const save = mutation({
   args: {
     isPublic: v.boolean(),
+    lunchPeriod: v.optional(scheduleLunchPeriodValidator),
     entries: v.array(scheduleEntryInputValidator),
   },
   returns: v.union(studentScheduleRecordValidator, v.null()),
@@ -112,6 +144,21 @@ export const save = mutation({
     requireStudentUser(user);
     const entries = normalizeScheduleEntries(args.entries);
     const now = Date.now();
+
+    const existing = await ctx.db
+      .query("studentSchedules")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+    const lunchPeriod =
+      args.lunchPeriod ??
+      existing?.lunchPeriod ??
+      resolveLunchPeriod(undefined, entries);
+    if (!lunchPeriod) {
+      throw new ConvexError(
+        "Choose either Period 4 or Period 5 for lunch before saving.",
+      );
+    }
+    assertNoLunchCourseConflict(entries, lunchPeriod);
 
     const coursesById = new Map<Id<"courses">, Doc<"courses">>();
     for (const entry of entries) {
@@ -124,10 +171,6 @@ export const save = mutation({
       coursesById.set(entry.courseId, course);
     }
 
-    const existing = await ctx.db
-      .query("studentSchedules")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .unique();
     const oldEntries = existing
       ? await ctx.db
           .query("studentScheduleEntries")
@@ -145,6 +188,8 @@ export const save = mutation({
     const previousSnapshot: MaterialScheduleSnapshot | null = existing
       ? {
           isPublic: existing.isPublic,
+          lunchPeriod:
+            existing.lunchPeriod ?? resolveLunchPeriod(undefined, oldEntries),
           entries: oldEntries.map(({ weekday, periodNumber, courseId, className }) => ({
             weekday,
             periodNumber,
@@ -155,6 +200,7 @@ export const save = mutation({
       : null;
     const nextSnapshot: MaterialScheduleSnapshot = {
       isPublic: args.isPublic,
+      lunchPeriod,
       entries: resolvedEntries,
     };
     if (existing && !scheduleMateriallyChanged(previousSnapshot, nextSnapshot)) {
@@ -165,6 +211,7 @@ export const save = mutation({
       (await ctx.db.insert("studentSchedules", {
         userId: user._id,
         isPublic: args.isPublic,
+        lunchPeriod,
         createdAt: now,
         updatedAt: now,
       }));
@@ -172,6 +219,7 @@ export const save = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         isPublic: args.isPublic,
+        lunchPeriod,
         updatedAt: now,
       });
     }
@@ -198,7 +246,11 @@ export const save = mutation({
       action: "schedule.updated",
       entityType: "studentSchedule",
       entityId: scheduleId,
-      meta: { isPublic: args.isPublic, entryCount: entries.length },
+      meta: {
+        isPublic: args.isPublic,
+        lunchPeriod,
+        entryCount: entries.length,
+      },
     });
 
     await enqueueFriendScheduleChangeNotifications(ctx, {

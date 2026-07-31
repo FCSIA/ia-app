@@ -1,5 +1,9 @@
 import type { Doc } from "../src/_generated/dataModel";
-import type { Pathway, ScheduleWeekday } from "../src/validators";
+import type {
+  Pathway,
+  ScheduleLunchPeriod,
+  ScheduleWeekday,
+} from "../src/validators";
 
 type CourseLike = Pick<
   Doc<"courses">,
@@ -35,6 +39,10 @@ export const BASE_BLOCKS = [
   { label: "Period 7", periodNumber: 7, startTime: "13:35", endTime: "14:20" },
   { label: "Period 8", periodNumber: 8, startTime: "14:30", endTime: "15:15" },
 ] as const;
+
+export const REGULAR_TEMPLATE_BLOCKS = BASE_BLOCKS.filter(
+  (block) => block.periodNumber !== null,
+);
 
 const INTRO_BY_PATHWAY: Record<Pathway, string[]> = {
   ENGINEERING: [
@@ -155,6 +163,10 @@ function stableIndex(seed: string, length: number) {
 
 export function stableScheduleVisibility(seed: string) {
   return stableIndex(`${seed}:visibility`, 100) < 68;
+}
+
+export function stableLunchPeriod(seed: string): ScheduleLunchPeriod {
+  return stableIndex(`${seed}:lunch`, 2) === 0 ? "PERIOD_4" : "PERIOD_5";
 }
 
 function isScheduleGrade(gradeLevel: number): gradeLevel is 9 | 10 | 11 | 12 {

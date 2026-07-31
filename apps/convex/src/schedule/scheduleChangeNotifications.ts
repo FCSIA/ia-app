@@ -4,7 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../_generated/server";
 import { deliverNotification } from "../notifications/delivery";
-import type { ScheduleWeekday } from "../validators";
+import type { ScheduleLunchPeriod, ScheduleWeekday } from "../validators";
 import { getScheduleForUser, isStudentUser } from "./_lib";
 
 export type MaterialScheduleEntry = {
@@ -16,6 +16,7 @@ export type MaterialScheduleEntry = {
 
 export type MaterialScheduleSnapshot = {
   isPublic: boolean;
+  lunchPeriod: ScheduleLunchPeriod | null;
   entries: readonly MaterialScheduleEntry[];
 };
 
@@ -40,7 +41,13 @@ export function scheduleMateriallyChanged(
   previous: MaterialScheduleSnapshot | null,
   next: MaterialScheduleSnapshot,
 ) {
-  if (!previous || previous.isPublic !== next.isPublic) return true;
+  if (
+    !previous ||
+    previous.isPublic !== next.isPublic ||
+    previous.lunchPeriod !== next.lunchPeriod
+  ) {
+    return true;
+  }
   return JSON.stringify(canonicalEntries(previous.entries)) !== JSON.stringify(canonicalEntries(next.entries));
 }
 

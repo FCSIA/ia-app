@@ -40,6 +40,12 @@ export function FriendScheduleDialog({
   );
 
   const currentStatus = getCurrentScheduleStatus(friend.schedule, blocks);
+  const lunchNumber =
+    friend.schedule?.lunchPeriod === 'PERIOD_4'
+      ? 4
+      : friend.schedule?.lunchPeriod === 'PERIOD_5'
+        ? 5
+        : null;
   const dayBlocks = getBlocksForDay(blocks, selectedWeekday);
   const periodNumbers = getPeriodNumbersForDay(blocks, selectedWeekday);
 
@@ -93,7 +99,10 @@ export function FriendScheduleDialog({
               
               {/* Rows */}
               {periodNumbers.map((periodNumber) => {
-                const entry = findScheduleEntry(friend.schedule, selectedWeekday, periodNumber);
+                const isLunch = periodNumber === lunchNumber;
+                const entry = isLunch
+                  ? null
+                  : findScheduleEntry(friend.schedule, selectedWeekday, periodNumber);
                 const matchingBlock = dayBlocks.find((block) => block.periodNumber === periodNumber);
                 const isCurrent =
                   selectedWeekday === currentStatus.weekday &&
@@ -118,7 +127,9 @@ export function FriendScheduleDialog({
                       {periodNumber}
                     </div>
                     <div className="flex-1 min-w-0 flex items-center gap-2">
-                      {entry?.course ? (
+                      {isLunch ? (
+                        <p className="text-sm font-medium text-foreground">Lunch</p>
+                      ) : entry?.course ? (
                         <Link
                           href={`/courses/${entry.course.slug}`}
                           className="text-sm font-medium text-foreground hover:underline truncate block"
@@ -186,4 +197,3 @@ export function FriendScheduleDialog({
     </Dialog>
   );
 }
-

@@ -16,6 +16,7 @@ import { useMutation, useQuery } from 'convex/react';
 import type { CourseSummary } from '@/components/courses/types';
 import type {
   ScheduleSearchResult,
+  ScheduleLunchPeriod,
   ScheduleWeekday,
   SchoolDayBlock,
   StudentScheduleDraftEntry,
@@ -40,6 +41,17 @@ const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
 const EMPTY_SEARCH_RESULTS: ScheduleSearchResult[] = [];
 
+function schoolDateKey() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  return `${byType.get('year')}-${byType.get('month')}-${byType.get('day')}`;
+}
+
 function useScheduleWorkspaceValue() {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
@@ -58,6 +70,7 @@ function useScheduleWorkspaceValue() {
     activeTab: resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks),
   }));
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
+  const [selectedDateKey, setSelectedDateKey] = useState(schoolDateKey);
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -66,6 +79,7 @@ function useScheduleWorkspaceValue() {
     source: undefined,
     entries: [],
     isPublic: false,
+    lunchPeriod: 'PERIOD_5',
   });
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
@@ -73,16 +87,25 @@ function useScheduleWorkspaceValue() {
   const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [draftAdminBlocks, setDraftAdminBlocks] = useState<Record<string, SchoolDayBlock>>({});
 
-  const data = useQuery(api.schedule.dashboard.get);
+  const data = useQuery(api.schedule.dashboard.get, { dateKey: selectedDateKey });
   const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? EMPTY_COURSES;
   const sourceSchedule = data?.mySchedule;
 
   let scheduleEntries = scheduleDraft.entries;
   let isPublic = scheduleDraft.isPublic;
+  let lunchPeriod = scheduleDraft.lunchPeriod;
   if (scheduleDraft.source !== sourceSchedule) {
     scheduleEntries = sourceSchedule?.entries ?? [];
     isPublic = sourceSchedule?.isPublic ?? false;
-    setScheduleDraft({ source: sourceSchedule, entries: scheduleEntries, isPublic });
+    lunchPeriod = sourceSchedule
+      ? sourceSchedule.lunchPeriod
+      : 'PERIOD_5';
+    setScheduleDraft({
+      source: sourceSchedule,
+      entries: scheduleEntries,
+      isPublic,
+      lunchPeriod,
+    });
   }
 
   let activeTab = tabState.activeTab;
@@ -113,6 +136,20 @@ function useScheduleWorkspaceValue() {
       ...current,
       isPublic: typeof value === 'function' ? value(current.isPublic) : value,
     }));
+  };
+  const setLunchPeriod = (nextLunchPeriod: ScheduleLunchPeriod) => {
+    const targetPeriod = nextLunchPeriod === 'PERIOD_4' ? 4 : 5;
+    const conflict = scheduleEntries.find((entry) => entry.periodNumber === targetPeriod);
+    if (conflict) {
+      toast({
+        title: `Period ${targetPeriod} still has a class`,
+        description: 'Remove or move that class before changing your lunch period.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    setScheduleDraft((current) => ({ ...current, lunchPeriod: nextLunchPeriod }));
+    return true;
   };
 
   useEffect(() => {
@@ -158,12 +195,21 @@ function useScheduleWorkspaceValue() {
     }
   };
 
-  const handleSaveSchedule = () =>
+  const handleSaveSchedule = () => {
+    if (!lunchPeriod) {
+      toast({
+        title: 'Choose your lunch period',
+        description: 'Remove the class in Period 4 or Period 5, then choose that slot for lunch.',
+        variant: 'destructive',
+      });
+      return;
+    }
     void runScheduleAction(
       'save-schedule',
       () =>
         saveSchedule({
           isPublic,
+          lunchPeriod,
           entries: scheduleEntries.map(({ weekday, periodNumber, courseId, className }) => ({
             weekday,
             periodNumber,
@@ -173,6 +219,7 @@ function useScheduleWorkspaceValue() {
         }),
       'Schedule saved',
     );
+  };
 
   const handleBulkSaveAdminBlocks = () => {
     setIsBulkEditing(false);
@@ -210,8 +257,8 @@ function useScheduleWorkspaceValue() {
 
   const blocks = data?.blocks ?? EMPTY_BLOCKS;
   const draftSchedule = useMemo(
-    () => buildScheduleRecord(scheduleEntries, isPublic),
-    [isPublic, scheduleEntries],
+    () => buildScheduleRecord(scheduleEntries, isPublic, lunchPeriod),
+    [isPublic, lunchPeriod, scheduleEntries],
   );
   const currentStatus = useMemo(
     () => getCurrentScheduleStatus(canEditOwnSchedule ? draftSchedule : null, blocks),
@@ -262,6 +309,7 @@ function useScheduleWorkspaceValue() {
     incomingRequestsRef,
     isLoading: data === undefined,
     isPublic,
+    lunchPeriod,
     isSearching,
     nextEntry,
     normalizedDeferredSearch,
@@ -273,6 +321,7 @@ function useScheduleWorkspaceValue() {
     searchIsDeferred,
     searchResults,
     selectedTab,
+    selectedDateKey,
     selectedWeekday,
     sendFriendRequest,
     setActiveTab,
@@ -280,8 +329,10 @@ function useScheduleWorkspaceValue() {
     setCreatingDay,
     setEditingBlockId,
     setIsPublic,
+    setLunchPeriod,
     setSearch,
     setSelectedWeekday,
+    setSelectedDateKey,
     updateBlock,
     updateScheduleEntry,
     user,

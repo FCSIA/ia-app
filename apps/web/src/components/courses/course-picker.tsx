@@ -25,6 +25,7 @@ type CoursePickerProps = {
   disabled?: boolean;
   className?: string;
   iconOnly?: boolean;
+  actionVisibility?: 'always' | 'row-interaction';
 };
 
 export function CoursePicker({
@@ -36,6 +37,7 @@ export function CoursePicker({
   disabled,
   className,
   iconOnly,
+  actionVisibility = 'always',
 }: CoursePickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -85,7 +87,12 @@ export function CoursePicker({
             size="sm"
             type="button"
             disabled={disabled}
-            className={cn("h-6 w-6 p-0 rounded bg-muted/50 hover:bg-muted font-normal text-muted-foreground", className)}
+            className={cn(
+              'h-6 w-6 rounded bg-muted/50 p-0 font-normal text-muted-foreground hover:bg-muted',
+              actionVisibility === 'row-interaction' &&
+                'pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100',
+              className,
+            )}
           >
             <ChevronsUpDown className="size-3.5" />
           </Button>
@@ -104,7 +111,13 @@ export function CoursePicker({
                 {selectedCourse ? selectedCourse.title : placeholder}
               </span>
             </div>
-            <ChevronsUpDown className="ml-2 size-3.5 shrink-0 text-muted-foreground" />
+            <ChevronsUpDown
+              className={cn(
+                'ml-2 size-3.5 shrink-0 text-muted-foreground',
+                actionVisibility === 'row-interaction' &&
+                  'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100',
+              )}
+            />
           </Button>
         )}
       </PopoverTrigger>

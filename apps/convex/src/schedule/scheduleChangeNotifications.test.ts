@@ -10,6 +10,7 @@ import {
 const courseId = "course" as Id<"courses">;
 const publicSchedule: MaterialScheduleSnapshot = {
   isPublic: true,
+  lunchPeriod: "PERIOD_5",
   entries: [
     {
       weekday: "MONDAY",
@@ -33,6 +34,12 @@ describe("friend schedule change notifications", () => {
       scheduleMateriallyChanged(publicSchedule, {
         ...publicSchedule,
         entries: [{ ...publicSchedule.entries[0], className: "Algebra" }],
+      }),
+    ).toBe(true);
+    expect(
+      scheduleMateriallyChanged(publicSchedule, {
+        ...publicSchedule,
+        lunchPeriod: "PERIOD_4",
       }),
     ).toBe(true);
   });

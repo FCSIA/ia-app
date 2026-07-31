@@ -95,8 +95,16 @@ function ScheduleColumn({
       {schedule ? (
         <div className="divide-y divide-border/60">
           {Array.from({ length: 8 }, (_, index) => index + 1).map((periodNumber) => {
-            const entry = entryFor(schedule, weekday, periodNumber);
-            const together = sameClass(entry, entryFor(compareSchedule, weekday, periodNumber));
+            const lunchNumber =
+              schedule.lunchPeriod === 'PERIOD_4'
+                ? 4
+                : schedule.lunchPeriod === 'PERIOD_5'
+                  ? 5
+                  : null;
+            const isLunch = periodNumber === lunchNumber;
+            const entry = isLunch ? undefined : entryFor(schedule, weekday, periodNumber);
+            const together =
+              !isLunch && sameClass(entry, entryFor(compareSchedule, weekday, periodNumber));
             return (
               <div
                 key={periodNumber}
@@ -109,7 +117,9 @@ function ScheduleColumn({
                   {periodNumber}
                 </span>
                 <div className="min-w-0 flex-1">
-                  {entry?.course ? (
+                  {isLunch ? (
+                    <p className="truncate text-sm font-medium">Lunch</p>
+                  ) : entry?.course ? (
                     <Link
                       href={`/courses/${entry.course.slug}`}
                       className="block truncate text-sm font-medium hover:text-primary"
