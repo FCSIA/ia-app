@@ -77,6 +77,19 @@ pnpm --filter mobile dev:client:tunnel
 
 Open the installed **Innovation Academy** app, not Expo Go.
 
+### After switching branches or updating dependencies
+
+If the app suddenly reports bundling, import, or route errors after a branch or
+dependency change, stop Metro and restart it with a cleared cache before
+debugging the individual errors:
+
+```nu
+pnpm --filter mobile dev:client:clear
+```
+
+Reopen the installed app afterward. If the change also affected native
+dependencies or app configuration, rebuild and reinstall the development app.
+
 ## Reinstalling the app
 
 With a free Apple Personal Team, the installed app expires after about seven
