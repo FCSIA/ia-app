@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { Switch } from '@/components/ui/switch';
@@ -20,6 +20,8 @@ type NotificationScopeSwitchProps = {
   locked?: boolean;
   compact?: boolean;
   className?: string;
+  parentEnabled?: boolean;
+  onOptimisticChange?: (enabled: boolean | null) => void;
 };
 
 export function NotificationScopeSwitch({
@@ -34,6 +36,8 @@ export function NotificationScopeSwitch({
   locked = false,
   compact = false,
   className,
+  parentEnabled = true,
+  onOptimisticChange,
 }: NotificationScopeSwitchProps) {
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const [pending, setPending] = useState(false);
@@ -57,18 +61,22 @@ export function NotificationScopeSwitch({
   );
   const storedEnabled = locked
     || (preferences === undefined ? defaultEnabled : preference ? preference.enabled !== false : defaultEnabled);
-  const enabled = optimisticEnabled ?? storedEnabled;
-  const disabled = locked || pending || preferences === undefined;
+  const enabled = parentEnabled && (optimisticEnabled ?? storedEnabled);
+  const disabled = locked || !parentEnabled || pending || preferences === undefined;
   const stateLabel = pending ? 'Saving' : preferences === undefined ? '...' : enabled ? 'On' : 'Off';
 
-  if (optimisticEnabled !== null && preferences !== undefined && storedEnabled === optimisticEnabled) {
-    setOptimisticEnabled(null);
-  }
+  useEffect(() => {
+    if (optimisticEnabled !== null && preferences !== undefined && storedEnabled === optimisticEnabled) {
+      setOptimisticEnabled(null);
+      onOptimisticChange?.(null);
+    }
+  }, [onOptimisticChange, optimisticEnabled, preferences, storedEnabled]);
 
   const togglePreference = async (nextEnabled: boolean) => {
     if (disabled) return;
     setPending(true);
     setOptimisticEnabled(nextEnabled);
+    onOptimisticChange?.(nextEnabled);
     try {
       await upsertPreference({
         category,
@@ -81,6 +89,7 @@ export function NotificationScopeSwitch({
       });
     } catch {
       setOptimisticEnabled(null);
+      onOptimisticChange?.(null);
     } finally {
       setPending(false);
     }
@@ -92,11 +101,14 @@ export function NotificationScopeSwitch({
         'flex min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/25',
         compact && 'px-0 py-0 hover:bg-transparent',
         locked && 'opacity-80',
+        !parentEnabled && 'opacity-60',
         className,
       )}
       title={
         locked
           ? 'Required'
+          : !parentEnabled
+            ? 'Turn on club notifications to change this channel'
           : preferences === undefined
             ? 'Loading'
             : pending

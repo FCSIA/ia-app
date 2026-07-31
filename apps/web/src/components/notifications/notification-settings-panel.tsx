@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
@@ -138,10 +138,35 @@ function ClubNotificationChannels({
   clubName: string;
 }) {
   const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
+  const preferences = useQuery(api.notifications.preferences.list);
+  const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
+  const clubScopeKey = `club:${clubId}`;
+  const clubPreference = preferences?.find(
+    (preference) =>
+      preference.category === 'CLUB_ANNOUNCEMENT' &&
+      preference.scopeKey === clubScopeKey,
+  );
+  const globalClubPreference = preferences?.find(
+    (preference) =>
+      preference.category === 'CLUB_ANNOUNCEMENT' && preference.scopeKey === 'global',
+  );
+  const storedClubEnabled =
+    (clubPreference ?? globalClubPreference)?.enabled !== false;
+  const clubEnabled = optimisticClubEnabled ?? storedClubEnabled;
+
+  useEffect(() => {
+    if (
+      optimisticClubEnabled !== null &&
+      preferences !== undefined &&
+      storedClubEnabled === optimisticClubEnabled
+    ) {
+      setOptimisticClubEnabled(null);
+    }
+  }, [optimisticClubEnabled, preferences, storedClubEnabled]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex min-w-0 items-center justify-between gap-3">
+    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+      <div className="flex min-w-0 items-center justify-between gap-3 bg-surface-3 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <Megaphone className="size-4 shrink-0 text-muted-foreground" aria-hidden />
           <p className="truncate text-sm font-semibold text-foreground">{clubName}</p>
@@ -151,18 +176,19 @@ function ClubNotificationChannels({
         </div>
         <NotificationScopeSwitch
           category="CLUB_ANNOUNCEMENT"
-          label="Announcements"
+          label={`${clubName} notifications`}
           clubId={clubId}
           compact
           className="shrink-0"
+          onOptimisticChange={setOptimisticClubEnabled}
         />
       </div>
       {channels.length > 0 ? (
-        <div className="grid gap-1 pl-6">
+        <div className="divide-y divide-border/60">
           {channels.map((channel) => (
             <div
               key={channel._id}
-              className="flex min-w-0 items-center justify-between gap-3 py-1"
+              className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-hover"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <Hash className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -175,12 +201,13 @@ function ClubNotificationChannels({
                 channelId={channel._id}
                 compact
                 className="shrink-0"
+                parentEnabled={clubEnabled}
               />
             </div>
           ))}
         </div>
       ) : (
-        <p className="pl-6 text-xs text-muted-foreground">No channels.</p>
+        <p className="px-3 py-2 text-xs text-muted-foreground">No channels.</p>
       )}
     </div>
   );

@@ -33,7 +33,17 @@ function uniqueIds(ids: Id<"users">[]) {
 
 export async function deliverNotification(ctx: MutationCtx, input: DeliveryInput) {
   const scope = preferenceScope(input.subject);
-  const decision = await deliveryDecision(ctx, input.userId, input.category, scope.scopeKey);
+  const clubScopeKey =
+    "clubId" in input.subject && input.subject.clubId
+      ? `club:${input.subject.clubId}`
+      : undefined;
+  const decision = await deliveryDecision(
+    ctx,
+    input.userId,
+    input.category,
+    scope.scopeKey,
+    clubScopeKey,
+  );
   if (!decision.create) {
     return;
   }
@@ -93,7 +103,19 @@ async function deliveryDecision(
   userId: Id<"users">,
   category: NotificationCategory,
   scopeKey: string,
+  clubScopeKey?: string,
 ) {
+  if (clubScopeKey) {
+    const clubPreference = await resolveNotificationPreference(ctx, {
+      userId,
+      category: "CLUB_ANNOUNCEMENT",
+      scopeKey: clubScopeKey,
+    });
+    if (clubPreference && (!clubPreference.enabled || clubPreference.level === "OFF")) {
+      return { create: false, push: false };
+    }
+  }
+
   const preference = await resolveNotificationPreference(ctx, { userId, category, scopeKey });
   if (preference) {
     return {
