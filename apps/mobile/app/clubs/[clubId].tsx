@@ -162,20 +162,20 @@ export default function ClubDetailScreen() {
                 <>
                   <View
                     style={{
-                      minHeight: 40,
+                      minHeight: 44,
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 6,
+                      gap: spacing.sm,
                     }}
                   >
                     <View
                       style={{
-                        minHeight: 40,
+                        minHeight: 44,
                         flex: 1,
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 6,
-                        paddingHorizontal: 10,
+                        gap: spacing.sm,
+                        paddingHorizontal: spacing.md,
                         borderRadius: radii.pill,
                         backgroundColor: color("secondary"),
                       }}
@@ -195,7 +195,7 @@ export default function ClubDetailScreen() {
                         autoCorrect={false}
                         style={{
                           minWidth: 0,
-                          minHeight: 40,
+                          minHeight: 44,
                           flex: 1,
                           borderWidth: 0,
                           backgroundColor: "transparent",
@@ -225,7 +225,7 @@ export default function ClubDetailScreen() {
                     }}
                   />
 
-                  <View style={{ gap: 2 }}>
+                  <View style={{ gap: spacing.xs }}>
                     <PressableScale
                       accessibilityLabel={
                         channelsExpanded
@@ -234,10 +234,10 @@ export default function ClubDetailScreen() {
                       }
                       accessibilityState={{ expanded: channelsExpanded }}
                       haptic={false}
-                      hitSlop={4}
+                      hitSlop={2}
                       onPress={() => setChannelsExpanded((current) => !current)}
                       style={{
-                        minHeight: 36,
+                        minHeight: 40,
                         flexDirection: "row",
                         alignItems: "center",
                         gap: spacing.xs,
@@ -290,9 +290,9 @@ export default function ClubDetailScreen() {
                                   )
                                 }
                                 style={{
-                                  minHeight: 40,
-                                  borderRadius: 6,
-                                  paddingHorizontal: spacing.xs,
+                                  minHeight: 44,
+                                  borderRadius: 8,
+                                  paddingHorizontal: spacing.sm,
                                   flexDirection: "row",
                                   alignItems: "center",
                                   gap: spacing.sm,
@@ -316,7 +316,7 @@ export default function ClubDetailScreen() {
                                     tone="muted"
                                     style={{
                                       fontSize: 15,
-                                      lineHeight: 18,
+                                      lineHeight: 20,
                                       fontWeight: "600",
                                     }}
                                     numberOfLines={1}
@@ -499,8 +499,8 @@ function WorkspaceIconAction({
       hitSlop={2}
       onPress={onPress}
       style={{
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         flexShrink: 0,
         borderRadius: radii.pill,
         backgroundColor: color("secondary"),
