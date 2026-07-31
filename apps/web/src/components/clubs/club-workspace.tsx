@@ -41,6 +41,7 @@ import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useShape } from "@/lib/shape-context";
 import type {
   ClubNavigationChannel,
   ClubNavigationSummary,
@@ -60,6 +61,8 @@ function ClubPickerItem({
   club: ClubNavigationSummary;
   active: boolean;
 }) {
+  const shape = useShape();
+
   return (
     <DropdownMenuItem
       asChild
@@ -68,7 +71,10 @@ function ClubPickerItem({
       <Link href={`/clubs/${club._id}`} aria-current={active ? "page" : undefined}>
         <Card
           selected={active}
-          className="pointer-events-none min-h-11 w-full gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover"
+          className={cn(
+            "pointer-events-none min-h-11 w-full gap-2.5 px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover",
+            shape.item,
+          )}
         >
           <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
             {club.logoUrl ? (

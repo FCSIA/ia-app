@@ -321,7 +321,7 @@ export function AppShell({
             </div>
             <button
               type="button"
-              className="hidden h-9 min-w-48 items-center gap-2 rounded-full border bg-muted/40 px-3 text-left text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF] lg:flex"
+              className="hidden h-9 min-w-48 items-center gap-2 rounded-full bg-surface-2 px-3 text-left text-sm text-muted-foreground shadow-surface-1 outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF] lg:flex"
               onClick={() => setCommandOpen(true)}
             >
               <Search className="size-4" />
@@ -336,7 +336,7 @@ export function AppShell({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-3 rounded-full border bg-muted/40 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
+                    className="flex items-center gap-3 rounded-full bg-surface-2 py-1.5 pl-1.5 pr-3 shadow-surface-1 transition-colors hover:bg-hover focus:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
                   >
                     <UserAvatar
                       firstName={user.firstName}
@@ -356,7 +356,7 @@ export function AppShell({
                     <ChevronDown className="size-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="border-0 bg-transparent p-0 shadow-none">
+                <DropdownMenuContent align="end" className="w-60 p-1">
                   <Dropdown className="w-60">
                     <DropdownLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
