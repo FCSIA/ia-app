@@ -8,7 +8,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, BellDot, CheckCheck, Clock3, Inbox, SearchX, Settings } from 'lucide-react';
+import { Bell, BellDot, CheckCheck, Inbox, SearchX, Settings } from 'lucide-react';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
@@ -107,9 +107,7 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const hasUnread = unreadCount > 0;
-  const readCount = notifications.length - unreadCount;
   const hasQuery = deferredSearch.trim().length > 0;
-  const latestNotification = notifications[0];
 
   return (
     <AppShell>
@@ -144,7 +142,7 @@ export default function NotificationsPage() {
               <TabItem value="settings" icon={Settings} label="Settings" />
             </TabsList>
             <TabPanel value="inbox" className="mt-5">
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <div>
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
@@ -182,8 +180,8 @@ export default function NotificationsPage() {
                       ) : null}
                     </Empty>
                   ) : (
-                    <div>
-                      <ul className="flex flex-col gap-2">
+                    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+                      <ul className="divide-y divide-border/60">
                         {filteredNotifications.map((n) => {
                           const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
                           const categoryColor = CATEGORY_COLORS[n.category] ?? 'gray';
@@ -193,9 +191,9 @@ export default function NotificationsPage() {
                                 type="button"
                                 onClick={() => openNotification(n)}
                                 className={cn(
-                                  'group flex w-full items-start gap-3 p-4 rounded-2xl text-left transition-colors',
-                                  'hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
-                                  !n.isRead && 'bg-primary/[0.035]',
+                                  'group flex w-full items-start gap-3 p-3 text-left transition-colors',
+                                  'hover:bg-hover focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
+                                  !n.isRead && 'bg-surface-4',
                                 )}
                               >
                                 <span
@@ -259,24 +257,6 @@ export default function NotificationsPage() {
                   ) : null}
                 </section>
 
-                <aside className="grid gap-3 sm:grid-cols-3 lg:block lg:space-y-3">
-                  <div className="flex items-center justify-between gap-3" title="Unread">
-                    <BellDot className="size-4 text-primary" aria-hidden />
-                    <p className="text-2xl font-semibold tabular-nums text-foreground">{unreadCount}</p>
-                  </div>
-                  <div className="flex items-center justify-between gap-3" title="Read">
-                    <CheckCheck className="size-4 text-muted-foreground" aria-hidden />
-                    <p className="text-2xl font-semibold tabular-nums text-foreground">{readCount}</p>
-                  </div>
-                  <div className="flex items-center justify-between gap-3" title={latestNotification?.title ?? 'Latest'}>
-                    <Clock3 className="size-4 text-muted-foreground" aria-hidden />
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {latestNotification
-                        ? formatDistanceToNow(new Date(latestNotification.createdAt), { addSuffix: true })
-                        : '--'}
-                    </p>
-                  </div>
-                </aside>
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
