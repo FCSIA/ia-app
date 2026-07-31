@@ -261,6 +261,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
           else if (ref) ref.current = node;
         }}
         data-slot="card"
+        data-proximity-index={index}
         data-orientation={group?.orientation ?? "card"}
         data-selected={selected || undefined}
         data-disabled={disabled || undefined}
