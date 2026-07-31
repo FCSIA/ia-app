@@ -5,6 +5,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 import { useShape } from "@/lib/shape-context"
+import { Elevated } from "@/lib/elevated"
 
 const Popover = PopoverPrimitive.Root
 
@@ -21,17 +22,23 @@ const PopoverContent = React.forwardRef<
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
         ref={ref}
+        asChild
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
-        className={cn(
-          "z-[80] w-72 border bg-popover p-4 text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.18)] outline-none origin-[--radix-popover-content-transform-origin]",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1",
-          shape.container,
-          className
-        )}
         {...props}
-      />
+      >
+        <Elevated
+          offset={2}
+          shadowLevel={3}
+          className={cn(
+            "z-[80] w-72 border-0 p-4 text-popover-foreground outline-none origin-[--radix-popover-content-transform-origin]",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1",
+            shape.container,
+            className
+          )}
+        />
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   )
 })

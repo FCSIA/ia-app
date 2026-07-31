@@ -113,7 +113,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           }}
           role="menu"
           className={cn(
-            `relative flex flex-col gap-0.5 w-72 max-w-full ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none`,
+            `relative flex w-72 max-w-full flex-col gap-0.5 ${shape.container} bg-transparent p-1 select-none`,
             className
           )}
           {...props}

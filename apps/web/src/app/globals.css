@@ -24,6 +24,22 @@
   /* Fluid interaction overlays stay relative to whichever surface contains them. */
   --color-hover: hsl(var(--foreground) / 0.06);
   --color-active: hsl(var(--foreground) / 0.10);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-surface-5: var(--surface-5);
+  --color-surface-6: var(--surface-6);
+  --color-surface-7: var(--surface-7);
+  --color-surface-8: var(--surface-8);
+  --shadow-surface-1: var(--surface-shadow-1);
+  --shadow-surface-2: var(--surface-shadow-2);
+  --shadow-surface-3: var(--surface-shadow-3);
+  --shadow-surface-4: var(--surface-shadow-4);
+  --shadow-surface-5: var(--surface-shadow-5);
+  --shadow-surface-6: var(--surface-shadow-6);
+  --shadow-surface-7: var(--surface-shadow-7);
+  --shadow-surface-8: var(--surface-shadow-8);
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-border: hsl(var(--border));
@@ -137,6 +153,24 @@
     --sidebar-ring: 24 95% 53%;
 
     --radius: 1rem;
+
+    --surface-1: hsl(var(--background));
+    --surface-2: hsl(var(--card));
+    --surface-3: hsl(var(--card));
+    --surface-4: hsl(var(--card));
+    --surface-5: hsl(var(--card));
+    --surface-6: hsl(var(--card));
+    --surface-7: hsl(var(--card));
+    --surface-8: hsl(var(--card));
+    --surface-shadow-color: rgb(0 0 0 / 0.07);
+    --surface-shadow-1: 0 0 0 1px var(--surface-shadow-color);
+    --surface-shadow-2: 0 0 0 1px var(--surface-shadow-color), 0 1px 2px rgb(0 0 0 / 0.04);
+    --surface-shadow-3: 0 0 0 1px var(--surface-shadow-color), 0 3px 8px rgb(0 0 0 / 0.08);
+    --surface-shadow-4: 0 0 0 1px var(--surface-shadow-color), 0 6px 14px rgb(0 0 0 / 0.09);
+    --surface-shadow-5: 0 0 0 1px var(--surface-shadow-color), 0 10px 22px rgb(0 0 0 / 0.1);
+    --surface-shadow-6: 0 0 0 1px var(--surface-shadow-color), 0 16px 32px rgb(0 0 0 / 0.11);
+    --surface-shadow-7: 0 0 0 1px var(--surface-shadow-color), 0 24px 46px rgb(0 0 0 / 0.12);
+    --surface-shadow-8: 0 0 0 1px var(--surface-shadow-color), 0 32px 64px rgb(0 0 0 / 0.14);
   }
 
   /* ─── High Contrast theme ──────────────────────────────────────────────
@@ -356,6 +390,31 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 150 6% 10%;
     --sidebar-ring: 24 94% 58%;
+  }
+
+  .dark,
+  .custom {
+    --surface-1: hsl(var(--background));
+    --surface-2: color-mix(in oklab, hsl(var(--card)) 94%, white 6%);
+    --surface-3: color-mix(in oklab, hsl(var(--card)) 88%, white 12%);
+    --surface-4: color-mix(in oklab, hsl(var(--card)) 82%, white 18%);
+    --surface-5: color-mix(in oklab, hsl(var(--card)) 76%, white 24%);
+    --surface-6: color-mix(in oklab, hsl(var(--card)) 70%, white 30%);
+    --surface-7: color-mix(in oklab, hsl(var(--card)) 64%, white 36%);
+    --surface-8: color-mix(in oklab, hsl(var(--card)) 58%, white 42%);
+    --surface-shadow-color: rgb(0 0 0 / 0.32);
+  }
+
+  .high-contrast {
+    --surface-1: #000;
+    --surface-2: #080808;
+    --surface-3: #101010;
+    --surface-4: #181818;
+    --surface-5: #202020;
+    --surface-6: #282828;
+    --surface-7: #303030;
+    --surface-8: #383838;
+    --surface-shadow-color: rgb(255 255 255 / 0.4);
   }
 
   html {
