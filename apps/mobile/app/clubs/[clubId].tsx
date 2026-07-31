@@ -71,28 +71,43 @@ export default function ClubDetailScreen() {
           }
           leading={
             club ? (
-              <Avatar uri={club.logoUrl} name={club.name} size={34} />
+              <Avatar uri={club.logoUrl} name={club.name} size={30} />
             ) : undefined
           }
           action={
             club?.viewer?.canManageMembership ? (
-              <IconButton
-                icon={Settings2}
-                label="Club settings"
-                size="sm"
-                variant="ghost"
-                onPress={() =>
-                  router.push(`/clubs/${clubId}/settings` as never)
-                }
-              />
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.xs,
+                }}
+              >
+                <IconButton
+                  icon={CalendarPlus}
+                  label="Create event"
+                  size="xs"
+                  variant="ghost"
+                  onPress={() => setShowCreateEvent(true)}
+                />
+                <IconButton
+                  icon={Settings2}
+                  label="Club settings"
+                  size="xs"
+                  variant="ghost"
+                  onPress={() =>
+                    router.push(`/clubs/${clubId}/settings` as never)
+                  }
+                />
+              </View>
             ) : undefined
           }
         />
       }
       contentContainerStyle={{
-        paddingHorizontal: spacing.md,
-        paddingTop: spacing.sm,
-        gap: spacing.lg,
+        paddingHorizontal: spacing.sm,
+        paddingTop: spacing.xs,
+        gap: spacing.sm,
       }}
     >
       <DataBoundary data={club} emptyTitle="Club unavailable">
@@ -121,7 +136,7 @@ export default function ClubDetailScreen() {
                 width: "100%",
                 maxWidth: 720,
                 alignSelf: "center",
-                gap: spacing.lg,
+                gap: spacing.sm,
               }}
             >
               {!canAccessWorkspace ? (
@@ -147,26 +162,26 @@ export default function ClubDetailScreen() {
                 <>
                   <View
                     style={{
-                      minHeight: 48,
+                      minHeight: 40,
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: spacing.sm,
+                      gap: 6,
                     }}
                   >
                     <View
                       style={{
-                        minHeight: 48,
+                        minHeight: 40,
                         flex: 1,
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: spacing.sm,
-                        paddingHorizontal: spacing.md,
+                        gap: 6,
+                        paddingHorizontal: 10,
                         borderRadius: radii.pill,
                         backgroundColor: color("secondary"),
                       }}
                     >
                       <Search
-                        size={20}
+                        size={18}
                         color={color("mutedForeground")}
                         strokeWidth={2}
                       />
@@ -180,7 +195,7 @@ export default function ClubDetailScreen() {
                         autoCorrect={false}
                         style={{
                           minWidth: 0,
-                          minHeight: 48,
+                          minHeight: 40,
                           flex: 1,
                           borderWidth: 0,
                           backgroundColor: "transparent",
@@ -200,19 +215,12 @@ export default function ClubDetailScreen() {
                         router.push(`/clubs/${clubId}/shared` as never)
                       }
                     />
-                    {data.viewer?.canManageMembership && (
-                      <WorkspaceIconAction
-                        label="Create event"
-                        icon={CalendarPlus}
-                        onPress={() => setShowCreateEvent(true)}
-                      />
-                    )}
                   </View>
 
                   <View
                     style={{
                       height: 1,
-                      marginHorizontal: -spacing.md,
+                      marginHorizontal: -spacing.sm,
                       backgroundColor: color("border"),
                     }}
                   />
@@ -226,9 +234,10 @@ export default function ClubDetailScreen() {
                       }
                       accessibilityState={{ expanded: channelsExpanded }}
                       haptic={false}
+                      hitSlop={4}
                       onPress={() => setChannelsExpanded((current) => !current)}
                       style={{
-                        minHeight: 44,
+                        minHeight: 36,
                         flexDirection: "row",
                         alignItems: "center",
                         gap: spacing.xs,
@@ -236,13 +245,13 @@ export default function ClubDetailScreen() {
                     >
                       {channelsExpanded ? (
                         <ChevronDown
-                          size={16}
+                          size={14}
                           color={color("mutedForeground")}
                           strokeWidth={2}
                         />
                       ) : (
                         <ChevronRight
-                          size={16}
+                          size={14}
                           color={color("mutedForeground")}
                           strokeWidth={2}
                         />
@@ -250,9 +259,16 @@ export default function ClubDetailScreen() {
                       <Txt
                         variant="label"
                         tone="muted"
-                        style={{ fontWeight: "800", fontSize: 14 }}
+                        style={{ fontWeight: "800", fontSize: 12 }}
                       >
                         Text channels
+                      </Txt>
+                      <Txt
+                        variant="caption"
+                        tone="muted"
+                        style={{ marginLeft: "auto", fontSize: 11 }}
+                      >
+                        {visibleChannels.length}
                       </Txt>
                     </PressableScale>
                     {channelsExpanded ? (
@@ -267,29 +283,30 @@ export default function ClubDetailScreen() {
                               <PressableScale
                                 key={channel._id}
                                 accessibilityLabel={`Open ${channel.name} channel`}
+                                hitSlop={2}
                                 onPress={() =>
                                   router.push(
                                     `/clubs/${clubId}/channels/${channel._id}`,
                                   )
                                 }
                                 style={{
-                                  minHeight: 46,
-                                  borderRadius: radii.sm,
-                                  paddingHorizontal: spacing.sm,
+                                  minHeight: 40,
+                                  borderRadius: 6,
+                                  paddingHorizontal: spacing.xs,
                                   flexDirection: "row",
                                   alignItems: "center",
-                                  gap: spacing.md,
+                                  gap: spacing.sm,
                                 }}
                               >
                                 <View
                                   style={{
-                                    width: 26,
+                                    width: 24,
                                     alignItems: "center",
                                     justifyContent: "center",
                                   }}
                                 >
                                   <ChannelIcon
-                                    size={23}
+                                    size={20}
                                     color={color("mutedForeground")}
                                     strokeWidth={2}
                                   />
@@ -298,8 +315,8 @@ export default function ClubDetailScreen() {
                                   <Txt
                                     tone="muted"
                                     style={{
-                                      fontSize: 17,
-                                      lineHeight: 21,
+                                      fontSize: 15,
+                                      lineHeight: 18,
                                       fontWeight: "600",
                                     }}
                                     numberOfLines={1}
@@ -479,10 +496,11 @@ function WorkspaceIconAction({
     <PressableScale
       accessibilityLabel={label}
       haptic={false}
+      hitSlop={2}
       onPress={onPress}
       style={{
-        width: 48,
-        height: 48,
+        width: 40,
+        height: 40,
         flexShrink: 0,
         borderRadius: radii.pill,
         backgroundColor: color("secondary"),
@@ -490,7 +508,7 @@ function WorkspaceIconAction({
         justifyContent: "center",
       }}
     >
-      <Icon size={21} color={color("foreground")} strokeWidth={2} />
+      <Icon size={19} color={color("foreground")} strokeWidth={2} />
     </PressableScale>
   );
 }

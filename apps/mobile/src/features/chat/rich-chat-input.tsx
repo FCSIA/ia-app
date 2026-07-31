@@ -226,9 +226,9 @@ export function RichChatInput({
         <View
           style={{
             minWidth: 0,
-            minHeight: 52,
+            minHeight: 46,
             flexDirection: "row",
-            alignItems: "flex-end",
+            alignItems: "center",
             paddingHorizontal: 2,
           }}
         >
@@ -245,17 +245,19 @@ export function RichChatInput({
               onPress={() => togglePanel("tools")}
             />
           ) : null}
-          <CompactControl
-            icon={ALargeSmall}
-            label={
-              activePanel === "formatting"
-                ? "Hide formatting"
-                : "Show formatting"
-            }
-            active={activePanel === "formatting"}
-            disabled={!editable}
-            onPress={() => togglePanel("formatting")}
-          />
+          {!toolbarActions ? (
+            <CompactControl
+              icon={ALargeSmall}
+              label={
+                activePanel === "formatting"
+                  ? "Hide formatting"
+                  : "Show formatting"
+              }
+              active={activePanel === "formatting"}
+              disabled={!editable}
+              onPress={() => togglePanel("formatting")}
+            />
+          ) : null}
           <EnrichedMarkdownTextInput
             ref={inputRef}
             nativeID={nativeID}
@@ -320,27 +322,25 @@ export function RichChatInput({
             style={{
               minWidth: 0,
               flex: 1,
-              minHeight: 50,
-              maxHeight: 120,
+              minHeight: 44,
+              maxHeight: 112,
               borderWidth: 0,
               backgroundColor: "transparent",
               color: color("foreground"),
               paddingHorizontal: spacing.xs,
-              paddingVertical: spacing.md,
+              paddingVertical: spacing.sm,
               fontSize: 15,
               lineHeight: 21,
             }}
           />
-          {toolbarTrailing ? (
-            <View style={{ paddingBottom: spacing.xs }}>{toolbarTrailing}</View>
-          ) : null}
+          {toolbarTrailing}
         </View>
 
         {activePanel === "tools" && toolbarActions ? (
           <View
             accessibilityLabel="Message tools"
             style={{
-              minHeight: 52,
+              minHeight: 48,
               borderTopWidth: StyleSheet.hairlineWidth,
               borderTopColor: color("border"),
               paddingHorizontal: spacing.sm,
@@ -350,6 +350,12 @@ export function RichChatInput({
               gap: spacing.xs,
             }}
           >
+            <ComposerToolButton
+              icon={ALargeSmall}
+              label="Format"
+              disabled={!editable}
+              onPress={() => togglePanel("formatting")}
+            />
             {toolbarActions}
           </View>
         ) : null}
@@ -365,7 +371,7 @@ export function RichChatInput({
               borderTopColor: color("border"),
             }}
             contentContainerStyle={{
-              minHeight: 52,
+              minHeight: 44,
               alignItems: "center",
               gap: 2,
               paddingHorizontal: spacing.xs,
@@ -490,8 +496,8 @@ export function ComposerToolButton({
       haptic={false}
       onPress={onPress}
       style={{
-        minHeight: 44,
-        borderRadius: radii.md,
+        minHeight: 40,
+        borderRadius: radii.sm,
         backgroundColor: color("muted"),
         paddingHorizontal: spacing.md,
         flexDirection: "row",
@@ -528,10 +534,11 @@ function CompactControl({
       accessibilityState={{ expanded: active, disabled }}
       disabled={disabled}
       haptic={false}
+      hitSlop={4}
       onPress={onPress}
       style={{
-        width: 44,
-        height: 44,
+        width: 36,
+        height: 36,
         borderRadius: radii.pill,
         alignItems: "center",
         justifyContent: "center",
@@ -540,7 +547,7 @@ function CompactControl({
       }}
     >
       <Icon
-        size={19}
+        size={18}
         color={active ? color("primary") : color("mutedForeground")}
         strokeWidth={2.1}
       />
@@ -568,10 +575,11 @@ function FormatButton({
       accessibilityState={{ selected: active, disabled }}
       disabled={disabled}
       haptic={false}
+      hitSlop={4}
       onPress={onPress}
       style={{
-        width: 44,
-        height: 44,
+        width: 36,
+        height: 36,
         borderRadius: radii.pill,
         alignItems: "center",
         justifyContent: "center",

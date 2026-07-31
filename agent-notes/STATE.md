@@ -88,10 +88,16 @@
   on long press, and supports deliberate swipe-to-reply with reduced-motion
   behavior.
 - Mobile club workspaces now use a compact Discord-inspired channel hierarchy:
-  search and workspace actions share one utility row, text channels collapse
-  into single-line visibility-aware entries without descriptions, and the chat
-  header, grouped timeline, and default composer use substantially less vertical
-  space while preserving 44px touch targets.
+  an 8px workspace inset, compact search and actions, 40px single-line
+  visibility-aware channel entries without descriptions, and a 44px detail
+  header. Chat now uses tighter message gutters and date markers, while
+  formatting lives behind the composer tools button. Compact visual controls
+  preserve 44px interaction envelopes with hit slop.
+- The mobile UI foundation audit is recorded in
+  `docs/reference/mobile-ui-foundations.md`. The recommended direction is to
+  keep and consistently use NativeWind, evaluate rn-primitives/React Native
+  Reusables for headless behavior, replace the custom sheet with the installed
+  Gorhom implementation, and avoid a wholesale themed-library migration.
 - Club workspaces now prioritize People and Shared content over internal mention
   groups, search channel names and access-checked message history, and collect
   paginated files and images for each readable channel.
@@ -154,8 +160,8 @@
 - `pnpm --filter mobile typecheck` - currently stops at the existing TypeScript
   6 `baseUrl` deprecation before checking source files
 - `pnpm --filter mobile exec tsc --noEmit --ignoreDeprecations 6.0` - pass after
-  the compact club channels/chat overhaul
-- Focused mobile chat tests - pass (8 files, 21 tests)
+  the second compact club channels/chat density pass
+- Mobile Vitest suite - pass (14 files, 42 tests)
 - Android Expo Go smoke pass - pass for hosted Convex login session, dashboard,
   Courses list/detail, Events empty state, Calendar personal create/delete,
   Schedule view/edit-mode controls, Clubs list/request-only detail state,

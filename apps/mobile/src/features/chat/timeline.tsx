@@ -191,7 +191,7 @@ export function ChatTimeline({
           renderScrollComponent={ClubChatScrollView}
           contentContainerStyle={{
             paddingTop: 2,
-            paddingBottom: spacing.md,
+            paddingBottom: spacing.sm,
           }}
           keyboardShouldPersistTaps="handled"
           maintainVisibleContentPosition={{
@@ -268,11 +268,11 @@ const DateMarker = memo(function DateMarker({ label }: { label: string }) {
     <View
       accessibilityRole="header"
       style={{
-        minHeight: 30,
+        minHeight: 26,
         maxWidth: 760,
         width: "100%",
         alignSelf: "center",
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: spacing.sm,
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.sm,
@@ -298,11 +298,11 @@ const ThreadDivider = memo(function ThreadDivider({
   return (
     <View
       style={{
-        minHeight: 36,
+        minHeight: 32,
         maxWidth: 760,
         width: "100%",
         alignSelf: "center",
-        paddingHorizontal: spacing.md,
+        paddingHorizontal: spacing.sm,
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.sm,

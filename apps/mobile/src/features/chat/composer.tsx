@@ -97,8 +97,8 @@ export function ChatComposer({
           maxWidth: 760,
           alignSelf: "center",
           paddingHorizontal: spacing.sm,
-          paddingTop: 6,
-          paddingBottom: spacing.sm,
+          paddingTop: spacing.xs,
+          paddingBottom: 6,
           gap: spacing.xs,
         }}
       >
@@ -278,7 +278,7 @@ export function ChatComposer({
                       ? "Send reply"
                       : "Send message"
                   }
-                  size="sm"
+                  size="xs"
                   variant="primary"
                   disabled={
                     isPending ||

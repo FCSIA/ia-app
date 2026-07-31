@@ -590,7 +590,7 @@ export function ClubChatScreen({
               width: "100%",
               maxWidth: 760,
               alignSelf: "center",
-              paddingHorizontal: spacing.md,
+              paddingHorizontal: spacing.sm,
             }}
           >
             <AppDetailHeader
@@ -604,11 +604,17 @@ export function ClubChatScreen({
               }
               action={
                 threadRootId ? undefined : (
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: spacing.xs,
+                    }}
+                  >
                     <IconButton
                       icon={Search}
                       label="Search channel"
-                      size="sm"
+                      size="xs"
                       variant="ghost"
                       onPress={() =>
                         router.push(
@@ -619,7 +625,7 @@ export function ClubChatScreen({
                     <IconButton
                       icon={FolderOpen}
                       label="Shared files"
-                      size="sm"
+                      size="xs"
                       variant="ghost"
                       onPress={() =>
                         router.push(
@@ -751,12 +757,12 @@ function ChannelHeaderMark({
     <View
       style={{
         width: 24,
-        height: 44,
+        height: 36,
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <Icon size={19} color={color("mutedForeground")} strokeWidth={2} />
+      <Icon size={18} color={color("mutedForeground")} strokeWidth={2} />
     </View>
   );
 }

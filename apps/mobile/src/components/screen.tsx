@@ -94,19 +94,25 @@ export function AppDetailHeader({
     <View
       style={{
         width: "100%",
-        minHeight: 52,
+        minHeight: 44,
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.sm,
       }}
     >
-      <AppBackHeader forceVisible />
+      <IconButton
+        icon={ArrowLeft}
+        label="Go back"
+        size="xs"
+        variant="ghost"
+        onPress={() => router.back()}
+      />
       {leading}
       <View style={{ minWidth: 0, flex: 1, gap: 1 }}>
         <Txt
           variant="section"
           numberOfLines={1}
-          style={{ fontSize: 17, lineHeight: 21 }}
+          style={{ fontSize: 16, lineHeight: 19 }}
         >
           {title}
         </Txt>
