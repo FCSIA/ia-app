@@ -140,6 +140,9 @@ function ClubNotificationChannels({
   const channels = useQuery(api.clubs.channels.list, { clubId }) ?? [];
   const preferences = useQuery(api.notifications.preferences.list);
   const [optimisticClubEnabled, setOptimisticClubEnabled] = useState<boolean | null>(null);
+  const [optimisticChannelEnabled, setOptimisticChannelEnabled] = useState<
+    Record<string, boolean>
+  >({});
   const clubScopeKey = `club:${clubId}`;
   const clubPreference = preferences?.find(
     (preference) =>
@@ -168,7 +171,10 @@ function ClubNotificationChannels({
     <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
       <div className="flex min-w-0 items-center justify-between gap-3 bg-surface-3 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <Megaphone className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <Megaphone
+            className={clubEnabled ? 'size-4 shrink-0 text-primary' : 'size-4 shrink-0 text-muted-foreground'}
+            aria-hidden
+          />
           <p className="truncate text-sm font-semibold text-foreground">{clubName}</p>
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground" title="Visible channels">
             {channels.length}
@@ -185,26 +191,58 @@ function ClubNotificationChannels({
       </div>
       {channels.length > 0 ? (
         <div className="divide-y divide-border/60">
-          {channels.map((channel) => (
-            <div
-              key={channel._id}
-              className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-hover"
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <Hash className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                <p className="truncate text-sm font-medium">#{channel.name}</p>
+          {channels.map((channel) => {
+            const channelScopeKey = `channel:${channel._id}`;
+            const channelPreference = preferences?.find(
+              (preference) =>
+                preference.category === 'CLUB_CHANNEL_MENTION' &&
+                preference.scopeKey === channelScopeKey,
+            );
+            const globalChannelPreference = preferences?.find(
+              (preference) =>
+                preference.category === 'CLUB_CHANNEL_MENTION' &&
+                preference.scopeKey === 'global',
+            );
+            const storedChannelEnabled =
+              (channelPreference ?? globalChannelPreference)?.enabled !== false;
+            const channelEnabled =
+              clubEnabled &&
+              (optimisticChannelEnabled[channel._id] ?? storedChannelEnabled);
+
+            return (
+              <div
+                key={channel._id}
+                className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-hover"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Hash
+                    className={channelEnabled ? 'size-3.5 shrink-0 text-primary' : 'size-3.5 shrink-0 text-muted-foreground'}
+                    aria-hidden
+                  />
+                  <p className="truncate text-sm font-medium">#{channel.name}</p>
+                </div>
+                <NotificationScopeSwitch
+                  category="CLUB_CHANNEL_MENTION"
+                  label={`${channel.name} mentions`}
+                  clubId={clubId}
+                  channelId={channel._id}
+                  compact
+                  className="shrink-0"
+                  parentEnabled={clubEnabled}
+                  onOptimisticChange={(enabled) => {
+                    setOptimisticChannelEnabled((current) => {
+                      if (enabled === null) {
+                        const next = { ...current };
+                        delete next[channel._id];
+                        return next;
+                      }
+                      return { ...current, [channel._id]: enabled };
+                    });
+                  }}
+                />
               </div>
-              <NotificationScopeSwitch
-                category="CLUB_CHANNEL_MENTION"
-                label={`${channel.name} mentions`}
-                clubId={clubId}
-                channelId={channel._id}
-                compact
-                className="shrink-0"
-                parentEnabled={clubEnabled}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="px-3 py-2 text-xs text-muted-foreground">No channels.</p>
