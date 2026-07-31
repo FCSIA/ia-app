@@ -1,27 +1,17 @@
+import { View } from "react-native";
 import { router } from "expo-router";
-import {
-  BookOpen,
-  ChevronRight,
-  QrCode,
-  Shield,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react-native";
+import { BookOpen, ChevronRight, QrCode, Shield, Sparkles, type LucideIcon } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
-import { FeedScreen } from "@/components/screen";
-import {
-  CompactList,
-  CompactListItem,
-  CompactListSectionHeader,
-} from "@/components/ui/compact-list";
-import { Stack } from "@/components/ui/layout";
+import { Screen } from "@/components/screen";
+import { PressableScale, Txt } from "@/components/ui";
 import { canAccessAdminWorkspace, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { radii, spacing } from "@/lib/tokens";
 
 const destinations = [
   {
     title: "Courses",
-    detail: "Catalog, pathways, and grades",
+    detail: "Catalog, pathways, and grade options",
     href: "/courses",
     icon: BookOpen,
   },
@@ -33,7 +23,7 @@ const destinations = [
   },
   {
     title: "Wrapped",
-    detail: "Your year in review",
+    detail: "Your year at Innovation Academy",
     href: "/wrapped",
     icon: Sparkles,
   },
@@ -44,14 +34,17 @@ export default function DiscoverScreen() {
   const showAdmin = canAccessAdminWorkspace(user);
 
   return (
-    <FeedScreen header={<AppHeader title="Discover" />}>
+    <Screen
+      header={<AppHeader title="Discover" />}
+      contentContainerStyle={{ width: "100%", maxWidth: 760, alignSelf: "center" }}
+    >
       {showAdmin ? (
         <DestinationGroup
           title="Manage"
           destinations={[
             {
               title: "Admin workspace",
-              detail: "People, operations, safety, and audit",
+              detail: "People, school operations, safety, and audit",
               href: "/admin",
               icon: Shield,
             },
@@ -59,7 +52,7 @@ export default function DiscoverScreen() {
         />
       ) : null}
       <DestinationGroup title="Explore" destinations={destinations} />
-    </FeedScreen>
+    </Screen>
   );
 }
 
@@ -75,15 +68,29 @@ function DestinationGroup({
     icon: LucideIcon;
   }>;
 }) {
+  const { color } = useTheme();
+
   return (
-    <Stack gap="none">
-      <CompactListSectionHeader title={title} count={items.length} />
-      <CompactList density="compact" separation="leading">
-        {items.map((destination) => (
-          <DestinationRow key={destination.href} {...destination} />
+    <View style={{ gap: spacing.sm }}>
+      <Txt variant="overline" tone="muted">
+        {title}
+      </Txt>
+      <View
+        style={{
+          overflow: "hidden",
+          borderRadius: radii.lg,
+          backgroundColor: color("secondary"),
+        }}
+      >
+        {items.map((destination, index) => (
+          <DestinationRow
+            key={destination.href}
+            {...destination}
+            showDivider={index < items.length - 1}
+          />
         ))}
-      </CompactList>
-    </Stack>
+      </View>
+    </View>
   );
 }
 
@@ -92,27 +99,44 @@ function DestinationRow({
   detail,
   href,
   icon: Icon,
+  showDivider,
 }: {
   title: string;
   detail: string;
   href: string;
   icon: LucideIcon;
+  showDivider: boolean;
 }) {
   const { color } = useTheme();
 
   return (
-    <CompactListItem
-      icon={Icon}
-      title={title}
-      detail={detail}
-      trailing={
-        <ChevronRight
-          size={16}
-          color={color("mutedForeground")}
-          strokeWidth={2}
-        />
-      }
+    <PressableScale
+      accessibilityRole="button"
       onPress={() => router.push(href as never)}
-    />
+      style={{ minHeight: 76, paddingHorizontal: spacing.md }}
+    >
+      <View
+        style={{
+          flex: 1,
+          minHeight: 76,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.md,
+          borderBottomWidth: showDivider ? 1 : 0,
+          borderBottomColor: color("border"),
+        }}
+      >
+        <Icon size={21} color={color("primary")} strokeWidth={1.9} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="section" numberOfLines={1}>
+            {title}
+          </Txt>
+          <Txt variant="caption" tone="muted" numberOfLines={2}>
+            {detail}
+          </Txt>
+        </View>
+        <ChevronRight size={20} color={color("mutedForeground")} />
+      </View>
+    </PressableScale>
   );
 }
