@@ -10,21 +10,23 @@ import {
   Hash,
   LockKeyhole,
   Megaphone,
-  Search,
   Settings2,
   UsersRound,
-  type LucideIcon,
 } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
-import { AppDetailHeader, Screen } from "@/components/screen";
+import { AppDetailHeader, WorkspaceScreen } from "@/components/screen";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
-  Avatar,
-  Button,
-  IconButton,
-  PressableScale,
-  TextField,
-  Txt,
-} from "@/components/ui";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { CompactList, CompactListItem } from "@/components/ui/compact-list";
+import { CompactSearchField } from "@/components/ui/field";
+import { IconButton } from "@/components/ui/icon-button";
+import { Divider, Inline, Stack } from "@/components/ui/layout";
+import { Txt } from "@/components/ui/typography";
 import { CreateEventSheet } from "@/features/calendar/create-event-sheet";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -60,7 +62,7 @@ export default function ClubDetailScreen() {
   }, [club?.channels, deferredChannelQuery]);
 
   return (
-    <Screen
+    <WorkspaceScreen
       navigation={
         <AppDetailHeader
           title={club?.name ?? "Club"}
@@ -76,13 +78,7 @@ export default function ClubDetailScreen() {
           }
           action={
             club?.viewer?.canManageMembership ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: spacing.xs,
-                }}
-              >
+              <Inline gap="xs">
                 <IconButton
                   icon={CalendarPlus}
                   label="Create event"
@@ -99,16 +95,11 @@ export default function ClubDetailScreen() {
                     router.push(`/clubs/${clubId}/settings` as never)
                   }
                 />
-              </View>
+              </Inline>
             ) : undefined
           }
         />
       }
-      contentContainerStyle={{
-        paddingHorizontal: spacing.sm,
-        paddingTop: spacing.xs,
-        gap: spacing.sm,
-      }}
     >
       <DataBoundary data={club} emptyTitle="Club unavailable">
         {(data) => {
@@ -131,14 +122,7 @@ export default function ClubDetailScreen() {
           }
 
           return (
-            <View
-              style={{
-                width: "100%",
-                maxWidth: 720,
-                alignSelf: "center",
-                gap: spacing.sm,
-              }}
-            >
+            <Stack gap="sm" className="w-full">
               {!canAccessWorkspace ? (
                 <View style={{ gap: spacing.md }}>
                   {(data.overview ?? data.description) ? (
@@ -160,87 +144,49 @@ export default function ClubDetailScreen() {
 
               {canAccessWorkspace ? (
                 <>
-                  <View
-                    style={{
-                      minHeight: 40,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <View
-                      style={{
-                        minHeight: 40,
-                        flex: 1,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        paddingHorizontal: 10,
-                        borderRadius: radii.pill,
-                        backgroundColor: color("secondary"),
-                      }}
-                    >
-                      <Search
-                        size={18}
-                        color={color("mutedForeground")}
-                        strokeWidth={2}
-                      />
-                      <TextField
-                        accessibilityLabel="Search club channels"
-                        value={channelQuery}
-                        onChangeText={setChannelQuery}
-                        placeholder="Search"
-                        returnKeyType="search"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={{
-                          minWidth: 0,
-                          minHeight: 40,
-                          flex: 1,
-                          borderWidth: 0,
-                          backgroundColor: "transparent",
-                          paddingHorizontal: 0,
-                        }}
-                      />
-                    </View>
-                    <WorkspaceIconAction
+                  <Inline gap="xs" className="w-full">
+                    <CompactSearchField
+                      accessibilityLabel="Search club channels"
+                      value={channelQuery}
+                      onChangeText={setChannelQuery}
+                      onClear={() => setChannelQuery("")}
+                      placeholder="Search"
+                      returnKeyType="search"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      containerStyle={{ flex: 1 }}
+                    />
+                    <IconButton
                       label="People"
                       icon={UsersRound}
+                      size="xs"
                       onPress={() => router.push(`/clubs/${clubId}/people`)}
                     />
-                    <WorkspaceIconAction
+                    <IconButton
                       label="Shared"
                       icon={FolderOpen}
+                      size="xs"
                       onPress={() =>
                         router.push(`/clubs/${clubId}/shared` as never)
                       }
                     />
-                  </View>
+                  </Inline>
 
-                  <View
-                    style={{
-                      height: 1,
-                      marginHorizontal: -spacing.sm,
-                      backgroundColor: color("border"),
-                    }}
-                  />
+                  <Divider style={{ marginHorizontal: -spacing.sm }} />
 
-                  <View style={{ gap: 2 }}>
-                    <PressableScale
+                  <Collapsible
+                    open={channelsExpanded}
+                    onOpenChange={setChannelsExpanded}
+                  >
+                    <CollapsibleTrigger
                       accessibilityLabel={
                         channelsExpanded
                           ? "Collapse text channels"
                           : "Expand text channels"
                       }
-                      accessibilityState={{ expanded: channelsExpanded }}
-                      haptic={false}
-                      hitSlop={4}
-                      onPress={() => setChannelsExpanded((current) => !current)}
                       style={{
-                        minHeight: 36,
-                        flexDirection: "row",
-                        alignItems: "center",
                         gap: spacing.xs,
+                        paddingHorizontal: spacing.sm,
                       }}
                     >
                       {channelsExpanded ? (
@@ -270,76 +216,50 @@ export default function ClubDetailScreen() {
                       >
                         {visibleChannels.length}
                       </Txt>
-                    </PressableScale>
-                    {channelsExpanded ? (
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
                       <>
-                        <View>
+                        <CompactList density="compact" separation="none">
                           {visibleChannels.map((channel: any) => {
                             const ChannelIcon = channelVisibilityIcon(
                               channel.visibility,
                             );
 
                             return (
-                              <PressableScale
+                              <CompactListItem
                                 key={channel._id}
                                 accessibilityLabel={`Open ${channel.name} channel`}
-                                hitSlop={2}
+                                icon={ChannelIcon}
+                                title={channel.name}
                                 onPress={() =>
                                   router.push(
                                     `/clubs/${clubId}/channels/${channel._id}`,
                                   )
                                 }
-                                style={{
-                                  minHeight: 40,
-                                  borderRadius: 6,
-                                  paddingHorizontal: spacing.xs,
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  gap: spacing.sm,
-                                }}
-                              >
-                                <View
-                                  style={{
-                                    width: 24,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  <ChannelIcon
-                                    size={20}
-                                    color={color("mutedForeground")}
-                                    strokeWidth={2}
-                                  />
-                                </View>
-                                <View style={{ minWidth: 0, flex: 1 }}>
-                                  <Txt
-                                    tone="muted"
-                                    style={{
-                                      fontSize: 15,
-                                      lineHeight: 18,
-                                      fontWeight: "600",
-                                    }}
-                                    numberOfLines={1}
-                                  >
-                                    {channel.name}
-                                  </Txt>
-                                </View>
-                              </PressableScale>
+                              />
                             );
                           })}
-                        </View>
+                        </CompactList>
                         {!data.channels.length ? (
-                          <Txt variant="caption" tone="muted">
+                          <Txt
+                            variant="caption"
+                            tone="muted"
+                            style={{ paddingHorizontal: spacing.sm }}
+                          >
                             No channels yet.
                           </Txt>
                         ) : !visibleChannels.length ? (
-                          <Txt variant="caption" tone="muted">
+                          <Txt
+                            variant="caption"
+                            tone="muted"
+                            style={{ paddingHorizontal: spacing.sm }}
+                          >
                             No channels match “{channelQuery.trim()}”.
                           </Txt>
                         ) : null}
                       </>
-                    ) : null}
-                  </View>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </>
               ) : null}
 
@@ -474,42 +394,11 @@ export default function ClubDetailScreen() {
                 onClose={() => setShowCreateEvent(false)}
                 defaultClubId={clubId}
               />
-            </View>
+            </Stack>
           );
         }}
       </DataBoundary>
-    </Screen>
-  );
-}
-
-function WorkspaceIconAction({
-  label,
-  icon: Icon,
-  onPress,
-}: {
-  label: string;
-  icon: LucideIcon;
-  onPress: () => void;
-}) {
-  const { color } = useTheme();
-  return (
-    <PressableScale
-      accessibilityLabel={label}
-      haptic={false}
-      hitSlop={2}
-      onPress={onPress}
-      style={{
-        width: 40,
-        height: 40,
-        flexShrink: 0,
-        borderRadius: radii.pill,
-        backgroundColor: color("secondary"),
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Icon size={19} color={color("foreground")} strokeWidth={2} />
-    </PressableScale>
+    </WorkspaceScreen>
   );
 }
 
