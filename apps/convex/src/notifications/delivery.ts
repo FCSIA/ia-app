@@ -16,6 +16,7 @@ export type NotificationSubject =
   | { kind: "flexFriday"; flexFridayId: Id<"flexFridays"> }
   | { kind: "moderationReport"; reportId: Id<"moderationReports"> }
   | { kind: "friendRequest"; friendshipId: Id<"studentScheduleFriends"> }
+  | { kind: "friendSchedule"; friendUserId: Id<"users"> }
   | { kind: "system" };
 
 type DeliveryInput = {

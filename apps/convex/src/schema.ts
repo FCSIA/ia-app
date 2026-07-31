@@ -5,6 +5,7 @@ import {
   courseCatalogSourceValidator,
   courseTermValidator,
   friendshipStatusValidator,
+  friendShareLinkModeValidator,
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
   pathwayValidator,
@@ -158,6 +159,10 @@ export const schema = defineSchema({
         friendshipId: v.id("studentScheduleFriends"),
       }),
       v.object({
+        kind: v.literal("friendSchedule"),
+        friendUserId: v.id("users"),
+      }),
+      v.object({
         kind: v.literal("system"),
       }),
     ),
@@ -304,6 +309,36 @@ export const schema = defineSchema({
       "status",
       "acceptedAt",
     ]),
+
+  studentFriendShareLinks: defineTable({
+    ownerId: v.id("users"),
+    tokenDigest: v.string(),
+    tokenHint: v.string(),
+    mode: friendShareLinkModeValidator,
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    useCount: v.number(),
+    lastUsedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_ownerId_and_createdAt", ["ownerId", "createdAt"])
+    .index("by_tokenDigest", ["tokenDigest"]),
+
+  studentScheduleGroups: defineTable({
+    ownerId: v.id("users"),
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_ownerId_and_createdAt", ["ownerId", "createdAt"]),
+
+  studentScheduleGroupMembers: defineTable({
+    groupId: v.id("studentScheduleGroups"),
+    userId: v.id("users"),
+    addedAt: v.number(),
+  })
+    .index("by_groupId_and_addedAt", ["groupId", "addedAt"])
+    .index("by_groupId_and_userId", ["groupId", "userId"])
+    .index("by_userId_and_addedAt", ["userId", "addedAt"]),
 
   schoolDayBlocks: defineTable({
     weekday: scheduleWeekdayValidator,

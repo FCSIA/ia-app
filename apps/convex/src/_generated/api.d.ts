@@ -72,6 +72,8 @@ import type * as schedule_blocks from "../schedule/blocks.js";
 import type * as schedule_dashboard from "../schedule/dashboard.js";
 import type * as schedule_friends from "../schedule/friends.js";
 import type * as schedule_seed from "../schedule/seed.js";
+import type * as schedule_shareLinkSecurity from "../schedule/shareLinkSecurity.js";
+import type * as schedule_shareLinks from "../schedule/shareLinks.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
 import type * as uploads_chatAttachments from "../uploads/chatAttachments.js";
@@ -156,6 +158,8 @@ declare const fullApi: ApiFromModules<{
   "schedule/dashboard": typeof schedule_dashboard;
   "schedule/friends": typeof schedule_friends;
   "schedule/seed": typeof schedule_seed;
+  "schedule/shareLinkSecurity": typeof schedule_shareLinkSecurity;
+  "schedule/shareLinks": typeof schedule_shareLinks;
   seed: typeof seed;
   stats: typeof stats;
   "uploads/chatAttachments": typeof uploads_chatAttachments;
