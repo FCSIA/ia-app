@@ -1,10 +1,8 @@
 import { Migrations } from "@convex-dev/migrations";
 import { v } from "convex/values";
-import { getCurrentAppUser } from "../../lib/currentUser";
 import { components } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
-import { query } from "../_generated/server";
-import { requireScheduleAdmin } from "./_lib";
+import { internalQuery } from "../_generated/server";
 import { inferLegacyLunchPeriod } from "./dayResolver";
 
 const migrations = new Migrations<DataModel>(components.migrations);
@@ -26,7 +24,7 @@ export const backfillLunchPeriod = migrations.define({
   },
 });
 
-export const getLunchMigrationReport = query({
+export const getLunchMigrationReport = internalQuery({
   args: {},
   returns: v.object({
     sampled: v.number(),
@@ -35,8 +33,6 @@ export const getLunchMigrationReport = query({
     hasMore: v.boolean(),
   }),
   handler: async (ctx) => {
-    const user = await getCurrentAppUser(ctx);
-    requireScheduleAdmin(user);
     const schedules = await ctx.db
       .query("studentSchedules")
       .withIndex("by_lunchPeriod", (q) => q.eq("lunchPeriod", undefined))
