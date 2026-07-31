@@ -25,6 +25,8 @@ same change.
   fit together.
 - [iPhone mobile development](reference/mobile-iphone-development.md) - Expo Go
   versus the installed development app, first-time iPhone setup, and renewals.
+- [Mobile UI foundations](reference/mobile-ui-foundations.md) - mobile design
+  audit, component-library direction, density rules, and rollout order.
 - [Schema map](database/schema-map.md) - active Convex tables grouped by domain.
 
 ## Current Stack
@@ -54,6 +56,7 @@ same change.
 - [Seed and reset](backend/seed-and-reset.md)
 
 ### Reference
+
 - [[getting-started]] — New machine setup and local dev environment
 - [[deployment-options]] — Production hosting (Next.js + Convex Cloud)
 - [[roles-and-permissions]] — All 8 user roles and what they can do
