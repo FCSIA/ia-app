@@ -153,7 +153,11 @@ const CardGroup = React.forwardRef<HTMLDivElement, CardGroupProps>(
               <motion.div
                 key={sessionRef.current}
                 aria-hidden="true"
-                className="pointer-events-none absolute z-0 rounded-xl bg-hover"
+                data-slot="card-group-highlight"
+                className={cn(
+                  "pointer-events-none absolute z-0 bg-hover",
+                  separated && "rounded-xl"
+                )}
                 initial={{
                   opacity: 0,
                   top: activeRect.top,
