@@ -63,12 +63,12 @@ function ClubPickerItem({
   return (
     <DropdownMenuItem
       asChild
-      className="group p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
+      className="group w-full p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
     >
       <Link href={`/clubs/${club._id}`} aria-current={active ? "page" : undefined}>
         <Card
           selected={active}
-          className="pointer-events-none min-h-11 gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover"
+          className="pointer-events-none min-h-11 w-full gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover"
         >
           <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
             {club.logoUrl ? (
@@ -373,7 +373,10 @@ function ClubNavigationPanel({
               <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64 p-1">
+          <DropdownMenuContent
+            align="start"
+            className="w-96 max-w-[calc(100vw-2rem)] p-1"
+          >
             <CardGroup
               orientation="inline"
               separated
