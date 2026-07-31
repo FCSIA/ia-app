@@ -1,4 +1,9 @@
-import { ScrollView, View, type ScrollViewProps } from "react-native";
+import {
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type ScrollViewProps,
+} from "react-native";
 import { router, useSegments } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import {
@@ -6,15 +11,20 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import type { ReactNode } from "react";
-import { IconButton, Txt } from "@/components/ui";
+import { IconButton } from "@/components/ui/icon-button";
+import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { spacing } from "@/lib/tokens";
 
-type ScreenProps = ScrollViewProps & {
+export type ScreenProps = ScrollViewProps & {
   title?: string;
   subtitle?: string;
   navigation?: ReactNode;
   header?: ReactNode;
+};
+
+type ComposedScreenProps = Omit<ScreenProps, "contentContainerStyle"> & {
+  contentContainerStyle?: ScreenProps["contentContainerStyle"];
 };
 
 export function Screen({
@@ -79,6 +89,75 @@ export function Screen({
   );
 }
 
+export function FeedScreen({
+  contentContainerStyle,
+  ...props
+}: ComposedScreenProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 768;
+
+  return (
+    <Screen
+      contentContainerStyle={[
+        {
+          maxWidth: wide ? 880 : 720,
+          paddingHorizontal: wide ? spacing.xl : spacing.lg,
+          paddingTop: wide ? spacing.lg : spacing.md,
+          gap: wide ? spacing.lg : spacing.md,
+        },
+        contentContainerStyle,
+      ]}
+      {...props}
+    />
+  );
+}
+
+export function WorkspaceScreen({
+  contentContainerStyle,
+  ...props
+}: ComposedScreenProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 768;
+
+  return (
+    <Screen
+      contentContainerStyle={[
+        {
+          maxWidth: wide ? 960 : 720,
+          paddingHorizontal: wide ? spacing.md : spacing.sm,
+          paddingTop: wide ? spacing.sm : spacing.xs,
+          gap: spacing.sm,
+        },
+        contentContainerStyle,
+      ]}
+      {...props}
+    />
+  );
+}
+
+export function FormScreen({
+  contentContainerStyle,
+  ...props
+}: ComposedScreenProps) {
+  const { width } = useWindowDimensions();
+  const wide = width >= 768;
+
+  return (
+    <Screen
+      contentContainerStyle={[
+        {
+          maxWidth: 640,
+          paddingHorizontal: wide ? spacing.xl : spacing.lg,
+          paddingTop: wide ? spacing.lg : spacing.md,
+          gap: wide ? spacing.lg : spacing.md,
+        },
+        contentContainerStyle,
+      ]}
+      {...props}
+    />
+  );
+}
+
 export function AppDetailHeader({
   title,
   subtitle,
@@ -133,7 +212,6 @@ export function AppBackHeader({
   forceVisible?: boolean;
 }) {
   const segments = useSegments();
-  const { color } = useTheme();
   const isTabRoute = segments[0] === "(tabs)";
   const isAuthRoute = segments[0] === "(auth)";
   const shouldShow =

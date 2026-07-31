@@ -1,8 +1,13 @@
 import { LayoutChangeEvent, View } from "react-native";
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { PressableScale } from "@/components/ui/pressable-scale";
 import { Txt } from "@/components/ui/typography";
-import { spring } from "@/lib/motion";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 
@@ -15,21 +20,38 @@ export function SegmentedControl<T extends string>({
   segments,
   value,
   onChange,
+  density = "default",
 }: {
   segments: readonly Segment<T>[];
   value: T;
   onChange: (value: T) => void;
+  density?: "compact" | "default";
 }) {
   const { color } = useTheme();
   const reduceMotion = useReducedMotion();
   const width = useSharedValue(0);
-  const index = Math.max(0, segments.findIndex((segment) => segment.value === value));
+  const compact = density === "compact";
+  const index = Math.max(
+    0,
+    segments.findIndex((segment) => segment.value === value),
+  );
   const thumbStyle = useAnimatedStyle(() => {
-    const segmentWidth = segments.length ? Math.max(0, width.value - 8) / segments.length : 0;
+    const segmentWidth = segments.length
+      ? Math.max(0, width.value - 8) / segments.length
+      : 0;
     const offset = index * segmentWidth;
     return {
       width: segmentWidth,
-      transform: [{ translateX: reduceMotion ? offset : withSpring(offset, spring) }],
+      transform: [
+        {
+          translateX: reduceMotion
+            ? offset
+            : withTiming(offset, {
+                duration: 160,
+                easing: Easing.out(Easing.cubic),
+              }),
+        },
+      ],
     };
   });
 
@@ -41,7 +63,7 @@ export function SegmentedControl<T extends string>({
     <View
       onLayout={onLayout}
       style={{
-        minHeight: 48,
+        minHeight: compact ? 44 : 48,
         borderRadius: radii.pill,
         padding: 4,
         backgroundColor: color("secondary"),
@@ -71,16 +93,25 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             haptic
+            hitSlop={compact ? { top: 4, bottom: 4 } : undefined}
             onPress={() => onChange(segment.value)}
             style={{
               flex: 1,
-              minHeight: 40,
+              minHeight: compact ? 36 : 40,
               alignItems: "center",
               justifyContent: "center",
               paddingHorizontal: spacing.xs,
             }}
           >
-            <Txt variant="label" style={{ color: selected ? color("foreground") : color("mutedForeground") }} numberOfLines={1}>
+            <Txt
+              variant="label"
+              style={{
+                color: selected
+                  ? color("foreground")
+                  : color("mutedForeground"),
+              }}
+              numberOfLines={1}
+            >
               {segment.label}
             </Txt>
           </PressableScale>
