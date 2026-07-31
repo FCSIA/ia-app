@@ -1,13 +1,17 @@
 'use client';
 
 import { Loader2, Search, UserPlus, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { FriendScheduleCard } from '@/components/schedule/friend-schedule-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TabPanel } from '@/components/ui/tabs';
 import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
+import { FriendCollaborationTools } from './FriendCollaborationTools';
 
 export function FriendSchedulesPanel() {
+  const searchParams = useSearchParams();
+  const focusedFriendId = searchParams?.get('friend') ?? null;
   const {
     acceptFriendRequest,
     blocks,
@@ -27,7 +31,8 @@ export function FriendSchedulesPanel() {
   } = useScheduleWorkspace();
 
   return (
-    <TabPanel value="friends" className="mt-6">
+    <TabPanel value="friends" className="mt-6 space-y-5">
+      <FriendCollaborationTools />
       <div className="grid gap-8 xl:grid-cols-[340px_minmax(0,1fr)]">
         <div className="flex flex-col gap-3">
           <div className="relative">
@@ -174,21 +179,30 @@ export function FriendSchedulesPanel() {
         <div className="flex flex-col gap-3">
           {data?.friends.length ? (
             <div className="flex flex-col gap-2">
-              {data.friends.map((friend) => (
-                <FriendScheduleCard
-                  key={friend.id}
-                  friend={friend}
-                  blocks={blocks}
-                  onRemove={() =>
-                    void runScheduleAction(
-                      `friend-remove:${friend.user._id}`,
-                      () => removeFriend({ otherUserId: friend.user._id }),
-                      'Removed',
-                    )
-                  }
-                  isRemoving={pendingAction === `friend-remove:${friend.user._id}`}
-                />
-              ))}
+              {[...data.friends]
+                .sort((left, right) =>
+                  left.user._id === focusedFriendId
+                    ? -1
+                    : right.user._id === focusedFriendId
+                      ? 1
+                      : 0,
+                )
+                .map((friend) => (
+                  <FriendScheduleCard
+                    key={friend.id}
+                    friend={friend}
+                    blocks={blocks}
+                    onRemove={() =>
+                      void runScheduleAction(
+                        `friend-remove:${friend.user._id}`,
+                        () => removeFriend({ otherUserId: friend.user._id }),
+                        'Removed',
+                      )
+                    }
+                    isRemoving={pendingAction === `friend-remove:${friend.user._id}`}
+                    emphasized={friend.user._id === focusedFriendId}
+                  />
+                ))}
             </div>
           ) : (
             <p className="py-12 text-center text-sm text-muted-foreground">

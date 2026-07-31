@@ -23,6 +23,7 @@ type FriendScheduleCardProps = {
   blocks: SchoolDayBlock[];
   onRemove: () => void;
   isRemoving?: boolean;
+  emphasized?: boolean;
 };
 
 export function FriendScheduleCard({
@@ -30,6 +31,7 @@ export function FriendScheduleCard({
   blocks,
   onRemove,
   isRemoving,
+  emphasized = false,
 }: FriendScheduleCardProps) {
   const current = getCurrentScheduleStatus(friend.schedule, blocks);
   const currentLabel = current.currentBlock?.periodNumber
@@ -43,7 +45,11 @@ export function FriendScheduleCard({
   const isPublic = friend.visibility === 'PUBLIC' && !!friend.schedule;
 
   return (
-    <div className="rounded-xl bg-muted/20 overflow-hidden">
+    <div
+      className={`overflow-hidden rounded-xl bg-muted/20 ${
+        emphasized ? 'ring-1 ring-primary/60' : ''
+      }`}
+    >
       {/* Header row */}
       <div className="flex items-center justify-between gap-4 px-5 py-4">
         <div className="min-w-0 flex-1">
