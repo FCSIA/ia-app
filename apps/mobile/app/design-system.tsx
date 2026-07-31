@@ -4,28 +4,37 @@ import {
   Bell,
   BookOpen,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Hash,
   Inbox,
   LockKeyhole,
   Megaphone,
   Trash2,
 } from "lucide-react-native";
-import { Screen } from "@/components/screen";
+import { FeedScreen } from "@/components/screen";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChipGroup } from "@/components/ui/chip";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   CompactList,
   CompactListItem,
   CompactListSectionHeader,
 } from "@/components/ui/compact-list";
 import { Empty } from "@/components/ui/empty";
+import { CompactSearchField, Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Inline, Stack } from "@/components/ui/layout";
 import { ListRow } from "@/components/ui/list-row";
 import { Section } from "@/components/ui/section";
+import { Separator } from "@/components/ui/separator";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { Stat } from "@/components/ui/stat";
@@ -33,6 +42,7 @@ import { Switch } from "@/components/ui/switch";
 import { TextField } from "@/components/ui/text-field";
 import { useToast } from "@/components/ui/toast";
 import { Txt } from "@/components/ui/typography";
+import { useTheme } from "@/lib/theme";
 import { densityMetrics, spacing } from "@/lib/tokens";
 
 type DemoSegment = "one" | "two" | "three";
@@ -41,16 +51,16 @@ export default function DesignSystemScreen() {
   const [segment, setSegment] = useState<DemoSegment>("one");
   const [chips, setChips] = useState<string[]>(["School"]);
   const [enabled, setEnabled] = useState(true);
+  const [query, setQuery] = useState("");
+  const [disclosureOpen, setDisclosureOpen] = useState(true);
   const { showToast } = useToast();
+  const { color } = useTheme();
 
   return (
-    <Screen
+    <FeedScreen
       title="Design system"
       contentContainerStyle={{
-        width: "100%",
-        maxWidth: 760,
-        alignSelf: "center",
-        gap: spacing.xl,
+        gap: spacing.lg,
       }}
     >
       <Section title="Type">
@@ -290,6 +300,37 @@ export default function DesignSystemScreen() {
       </Section>
 
       <Section title="Inputs">
+        <CompactSearchField
+          accessibilityLabel="Search design system examples"
+          placeholder="Search examples"
+          value={query}
+          onChangeText={setQuery}
+          onClear={() => setQuery("")}
+        />
+        <Field.Root>
+          <Field.Label required>School email</Field.Label>
+          <TextField
+            accessibilityLabel="School email"
+            autoCapitalize="none"
+            density="compact"
+            keyboardType="email-address"
+            placeholder="student@fultonschools.org"
+          />
+          <Field.Description>
+            Used for account and safety notifications.
+          </Field.Description>
+        </Field.Root>
+        <Field.Root>
+          <Field.Label>Invite code</Field.Label>
+          <TextField
+            accessibilityLabel="Invite code with error"
+            density="compact"
+            state="invalid"
+            value="IA-OLD"
+            editable={false}
+          />
+          <Field.Error>This invite code has expired.</Field.Error>
+        </Field.Root>
         <View style={{ gap: spacing.xs }}>
           <Txt variant="label">Search</Txt>
           <TextField placeholder="Search IA" accessibilityLabel="Search" />
@@ -304,6 +345,31 @@ export default function DesignSystemScreen() {
         </View>
       </Section>
 
+      <Section title="Disclosure">
+        <Collapsible open={disclosureOpen} onOpenChange={setDisclosureOpen}>
+          <CollapsibleTrigger
+            accessibilityLabel="Toggle accessibility notes"
+            style={{ paddingHorizontal: spacing.sm, gap: spacing.sm }}
+          >
+            <Txt variant="label" style={{ flex: 1, fontWeight: "700" }}>
+              Accessibility notes
+            </Txt>
+            {disclosureOpen ? (
+              <ChevronUp size={16} color={color("mutedForeground")} />
+            ) : (
+              <ChevronDown size={16} color={color("mutedForeground")} />
+            )}
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Separator />
+            <Txt variant="caption" tone="muted" style={{ padding: spacing.sm }}>
+              The trigger exposes expanded state and the content keeps its
+              region semantics.
+            </Txt>
+          </CollapsibleContent>
+        </Collapsible>
+      </Section>
+
       <Section title="Loading">
         <SkeletonList count={2} />
       </Section>
@@ -315,7 +381,7 @@ export default function DesignSystemScreen() {
           icon={Inbox}
         />
       </Section>
-    </Screen>
+    </FeedScreen>
   );
 }
 
