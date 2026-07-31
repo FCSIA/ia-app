@@ -48,14 +48,14 @@ export const duration = { fast: 150, base: 220, slow: 320 } as const;
  */
 export const densityMetrics = {
   compact: {
-    visualControlHeight: 36,
-    rowMinHeight: 40,
+    visualControlHeight: 40,
+    rowMinHeight: 44,
     touchTarget: 44,
-    sectionHeaderHeight: 32,
+    sectionHeaderHeight: 36,
     horizontalInset: spacing.sm,
     contentGap: spacing.sm,
     verticalGap: spacing.xs,
-    iconSize: 18,
+    iconSize: 20,
     radius: 8,
   },
   default: {

@@ -207,7 +207,7 @@ export function CompactListItem({
           style={{
             color: foregroundColor,
             fontWeight: isSelected || isUnread ? "700" : "600",
-            lineHeight: resolvedDensity === "comfortable" ? 22 : 19,
+            lineHeight: resolvedDensity === "comfortable" ? 22 : 20,
           }}
         >
           {title}
