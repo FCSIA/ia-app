@@ -13,6 +13,7 @@ export { createClientMessageIdentity } from "./optimistic-message-shape";
 
 /** Applies the same optimistic channel behavior on web and mobile. */
 type PostMessageArgs = FunctionArgs<typeof api.clubs.channels.postMessage>;
+type ToggleReactionArgs = FunctionArgs<typeof api.clubs.channels.toggleReaction>;
 type ChannelPageMessage = PaginatedQueryItem<
   typeof api.clubs.channels.getMessagePage
 >;
@@ -107,5 +108,87 @@ export function optimisticallyInsertPostedMessage(
       ),
       optimisticMessage,
     ],
+  });
+}
+
+function toggleReactionOnMessage(
+  message: ChannelPageMessage,
+  args: ToggleReactionArgs,
+  currentUserId: Id<"users">,
+) {
+  if (message._id !== args.messageId) return message;
+  const existing = message.reactions.find((reaction) => reaction.emoji === args.emoji);
+
+  if (!existing) {
+    return {
+      ...message,
+      reactions: [
+        ...message.reactions,
+        {
+          emoji: args.emoji,
+          count: 1,
+          reactedByCurrentUser: true,
+          reactors: [],
+          countIsCapped: false,
+        },
+      ],
+    };
+  }
+
+  if (existing.reactedByCurrentUser && existing.count <= 1) {
+    return {
+      ...message,
+      reactions: message.reactions.filter((reaction) => reaction.emoji !== args.emoji),
+    };
+  }
+
+  return {
+    ...message,
+    reactions: message.reactions.map((reaction) =>
+      reaction.emoji === args.emoji
+        ? {
+            ...reaction,
+            count: Math.max(0, reaction.count + (reaction.reactedByCurrentUser ? -1 : 1)),
+            reactedByCurrentUser: !reaction.reactedByCurrentUser,
+            reactors: reaction.reactedByCurrentUser
+              ? reaction.reactors.filter((reactor) => reactor._id !== currentUserId)
+              : reaction.reactors,
+          }
+        : reaction,
+    ),
+  };
+}
+
+export function optimisticallyToggleMessageReaction(
+  localStore: OptimisticLocalStore,
+  args: ToggleReactionArgs,
+  context: {
+    clubId: Id<"clubs">;
+    channelId: Id<"clubChannels">;
+    currentUserId: Id<"users">;
+    threadId?: Id<"clubChannelMessages"> | null;
+  },
+) {
+  optimisticallyUpdateValueInPaginatedQuery(
+    localStore,
+    api.clubs.channels.getMessagePage,
+    { clubId: context.clubId, channelId: context.channelId },
+    (message) => toggleReactionOnMessage(message, args, context.currentUserId),
+  );
+
+  if (!context.threadId) return;
+  const threadArgs = {
+    clubId: context.clubId,
+    channelId: context.channelId,
+    messageId: context.threadId,
+  };
+  const thread = localStore.getQuery(api.clubs.channels.getThread, threadArgs);
+  if (!thread) return;
+  localStore.setQuery(api.clubs.channels.getThread, threadArgs, {
+    ...thread,
+    root: toggleReactionOnMessage(thread.root, args, context.currentUserId),
+    replies: thread.replies.map((message) =>
+      toggleReactionOnMessage(message, args, context.currentUserId),
+    ),
   });
 }

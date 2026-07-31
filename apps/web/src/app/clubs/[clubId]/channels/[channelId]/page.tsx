@@ -117,6 +117,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   createClientMessageIdentity,
   optimisticallyInsertPostedMessage,
+  optimisticallyToggleMessageReaction,
 } from '~/apps/shared/chat/optimistic-message';
 
 const QUICK_REACTIONS = [
@@ -897,7 +898,17 @@ export default function ClubChannelPage({
   );
   const updateMessage = useMutation(api.clubs.channels.updateMessage);
   const deleteMessage = useMutation(api.clubs.channels.deleteMessage);
-  const toggleReaction = useMutation(api.clubs.channels.toggleReaction);
+  const toggleReaction = useMutation(api.clubs.channels.toggleReaction).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!user) return;
+      optimisticallyToggleMessageReaction(localStore, args, {
+        clubId,
+        channelId,
+        currentUserId: user._id,
+        threadId: selectedThreadId,
+      });
+    },
+  );
   const setPinned = useMutation(api.clubs.channels.setPinned);
   const votePoll = useMutation(api.clubs.channels.votePoll);
   const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
