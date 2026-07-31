@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -27,11 +27,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dropdown,
-  DropdownSeparator,
-  useDropdown,
-} from "@/components/ui/dropdown";
+import { Card, CardAction, CardGroup } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -56,68 +52,19 @@ function resolveMediaUrl(url?: string | null) {
   return url;
 }
 
-function BrowseAllClubsItem({
-  index,
-}: {
-  index: number;
-}) {
-  const ref = useRef<HTMLAnchorElement | null>(null);
-  const { registerItem, activeIndex } = useDropdown();
-  const isHovered = activeIndex === index;
-
-  useEffect(() => {
-    registerItem(index, ref.current);
-    return () => registerItem(index, null);
-  }, [index, registerItem]);
-  return (
-    <Link
-      ref={ref}
-      data-proximity-index={index}
-      role="menuitemradio"
-      href="/clubs"
-      className={cn(
-        "text-sm relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
-        isHovered
-          ? "text-foreground"
-          : "text-muted-foreground",
-      )}
-    >
-      Browse all clubs
-    </Link>
-  )
-}
-
 function ClubPickerItem({
   club,
   active,
-  index,
 }: {
   club: ClubNavigationSummary;
   active: boolean;
-  index: number;
 }) {
-  const ref = useRef<HTMLAnchorElement | null>(null);
-  const { registerItem, activeIndex } = useDropdown();
-  const isHovered = activeIndex === index;
-
-  useEffect(() => {
-    registerItem(index, ref.current);
-    return () => registerItem(index, null);
-  }, [index, registerItem]);
-
   return (
-    <Link
-      ref={ref}
+    <Card
       href={`/clubs/${club._id}`}
-      data-proximity-index={index}
-      role="menuitemradio"
-      aria-checked={active}
-      className={cn(
-        "relative z-10 flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 outline-none transition-colors",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground",
-      )}
+      label={`Open ${club.name}`}
+      selected={active}
+      className="min-h-11 gap-2.5 rounded-lg px-2.5 py-2"
     >
       <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
         {club.logoUrl ? (
@@ -134,13 +81,13 @@ function ClubPickerItem({
       <span
         className={cn(
           "min-w-0 flex-1 truncate text-sm font-medium",
-          isHovered || active ? "text-foreground" : "text-muted-foreground",
+          active ? "text-foreground" : "text-muted-foreground",
         )}
       >
         {club.name}
       </span>
       {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
-    </Link>
+    </Card>
   );
 }
 
@@ -188,7 +135,6 @@ export function ClubWorkspace({
   const channels = navigation?.channels ?? [];
   const myClubs = navigation?.myClubs ?? [];
   const canManageChannels = navigation?.viewer.canManageChannels ?? false;
-  const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
@@ -260,7 +206,6 @@ export function ClubWorkspace({
             clubId={clubId}
             club={club}
             myClubs={myClubs}
-            activeClubIndex={activeClubIndex}
             nav={nav}
             pathname={pathname}
             channels={channels}
@@ -284,7 +229,6 @@ export function ClubWorkspace({
               clubId={clubId}
               club={club}
               myClubs={myClubs}
-              activeClubIndex={activeClubIndex}
               nav={nav}
               pathname={pathname}
               channels={channels}
@@ -374,7 +318,6 @@ function ClubNavigationPanel({
   clubId,
   club,
   myClubs,
-  activeClubIndex,
   nav,
   pathname,
   channels,
@@ -387,7 +330,6 @@ function ClubNavigationPanel({
   clubId: Id<"clubs">;
   club?: ClubWorkspaceNavigation["club"];
   myClubs: ClubWorkspaceNavigation["myClubs"];
-  activeClubIndex: number;
   nav: NavigationItem[];
   pathname: string;
   channels: ClubNavigationChannel[];
@@ -405,7 +347,7 @@ function ClubNavigationPanel({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
                 {club?.logoUrl ? (
@@ -425,18 +367,14 @@ function ClubNavigationPanel({
               <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="border-0 bg-transparent p-0 shadow-none">
-            <Dropdown
-              checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
-              className="w-64"
-            >
+          <DropdownMenuContent align="start" className="w-64 p-1">
+            <CardGroup orientation="inline" separated className="gap-0.5">
               {myClubs.length > 0 ? (
-                myClubs.map((entry, index) => (
+                myClubs.map((entry) => (
                   <ClubPickerItem
                     key={entry._id}
                     club={entry}
                     active={entry._id === clubId}
-                    index={index}
                   />
                 ))
               ) : (
@@ -444,38 +382,41 @@ function ClubNavigationPanel({
                   No club memberships yet.
                 </div>
               )}
-              <DropdownSeparator className="!mx-1" />
-              <BrowseAllClubsItem index={myClubs.length} />
-            </Dropdown>
+            </CardGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-2">
-          <nav className="space-y-0.5" aria-label="Club pages">
+          <CardGroup
+            orientation="inline"
+            separated
+            className="gap-0.5"
+            aria-label="Club pages"
+          >
             {nav.map((item) => {
               const Icon = item.icon;
               const active = item.match(pathname);
               return (
-                <Link
+                <Card
                   key={item.href}
                   href={item.href}
-                  onClick={onNavigate}
+                  onClick={() => onNavigate?.()}
+                  label={item.label}
+                  selected={active}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                    "gap-2 rounded-md px-2 text-sm font-medium",
                     rowClassName,
-                    active
-                      ? "bg-active text-foreground"
-                      : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                    active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
                   <span className="truncate">{item.label}</span>
-                </Link>
+                </Card>
               );
             })}
-          </nav>
+          </CardGroup>
 
           <div className="my-3 h-px bg-border/70" />
 
@@ -493,21 +434,21 @@ function ClubNavigationPanel({
               {canManageChannels ? <CreateChannelTrigger clubId={clubId} /> : null}
             </div>
 
-            <div className="space-y-0.5">
+            <CardGroup orientation="inline" separated className="gap-0.5">
               {channels.length > 0 ? (
                 channels.map((channel) => {
                   const active = channel._id === activeChannelId;
                   return (
-                    <Link
+                    <Card
                       key={channel._id}
                       href={`/clubs/${clubId}/channels/${channel._id}`}
-                      onClick={onNavigate}
+                      onClick={() => onNavigate?.()}
+                      label={`Open #${channel.name}`}
+                      selected={active}
                       className={cn(
-                        "group flex items-center gap-1.5 rounded-md px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                        "group gap-1.5 rounded-md px-2 text-sm font-medium",
                         rowClassName,
-                        active
-                          ? "bg-active text-foreground"
-                          : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                        active ? "text-foreground" : "text-muted-foreground",
                       )}
                     >
                       <ClubChannelVisibilityIcon
@@ -519,7 +460,7 @@ function ClubNavigationPanel({
                       />
                       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
                       {canManageChannels ? (
-                        <div className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        <CardAction className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                           <ChannelActionsTrigger clubId={clubId} channel={channel} />
                           <button
                             type="button"
@@ -533,9 +474,9 @@ function ClubNavigationPanel({
                           >
                             <Trash2 className="size-3.5" />
                           </button>
-                        </div>
+                        </CardAction>
                       ) : null}
-                    </Link>
+                    </Card>
                   );
                 })
               ) : (
@@ -543,7 +484,7 @@ function ClubNavigationPanel({
                   No channels yet.
                 </div>
               )}
-            </div>
+            </CardGroup>
           </section>
         </div>
       </ScrollArea>

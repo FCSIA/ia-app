@@ -1,7 +1,6 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useMutation, useQuery } from 'convex/react';
 import { Check, Hash, Plus, Shield, Users2, X } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -10,6 +9,7 @@ import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog'
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardGroup } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -115,7 +115,7 @@ export default function ClubsLandingPage() {
         ) : null}
 
         <div className="grid items-start gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
-          <aside className="overflow-hidden rounded-lg border bg-muted/25">
+          <aside className="overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:sticky lg:top-3">
             <div className="flex h-10 items-center justify-between border-b px-3">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Your clubs
@@ -123,7 +123,10 @@ export default function ClubsLandingPage() {
               <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
             </div>
             {myClubs.length > 0 ? (
-              <div className="max-h-72 divide-y divide-border/70 overflow-y-auto">
+              <CardGroup
+                orientation="inline"
+                className="fluid-scrollbar max-h-72 overflow-y-auto"
+              >
                 {myClubs.map((club) => (
                   <ClubListRow
                     key={club._id}
@@ -138,7 +141,7 @@ export default function ClubsLandingPage() {
                     }
                   />
                 ))}
-              </div>
+              </CardGroup>
             ) : (
               <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
                 Clubs you join will show here.
@@ -146,7 +149,7 @@ export default function ClubsLandingPage() {
             )}
           </aside>
 
-          <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
+          <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:max-h-[calc(100dvh-7.5rem)]">
             <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Discover clubs</h2>
@@ -170,13 +173,16 @@ export default function ClubsLandingPage() {
             </div>
 
             {isLoading ? (
-              <div className="divide-y divide-border/70">
+              <CardGroup orientation="inline">
                 {Array.from({ length: 7 }).map((_, i) => (
                   <div key={i} className="h-[4.5rem] animate-pulse bg-muted/20" />
                 ))}
-              </div>
+              </CardGroup>
             ) : filteredClubs.length > 0 ? (
-              <div className="divide-y divide-border/70">
+              <CardGroup
+                orientation="inline"
+                className="fluid-scrollbar min-h-0 overflow-y-auto"
+              >
                 {filteredClubs.map((club) => (
                   <ClubListRow
                     key={club._id}
@@ -185,7 +191,7 @@ export default function ClubsLandingPage() {
                     joined={myClubIds.has(club._id)}
                   />
                 ))}
-              </div>
+              </CardGroup>
             ) : (
               <div className="py-10 text-center text-sm text-muted-foreground">
                 No clubs match this search.
@@ -238,23 +244,25 @@ function ClubListRow({
 }) {
   if (density === 'compact') {
     return (
-      <Link
+      <Card
         href={`/clubs/${club._id}`}
-        className="flex min-h-12 items-center gap-2.5 px-3 py-2 outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+        label={`Open ${club.name}`}
+        className="min-h-12 gap-2.5 rounded-none border-0 bg-transparent px-3 py-2"
       >
         <ClubMark club={club} size="sm" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
           {club.name}
         </span>
         {badge}
-      </Link>
+      </Card>
     );
   }
 
   return (
-    <Link
+    <Card
       href={`/clubs/${club._id}`}
-      className="group flex min-h-[4.5rem] items-center gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+      label={`Open ${club.name}`}
+      className="group min-h-[4.5rem] gap-3 rounded-none border-0 bg-transparent px-3 py-2.5"
     >
       <ClubMark club={club} size="md" />
       <div className="min-w-0 flex-1">
@@ -280,6 +288,6 @@ function ClubListRow({
           {club._count?.channels ?? 0}
         </span>
       </div>
-    </Link>
+    </Card>
   );
 }

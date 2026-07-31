@@ -479,3 +479,29 @@
     -webkit-background-clip: text;
     animation: shimmer 1.5s ease-in-out infinite;
 }
+
+.fluid-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--foreground) / 0.18) transparent;
+}
+
+.fluid-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.fluid-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fluid-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: hsl(var(--foreground) / 0.18);
+  background-clip: padding-box;
+}
+
+.fluid-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground) / 0.3);
+  background-clip: padding-box;
+}
