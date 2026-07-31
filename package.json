@@ -20,9 +20,9 @@
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {
-    "turbo": "^2.9.17",
+    "turbo": "^2.10.8",
     "typescript": "~6.0.3",
-    "vercel": "^54.5.1"
+    "vercel": "^54.21.1"
   },
   "engines": {
     "node": ">=20.19.0",
