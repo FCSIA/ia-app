@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardAction, CardGroup } from "@/components/ui/card";
@@ -60,34 +61,39 @@ function ClubPickerItem({
   active: boolean;
 }) {
   return (
-    <Card
-      href={`/clubs/${club._id}`}
-      label={`Open ${club.name}`}
-      selected={active}
-      className="min-h-11 gap-2.5 rounded-lg px-2.5 py-2"
+    <DropdownMenuItem
+      asChild
+      className="group p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
     >
-      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-        {club.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolveMediaUrl(club.logoUrl)}
-            alt={club.name}
-            className="size-full bg-background object-cover"
-          />
-        ) : (
-          club.name.charAt(0).toUpperCase()
-        )}
-      </div>
-      <span
-        className={cn(
-          "min-w-0 flex-1 truncate text-sm font-medium",
-          active ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {club.name}
-      </span>
-      {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
-    </Card>
+      <Link href={`/clubs/${club._id}`} aria-current={active ? "page" : undefined}>
+        <Card
+          selected={active}
+          className="pointer-events-none min-h-11 gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-100 group-data-[highlighted]:bg-hover"
+        >
+          <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+            {club.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={resolveMediaUrl(club.logoUrl)}
+                alt={club.name}
+                className="size-full bg-background object-cover"
+              />
+            ) : (
+              club.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-sm font-medium group-data-[highlighted]:text-foreground",
+              active ? "text-foreground" : "text-muted-foreground",
+            )}
+          >
+            {club.name}
+          </span>
+          {active ? <Check className="size-4 shrink-0 text-foreground" /> : null}
+        </Card>
+      </Link>
+    </DropdownMenuItem>
   );
 }
 
@@ -368,7 +374,12 @@ function ClubNavigationPanel({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64 p-1">
-            <CardGroup orientation="inline" separated className="gap-0.5">
+            <CardGroup
+              orientation="inline"
+              separated
+              proximityHover={false}
+              className="gap-0.5"
+            >
               {myClubs.length > 0 ? (
                 myClubs.map((entry) => (
                   <ClubPickerItem
