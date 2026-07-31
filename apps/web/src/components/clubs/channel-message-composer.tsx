@@ -313,8 +313,8 @@ export function ChannelMessageComposer({
 
           <InputGroup
             className={cn(
-              'h-auto min-h-11 overflow-hidden',
-              'border-border/80 bg-background shadow-sm',
+              'h-auto min-h-10 overflow-hidden rounded-lg',
+              'border-border/80 bg-background shadow-none',
             )}
           >
             {isMarkdownSource ? (
@@ -336,8 +336,8 @@ export function ChannelMessageComposer({
                 onKeyDown={handleKeyDown}
                 className={cn(
                   'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
-                  'py-2.5 pl-1 pr-2 text-sm leading-5 outline-none',
-                  '[&_[data-slate-placeholder=true]]:top-2.5',
+                  'py-2 pl-1 pr-2 text-sm leading-5 outline-none',
+                  '[&_[data-slate-placeholder=true]]:top-2',
                   '[&_[data-slate-placeholder=true]]:text-muted-foreground',
                 )}
               />

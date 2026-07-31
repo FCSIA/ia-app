@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { EditableAvatar } from "@/components/ui/editable-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
@@ -143,11 +142,10 @@ export function ClubHero({
   const clubInitial = club.name.trim().charAt(0).toUpperCase() || "C";
 
   return (
-    <Card className="overflow-hidden border-border/70">
-      {/* Banner */}
+    <section className="overflow-hidden rounded-lg border border-border/70 bg-card">
       <div
         className={cn(
-          "relative h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
+          "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
           !bannerUrl && "ring-1 ring-inset ring-border/40",
         )}
         style={
@@ -169,21 +167,21 @@ export function ClubHero({
             variant="secondary"
             size="sm"
             onClick={openEditor}
-            className="absolute right-3 top-3 gap-1.5 bg-background/80 backdrop-blur hover:bg-background"
+            className="absolute right-2 top-2 h-8 gap-1.5 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
           >
             <Settings2 className="size-3.5" /> Customize
           </Button>
         )}
       </div>
 
-      <CardContent className="relative -mt-12 space-y-4 px-6 pb-6 pt-0">
-        <div className="flex items-end gap-4">
+      <div className="relative -mt-8 space-y-3 px-4 pb-4">
+        <div className="flex items-end gap-3">
           <EditableAvatar
             alt={club.name}
             canEdit={canEdit && !editing}
-            className="size-24 rounded-2xl border-4 border-background bg-muted"
+            className="size-16 rounded-xl border-4 border-background bg-muted"
             fallback={clubInitial}
-            fallbackClassName="rounded-2xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-2xl text-orange-100"
+            fallbackClassName="rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-lg text-orange-100"
             fallbackStyle={
               accent
                 ? {
@@ -196,12 +194,12 @@ export function ClubHero({
             onUpload={(file) => void handleQuickLogoUpload(file)}
             uploadLabel="Change club logo"
           />
-          <div className="min-w-0 pb-1">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
+          <div className="min-w-0 pb-0.5">
+            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
               {club.name}
             </h1>
             {club.description ? (
-              <p className="line-clamp-1 text-sm text-muted-foreground">
+              <p className="line-clamp-1 text-xs text-muted-foreground">
                 {club.description}
               </p>
             ) : null}
@@ -209,13 +207,13 @@ export function ClubHero({
         </div>
 
         {club.overview ? (
-          <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">
+          <p className="line-clamp-4 whitespace-pre-line text-sm leading-5 text-muted-foreground">
             {club.overview}
           </p>
         ) : null}
 
         {editing && canEdit && (
-          <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="space-y-4 border-t border-border pt-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Customize club home</h3>
               <Button
@@ -389,7 +387,7 @@ export function ClubHero({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

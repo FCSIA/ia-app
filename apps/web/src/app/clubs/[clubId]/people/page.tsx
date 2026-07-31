@@ -405,25 +405,25 @@ export default function ClubPeoplePage() {
 
   return (
     <ClubWorkspace title={title} contentClassName="flex flex-col overflow-hidden">
-      <div className="mx-auto flex w-full min-h-0 max-w-4xl flex-1 flex-col p-6">
-        <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="flex shrink-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <Tabs value={visibleFilter} onValueChange={setFilter} className="w-full sm:w-auto">
-              <TabsList className={`grid w-full ${canApproveRequests ? 'grid-cols-5' : 'grid-cols-4'} rounded-3xl bg-muted p-1 sm:w-auto sm:inline-flex`}>
-                <TabItem value="all" className="rounded-lg text-xs sm:text-sm" label="All">
+              <TabsList className={`grid h-9 w-full ${canApproveRequests ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-muted p-0.5 sm:inline-flex sm:w-auto`}>
+                <TabItem value="all" className="rounded-md px-2 text-xs" label="All">
                   All <span className="ml-1.5 opacity-50">{stats.all}</span>
                 </TabItem>
-                <TabItem value="leaders" className="rounded-lg text-xs sm:text-sm" label="Leaders">
+                <TabItem value="leaders" className="rounded-md px-2 text-xs" label="Leaders">
                   Leaders <span className="ml-1.5 opacity-50">{stats.leaders}</span>
                 </TabItem>
-                <TabItem value="sponsors" className="rounded-lg text-xs sm:text-sm" label="Sponsors">
+                <TabItem value="sponsors" className="rounded-md px-2 text-xs" label="Sponsors">
                   Sponsors <span className="ml-1.5 opacity-50">{stats.sponsors}</span>
                 </TabItem>
-                <TabItem value="members" className="rounded-lg text-xs sm:text-sm" label="Members">
+                <TabItem value="members" className="rounded-md px-2 text-xs" label="Members">
                   Members <span className="ml-1.5 opacity-50">{stats.members}</span>
                 </TabItem>
                 {canApproveRequests ? (
-                  <TabItem value="requests" className="rounded-lg text-xs sm:text-sm" label="Requests">
+                  <TabItem value="requests" className="rounded-md px-2 text-xs" label="Requests">
                     Requests <span className="ml-1.5 opacity-50">{pendingJoinRequests.length}</span>
                   </TabItem>
                 ) : null}
@@ -435,8 +435,9 @@ export default function ClubPeoplePage() {
                 <SearchInput
                   value={search}
                   onValueChange={setSearch}
-                  placeholder="Search roster..."
-                  className="w-full sm:w-[280px]"
+                  placeholder="Search people"
+                  size="sm"
+                  className="w-full sm:w-64"
                 />
               ) : null}
               {club && canInvite ? (
@@ -453,19 +454,19 @@ export default function ClubPeoplePage() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
             {visibleFilter === 'requests' ? (
               pendingJoinRequests.length > 0 ? (
                 <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border/60">
                   {pendingJoinRequests.map((request) => {
                     const processing = requestInFlight === request._id;
                     return (
-                      <div key={request._id} className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div key={request._id} className="flex flex-col gap-3 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-foreground">
                             {fullName(request.requester)}
                           </p>
-                          <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                             {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                           </p>
                         </div>
@@ -516,15 +517,13 @@ export default function ClubPeoplePage() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-1 flex-col items-center justify-center py-16 text-center px-4">
-                <div className="rounded-full bg-primary/10 p-4 mb-4">
-                  <Users className="size-8 text-primary/60" />
-                </div>
-                <h3 className="text-base font-semibold text-foreground">No people found</h3>
-                <p className="text-sm text-muted-foreground mt-1.5 max-w-[250px]">
+              <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
+                <Users className="mb-2 size-5 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">No people found</h3>
+                <p className="mt-1 max-w-64 text-xs text-muted-foreground">
                   {deferredSearch
-                    ? "We couldn't find anyone matching your search."
-                    : "There are no members in this category yet."}
+                    ? 'Try a different search.'
+                    : 'No one is in this group yet.'}
                 </p>
                 {deferredSearch && (
                   <Button variant="ghost" onClick={() => setSearch('')} className="mt-2 text-primary font-semibold">
@@ -562,9 +561,9 @@ function PersonRow({
   const isSponsor = person.kind === 'SPONSOR';
 
   return (
-    <div className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/30 group">
-      <ClubAvatar person={person} className="size-10 shadow-sm" fallbackClassName="text-[12px]" />
-      <div className="min-w-0 flex-1 space-y-1">
+    <div className="group flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
+      <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
+      <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold text-foreground">{fullName(person)}</p>
           {isSponsor ? (
@@ -581,7 +580,7 @@ function PersonRow({
           {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
         {person.uniqueId ? (
-          <p className="truncate font-mono text-[11px] text-muted-foreground">{person.uniqueId}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{person.uniqueId}</p>
         ) : null}
       </div>
       {showManage ? (

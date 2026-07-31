@@ -36,9 +36,6 @@ export default function ClubTagsPage() {
   const title = (
     <div className="min-w-0">
       <h1 className="truncate text-base font-semibold text-foreground">Tags</h1>
-      <p className="truncate text-xs text-muted-foreground">
-        Reusable mention groups for this club
-      </p>
     </div>
   );
 
@@ -53,17 +50,17 @@ export default function ClubTagsPage() {
 
   return (
     <ClubWorkspace title={title} actions={actions}>
-      <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
+      <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
         <section className="space-y-2">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Built-in mentions
           </h2>
-          <div className="divide-y rounded-lg border bg-card">
+          <div className="divide-y divide-border/70 overflow-hidden rounded-lg border bg-card">
             {BUILT_IN_TAGS.map((tag) => (
-              <div key={tag.token} className="flex items-center gap-3 px-4 py-3">
+              <div key={tag.token} className="flex min-h-12 items-center gap-3 px-3 py-2">
                 <AtSign className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-sm font-medium text-foreground">{tag.token}</p>
+                  <p className="text-sm font-semibold text-foreground">{tag.token}</p>
                   <p className="text-xs text-muted-foreground">{tag.description}</p>
                 </div>
               </div>
@@ -77,11 +74,11 @@ export default function ClubTagsPage() {
           </h2>
 
           {tags.length > 0 ? (
-            <div className="space-y-3">
+            <div className="divide-y divide-border/70 overflow-hidden rounded-lg border bg-card">
               {tags.map((tag) => (
-                <div key={tag._id} className="rounded-lg border bg-card p-4">
+                <div key={tag._id} className="px-3 py-2.5 transition-colors hover:bg-hover">
                   <div className="flex items-center gap-2">
-                    <Badge variant="solid" className="font-mono">
+                    <Badge variant="solid">
                       @{tag.slug}
                     </Badge>
                     <span className="text-sm font-medium">{tag.name}</span>
@@ -90,7 +87,7 @@ export default function ClubTagsPage() {
                     </span>
                   </div>
                   {tag.members.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-1">
                       {tag.members.map((member) => (
                         <Badge
                           key={`${tag._id}-${member.user._id}`}
@@ -113,7 +110,7 @@ export default function ClubTagsPage() {
                 </EmptyMedia>
                 <EmptyTitle>No custom tags yet</EmptyTitle>
                 <EmptyDescription>
-                  Create reusable groups like `@officers` or `@build-team` to mention in channels.
+                  Create a group to mention several people at once.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

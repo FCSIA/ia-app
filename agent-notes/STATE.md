@@ -97,6 +97,11 @@
   now uses a narrow navigation subscription, channel permissions load
   separately from the bounded mention audience, and notification preference
   fanout uses exact indexed lookups.
+- Web club pages now use a compact, channel-first workspace inspired by Discord's
+  conversational density: the shared club/channel navigation is available on
+  desktop and mobile, messages render as a flat hover-action timeline, and the
+  club directory, overview, people, tags, and composer use tighter flat rows
+  instead of spacious nested cards.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -146,10 +151,15 @@
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - pass
+- `pnpm lint` - current rerun reaches the web checks but fails in the unrelated
+  mobile package because TypeScript 6 treats its `baseUrl` setting as a
+  deprecation error; focused web lint passes with pre-existing warnings only.
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
 - `pnpm build` - pass
+- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
+  after the compact club-workspace redesign; signed-in visual QA remains to be
+  run because no browser-control session was available.
 - `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 

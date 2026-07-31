@@ -353,7 +353,7 @@ function PollCard({
   if (!message.poll) return null;
   const total = Math.max(message.poll.totalVotes, 1);
   return (
-    <div className="mt-3 rounded-2xl border bg-muted/20 p-3">
+    <div className="mt-2 rounded-lg border bg-muted/20 p-3">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <BarChart3 className="size-4 text-primary" />
         {message.poll.question}
@@ -368,7 +368,7 @@ function PollCard({
               disabled={isPending}
               onClick={() => onVote(message._id, option.id)}
               className={cn(
-                'relative w-full overflow-hidden rounded-xl border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50',
+                'relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-hover',
                 option.votedByCurrentUser && 'border-primary/50 bg-primary/10',
               )}
             >
@@ -449,7 +449,7 @@ function MessageRow({
   return (
     <Message
       className={cn(
-        'gap-3 px-3 py-2',
+        'gap-3 px-3 py-1.5 transition-colors hover:bg-hover',
         isSending &&
           'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
       )}
@@ -495,7 +495,7 @@ function MessageRow({
           <div className="mt-2" />
         ) : (
           <Bubble
-            variant="secondary"
+            variant="ghost"
             align="start"
             className={cn('mt-1', hasReactions && 'mb-3')}
           >
@@ -503,7 +503,7 @@ function MessageRow({
               <BubbleContent
                 className={cn(
                   'text-sm leading-normal',
-                  highlighted && 'ring-2 ring-primary/30',
+                  highlighted && 'rounded-md bg-primary/10 px-1.5 py-0.5 ring-1 ring-primary/25',
                 )}
               >
                 {isDeleted ? (
@@ -1066,7 +1066,7 @@ export default function ClubChannelPage({
 
   const rightPane = selectedThread ? (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
@@ -1090,7 +1090,7 @@ export default function ClubChannelPage({
       >
         <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="gap-2 p-2">
+            <MessageScrollerContent className="gap-0 p-2">
               <MessageScrollerItem messageId={selectedThread._id}>
                 {renderMessageRow(selectedThread)}
               </MessageScrollerItem>
@@ -1105,7 +1105,7 @@ export default function ClubChannelPage({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="shrink-0 border-t bg-card p-3">
+      <div className="shrink-0 border-t bg-card p-2">
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
@@ -1118,11 +1118,11 @@ export default function ClubChannelPage({
             onMentionIntent={() => setMentionContextRequested(true)}
           />
         ) : selectedThread.isDeleted ? (
-          <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
             Replies are closed because the original message was deleted.
           </div>
         ) : (
-          <div className="rounded-2xl border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+          <div className="rounded-lg border bg-background/80 px-3 py-2 text-sm text-muted-foreground">
             {getClubChannelVisibilityLabel(channel.visibility)} channel. Only club leaders, sponsors,
             and admins can reply here.
           </div>
@@ -1138,13 +1138,14 @@ export default function ClubChannelPage({
       resizableRightPane
       contentClassName="relative flex flex-col bg-card"
     >
-      <div className="shrink-0 border-b px-3 py-2">
+      <div className="shrink-0 border-b px-2 py-1.5">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-2">
           <SearchInput
             value={search}
             onValueChange={setSearch}
             placeholder="Search messages"
-            className="w-full sm:ml-auto sm:w-72"
+            size="sm"
+            className="w-full sm:ml-auto sm:w-64"
           />
 
           <div className="shrink-0">
@@ -1160,7 +1161,7 @@ export default function ClubChannelPage({
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
         <MessageScroller className="flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-3 pb-24">
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-0 p-2 pb-20">
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
                 <MessageScrollerItem>
                   <div className="flex justify-center py-2">
@@ -1178,8 +1179,8 @@ export default function ClubChannelPage({
               ) : null}
               {pinnedMessages.length > 0 ? (
                 <MessageScrollerItem>
-                  <div className="mb-3 rounded-2xl border bg-muted/20 p-3">
-                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="mb-2 rounded-lg border bg-muted/20 p-2">
+                    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       <Pin className="size-3.5" />
                       Pinned
                     </div>
@@ -1188,7 +1189,7 @@ export default function ClubChannelPage({
                         <button
                           key={message._id}
                           type="button"
-                          className="block w-full truncate rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/50"
+                          className="block w-full truncate rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover"
                           onClick={() => setSelectedThreadId(message.threadRootId)}
                         >
                           <span className="font-medium">{fullName(message.author)}:</span>{' '}
@@ -1235,10 +1236,10 @@ export default function ClubChannelPage({
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card via-card/90 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/90 to-transparent"
       />
 
-      <div className="absolute inset-x-0 bottom-0 p-3">
+      <div className="absolute inset-x-0 bottom-0 p-2">
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <ChannelMessageComposer
@@ -1252,12 +1253,12 @@ export default function ClubChannelPage({
               onMentionIntent={() => setMentionContextRequested(true)}
             />
           ) : (
-            <div className="rounded-[1.5rem] border bg-background/95 px-5 py-4 shadow-sm">
+            <div className="rounded-lg border bg-background/95 px-3 py-2">
               <p className="text-sm font-medium text-foreground">
                 {getClubChannelVisibilityLabel(channel.visibility)} channel
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Members can read everything here, but only club leaders, sponsors, and admins can post.
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Only leaders, sponsors, and admins can post.
               </p>
             </div>
           )}

@@ -8,8 +8,11 @@ import { api } from "~/apps/convex/src/_generated/api";
 import {
   AtSign,
   Check,
+  ChevronDown,
   ChevronsUpDown,
+  Compass,
   Home,
+  PanelLeft,
   Plus,
   Pencil,
   Trash2,
@@ -30,6 +33,7 @@ import {
   useDropdown,
 } from "@/components/ui/dropdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -160,6 +164,7 @@ export function ClubWorkspace({
   const pathname = usePathname() ?? "";
   const clubId = useClubId();
   const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
     if (!resizableRightPane) return;
@@ -217,12 +222,24 @@ export function ClubWorkspace({
 
   const headerSlot = (
     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
-      <div className="min-w-0 flex-1">
-        {title ?? (
-          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-            {club?.name ?? "Club"}
-          </h1>
-        )}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0 md:hidden"
+          aria-label="Open club channels"
+          onClick={() => setMobileNavigationOpen(true)}
+        >
+          <PanelLeft className="size-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          {title ?? (
+            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+              {club?.name ?? "Club"}
+            </h1>
+          )}
+        </div>
       </div>
       {actions ? (
         <div className="flex shrink-0 items-center gap-2">{actions}</div>
@@ -237,165 +254,53 @@ export function ClubWorkspace({
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
     >
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 flex-col border-r bg-muted/30 md:flex">
-          <div className="border-b px-3 py-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-                    {club?.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={resolveMediaUrl(club.logoUrl)}
-                        alt={club.name}
-                        className="size-full object-cover bg-background"
-                      />
-                    ) : (
-                      (club?.name?.charAt(0).toUpperCase() ?? "C")
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {club?.name ?? "Loading…"}
-                    </p>
-                  </div>
-                  <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="border-0 bg-transparent p-0 shadow-none"
-              >
-                <Dropdown
-                  checkedIndex={
-                    activeClubIndex >= 0 ? activeClubIndex : undefined
-                  }
-                  className="w-64"
-                >
-                  {myClubs.length > 0 ? (
-                    myClubs.map((entry, index) => (
-                      <ClubPickerItem
-                        key={entry._id}
-                        club={entry}
-                        active={entry._id === clubId}
-                        index={index}
-                      />
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                      No club memberships yet.
-                    </div>
-                  )}
-                  <DropdownSeparator className="!mx-1" />
-                  <BrowseAllClubsItem
-                    index={myClubs.length}
-                  />
-                </Dropdown>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <ScrollArea className="flex-1">
-            <div className="space-y-6 p-3">
-              <nav className="space-y-0.5">
-                {nav.map((item) => {
-                  const Icon = item.icon;
-                  const active = item.match(pathname);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
-                        active
-                          ? "bg-muted font-medium text-foreground"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                      )}
-                    >
-                      <Icon className="size-4" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between px-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Channels
-                  </p>
-                  {canManageChannels ? (
-                    <CreateChannelTrigger clubId={clubId} />
-                  ) : null}
-                </div>
-                <div className="space-y-0.5">
-                  {channels.length > 0 ? (
-                    channels.map((channel) => {
-                      const active = channel._id === activeChannelId;
-                      return (
-                        <Link
-                          key={channel._id}
-                          href={`/clubs/${clubId}/channels/${channel._id}`}
-                          className={cn(
-                            "group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors",
-                            active
-                              ? "bg-muted font-medium text-foreground"
-                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                          )}
-                        >
-                          <ClubChannelVisibilityIcon
-                            visibility={channel.visibility}
-                            className="size-3.5 text-muted-foreground"
-                          />
-                          <span className="flex-1 truncate">
-                            {channel.name}
-                          </span>
-                          {canManageChannels && (
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <ChannelActionsTrigger
-                                clubId={clubId}
-                                channel={channel}
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (
-                                    confirm(
-                                      `Are you sure you want to delete #${channel.name}?`,
-                                    )
-                                  ) {
-                                    void deleteChannel({
-                                      channelId: channel._id,
-                                    }).then(() =>
-                                      toast({ title: "Channel deleted" }),
-                                    );
-                                  }
-                                }}
-                                className="p-1 hover:bg-destructive/10 hover:text-destructive rounded transition-all"
-                                aria-label="Delete channel"
-                              >
-                                <Trash2 className="size-3" />
-                              </button>
-                            </div>
-                          )}
-                        </Link>
-                      );
-                    })
-                  ) : (
-                    <p className="px-2.5 py-2 text-xs text-muted-foreground">
-                      No channels yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
+        <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
+          <ClubNavigationPanel
+            density="desktop"
+            clubId={clubId}
+            club={club}
+            myClubs={myClubs}
+            activeClubIndex={activeClubIndex}
+            nav={nav}
+            pathname={pathname}
+            channels={channels}
+            activeChannelId={activeChannelId}
+            canManageChannels={canManageChannels}
+            onDeleteChannel={(channel) => {
+              if (confirm(`Delete #${channel.name}?`)) {
+                void deleteChannel({ channelId: channel._id }).then(() =>
+                  toast({ title: "Channel deleted" }),
+                );
+              }
+            }}
+          />
         </aside>
+
+        <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
+          <SheetContent side="left" className="w-72 border-r bg-card p-0">
+            <SheetTitle className="sr-only">Club navigation</SheetTitle>
+            <ClubNavigationPanel
+              density="mobile"
+              clubId={clubId}
+              club={club}
+              myClubs={myClubs}
+              activeClubIndex={activeClubIndex}
+              nav={nav}
+              pathname={pathname}
+              channels={channels}
+              activeChannelId={activeChannelId}
+              canManageChannels={canManageChannels}
+              onNavigate={() => setMobileNavigationOpen(false)}
+              onDeleteChannel={(channel) => {
+                if (confirm(`Delete #${channel.name}?`)) {
+                  void deleteChannel({ channelId: channel._id }).then(() =>
+                    toast({ title: "Channel deleted" }),
+                  );
+                }
+              }}
+            />
+          </SheetContent>
+        </Sheet>
 
         <div className="flex min-h-0 min-w-0 flex-1">
           {rightPane && resizableRightPane && isResizablePaneViewport ? (
@@ -454,6 +359,204 @@ export function ClubWorkspace({
         </div>
       </div>
     </AppShell>
+  );
+}
+
+type NavigationItem = {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  match: (pathname: string) => boolean;
+};
+
+function ClubNavigationPanel({
+  density,
+  clubId,
+  club,
+  myClubs,
+  activeClubIndex,
+  nav,
+  pathname,
+  channels,
+  activeChannelId,
+  canManageChannels,
+  onNavigate,
+  onDeleteChannel,
+}: {
+  density: "desktop" | "mobile";
+  clubId: Id<"clubs">;
+  club?: ClubWorkspaceNavigation["club"];
+  myClubs: ClubWorkspaceNavigation["myClubs"];
+  activeClubIndex: number;
+  nav: NavigationItem[];
+  pathname: string;
+  channels: ClubNavigationChannel[];
+  activeChannelId?: string;
+  canManageChannels: boolean;
+  onNavigate?: () => void;
+  onDeleteChannel: (channel: ClubNavigationChannel) => void;
+}) {
+  const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
+
+  return (
+    <div className="flex size-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-border/70 p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+                {club?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolveMediaUrl(club.logoUrl)}
+                    alt={club.name}
+                    className="size-full bg-background object-cover"
+                  />
+                ) : (
+                  (club?.name?.charAt(0).toUpperCase() ?? "C")
+                )}
+              </div>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                {club?.name ?? "Loading…"}
+              </span>
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="border-0 bg-transparent p-0 shadow-none">
+            <Dropdown
+              checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
+              className="w-64"
+            >
+              {myClubs.length > 0 ? (
+                myClubs.map((entry, index) => (
+                  <ClubPickerItem
+                    key={entry._id}
+                    club={entry}
+                    active={entry._id === clubId}
+                    index={index}
+                  />
+                ))
+              ) : (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No club memberships yet.
+                </div>
+              )}
+              <DropdownSeparator className="!mx-1" />
+              <BrowseAllClubsItem index={myClubs.length} />
+            </Dropdown>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-2">
+          <nav className="space-y-0.5" aria-label="Club pages">
+            {nav.map((item) => {
+              const Icon = item.icon;
+              const active = item.match(pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                    rowClassName,
+                    active
+                      ? "bg-active text-foreground"
+                      : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="my-3 h-px bg-border/70" />
+
+          <section aria-labelledby={`channels-${density}`}>
+            <div className="mb-0.5 flex h-7 items-center justify-between px-2">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <ChevronDown className="size-3" />
+                <h2
+                  id={`channels-${density}`}
+                  className="text-[11px] font-bold uppercase tracking-wide"
+                >
+                  Channels
+                </h2>
+              </div>
+              {canManageChannels ? <CreateChannelTrigger clubId={clubId} /> : null}
+            </div>
+
+            <div className="space-y-0.5">
+              {channels.length > 0 ? (
+                channels.map((channel) => {
+                  const active = channel._id === activeChannelId;
+                  return (
+                    <Link
+                      key={channel._id}
+                      href={`/clubs/${clubId}/channels/${channel._id}`}
+                      onClick={onNavigate}
+                      className={cn(
+                        "group flex items-center gap-1.5 rounded-md px-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                        rowClassName,
+                        active
+                          ? "bg-active text-foreground"
+                          : "text-muted-foreground hover:bg-hover hover:text-foreground",
+                      )}
+                    >
+                      <ClubChannelVisibilityIcon
+                        visibility={channel.visibility}
+                        className={cn(
+                          "size-4 shrink-0",
+                          active ? "text-foreground/70" : "text-muted-foreground",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{channel.name}</span>
+                      {canManageChannels ? (
+                        <div className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                          <ChannelActionsTrigger clubId={clubId} channel={channel} />
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onDeleteChannel(channel);
+                            }}
+                            className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${channel.name}`}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      ) : null}
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  No channels yet.
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </ScrollArea>
+
+      <Link
+        href="/clubs"
+        onClick={onNavigate}
+        className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-muted-foreground transition-colors hover:bg-hover hover:text-foreground"
+      >
+        <Compass className="size-4" />
+        Browse clubs
+      </Link>
+    </div>
   );
 }
 

@@ -55,7 +55,7 @@ function MemberLimitMeter({
   const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
 
   return (
-    <div className={compact ? 'space-y-2' : 'rounded-2xl border border-border/70 bg-muted/20 p-4'}>
+    <div className={compact ? 'space-y-1.5' : 'rounded-lg border border-border/70 bg-muted/20 p-3'}>
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
           <Users className="size-4 shrink-0 text-primary" />
@@ -66,21 +66,21 @@ function MemberLimitMeter({
         </span>
       </div>
       {memberLimit != null ? (
-        <div className="space-y-2">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
+        <div className="space-y-1.5">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
               style={{ width: `${percent ?? 0}%` }}
             />
           </div>
-          <p className={`text-xs leading-5 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
+          <p className={`text-xs leading-4 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
             {isFull
-              ? 'This club is full. New joins, join-code redemptions, invites, and approvals are paused until a spot opens.'
-              : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} available before this club is full.`}
+              ? 'Full. New members can join when a spot opens.'
+              : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
           </p>
         </div>
       ) : (
-        <p className="text-xs leading-5 text-muted-foreground">No member limit is set for this club.</p>
+        <p className="text-xs leading-4 text-muted-foreground">No member limit.</p>
       )}
     </div>
   );
@@ -225,11 +225,11 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const logoUrl = club.logoUrl;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 py-6">
+    <div className="mx-auto w-full max-w-4xl space-y-4 py-4">
       <Card className="overflow-hidden border-primary/10 bg-card/95">
         {(bannerUrl || club.accentColor) && (
           <div
-            className="h-40 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
+            className="h-28 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
             style={
               bannerUrl
                 ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -239,16 +239,16 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             }
           />
         )}
-        <CardContent className={`space-y-5 p-6 sm:p-8 ${bannerUrl || club.accentColor ? '-mt-10' : ''}`}>
+        <CardContent className={`space-y-4 p-4 sm:p-5 ${bannerUrl || club.accentColor ? '-mt-8' : ''}`}>
           {logoUrl && (
-            <div className="size-20 overflow-hidden rounded-2xl border-4 border-background bg-muted shadow-sm">
+            <div className="size-16 overflow-hidden rounded-xl border-4 border-background bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
             </div>
           )}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground">{club.name}</h1>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{club.name}</h1>
               <div className="flex items-center gap-2 pt-1">
                 <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
                 {club.memberLimit != null ? (
@@ -261,12 +261,12 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 ) : null}
               </div>
             </div>
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
               {club.overview || club.description || 'No club description yet.'}
             </p>
           </div>
           <MemberLimitMeter club={club} />
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {club.joinPolicy === 'OPEN' ? (
               <Button
                 onClick={() =>
@@ -293,20 +293,20 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-border/50 shadow-sm overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/50 pb-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="overflow-hidden border-border/50 shadow-none">
+          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Sparkles className="size-4 text-primary" />
               Student leaders
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent className="p-3">
             {club.leaders.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {club.leaders.map((leader) => (
-                  <div key={leader.userId} className="flex items-center gap-3 rounded-xl border border-border/40 bg-card p-3 shadow-sm transition-colors hover:bg-muted/20">
-                    <ClubAvatar person={leader.user} className="size-10 shadow-sm ring-1 ring-border/20" fallbackClassName="text-xs" />
+                  <div key={leader.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
+                    <ClubAvatar person={leader.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
                       <p className="truncate text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
@@ -324,19 +324,19 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 shadow-sm overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b border-border/50 pb-4">
+        <Card className="overflow-hidden border-border/50 shadow-none">
+          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <KeyRound className="size-4 text-primary" />
               Sponsors
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-5">
+          <CardContent className="p-3">
             {club.sponsors.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {club.sponsors.map((sponsor) => (
-                  <div key={sponsor.userId} className="flex items-center gap-3 rounded-xl border border-border/40 bg-card p-3 shadow-sm transition-colors hover:bg-muted/20">
-                    <ClubAvatar person={sponsor.user} className="size-10 shadow-sm ring-1 ring-border/20" fallbackClassName="text-xs" />
+                  <div key={sponsor.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
+                    <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
                       <p className="truncate font-mono text-[10px] text-muted-foreground mt-0.5 bg-muted/50 inline-block px-1.5 py-0.5 rounded">
@@ -422,22 +422,19 @@ export default function ClubOverviewPage() {
 
   const title = (
     <div className="min-w-0">
-      <h1 className="truncate text-base font-semibold text-foreground">{club.name}</h1>
-      {club.description ? (
-        <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{club.description}</p>
-      ) : null}
+      <h1 className="truncate text-base font-semibold text-foreground">Overview</h1>
     </div>
   );
 
   const actions = null;
 
   const rightPane = (
-    <div className="space-y-6 p-5">
-      <section className="space-y-3">
+    <div className="space-y-5 p-4">
+      <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Sponsors
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {club.sponsors.map((sponsor) => (
             <div key={sponsor.userId} className="flex items-center gap-2.5">
               <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
@@ -452,11 +449,11 @@ export default function ClubOverviewPage() {
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Student leaders
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {club.leaders.length > 0 ? (
             club.leaders.map((leader) => (
               <div key={leader.userId} className="flex items-center gap-2.5">
@@ -473,7 +470,7 @@ export default function ClubOverviewPage() {
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Stats
         </h3>
@@ -501,42 +498,45 @@ export default function ClubOverviewPage() {
 
   return (
     <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
-      <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
+      <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
         <ClubHero
           club={club}
           canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
         />
         {(canInvite || canPost || club.viewer.canManageMembership) ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Club management</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              {canInvite ? (
-                <Button size="sm" variant="tertiary" disabled={isFull} onClick={() => setInviteOpen(true)}>
-                  <UserPlus className="mr-1.5 size-4" />
-                  {isFull ? 'Club is full' : 'Invite member'}
-                </Button>
-              ) : null}
-              {canPost ? (
-                <Button size="sm" onClick={() => setAnnounceOpen(true)}>
-                  <Megaphone className="mr-1.5 size-4" />
-                  {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
+            <span className="mr-auto text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Manage
+            </span>
+            {canInvite ? (
+              <Button
+                size="sm"
+                variant="tertiary"
+                disabled={isFull}
+                onClick={() => setInviteOpen(true)}
+              >
+                <UserPlus className="mr-1.5 size-4" />
+                {isFull ? 'Club is full' : 'Invite member'}
+              </Button>
+            ) : null}
+            {canPost ? (
+              <Button size="sm" onClick={() => setAnnounceOpen(true)}>
+                <Megaphone className="mr-1.5 size-4" />
+                {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         <MemberLimitMeter club={club} compact />
         {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
 
-        <section className="space-y-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <section className="space-y-2">
+          <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
               <Megaphone className="size-4 text-primary" />
               <h2 className="text-base font-semibold">Announcements</h2>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                 {deferredSearch
                   ? `${filteredAnnouncements.length} of ${announcements.length}`
@@ -545,14 +545,15 @@ export default function ClubOverviewPage() {
               <SearchInput
                 value={search}
                 onValueChange={setSearch}
-                placeholder="Search..."
-                className="w-full sm:w-[240px] rounded-xl bg-muted/30"
+                placeholder="Search announcements"
+                size="sm"
+                className="w-full sm:w-60"
               />
             </div>
           </div>
 
           {filteredAnnouncements.length > 0 ? (
-            <div className="grid gap-4">
+            <div className="grid gap-2">
               {filteredAnnouncements.map((announcement) => (
                 <AnnouncementCard
                   key={announcement._id}
@@ -563,6 +564,8 @@ export default function ClubOverviewPage() {
                     status: (announcement as any).status ?? 'ACTIVE',
                     isAdminGeneral: (announcement as any).isAdminGeneral ?? false,
                   }}
+                  compact
+                  className="rounded-lg shadow-none hover:translate-y-0"
                 />
               ))}
             </div>
@@ -577,8 +580,8 @@ export default function ClubOverviewPage() {
                   {deferredSearch
                     ? 'Try a different search term.'
                     : canPost
-                      ? 'Post the first announcement to get started.'
-                      : 'Check back later for updates.'}
+                      ? 'Post the first update.'
+                      : 'Check back later.'}
                 </EmptyDescription>
               </EmptyHeader>
               {deferredSearch && (

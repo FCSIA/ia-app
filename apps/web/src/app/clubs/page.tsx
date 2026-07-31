@@ -10,12 +10,10 @@ import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog'
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
-import { cn } from '@/lib/utils';
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -65,110 +63,136 @@ export default function ClubsLandingPage() {
   );
 
   return (
-    <AppShell headerSlot={headerSlot}>
-      <div className="mx-auto w-full max-w-5xl space-y-8 py-6">
+    <AppShell
+      headerSlot={headerSlot}
+      mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
+    >
+      <div className="mx-auto w-full max-w-6xl space-y-4">
         {invites.length > 0 ? (
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Pending invites</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
+          <section className="overflow-hidden rounded-lg border border-amber-500/25 bg-amber-500/5">
+            <div className="border-b border-amber-500/15 px-3 py-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                Invites · {invites.length}
+              </h2>
+            </div>
+            <div className="divide-y divide-amber-500/15">
               {invites.map((invite) => (
-                <Card key={invite._id} className="border-amber-500/30 bg-amber-500/5">
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{invite.club.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        Invited by {invite.sender.firstName} {invite.sender.lastName}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        void respondToInvite({
-                          inviteId: invite._id,
-                          accept: true,
-                        }).then(() => toast({ title: 'Response sent' }))
-                      }
-                    >
-                      <Check className="size-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="tertiary"
-                      onClick={() =>
-                        void respondToInvite({
-                          inviteId: invite._id,
-                          accept: false,
-                        }).then(() => toast({ title: 'Response sent' }))
-                      }
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div key={invite._id} className="flex min-h-14 items-center gap-3 px-3 py-2">
+                  <ClubMark club={invite.club} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{invite.club.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      From {invite.sender.firstName} {invite.sender.lastName}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      void respondToInvite({ inviteId: invite._id, accept: true }).then(() =>
+                        toast({ title: 'Invite accepted' }),
+                      )
+                    }
+                  >
+                    <Check className="size-4" />
+                    Accept
+                  </Button>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`Decline ${invite.club.name} invite`}
+                    onClick={() =>
+                      void respondToInvite({ inviteId: invite._id, accept: false }).then(() =>
+                        toast({ title: 'Invite declined' }),
+                      )
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           </section>
         ) : null}
 
-        {myClubs.length > 0 ? (
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Your clubs</h3>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {myClubs.map((club) => (
-                <ClubCard
-                  key={club._id}
-                  club={club}
-                  badge={
-                    club.kind === 'sponsor' ? (
-                      <Badge variant="solid" className="gap-1">
-                        <Shield className="size-3" />
-                        Sponsor
-                      </Badge>
-                    ) : null
-                  }
+        <div className="grid items-start gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <aside className="overflow-hidden rounded-lg border bg-muted/25">
+            <div className="flex h-10 items-center justify-between border-b px-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Your clubs
+              </h2>
+              <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
+            </div>
+            {myClubs.length > 0 ? (
+              <div className="max-h-72 divide-y divide-border/70 overflow-y-auto">
+                {myClubs.map((club) => (
+                  <ClubListRow
+                    key={club._id}
+                    club={club}
+                    density="compact"
+                    badge={
+                      club.kind === 'sponsor' ? (
+                        <span title="Sponsor">
+                          <Shield className="size-3.5 text-primary" />
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
+                Clubs you join will show here.
+              </p>
+            )}
+          </aside>
+
+          <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
+            <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold text-foreground">Discover clubs</h2>
+                <p className="text-xs text-muted-foreground">{filteredClubs.length} available</p>
+              </div>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <SearchInput
+                  value={search}
+                  onValueChange={setSearch}
+                  placeholder="Search clubs"
+                  size="sm"
+                  className="min-w-0 flex-1 sm:w-64"
                 />
-              ))}
+                {canCreate ? (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-4" />
+                    New club
+                  </Button>
+                ) : null}
+              </div>
             </div>
+
+            {isLoading ? (
+              <div className="divide-y divide-border/70">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className="h-[4.5rem] animate-pulse bg-muted/20" />
+                ))}
+              </div>
+            ) : filteredClubs.length > 0 ? (
+              <div className="divide-y divide-border/70">
+                {filteredClubs.map((club) => (
+                  <ClubListRow
+                    key={club._id}
+                    club={club}
+                    density="default"
+                    joined={myClubIds.has(club._id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                No clubs match this search.
+              </div>
+            )}
           </section>
-        ) : null}
-
-        <section className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-sm font-semibold text-foreground">All clubs</h3>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search clubs..."
-                className="w-full sm:w-72"
-              />
-              {canCreate ? (
-                <Button size="sm" onClick={() => setCreateOpen(true)}>
-                  <Plus className="mr-1.5 size-4" />
-                  New club
-                </Button>
-              ) : null}
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="aspect-[4/3] animate-pulse rounded-lg border bg-muted/30" />
-              ))}
-            </div>
-          ) : filteredClubs.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredClubs.map((club) => (
-                <ClubTile key={club._id} club={club} joined={myClubIds.has(club._id)} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-              No clubs match this search.
-            </div>
-          )}
-        </section>
+        </div>
       </div>
 
       <CreateClubDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -176,78 +200,86 @@ export default function ClubsLandingPage() {
   );
 }
 
-function ClubTile({ club, joined }: { club: ClubSummary; joined: boolean }) {
+function ClubMark({
+  club,
+  size,
+}: {
+  club: { name: string; logoUrl?: string | null };
+  size: 'sm' | 'md';
+}) {
   return (
-    <Link href={`/clubs/${club._id}`} className="group block">
-      <Card className="relative h-full transition-colors hover:border-border hover:bg-muted/50">
-        <CardContent className="flex h-full flex-col items-center gap-2 p-5 text-center">
-          {joined ? (
-            <Badge variant="solid" className="absolute right-2 top-2 text-[10px]">
-              Joined
-            </Badge>
-          ) : null}
-          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/40 bg-primary/10 text-base font-semibold text-primary">
-            {club.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
-            ) : (
-              club.name.charAt(0).toUpperCase()
-            )}
-          </div>
-          <p className="mt-1 line-clamp-1 font-medium text-foreground">{club.name}</p>
-          <p className="line-clamp-4 min-h-[5rem] text-xs leading-5 text-muted-foreground">
-            {club.description || 'No description.'}
-          </p>
-          <div className="mt-auto flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Users2 className="size-3" />
-              {club._count?.members ?? 0}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Hash className="size-3" />
-              {club._count?.channels ?? 0}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+    <div
+      className={`flex ${size === 'sm' ? 'size-8 rounded-md text-xs' : 'size-11 rounded-lg text-sm'} shrink-0 items-center justify-center overflow-hidden bg-primary/10 font-bold text-primary`}
+    >
+      {club.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolveMediaUrl(club.logoUrl)}
+          alt={club.name}
+          className="size-full object-cover"
+        />
+      ) : (
+        club.name.charAt(0).toUpperCase()
+      )}
+    </div>
   );
 }
 
-function ClubCard({ club, badge }: { club: ClubSummary; badge?: React.ReactNode }) {
+function ClubListRow({
+  club,
+  density,
+  joined = false,
+  badge,
+}: {
+  club: ClubSummary;
+  density: 'compact' | 'default';
+  joined?: boolean;
+  badge?: React.ReactNode;
+}) {
+  if (density === 'compact') {
+    return (
+      <Link
+        href={`/clubs/${club._id}`}
+        className="flex min-h-12 items-center gap-2.5 px-3 py-2 outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+      >
+        <ClubMark club={club} size="sm" />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+          {club.name}
+        </span>
+        {badge}
+      </Link>
+    );
+  }
+
   return (
-    <Link href={`/clubs/${club._id}`} className="block">
-      <Card className={cn('h-full transition-colors hover:border-border hover:bg-muted/50')}>
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/40 bg-primary/10 text-sm font-semibold text-primary">
-              {club.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={resolveMediaUrl(club.logoUrl)} alt={club.name} className="size-full object-cover" />
-              ) : (
-                club.name.charAt(0).toUpperCase()
-              )}
-            </div>
-            {badge}
-          </div>
-          <div>
-            <p className="font-medium text-foreground">{club.name}</p>
-            <p className="mt-1 line-clamp-4 text-sm leading-6 text-muted-foreground">
-              {club.description || 'No description.'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Users2 className="size-3.5" />
-              {club._count?.members ?? 0}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Hash className="size-3.5" />
-              {club._count?.channels ?? 0}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+    <Link
+      href={`/clubs/${club._id}`}
+      className="group flex min-h-[4.5rem] items-center gap-3 px-3 py-2.5 outline-none transition-colors hover:bg-hover focus-visible:bg-hover"
+    >
+      <ClubMark club={club} size="md" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="truncate text-sm font-semibold text-foreground">{club.name}</h3>
+          {joined ? (
+            <Badge variant="dot" className="h-5 shrink-0 px-1.5 text-[10px]">
+              Joined
+            </Badge>
+          ) : null}
+        </div>
+        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+          {club.description || 'No description yet.'}
+        </p>
+      </div>
+      <div className="hidden shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground sm:flex">
+        <span className="inline-flex items-center gap-1" title="Members">
+          <Users2 className="size-3.5" />
+          {club._count?.members ?? 0}
+        </span>
+        <span className="inline-flex items-center gap-1" title="Channels">
+          <Hash className="size-3.5" />
+          {club._count?.channels ?? 0}
+        </span>
+      </div>
     </Link>
   );
 }
