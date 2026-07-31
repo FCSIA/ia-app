@@ -17,4 +17,3 @@ export function canAddAcceptedFriendToGroup<TUserId extends string>(input: {
     input.friendshipStatus === "ACCEPTED"
   );
 }
-

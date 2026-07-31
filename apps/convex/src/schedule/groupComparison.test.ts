@@ -91,4 +91,3 @@ describe("schedule group common-class clustering", () => {
     expect(clusters[0].attendeeUserIds).toEqual(["owner", "friend-a"]);
   });
 });
-

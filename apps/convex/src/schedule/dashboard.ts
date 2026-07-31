@@ -15,6 +15,11 @@ import {
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
 import { Id, Doc } from "../_generated/dataModel";
+import {
+  enqueueFriendScheduleChangeNotifications,
+  scheduleMateriallyChanged,
+  type MaterialScheduleSnapshot,
+} from "./scheduleChangeNotifications";
 
 export const get = query({
   args: {},
@@ -123,6 +128,38 @@ export const save = mutation({
       .query("studentSchedules")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .unique();
+    const oldEntries = existing
+      ? await ctx.db
+          .query("studentScheduleEntries")
+          .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
+            q.eq("scheduleId", existing._id),
+          )
+          .take(60)
+      : [];
+    const resolvedEntries = entries.map((entry) => ({
+      ...entry,
+      className: entry.courseId
+        ? coursesById.get(entry.courseId)!.title
+        : entry.className.trim(),
+    }));
+    const previousSnapshot: MaterialScheduleSnapshot | null = existing
+      ? {
+          isPublic: existing.isPublic,
+          entries: oldEntries.map(({ weekday, periodNumber, courseId, className }) => ({
+            weekday,
+            periodNumber,
+            courseId,
+            className,
+          })),
+        }
+      : null;
+    const nextSnapshot: MaterialScheduleSnapshot = {
+      isPublic: args.isPublic,
+      entries: resolvedEntries,
+    };
+    if (existing && !scheduleMateriallyChanged(previousSnapshot, nextSnapshot)) {
+      return await serializeScheduleForUser(ctx, user._id);
+    }
     const scheduleId =
       existing?._id ??
       (await ctx.db.insert("studentSchedules", {
@@ -139,24 +176,18 @@ export const save = mutation({
       });
     }
 
-    const oldEntries = await ctx.db
-      .query("studentScheduleEntries")
-      .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
-        q.eq("scheduleId", scheduleId),
-      )
-      .take(60);
     for (const entry of oldEntries) {
       await ctx.db.delete(entry._id);
     }
 
-    for (const entry of entries) {
+    for (const entry of resolvedEntries) {
       await ctx.db.insert("studentScheduleEntries", {
         scheduleId,
         userId: user._id,
         courseId: entry.courseId,
         weekday: entry.weekday,
         periodNumber: entry.periodNumber,
-        className: entry.courseId ? coursesById.get(entry.courseId)!.title : entry.className.trim(),
+        className: entry.className,
         createdAt: now,
         updatedAt: now,
       });
@@ -168,6 +199,13 @@ export const save = mutation({
       entityType: "studentSchedule",
       entityId: scheduleId,
       meta: { isPublic: args.isPublic, entryCount: entries.length },
+    });
+
+    await enqueueFriendScheduleChangeNotifications(ctx, {
+      user,
+      previous: previousSnapshot,
+      next: nextSnapshot,
+      scheduleUpdatedAt: now,
     });
 
     return await serializeScheduleForUser(ctx, user._id);

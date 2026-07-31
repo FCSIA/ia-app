@@ -74,6 +74,7 @@ import type * as schedule_friends from "../schedule/friends.js";
 import type * as schedule_groupComparison from "../schedule/groupComparison.js";
 import type * as schedule_groupPolicy from "../schedule/groupPolicy.js";
 import type * as schedule_groups from "../schedule/groups.js";
+import type * as schedule_scheduleChangeNotifications from "../schedule/scheduleChangeNotifications.js";
 import type * as schedule_seed from "../schedule/seed.js";
 import type * as schedule_shareLinkSecurity from "../schedule/shareLinkSecurity.js";
 import type * as schedule_shareLinks from "../schedule/shareLinks.js";
@@ -163,6 +164,7 @@ declare const fullApi: ApiFromModules<{
   "schedule/groupComparison": typeof schedule_groupComparison;
   "schedule/groupPolicy": typeof schedule_groupPolicy;
   "schedule/groups": typeof schedule_groups;
+  "schedule/scheduleChangeNotifications": typeof schedule_scheduleChangeNotifications;
   "schedule/seed": typeof schedule_seed;
   "schedule/shareLinkSecurity": typeof schedule_shareLinkSecurity;
   "schedule/shareLinks": typeof schedule_shareLinks;

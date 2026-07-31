@@ -42,4 +42,3 @@ describe("schedule group policy", () => {
     ).toBe(false);
   });
 });
-
