@@ -8,6 +8,7 @@ import {
   type BottomSheetBackdropProps,
 } from "@gorhom/bottom-sheet";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SheetInputProvider } from "@/components/ui/sheet-input-context";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -131,7 +132,7 @@ export function Sheet({
   );
 
   const content = (
-    <>
+    <SheetInputProvider>
       {title ? (
         <Txt
           accessibilityRole="header"
@@ -143,7 +144,7 @@ export function Sheet({
         </Txt>
       ) : null}
       {children}
-    </>
+    </SheetInputProvider>
   );
   const contentStyle = useMemo(
     () => [

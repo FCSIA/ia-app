@@ -1,4 +1,6 @@
 import { TextInput, type TextInputProps } from "react-native";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import { useSheetInput } from "@/components/ui/sheet-input-context";
 import { useTheme } from "@/lib/theme";
 
 type FieldDensity = "compact" | "default";
@@ -15,10 +17,12 @@ export function TextField({
   ...props
 }: TextFieldProps) {
   const { color } = useTheme();
+  const withinSheet = useSheetInput();
   const { style, multiline, ...inputProps } = props;
   const compact = density === "compact";
+  const Input = withinSheet ? BottomSheetTextInput : TextInput;
   return (
-    <TextInput
+    <Input
       placeholderTextColor={color("mutedForeground")}
       selectionColor={color("primary")}
       multiline={multiline}
