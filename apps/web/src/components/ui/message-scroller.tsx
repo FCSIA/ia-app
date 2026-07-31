@@ -36,15 +36,48 @@ function MessageScroller({
 
 function MessageScrollerViewport({
   className,
+  onScroll,
+  ref,
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Viewport>) {
+  const viewportRef = React.useRef<HTMLDivElement | null>(null);
+
+  const syncScrollEdges = React.useCallback((viewport: HTMLDivElement) => {
+    const remaining = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop;
+    viewport.dataset.atScrollStart = String(viewport.scrollTop <= 1);
+    viewport.dataset.atScrollEnd = String(remaining <= 1);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const frame = requestAnimationFrame(() => syncScrollEdges(viewport));
+    const observer = new ResizeObserver(() => syncScrollEdges(viewport));
+    observer.observe(viewport);
+    const content = viewport.firstElementChild;
+    if (content instanceof HTMLElement) observer.observe(content);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [syncScrollEdges]);
+
   return (
     <MessageScrollerPrimitive.Viewport
+      ref={(node) => {
+        viewportRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      }}
       data-slot="message-scroller-viewport"
       className={cn(
         'fluid-scrollbar size-full min-h-0 min-w-0 overflow-y-auto overscroll-contain contain-content scroll-fade-y [scrollbar-gutter:stable]',
         className,
       )}
+      onScroll={(event) => {
+        syncScrollEdges(event.currentTarget);
+        onScroll?.(event);
+      }}
       {...props}
     />
   );

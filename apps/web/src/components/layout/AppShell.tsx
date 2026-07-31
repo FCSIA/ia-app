@@ -19,6 +19,7 @@ import {
   Star,
   Ticket,
   Search,
+  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react';
 import { useQuery } from 'convex/react';
@@ -47,6 +48,12 @@ import { PageTransition } from '@/components/layout/page-transition';
 import { UserAvatar } from '@/components/ui/user-avatar';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
+
+export type ChannelSearchControl = {
+  channelName: string;
+  value: string;
+  onValueChange: (value: string) => void;
+};
 
 const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -108,11 +115,13 @@ export function AppShell({
   headerSlot,
   mainClassName,
   pageTransitionClassName,
+  channelSearch,
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
   mainClassName?: string;
   pageTransitionClassName?: string;
+  channelSearch?: ChannelSearchControl;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -120,6 +129,7 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [searchScope, setSearchScope] = useState<'everything' | 'channel'>('everything');
   const { toast } = useToast();
   const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? '/dashboard';
@@ -319,18 +329,53 @@ export function AppShell({
             <div className="flex min-w-0 flex-1 items-center gap-4">
               {headerSlot ?? <div className="min-w-0 flex-1" />}
             </div>
-            <button
-              type="button"
-              className="hidden h-9 min-w-48 items-center gap-2 rounded-full bg-surface-2 px-3 text-left text-sm text-muted-foreground shadow-surface-1 outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-[#6B97FF] lg:flex"
-              onClick={() => setCommandOpen(true)}
-            >
-              <Search className="size-4" />
-              <span className="flex-1">Search everything</span>
-              <KbdGroup>
-                {commandHint ? <Kbd>⌘</Kbd> : <Kbd>Ctrl</Kbd>}
-                <Kbd>K</Kbd>
-              </KbdGroup>
-            </button>
+            <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-[#6B97FF] lg:flex">
+              {channelSearch && searchScope === 'channel' ? (
+                <label className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
+                  <Search className="size-4 shrink-0" />
+                  <span className="sr-only">Search #{channelSearch.channelName}</span>
+                  <input
+                    value={channelSearch.value}
+                    onChange={(event) => channelSearch.onValueChange(event.target.value)}
+                    placeholder={`Search #${channelSearch.channelName}`}
+                    className="h-8 min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full px-1.5 text-left outline-none transition-colors hover:text-foreground"
+                  onClick={() => setCommandOpen(true)}
+                >
+                  <Search className="size-4 shrink-0" />
+                  <span className="flex-1">Search everything</span>
+                  <KbdGroup>
+                    {commandHint ? <Kbd>⌘</Kbd> : <Kbd>Ctrl</Kbd>}
+                    <Kbd>K</Kbd>
+                  </KbdGroup>
+                </button>
+              )}
+              {channelSearch ? (
+                <>
+                  <span className="mx-1 h-4 w-px shrink-0 bg-border/70" aria-hidden />
+                  <Tooltip
+                    content={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
+                  >
+                    <button
+                      type="button"
+                      className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                      aria-label={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
+                      onClick={() => {
+                        channelSearch.onValueChange('');
+                        setSearchScope((current) => current === 'everything' ? 'channel' : 'everything');
+                      }}
+                    >
+                      <ArrowLeftRight className="size-3.5" />
+                    </button>
+                  </Tooltip>
+                </>
+              ) : null}
+            </div>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

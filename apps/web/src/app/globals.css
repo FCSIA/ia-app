@@ -505,3 +505,45 @@
   background: hsl(var(--foreground) / 0.3);
   background-clip: padding-box;
 }
+
+.scroll-fade-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 24px,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 24px,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.scroll-fade-y[data-at-scroll-start='true'] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+.scroll-fade-y[data-at-scroll-end='true'] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, black 24px, black 100%);
+}
+
+.scroll-fade-y[data-at-scroll-start='true'][data-at-scroll-end='true'] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}

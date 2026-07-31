@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { AppShell } from "@/components/layout/AppShell";
+import type { ChannelSearchControl } from "@/components/layout/AppShell";
 import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +111,7 @@ type ClubWorkspaceProps = {
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
+  channelSearch?: ChannelSearchControl;
 };
 
 export function ClubWorkspace({
@@ -119,6 +121,7 @@ export function ClubWorkspace({
   title,
   actions,
   contentClassName,
+  channelSearch,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
   const clubId = useClubId();
@@ -210,6 +213,7 @@ export function ClubWorkspace({
       headerSlot={headerSlot}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
+      channelSearch={channelSearch}
     >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
