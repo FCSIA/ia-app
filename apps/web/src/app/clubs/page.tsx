@@ -15,6 +15,7 @@ import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
+import { cn } from "@/lib/utils";
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -273,7 +274,7 @@ function ClubListRow({
         <div className="flex items-center gap-2">
           <h3 className="truncate text-sm font-semibold text-foreground">{club.name}</h3>
           {joined ? (
-            <Badge variant="dot" className="h-5 shrink-0 px-1.5 text-[10px]">
+            <Badge className="h-5 shrink-0 px-1.5 text-[10px]">
               Joined
             </Badge>
           ) : null}
@@ -282,14 +283,10 @@ function ClubListRow({
           {club.description || 'No description yet.'}
         </p>
       </div>
-      <div className="hidden shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground sm:flex">
-        <span className="inline-flex items-center gap-1" title="Members">
+      <div className="hidden shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground sm:flex pr-2">
+        <span className={cn("inline-flex items-center gap-1", ((club._count?.members ?? 0) >= (club.memberLimit ?? 0)) && "text-red-300")} title="Members">
           <Users2 className="size-3.5" />
-          {club._count?.members ?? 0}
-        </span>
-        <span className="inline-flex items-center gap-1" title="Channels">
-          <Hash className="size-3.5" />
-          {club._count?.channels ?? 0}
+          {club._count?.members ?? 0} / {club.memberLimit}
         </span>
       </div>
     </Card>

@@ -556,7 +556,7 @@ function MessageRow({
   return (
     <Message
       className={cn(
-        'gap-3 px-3 transition-colors hover:bg-hover',
+        'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
         compact ? 'py-1.5' : 'py-2.5',
         isSending &&
           'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
@@ -784,7 +784,7 @@ function MessageRow({
             {!compact && message.hasReplies ? (
               <button
                 type="button"
-                className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 w-fit"
                 onClick={() => onOpenThread(message.threadRootId)}
               >
                 <Reply className="size-3" />
