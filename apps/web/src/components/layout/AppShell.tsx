@@ -135,8 +135,13 @@ export function AppShell({
         setCommandOpen((current) => !current);
       }
     };
+    const onOpenGlobalSearch = () => setCommandOpen(true);
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('ia:open-global-search', onOpenGlobalSearch);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('ia:open-global-search', onOpenGlobalSearch);
+    };
   }, []);
 
   // Close mobile sheet on route change

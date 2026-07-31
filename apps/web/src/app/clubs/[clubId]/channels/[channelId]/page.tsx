@@ -17,7 +17,9 @@ import {
   SmilePlus,
   Trash2,
   AlertTriangle,
+  ArrowLeftRight,
   Flag,
+  Search,
   UserPlus,
   X,
 } from 'lucide-react';
@@ -302,7 +304,7 @@ function PinnedMessagesButton({
           >
             <Pin className="size-4" />
             {messages.length > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+              <span className="absolute right-0 top-0 flex min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[8px] font-semibold leading-[14px] text-primary-foreground">
                 {messages.length > 9 ? '9+' : messages.length}
               </span>
             ) : null}
@@ -319,7 +321,7 @@ function PinnedMessagesButton({
           <span className="text-xs tabular-nums text-muted-foreground">{messages.length}</span>
         </div>
         {messages.length > 0 ? (
-          <div className="max-h-80 divide-y divide-border/70 overflow-y-auto">
+          <div className="fluid-scrollbar max-h-80 divide-y divide-border/70 overflow-y-auto">
             {messages.map((message) => {
               const preview =
                 message.poll?.question ||
@@ -844,6 +846,7 @@ export default function ClubChannelPage({
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
   const [sendingMode, setSendingMode] = useState<'root' | 'thread' | null>(null);
   const [mentionContextRequested, setMentionContextRequested] = useState(false);
+  const [searchScope, setSearchScope] = useState<'channel' | 'everything'>('channel');
   const deferredSearch = useDeferredValue(search);
   const normalizedSearch = useMemo(
     () => normalizeSearchQuery(deferredSearch),
@@ -1265,13 +1268,39 @@ export default function ClubChannelPage({
               messages={pinnedMessages}
               onClearSearch={() => setSearch('')}
             />
-            <SearchInput
-              value={search}
-              onValueChange={setSearch}
-              placeholder={`Search #${channel.name}`}
-              size="sm"
-              className="ml-auto min-w-0 flex-1 sm:w-64 sm:flex-none"
-            />
+            <Tooltip
+              content={searchScope === 'channel' ? 'Search everything' : `Search #${channel.name}`}
+            >
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={searchScope === 'channel' ? 'Search everything' : `Search #${channel.name}`}
+                onClick={() => {
+                  setSearch('');
+                  setSearchScope((current) => current === 'channel' ? 'everything' : 'channel');
+                }}
+              >
+                <ArrowLeftRight className="size-4" />
+              </Button>
+            </Tooltip>
+            {searchScope === 'channel' ? (
+              <SearchInput
+                value={search}
+                onValueChange={setSearch}
+                placeholder={`Search #${channel.name}`}
+                size="sm"
+                className="ml-auto min-w-0 flex-1 sm:w-64 sm:flex-none"
+              />
+            ) : (
+              <button
+                type="button"
+                className="ml-auto flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md bg-surface-2 px-2.5 text-left text-sm text-muted-foreground shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-ring sm:w-64 sm:flex-none"
+                onClick={() => window.dispatchEvent(new Event('ia:open-global-search'))}
+              >
+                <Search className="size-3.5 shrink-0" />
+                <span className="truncate">Search everything</span>
+              </button>
+            )}
           </div>
         </div>
 
