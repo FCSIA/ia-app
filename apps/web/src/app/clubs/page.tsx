@@ -173,11 +173,11 @@ export default function ClubsLandingPage() {
             </div>
 
             {isLoading ? (
-              <CardGroup orientation="inline">
+              <div aria-hidden="true">
                 {Array.from({ length: 7 }).map((_, i) => (
                   <div key={i} className="h-[4.5rem] animate-pulse bg-muted/20" />
                 ))}
-              </CardGroup>
+              </div>
             ) : filteredClubs.length > 0 ? (
               <CardGroup
                 orientation="inline"

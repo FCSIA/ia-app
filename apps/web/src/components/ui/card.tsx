@@ -90,6 +90,33 @@ const CardGroup = React.forwardRef<HTMLDivElement, CardGroupProps>(
       return () => observer.disconnect();
     }, [measureItems]);
 
+    React.useEffect(() => {
+      if (!proximityHover || count === 0 || process.env.NODE_ENV === "production") {
+        return;
+      }
+
+      const frame = requestAnimationFrame(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const registeredIndices = new Set(
+          Array.from(
+            container.querySelectorAll<HTMLElement>("[data-proximity-index]")
+          )
+            .map((element) => element.dataset.proximityIndex)
+            .filter((value): value is string => value !== undefined)
+        );
+
+        if (registeredIndices.size !== count) {
+          console.warn(
+            `[CardGroup] Expected ${count} proximity item${count === 1 ? "" : "s"}, but ${registeredIndices.size} registered. Render Card children directly or forward CardGroup's injected index to the nested Card.`
+          );
+        }
+      });
+
+      return () => cancelAnimationFrame(frame);
+    }, [count, proximityHover]);
+
     const activeRect =
       proximityHover && activeIndex !== null ? itemRects[activeIndex] : null;
     const contextValue = React.useMemo<CardGroupContextValue>(
