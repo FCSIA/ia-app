@@ -60,7 +60,7 @@ docs: tighten commit guidance
 ## Frontend Rules
 
 - Fluid Functionalism, shadcn, and Tailwind are the primary UI layers for the web
-  app.
+  app. **EMPHASIS**: please please look at the latest Fluid Functionalism docs no matter what for any component. NO MATTER WHAT.
 - Before adding, updating, or migrating a Fluid, shadcn, Base UI, or Radix
   primitive, read `agent-notes/UI_PRIMITIVE_COMPATIBILITY.md`.
 - For UI work, prefer current Fluid primitives and registry APIs over old local
