@@ -6,7 +6,6 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ChevronDown,
   ChevronUp,
-  Copy,
   Link2,
   Plus,
   Share2,
@@ -16,6 +15,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { FriendLinkQr } from "@/components/schedule/friend-link-qr";
 import { Button } from "@/components/ui/button";
+import { InputCopy } from "@/components/ui/input-copy";
 import {
   Popover,
   PopoverContent,
@@ -92,22 +92,12 @@ export function FriendCollaborationTools() {
   };
 
   const handleNativeShare = async () => {
-    if (!createdUrl || !navigator.share) return;
+    if (!createdUrl || typeof navigator.share !== "function") return;
     try {
       await navigator.share({ title: "Add me as a friend", url: createdUrl });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       toast({ title: "Could not open sharing", variant: "destructive" });
-    }
-  };
-
-  const handleCopyLink = async () => {
-    if (!createdUrl) return;
-    try {
-      await navigator.clipboard.writeText(createdUrl);
-      toast({ title: "Link copied" });
-    } catch {
-      toast({ title: "Could not copy link", variant: "destructive" });
     }
   };
 
@@ -146,31 +136,26 @@ export function FriendCollaborationTools() {
           {createdUrl ? (
             <div className="flex flex-col gap-2">
               <FriendLinkQr value={createdUrl} />
+              <InputCopy value={createdUrl} variant="button" />
               <div className="flex gap-2">
-                <Button
-                  className="flex-1"
-                  leadingIcon={Copy}
-                  onClick={() => void handleCopyLink()}
-                >
-                  Copy link
-                </Button>
-                {typeof navigator !== "undefined" && "share" in navigator ? (
+                {typeof navigator !== "undefined" &&
+                typeof navigator.share === "function" ? (
                   <Button
                     variant="secondary"
-                    size="icon"
-                    aria-label="Share friend link"
+                    className="flex-1"
+                    leadingIcon={Share2}
                     onClick={() => void handleNativeShare()}
                   >
-                    <Share2 />
+                    Share
                   </Button>
                 ) : null}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  aria-label="Create another friend link"
+                  className="flex-1"
+                  leadingIcon={Plus}
                   onClick={() => setCreatedUrl(null)}
                 >
-                  <Plus />
+                  Create another
                 </Button>
               </div>
             </div>
