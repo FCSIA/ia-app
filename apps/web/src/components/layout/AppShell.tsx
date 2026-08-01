@@ -41,7 +41,7 @@ import { Dropdown, DropdownLabel, DropdownSeparator } from '@/components/ui/drop
 import { MenuItem } from '@/components/ui/menu-item';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import { PageTransition } from '@/components/layout/page-transition';

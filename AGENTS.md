@@ -60,12 +60,23 @@ docs: tighten commit guidance
 ## Frontend Rules
 
 - Fluid Functionalism, shadcn, and Tailwind are the primary UI layers for the web
-  app.
+  app. For every web UI task, follow `agent-notes/WEB_UI_WORKFLOW.md` as a
+  required delivery gate.
 - Before adding, updating, or migrating a Fluid, shadcn, Base UI, or Radix
   primitive, read `agent-notes/UI_PRIMITIVE_COMPATIBILITY.md`.
+- Before choosing any web component, consult the current Fluid component index
+  and relevant live docs to determine whether Fluid covers the behavior. For
+  every Fluid candidate, inspect the rendered example, Code example, API, exact
+  registry source, and local adapter. If browser access is unavailable,
+  document that limitation and leave visual interaction QA explicitly
+  unverified.
 - For UI work, prefer current Fluid primitives and registry APIs over old local
   assumptions. Use Radix/shadcn directly only where Fluid does not cover the
   required accessibility or semantic behavior.
+- Choose primitives by behavior and semantics, not appearance. Never implement
+  interactive filters as custom badges or raw styled buttons. If the shared
+  primitive cannot express the required behavior, stop and propose a primitive
+  API rather than patching the page.
 - Keep hover, focus, pressed, selected, unread, disabled, and loading states
   visible and consistent.
 - Prevent button and badge text wrapping/overflow by default.
