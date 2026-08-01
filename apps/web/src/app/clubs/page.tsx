@@ -9,7 +9,7 @@ import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog'
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup } from '@/components/ui/card';
+import { Card, CardGroup, type CardProps } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -236,15 +236,19 @@ function ClubListRow({
   density,
   joined = false,
   badge,
+  index,
 }: {
   club: ClubSummary;
   density: 'compact' | 'default';
   joined?: boolean;
   badge?: React.ReactNode;
+  /** Forwarded by CardGroup so the rendered Card can register its geometry. */
+  index?: CardProps['index'];
 }) {
   if (density === 'compact') {
     return (
       <Card
+        index={index}
         href={`/clubs/${club._id}`}
         label={`Open ${club.name}`}
         className="min-h-12 gap-2.5 rounded-none border-0 bg-transparent px-3 py-2"
@@ -260,6 +264,7 @@ function ClubListRow({
 
   return (
     <Card
+      index={index}
       href={`/clubs/${club._id}`}
       label={`Open ${club.name}`}
       className="group min-h-[4.5rem] gap-3 rounded-none border-0 bg-transparent px-3 py-2.5"
