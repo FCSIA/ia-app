@@ -126,7 +126,7 @@
   day stays mounted while date data refreshes, dates use the shadcn calendar
   popover, class pickers are anchored only to explicit row toggles, school times
   are displayed in 12-hour format, and friend links are created and revoked in
-  a non-modal popover.
+  a compact non-modal popover with locally generated IA-branded QR sharing.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
