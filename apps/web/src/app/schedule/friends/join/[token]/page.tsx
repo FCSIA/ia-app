@@ -113,7 +113,6 @@ export default function FriendLinkRedemptionPage({
                 <h1 className="mt-3 text-lg font-semibold">
                   Add {preview.owner!.firstName} {preview.owner!.lastName}
                 </h1>
-                <p className="mt-0.5 text-xs text-muted-foreground">{preview.owner!.uniqueId}</p>
               </div>
               <div className="space-y-4 p-5">
                 <div className="flex items-start gap-3 rounded-xl bg-surface-3 px-3 py-3">

@@ -216,7 +216,6 @@ export function AccountSettingsCard({
   user,
 }: AccountSettingsCardProps) {
   const rows = [
-    { label: 'Student / Staff ID', value: user?.uniqueId, mono: true },
     ...(user?.roles?.includes('STUDENT')
       ? [
           { label: 'Grade', value: user?.gradeLevel || '—' },

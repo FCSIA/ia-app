@@ -1,6 +1,13 @@
 "use client";
 
-import { CalendarRange, Copy, Save, Settings2, UsersRound } from "lucide-react";
+import {
+  CalendarRange,
+  Copy,
+  Save,
+  Settings2,
+  Users,
+  UsersRound,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
@@ -9,6 +16,7 @@ import { TabItem, Tabs, TabsList } from "@/components/ui/tabs";
 import { FriendSchedulesPanel } from "./FriendSchedulesPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
+import { ScheduleGroupsPanel } from "./ScheduleGroupsPanel";
 import { ScheduleStatusBar } from "./ScheduleStatusBar";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 import { ScheduleWorkspaceSkeleton } from "./ScheduleWorkspaceSkeleton";
@@ -56,6 +64,9 @@ export function ScheduleWorkspace() {
                         icon={UsersRound}
                       />
                     ) : null}
+                    {canEditOwnSchedule ? (
+                      <TabItem value="groups" label="Groups" icon={Users} />
+                    ) : null}
                     {canManageBlocks ? (
                       <TabItem
                         value="admin"
@@ -97,6 +108,7 @@ export function ScheduleWorkspace() {
 
           {canEditOwnSchedule ? <MySchedulePanel /> : null}
           {canEditOwnSchedule ? <FriendSchedulesPanel /> : null}
+          {canEditOwnSchedule ? <ScheduleGroupsPanel /> : null}
           {canManageBlocks ? <ManageBlocksPanel /> : null}
         </Tabs>
       </PageFrame>

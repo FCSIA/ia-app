@@ -155,7 +155,6 @@ function AuditDetail({ event }: { event: NonNullable<FunctionReturnType<typeof a
         <DetailRow
           label="Actor"
           value={event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : "System"}
-          detail={event.actor?.uniqueId ?? undefined}
         />
         <DetailRow label="Entity" value={event.entityType} detail={event.entityId ?? undefined} />
       </View>

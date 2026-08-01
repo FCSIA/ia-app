@@ -55,10 +55,7 @@ export function FriendScheduleCard({
           <p className="truncate text-sm font-semibold text-foreground">
             {fullName(friend.user)}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {friend.user.uniqueId}
-            </span>
+          <div className="mt-1 flex items-center">
             <Badge
               size="sm"
               variant="dot"

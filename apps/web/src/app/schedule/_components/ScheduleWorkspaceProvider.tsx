@@ -12,7 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { CourseSummary } from "@/components/courses/types";
 import type {
   ScheduleSearchResult,
@@ -53,6 +53,7 @@ function schoolDateKey() {
 }
 
 function useScheduleWorkspaceValue() {
+  const { isAuthenticated } = useConvexAuth();
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -92,16 +93,22 @@ function useScheduleWorkspaceValue() {
     Record<string, SchoolDayBlock>
   >({});
 
-  const queriedData = useQuery(api.schedule.dashboard.get, {
-    dateKey: selectedDateKey,
-  });
+  const queriedData = useQuery(
+    api.schedule.dashboard.get,
+    isAuthenticated ? { dateKey: selectedDateKey } : "skip",
+  );
   const previousDataRef = useRef(queriedData);
   useEffect(() => {
     if (queriedData !== undefined) previousDataRef.current = queriedData;
   }, [queriedData]);
-  const data = queriedData ?? previousDataRef.current;
+  const data = isAuthenticated
+    ? (queriedData ?? previousDataRef.current)
+    : undefined;
   const courses =
-    useQuery(api.courses.catalog.list, { limit: 200 }) ?? EMPTY_COURSES;
+    useQuery(
+      api.courses.catalog.list,
+      isAuthenticated ? { limit: 200 } : "skip",
+    ) ?? EMPTY_COURSES;
   const sourceSchedule = data?.mySchedule;
 
   let scheduleEntries = scheduleDraft.entries;
@@ -195,7 +202,9 @@ function useScheduleWorkspaceValue() {
   const searchResults =
     useQuery(
       api.schedule.friends.search,
-      canEditOwnSchedule && normalizedDeferredSearch.length >= 2
+      isAuthenticated &&
+        canEditOwnSchedule &&
+        normalizedDeferredSearch.length >= 2
         ? { query: normalizedDeferredSearch, limit: 20 }
         : "skip",
     ) ?? EMPTY_SEARCH_RESULTS;

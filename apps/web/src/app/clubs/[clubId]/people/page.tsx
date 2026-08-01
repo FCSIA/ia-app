@@ -229,7 +229,6 @@ function ManagePeopleDialog({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{fullName(selected)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{selected.uniqueId}</p>
                   </div>
                   <Button type="button" variant="ghost" size="icon" onClick={() => { setSelected(null); setQuery(''); }}>
                     <X className="size-4" />
@@ -250,7 +249,7 @@ function ManagePeopleDialog({
                 </div>
               ) : (
                 <Command className="rounded-lg border" shouldFilter={false}>
-                  <CommandInput placeholder="Search by name or student ID..." value={query} onValueChange={setQuery} />
+                  <CommandInput placeholder="Search by name..." value={query} onValueChange={setQuery} />
                   <CommandList className="max-h-[220px]">
                     {deferredQuery.length < 2 ? (
                       <div className="py-5 text-center text-sm text-muted-foreground">
@@ -273,7 +272,6 @@ function ManagePeopleDialog({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">{fullName(student)}</p>
-                              <p className="font-mono text-xs text-muted-foreground">{student.uniqueId}</p>
                             </div>
                           </CommandItem>
                         ))}
@@ -467,7 +465,7 @@ export default function ClubPeoplePage() {
                             {fullName(request.requester)}
                           </p>
                           <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                            {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                            Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-2">
@@ -579,9 +577,6 @@ function PersonRow({
           ) : null}
           {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
-        {person.uniqueId ? (
-          <p className="truncate text-[11px] text-muted-foreground">{person.uniqueId}</p>
-        ) : null}
       </div>
       {showManage ? (
         <div className="flex gap-2 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">

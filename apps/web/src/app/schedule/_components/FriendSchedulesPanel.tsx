@@ -47,16 +47,13 @@ export function FriendSchedulesPanel() {
   return (
     <TabPanel value="friends" className="mt-5">
       <div className="flex flex-col gap-5">
-        <FriendCollaborationTools />
         <div className="grid min-w-0 gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
           <aside className="flex flex-col gap-4 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:sticky lg:top-4">
             <div className="flex flex-col gap-1 px-1">
               <h2 className="text-sm font-semibold text-foreground">
                 Find classmates
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Search by name or student ID.
-              </p>
+              <p className="text-xs text-muted-foreground">Search by name.</p>
             </div>
             <InputGroup>
               <InputGroupAddon>
@@ -94,15 +91,12 @@ export function FriendSchedulesPanel() {
                   return (
                     <div
                       key={person._id}
-                      className="flex items-center justify-between gap-3 py-2.5"
+                      className="flex min-h-11 items-center justify-between gap-3 py-2"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">
                           {person.firstName} {person.lastName}
                         </p>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {person.uniqueId}
-                        </span>
                       </div>
                       {status === "FRIENDS" ? (
                         <Badge size="sm" variant="dot" color="green">
@@ -174,9 +168,9 @@ export function FriendSchedulesPanel() {
                   return (
                     <div
                       key={request.id}
-                      className="flex items-center justify-between gap-2 py-1.5"
+                      className="flex min-h-10 items-center gap-2 py-1"
                     >
-                      <span className="truncate text-sm text-foreground">
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                         {request.user.firstName} {request.user.lastName}
                       </span>
                       <div className="flex shrink-0 gap-1">
@@ -197,7 +191,7 @@ export function FriendSchedulesPanel() {
                           <X />
                         </Button>
                         <Button
-                          size="sm"
+                          size="md"
                           loading={isAccepting}
                           disabled={isDeclining}
                           onClick={() =>
@@ -222,8 +216,8 @@ export function FriendSchedulesPanel() {
           </aside>
 
           <section className="flex min-w-0 flex-col gap-3">
-            <header className="flex items-end justify-between gap-3">
-              <div>
+            <header className="flex min-h-9 items-center justify-between gap-3">
+              <div className="min-w-0">
                 <h2 className="text-base font-semibold text-foreground">
                   Friend schedules
                 </h2>
@@ -232,9 +226,12 @@ export function FriendSchedulesPanel() {
                   when needed.
                 </p>
               </div>
-              {data?.friends.length ? (
-                <Badge size="sm">{data.friends.length}</Badge>
-              ) : null}
+              <div className="flex shrink-0 items-center gap-2">
+                {data?.friends.length ? (
+                  <Badge size="sm">{data.friends.length}</Badge>
+                ) : null}
+                <FriendCollaborationTools />
+              </div>
             </header>
             {data?.friends.length ? (
               <div className="flex flex-col gap-2">

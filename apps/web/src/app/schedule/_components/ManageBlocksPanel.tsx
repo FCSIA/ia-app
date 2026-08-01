@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { FunctionArgs } from "convex/server";
 import {
   ArrowDown,
@@ -340,12 +340,14 @@ function PlanBlockEditor({
 }
 
 export function ManageBlocksPanel() {
+  const { isAuthenticated } = useConvexAuth();
   const { toast } = useToast();
   const [mode, setMode] = useState<"dates" | "templates">("dates");
   const [dateKey, setDateKey] = useState(schoolDateKey);
-  const workspace = useQuery(api.schedule.dayPlans.getAdminWorkspace, {
-    dateKey,
-  });
+  const workspace = useQuery(
+    api.schedule.dayPlans.getAdminWorkspace,
+    isAuthenticated ? { dateKey } : "skip",
+  );
   const saveTemplate = useMutation(api.schedule.dayPlans.saveTemplate);
   const setRegularTemplate = useMutation(
     api.schedule.dayPlans.setRegularTemplate,

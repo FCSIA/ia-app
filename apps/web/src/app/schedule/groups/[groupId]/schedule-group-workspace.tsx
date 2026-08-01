@@ -4,7 +4,7 @@ import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
-import { useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import {
   ArrowLeft,
   CalendarDays,
@@ -89,7 +89,6 @@ function ScheduleColumn({
           <p className="truncate text-sm font-semibold">
             {person.firstName} {person.lastName}
           </p>
-          <p className="truncate text-[11px] text-muted-foreground">{person.uniqueId}</p>
         </div>
       </div>
       {schedule ? (
@@ -155,8 +154,9 @@ export function ScheduleGroupWorkspace({
 }) {
   const { groupId: rawGroupId } = use(params);
   const groupId = rawGroupId as Id<'studentScheduleGroups'>;
-  const data = useQuery(api.schedule.groups.get, { groupId });
-  const eligibleFriends = useQuery(api.schedule.groups.listEligibleFriends);
+  const { isAuthenticated } = useConvexAuth();
+  const data = useQuery(api.schedule.groups.get, isAuthenticated ? { groupId } : 'skip');
+  const eligibleFriends = useQuery(api.schedule.groups.listEligibleFriends, isAuthenticated ? {} : 'skip');
   const addMember = useMutation(api.schedule.groups.addMember);
   const removeMember = useMutation(api.schedule.groups.removeMember);
   const renameGroup = useMutation(api.schedule.groups.rename);
@@ -228,7 +228,7 @@ export function ScheduleGroupWorkspace({
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Button variant="ghost" size="icon-sm" asChild aria-label="Back to friend schedules">
-              <Link href="/schedule?tab=friends">
+              <Link href="/schedule?tab=groups">
                 <ArrowLeft className="size-4" />
               </Link>
             </Button>
@@ -326,7 +326,7 @@ export function ScheduleGroupWorkspace({
                     onClick={() =>
                       void run(() => deleteGroup({ groupId }), 'Could not delete group').then(
                         (success) => {
-                          if (success) router.push('/schedule?tab=friends');
+                          if (success) router.push('/schedule?tab=groups');
                         },
                       )
                     }

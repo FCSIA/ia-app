@@ -408,7 +408,6 @@ function MessageAuthorPreview({
           <ClubAvatar person={author} className="size-12" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-            <p className="font-mono text-xs text-muted-foreground">{author.uniqueId}</p>
             {roleLabels.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-1">
                 {roleLabels.map((role) => (

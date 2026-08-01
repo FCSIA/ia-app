@@ -181,7 +181,7 @@ function UserTableSection({
   loadPreviousPage: () => void;
 }) {
   const d = dataTableClasses('compact');
-  const headers = ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
+  const headers = ['Name', 'Grade', 'Roles', 'Status', 'Actions'];
 
   const toolbar = (
     <div className="flex w-full min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-end">
@@ -244,7 +244,6 @@ function UserTableSection({
     >
       <Table className={`${d.table} table-fixed`}>
         <colgroup>
-          <col className="w-[116px]" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
           <col />
@@ -270,9 +269,6 @@ function UserTableSection({
           ) : (
             users.map((user, index) => (
               <TableRow key={user._id} index={index} className="h-10">
-                <TableCell className={`${d.cell} overflow-hidden`}>
-                  <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
-                </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>
                 </TableCell>

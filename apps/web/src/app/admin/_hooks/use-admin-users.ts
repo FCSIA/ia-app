@@ -187,7 +187,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
       void runUserMutation(
         () => resetPassword({ userId: targetUser._id as Id<'users'> }),
         'Temporary password generated',
-        (result) => `${targetUser.uniqueId}: ${result.temporaryPassword}`,
+        (result) => `${targetUser.firstName} ${targetUser.lastName}: ${result.temporaryPassword}`,
       ),
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,

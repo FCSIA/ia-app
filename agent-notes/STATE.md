@@ -127,6 +127,9 @@
   popover, class pickers are anchored only to explicit row toggles, school times
   are displayed in 12-hour format, and friend links are created and revoked in
   a compact non-modal popover with locally generated IA-branded QR sharing.
+  Schedule groups now have their own top-level tab and compact create popover;
+  auth-sensitive schedule queries stop during logout, and student IDs are no
+  longer rendered across web or mobile UI surfaces.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -159,6 +162,11 @@
 
 ### Verification (latest)
 
+- `pnpm --filter web exec tsc --noEmit` - pass
+- `pnpm --filter mobile typecheck` - pass
+- `pnpm lint` - pass with 7 existing web warnings outside this slice
+- `pnpm build` - web compilation and TypeScript passed; the final build process
+  was interrupted before route generation completed
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (14 files, 47 tests)

@@ -47,7 +47,6 @@ export function AuditDetailSheet({
                 <AdminMetric
                   label="Actor"
                   value={eventDetail.actor ? `${eventDetail.actor.firstName} ${eventDetail.actor.lastName}` : 'System'}
-                  detail={eventDetail.actor?.uniqueId ? <span className="font-mono">{eventDetail.actor.uniqueId}</span> : undefined}
                   compact
                 />
                 <AdminMetric
