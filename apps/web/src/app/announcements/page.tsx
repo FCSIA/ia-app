@@ -15,7 +15,6 @@ import {
   X,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { BadgeColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -298,9 +297,6 @@ export default function AnnouncementsPage() {
     selectedMinorPathways.length,
   ].filter(Boolean).length;
 
-  const tagColor = (tag: string): BadgeColor =>
-    tag === 'CLUB' ? 'emerald' : tag === 'GRADE' ? 'violet' : tag === 'PATHWAY' ? 'cyan' : 'gray';
-
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
@@ -337,13 +333,12 @@ export default function AnnouncementsPage() {
           advancedOpen={filtersOpen}
           onAdvancedOpenChange={setFiltersOpen}
           chips={[
-            { value: 'unread', label: 'Unread', color: 'rose' },
-            { value: 'saved', label: 'Saved', icon: <Bookmark className="size-3" />, color: 'blue' },
-            { value: 'pinned', label: 'Pinned', icon: <Sparkles className="size-3" />, color: 'amber' },
+            { value: 'unread', label: 'Unread' },
+            { value: 'saved', label: 'Saved', icon: <Bookmark /> },
+            { value: 'pinned', label: 'Pinned', icon: <Sparkles /> },
             ...availableTags.map((tag) => ({
               value: `tag:${tag}`,
               label: ANNOUNCEMENT_TAG_LABELS[tag] || tag.replace(/_/g, ' '),
-              color: tagColor(tag),
             })),
           ]}
           activeChips={[
