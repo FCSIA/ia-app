@@ -80,12 +80,22 @@ export function MySchedulePanel() {
                     if (value === "PERIOD_4" || value === "PERIOD_5")
                       setLunchPeriod(value);
                   }}
-                  variant="outline"
+                  className="rounded-lg bg-muted p-0.5"
                   size="sm"
                   aria-label="Lunch period"
                 >
-                  <ToggleGroupItem value="PERIOD_4">Period 4</ToggleGroupItem>
-                  <ToggleGroupItem value="PERIOD_5">Period 5</ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="PERIOD_4"
+                    className="h-7 min-w-0 px-2.5 text-xs shadow-none"
+                  >
+                    Period 4
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="PERIOD_5"
+                    className="h-7 min-w-0 px-2.5 text-xs shadow-none"
+                  >
+                    Period 5
+                  </ToggleGroupItem>
                 </ToggleGroup>
               </div>
             </div>
@@ -111,11 +121,13 @@ export function MySchedulePanel() {
                   </TabsList>
                 </Tabs>
               </div>
-              <Button asChild variant="secondary" size="sm">
-                <Link href="/courses">
-                  <BookOpen data-icon="inline-start" />
-                  Course catalog
-                </Link>
+              <Button
+                asChild
+                variant="secondary"
+                size="sm"
+                leadingIcon={BookOpen}
+              >
+                <Link href="/courses">Course catalog</Link>
               </Button>
             </div>
           </header>
