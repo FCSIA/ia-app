@@ -130,6 +130,18 @@
   Schedule groups now have their own top-level tab and compact create popover;
   auth-sensitive schedule queries stop during logout, and student IDs are no
   longer rendered across web or mobile UI surfaces.
+- Web UI handoff now follows the required primitive-first gate in
+  `agent-notes/WEB_UI_WORKFLOW.md`: agents must inspect current Fluid docs,
+  rendered and Code examples, APIs, registry source, and local adapters; choose
+  primitives by semantics; preserve proximity registration; and escalate shared
+  primitive gaps instead of patching pages. ESLint now keeps semantic tables,
+  headless-library imports, interactive badges, raw pressed buttons, and direct
+  clipboard use behind shared UI contracts.
+- The schedule editor now uses indexed Fluid table rows, Discover Clubs forwards
+  CardGroup indices like the channel-list reference, the date picker matches the
+  current DayPicker/Fluid DOM contract, quick filters use a shared ToggleGroup,
+  and visible friend/join values use Fluid InputCopy. Event Share uses the native
+  share sheet with a centralized copy fallback.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -149,6 +161,18 @@
 
 ### Remaining Debt
 
+- The club workspace selector is route navigation and should use the current
+  Fluid Dropdown popup contract. The existing retrofit is intentionally not
+  extended: current Fluid `MenuItem` lacks the leading-media and link-composition
+  API needed for club logos and native navigation. The proposed shared API is a
+  constrained `leadingMedia` slot plus `render={<Link ... />}` composition while
+  `MenuItem` retains ownership of label, current/check state, index registration,
+  roving focus, and close-on-select. Approve and implement that shared primitive
+  API before migrating the selector and the remaining legacy dropdown
+  compositions.
+- Signed-in visual interaction QA is still required for the repaired proximity
+  highlights, calendar geometry, course picker density, copy controls, filters,
+  and keyboard/reduced-motion states because browser control was unavailable.
 - Mobile v1 is repo-local store-ready. Remaining mobile launch blockers are
   external: school-controlled EAS project id/account owner, Apple/Google store
   accounts, universal-link domain files, reviewer credentials on a demo
@@ -162,11 +186,14 @@
 
 ### Verification (latest)
 
-- `pnpm --filter web exec tsc --noEmit` - pass
+- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+  primitive workflow and remediation slices.
+- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+  unused-import warnings.
+- `direnv exec . pnpm --filter web build` - pass through compilation,
+  TypeScript, page data, all 18 static pages, and route optimization.
 - `pnpm --filter mobile typecheck` - pass
 - `pnpm lint` - pass with 7 existing web warnings outside this slice
-- `pnpm build` - web compilation and TypeScript passed; the final build process
-  was interrupted before route generation completed
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (14 files, 47 tests)
@@ -188,18 +215,12 @@
   mappings existed; restart Expo Go/Metro before the next visual QA pass.
 - `pnpm --filter mobile test:maestro` - not run locally; requires Maestro plus
   a built simulator/device app and seeded credentials.
-- `pnpm lint` - current rerun reaches the web checks but fails in the unrelated
-  mobile package because TypeScript 6 treats its `baseUrl` setting as a
-  deprecation error; focused web lint passes with pre-existing warnings only.
 - Focused optimistic chat tests - pass (2 tests after moving the helper to
   `apps/shared/chat`)
 - `pnpm build` - blocked in the unrelated mobile package by the same TypeScript
   6 `baseUrl` deprecation error; `pnpm --filter web build` passes.
-- `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
-  after the compact club-workspace redesign, channel interaction polish, and
-  schedule workspace rebuild;
-  signed-in visual QA remains to be run because no browser-control session was
-  available.
+- Signed-in web visual QA remains to be run because no browser-control session
+  was available.
 - `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)
 - `git diff --check` - pass; Git only reported CRLF normalization warnings
 
@@ -224,9 +245,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-pnpm --filter cvx codegen
-pnpm --filter cvx typecheck
-pnpm lint
-pnpm build
-pnpm test
+direnv exec . pnpm --filter cvx codegen
+direnv exec . pnpm --filter cvx typecheck
+direnv exec . pnpm lint
+direnv exec . pnpm build
+direnv exec . pnpm test
 ```

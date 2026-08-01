@@ -11,7 +11,7 @@
   "overrides": [
     {
       "files": ["src/**/*.{ts,tsx}"],
-      "excludedFiles": ["src/components/ui/**/*"],
+      "excludedFiles": ["src/components/ui/**/*", "src/lib/share.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -37,6 +37,14 @@
           {
             "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='aria-pressed']",
             "message": "Badge is non-interactive metadata. Use a semantic shared toggle or filter control."
+          },
+          {
+            "selector": "CallExpression[callee.property.name='writeText'][callee.object.object.name='navigator'][callee.object.property.name='clipboard']",
+            "message": "Use InputCopy for visible copyable values or the shared share utility for Share actions."
+          },
+          {
+            "selector": "JSXOpeningElement[name.name='button'] > JSXAttribute[name.name='aria-pressed']",
+            "message": "Use a shared toggle, CheckboxGroup, or filter control instead of a custom pressed button."
           }
         ]
       }
