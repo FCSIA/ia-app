@@ -8,7 +8,6 @@ import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
   Check,
-  Copy,
   QrCode,
   Send,
   Sparkles,
@@ -45,6 +44,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { InputCopy } from '@/components/ui/input-copy';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
@@ -73,6 +73,11 @@ function ManagePeopleDialog({
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
+  const [origin, setOrigin] = useState('');
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
 
@@ -112,11 +117,10 @@ function ManagePeopleDialog({
     }
   };
 
-  const joinUrl =
-    typeof window === 'undefined'
-      ? ''
-      : `${window.location.origin}/clubs/${club._id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
-  const qrUrl = club.activeJoinCode?.code
+  const joinUrl = origin && club.activeJoinCode?.code
+    ? `${origin}/clubs/${club._id}?joinCode=${club.activeJoinCode.code}`
+    : '';
+  const qrUrl = joinUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
     : null;
 
@@ -151,10 +155,11 @@ function ManagePeopleDialog({
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={qrUrl} alt="Club join QR code" className="size-56 rounded-md border bg-white p-2" />
-                  <Button type="button" variant="tertiary" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
-                    <Copy className="mr-2 size-4" />
-                    Copy link
-                  </Button>
+                  <InputCopy
+                    value={joinUrl}
+                    variant="button"
+                    className="w-full max-w-sm"
+                  />
                 </>
               ) : (
                 <>
@@ -179,14 +184,13 @@ function ManagePeopleDialog({
           <TabPanel value="code" className="mt-4">
             <div className="flex flex-col gap-4 rounded-lg border p-5">
               {club.activeJoinCode?.code ? (
-                <div className="rounded-lg bg-muted/40 p-4 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Active code
-                  </p>
-                  <p className="mt-1.5 text-3xl font-bold tracking-[0.32em]">
-                    {club.activeJoinCode.code}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <InputCopy
+                    value={club.activeJoinCode.code}
+                    label="Active code"
+                    variant="button"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Generated{' '}
                     {club.activeJoinCode.updatedAt
                       ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
@@ -197,16 +201,6 @@ function ManagePeopleDialog({
                 <p className="text-sm text-muted-foreground">No active join code yet.</p>
               )}
               <div className="flex flex-wrap gap-2">
-                {club.activeJoinCode?.code ? (
-                  <Button
-                    type="button"
-                    variant="tertiary"
-                    onClick={() => navigator.clipboard?.writeText(club.activeJoinCode?.code ?? '')}
-                  >
-                    <Copy className="mr-2 size-4" />
-                    Copy code
-                  </Button>
-                ) : null}
                 <Button
                   onClick={() =>
                     void generateJoinCode({ clubId }).then(() =>
