@@ -27,6 +27,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { TabPanel } from "@/components/ui/tabs";
+import { formatScheduleTime } from "@/components/schedule/schedule-utils";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "~/apps/convex/src/_generated/api";
 
@@ -111,7 +112,7 @@ function PlanPreview({ blocks }: { blocks: PlanBlock[] }) {
                 className="grid grid-cols-[4.5rem_1fr] gap-3 px-3 py-2.5"
               >
                 <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {block.startTime}
+                  {formatScheduleTime(block.startTime)}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">

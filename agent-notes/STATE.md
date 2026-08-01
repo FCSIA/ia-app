@@ -2,8 +2,8 @@
 
 ## Active Focus
 
-- **Branch**: `agent/web-chat-modernization` (draft PR #45)
-- **Goal**: Modernize web chat behavior and presentation while preserving the shared Convex-first mobile/web model.
+- **Branch**: `agent/friend-schedule-groups`
+- **Goal**: Rebuild the web schedule workspace and friend collaboration flow with current Fluid/shadcn primitives.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -122,6 +122,11 @@
   settings use visible surface states and hierarchical club gates: turning a
   club off disables delivery for its channels while retaining each channel's
   saved preference for restoration.
+- Web schedules now use a Fluid-first two-pane workspace: the selected school
+  day stays mounted while date data refreshes, dates use the shadcn calendar
+  popover, class pickers are anchored only to explicit row toggles, school times
+  are displayed in 12-hour format, and friend links are created and revoked in
+  a non-modal popover.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -183,7 +188,8 @@
 - `pnpm build` - blocked in the unrelated mobile package by the same TypeScript
   6 `baseUrl` deprecation error; `pnpm --filter web build` passes.
 - `pnpm --filter web exec tsc --noEmit` and `pnpm --filter web build` - pass
-  after the compact club-workspace redesign and channel interaction polish;
+  after the compact club-workspace redesign, channel interaction polish, and
+  schedule workspace rebuild;
   signed-in visual QA remains to be run because no browser-control session was
   available.
 - `pnpm test` - pass (`cvx` Vitest, 14 files, 47 tests)

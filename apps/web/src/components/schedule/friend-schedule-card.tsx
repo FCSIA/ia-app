@@ -1,22 +1,13 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { UserMinus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
-  findScheduleEntry,
-  fullName,
-  getBlocksForDay,
-  getCurrentScheduleStatus,
-  getWeekdayForDate,
-} from './schedule-utils';
-import { FriendScheduleDialog } from './friend-schedule-dialog';
-import { ScheduleFriend, SchoolDayBlock } from './types';
+import Link from "next/link";
+import { UserMinus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { fullName, getCurrentScheduleStatus } from "./schedule-utils";
+import { FriendScheduleDialog } from "./friend-schedule-dialog";
+import { ScheduleFriend, SchoolDayBlock } from "./types";
 
 type FriendScheduleCardProps = {
   friend: ScheduleFriend;
@@ -35,133 +26,103 @@ export function FriendScheduleCard({
 }: FriendScheduleCardProps) {
   const current = getCurrentScheduleStatus(friend.schedule, blocks);
   const lunchNumber =
-    friend.schedule?.lunchPeriod === 'PERIOD_4'
+    friend.schedule?.lunchPeriod === "PERIOD_4"
       ? 4
-      : friend.schedule?.lunchPeriod === 'PERIOD_5'
+      : friend.schedule?.lunchPeriod === "PERIOD_5"
         ? 5
         : null;
   const currentIsLunch = current.currentBlock?.periodNumber === lunchNumber;
   const currentLabel = currentIsLunch
-    ? 'Lunch'
+    ? "Lunch"
     : current.currentBlock?.periodNumber
-    ? current.currentEntry?.course
-      ? current.currentEntry.course.title
-      : current.currentEntry?.className || `${current.currentBlock.label} (not filled in)`
-    : current.currentBlock?.label || 'No live block';
+      ? current.currentEntry?.course
+        ? current.currentEntry.course.title
+        : current.currentEntry?.className ||
+          `${current.currentBlock.label} (not filled in)`
+      : current.currentBlock?.label || "No live block";
 
-  const weekday = getWeekdayForDate(new Date());
-  const todayBlocks = weekday ? getBlocksForDay(blocks, weekday) : [];
-  const isPublic = friend.visibility === 'PUBLIC' && !!friend.schedule;
+  const isPublic = friend.visibility === "PUBLIC" && !!friend.schedule;
 
   return (
-    <div
-      className={`overflow-hidden rounded-xl bg-muted/20 ${
-        emphasized ? 'ring-1 ring-primary/60' : ''
-      }`}
+    <article
+      className={cn(
+        "rounded-xl bg-surface-2 px-4 py-3 shadow-surface-1 transition-shadow sm:px-5 sm:py-4",
+        emphasized && "ring-1 ring-primary/60",
+      )}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(10rem,1fr)_minmax(10rem,1fr)_auto] sm:items-center">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-foreground truncate">{fullName(friend.user)}</p>
-            <span className={`inline-block size-1.5 rounded-full shrink-0 ${
-              friend.visibility === 'PUBLIC' ? 'bg-emerald-500' : friend.visibility === 'PRIVATE' ? 'bg-amber-500' : 'bg-muted-foreground/40'
-            }`} />
+          <p className="truncate text-sm font-semibold text-foreground">
+            {fullName(friend.user)}
+          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              {friend.user.uniqueId}
+            </span>
+            <Badge
+              size="sm"
+              variant="dot"
+              color={
+                friend.visibility === "PUBLIC"
+                  ? "green"
+                  : friend.visibility === "PRIVATE"
+                    ? "amber"
+                    : "gray"
+              }
+            >
+              {friend.visibility === "PUBLIC"
+                ? "Shared"
+                : friend.visibility === "PRIVATE"
+                  ? "Private"
+                  : "Not published"}
+            </Badge>
           </div>
-          <p className="font-mono text-[11px] text-muted-foreground mt-0.5">{friend.user.uniqueId}</p>
         </div>
-        {isPublic && (
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right mr-1">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Now</p>
+
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Now
+          </p>
+          {isPublic ? (
+            <div className="mt-1 min-w-0">
               {current.currentEntry?.course ? (
                 <Link
                   href={`/courses/${current.currentEntry.course.slug}`}
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                  className="block truncate text-sm font-semibold text-foreground transition-colors hover:text-primary"
                 >
                   {currentLabel}
                 </Link>
               ) : (
-                <p className="text-sm font-medium text-foreground">{currentLabel}</p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {currentLabel}
+                </p>
               )}
             </div>
-            
-            <FriendScheduleDialog 
-              friend={friend} 
-              blocks={blocks} 
-            />
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 text-xs text-destructive hover:text-destructive shrink-0 opacity-40 hover:opacity-100 transition-opacity"
-          disabled={isRemoving}
-          onClick={onRemove}
-        >
-          <UserMinus className="size-3.5" />
-        </Button>
-      </div>
-
-      {/* Today's schedule — collapsible */}
-      {isPublic && todayBlocks.length > 0 && (
-        <Collapsible>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="w-full border-t border-border/40 px-5 py-2.5 text-left text-[11px] font-medium text-muted-foreground hover:bg-muted/30 transition-colors"
-            >
-              Today&apos;s blocks ({todayBlocks.length})
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="divide-y divide-border/30 border-t border-border/30">
-              {todayBlocks.map((block) => {
-                const isLunch = block.periodNumber === lunchNumber;
-                const entry = block.periodNumber && !isLunch
-                  ? findScheduleEntry(friend.schedule, block.weekday, block.periodNumber)
-                  : null;
-                return (
-                  <div key={block.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
-                    <div className="min-w-0">
-                      {entry?.course ? (
-                        <Link
-                          href={`/courses/${entry.course.slug}`}
-                          className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate block"
-                        >
-                          {entry.course.title}
-                        </Link>
-                      ) : (
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {isLunch
-                            ? 'Lunch'
-                            : block.periodNumber
-                              ? entry?.className || block.label
-                              : block.label}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground shrink-0">
-                      {block.startTime} – {block.endTime}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {/* Private/No schedule message */}
-      {!isPublic && (
-        <div className="border-t border-border/30 px-5 py-3">
-          <p className="text-xs text-muted-foreground">
-            {friend.visibility === 'PRIVATE'
-              ? 'Schedule is private.'
-              : 'No schedule published yet.'}
-          </p>
+          ) : (
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {friend.visibility === "PRIVATE"
+                ? "Schedule is private."
+                : "No schedule published yet."}
+            </p>
+          )}
         </div>
-      )}
-    </div>
+
+        <div className="flex items-center gap-1 sm:justify-end">
+          {isPublic ? (
+            <FriendScheduleDialog friend={friend} blocks={blocks} />
+          ) : null}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 text-destructive hover:text-destructive"
+            loading={isRemoving}
+            aria-label={`Remove ${fullName(friend.user)}`}
+            onClick={onRemove}
+          >
+            <UserMinus />
+          </Button>
+        </div>
+      </div>
+    </article>
   );
 }
