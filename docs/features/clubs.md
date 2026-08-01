@@ -90,6 +90,12 @@ user, built-in, and custom-tag mentions against that readable audience;
 only a message id and reason from clients, then derive the club and author after
 checking channel access.
 
+`SUPER_ADMIN` club access is presented as administrative rather than personal
+membership. The web and mobile club directories omit personal club groups for
+super admins, and the web workspace shows the current club without a
+membership-based club picker. Membership-only notification controls and the
+dashboard's My Clubs widget are also unavailable to that role.
+
 Deleting a channel message immediately removes its body, rich content, poll,
 pin, attachments, and reactions from reads. A deleted root remains as a
 content-free tombstone while replies still reference it, so an existing thread

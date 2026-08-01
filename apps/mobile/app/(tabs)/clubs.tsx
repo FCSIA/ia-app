@@ -15,13 +15,20 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubsScreen() {
   const user = useLiveCurrentUser();
+  const hasAdministrativeClubAccess = !!user && hasRole(user, "SUPER_ADMIN");
   const all = useQuery(api.clubs.management.getAll, {});
-  const mine = useQuery(api.clubs.management.getMyClubs, {});
+  const mine = useQuery(
+    api.clubs.management.getMyClubs,
+    hasAdministrativeClubAccess ? "skip" : {},
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const canCreate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER");
   const memberIds = new Set((mine?.memberOf ?? []).map((club: any) => club._id));
   const sponsorIds = new Set((mine?.sponsoring ?? []).map((club: any) => club._id));
-  const clubsReady = all === undefined || mine === undefined ? undefined : all;
+  const clubsReady =
+    all === undefined || (!hasAdministrativeClubAccess && mine === undefined)
+      ? undefined
+      : all;
 
   return (
     <Screen

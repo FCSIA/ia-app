@@ -40,6 +40,7 @@ import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import { useClubId } from "@/app/clubs/club-route";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
+import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type {
   ClubNavigationChannel,
@@ -89,6 +90,37 @@ function ClubPickerItem({
   );
 }
 
+function ClubIdentity({
+  club,
+  showPickerIndicator = false,
+}: {
+  club?: ClubWorkspaceNavigation["club"];
+  showPickerIndicator?: boolean;
+}) {
+  return (
+    <>
+      <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
+        {club?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={resolveMediaUrl(club.logoUrl)}
+            alt={club.name}
+            className="size-full bg-background object-cover"
+          />
+        ) : (
+          (club?.name?.charAt(0).toUpperCase() ?? "C")
+        )}
+      </div>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+        {club?.name ?? "Loading…"}
+      </span>
+      {showPickerIndicator ? (
+        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+      ) : null}
+    </>
+  );
+}
+
 type ClubWorkspaceProps = {
   children: ReactNode;
   rightPane?: ReactNode;
@@ -112,6 +144,7 @@ export function ClubWorkspace({
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
   const clubId = useClubId();
+  const user = useCurrentUser();
   const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
@@ -137,6 +170,7 @@ export function ClubWorkspace({
   const channels = navigation?.channels ?? [];
   const myClubs = navigation?.myClubs ?? [];
   const canManageChannels = navigation?.viewer.canManageChannels ?? false;
+  const showClubPicker = !isSuperAdmin(user);
 
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
@@ -209,6 +243,7 @@ export function ClubWorkspace({
             clubId={clubId}
             club={club}
             myClubs={myClubs}
+            showClubPicker={showClubPicker}
             nav={nav}
             pathname={pathname}
             channels={channels}
@@ -232,6 +267,7 @@ export function ClubWorkspace({
               clubId={clubId}
               club={club}
               myClubs={myClubs}
+              showClubPicker={showClubPicker}
               nav={nav}
               pathname={pathname}
               channels={channels}
@@ -339,6 +375,7 @@ function ClubNavigationPanel({
   clubId,
   club,
   myClubs,
+  showClubPicker,
   nav,
   pathname,
   channels,
@@ -351,6 +388,7 @@ function ClubNavigationPanel({
   clubId: Id<"clubs">;
   club?: ClubWorkspaceNavigation["club"];
   myClubs: ClubWorkspaceNavigation["myClubs"];
+  showClubPicker: boolean;
   nav: NavigationItem[];
   pathname: string;
   channels: ClubNavigationChannel[];
@@ -365,53 +403,47 @@ function ClubNavigationPanel({
   return (
     <div className="flex size-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-border/70 p-2">
-        <DropdownMenu>
-          <DropdownTrigger
-            render={
-              <button
-                type="button"
-                className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-primary/10 text-[11px] font-bold text-primary">
-                  {club?.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={resolveMediaUrl(club.logoUrl)}
-                      alt={club.name}
-                      className="size-full bg-background object-cover"
-                    />
-                  ) : (
-                    (club?.name?.charAt(0).toUpperCase() ?? "C")
-                  )}
+        {showClubPicker ? (
+          <DropdownMenu>
+            <DropdownTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <ClubIdentity club={club} showPickerIndicator />
+                </button>
+              }
+            />
+            <DropdownContent
+              align="start"
+              checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
+              className="w-96 max-w-[calc(100vw-2rem)]"
+            >
+              {myClubs.length > 0 ? (
+                myClubs.map((entry, index) => (
+                  <ClubPickerItem
+                    key={entry._id}
+                    club={entry}
+                    active={entry._id === clubId}
+                    index={index}
+                  />
+                ))
+              ) : (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No club memberships yet.
                 </div>
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                  {club?.name ?? "Loading…"}
-                </span>
-                <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-              </button>
-            }
-          />
-          <DropdownContent
-            align="start"
-            checkedIndex={activeClubIndex >= 0 ? activeClubIndex : undefined}
-            className="w-96 max-w-[calc(100vw-2rem)]"
+              )}
+            </DropdownContent>
+          </DropdownMenu>
+        ) : (
+          <div
+            className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 shadow-surface-1"
+            aria-label="Current club"
           >
-            {myClubs.length > 0 ? (
-              myClubs.map((entry, index) => (
-                <ClubPickerItem
-                  key={entry._id}
-                  club={entry}
-                  active={entry._id === clubId}
-                  index={index}
-                />
-              ))
-            ) : (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                No club memberships yet.
-              </div>
-            )}
-          </DropdownContent>
-        </DropdownMenu>
+            <ClubIdentity club={club} />
+          </div>
+        )}
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { Check, Hash, Plus, Shield, Users2, X } from 'lucide-react';
+import { Check, Plus, Shield, Users2, X } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchInput } from '@/components/ui/search';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from "@/lib/utils";
@@ -31,10 +31,19 @@ export default function ClubsLandingPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const canCreate = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const hasAdministrativeClubAccess = isSuperAdmin(user);
 
-  const allClubs = useQuery(api.clubs.management.getAll) ?? [];
-  const myData = useQuery(api.clubs.management.getMyClubs);
-  const invites = useQuery(api.clubs.management.listMyInvites) ?? [];
+  const allClubsData = useQuery(api.clubs.management.getAll);
+  const allClubs = allClubsData ?? [];
+  const myData = useQuery(
+    api.clubs.management.getMyClubs,
+    hasAdministrativeClubAccess ? 'skip' : {},
+  );
+  const invites =
+    useQuery(
+      api.clubs.management.listMyInvites,
+      hasAdministrativeClubAccess ? 'skip' : {},
+    ) ?? [];
   const respondToInvite = useMutation(api.clubs.invitations.respondToInvite);
 
   const myClubs = useMemo(() => {
@@ -56,7 +65,9 @@ export default function ClubsLandingPage() {
     ]);
   }, [allClubs, deferredSearch]);
 
-  const isLoading = allClubs.length === 0 && myData === undefined;
+  const isLoading =
+    allClubsData === undefined ||
+    (!hasAdministrativeClubAccess && myData === undefined);
 
   const headerSlot = (
     <div className="min-w-0">
@@ -116,39 +127,46 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        <div className="grid items-start gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
-          <aside className="overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:sticky lg:top-3">
-            <div className="flex h-10 items-center justify-between border-b px-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Your clubs
-              </h2>
-              <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
-            </div>
-            {myClubs.length > 0 ? (
-              <ScrollArea viewportClassName="max-h-72">
-                <CardGroup orientation="inline">
-                  {myClubs.map((club) => (
-                    <ClubListRow
-                      key={club._id}
-                      club={club}
-                      density="compact"
-                      badge={
-                        club.kind === 'sponsor' ? (
-                          <span title="Sponsor">
-                            <Shield className="size-3.5 text-primary" />
-                          </span>
-                        ) : undefined
-                      }
-                    />
-                  ))}
-                </CardGroup>
-              </ScrollArea>
-            ) : (
-              <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
-                Clubs you join will show here.
-              </p>
-            )}
-          </aside>
+        <div
+          className={cn(
+            'grid items-start gap-4',
+            !hasAdministrativeClubAccess && 'lg:grid-cols-[15rem_minmax(0,1fr)]',
+          )}
+        >
+          {!hasAdministrativeClubAccess ? (
+            <aside className="overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:sticky lg:top-3">
+              <div className="flex h-10 items-center justify-between border-b px-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Your clubs
+                </h2>
+                <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
+              </div>
+              {myClubs.length > 0 ? (
+                <ScrollArea viewportClassName="max-h-72">
+                  <CardGroup orientation="inline">
+                    {myClubs.map((club) => (
+                      <ClubListRow
+                        key={club._id}
+                        club={club}
+                        density="compact"
+                        badge={
+                          club.kind === 'sponsor' ? (
+                            <span title="Sponsor">
+                              <Shield className="size-3.5 text-primary" />
+                            </span>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </CardGroup>
+                </ScrollArea>
+              ) : (
+                <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
+                  Clubs you join will show here.
+                </p>
+              )}
+            </aside>
+          ) : null}
 
           <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:h-[calc(100dvh-7.5rem)]">
             <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
@@ -187,7 +205,7 @@ export default function ClubsLandingPage() {
                       key={club._id}
                       club={club}
                       density="default"
-                      joined={myClubIds.has(club._id)}
+                      joined={!hasAdministrativeClubAccess && myClubIds.has(club._id)}
                     />
                   ))}
                 </CardGroup>

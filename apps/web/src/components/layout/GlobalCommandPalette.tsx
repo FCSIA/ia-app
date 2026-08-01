@@ -23,7 +23,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { hasRole, type AppUser } from '@/lib/auth';
+import { hasRole, isSuperAdmin, type AppUser } from '@/lib/auth';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import {
   CommandDialog,
@@ -94,11 +94,15 @@ export function GlobalCommandPalette({
   const router = useRouter();
 
   const shouldLoad = open && !!user;
+  const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
   const showAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
   const announcements = useQuery(api.announcements.feed.list, shouldLoad ? {} : 'skip') ?? [];
   const clubs = useQuery(api.clubs.management.getAll, shouldLoad ? {} : 'skip') ?? [];
-  const myClubs = useQuery(api.clubs.management.getMyClubs, shouldLoad ? {} : 'skip');
+  const myClubs = useQuery(
+    api.clubs.management.getMyClubs,
+    shouldLoadMemberships ? {} : 'skip',
+  );
   const events = useQuery(api.events.events.list, shouldLoad ? {} : 'skip') ?? [];
   const courses =
     useQuery(api.courses.catalog.list, shouldLoad ? { limit: 40 } : 'skip') ?? [];

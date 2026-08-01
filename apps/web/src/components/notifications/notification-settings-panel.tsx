@@ -17,7 +17,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
@@ -37,7 +37,11 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
 
 export function NotificationSettingsPanel() {
   const user = useCurrentUser();
-  const myClubs = useQuery(api.clubs.management.getMyClubs);
+  const hasAdministrativeClubAccess = isSuperAdmin(user);
+  const myClubs = useQuery(
+    api.clubs.management.getMyClubs,
+    hasAdministrativeClubAccess ? 'skip' : {},
+  );
   const canSeeStaffCategories = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
 
   const involvedClubs = useMemo(() => {
@@ -109,23 +113,25 @@ export function NotificationSettingsPanel() {
           </div>
         </div>
       </section>
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <AtSign className="size-4 text-muted-foreground" aria-hidden />
-          <h2 className="text-sm font-semibold">Clubs</h2>
-        </div>
-        {clubsLoading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : involvedClubs.length > 0 ? (
-          <div className="flex flex-col gap-4">
-            {involvedClubs.map((club) => (
-              <ClubNotificationChannels key={club._id} clubId={club._id} clubName={club.name} />
-            ))}
+      {!hasAdministrativeClubAccess ? (
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <AtSign className="size-4 text-muted-foreground" aria-hidden />
+            <h2 className="text-sm font-semibold">Clubs</h2>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No clubs.</p>
-        )}
-      </section>
+          {clubsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : involvedClubs.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {involvedClubs.map((club) => (
+                <ClubNotificationChannels key={club._id} clubId={club._id} clubName={club.name} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No clubs.</p>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

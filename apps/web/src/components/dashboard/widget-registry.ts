@@ -21,6 +21,8 @@ export type WidgetDefinition = {
   Component: React.ComponentType;
   /** If set, widget is only available to users with at least one of these roles. */
   allowedRoles?: AppRole[];
+  /** If set, any matching role takes precedence over allowedRoles. */
+  excludedRoles?: AppRole[];
   /** If set, widget cannot be removed or rearranged. */
   isFixed?: boolean;
 };
@@ -98,6 +100,7 @@ export const WIDGETS: Record<string, WidgetDefinition> = {
     description: 'Quick access to your active clubs.',
     size: 'half',
     Component: MyClubsWidget,
+    excludedRoles: ['SUPER_ADMIN'],
   },
   'fun-fact': {
     id: 'fun-fact',
@@ -121,6 +124,7 @@ export function getDefaultLayout(): string[] {
 }
 
 export function isWidgetAllowed(widget: WidgetDefinition, roles: AppRole[] | undefined): boolean {
+  if (widget.excludedRoles?.some((role) => roles?.includes(role))) return false;
   if (!widget.allowedRoles) return true;
   if (!roles) return false;
   return widget.allowedRoles.some((r) => roles.includes(r));
