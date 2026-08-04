@@ -1,6 +1,7 @@
 'use client';
 
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,8 +32,10 @@ type DisplayedUsersPageState = {
 export function useAdminUsers(activeTab: AdminTabId) {
   const user = useCurrentUser();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const requestedSearch = searchParams?.get('search') ?? '';
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => requestedSearch);
   const deferredSearch = useDeferredValue(search);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);
@@ -44,6 +47,12 @@ export function useAdminUsers(activeTab: AdminTabId) {
     userRoleGroup,
     page: undefined,
   });
+
+  useEffect(() => {
+    setSearch(requestedSearch);
+    setCurrentCursor(null);
+    setPreviousCursors([]);
+  }, [requestedSearch]);
 
   const canManageUser = (targetUser: AdminUserRecord) => {
     if (!user) return false;

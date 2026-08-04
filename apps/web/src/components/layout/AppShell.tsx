@@ -12,7 +12,7 @@ import {
   LogOut,
   Megaphone,
   Menu,
-  Puzzle,
+  UsersRound,
   Settings,
   Shield,
   Sparkles,
@@ -59,7 +59,7 @@ export type ChannelSearchControl = {
 const primaryNav: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/clubs', label: 'Clubs', icon: Puzzle },
+  { href: '/clubs', label: 'Clubs', icon: UsersRound },
   { href: '/schedule', label: 'Schedule', icon: ClipboardList },
   { href: '/events', label: 'Events', icon: Ticket },
   { href: '/calendar', label: 'Calendar', icon: CalendarRange },

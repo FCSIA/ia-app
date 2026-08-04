@@ -13,6 +13,7 @@ detection.
 ## What It Does
 
 - Students build a 5-day schedule from official courses, with a manual class-name option when a class is not in the catalog.
+- Students can upload a screenshot of Infinite Campus Schedule Term view. Browser-local OCR proposes period/course matches for review, then applies the reviewed classes Monday through Thursday before the normal save step.
 - Students choose public/private schedule visibility.
 - Students search classmates and send friend requests.
 - Accepted friends can compare public schedules.
@@ -23,6 +24,7 @@ detection.
 - Backend: `apps/convex/src/schedule/`
 - Web page: `apps/web/src/app/schedule/page.tsx`
 - Schedule components: `apps/web/src/components/schedule/`
+- OCR parser: `apps/web/src/lib/schedule-ocr.ts`
 - Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
 ## Convex Surface

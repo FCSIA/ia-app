@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
@@ -10,16 +10,18 @@ import {
   CalendarRange,
   ClipboardList,
   Home,
+  Hash,
   Megaphone,
   PanelTop,
-  Puzzle,
   Search,
   Settings,
   Shield,
   Sparkles,
   Ticket,
   User,
+  UserRound,
   Users,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -50,7 +52,7 @@ type CommandAction = {
 const staticActions: CommandAction[] = [
   { id: 'route-dashboard', label: 'Dashboard', detail: 'Home and widgets', href: '/dashboard', Icon: Home },
   { id: 'route-announcements', label: 'Announcements', detail: 'Official updates', href: '/announcements', Icon: Megaphone },
-  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: Puzzle },
+  { id: 'route-clubs', label: 'Clubs', detail: 'Directory and workspaces', href: '/clubs', Icon: UsersRound },
   { id: 'route-schedule', label: 'Schedule', detail: 'Classes and friends', href: '/schedule', Icon: ClipboardList },
   { id: 'route-events', label: 'Events', detail: 'School and club events', href: '/events', Icon: Ticket },
   { id: 'route-calendar', label: 'Calendar', detail: 'Shared calendar', href: '/calendar', Icon: CalendarRange },
@@ -92,6 +94,8 @@ export function GlobalCommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const [searchValue, setSearchValue] = useState('');
+  const deferredSearch = useDeferredValue(searchValue.trim());
 
   const shouldLoad = open && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
@@ -117,6 +121,16 @@ export function GlobalCommandPalette({
       ? {}
       : 'skip',
   );
+  const globalResults = useQuery(
+    api.search.global.palette,
+    shouldLoad && deferredSearch.length >= 2
+      ? { search: deferredSearch }
+      : 'skip',
+  );
+
+  useEffect(() => {
+    if (!open) setSearchValue('');
+  }, [open]);
 
   const myClubIds = useMemo(() => {
     const entries = [...(myClubs?.memberOf ?? []), ...(myClubs?.sponsoring ?? [])];
@@ -146,7 +160,7 @@ export function GlobalCommandPalette({
         label: club.name,
         detail: 'Club workspace',
         href: `/clubs/${club._id}`,
-        Icon: Puzzle,
+        Icon: UsersRound,
         badge: 'Joined',
         keywords: ['my club', 'joined club', club.name, club.description ?? ''],
       }));
@@ -159,7 +173,7 @@ export function GlobalCommandPalette({
       label: club.name,
       detail: club.description || 'Club workspace',
       href: `/clubs/${club._id}`,
-      Icon: Puzzle,
+      Icon: UsersRound,
       badge: myClubIds.has(club._id) ? 'Joined' : undefined,
       keywords: ['club', club.name, club.description ?? ''],
     }));
@@ -243,6 +257,26 @@ export function GlobalCommandPalette({
       })),
     ];
 
+    const peopleActions: CommandAction[] = (globalResults?.people ?? []).map((person) => ({
+      id: `person-${person._id}`,
+      label: `${person.firstName} ${person.lastName}`,
+      detail: person.roles[0]?.replace(/_/g, ' ') || 'IA community member',
+      href: hasRole(user, 'STUDENT')
+        ? `/schedule?tab=friends&search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`
+        : `/admin?search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`,
+      Icon: UserRound,
+      keywords: ['person', 'people', ...person.roles],
+    }));
+
+    const channelActions: CommandAction[] = (globalResults?.channels ?? []).map((channel) => ({
+      id: `channel-${channel._id}`,
+      label: `#${channel.name}`,
+      detail: channel.club.name,
+      href: `/clubs/${channel.club._id}/channels/${channel._id}`,
+      Icon: Hash,
+      keywords: ['channel', 'club channel', channel.club.name, channel.description ?? ''],
+    }));
+
     return {
       joinedClubs,
       unreadAnnouncements,
@@ -253,8 +287,10 @@ export function GlobalCommandPalette({
       notifications: notificationActions,
       flex: flexActions,
       schedule: scheduleActions,
+      people: peopleActions,
+      channels: channelActions,
     };
-  }, [announcements, clubs, courses, events, flexFridays, myClubIds, notifications, schedule]);
+  }, [announcements, clubs, courses, events, flexFridays, globalResults, myClubIds, notifications, schedule, user]);
 
   const suggestedActions = useMemo(() => {
     const unreadNotifications = entityGroups.notifications.slice(0, 3);
@@ -276,14 +312,18 @@ export function GlobalCommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search IA: pages, clubs, announcements, events, courses..." />
+      <CommandInput
+        value={searchValue}
+        onValueChange={setSearchValue}
+        placeholder="Search IA: people, club channels, pages, events..."
+      />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Best matches">
           {suggestedActions.map((action) => (
             <CommandItem key={action.id} value={commandValue(action)} onSelect={() => run(action.href)}>
-              <action.Icon className="mr-2 size-4" />
+              <action.Icon />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate font-medium">{action.label}</span>
@@ -308,7 +348,7 @@ export function GlobalCommandPalette({
             .sort((left, right) => pageOrder.indexOf(left.id) - pageOrder.indexOf(right.id))
             .map((action) => (
               <CommandItem key={action.id} value={commandValue(action)} onSelect={() => run(action.href)}>
-                <action.Icon className="mr-2 size-4" />
+                <action.Icon />
                 <span className="truncate">{action.label}</span>
                 {action.detail ? <CommandShortcut>{action.detail}</CommandShortcut> : null}
               </CommandItem>
@@ -322,6 +362,8 @@ export function GlobalCommandPalette({
           Clubs: entityGroups.clubs,
           Events: entityGroups.events,
           Courses: entityGroups.courses,
+          People: entityGroups.people,
+          'Club Channels': entityGroups.channels,
           'Flex Friday': entityGroups.flex,
           Schedule: entityGroups.schedule,
         }).map(([heading, actions]) =>
@@ -329,7 +371,7 @@ export function GlobalCommandPalette({
             <CommandGroup key={heading} heading={heading}>
               {actions.map((action) => (
                 <CommandItem key={action.id} value={commandValue(action)} onSelect={() => run(action.href)}>
-                  <action.Icon className="mr-2 size-4" />
+                  <action.Icon />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate">{action.label}</span>
@@ -351,11 +393,11 @@ export function GlobalCommandPalette({
 
         <CommandGroup heading="Account">
           <CommandItem value="profile account settings preferences" onSelect={() => run('/profile')}>
-            <User className="mr-2 size-4" />
+            <User />
             Profile and settings
           </CommandItem>
           <CommandItem value="search command palette cmd k" onSelect={() => onOpenChange(false)}>
-            <Search className="mr-2 size-4" />
+            <Search />
             Close search
             <CommandShortcut>Esc</CommandShortcut>
           </CommandItem>

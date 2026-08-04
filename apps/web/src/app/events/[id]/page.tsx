@@ -150,7 +150,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
               <div className="pt-6 border-t flex flex-wrap gap-3">
                 <Button variant="tertiary" className="gap-2">
-                  <Calendar size={16} /> Add to Calendar
+                  <Calendar size={16} /> Add to Your Calendar
                 </Button>
                 <Button variant="tertiary" className="gap-2" onClick={() => {
                   navigator.clipboard.writeText(window.location.href);

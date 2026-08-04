@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 import { ScheduleDayEditor } from '@/components/schedule/schedule-day-editor';
+import { ScheduleImportDialog } from '@/components/schedule/schedule-import-dialog';
 import { WEEKDAYS, getWeekdayForDate } from '@/components/schedule/schedule-utils';
 import { Button } from '@/components/ui/button';
 import { TabPanel } from '@/components/ui/tabs';
@@ -11,6 +12,7 @@ import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
 
 export function MySchedulePanel() {
   const {
+    applyImportedSchedule,
     blocks,
     courses,
     currentStatus,
@@ -47,12 +49,15 @@ export function MySchedulePanel() {
             </button>
           );
         })}
-        <Link href="/courses" className="mb-1 ml-auto">
-          <Button variant="secondary" size="sm" className="h-7 text-xs">
-            <BookOpen className="mr-1.5 size-3" />
-            Catalog
+        <div className="mb-1 ml-auto flex items-center gap-1">
+          <ScheduleImportDialog courses={courses} onApply={applyImportedSchedule} />
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/courses">
+              <BookOpen data-icon="inline-start" />
+              Catalog
+            </Link>
           </Button>
-        </Link>
+        </div>
       </div>
 
       <div className="mt-4">
