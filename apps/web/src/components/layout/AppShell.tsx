@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Home,
   LogOut,
+  MessageSquareWarning,
   Megaphone,
   Menu,
   Puzzle,
@@ -69,6 +70,7 @@ const primaryNav: NavItem[] = [
 
 const accountNav: NavItem[] = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
+  { href: '/report', label: 'Report a concern', icon: MessageSquareWarning },
   { href: '/profile', label: 'Profile & Settings', icon: Settings },
 ];
 

@@ -20,6 +20,7 @@ reports.
 ## Source Files
 
 - Backend: `apps/convex/src/moderation/`
+- General report page: `apps/web/src/app/report/page.tsx`
 - Admin UI: `apps/web/src/app/admin/_components/moderation-tab.tsx`
 - Admin hook: `apps/web/src/app/admin/_hooks/use-admin-moderation.ts`
 

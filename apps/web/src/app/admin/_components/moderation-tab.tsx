@@ -132,7 +132,7 @@ export function ModerationTab({
   return (
     <div>
       <AdminPanel
-        title="Moderation Queue"
+        title="Report queue"
         actions={actions}
         contentClassName="space-y-3"
       >
