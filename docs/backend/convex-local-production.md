@@ -175,28 +175,33 @@ Follow-up questions:
 
 Convex has two practical local-development modes for this repo.
 
-### Mode A: Personal Cloud Dev Deployment
+### Mode A: Named Cloud Dev Deployment
 
-This is the normal developer workflow when the developer has Convex access.
+Use a named cloud dev deployment when the worktree needs a public Convex URL,
+mobile-device testing, webhooks, or shared dashboard access. Do not let two
+schema-changing worktrees select the same cloud deployment.
 
 ```bash
-pnpm cvx:dev
+pnpm --filter cvx exec convex deployment create dev/<feature-name> \
+  --type dev --select --expiration "in 7 days"
 pnpm sync:convex-env
 pnpm dev
 ```
 
 What happens:
 
-1. `pnpm cvx:dev` runs `convex dev` in `apps/convex`.
-2. The Convex CLI selects or creates the developer's cloud dev deployment.
-3. Convex writes deployment settings to `apps/convex/.env.local`.
-4. `pnpm sync:convex-env` copies `CONVEX_URL` and `CONVEX_SITE_URL` into
+1. The CLI creates and selects a cloud deployment for this worktree.
+2. Convex writes deployment settings to that worktree's
+   `apps/convex/.env.local`.
+3. `pnpm sync:convex-env` copies `CONVEX_URL` and `CONVEX_SITE_URL` into
    `apps/web/.env.local` as both server and `NEXT_PUBLIC_*` variables.
-5. `pnpm dev` starts the web app and Convex dev watcher through Turborepo.
+4. `pnpm dev` starts the web app and Convex dev watcher through Turborepo.
 
-This mode gives each developer an isolated cloud backend with public Convex
-URLs and dashboard access. It is the closest local workflow to production, but
-it stores dev data in Convex Cloud rather than only on the laptop.
+This mode gives a worktree an isolated cloud backend with public Convex URLs and
+dashboard access. It stores dev data in Convex Cloud, and all cloud deployments
+on the team contribute to the team's plan usage. Set an expiration and delete
+the deployment when its data and deployment-scoped environment variables are no
+longer needed; cleanup does not reverse usage already metered in the month.
 
 ### Mode B: Actual Local Convex Backend
 
@@ -204,8 +209,13 @@ Convex also supports a development backend process running on the developer
 machine.
 
 ```bash
+# Run once in a new worktree.
+pnpm --filter cvx exec convex deployment create local
+
+# Run whenever selecting this worktree's local backend.
 pnpm --filter cvx exec convex deployment select local
-pnpm --filter cvx dev
+pnpm sync:convex-env
+pnpm dev
 ```
 
 When using local deployment mode:
@@ -224,12 +234,30 @@ CONVEX_URL / NEXT_PUBLIC_CONVEX_URL      -> http://127.0.0.1:3210
 CONVEX_SITE_URL / NEXT_PUBLIC_SITE_URL   -> http://127.0.0.1:3211
 ```
 
-Local mode is useful for agent work, fast iteration, and avoiding accidental
-writes to a shared cloud dev deployment. It is weaker when a task needs public
-webhook access, production-like default environment variables, or shared
-dashboard visibility.
+Local mode is the default for ordinary worktrees, agent work, and fast
+iteration: each worktree has its own `.convex` state and avoids accidental
+writes to a shared cloud dev deployment or cloud quota use. It is weaker when a
+task needs public webhook access, mobile-device access, production-like default
+environment variables, or shared dashboard visibility.
 
-To switch back to the normal cloud dev deployment:
+### Worktree Rules
+
+Before starting a watcher, give every schema-changing worktree its own local or
+named cloud deployment. Stop `pnpm dev` / `pnpm cvx:dev` watchers pointed at a
+shared deployment before switching selections, and never copy
+`apps/convex/.env.local` between worktrees. `pnpm sync:convex-env` must run
+after each selection so the web app follows the same backend.
+
+If a shared deployment has data that no longer validates against a branch's
+schema, isolate the branch instead of attempting to reseed through a failed
+schema deployment. Where preserving data is required, use widen → migrate →
+narrow: deploy a validator that accepts both shapes, migrate/backfill existing
+documents, verify them, then remove the old shape.
+
+`npx convex ai-files update` refreshes generated AI guidance. It is separate
+from deployment repair and cannot reconcile an incompatible schema or data.
+
+To switch back to an existing cloud dev deployment:
 
 ```bash
 pnpm --filter cvx exec convex deployment select dev
@@ -251,6 +279,16 @@ storage, and environment variables. Treat them as separate environments:
 
 Never point local web development at production Convex unless explicitly doing
 a controlled read-only operations task.
+
+## Temporary Deployment Cleanup
+
+A cloud deployment is not a Git branch. Deleting it removes the deployment's
+data, files, scheduled work, and deployment-scoped environment variables; it
+does not delete the corresponding worktree or Git branch. Before deleting a
+temporary deployment, confirm that no branch, teammate, test device, or webhook
+still needs it and record/recreate any required environment variables elsewhere.
+Deleting a deployment cannot reduce database I/O already charged in the current
+billing period.
 
 ## Production Operations Checklist
 

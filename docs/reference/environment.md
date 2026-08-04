@@ -16,7 +16,7 @@ development.
 | ------------------------ | ------------------------------------------------------------ |
 | `.env`                   | Local root defaults                                          |
 | `.env.example`           | Template for local defaults                                  |
-| `apps/convex/.env.local` | Convex-selected deployment URLs written by `pnpm cvx:dev` |
+| `apps/convex/.env.local` | Worktree-local Convex selection and URLs written by the Convex CLI |
 | `apps/web/.env.local`    | Local web-only public values such as Convex URLs and VAPID public key |
 
 ## Convex Variables
@@ -35,6 +35,40 @@ The web app also needs public Convex URLs when deployed:
 NEXT_PUBLIC_CONVEX_URL=https://...
 NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 ```
+
+## Worktrees And Deployment Selection
+
+`apps/convex/.env.local` selects a stateful backend. Never copy it between
+worktrees: doing so makes separate code branches deploy to and write data into
+the same Convex deployment. Stop any `pnpm dev` or `pnpm cvx:dev` watcher using
+that deployment before changing a worktree's selection.
+
+For ordinary worktree development, give each worktree its own local backend:
+
+```bash
+# Run once in a new worktree.
+pnpm --filter cvx exec convex deployment create local
+
+# Run whenever selecting the worktree's local backend.
+pnpm --filter cvx exec convex deployment select local
+pnpm sync:convex-env
+pnpm dev
+```
+
+For a feature that needs a public URL, mobile-device access, webhooks, or a
+shared dashboard, create a named cloud dev deployment instead:
+
+```bash
+pnpm --filter cvx exec convex deployment create dev/<feature-name> \
+  --type dev --select --expiration "in 7 days"
+pnpm sync:convex-env
+pnpm dev
+```
+
+Free and Starter plans allow named deployments, but their usage is summed
+team-wide. Expire or delete a temporary cloud deployment only after confirming
+that nobody needs its data or deployment-scoped environment variables. Deleting
+it does not undo database I/O or other usage already metered this month.
 
 ## Secrets
 

@@ -24,6 +24,30 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 - Do not let docs drift from code. If seed data, roles, env vars, commands, or
   setup behavior changes, update the relevant doc in the same slice.
 
+## Convex Worktree Safety
+
+- Treat a Convex deployment as state shared by every checkout that selects it:
+  code in one worktree can deploy its schema and functions, and data written
+  there must validate against that schema.
+- Every worktree that changes Convex schema or functions must select its own
+  local deployment or named cloud dev deployment before starting a watcher.
+  Prefer local deployments for ordinary work; use an expiring named cloud dev
+  deployment only when public URLs or shared dashboard access are required.
+- Stop `pnpm dev` / `pnpm cvx:dev` watchers that target a shared deployment
+  before switching a worktree. Never copy `apps/convex/.env.local` between
+  worktrees; run `pnpm sync:convex-env` after selecting the deployment instead.
+- For a new isolated local backend, run `pnpm --filter cvx exec convex
+  deployment create local`, then `pnpm --filter cvx exec convex deployment
+  select local`, `pnpm sync:convex-env`, and `pnpm dev`. For an existing local
+  backend, omit the create command. See
+  `docs/backend/convex-local-production.md` for named cloud deployments,
+  cleanup, and schema migration guidance.
+- On a deployment that already contains incompatible data, use widen → migrate
+  → narrow: first accept both shapes, backfill/clean the data, verify it, then
+  remove the old shape. Do not deploy a narrowing schema first.
+- `npx convex ai-files update` refreshes AI guidance only; it never repairs a
+  deployment's schema, functions, or data.
+
 ## Git
 
 - Commit regularly.
