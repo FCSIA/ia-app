@@ -1,0 +1,44 @@
+# Deploy the web app to Vercel production when main changes.
+#
+# Required repo secret:
+#   VERCEL_TOKEN — create at https://vercel.com/account/tokens
+#
+# Required repo variables (set via Settings → Secrets and variables → Actions):
+#   VERCEL_ORG_ID      team_GHUf4kXop7vin9pdXDbiK5wq
+#   VERCEL_PROJECT_ID  prj_uoyozTzyLHPCOZbDNxEbMM9oWyni
+
+name: Vercel Production
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Deploy to Vercel
+        run: pnpx vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
