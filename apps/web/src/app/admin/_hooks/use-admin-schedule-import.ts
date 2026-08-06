@@ -69,15 +69,15 @@ function parseStudentCsv(text: string): StudentImportRow[] {
   return lines.slice(1).map((line) => {
     const cells = parseCsvLine(line);
     const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? '']));
-    const gradeValue = pick(row, 'grade level', 'grade_level', 'gradeLevel');
+    const gradeValue = pick(row, 'grade level', 'grade_level', 'gradeLevel', 'grade');
     const gradeLevel = gradeValue ? Number.parseInt(gradeValue, 10) : undefined;
     return {
       uniqueId: pick(row, 'student id', 'student_id', 'studentId', 'unique id', 'unique_id', 'id') ?? '',
-      firstName: pick(row, 'first name', 'first_name', 'firstName') ?? '',
-      lastName: pick(row, 'last name', 'last_name', 'lastName') ?? '',
-      email: pick(row, 'email'),
+      firstName: pick(row, 'first name', 'first_name', 'firstName', 'first') ?? '',
+      lastName: pick(row, 'last name', 'last_name', 'lastName', 'last') ?? '',
+      email: pick(row, 'email', 'student email'),
       gradeLevel: Number.isInteger(gradeLevel) ? gradeLevel : undefined,
-      major: parsePathway(pick(row, 'major pathway', 'major_pathway', 'majorPathway', 'pathway')),
+      major: parsePathway(pick(row, 'major pathway', 'major_pathway', 'majorPathway', 'pathway', 'major')),
       minor: parsePathway(pick(row, 'minor pathway', 'minor_pathway', 'minorPathway', 'minor')),
     };
   });

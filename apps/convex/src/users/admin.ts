@@ -225,7 +225,7 @@ export const importStudents = mutation({
   returns: studentImportResultValidator,
   handler: async (ctx, args) => {
     const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
 
     if (args.rows.length > 200) {
       throw new ConvexError("Import at most 200 students at a time.");
@@ -273,7 +273,9 @@ export const importStudents = mutation({
         const email = row.email?.trim() || buildStudentEmail(uniqueId);
         const temporaryPassword = args.generatePasswords
           ? generateTemporaryPassword()
-          : uniqueId;
+          : uniqueId.length >= 8
+            ? uniqueId
+            : `${uniqueId}12345678`.slice(0, 12);
 
         await createLinkedUser(ctx, {
           uniqueId,
