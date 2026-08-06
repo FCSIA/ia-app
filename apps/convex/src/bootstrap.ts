@@ -6,6 +6,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { seedProfileValidator, type SeedProfile } from "./validators";
+import { createLinkedUser } from "./users/_lib";
 
 const USER_BATCH_SIZE = 1;
 const SCHEDULE_BATCH_SIZE = 20;
@@ -298,6 +299,77 @@ export const seedStatus = internalQuery({
       updatedAt: run.updatedAt,
       completedAt: run.completedAt ?? null,
       error: run.error ?? null,
+    };
+  },
+});
+
+/**
+ * Provision a single super admin account.
+ *
+ * Idempotent — skips creation when the email already exists.
+ * Run from the Convex Dashboard → Functions → bootstrap:provisionAdmin.
+ *
+ * Args:
+ *   email    - email address for the account (required)
+ *   password - initial password; the user is prompted to reset on first login
+ *   uniqueId - uniqueId / username shown in the app (default: "SUPER001")
+ */
+export const provisionAdmin = internalMutation({
+  args: {
+    email: v.string(),
+    password: v.string(),
+    uniqueId: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+  },
+  returns: v.object({
+    created: v.boolean(),
+    reason: v.optional(v.string()),
+    uniqueId: v.optional(v.string()),
+    email: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const uniqueId = args.uniqueId ?? "SUPER001";
+    const email = args.email.toLowerCase().trim();
+
+    // Check uniqueId collision
+    const existingById = await ctx.db
+      .query("users")
+      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
+      .unique();
+    if (existingById) {
+      return {
+        created: false,
+        reason: `A user with uniqueId "${uniqueId}" already exists.`,
+      };
+    }
+
+    // Check email collision
+    const existingByEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (existingByEmail) {
+      return {
+        created: false,
+        reason: `A user with email "${email}" already exists.`,
+      };
+    }
+
+    const result = await createLinkedUser(ctx, {
+      uniqueId,
+      firstName: args.firstName ?? "Super",
+      lastName: args.lastName ?? "Admin",
+      email,
+      password: args.password,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+      mustResetPassword: true,
+    });
+
+    return {
+      created: true,
+      uniqueId: result.user.uniqueId,
+      email: result.user.email,
     };
   },
 });
