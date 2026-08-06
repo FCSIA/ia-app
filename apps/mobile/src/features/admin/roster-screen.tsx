@@ -53,7 +53,7 @@ export function RosterScreen() {
   const [lastImport, setLastImport] = useState<ImportResult | null>(null);
   const [pending, setPending] = useState<"pick" | "import" | "export" | "credentials" | null>(null);
 
-  const importStudents = useMutation(api.users.admin.importStudents);
+  const importStudents = useAction(api.users.admin.importStudents);
   const exportRows = useQuery(api.users.admin.exportStudents, {});
   const canImport = !!selectedCsv
     && selectedCsv.preview.rows.length > 0

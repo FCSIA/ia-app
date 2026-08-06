@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCsv } from '../_lib/admin-utils';
@@ -92,7 +92,7 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
   const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const importStudents = useMutation(api.users.admin.importStudents);
+  const importStudents = useAction(api.users.admin.importStudents);
   const exportRows = useQuery(api.users.admin.exportStudents, activeTab === 'schedule' ? {} : 'skip') ?? [];
 
   const importStudentsMutation = {

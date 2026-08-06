@@ -1,6 +1,14 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
 import {
   getCurrentAppUser,
@@ -217,115 +225,276 @@ export const createUser = mutation({
   },
 });
 
-export const importStudents = mutation({
+const generatedCredentialValidator = v.object({
+  firstName: v.string(),
+  lastName: v.string(),
+  uniqueId: v.string(),
+  email: v.string(),
+  temporaryPassword: v.string(),
+});
+
+type GeneratedCredential = {
+  firstName: string;
+  lastName: string;
+  uniqueId: string;
+  email: string;
+  temporaryPassword: string;
+};
+
+type StudentImportRowResult =
+  | {
+      kind: "created";
+      credential?: GeneratedCredential;
+    }
+  | {
+      kind: "skipped";
+      error?: string;
+    };
+
+type StudentImportResult = {
+  created: number;
+  skipped: number;
+  errors: string[];
+  generatedCredentials: GeneratedCredential[];
+};
+
+const studentImportRowResultValidator = v.union(
+  v.object({
+    kind: v.literal("created"),
+    credential: v.optional(generatedCredentialValidator),
+  }),
+  v.object({
+    kind: v.literal("skipped"),
+    error: v.optional(v.string()),
+  }),
+);
+
+const STUDENT_IMPORT_BATCH_SIZE = 5;
+
+export const requireStudentImportActor = internalQuery({
+  args: {},
+  returns: v.id("users"),
+  handler: async (ctx): Promise<Id<"users">> => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+    return actor._id;
+  },
+});
+
+export const importStudentRow = internalMutation({
+  args: {
+    row: studentImportRowValidator,
+    generatePasswords: v.boolean(),
+  },
+  returns: studentImportRowResultValidator,
+  handler: async (ctx, args): Promise<StudentImportRowResult> => {
+    const { row } = args;
+    const uniqueId = normalizeUniqueId(row.uniqueId);
+    const firstName = row.firstName.trim();
+    const lastName = row.lastName.trim();
+
+    const skip = (error?: string): StudentImportRowResult => ({
+      kind: "skipped",
+      ...(error === undefined ? {} : { error }),
+    });
+
+    if (!uniqueId || !firstName || !lastName) {
+      return skip("missing first name, last name, or student id");
+    }
+    if (uniqueId.length < 3) {
+      return skip(
+        `Student ID '${uniqueId}' is too short. It must be at least 3 characters.`,
+      );
+    }
+    if (
+      row.gradeLevel != null &&
+      (row.gradeLevel < 9 || row.gradeLevel > 12)
+    ) {
+      return skip(
+        `Grade level must be between 9 and 12. Received "${row.gradeLevel}"`,
+      );
+    }
+    if (row.major && row.minor && row.major === row.minor) {
+      return skip("Minor pathway must be different from major pathway");
+    }
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
+      .unique();
+
+    if (existing) {
+      return skip();
+    }
+
+    const email = row.email?.trim() || buildStudentEmail(uniqueId);
+    const temporaryPassword = args.generatePasswords
+      ? generateTemporaryPassword()
+      : uniqueId;
+
+    if (!args.generatePasswords && temporaryPassword.length < 12) {
+      return skip(
+        `Student ID '${uniqueId}' is too short (${uniqueId.length} chars) to be used as a password. Passwords must be at least 12 characters. Please check 'Generate Passwords'.`,
+      );
+    }
+
+    // Let failures escape so this student's entire transaction rolls back.
+    await createLinkedUser(ctx, {
+      uniqueId,
+      firstName,
+      lastName,
+      gradeLevel: row.gradeLevel,
+      major: row.major as Pathway | undefined,
+      minor: row.minor as Pathway | undefined,
+      email,
+      password: temporaryPassword,
+      roles: ["STUDENT"],
+    });
+
+    return {
+      kind: "created",
+      ...(args.generatePasswords
+        ? {
+            credential: {
+              firstName,
+              lastName,
+              uniqueId,
+              email,
+              temporaryPassword,
+            },
+          }
+        : {}),
+    };
+  },
+});
+
+export const logStudentImportAudit = internalMutation({
+  args: {
+    actorId: v.id("users"),
+    created: v.number(),
+    skipped: v.number(),
+    generatedPasswords: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    await logAuditEvent(ctx, {
+      actorId: args.actorId,
+      action: "USER_CSV_IMPORT",
+      entityType: "User",
+      meta: {
+        created: args.created,
+        skipped: args.skipped,
+        generatedPasswords: args.generatedPasswords,
+      },
+    });
+    return null;
+  },
+});
+
+export const importStudents = action({
   args: {
     rows: v.array(studentImportRowValidator),
     generatePasswords: v.optional(v.boolean()),
   },
   returns: studentImportResultValidator,
-  handler: async (ctx, args) => {
-    const actor = await getCurrentAppUser(ctx);
-    requireAnyRole(actor, [...USER_MANAGEMENT_ROLES]);
+  handler: async (ctx, args): Promise<StudentImportResult> => {
+    const actorId: Id<"users"> = await ctx.runQuery(
+      internal.users.admin.requireStudentImportActor,
+      {},
+    );
 
+    if (args.rows.length === 0) {
+      throw new ConvexError("Import at least one student.");
+    }
     if (args.rows.length > 200) {
       throw new ConvexError("Import at most 200 students at a time.");
     }
 
-    const results = {
+    const generatePasswords = args.generatePasswords ?? false;
+    const results: StudentImportResult = {
       created: 0,
       skipped: 0,
-      errors: [] as string[],
-      generatedCredentials: [] as Array<{
-        firstName: string;
-        lastName: string;
-        uniqueId: string;
-        email: string;
-        temporaryPassword: string;
-      }>,
+      errors: [],
+      generatedCredentials: [],
     };
 
-    for (const [index, row] of args.rows.entries()) {
-      try {
-        const uniqueId = normalizeUniqueId(row.uniqueId);
-        const firstName = row.firstName.trim();
-        const lastName = row.lastName.trim();
-        if (!uniqueId || !firstName || !lastName) {
-          results.errors.push(`Row ${index + 2}: missing first name, last name, or student id`);
+    const seenUniqueIds = new Set<string>();
+    const work = args.rows.map((row, index) => {
+      const uniqueId = normalizeUniqueId(row.uniqueId);
+      const duplicateWithinImport =
+        uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
+
+      if (uniqueId.length > 0) {
+        seenUniqueIds.add(uniqueId);
+      }
+
+      return {
+        row,
+        rowNumber: index + 2,
+        uniqueId,
+        duplicateWithinImport,
+      };
+    });
+
+    for (let start = 0; start < work.length; start += STUDENT_IMPORT_BATCH_SIZE) {
+      const batch = work.slice(start, start + STUDENT_IMPORT_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (entry): Promise<StudentImportRowResult> => {
+          if (entry.duplicateWithinImport) {
+            return {
+              kind: "skipped",
+              error: `Duplicate student ID '${entry.uniqueId}' in this CSV.`,
+            };
+          }
+
+          try {
+            return await ctx.runMutation(
+              internal.users.admin.importStudentRow,
+              {
+                row: entry.row,
+                generatePasswords,
+              },
+            );
+          } catch (error) {
+            return {
+              kind: "skipped",
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        }),
+      );
+
+      for (const [batchIndex, result] of batchResults.entries()) {
+        const rowNumber = batch[batchIndex]!.rowNumber;
+
+        if (result.kind === "created") {
+          results.created += 1;
+          if (result.credential) {
+            results.generatedCredentials.push(result.credential);
+          }
+        } else {
           results.skipped += 1;
-          continue;
+          if (result.error) {
+            results.errors.push(`Row ${rowNumber}: ${result.error}`);
+          }
         }
-        if (row.gradeLevel != null && (row.gradeLevel < 9 || row.gradeLevel > 12)) {
-          throw new ConvexError(`Grade level must be between 9 and 12. Received "${row.gradeLevel}"`);
-        }
-        if (row.major && row.minor && row.major === row.minor) {
-          throw new ConvexError("Minor pathway must be different from major pathway");
-        }
-
-        const existing = await ctx.db
-          .query("users")
-          .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
-          .unique();
-        if (existing) {
-          results.skipped += 1;
-          continue;
-        }
-
-        const email = row.email?.trim() || buildStudentEmail(uniqueId);
-        const temporaryPassword = args.generatePasswords
-          ? generateTemporaryPassword()
-          : uniqueId;
-
-        if (uniqueId.length < 3) {
-          throw new ConvexError(`Student ID '${uniqueId}' is too short. It must be at least 3 characters.`);
-        }
-        if (!args.generatePasswords && temporaryPassword.length < 12) {
-          throw new ConvexError(`Student ID '${uniqueId}' is too short (${uniqueId.length} chars) to be used as a password. Passwords must be at least 12 characters. Please check 'Generate Passwords'.`);
-        }
-
-        await createLinkedUser(ctx, {
-          uniqueId,
-          firstName,
-          lastName,
-          gradeLevel: row.gradeLevel,
-          major: row.major as Pathway | undefined,
-          minor: row.minor as Pathway | undefined,
-          email,
-          password: temporaryPassword,
-          roles: ["STUDENT"],
-        });
-
-        results.created += 1;
-        if (args.generatePasswords) {
-          results.generatedCredentials.push({
-            firstName,
-            lastName,
-            uniqueId,
-            email,
-            temporaryPassword,
-          });
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        results.errors.push(`Row ${index + 2}: ${message}`);
-        results.skipped += 1;
       }
     }
 
-    await logAuditEvent(ctx, {
-      actorId: actor._id,
-      action: "USER_CSV_IMPORT",
-      entityType: "User",
-      meta: {
+    try {
+      await ctx.runMutation(internal.users.admin.logStudentImportAudit, {
+        actorId,
         created: results.created,
         skipped: results.skipped,
-        generatedPasswords: args.generatePasswords ?? false,
-      },
-    });
+        generatedPasswords: generatePasswords,
+      });
+    } catch (error) {
+      console.error("Failed to record student import audit event", error);
+    }
 
     return results;
   },
 });
-
 export const exportStudents = query({
   args: {},
   returns: v.array(studentExportRowValidator),
