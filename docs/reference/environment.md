@@ -21,12 +21,12 @@ development.
 
 ## Convex Variables
 
-`pnpm cvx:dev` writes the selected deployment:
+The Convex CLI writes the selected deployment. Local selection is the default:
 
 ```env
-CONVEX_DEPLOYMENT=dev:...
-CONVEX_URL=https://...
-CONVEX_SITE_URL=https://...
+CONVEX_DEPLOYMENT=...
+CONVEX_URL=...
+CONVEX_SITE_URL=...
 ```
 
 The web app also needs public Convex URLs when deployed:
@@ -54,6 +54,12 @@ pnpm --filter cvx exec convex deployment select local
 pnpm sync:convex-env
 pnpm dev
 ```
+
+After selection, both `CONVEX_URL` and `CONVEX_SITE_URL` must be local URLs (or
+both must identify the same named cloud deployment). `pnpm sync:convex-env`
+refuses to copy a mixed local/cloud configuration into the web and mobile apps.
+Use `direnv exec . pnpm ...` when the system Node version is not supported by
+Convex local; the repo shell provides Node 24.
 
 For a feature that needs a public URL, mobile-device access, webhooks, or a
 shared dashboard, create a named cloud dev deployment instead:

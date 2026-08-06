@@ -24,6 +24,8 @@ import {
   flexFridayTypeValidator,
   flexSessionTypeValidator,
   flexAttendanceStatusValidator,
+  seedProfileValidator,
+  seedRunStatusValidator,
 } from "./validators";
 
 export const schema = defineSchema({
@@ -571,7 +573,11 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_messageId_and_emoji", ["messageId", "emoji"])
-    .index("by_messageId_and_userId_and_emoji", ["messageId", "userId", "emoji"])
+    .index("by_messageId_and_userId_and_emoji", [
+      "messageId",
+      "userId",
+      "emoji",
+    ])
     .index("by_messageId_and_emoji_and_userId", [
       "messageId",
       "emoji",
@@ -786,8 +792,13 @@ export const schema = defineSchema({
     key: v.string(),
     runId: v.string(),
     phase: v.string(),
+    status: v.optional(seedRunStatusValidator),
+    profile: v.optional(seedProfileValidator),
+    cursor: v.optional(v.union(v.string(), v.null())),
     startedAt: v.number(),
     updatedAt: v.number(),
+    completedAt: v.optional(v.union(v.number(), v.null())),
+    error: v.optional(v.union(v.string(), v.null())),
   }).index("by_key", ["key"]),
 });
 

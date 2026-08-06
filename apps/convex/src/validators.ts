@@ -19,6 +19,21 @@ export const pathwayValidator = v.union(
 
 export type Pathway = Infer<typeof pathwayValidator>;
 
+export const seedProfileValidator = v.union(
+  v.literal("development"),
+  v.literal("full"),
+);
+
+export type SeedProfile = Infer<typeof seedProfileValidator>;
+
+export const seedRunStatusValidator = v.union(
+  v.literal("RUNNING"),
+  v.literal("COMPLETE"),
+  v.literal("FAILED"),
+);
+
+export type SeedRunStatus = Infer<typeof seedRunStatusValidator>;
+
 export const courseCatalogSourceValidator = v.union(
   v.literal("COURSE_CATALOG"),
   v.literal("AP_CATALOG"),
@@ -81,7 +96,9 @@ export const notificationPreferenceLevelValidator = v.union(
   v.literal("TIME_SENSITIVE"),
 );
 
-export type NotificationPreferenceLevel = Infer<typeof notificationPreferenceLevelValidator>;
+export type NotificationPreferenceLevel = Infer<
+  typeof notificationPreferenceLevelValidator
+>;
 
 export const clubMemberRoleValidator = v.union(
   v.literal("MEMBER"),
@@ -105,7 +122,9 @@ export const clubChannelVisibilityValidator = v.union(
   v.literal("MEMBER_READONLY"),
 );
 
-export type ClubChannelVisibility = Infer<typeof clubChannelVisibilityValidator>;
+export type ClubChannelVisibility = Infer<
+  typeof clubChannelVisibilityValidator
+>;
 
 export const clubJoinPolicyValidator = v.union(
   v.literal("OPEN"),
@@ -120,7 +139,9 @@ export const clubJoinRequestStatusValidator = v.union(
   v.literal("DECLINED"),
 );
 
-export type ClubJoinRequestStatus = Infer<typeof clubJoinRequestStatusValidator>;
+export type ClubJoinRequestStatus = Infer<
+  typeof clubJoinRequestStatusValidator
+>;
 
 export const clubMentionKindValidator = v.union(
   v.literal("USER"),
@@ -135,7 +156,9 @@ export const clubChannelPollOptionValidator = v.object({
   label: v.string(),
 });
 
-export type ClubChannelPollOption = Infer<typeof clubChannelPollOptionValidator>;
+export type ClubChannelPollOption = Infer<
+  typeof clubChannelPollOptionValidator
+>;
 
 export const clubChannelReactionValidator = v.union(
   v.literal("LIKE"),
@@ -186,7 +209,9 @@ export const eventAttendanceStatusValidator = v.union(
   v.literal("TARDY"),
 );
 
-export type EventAttendanceStatus = Infer<typeof eventAttendanceStatusValidator>;
+export type EventAttendanceStatus = Infer<
+  typeof eventAttendanceStatusValidator
+>;
 
 export const approvalStatusValidator = v.union(
   v.literal("PENDING"),

@@ -29,19 +29,23 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 - Treat a Convex deployment as state shared by every checkout that selects it:
   code in one worktree can deploy its schema and functions, and data written
   there must validate against that schema.
-- Every worktree that changes Convex schema or functions must select its own
-  local deployment or named cloud dev deployment before starting a watcher.
-  Prefer local deployments for ordinary work; use an expiring named cloud dev
-  deployment only when public URLs or shared dashboard access are required.
+- Before selecting a deployment, starting a Convex watcher, or resetting seed
+  data, read `docs/backend/convex-local-production.md` and
+  `docs/reference/environment.md`. For seed work, also read
+  `docs/backend/seed-and-reset.md`. Inspect `git worktree list` and this
+  worktree's `apps/convex/.env.local` first.
+- Local is the default for every human and agent task. Every worktree that
+  changes Convex schema or functions must select its own local deployment before
+  starting a watcher. Use a named, expiring cloud dev deployment only for an
+  explicit need such as a public URL, physical-device testing, a webhook, or a
+  shared dashboard.
 - Stop `pnpm dev` / `pnpm cvx:dev` watchers that target a shared deployment
   before switching a worktree. Never copy `apps/convex/.env.local` between
   worktrees; run `pnpm sync:convex-env` after selecting the deployment instead.
 - For a new isolated local backend, run `pnpm --filter cvx exec convex
   deployment create local`, then `pnpm --filter cvx exec convex deployment
   select local`, `pnpm sync:convex-env`, and `pnpm dev`. For an existing local
-  backend, omit the create command. See
-  `docs/backend/convex-local-production.md` for named cloud deployments,
-  cleanup, and schema migration guidance.
+  backend, omit the create command.
 - On a deployment that already contains incompatible data, use widen → migrate
   → narrow: first accept both shapes, backfill/clean the data, verify it, then
   remove the old shape. Do not deploy a narrowing schema first.
@@ -117,6 +121,16 @@ Run the narrowest useful checks first, then broader checks before committing:
 - Nix changes: `nix flake check --no-build`
 
 Document any skipped check in the final handoff.
+
+See any nested `AGENTS.md` as well.
+
+## Convex Agent Skills
+
+Official Convex skills live at repo-root `.agents/skills/` with lockfile
+`skills-lock.json`. Refresh them from the repo root with
+`npx skills add get-convex/agent-skills --yes`. Skill auto-install is disabled
+in `apps/convex/convex.json` so `pnpm db:generate` does not recreate a duplicate
+tree under `apps/convex/.agents/`.
 
 <!-- convex-ai-start -->
 

@@ -17,12 +17,15 @@ Node 24.
 ```bash
 cp .env.example .env
 pnpm install
-pnpm cvx:dev
+pnpm --filter cvx exec convex deployment create local
+pnpm --filter cvx exec convex deployment select local
+pnpm sync:convex-env
 pnpm dev
 ```
 
-Run `pnpm cvx:dev` once interactively so Convex can select or create a dev
-deployment and write the deployment settings.
+Create the local deployment once per worktree; select it and sync the frontend
+environment before starting `pnpm dev`. Do not copy `apps/convex/.env.local`
+from another worktree.
 
 ## Browser Push Keys
 
@@ -62,9 +65,11 @@ bootstrap:resetAndSeed
 ```
 
 This destructively recreates seeded users, clubs, courses, announcements,
-schedules, friendships, moderation keywords, and notification preferences.
-The function schedules small internal batches; run the internal query
-`bootstrap:seedStatus` to watch progress.
+schedules, friendships, moderation keywords, and notification preferences. It
+defaults to a 50-student, 119-staff development profile; pass
+`{"profile":"full"}` only for the 1,500-student full profile. The function
+schedules small internal batches; `bootstrap:seedStatus` reports `COMPLETE` or
+`FAILED` with the run's completion time or error.
 
 ## Daily Workflow
 

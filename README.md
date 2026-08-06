@@ -78,11 +78,13 @@ pnpm --filter cvx exec convex dashboard
 > [!IMPORTANT]
 > Do not run `pnpx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `pnpm --filter cvx ...` from the root instead.
 
-On a new checkout or new Convex project:
+On a new checkout, create and select its local Convex backend:
 
 ```bash
-pnpm --filter cvx dev          # link/create deployment → apps/convex/.env.local
-pnpm sync:convex-env           # copy Convex URLs into apps/web/.env.local
+pnpm --filter cvx exec convex deployment create local
+pnpm --filter cvx exec convex deployment select local
+pnpm sync:convex-env
+pnpm dev
 ```
 
 Then set required secrets on the **new** deployment (once):
@@ -102,11 +104,15 @@ pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
 pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
-Then seed demo data from the Convex Dashboard by running the internal function
-`bootstrap:resetAndSeed`, and check `bootstrap:seedStatus` until users and clubs
-are populated.
+Then seed demo data from the Convex Dashboard with internal function
+`bootstrap:resetAndSeed`. It defaults to a 50-student, 119-staff development
+profile; pass `{"profile":"full"}` only for the 1,500-student full profile.
+Use `bootstrap:seedStatus` to confirm the run reaches `COMPLETE` (or report its
+`FAILED` error).
 
-Run **both** `pnpm --filter cvx dev` and `pnpm --filter web dev` (or `pnpm dev` from the repo root) so localhost talks to the same deployment.
+`pnpm dev` starts the web and Convex watchers against the selected local
+deployment. See [Convex Local And Production Runtime](./docs/backend/convex-local-production.md)
+before using a cloud deployment.
 
 Demo seed/reset can also be run from the Convex Dashboard via internal function `bootstrap:resetAndSeed`.
 

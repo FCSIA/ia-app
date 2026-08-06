@@ -22,11 +22,14 @@ Follow these steps to bootstrap your local environment after cloning the reposit
 1. Clone the repository
 2. Configure environment variables: `cp .env.example .env`
 3. Install dependencies: `pnpm install`
-4. Configure your Convex dev deployment:
+4. Configure this checkout's local Convex deployment:
    ```bash
-   pnpm cvx:dev
+   pnpm --filter cvx exec convex deployment create local
+   pnpm --filter cvx exec convex deployment select local
+   pnpm sync:convex-env
    ```
-   Run this once interactively so Convex can select or create a dev deployment and write `CONVEX_DEPLOYMENT` to `apps/convex/.env.local`.
+   Run the create command once per worktree. The selection is written to that
+   worktree's `apps/convex/.env.local`; never copy it from another worktree.
 5. Start the development server: `pnpm dev`. This command starts:
 
 - The Next.js frontend at `http://localhost:3000`
@@ -46,7 +49,11 @@ Follow these steps to bootstrap your local environment after cloning the reposit
    ```
    Use `direnv exec . pnpm ...` for the same commands if your shell depends on
    the repo's Nix/direnv environment.
-7. To populate demo accounts, clubs, courses, and schedules, open the Convex Dashboard and run the internal function `bootstrap:resetAndSeed`, then check `bootstrap:seedStatus` for progress.
+7. To populate demo accounts, clubs, courses, and schedules, open the Convex
+   Dashboard and run internal function `bootstrap:resetAndSeed`. It defaults to
+   a 50-student, 119-staff development profile. Use
+   `{"profile":"full"}` only for the 1,500-student full profile, then check
+   `bootstrap:seedStatus` for `COMPLETE` or `FAILED`.
 
 ---
 
@@ -101,9 +108,10 @@ All demo accounts use their user ID as both the username and the password; e.g. 
 ### Reset the Database
 
 If you need to wipe all demo data and re-seed from scratch, open the Convex
-Dashboard and run the internal function `bootstrap:resetAndSeed`, then check
-`bootstrap:seedStatus` for progress. There is no local `pnpm db:reset` command
-and no seed secret.
+Dashboard and run internal function `bootstrap:resetAndSeed`. It defaults to
+the 50-student, 119-staff development profile; pass `{"profile":"full"}` for
+the 1,500-student full profile. Check `bootstrap:seedStatus` for `COMPLETE` or
+`FAILED`. There is no local `pnpm db:reset` command and no seed secret.
 
 ### Missing Convex Deployment Error
 
@@ -113,10 +121,13 @@ If you receive the error:
 Run:
 
 ```bash
-pnpm cvx:dev
+pnpm --filter cvx exec convex deployment create local
+pnpm --filter cvx exec convex deployment select local
+pnpm sync:convex-env
 ```
 
-Convex writes the selected dev deployment to `apps/convex/.env.local`. The seed/reset commands cannot run until that deployment exists.
+Create is needed only once per worktree. Convex writes the selection to
+`apps/convex/.env.local`; do not copy it from another worktree.
 
 ### VAPID Keys Are Missing
 

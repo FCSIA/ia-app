@@ -27,6 +27,21 @@ if (!convexUrl || !convexSiteUrl) {
   process.exit(1);
 }
 
+const deploymentIdentity = (value) => {
+  const url = new URL(value);
+  if (['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname)) {
+    return 'local';
+  }
+  return url.hostname.replace(/\.convex\.(cloud|site)$/, '');
+};
+
+if (deploymentIdentity(convexUrl) !== deploymentIdentity(convexSiteUrl)) {
+  console.error(
+    'CONVEX_URL and CONVEX_SITE_URL select different deployments. Fix apps/convex/.env.local before syncing.',
+  );
+  process.exit(1);
+}
+
 const upsert = (content, key, value) => {
   const line = `${key}="${value}"`;
   const pattern = new RegExp(`^${key}=.*$`, 'm');

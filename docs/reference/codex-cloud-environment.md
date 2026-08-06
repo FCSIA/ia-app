@@ -31,16 +31,16 @@ environment with the needed network allowlist.
 
 ## Environment Variables
 
-Use a non-production Convex deployment for queued agent work unless the task is
-explicitly a production deploy/release task.
+For ordinary queued agent work, use a worktree-local Convex backend and do not provision
+or inject a cloud deployment. The agent should create/select its worktree-local
+backend and sync the frontend environment as documented in
+`docs/backend/convex-local-production.md` and `docs/reference/environment.md`.
+Use a cloud dev deployment only when the task explicitly justifies a public URL,
+physical-device testing, a webhook, or shared dashboard access.
 
 ```env
 NODE_ENV=development
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_CONVEX_URL=https://your-dev-or-staging-deployment.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://your-dev-or-staging-deployment.convex.site
-CONVEX_URL=https://your-dev-or-staging-deployment.convex.cloud
-CONVEX_SITE_URL=https://your-dev-or-staging-deployment.convex.site
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 ```
 
@@ -59,10 +59,13 @@ For normal coding tasks, prefer this safer setup:
 - Keep generated Convex files committed.
 - Let agents run local checks such as `pnpm --filter cvx typecheck` and
   `pnpm --filter web build`.
+- Have agents create/select a local Convex deployment instead of sharing a
+  cloud dev deployment.
 - Ask agents not to deploy or run destructive seed/reset functions.
 
-For explicit deploy, codegen-against-cloud, or Convex environment management
-tasks, create a separate short-lived Codex environment with:
+For an explicitly justified cloud deploy, codegen-against-cloud, physical-device,
+webhook, or shared-dashboard task, create a separate short-lived Codex
+environment with:
 
 ```env
 CONVEX_DEPLOY_KEY=...
@@ -80,14 +83,22 @@ For ordinary queued coding work:
 Read AGENTS.md, agent-notes/STATE.md, docs/index.md, then inspect the smallest
 relevant source files. Make the requested change. Verify with the narrowest
 useful checks first; prefer pnpm --filter cvx typecheck and pnpm --filter web
-build. Do not deploy or reset seed data.
+build. For any Convex work, read docs/backend/convex-local-production.md and
+docs/reference/environment.md, inspect `git worktree list` and this worktree's
+apps/convex/.env.local, then use the worktree-local Convex backend. Do not use
+cloud Convex, deploy, or reset seed data without explicit authorization.
 ```
 
 For Convex backend work:
 
 ```text
-Read AGENTS.md and apps/convex/src/_generated/ai/guidelines.md before touching
-Convex files. Use pnpm --filter cvx typecheck after edits. Do not run
+Read AGENTS.md, apps/convex/AGENTS.md, and
+apps/convex/src/_generated/ai/guidelines.md before touching Convex files. Read
+docs/backend/convex-local-production.md and docs/reference/environment.md before
+any Convex watcher or deployment selection; read docs/backend/seed-and-reset.md
+before seed work. Inspect `git worktree list` and this worktree's
+apps/convex/.env.local, then use the worktree-local backend. Use
+pnpm --filter cvx typecheck after edits. Do not use cloud Convex or run
 bootstrap:resetAndSeed unless I explicitly ask.
 ```
 
@@ -104,4 +115,3 @@ pnpm --filter web build
 `pnpm lint` is still the intended broad check, but the current handoff notes
 say legacy `apps/api` lint failures block it until that code is fixed or
 removed.
-

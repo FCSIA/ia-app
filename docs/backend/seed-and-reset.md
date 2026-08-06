@@ -22,32 +22,27 @@ function:
 bootstrap:resetAndSeed
 ```
 
-The function is destructive. It clears demo auth/app data and recreates the full
-demo environment. The dashboard call only schedules asynchronous reset work; it
-does not mean the reset has completed. Use the internal query
-`bootstrap:seedStatus` sparingly to watch progress, and verify the final
-deployment data before relying on it.
+The function is destructive. It clears demo auth/app data and schedules the
+reset asynchronously; a successful dashboard call means the run started, not
+that it completed.
 
-`seedStatus` reads user totals from the `appStats` counter table instead of
-loading every user document. The counter is updated when users are created or
-deleted and rebuilt after the demo user seed completes. It is a progress signal,
-not an atomic completion record: counts can be stale or look plausible while a
-later seed phase has not run or has failed.
+`resetAndSeed` accepts an optional seed profile. With no argument (or
+`{"profile":"development"}`), it uses the development profile: 50 students
+and 119 staff. Use `{"profile":"full"}` only when the full 1,500-student,
+119-staff dataset is needed.
 
-The current `seedStatus` implementation is reactive and also scans seeded
-announcements, schedules, friendships, keyword rules, and notification
-preferences. Each reset mutation can re-run a live status subscription, making
-it disproportionately database-I/O expensive. Do not leave `seedStatus`
-subscribed in the dashboard, a client, or a polling loop during a reset. Check
-it manually only when needed, and treat its counts as diagnostic rather than a
-completion signal until the status implementation is redesigned.
+`seedStatus` reads one indexed `seedRuns` progress record. It reports `IDLE`,
+`RUNNING`, `COMPLETE`, or `FAILED`, along with the run id, profile, phase,
+cursor, start/update time, completion time, and any error. Wait for `COMPLETE`
+or investigate `FAILED`; the completion and error fields are the authoritative
+run outcome.
 
 ## Seed Flow
 
 `bootstrap:resetAndSeed` orchestrates:
 
 1. Better Auth component cleanup.
-2. Core users from `apps/convex/src/seed.ts`.
+2. Core users from `apps/convex/src/seed.ts` using the selected profile.
 3. Courses from `apps/convex/seed-data/courses.ts`.
 4. Clubs from `apps/convex/seed-data/clubs.ts`.
 5. Announcements, moderation keywords, and notification preferences.
@@ -73,10 +68,13 @@ For disposable demo data, the safer alternative is to select a new isolated
 local or named cloud deployment before deploying the branch and run a full reset
 there. See [Convex Local And Production Runtime](convex-local-production.md).
 
-## Expected Counts
+## Expected Profile Counts
 
-- 1,500 students
-- 119 staff
+- Development (default): 50 students and 119 staff
+- Full: 1,500 students and 119 staff
+
+The full profile targets these fixture counts:
+
 - 103 courses
 - 26 clubs
 - 12 active announcements, 15 total seeded announcements

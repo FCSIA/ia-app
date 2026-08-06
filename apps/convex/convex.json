@@ -1,4 +1,9 @@
 {
   "$schema": "../../node_modules/convex/schemas/convex.schema.json",
-  "functions": "src/"
+  "functions": "src/",
+  "aiFiles": {
+    "skills": {
+      "agents": []
+    }
+  }
 }

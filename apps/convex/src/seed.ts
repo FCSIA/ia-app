@@ -4,7 +4,16 @@ import { internal } from "./_generated/api";
 import { createLinkedUser } from "./users/_lib";
 import { incrementUserCounts } from "./stats";
 import { type AppRole } from "../lib/roles";
-import { type Pathway } from "./validators";
+import {
+  seedProfileValidator,
+  type Pathway,
+  type SeedProfile,
+} from "./validators";
+
+const STUDENT_COUNT_BY_PROFILE: Record<SeedProfile, number> = {
+  development: 50,
+  full: 1500,
+};
 
 const FIRST_NAMES = [
   "James",
@@ -276,7 +285,11 @@ function nextKeyWithRemaining<T extends string | number>(
   return sorted.find((value) => (remaining.get(value) ?? 0) > 0)!;
 }
 
-function generateAllUsers() {
+function targetShare(total: number, index: number, parts: number) {
+  return Math.floor(total / parts) + (index < total % parts ? 1 : 0);
+}
+
+function generateUsers(studentCount: number) {
   const usedNames = new Set<string>();
   const staffSeeds: any[] = [
     {
@@ -371,33 +384,27 @@ function generateAllUsers() {
         : user.roles,
   }));
 
-  const gradeRemaining = new Map<number, number>([
-    [9, 375 - ANCHOR_STUDENTS.filter((s) => s.gradeLevel === 9).length],
-    [10, 375 - ANCHOR_STUDENTS.filter((s) => s.gradeLevel === 10).length],
-    [11, 375 - ANCHOR_STUDENTS.filter((s) => s.gradeLevel === 11).length],
-    [12, 375 - ANCHOR_STUDENTS.filter((s) => s.gradeLevel === 12).length],
-  ]);
+  const grades = [9, 10, 11, 12];
+  const gradeRemaining = new Map<number, number>(
+    grades.map((grade, index) => [
+      grade,
+      targetShare(studentCount, index, grades.length) -
+        ANCHOR_STUDENTS.filter((student) => student.gradeLevel === grade)
+          .length,
+    ]),
+  );
 
   const PATHWAYS = ["ENGINEERING", "INFORMATION_TECHNOLOGY", "HEALTH_SCIENCE"];
-  const majorRemaining = new Map<string, number>([
-    [
-      "ENGINEERING",
-      500 - ANCHOR_STUDENTS.filter((s) => s.major === "ENGINEERING").length,
-    ],
-    [
-      "INFORMATION_TECHNOLOGY",
-      500 -
-        ANCHOR_STUDENTS.filter((s) => s.major === "INFORMATION_TECHNOLOGY")
-          .length,
-    ],
-    [
-      "HEALTH_SCIENCE",
-      500 - ANCHOR_STUDENTS.filter((s) => s.major === "HEALTH_SCIENCE").length,
-    ],
-  ]);
+  const majorRemaining = new Map<string, number>(
+    PATHWAYS.map((pathway, index) => [
+      pathway,
+      targetShare(studentCount, index, PATHWAYS.length) -
+        ANCHOR_STUDENTS.filter((student) => student.major === pathway).length,
+    ]),
+  );
 
   const generatedStudents: any[] = [];
-  for (let studentNumber = 11; studentNumber <= 1500; studentNumber++) {
+  for (let studentNumber = 11; studentNumber <= studentCount; studentNumber++) {
     const gradeLevel = nextKeyWithRemaining([9, 10, 11, 12], gradeRemaining);
     gradeRemaining.set(gradeLevel, (gradeRemaining.get(gradeLevel) ?? 0) - 1);
 
@@ -429,13 +436,26 @@ function generateAllUsers() {
   return [...normalizedStaffSeeds, ...ANCHOR_STUDENTS, ...generatedStudents];
 }
 
-const SEED_USERS = generateAllUsers();
+const seedUsersByProfile = new Map<
+  SeedProfile,
+  ReturnType<typeof generateUsers>
+>();
+
+function getSeedUsers(profile: SeedProfile) {
+  const cached = seedUsersByProfile.get(profile);
+  if (cached) return cached;
+
+  const users = generateUsers(STUDENT_COUNT_BY_PROFILE[profile]);
+  seedUsersByProfile.set(profile, users);
+  return users;
+}
 
 export const run = internalMutation({
   args: {
     reset: v.optional(v.boolean()),
     cursor: v.optional(v.string()),
     batchSize: v.optional(v.number()),
+    profile: v.optional(seedProfileValidator),
   },
   returns: v.object({
     deleted: v.number(),
@@ -444,6 +464,8 @@ export const run = internalMutation({
     isDone: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    const profile = args.profile ?? "development";
+    const seedUsers = getSeedUsers(profile);
     const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
     const batchSize = Math.min(Math.max(Math.floor(args.batchSize ?? 1), 1), 8);
 
@@ -464,7 +486,7 @@ export const run = internalMutation({
     }
 
     let upserted = 0;
-    for (const student of SEED_USERS.slice(cursor, cursor + batchSize)) {
+    for (const student of seedUsers.slice(cursor, cursor + batchSize)) {
       const existing = await ctx.db
         .query("users")
         .withIndex("by_uniqueId", (q) => q.eq("uniqueId", student.uniqueId))
@@ -481,14 +503,14 @@ export const run = internalMutation({
     }
 
     const nextIndex = cursor + batchSize;
-    if (nextIndex >= SEED_USERS.length) {
+    if (nextIndex >= seedUsers.length) {
       await ctx.runMutation(internal.stats.rebuildUserCounts, {});
     }
     return {
       deleted: 0,
       upserted,
-      nextCursor: nextIndex < SEED_USERS.length ? String(nextIndex) : null,
-      isDone: nextIndex >= SEED_USERS.length,
+      nextCursor: nextIndex < seedUsers.length ? String(nextIndex) : null,
+      isDone: nextIndex >= seedUsers.length,
     };
   },
 });
