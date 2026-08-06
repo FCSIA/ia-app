@@ -9,53 +9,72 @@ tags: [setup, development, convex]
 The current app runs on Next.js plus Convex. The old Prisma/PostgreSQL API is no
 longer part of the active local setup.
 
-## First Run
+## Prerequisites
 
-Use Node.js 20.19 or newer. The Codex/development environment currently uses
-Node 24.
+- **Node.js**: v24 (or v20.19+)
+- **pnpm**: v10.29.3 (matching `packageManager` in `package.json`)
+
+### Optional: Nix + direnv (macOS / Linux)
+
+If you use Nix and direnv, dependencies and Node versions load automatically:
 
 ```bash
+direnv allow
+```
+
+## First Run
+
+```bash
+# 1. Copy environment template
 cp .env.example .env
+
+# 2. Install dependencies
 pnpm install
+
+# 3. Create & select this worktree's local Convex deployment
 pnpm --filter cvx exec convex deployment create local
 pnpm --filter cvx exec convex deployment select local
+
+# 4. Sync Convex environment variables to frontend apps
 pnpm sync:convex-env
+
+# 5. Start development servers
 pnpm dev
 ```
 
-Create the local deployment once per worktree; select it and sync the frontend
-environment before starting `pnpm dev`. Do not copy `apps/convex/.env.local`
-from another worktree.
+> [!IMPORTANT]
+> Create the local deployment once per worktree; select it and sync the frontend
+> environment before starting `pnpm dev`. Do not copy `apps/convex/.env.local`
+> from another worktree.
 
-## Browser Push Keys
+## Browser Push Keys (Optional)
 
-Browser push is optional for basic local development, but the notification
-settings page expects VAPID keys before push can be enabled.
+Browser push is optional for basic local development, but notification
+settings expect VAPID keys before push can be enabled.
 
-Generate one key pair:
+1. Generate key pair:
 
-```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
-```
+   ```bash
+   pnpm --filter cvx exec web-push generate-vapid-keys
+   ```
 
-Set the generated public key in `apps/web/.env.local`:
+2. Set public key in `apps/web/.env.local`:
 
-```env
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
-```
+   ```env
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+   ```
 
-Set the matching Convex deployment variables:
+3. Set matching deployment variables on Convex:
 
-```bash
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
-```
+   ```bash
+   pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
+   pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
+   pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+   ```
 
-If `pnpm` is provided by the repo's direnv shell, prefix these commands with
-`direnv exec .`.
+   *(Prefix commands with `direnv exec .` if using Nix/direnv).*
 
-## Demo Data
+## Demo Data & Reset
 
 Demo data is reset from the Convex Dashboard, not through a local CLI command.
 Run the internal function:
@@ -67,30 +86,46 @@ bootstrap:resetAndSeed
 This destructively recreates seeded users, clubs, courses, announcements,
 schedules, friendships, moderation keywords, and notification preferences. It
 defaults to a 50-student, 119-staff development profile; pass
-`{"profile":"full"}` only for the 1,500-student full profile. The function
-schedules small internal batches; `bootstrap:seedStatus` reports `COMPLETE` or
-`FAILED` with the run's completion time or error.
-
-## Daily Workflow
-
-```bash
-pnpm dev
-```
-
-Useful focused commands:
-
-```bash
-pnpm db:generate
-pnpm --filter cvx typecheck
-pnpm lint
-pnpm build
-```
+`{"profile":"full"}` only for the 1,500-student full profile. Use
+`bootstrap:seedStatus` to report progress (`COMPLETE` or `FAILED`).
 
 ## Demo Accounts
 
-Seeded accounts use their unique ID as the password, for example:
+Seeded accounts use their unique ID as the password:
 
-- `SUPER001` / `SUPER001`
-- `ADMIN001` / `ADMIN001`
-- `TCH001` / `TCH001`
-- `STU001` / `STU001`
+- `SUPER001` / `SUPER001` (Super Admin)
+- `ADMIN001` / `ADMIN001` (School Admin)
+- `TCH001` / `TCH001` (Teacher / Staff)
+- `STU001` / `STU001` (Student)
+
+## Daily Workflow & Commands
+
+```bash
+pnpm dev              # Start web app and Convex dev server
+pnpm db:studio        # Open Convex Dashboard in browser
+pnpm --filter cvx typecheck # Typecheck Convex functions
+pnpm --filter web exec tsc --noEmit # Typecheck web frontend
+pnpm lint             # Run linter
+pnpm build            # Production build check
+```
+
+## Troubleshooting
+
+### Missing Convex Deployment Error
+
+If you see `Convex is not configured for this checkout`:
+
+```bash
+pnpm --filter cvx exec convex deployment create local
+pnpm --filter cvx exec convex deployment select local
+pnpm sync:convex-env
+```
+
+### Stale Build Caches
+
+If Turborepo or Next.js build caches are stale:
+
+```bash
+rm -rf .turbo apps/web/.next
+pnpm build
+```

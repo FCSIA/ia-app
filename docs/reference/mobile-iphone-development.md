@@ -20,7 +20,7 @@ wirelessly from Metro. Expo Go is useful only for compatible, basic checks.
 This setup requires a Mac with Xcode and the phone connected by cable.
 
 1. Set up the repository and install dependencies as described in
-   [Developer setup](../../SETUP.md).
+   [Developer setup](getting-started.md).
 2. On the phone, enable **Developer Mode** in **Settings > Privacy & Security**,
    restart if asked, then unlock the phone and trust the Mac.
 3. In Xcode, open **Settings > Accounts** and sign in with the developer's

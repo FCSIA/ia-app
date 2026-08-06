@@ -10,7 +10,7 @@ same change.
 
 ## Start Here
 
-- [Developer setup](../SETUP.md) - local environment, Convex dev deployment,
+- [Developer setup](reference/getting-started.md) - local environment, Convex dev deployment,
   seed/reset, and demo accounts.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.

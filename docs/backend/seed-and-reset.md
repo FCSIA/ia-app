@@ -84,5 +84,5 @@ The full profile targets these fixture counts:
 
 ## Related
 
-- [Developer setup](../../SETUP.md)
+- [Developer setup](../reference/getting-started.md)
 - [Schema map](../database/schema-map.md)

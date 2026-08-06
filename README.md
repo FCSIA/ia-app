@@ -35,13 +35,12 @@ ia-app/
 ├── packages/design-tokens/ # Shared color, radius, type, and badge tokens
 ├── docs/                  # Current product, architecture, backend, frontend docs
 ├── AGENTS.md              # Agent workflow rules
-├── SETUP.md               # Full developer setup guide
 └── PORTING.md             # Historical backend-to-Convex migration context
 ```
 
 ## Quick Start
 
-For a full setup walkthrough, use [SETUP.md](./SETUP.md).
+For a full setup walkthrough, use [Getting Started](docs/reference/getting-started.md).
 
 Requires Node.js 20.19 or newer and pnpm 10.29.3.
 
@@ -121,7 +120,7 @@ Demo seed/reset can also be run from the Convex Dashboard via internal function 
 | Web App          | http://localhost:3000                                  |
 | Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
 
-Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [SETUP.md](./SETUP.md#5-test-accounts) for a complete list of demo logins.
+Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [docs/reference/getting-started.md](./docs/reference/getting-started.md#5-test-accounts) for a complete list of demo logins.
 
 ## Common Commands
 
@@ -148,7 +147,7 @@ The detailed architecture and feature list starts in [docs/architecture/overview
 
 ## Documentation
 
-- [SETUP.md](./SETUP.md) — Step-by-step developer environment setup.
+- [docs/reference/getting-started.md](./docs/reference/getting-started.md) — Step-by-step developer environment setup.
 - [docs/index.md](./docs/index.md) — Current documentation hub.
 - [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.
 - [docs/backend/convex-overview.md](./docs/backend/convex-overview.md) — Backend function layout and rules.

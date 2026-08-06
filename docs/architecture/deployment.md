@@ -67,5 +67,5 @@ legacy app lint failures until that app is removed or fixed.
 
 ## Related
 
-- [Developer setup](../../SETUP.md)
+- [Developer setup](../reference/getting-started.md)
 - [Seed and reset](../backend/seed-and-reset.md)
