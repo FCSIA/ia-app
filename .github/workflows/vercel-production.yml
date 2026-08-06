@@ -1,17 +1,19 @@
-# Deploy the web app to Vercel production when main changes.
+# Deploy the Convex backend and web app to production when main changes or on demand.
 #
 # Required repo secret:
+#   CONVEX_DEPLOY_KEY — production deploy key with the `deployment:deploy` permission
 #   VERCEL_TOKEN — create at https://vercel.com/account/tokens
 #
 # Required repo variables (set via Settings → Secrets and variables → Actions):
 #   VERCEL_ORG_ID      team_GHUf4kXop7vin9pdXDbiK5wq
 #   VERCEL_PROJECT_ID  prj_uoyozTzyLHPCOZbDNxEbMM9oWyni
 
-name: Vercel Production
+name: Production Deploy
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,6 +39,14 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy Convex
+        run: pnpm --filter cvx exec convex deploy --typecheck enable
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Deploy to Vercel
         run: pnpx vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN"
