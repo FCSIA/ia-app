@@ -273,9 +273,14 @@ export const importStudents = mutation({
         const email = row.email?.trim() || buildStudentEmail(uniqueId);
         const temporaryPassword = args.generatePasswords
           ? generateTemporaryPassword()
-          : uniqueId.length >= 8
-            ? uniqueId
-            : `${uniqueId}12345678`.slice(0, 12);
+          : uniqueId;
+
+        if (uniqueId.length < 3) {
+          throw new ConvexError(`Student ID '${uniqueId}' is too short. It must be at least 3 characters.`);
+        }
+        if (!args.generatePasswords && temporaryPassword.length < 12) {
+          throw new ConvexError(`Student ID '${uniqueId}' is too short (${uniqueId.length} chars) to be used as a password. Passwords must be at least 12 characters. Please check 'Generate Passwords'.`);
+        }
 
         await createLinkedUser(ctx, {
           uniqueId,
