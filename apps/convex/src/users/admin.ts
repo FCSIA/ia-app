@@ -272,7 +272,7 @@ export const importStudents = mutation({
 
         const email = row.email?.trim() || buildStudentEmail(uniqueId);
         const temporaryPassword = args.generatePasswords
-          ? generateTemporaryPassword(10)
+          ? generateTemporaryPassword()
           : uniqueId;
 
         await createLinkedUser(ctx, {
