@@ -17,7 +17,7 @@ type IaLoadingMarkProps = {
   animated?: boolean;
 };
 
-/** Innovation Academy wordmark with phoenix — used for route loading states. */
+/** Innovation Academy app mark used for route loading states. */
 export function IaLoadingMark({
   className,
   size = 'lg',

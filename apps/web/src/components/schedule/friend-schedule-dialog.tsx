@@ -133,7 +133,7 @@ export function FriendScheduleDialog({
                         </p>
                       )}
                       {isCurrent && (
-                        <Badge color="orange" size="sm" variant="dot" className="shrink-0 font-bold uppercase text-[10px]">
+                        <Badge color="orange" size="sm" variant="solid" className="shrink-0 font-bold uppercase text-[10px]">
                           Current Class
                         </Badge>
                       )}
@@ -173,7 +173,7 @@ export function FriendScheduleDialog({
                         {block.startTime} – {block.endTime}
                       </span>
                       {isCurrentCustom && (
-                        <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                        <Badge color="orange" size="sm" variant="solid" className="font-semibold uppercase text-[10px]">
                           Now
                         </Badge>
                       )}

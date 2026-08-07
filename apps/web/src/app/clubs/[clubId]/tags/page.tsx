@@ -91,7 +91,7 @@ export default function ClubTagsPage() {
                       {tag.members.map((member) => (
                         <Badge
                           key={`${tag._id}-${member.user._id}`}
-                          variant="dot"
+                          variant="solid"
                           className="font-normal"
                         >
                           {fullName(member.user)}

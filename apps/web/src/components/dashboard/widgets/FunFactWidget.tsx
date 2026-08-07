@@ -1,24 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Lightbulb, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { pickNavigationLoadingFact } from '@ia/fun-facts';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
-import { pickNavigationLoadingMessage } from '@/lib/navigation-loading-messages';
+import { LoadingFact } from '@/components/ui/loading-fact';
 
 const ROTATE_MS = 12_000;
 
 export function FunFactWidget() {
-  const [message, setMessage] = useState(pickNavigationLoadingMessage);
+  const [fact, setFact] = useState(pickNavigationLoadingFact);
 
   const nextMessage = useCallback(() => {
-    setMessage(pickNavigationLoadingMessage());
+    setFact(pickNavigationLoadingFact());
   }, []);
 
   useEffect(() => {
     const id = setTimeout(nextMessage, ROTATE_MS);
     return () => clearTimeout(id);
-  }, [message, nextMessage]);
+  }, [fact, nextMessage]);
 
   return (
     <Panel
@@ -38,16 +39,11 @@ export function FunFactWidget() {
         </Button>
       }
     >
-      <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 rounded-[1.4rem] bg-muted/20 p-5 sm:items-center">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Lightbulb className="size-5" aria-hidden />
-        </div>
-        <p
-          className="min-w-0 break-words text-sm leading-relaxed text-muted-foreground"
-          title={message}
-        >
-          {message}
-        </p>
+      <div
+        className="flex h-40 w-full min-w-0 items-center overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28"
+        title={fact.text}
+      >
+        <LoadingFact fact={fact} className="w-full" />
       </div>
     </Panel>
   );
