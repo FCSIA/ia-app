@@ -92,9 +92,10 @@ Use the shared Fluid `ScrollArea` for app-owned panes with a bounded height or
 width, such as navigation lists, table workbenches, calendar grids, dialogs,
 and sheets. Set a definite constraint on `ScrollArea`, put content spacing on
 the viewport, and choose `orientation="horizontal"` or `"both"` when the
-content can overflow on those axes. The visible Fluid scrollbar is the edge
-affordance for these generic panes; do not add a mask fade that can imply
-overflow when everything already fits.
+content can overflow on those axes. Fluid's scrollbar reveals on hover or
+scroll without remounting, providing the edge affordance for these generic
+panes; do not add a mask fade that can imply overflow when everything already
+fits.
 
 Do not wrap scrollports whose owning component depends on being the scrolling
 element. This includes `MessageScroller`, command/select/menu internals, rich

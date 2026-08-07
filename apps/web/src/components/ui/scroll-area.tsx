@@ -169,8 +169,8 @@ const ScrollBar = forwardRef<
       data-visible={visible ? "" : undefined}
       className={cn(
         "group/scrollbar z-20 flex touch-none select-none",
-        "opacity-70 transition-opacity duration-120 ease-out",
-        "data-[visible]:opacity-100 data-[visible]:duration-160",
+        "pointer-events-none opacity-0 transition-opacity delay-160 duration-120 ease-out",
+        "data-[visible]:pointer-events-auto data-[visible]:opacity-100 data-[visible]:delay-0 data-[visible]:duration-160",
         orientation === "vertical" && "h-full w-2.5",
         orientation === "horizontal" && "h-2.5 w-full flex-col",
         className,

@@ -135,8 +135,8 @@ stretch or decorate the row just to place the action toolbar, and do not anchor
 reactions to the row.
 
 The message viewport owns a data-aware edge fade because it already tracks its
-scroll position. Generic `ScrollArea` panes use the visible Fluid scrollbar
-without a mask fade, avoiding false overflow cues when their content fits.
+scroll position. Generic `ScrollArea` panes use Fluid's hover/scroll scrollbar
+cue without a mask fade, avoiding false overflow cues when their content fits.
 On wide channel layouts, compose the main timeline and thread with shadcn
 `ResizablePanelGroup`; each panel owns its own `MessageScroller`, while the
 thread composer remains a non-scrolling flex sibling below the thread viewport.
