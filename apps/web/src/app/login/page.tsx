@@ -53,18 +53,20 @@ export default function LoginPage() {
       <section className="flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
         <Card className="w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5">
           <CardHeader className="space-y-3 pb-6">
-            <div className="mb-1 flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-              <Image
-                src="/icons/logo.png"
-                alt="Innovation Academy phoenix"
-                width={56}
-                height={56}
-                priority
-                className="size-full object-contain"
-              />
+            <div className="mb-1 flex flex-col items-center gap-2 self-center">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+                <Image
+                  src="/icons/logo.png"
+                  alt="Innovation Academy phoenix"
+                  width={56}
+                  height={56}
+                  priority
+                  className="size-full object-contain"
+                />
+              </div>
+              <p className="text-sm font-medium text-primary">Innovation Academy</p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-primary">Innovation Academy</p>
               <CardTitle className="text-2xl font-semibold tracking-tight">Sign in</CardTitle>
               <CardDescription>Use your school ID and password.</CardDescription>
             </div>
