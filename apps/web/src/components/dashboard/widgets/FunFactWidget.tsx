@@ -38,12 +38,12 @@ export function FunFactWidget() {
         </Button>
       }
     >
-      <div className="grid h-40 w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-4 overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28">
+      <div className="grid w-full min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-4 rounded-[1.4rem] bg-muted/20 p-5 sm:items-center">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Lightbulb className="size-5" aria-hidden />
         </div>
         <p
-          className="h-[4.5rem] min-w-0 overflow-hidden text-sm leading-relaxed text-muted-foreground"
+          className="min-w-0 break-words text-sm leading-relaxed text-muted-foreground"
           title={message}
         >
           {message}
