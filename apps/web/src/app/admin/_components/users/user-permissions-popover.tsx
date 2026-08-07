@@ -25,11 +25,12 @@ export function UserPermissionsPopover({
   onAssignRoles,
 }: UserPermissionsPopoverProps) {
   const roles = getUserRoles(user);
+  const roleSet = new Set(roles);
   const canEdit = canEditUserRoles(user, isSuperAdmin);
   const roleOptions = getAssignableRoleOptions(isSuperAdmin);
   const checkedIndices = new Set(
     roleOptions.flatMap(({ role }, index) =>
-      roles.includes(role) ? [index] : [],
+      roleSet.has(role) ? [index] : [],
     ),
   );
   const roleSelectionDisabled = !canEdit || isPending;
@@ -63,7 +64,7 @@ export function UserPermissionsPopover({
           className="w-full gap-0"
         >
           {roleOptions.map(({ role, label }, index) => {
-            const active = roles.includes(role);
+            const active = roleSet.has(role);
             return (
               <CheckboxItem
                 key={role}

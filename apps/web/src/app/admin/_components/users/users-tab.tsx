@@ -26,6 +26,7 @@ import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 
 const ROLE_BADGE_LIMIT = 2;
+const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
@@ -242,7 +243,6 @@ function UserTableSection({
   const selectedCount = selectedUserIds.size;
   const selectedVisibleCount = selectableUsers.filter((user) => selectedUserIds.has(user._id)).length;
   const areAllVisibleUsersSelected = selectableUsers.length > 0 && selectedVisibleCount === selectableUsers.length;
-  const headers = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
 
   const toggleUser = (userId: string, selected: boolean) => {
     setSelectedUserIds((current) => {
@@ -376,7 +376,7 @@ function UserTableSection({
                 aria-label="Select all users shown on this page"
               />
             </TableHead>
-            {headers.slice(1).map((header) => (
+            {USER_TABLE_HEADERS.slice(1).map((header) => (
               <TableHead key={header} className={d.head}>
                 {header}
               </TableHead>
@@ -386,7 +386,7 @@ function UserTableSection({
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={headers.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
+              <TableCell colSpan={USER_TABLE_HEADERS.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
                 {emptyMessage}
               </TableCell>
             </TableRow>

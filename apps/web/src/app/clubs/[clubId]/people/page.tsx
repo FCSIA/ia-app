@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
@@ -57,6 +57,10 @@ import { filterBySearchQuery } from '@/lib/search';
 
 type StudentResult = FunctionReturnType<typeof api.clubs.invitations.searchInviteCandidates>[number];
 
+const subscribeToOrigin = () => () => undefined;
+const getClientOrigin = () => window.location.origin;
+const getServerOrigin = () => '';
+
 function ManagePeopleDialog({
   club,
   open,
@@ -74,11 +78,7 @@ function ManagePeopleDialog({
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
-  const [origin, setOrigin] = useState('');
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
+  const origin = useSyncExternalStore(subscribeToOrigin, getClientOrigin, getServerOrigin);
 
   const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
 

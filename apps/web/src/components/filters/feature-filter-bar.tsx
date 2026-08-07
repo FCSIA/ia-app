@@ -59,6 +59,7 @@ export function FeatureFilterBar({
   className,
 }: FeatureFilterBarProps) {
   const hasActive = activeCount > 0 || activeChips.length > 0 || !!search.trim();
+  const activeChipSet = new Set(activeChips);
 
   return (
     <SearchToolbar className={cn('p-0', className)}>
@@ -98,9 +99,10 @@ export function FeatureFilterBar({
           value={activeChips}
           disabled={!onChipToggle}
           onValueChange={(nextValues) => {
+            const nextValueSet = new Set(nextValues);
             const changedValue =
-              nextValues.find((value) => !activeChips.includes(value)) ??
-              activeChips.find((value) => !nextValues.includes(value));
+              nextValues.find((value) => !activeChipSet.has(value)) ??
+              activeChips.find((value) => !nextValueSet.has(value));
             if (changedValue) onChipToggle?.(changedValue);
           }}
         >
