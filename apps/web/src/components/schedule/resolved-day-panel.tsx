@@ -19,6 +19,13 @@ type ResolvedDayPanelProps = {
   onDateChange: (dateKey: string) => void;
 };
 
+const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
 function shiftDateKey(dateKey: string, amount: number) {
   const date = new Date(`${dateKey}T12:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + amount);
@@ -26,12 +33,7 @@ function shiftDateKey(dateKey: string, amount: number) {
 }
 
 function dateLabel(dateKey: string) {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${dateKey}T12:00:00.000Z`));
+  return DATE_LABEL_FORMATTER.format(new Date(`${dateKey}T12:00:00.000Z`));
 }
 
 export function ResolvedDayPanel({

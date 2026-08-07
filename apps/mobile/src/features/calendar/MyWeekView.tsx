@@ -26,6 +26,10 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
 const fallbackPeriods = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const lunchPeriodOptions = [
+  { value: "PERIOD_4", label: "Period 4" },
+  { value: "PERIOD_5", label: "Period 5" },
+] as const;
 type Weekday = (typeof weekdays)[number];
 type LunchPeriod = "PERIOD_4" | "PERIOD_5";
 
@@ -142,14 +146,16 @@ export function MyWeekView() {
       await saveSchedule({
         isPublic,
         lunchPeriod,
-        entries: draftEntries
-          .filter((entry) => (entry.className ?? entry.course?.title)?.trim())
-          .map((entry) => ({
+        entries: draftEntries.reduce<any[]>((result, entry) => {
+          if (!(entry.className ?? entry.course?.title)?.trim()) return result;
+          result.push({
             weekday: entry.weekday,
             periodNumber: entry.periodNumber,
             courseId: entry.courseId ?? null,
             className: entry.className ?? entry.course?.title ?? "Class",
-          })),
+          });
+          return result;
+        }, []),
       });
       setEditing(false);
       showToast({ title: "Schedule saved", tone: "success" });
@@ -539,17 +545,16 @@ function ScheduleTable({
   const lunchNumber = lunchPeriod ? lunchPeriodNumber(lunchPeriod) : null;
   const dayEntries = entries.filter((entry) => entry.weekday === day);
   const dayBlocks = blocks
-    .filter((block) => block.weekday === day)
     .filter(
       (block) =>
-        block.periodNumber !== null || block.label.trim().toLowerCase() !== "lunch",
+        block.weekday === day &&
+        (block.periodNumber !== null || block.label.trim().toLowerCase() !== "lunch"),
     )
     .sort((left, right) => left.startTime.localeCompare(right.startTime));
-  const blockPeriods = new Set(
-    dayBlocks
-      .map((block) => block.periodNumber)
-      .filter((period): period is number => typeof period === "number"),
-  );
+  const blockPeriods = new Set<number>();
+  for (const block of dayBlocks) {
+    if (typeof block.periodNumber === "number") blockPeriods.add(block.periodNumber);
+  }
   const displayedPeriods = dayBlocks.length
     ? blockPeriods
     : new Set<number>(fallbackPeriods);
@@ -738,18 +743,13 @@ function LunchPeriodPicker({
   onChange: (value: LunchPeriod) => void;
 }) {
   const { color } = useTheme();
-  const options = [
-    { value: "PERIOD_4", label: "Period 4" },
-    { value: "PERIOD_5", label: "Period 5" },
-  ] as const;
-
   return (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel="Lunch period"
       style={{ flexDirection: "row", gap: spacing.sm }}
     >
-      {options.map((option) => {
+      {lunchPeriodOptions.map((option) => {
         const selected = value === option.value;
         return (
           <PressableScale

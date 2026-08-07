@@ -170,9 +170,8 @@ export function copyDayEntries(
   targetDays: ScheduleWeekday[],
 ) {
   const sourceEntries = entries.filter((entry) => entry.weekday === sourceDay);
-  const filtered = entries.filter(
-    (entry) => !targetDays.includes(entry.weekday),
-  );
+  const targetDaySet = new Set<ScheduleWeekday>(targetDays);
+  const filtered = entries.filter((entry) => !targetDaySet.has(entry.weekday));
 
   return [
     ...filtered,

@@ -40,14 +40,15 @@ import {
 const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
 const EMPTY_SEARCH_RESULTS: ScheduleSearchResult[] = [];
+const SCHOOL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 
 function schoolDateKey() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
+  const parts = SCHOOL_DATE_FORMATTER.formatToParts(new Date());
   const byType = new Map(parts.map((part) => [part.type, part.value]));
   return `${byType.get('year')}-${byType.get('month')}-${byType.get('day')}`;
 }
