@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
-  AtSign,
   ChevronDown,
   ChevronsUpDown,
   Compass,
@@ -193,12 +192,6 @@ export function ClubWorkspace({
       label: "People",
       icon: Users2,
       match: (p) => p.startsWith(`/clubs/${clubId}/people`),
-    },
-    {
-      href: `/clubs/${clubId}/tags`,
-      label: "Tags",
-      icon: AtSign,
-      match: (p) => p.startsWith(`/clubs/${clubId}/tags`),
     },
   ];
 

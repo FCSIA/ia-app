@@ -71,7 +71,6 @@ The backend must still reject unauthorized queries or mutations.
 | `/clubs/:clubId` | Club workspace |
 | `/clubs/:clubId/channels/:channelId` | Club channel messages |
 | `/clubs/:clubId/people` | Club members, invites, join codes |
-| `/clubs/:clubId/tags` | Club mention tags |
 | `/courses` | Course catalog |
 | `/courses/:slug` | Course detail |
 | `/events` | Event list and approvals |

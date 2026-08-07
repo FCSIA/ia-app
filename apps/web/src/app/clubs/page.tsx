@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { Check, Plus, Shield, Users2, X } from 'lucide-react';
+import { Check, Plus, Shield, UsersRound, X } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
@@ -10,12 +10,25 @@ import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchInput } from '@/components/ui/search';
+import { Skeleton } from '@/components/ui/skeleton';
 import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from "@/lib/utils";
+
+const CLUB_SKELETON_IDS = ['club-skeleton-1', 'club-skeleton-2', 'club-skeleton-3'];
+const DISCOVERY_SKELETON_IDS = [
+  'discovery-skeleton-1',
+  'discovery-skeleton-2',
+  'discovery-skeleton-3',
+  'discovery-skeleton-4',
+  'discovery-skeleton-5',
+  'discovery-skeleton-6',
+  'discovery-skeleton-7',
+];
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -80,7 +93,7 @@ export default function ClubsLandingPage() {
       headerSlot={headerSlot}
       mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
     >
-      <div className="mx-auto w-full max-w-6xl space-y-4">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         {invites.length > 0 ? (
           <section className="overflow-hidden rounded-lg border border-amber-500/25 bg-amber-500/5">
             <div className="border-b border-amber-500/15 px-3 py-2">
@@ -106,7 +119,7 @@ export default function ClubsLandingPage() {
                       )
                     }
                   >
-                    <Check className="size-4" />
+                    <Check data-icon="inline-start" />
                     Accept
                   </Button>
                   <Button
@@ -119,7 +132,7 @@ export default function ClubsLandingPage() {
                       )
                     }
                   >
-                    <X className="size-4" />
+                    <X />
                   </Button>
                 </div>
               ))}
@@ -127,48 +140,57 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        <div
-          className={cn(
-            'grid items-start gap-4',
-            !hasAdministrativeClubAccess && 'lg:grid-cols-[15rem_minmax(0,1fr)]',
-          )}
-        >
-          {!hasAdministrativeClubAccess ? (
-            <aside className="overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:sticky lg:top-3">
-              <div className="flex h-10 items-center justify-between border-b px-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Your clubs
-                </h2>
-                <span className="text-xs tabular-nums text-muted-foreground">{myClubs.length}</span>
-              </div>
-              {myClubs.length > 0 ? (
-                <ScrollArea viewportClassName="max-h-72">
-                  <CardGroup orientation="inline">
-                    {myClubs.map((club) => (
-                      <ClubListRow
-                        key={club._id}
-                        club={club}
-                        density="compact"
-                        badge={
-                          club.kind === 'sponsor' ? (
-                            <span title="Sponsor">
-                              <Shield className="size-3.5 text-primary" />
-                            </span>
-                          ) : undefined
-                        }
-                      />
-                    ))}
-                  </CardGroup>
-                </ScrollArea>
-              ) : (
-                <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">
-                  Clubs you join will show here.
+        {!hasAdministrativeClubAccess ? (
+          <section className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1">
+            <div className="flex min-h-12 items-center justify-between border-b px-4 py-2">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">Your clubs</h2>
+                <p className="text-xs text-muted-foreground">
+                  Open the spaces you belong to.
                 </p>
-              )}
-            </aside>
-          ) : null}
+              </div>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {myClubs.length}
+              </span>
+            </div>
+            {isLoading ? (
+              <div className="flex flex-col gap-2 p-3">
+                {CLUB_SKELETON_IDS.map((id) => (
+                  <Skeleton key={id} className="h-[4.5rem] w-full" />
+                ))}
+              </div>
+            ) : myClubs.length > 0 ? (
+              <CardGroup orientation="inline" border="outlined">
+                {myClubs.map((club) => (
+                  <ClubListRow
+                    key={club._id}
+                    club={club}
+                    density="default"
+                    joined
+                    badge={
+                      club.kind === 'sponsor' ? (
+                        <Badge variant="solid" color="indigo" className="shrink-0">
+                          <Shield data-icon="inline-start" />
+                          Sponsor
+                        </Badge>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </CardGroup>
+            ) : (
+              <Empty className="border-0 py-8">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon"><UsersRound /></EmptyMedia>
+                  <EmptyTitle>No clubs yet</EmptyTitle>
+                  <EmptyDescription>Join a club below and it will appear here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </section>
+        ) : null}
 
-          <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:h-[calc(100dvh-7.5rem)]">
+        <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:max-h-[calc(100dvh-9rem)]">
             <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Discover clubs</h2>
@@ -184,7 +206,7 @@ export default function ClubsLandingPage() {
                 />
                 {canCreate ? (
                   <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus className="size-4" />
+                    <Plus data-icon="inline-start" />
                     New club
                   </Button>
                 ) : null}
@@ -192,11 +214,11 @@ export default function ClubsLandingPage() {
             </div>
 
             {isLoading ? (
-              <CardGroup orientation="inline">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className="h-[4.5rem] animate-pulse bg-muted/20" />
+              <div className="flex flex-col gap-2 p-3">
+                {DISCOVERY_SKELETON_IDS.map((id) => (
+                  <Skeleton key={id} className="h-[4.5rem] w-full" />
                 ))}
-              </CardGroup>
+              </div>
             ) : filteredClubs.length > 0 ? (
               <ScrollArea className="min-h-0 flex-1">
                 <CardGroup orientation="inline">
@@ -215,8 +237,7 @@ export default function ClubsLandingPage() {
                 No clubs match this search.
               </div>
             )}
-          </section>
-        </div>
+        </section>
       </div>
 
       <CreateClubDialog open={createOpen} onOpenChange={setCreateOpen} />
@@ -233,7 +254,10 @@ function ClubMark({
 }) {
   return (
     <div
-      className={`flex ${size === 'sm' ? 'size-8 rounded-md text-xs' : 'size-11 rounded-lg text-sm'} shrink-0 items-center justify-center overflow-hidden bg-primary/10 font-bold text-primary`}
+      className={cn(
+        'flex shrink-0 items-center justify-center overflow-hidden bg-primary/10 font-bold text-primary',
+        size === 'sm' ? 'size-8 rounded-md text-xs' : 'size-11 rounded-lg text-sm',
+      )}
     >
       {club.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -291,6 +315,7 @@ function ClubListRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate text-sm font-semibold text-foreground">{club.name}</h3>
+          {badge}
           {joined ? (
             <Badge className="h-5 shrink-0 px-1.5 text-[10px]">
               Joined
@@ -302,9 +327,18 @@ function ClubListRow({
         </p>
       </div>
       <div className="hidden shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground sm:flex pr-2">
-        <span className={cn("inline-flex items-center gap-1", ((club._count?.members ?? 0) >= (club.memberLimit ?? 0)) && "text-red-300")} title="Members">
-          <Users2 className="size-3.5" />
-          {club._count?.members ?? 0} / {club.memberLimit}
+        <span
+          className={cn(
+            'inline-flex items-center gap-1',
+            club.memberLimit != null &&
+              (club._count?.members ?? 0) >= club.memberLimit &&
+              'text-destructive',
+          )}
+          title="Members"
+        >
+          <UsersRound className="size-3.5" />
+          {club._count?.members ?? 0}
+          {club.memberLimit != null ? ` / ${club.memberLimit}` : null}
         </span>
       </div>
     </Card>
