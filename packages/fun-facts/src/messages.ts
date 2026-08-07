@@ -505,7 +505,6 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'A “juggernaut” originally referred to a massive temple cart in Hindu processions.',
   'The inventor of the calculator, Blaise Pascal, died in Paris in 1662.',
   'Albert Einstein’s brain was preserved for scientific study.',
-  'Coca-Cola once contained cocaine, back when it was marketed as a patent medicine in the 1880s.',
   'The first-ever email was sent in 1971 by Ray Tomlinson, who also chose the ‘@’ symbol.',
   'A group of ferrets is called a “business.”',
   'The fear of long words is called hippopotomonstrosesquippedaliophobia.',
@@ -567,4 +566,5 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The inventor of the “zipper,” Gideon Sundback, was a Swedish-American engineer.',
   'The “knapsack” originally referred to a donkey’s load carrier.',
   'The first “computer virus” was called “Creeper,” created in 1971 as an experiment.',
+  'The inventor of the “Velcro,” George',
 ] as const;
