@@ -9,7 +9,7 @@ import {
   type HTMLAttributes,
 } from "react";
 import { Check, X } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useIcon, type IconComponent } from "@/lib/icon-context";
@@ -49,25 +49,27 @@ function CopyStatusVisual({
   const StatusIcon = status === "copied" ? Check : status === "error" ? X : CopyIcon;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.span
-        key={`${status}-${copyCount}`}
-        initial={{ opacity: 0, scale: 0.7 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.8 }}
-        transition={springs.fast}
-        className={cn(
-          "flex items-center justify-center",
-          status === "error" && "text-destructive",
-        )}
-      >
-        <StatusIcon
-          size={14}
-          strokeWidth={status === "idle" ? 1.5 : 2}
-          className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
-        />
-      </motion.span>
-    </AnimatePresence>
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence mode="wait" initial={false}>
+        <m.span
+          key={`${status}-${copyCount}`}
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          transition={springs.fast}
+          className={cn(
+            "flex items-center justify-center",
+            status === "error" && "text-destructive",
+          )}
+        >
+          <StatusIcon
+            size={14}
+            strokeWidth={status === "idle" ? 1.5 : 2}
+            className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+          />
+        </m.span>
+      </AnimatePresence>
+    </LazyMotion>
   );
 }
 
