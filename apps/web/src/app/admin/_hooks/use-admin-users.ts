@@ -103,6 +103,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
   const activateUser = useMutation(api.users.admin.activate);
   const assignRoles = useMutation(api.users.admin.assignRoles);
   const resetPassword = useMutation(api.users.admin.resetPassword);
+  const deleteUsers = useMutation(api.users.admin.deleteUsers);
 
   const runUserMutation = async <T,>(
     action: () => Promise<T>,
@@ -113,11 +114,13 @@ export function useAdminUsers(activeTab: AdminTabId) {
       setIsUserMutationPending(true);
       const result = await action();
       toast({ title: successTitle, description: successDescription?.(result) });
+      return true;
     } catch (e: unknown) {
       toast({
         title: e instanceof Error ? e.message : 'Request failed',
         variant: 'destructive',
       });
+      return false;
     } finally {
       setIsUserMutationPending(false);
     }
@@ -173,6 +176,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
     currentUserId: user?._id,
     canDeactivate,
     canResetPassword,
+    canDeleteUsers: isSuperAdmin,
     onDeactivate: (userId: string) =>
       void runUserMutation(
         () => deactivateUser({ userId: userId as Id<'users'> }),
@@ -189,6 +193,13 @@ export function useAdminUsers(activeTab: AdminTabId) {
         'Temporary password generated',
         (result) => `${targetUser.uniqueId}: ${result.temporaryPassword}`,
       ),
+    onDeleteUsers: async (userIds: string[]) =>
+      await runUserMutation(
+        () => deleteUsers({ userIds: userIds as Id<'users'>[] }),
+        `Deleted ${userIds.length} ${userIds.length === 1 ? 'user' : 'users'}`,
+        (result) => `${result.deleted} account${result.deleted === 1 ? '' : 's'} permanently removed.`,
+      ),
+    isDeleteUsersPending: isUserMutationPending,
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
     isAssignRolesPending: isUserMutationPending,

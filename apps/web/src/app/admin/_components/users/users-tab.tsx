@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, KeyRound, UserCheck, UserX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -131,6 +132,55 @@ function ResetPasswordAction({
   );
 }
 
+function BulkDeleteUsersAction({
+  selectedCount,
+  disabled,
+  onDelete,
+}: {
+  selectedCount: number;
+  disabled: boolean;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <Button
+        type="button"
+        variant="tertiary"
+        size="sm"
+        leadingIcon={Trash2}
+        disabled={disabled || selectedCount === 0}
+        onClick={() => setOpen(true)}
+        className="text-destructive hover:text-destructive"
+      >
+        Delete {selectedCount} selected
+      </Button>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {selectedCount} user {selectedCount === 1 ? 'account' : 'accounts'}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes the selected sign-ins, sessions, profile records, and profile images. Historical school and collaboration records remain for audit continuity.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={disabled}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={disabled}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              onDelete();
+              setOpen(false);
+            }}
+          >
+            Delete permanently
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 function UserTableSection({
   title,
   emptyMessage,
@@ -144,9 +194,12 @@ function UserTableSection({
   isSuperAdmin,
   canDeactivate,
   canResetPassword,
+  canDeleteUsers,
   onDeactivate,
   onActivate,
   onResetPassword,
+  onDeleteUsers,
+  isDeleteUsersPending,
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
@@ -168,9 +221,12 @@ function UserTableSection({
   isSuperAdmin: boolean;
   canDeactivate: (user: AdminUserRecord) => boolean;
   canResetPassword: (user: AdminUserRecord) => boolean;
+  canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
   onResetPassword: (user: AdminUserRecord) => void;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
@@ -181,7 +237,46 @@ function UserTableSection({
   loadPreviousPage: () => void;
 }) {
   const d = dataTableClasses('compact');
-  const headers = ['ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
+  const selectableUsers = canDeleteUsers ? users.filter((user) => user._id !== currentUserId) : [];
+  const selectedCount = selectedUserIds.size;
+  const selectedVisibleCount = selectableUsers.filter((user) => selectedUserIds.has(user._id)).length;
+  const areAllVisibleUsersSelected = selectableUsers.length > 0 && selectedVisibleCount === selectableUsers.length;
+  const headers = ['Select', 'ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
+
+  const toggleUser = (userId: string, selected: boolean) => {
+    setSelectedUserIds((current) => {
+      const next = new Set(current);
+      if (selected) {
+        next.add(userId);
+      } else {
+        next.delete(userId);
+      }
+      return next;
+    });
+  };
+
+  const toggleVisibleUsers = (selected: boolean) => {
+    setSelectedUserIds((current) => {
+      const next = new Set(current);
+      for (const user of selectableUsers) {
+        if (selected) {
+          next.add(user._id);
+        } else {
+          next.delete(user._id);
+        }
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedUserIds(new Set());
+
+  const deleteSelectedUsers = () => {
+    void onDeleteUsers(Array.from(selectedUserIds)).then((didDelete) => {
+      if (didDelete) clearSelection();
+    });
+  };
 
   const toolbar = (
     <div className="flex w-full min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-end">
@@ -204,6 +299,27 @@ function UserTableSection({
           </SelectContent>
         </Select>
       </div>
+      {canDeleteUsers && selectedCount > 0 ? (
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            {selectedCount} selected
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isDeleteUsersPending}
+            onClick={clearSelection}
+          >
+            Clear
+          </Button>
+          <BulkDeleteUsersAction
+            selectedCount={selectedCount}
+            disabled={isDeleteUsersPending}
+            onDelete={deleteSelectedUsers}
+          />
+        </div>
+      ) : null}
       <div className="flex shrink-0 items-center justify-between gap-2 text-xs text-muted-foreground xl:justify-end">
         <span className="whitespace-nowrap">
           Page {pageIndex + 1} · Showing {users.length}
@@ -243,6 +359,7 @@ function UserTableSection({
     >
       <Table className={`${d.table} table-fixed`}>
         <colgroup>
+          <col className="w-10" />
           <col className="w-[116px]" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
@@ -252,7 +369,15 @@ function UserTableSection({
         </colgroup>
         <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
           <TableRow>
-            {headers.map((header) => (
+            <TableHead className={d.head}>
+              <Checkbox
+                checked={areAllVisibleUsersSelected ? true : selectedVisibleCount > 0 ? 'indeterminate' : false}
+                onCheckedChange={(checked) => toggleVisibleUsers(checked === true)}
+                disabled={selectableUsers.length === 0 || isDeleteUsersPending}
+                aria-label="Select all users shown on this page"
+              />
+            </TableHead>
+            {headers.slice(1).map((header) => (
               <TableHead key={header} className={d.head}>
                 {header}
               </TableHead>
@@ -269,6 +394,14 @@ function UserTableSection({
           ) : (
             users.map((user, index) => (
               <TableRow key={user._id} index={index} className="h-10">
+                <TableCell className={d.cell}>
+                  <Checkbox
+                    checked={selectedUserIds.has(user._id)}
+                    onCheckedChange={(checked) => toggleUser(user._id, checked === true)}
+                    disabled={!canDeleteUsers || user._id === currentUserId || isDeleteUsersPending}
+                    aria-label={`Select ${user.firstName} ${user.lastName}`}
+                  />
+                </TableCell>
                 <TableCell className={`${d.cell} overflow-hidden`}>
                   <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
                 </TableCell>
@@ -356,9 +489,12 @@ export function AdminUsersTab({
   currentUserId,
   canDeactivate,
   canResetPassword,
+  canDeleteUsers,
   onDeactivate,
   onActivate,
   onResetPassword,
+  onDeleteUsers,
+  isDeleteUsersPending,
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
@@ -383,9 +519,12 @@ export function AdminUsersTab({
   currentUserId?: string;
   canDeactivate: (user: AdminUserRecord) => boolean;
   canResetPassword: (user: AdminUserRecord) => boolean;
+  canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
   onResetPassword: (user: AdminUserRecord) => void;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
@@ -406,6 +545,7 @@ export function AdminUsersTab({
           />
         ) : (
           <UserTableSection
+            key={`${userRoleGroup}:${search}:${pageIndex}`}
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
@@ -418,9 +558,12 @@ export function AdminUsersTab({
             isSuperAdmin={isSuperAdmin}
             canDeactivate={canDeactivate}
             canResetPassword={canResetPassword}
+            canDeleteUsers={canDeleteUsers}
             onDeactivate={onDeactivate}
             onActivate={onActivate}
             onResetPassword={onResetPassword}
+            onDeleteUsers={onDeleteUsers}
+            isDeleteUsersPending={isDeleteUsersPending}
             isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
             onAssignRoles={onAssignRoles}

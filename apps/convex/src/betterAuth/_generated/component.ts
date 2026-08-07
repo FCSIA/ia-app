@@ -1070,5 +1070,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Record<string, number>,
         Name
       >;
+      deleteUserData: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        { accounts: number; sessions: number; user: boolean },
+        Name
+      >;
     };
   };

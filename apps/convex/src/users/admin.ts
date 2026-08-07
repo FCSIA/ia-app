@@ -1,6 +1,6 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
   action,
@@ -25,6 +25,7 @@ import {
   authComponent,
   createAuth,
 } from "../auth";
+import { incrementUserCounts } from "../stats";
 import {
   classifyRoles,
   createLinkedUser,
@@ -597,6 +598,71 @@ export const deactivate = mutation({
       throw new ConvexError("User not found.");
     }
     return toAdminUserProfile(updated);
+  },
+});
+
+const MAX_BULK_USER_DELETION_SIZE = 30;
+
+export const deleteUsers = mutation({
+  args: {
+    userIds: v.array(v.id("users")),
+  },
+  returns: v.object({
+    deleted: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    const userIds = Array.from(new Set(args.userIds));
+    if (userIds.length === 0) {
+      throw new ConvexError("Select at least one user to delete.");
+    }
+    if (userIds.length > MAX_BULK_USER_DELETION_SIZE) {
+      throw new ConvexError(
+        `Delete at most ${MAX_BULK_USER_DELETION_SIZE} users at a time.`,
+      );
+    }
+    if (userIds.includes(actor._id)) {
+      throw new ConvexError("You cannot delete your own account.");
+    }
+
+    const targets = await Promise.all(userIds.map((userId) => ctx.db.get(userId)));
+    if (targets.some((target) => !target)) {
+      throw new ConvexError("One or more selected users no longer exist.");
+    }
+
+    for (const target of targets) {
+      if (!target) continue;
+
+      if (target.authUserId) {
+        await ctx.runMutation(components.betterAuth.dev.deleteUserData, {
+          userId: target.authUserId,
+        });
+      }
+      if (target.avatarStorageId) {
+        await ctx.storage.delete(target.avatarStorageId);
+      }
+      if (target.customBackgroundStorageId) {
+        await ctx.storage.delete(target.customBackgroundStorageId);
+      }
+
+      await ctx.db.delete(target._id);
+      await incrementUserCounts(ctx, target, -1);
+    }
+
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "user.bulk_deleted",
+      entityType: "user",
+      entityId: "bulk",
+      meta: {
+        count: targets.length,
+        userIds: targets.map((target) => target!._id),
+      },
+    });
+
+    return { deleted: targets.length };
   },
 });
 
