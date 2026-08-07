@@ -124,7 +124,7 @@ function RequestsPanel({
               <div className="min-w-0 space-y-0.5">
                 <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-                  <Badge variant="dot" className="px-1.5 py-0 font-mono text-[10px] tracking-wider bg-transparent">
+                  <Badge variant="solid" className="px-1.5 py-0 font-mono text-[10px] tracking-wider">
                     {request.requester.uniqueId || 'Student'}
                   </Badge>
                   <span>
@@ -252,12 +252,12 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <div className="flex items-center gap-2 pt-1">
                 <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
                 {club.memberLimit != null ? (
-                  <Badge variant={isFull ? 'solid' : 'dot'} color={isFull ? 'red' : 'amber'}>
+                  <Badge variant="solid" color={isFull ? 'red' : 'amber'}>
                     {isFull ? 'Full' : 'Limited spots'}
                   </Badge>
                 ) : null}
                 {club.viewer.hasPendingJoinRequest ? (
-                  <Badge variant="dot">Request pending</Badge>
+                  <Badge variant="solid">Request pending</Badge>
                 ) : null}
               </div>
             </div>

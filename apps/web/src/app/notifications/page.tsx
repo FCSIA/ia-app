@@ -116,7 +116,7 @@ export default function NotificationsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <div className="mb-3 flex items-center gap-2">
-                <Badge variant="dot" size="sm" color={hasUnread ? 'blue' : 'green'}>
+                <Badge variant="solid" size="sm" color={hasUnread ? 'blue' : 'green'}>
                   {hasUnread ? `${unreadCount} unread` : 'Clear'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">{notifications.length} total</span>

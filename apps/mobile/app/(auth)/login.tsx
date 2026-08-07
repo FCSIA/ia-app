@@ -55,14 +55,13 @@ export default function LoginScreen() {
                   borderRadius: radii.md,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: color("primary"),
                   marginBottom: spacing.sm,
                 }}
               >
                 <Image
                   source={require("../../assets/logo.png")}
                   accessibilityLabel="Innovation Academy phoenix"
-                  style={{ width: 40, height: 40 }}
+                  style={{ width: 48, height: 48, borderRadius: radii.md }}
                   resizeMode="contain"
                 />
               </View>

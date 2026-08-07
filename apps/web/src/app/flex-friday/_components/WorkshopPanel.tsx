@@ -130,7 +130,7 @@ export function WorkshopPanel({
                           {spansMultiple && (
                             <div className="mt-4 flex flex-wrap gap-1.5 border-t pt-3 border-foreground/5">
                               {linkedSessions.map((ls: any) => (
-                                <Badge key={ls._id} variant="dot" color="gray" className="text-[9px] uppercase tracking-tighter py-0 px-1.5 font-bold">
+                                <Badge key={ls._id} variant="solid" color="gray" className="text-[9px] uppercase tracking-tighter py-0 px-1.5 font-bold">
                                   {ls.title} · {formatTimeRange(ls.startTime, ls.endTime)}
                                 </Badge>
                               ))}

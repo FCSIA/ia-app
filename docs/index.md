@@ -76,6 +76,7 @@ same change.
 - [Authentication](frontend/frontend-auth.md)
 - [Routing](frontend/routing.md)
 - [Styling](frontend/styling.md)
+- [Brand assets](frontend/branding.md)
 
 ## Features
 
