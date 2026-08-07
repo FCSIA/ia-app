@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/lib/auth';
+import { shareUrl } from '@/lib/share';
 import { useToast } from '@/hooks/use-toast';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -149,14 +150,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div className="pt-6 border-t flex flex-wrap gap-3">
-                <Button variant="tertiary" className="gap-2">
-                  <Calendar size={16} /> Add to Calendar
+                <Button variant="tertiary" leadingIcon={Calendar}>
+                  Add to Calendar
                 </Button>
-                <Button variant="tertiary" className="gap-2" onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast({ title: 'Link copied to clipboard' });
-                }}>
-                  <Share2 size={16} /> Share Event
+                <Button
+                  variant="tertiary"
+                  leadingIcon={Share2}
+                  onClick={() => {
+                    void shareUrl({ title: event.title, url: window.location.href })
+                      .then((result) => {
+                        if (result === 'copied') {
+                          toast({ title: 'Link copied to clipboard' });
+                        }
+                      })
+                      .catch((error: unknown) =>
+                        toast({
+                          title: error instanceof Error ? error.message : 'Could not share this event',
+                          variant: 'destructive',
+                        }),
+                      );
+                  }}
+                >
+                  Share Event
                 </Button>
               </div>
             </div>

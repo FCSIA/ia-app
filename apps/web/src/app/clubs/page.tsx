@@ -9,7 +9,7 @@ import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog'
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup } from '@/components/ui/card';
+import { Card, CardGroup, type CardProps } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, isSuperAdmin, useCurrentUser } from '@/lib/auth';
@@ -192,11 +192,11 @@ export default function ClubsLandingPage() {
             </div>
 
             {isLoading ? (
-              <CardGroup orientation="inline">
+              <div aria-hidden="true">
                 {Array.from({ length: 7 }).map((_, i) => (
                   <div key={i} className="h-[4.5rem] animate-pulse bg-muted/20" />
                 ))}
-              </CardGroup>
+              </div>
             ) : filteredClubs.length > 0 ? (
               <ScrollArea className="min-h-0 flex-1">
                 <CardGroup orientation="inline">
@@ -260,8 +260,8 @@ function ClubListRow({
   density: 'compact' | 'default';
   joined?: boolean;
   badge?: React.ReactNode;
-  /** Injected by CardGroup and forwarded to the underlying Fluid Card. */
-  index?: number;
+  /** Forwarded by CardGroup so the rendered Card can register its geometry. */
+  index?: CardProps['index'];
 }) {
   if (density === 'compact') {
     return (

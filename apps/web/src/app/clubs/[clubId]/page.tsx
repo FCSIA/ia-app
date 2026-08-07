@@ -124,9 +124,6 @@ function RequestsPanel({
               <div className="min-w-0 space-y-0.5">
                 <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-                  <Badge variant="dot" className="px-1.5 py-0 font-mono text-[10px] tracking-wider bg-transparent">
-                    {request.requester.uniqueId || 'Student'}
-                  </Badge>
                   <span>
                     requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                   </span>
@@ -339,9 +336,6 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
-                      <p className="truncate font-mono text-[10px] text-muted-foreground mt-0.5 bg-muted/50 inline-block px-1.5 py-0.5 rounded">
-                        {sponsor.user.uniqueId || 'Sponsor'}
-                      </p>
                     </div>
                   </div>
                 ))}
@@ -440,9 +434,6 @@ export default function ClubOverviewPage() {
               <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {sponsor.user.uniqueId || 'Sponsor'}
-                </p>
               </div>
             </div>
           ))}

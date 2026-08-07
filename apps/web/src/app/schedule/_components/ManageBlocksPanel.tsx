@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import {
   ArrowDown,
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { TabPanel } from "@/components/ui/tabs";
+import { formatScheduleTime } from "@/components/schedule/schedule-utils";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "~/apps/convex/src/_generated/api";
 
@@ -116,7 +117,7 @@ function PlanPreview({ blocks }: { blocks: PlanBlock[] }) {
                 className="grid grid-cols-[4.5rem_1fr] gap-3 px-3 py-2.5"
               >
                 <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {block.startTime}
+                  {formatScheduleTime(block.startTime)}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">
@@ -703,12 +704,14 @@ function TemplateWorkspace({
 }
 
 export function ManageBlocksPanel() {
+  const { isAuthenticated } = useConvexAuth();
   const { toast } = useToast();
   const [mode, setMode] = useState<"dates" | "templates">("dates");
   const [dateKey, setDateKey] = useState(schoolDateKey);
-  const workspace = useQuery(api.schedule.dayPlans.getAdminWorkspace, {
-    dateKey,
-  });
+  const workspace = useQuery(
+    api.schedule.dayPlans.getAdminWorkspace,
+    isAuthenticated ? { dateKey } : "skip",
+  );
   const saveTemplate = useMutation(api.schedule.dayPlans.saveTemplate);
   const setRegularTemplate = useMutation(
     api.schedule.dayPlans.setRegularTemplate,

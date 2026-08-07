@@ -1,11 +1,10 @@
 'use client';
 
-import { Check, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 import {
-  activeRoleClass,
   canEditUserRoles,
   getAssignableRoleOptions,
 } from '../../_lib/user-roles';
@@ -28,6 +27,13 @@ export function UserPermissionsPopover({
   const roles = getUserRoles(user);
   const canEdit = canEditUserRoles(user, isSuperAdmin);
   const roleOptions = getAssignableRoleOptions(isSuperAdmin);
+  const checkedIndices = new Set(
+    roleOptions.flatMap(({ role }, index) =>
+      roles.includes(role) ? [index] : [],
+    ),
+  );
+  const roleSelectionDisabled = !canEdit || isPending;
+  const fullName = `${user.firstName} ${user.lastName}`;
 
   return (
     <Popover>
@@ -35,10 +41,10 @@ export function UserPermissionsPopover({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={`Permissions for ${user.firstName} ${user.lastName}`}
+          aria-label={`Permissions for ${fullName}`}
           title="Permissions"
         >
-          <ShieldCheck className="size-4" />
+          <ShieldCheck />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 p-3">
@@ -50,34 +56,31 @@ export function UserPermissionsPopover({
             <p className="mt-1 text-[11px] text-muted-foreground">Super Admin only</p>
           ) : null}
         </div>
-        <div className="flex flex-col gap-1.5">
-          {roleOptions.map(({ role, label, color }) => {
+        <CheckboxGroup
+          checkedIndices={checkedIndices}
+          aria-label={`Roles for ${fullName}`}
+          aria-disabled={roleSelectionDisabled || undefined}
+          className="w-full gap-0"
+        >
+          {roleOptions.map(({ role, label }, index) => {
             const active = roles.includes(role);
             return (
-              <button
+              <CheckboxItem
                 key={role}
-                type="button"
-                disabled={!canEdit || isPending}
-                onClick={() => {
-                  if (!canEdit) return;
+                index={index}
+                label={label}
+                checked={active}
+                disabled={roleSelectionDisabled}
+                onToggle={() => {
+                  if (roleSelectionDisabled) return;
                   const next = active ? roles.filter((r) => r !== role) : [...roles, role];
                   onAssignRoles({ _id: user._id, roles: next });
                 }}
-                className={cn(
-                  'inline-flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  active
-                    ? activeRoleClass(color)
-                    : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/70',
-                  !canEdit && 'cursor-not-allowed opacity-50',
-                )}
-                aria-pressed={active}
-              >
-                <Check size={10} className={active ? 'opacity-100' : 'opacity-0'} />
-                {label}
-              </button>
+                className="h-8 py-0"
+              />
             );
           })}
-        </div>
+        </CheckboxGroup>
       </PopoverContent>
     </Popover>
   );

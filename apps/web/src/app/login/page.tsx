@@ -75,7 +75,7 @@ export default function LoginPage() {
               <Input
                 id="uniqueId"
                 type="text"
-                placeholder="e.g. STU001"
+                placeholder="School ID"
                 value={uniqueId}
                 onChange={(e) => setUniqueId(e.target.value)}
                 required

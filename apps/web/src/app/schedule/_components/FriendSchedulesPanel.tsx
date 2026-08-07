@@ -1,13 +1,31 @@
-'use client';
+"use client";
 
-import { Loader2, Search, UserPlus, X } from 'lucide-react';
-import { FriendScheduleCard } from '@/components/schedule/friend-schedule-card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { TabPanel } from '@/components/ui/tabs';
-import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
+import { Search, UserPlus, UsersRound, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { FriendScheduleCard } from "@/components/schedule/friend-schedule-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
+import { TabPanel } from "@/components/ui/tabs";
+import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
+import { FriendCollaborationTools } from "./FriendCollaborationTools";
 
 export function FriendSchedulesPanel() {
+  const searchParams = useSearchParams();
+  const focusedFriendId = searchParams?.get("friend") ?? null;
   const {
     acceptFriendRequest,
     blocks,
@@ -27,174 +45,238 @@ export function FriendSchedulesPanel() {
   } = useScheduleWorkspace();
 
   return (
-    <TabPanel value="friends" className="mt-6">
-      <div className="grid gap-8 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-9 rounded-lg border-0 bg-muted/30 pl-9 pr-9 text-sm shadow-none focus-visible:ring-1"
-              placeholder="Search students..."
-            />
-            {isSearching || searchIsDeferred ? (
-              <Loader2 className="pointer-events-none absolute right-4 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
-            ) : search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-3.5" />
-              </button>
-            ) : null}
-          </div>
-
-          {deferredSearch.trim().length < 2 ? null : searchResults.length > 0 ? (
-            <div className="divide-y divide-border/40 overflow-hidden">
-              {searchResults.map((person) => {
-                const sendKey = `friend-send:${person._id}`;
-                const acceptKey = `friend-accept:${person._id}`;
-                const isSending = pendingAction === sendKey;
-                const isAccepting = pendingAction === acceptKey;
-                const status = person.friendshipStatus;
-                return (
-                  <div key={person._id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {person.firstName} {person.lastName}
-                      </p>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {person.uniqueId}
-                      </span>
-                    </div>
-                    {status === 'FRIENDS' ? (
-                      <span className="text-[10px] text-muted-foreground">Added</span>
-                    ) : status === 'REQUEST_SENT' ? (
-                      <span className="text-[10px] text-muted-foreground">Pending</span>
-                    ) : status === 'REQUEST_RECEIVED' ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-6 px-2 text-[10px]"
-                        disabled={isAccepting}
-                        onClick={() =>
-                          void runScheduleAction(
-                            acceptKey,
-                            () => acceptFriendRequest({ requesterId: person._id }),
-                            'Friend added',
-                          )
-                        }
-                      >
-                        Accept
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 text-[10px]"
-                        disabled={isSending}
-                        onClick={() =>
-                          void runScheduleAction(
-                            sendKey,
-                            () => sendFriendRequest({ friendId: person._id }),
-                            'Request sent',
-                          )
-                        }
-                      >
-                        <UserPlus className="mr-1 size-2.5" />
-                        Add
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+    <TabPanel value="friends" className="mt-5">
+      <div className="flex flex-col gap-5">
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+          <aside className="flex flex-col gap-4 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:sticky lg:top-4">
+            <div className="flex flex-col gap-1 px-1">
+              <h2 className="text-sm font-semibold text-foreground">
+                Find classmates
+              </h2>
+              <p className="text-xs text-muted-foreground">Search by name.</p>
             </div>
-          ) : (
-            <p className="py-3 text-xs text-muted-foreground">
-              No results for &ldquo;{normalizedDeferredSearch}&rdquo;
-            </p>
-          )}
+            <InputGroup>
+              <InputGroupAddon>
+                <Search aria-hidden="true" />
+              </InputGroupAddon>
+              <InputGroupInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search students"
+              />
+              <InputGroupAddon align="inline-end">
+                {isSearching || searchIsDeferred ? (
+                  <Spinner />
+                ) : search ? (
+                  <InputGroupButton
+                    size="icon-xs"
+                    aria-label="Clear search"
+                    onClick={() => setSearch("")}
+                  >
+                    <X />
+                  </InputGroupButton>
+                ) : null}
+              </InputGroupAddon>
+            </InputGroup>
 
-          {data?.incomingRequests?.length ? (
-            <div ref={incomingRequestsRef} className="flex flex-col gap-2 border-t border-border/30 pt-3">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Requests · {data.incomingRequests.length}
+            {deferredSearch.trim().length < 2 ? null : searchResults.length >
+              0 ? (
+              <div className="divide-y divide-border/40 overflow-hidden rounded-lg bg-surface-3 px-2">
+                {searchResults.map((person) => {
+                  const sendKey = `friend-send:${person._id}`;
+                  const acceptKey = `friend-accept:${person._id}`;
+                  const isSending = pendingAction === sendKey;
+                  const isAccepting = pendingAction === acceptKey;
+                  const status = person.friendshipStatus;
+                  return (
+                    <div
+                      key={person._id}
+                      className="flex min-h-11 items-center justify-between gap-3 py-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {person.firstName} {person.lastName}
+                        </p>
+                      </div>
+                      {status === "FRIENDS" ? (
+                        <Badge size="sm" variant="dot" color="green">
+                          Friend
+                        </Badge>
+                      ) : status === "REQUEST_SENT" ? (
+                        <Badge size="sm" variant="dot">
+                          Pending
+                        </Badge>
+                      ) : status === "REQUEST_RECEIVED" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          loading={isAccepting}
+                          disabled={isAccepting}
+                          onClick={() =>
+                            void runScheduleAction(
+                              acceptKey,
+                              () =>
+                                acceptFriendRequest({
+                                  requesterId: person._id,
+                                }),
+                              "Friend added",
+                            )
+                          }
+                        >
+                          Accept
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          leadingIcon={UserPlus}
+                          loading={isSending}
+                          onClick={() =>
+                            void runScheduleAction(
+                              sendKey,
+                              () => sendFriendRequest({ friendId: person._id }),
+                              "Request sent",
+                            )
+                          }
+                        >
+                          Add
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-3 text-xs text-muted-foreground">
+                No results for &ldquo;{normalizedDeferredSearch}&rdquo;
               </p>
-              {data.incomingRequests.map((request) => {
-                const acceptKey = `friend-accept:${request.user._id}`;
-                const removeKey = `friend-remove:${request.user._id}`;
-                const isAccepting = pendingAction === acceptKey;
-                const isDeclining = pendingAction === removeKey;
-                return (
-                  <div key={request.id} className="flex items-center justify-between gap-2 py-1.5">
-                    <span className="truncate text-sm text-foreground">
-                      {request.user.firstName} {request.user.lastName}
-                    </span>
-                    <div className="flex shrink-0 gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        disabled={isDeclining || isAccepting}
-                        onClick={() =>
-                          void runScheduleAction(
-                            removeKey,
-                            () => removeFriend({ otherUserId: request.user._id }),
-                            'Removed',
-                          )
-                        }
-                      >
-                        <X className="size-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-6 px-2 text-[10px]"
-                        disabled={isAccepting || isDeclining}
-                        onClick={() =>
-                          void runScheduleAction(
-                            acceptKey,
-                            () => acceptFriendRequest({ requesterId: request.user._id }),
-                            'Friend added',
-                          )
-                        }
-                      >
-                        Accept
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+            )}
 
-        <div className="flex flex-col gap-3">
-          {data?.friends.length ? (
-            <div className="flex flex-col gap-2">
-              {data.friends.map((friend) => (
-                <FriendScheduleCard
-                  key={friend.id}
-                  friend={friend}
-                  blocks={blocks}
-                  onRemove={() =>
-                    void runScheduleAction(
-                      `friend-remove:${friend.user._id}`,
-                      () => removeFriend({ otherUserId: friend.user._id }),
-                      'Removed',
-                    )
-                  }
-                  isRemoving={pendingAction === `friend-remove:${friend.user._id}`}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="py-12 text-center text-sm text-muted-foreground">
-              Search and add friends to compare schedules.
-            </p>
-          )}
+            {data?.incomingRequests?.length ? (
+              <div
+                ref={incomingRequestsRef}
+                className="flex flex-col gap-2 border-t border-border/50 pt-3"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Requests · {data.incomingRequests.length}
+                </p>
+                {data.incomingRequests.map((request) => {
+                  const acceptKey = `friend-accept:${request.user._id}`;
+                  const removeKey = `friend-remove:${request.user._id}`;
+                  const isAccepting = pendingAction === acceptKey;
+                  const isDeclining = pendingAction === removeKey;
+                  return (
+                    <div
+                      key={request.id}
+                      className="flex min-h-10 items-center gap-2 py-1"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                        {request.user.firstName} {request.user.lastName}
+                      </span>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Decline ${request.user.firstName}'s request`}
+                          disabled={isDeclining || isAccepting}
+                          onClick={() =>
+                            void runScheduleAction(
+                              removeKey,
+                              () =>
+                                removeFriend({ otherUserId: request.user._id }),
+                              "Removed",
+                            )
+                          }
+                        >
+                          <X />
+                        </Button>
+                        <Button
+                          size="md"
+                          loading={isAccepting}
+                          disabled={isDeclining}
+                          onClick={() =>
+                            void runScheduleAction(
+                              acceptKey,
+                              () =>
+                                acceptFriendRequest({
+                                  requesterId: request.user._id,
+                                }),
+                              "Friend added",
+                            )
+                          }
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </aside>
+
+          <section className="flex min-w-0 flex-col gap-3">
+            <header className="flex min-h-9 items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-foreground">
+                  Friend schedules
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  See what friends are doing now, then open a full comparison
+                  when needed.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {data?.friends.length ? (
+                  <Badge size="sm">{data.friends.length}</Badge>
+                ) : null}
+                <FriendCollaborationTools />
+              </div>
+            </header>
+            {data?.friends.length ? (
+              <div className="flex flex-col gap-2">
+                {[...data.friends]
+                  .sort((left, right) =>
+                    left.user._id === focusedFriendId
+                      ? -1
+                      : right.user._id === focusedFriendId
+                        ? 1
+                        : 0,
+                  )
+                  .map((friend) => (
+                    <FriendScheduleCard
+                      key={friend.id}
+                      friend={friend}
+                      blocks={blocks}
+                      onRemove={() =>
+                        void runScheduleAction(
+                          `friend-remove:${friend.user._id}`,
+                          () => removeFriend({ otherUserId: friend.user._id }),
+                          "Removed",
+                        )
+                      }
+                      isRemoving={
+                        pendingAction === `friend-remove:${friend.user._id}`
+                      }
+                      emphasized={friend.user._id === focusedFriendId}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <Empty className="min-h-72 bg-surface-2 shadow-surface-1">
+                <EmptyHeader>
+                  <EmptyMedia>
+                    <UsersRound className="size-6 text-muted-foreground" />
+                  </EmptyMedia>
+                  <EmptyTitle>No friends here yet</EmptyTitle>
+                  <EmptyDescription>
+                    Search for a classmate or share a friend link to compare
+                    schedules.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+          </section>
         </div>
       </div>
     </TabPanel>

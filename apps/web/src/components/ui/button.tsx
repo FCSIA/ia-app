@@ -1,6 +1,13 @@
 "use client";
 
-import { forwardRef, type ButtonHTMLAttributes } from "react";
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
@@ -78,11 +85,73 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button";
+    const asChildElement =
+      asChild && isValidElement(children)
+        ? (children as ReactElement<{ children?: ReactNode }>)
+        : null;
+    const Comp = asChildElement ? Slot : "button";
+    const label = asChildElement ? asChildElement.props.children : children;
     const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     const shape = useShape();
-    const shouldPassChildThrough = asChild && !loading && !LeadingIcon && !TrailingIcon;
+
+    const internals = loading ? (
+      <>
+        <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit] opacity-0">
+          {LeadingIcon && !isIconOnly && (
+            <LeadingIcon size={iconSize} strokeWidth={2} />
+          )}
+          <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
+            {label}
+          </span>
+          {TrailingIcon && !isIconOnly && (
+            <TrailingIcon size={iconSize} strokeWidth={2} />
+          )}
+        </span>
+        <span className="absolute inset-0 flex items-center justify-center">
+          <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
+              stroke="currentColor"
+              strokeWidth="1.125"
+              strokeLinecap="round"
+              pathLength="100"
+              style={{
+                strokeDasharray: "15 85",
+                animation:
+                  "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
+              }}
+            />
+          </svg>
+        </span>
+      </>
+    ) : isIconOnly ? (
+      <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
+        {label}
+      </span>
+    ) : (
+      <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit]">
+        {LeadingIcon && (
+          <LeadingIcon
+            size={iconSize}
+            strokeWidth={1.5}
+            aria-hidden="true"
+            className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+          />
+        )}
+        <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
+          {label}
+        </span>
+        {TrailingIcon && (
+          <TrailingIcon
+            size={iconSize}
+            strokeWidth={1.5}
+            aria-hidden="true"
+            className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
+          />
+        )}
+      </span>
+    );
 
     return (
       <Comp
@@ -98,73 +167,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className,
           "flex-row flex-nowrap overflow-hidden"
         )}
-        disabled={disabled || loading}
+        disabled={asChildElement ? undefined : disabled || loading}
         style={style}
         suppressHydrationWarning
         {...props}
       >
-        {shouldPassChildThrough ? (
-          children
-        ) : loading ? (
-          <>
-            <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit] opacity-0">
-              {LeadingIcon && !isIconOnly && (
-                <LeadingIcon size={iconSize} strokeWidth={2} />
-              )}
-              <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
-                {children}
-              </span>
-              {TrailingIcon && !isIconOnly && (
-                <TrailingIcon size={iconSize} strokeWidth={2} />
-              )}
-            </span>
-            <span className="absolute inset-0 flex items-center justify-center">
-              <svg
-                className="h-8 w-8"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <path
-                  d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
-                  stroke="currentColor"
-                  strokeWidth="1.125"
-                  strokeLinecap="round"
-                  pathLength="100"
-                  style={{
-                    strokeDasharray: "15 85",
-                    animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
-                  }}
-                />
-              </svg>
-            </span>
-          </>
-        ) : isIconOnly ? (
-          <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
-            {children}
-          </span>
-        ) : (
-          <span className="inline-flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit]">
-            {LeadingIcon && (
-              <LeadingIcon
-                size={iconSize}
-                strokeWidth={1.5}
-                aria-hidden="true"
-                className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
-              />
-            )}
-            <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [&>svg]:shrink-0">
-              {children}
-            </span>
-            {TrailingIcon && (
-              <TrailingIcon
-                size={iconSize}
-                strokeWidth={1.5}
-                aria-hidden="true"
-                className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
-              />
-            )}
-          </span>
-        )}
+        {asChildElement
+          ? cloneElement(asChildElement, undefined, internals)
+          : internals}
       </Comp>
     );
   }

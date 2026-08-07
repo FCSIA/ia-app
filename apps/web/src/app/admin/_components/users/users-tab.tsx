@@ -242,7 +242,7 @@ function UserTableSection({
   const selectedCount = selectedUserIds.size;
   const selectedVisibleCount = selectableUsers.filter((user) => selectedUserIds.has(user._id)).length;
   const areAllVisibleUsersSelected = selectableUsers.length > 0 && selectedVisibleCount === selectableUsers.length;
-  const headers = ['Select', 'ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
+  const headers = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
 
   const toggleUser = (userId: string, selected: boolean) => {
     setSelectedUserIds((current) => {
@@ -360,7 +360,6 @@ function UserTableSection({
       <Table className={`${d.table} table-fixed`}>
         <colgroup>
           <col className="w-10" />
-          <col className="w-[116px]" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
           <col />
@@ -401,9 +400,6 @@ function UserTableSection({
                     disabled={!canDeleteUsers || user._id === currentUserId || isDeleteUsersPending}
                     aria-label={`Select ${user.firstName} ${user.lastName}`}
                   />
-                </TableCell>
-                <TableCell className={`${d.cell} overflow-hidden`}>
-                  <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>

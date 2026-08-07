@@ -54,7 +54,7 @@ also supports category and scope keys such as global, club, and channel scopes.
 
 The validator includes school announcements, club announcements, club join
 requests, club channel messages, mentions, thread replies, events, Flex Friday,
-content moderation, and friend requests.
+content moderation, friend requests, and friend schedule changes.
 
 ## Browser Push
 
@@ -83,10 +83,13 @@ fallback lookups, so fanout does not scan a user's full category preference set.
 ## Current Delivery
 
 The inbox, preference system, and Web Push subscription flow are active. Current
-Convex delivery rows are created in the implemented friend-request flow and can
-fan out to browser push when the target user has an active subscription and a
-push-enabled preference. Other categories are modeled for domain fanout and
-should be verified when each domain starts delivering rows.
+Convex delivery rows are created for friend requests and material updates to a
+friend's public schedule. Schedule-change fanout is cursor-paginated after the
+save transaction, rechecks that the source schedule is still public/current,
+and contains no class details. Both categories can fan out to browser push when
+the target user has an active subscription and a push-enabled preference. Other
+categories are modeled for domain fanout and should be verified when each
+domain starts delivering rows.
 
 ## Known Limits
 
