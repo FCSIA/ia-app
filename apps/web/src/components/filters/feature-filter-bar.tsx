@@ -29,6 +29,9 @@ type QuickFilterOption = {
   icon?: ReactNode;
 };
 
+const EMPTY_QUICK_FILTERS: QuickFilterOption[] = [];
+const EMPTY_ACTIVE_CHIPS: string[] = [];
+
 type FeatureFilterBarProps = {
   search: string;
   onSearchChange: (value: string) => void;
@@ -48,8 +51,8 @@ export function FeatureFilterBar({
   search,
   onSearchChange,
   searchPlaceholder,
-  chips = [],
-  activeChips = [],
+  chips = EMPTY_QUICK_FILTERS,
+  activeChips = EMPTY_ACTIVE_CHIPS,
   onChipToggle,
   activeCount = 0,
   onClear,
