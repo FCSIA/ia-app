@@ -9,6 +9,10 @@ tags: [feature, calendar]
 The calendar shows school, club, Flex Friday, district, and personal entries on
 a monthly grid.
 
+Date-specific bell schedules are managed separately in the Schedule workspace's
+Day Plans tab. See [Schedule](schedule.md) for reusable templates, date
+overrides, and canonical-period resolution.
+
 ## What It Does
 
 - Lists entries within the visible month range.
@@ -57,3 +61,4 @@ cancellation deletes linked event calendar rows.
 
 - [Events](events.md)
 - [Flex Friday](flex-friday.md)
+- [Schedule](schedule.md)

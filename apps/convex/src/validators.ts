@@ -59,6 +59,22 @@ export const scheduleWeekdayValidator = v.union(
 
 export type ScheduleWeekday = Infer<typeof scheduleWeekdayValidator>;
 
+export const scheduleLunchPeriodValidator = v.union(
+  v.literal("PERIOD_4"),
+  v.literal("PERIOD_5"),
+);
+
+export type ScheduleLunchPeriod = Infer<typeof scheduleLunchPeriodValidator>;
+
+export const schoolDayTemplateKindValidator = v.union(
+  v.literal("REGULAR"),
+  v.literal("SPECIAL"),
+);
+
+export type SchoolDayTemplateKind = Infer<
+  typeof schoolDayTemplateKindValidator
+>;
+
 export const schoolDayBlockKindValidator = v.union(
   v.literal("PERIOD"),
   v.literal("CUSTOM"),
