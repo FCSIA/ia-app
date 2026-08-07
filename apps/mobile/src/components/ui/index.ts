@@ -24,3 +24,4 @@ export * from "./typography";
 export * from "./progress";
 export * from "./date-time-picker";
 export * from "./ia-loading-mark";
+export * from "./loading-fact";
