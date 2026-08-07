@@ -239,7 +239,7 @@ export function GlobalCommandPalette({
         detail: 'Schedule friend',
         href: '/schedule?tab=friends',
         Icon: Users,
-        keywords: ['schedule friend', friend.user.uniqueId],
+        keywords: ['schedule friend'],
       })),
     ];
 

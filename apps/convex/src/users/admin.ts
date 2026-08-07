@@ -9,7 +9,7 @@ import {
   mutation,
   query,
 } from "../_generated/server";
-import { logAuditEvent } from "../audit/_lib";
+import { logAuditEvent, logDisclosureEvent } from "../audit/_lib";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUser,
@@ -285,7 +285,6 @@ export const requireStudentImportActor = internalQuery({
 export const importStudentRow = internalMutation({
   args: {
     row: studentImportRowValidator,
-    generatePasswords: v.boolean(),
   },
   returns: studentImportRowResultValidator,
   handler: async (ctx, args): Promise<StudentImportRowResult> => {
@@ -329,15 +328,7 @@ export const importStudentRow = internalMutation({
     }
 
     const email = row.email?.trim() || buildStudentEmail(uniqueId);
-    const temporaryPassword = args.generatePasswords
-      ? generateTemporaryPassword()
-      : uniqueId;
-
-    if (!args.generatePasswords && temporaryPassword.length < 12) {
-      return skip(
-        `Student ID '${uniqueId}' is too short (${uniqueId.length} chars) to be used as a password. Passwords must be at least 12 characters. Please check 'Generate Passwords'.`,
-      );
-    }
+    const temporaryPassword = generateTemporaryPassword();
 
     // Let failures escape so this student's entire transaction rolls back.
     await createLinkedUser(ctx, {
@@ -354,17 +345,13 @@ export const importStudentRow = internalMutation({
 
     return {
       kind: "created",
-      ...(args.generatePasswords
-        ? {
-            credential: {
-              firstName,
-              lastName,
-              uniqueId,
-              email,
-              temporaryPassword,
-            },
-          }
-        : {}),
+      credential: {
+        firstName,
+        lastName,
+        uniqueId,
+        email,
+        temporaryPassword,
+      },
     };
   },
 });
@@ -395,7 +382,6 @@ export const logStudentImportAudit = internalMutation({
 export const importStudents = action({
   args: {
     rows: v.array(studentImportRowValidator),
-    generatePasswords: v.optional(v.boolean()),
   },
   returns: studentImportResultValidator,
   handler: async (ctx, args): Promise<StudentImportResult> => {
@@ -411,7 +397,6 @@ export const importStudents = action({
       throw new ConvexError("Import at most 200 students at a time.");
     }
 
-    const generatePasswords = args.generatePasswords ?? false;
     const results: StudentImportResult = {
       created: 0,
       skipped: 0,
@@ -453,7 +438,6 @@ export const importStudents = action({
               internal.users.admin.importStudentRow,
               {
                 row: entry.row,
-                generatePasswords,
               },
             );
           } catch (error) {
@@ -487,7 +471,7 @@ export const importStudents = action({
         actorId,
         created: results.created,
         skipped: results.skipped,
-        generatedPasswords: generatePasswords,
+        generatedPasswords: true,
       });
     } catch (error) {
       console.error("Failed to record student import audit event", error);
@@ -496,12 +480,13 @@ export const importStudents = action({
     return results;
   },
 });
-export const exportStudents = query({
+
+export const exportStudents = mutation({
   args: {},
   returns: v.array(studentExportRowValidator),
   handler: async (ctx) => {
-    const actor = await getMaybeCurrentAppUser(ctx);
-    if (!actor || !requireAnyRoleSafe(actor, ["SUPER_ADMIN"])) return [];
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
 
     const students = await ctx.db
       .query("users")
@@ -510,7 +495,7 @@ export const exportStudents = query({
       )
       .take(5000);
 
-    return students.map((student) => ({
+    const rows = students.map((student) => ({
       firstName: student.firstName,
       lastName: student.lastName,
       uniqueId: student.uniqueId,
@@ -519,6 +504,26 @@ export const exportStudents = query({
       major: student.major ?? null,
       minor: student.minor ?? null,
     }));
+
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_CSV_EXPORT",
+      entityType: "User",
+      meta: { rowCount: rows.length, roleGroup: "students" },
+    });
+
+    await logDisclosureEvent(ctx, {
+      actorId: actor._id,
+      action: "STUDENT_EXPORT",
+      recordCategory: "student_directory_export",
+      recipientType: "internal_school_official",
+      recipientUserId: actor._id,
+      legalBasis: "FERPA school official / legitimate educational interest",
+      legitimateInterest: "Student administration export requested from admin UI",
+      meta: { rowCount: rows.length },
+    });
+
+    return rows;
   },
 });
 

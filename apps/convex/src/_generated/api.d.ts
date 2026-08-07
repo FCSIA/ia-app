@@ -15,6 +15,7 @@ import type * as announcements_feed from "../announcements/feed.js";
 import type * as announcements_seed from "../announcements/seed.js";
 import type * as announcements_serialize from "../announcements/serialize.js";
 import type * as audit__lib from "../audit/_lib.js";
+import type * as audit_disclosures from "../audit/disclosures.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
 import type * as auth_loginRateLimitPlugin from "../auth/loginRateLimitPlugin.js";
@@ -99,6 +100,7 @@ declare const fullApi: ApiFromModules<{
   "announcements/seed": typeof announcements_seed;
   "announcements/serialize": typeof announcements_serialize;
   "audit/_lib": typeof audit__lib;
+  "audit/disclosures": typeof audit_disclosures;
   "audit/events": typeof audit_events;
   auth: typeof auth;
   "auth/loginRateLimitPlugin": typeof auth_loginRateLimitPlugin;

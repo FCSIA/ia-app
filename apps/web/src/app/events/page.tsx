@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -18,6 +18,7 @@ import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { filterBySearchQuery } from '@/lib/search';
+import { useIsClient } from '@/lib/use-is-client';
 
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
@@ -70,17 +71,13 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 
 export default function EventsPage() {
   const user = useCurrentUser();
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useIsClient();
   const { toast } = useToast();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   const events = useQuery(api.events.events.list, hydrated && !!user ? {} : 'skip');
   const isLoading = events === undefined;

@@ -55,20 +55,17 @@ export function FriendSchedulesPanel() {
           {deferredSearch.trim().length < 2 ? null : searchResults.length > 0 ? (
             <div className="divide-y divide-border/40 overflow-hidden">
               {searchResults.map((person) => {
-                const sendKey = `friend-send:${person._id}`;
-                const acceptKey = `friend-accept:${person._id}`;
+                const sendKey = `friend-send:${person.id}`;
+                const acceptKey = `friend-accept:${person.id}`;
                 const isSending = pendingAction === sendKey;
                 const isAccepting = pendingAction === acceptKey;
                 const status = person.friendshipStatus;
                 return (
-                  <div key={person._id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div key={person.id} className="flex items-center justify-between gap-3 py-2.5">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">
                         {person.firstName} {person.lastName}
                       </p>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {person.uniqueId}
-                      </span>
                     </div>
                     {status === 'FRIENDS' ? (
                       <span className="text-[10px] text-muted-foreground">Added</span>
@@ -83,7 +80,7 @@ export function FriendSchedulesPanel() {
                         onClick={() =>
                           void runScheduleAction(
                             acceptKey,
-                            () => acceptFriendRequest({ requesterId: person._id }),
+                            () => acceptFriendRequest({ requesterId: person.id }),
                             'Friend added',
                           )
                         }
@@ -99,7 +96,7 @@ export function FriendSchedulesPanel() {
                         onClick={() =>
                           void runScheduleAction(
                             sendKey,
-                            () => sendFriendRequest({ friendId: person._id }),
+                            () => sendFriendRequest({ friendId: person.id }),
                             'Request sent',
                           )
                         }
@@ -124,8 +121,8 @@ export function FriendSchedulesPanel() {
                 Requests · {data.incomingRequests.length}
               </p>
               {data.incomingRequests.map((request) => {
-                const acceptKey = `friend-accept:${request.user._id}`;
-                const removeKey = `friend-remove:${request.user._id}`;
+                const acceptKey = `friend-accept:${request.user.id}`;
+                const removeKey = `friend-remove:${request.user.id}`;
                 const isAccepting = pendingAction === acceptKey;
                 const isDeclining = pendingAction === removeKey;
                 return (
@@ -142,7 +139,7 @@ export function FriendSchedulesPanel() {
                         onClick={() =>
                           void runScheduleAction(
                             removeKey,
-                            () => removeFriend({ otherUserId: request.user._id }),
+                            () => removeFriend({ otherUserId: request.user.id }),
                             'Removed',
                           )
                         }
@@ -156,7 +153,7 @@ export function FriendSchedulesPanel() {
                         onClick={() =>
                           void runScheduleAction(
                             acceptKey,
-                            () => acceptFriendRequest({ requesterId: request.user._id }),
+                            () => acceptFriendRequest({ requesterId: request.user.id }),
                             'Friend added',
                           )
                         }
@@ -181,12 +178,12 @@ export function FriendSchedulesPanel() {
                   blocks={blocks}
                   onRemove={() =>
                     void runScheduleAction(
-                      `friend-remove:${friend.user._id}`,
-                      () => removeFriend({ otherUserId: friend.user._id }),
+                      `friend-remove:${friend.user.id}`,
+                      () => removeFriend({ otherUserId: friend.user.id }),
                       'Removed',
                     )
                   }
-                  isRemoving={pendingAction === `friend-remove:${friend.user._id}`}
+                  isRemoving={pendingAction === `friend-remove:${friend.user.id}`}
                 />
               ))}
             </div>

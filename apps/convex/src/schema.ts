@@ -21,11 +21,17 @@ import {
   eventAttendanceStatusValidator,
   approvalStatusValidator,
   calendarSourceValidator,
+  disclosureActionValidator,
+  disclosureLegalBasisValidator,
+  disclosureLegitimateInterestValidator,
+  disclosureRecipientTypeValidator,
+  disclosureRecordCategoryValidator,
   flexFridayTypeValidator,
   flexSessionTypeValidator,
   flexAttendanceStatusValidator,
   seedProfileValidator,
   seedRunStatusValidator,
+  studentExportDisclosureMetaValidator,
 } from "./validators";
 
 export const schema = defineSchema({
@@ -53,6 +59,7 @@ export const schema = defineSchema({
     isStudentAdmin: v.boolean(),
     isOtherRole: v.boolean(),
     isActive: v.boolean(),
+    directoryOptOut: v.optional(v.boolean()),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
     avatarUrl: v.optional(v.string()),
@@ -114,6 +121,23 @@ export const schema = defineSchema({
       "entityId",
       "createdAt",
     ]),
+
+  disclosureEvents: defineTable({
+    actorId: v.optional(v.id("users")),
+    studentId: v.optional(v.id("users")),
+    action: disclosureActionValidator,
+    recordCategory: disclosureRecordCategoryValidator,
+    recipientType: disclosureRecipientTypeValidator,
+    recipientUserId: v.id("users"),
+    legalBasis: disclosureLegalBasisValidator,
+    legitimateInterest: disclosureLegitimateInterestValidator,
+    meta: studentExportDisclosureMetaValidator,
+    createdAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_actorId_and_createdAt", ["actorId", "createdAt"])
+    .index("by_studentId_and_createdAt", ["studentId", "createdAt"])
+    .index("by_recipientUserId_and_createdAt", ["recipientUserId", "createdAt"]),
 
   notificationDeliveries: defineTable({
     userId: v.id("users"),
@@ -429,8 +453,8 @@ export const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_recipientId_and_status", ["recipientId", "status"])
     .index("by_clubId_and_recipientId", ["clubId", "recipientId"])
+    .index("by_recipientId_and_status", ["recipientId", "status"])
     .index("by_recipientId_and_status_and_updatedAt", [
       "recipientId",
       "status",
@@ -451,12 +475,12 @@ export const schema = defineSchema({
       "requesterId",
     ])
     .index("by_clubId_and_requesterId", ["clubId", "requesterId"])
-    .index("by_requesterId_and_status", ["requesterId", "status"])
     .index("by_clubId_and_requesterId_and_status", [
       "clubId",
       "requesterId",
       "status",
-    ]),
+    ])
+    .index("by_requesterId_and_status", ["requesterId", "status"]),
 
   clubChannels: defineTable({
     clubId: v.id("clubs"),

@@ -57,6 +57,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
         email: user.email ?? null,
         roles: user.roles,
         avatarUrl: user.avatarUrl ?? null,
+        directoryOptOut: false,
       };
 
       if (isSponsorEligible(option)) {

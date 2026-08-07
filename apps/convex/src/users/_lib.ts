@@ -22,6 +22,7 @@ const userProfileFields = {
 
 export const userSelfProfileValidator = v.object({
   ...userProfileFields,
+  directoryOptOut: v.boolean(),
   mustResetPassword: docs.users.fields.mustResetPassword,
   dashboardLayout: docs.users.fields.dashboardLayout,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
@@ -41,6 +42,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     minor: user.minor,
     email: user.email,
     isActive: user.isActive,
+    directoryOptOut: user.directoryOptOut ?? false,
     mustResetPassword: user.mustResetPassword,
     dashboardLayout: user.dashboardLayout,
     avatarUrl: user.avatarUrl,
@@ -123,6 +125,7 @@ export type CreateLinkedUserArgs = {
   email?: string;
   password?: string;
   roles?: AppRole[];
+  directoryOptOut?: boolean;
   mustResetPassword?: boolean;
 };
 
@@ -255,6 +258,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
     roles,
     ...classifyRoles(roles),
     isActive: true,
+    directoryOptOut: args.directoryOptOut ?? false,
     mustResetPassword: args.mustResetPassword ?? true,
     dashboardLayout: [],
     searchText: searchText({

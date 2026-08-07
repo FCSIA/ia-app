@@ -56,8 +56,8 @@ export const sendForDelivery = internalAction({
     if (targets.length === 0) return null;
 
     const payload = JSON.stringify({
-      title: args.title,
-      body: args.body,
+      title: "IA notification",
+      body: "Open IA to view the latest update.",
       url: args.href,
     });
 

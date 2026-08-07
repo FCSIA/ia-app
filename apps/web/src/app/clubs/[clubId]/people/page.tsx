@@ -117,9 +117,6 @@ function ManagePeopleDialog({
     typeof window === 'undefined'
       ? ''
       : `${window.location.origin}/clubs/${club._id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
-  const qrUrl = club.activeJoinCode?.code
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
-    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -148,10 +145,12 @@ function ManagePeopleDialog({
 
           <TabPanel value="qr" className="mt-4">
             <div className="flex flex-col items-center gap-4 rounded-lg border p-5 text-center">
-              {qrUrl ? (
+              {club.activeJoinCode?.code ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrUrl} alt="Club join QR code" className="size-56 rounded-md border bg-white p-2" />
+                  <QrCode className="size-16 text-primary" />
+                  <div className="max-w-full rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="break-all">{joinUrl}</p>
+                  </div>
                   <Button type="button" variant="tertiary" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
                     <Copy className="mr-2 size-4" />
                     Copy link
@@ -230,7 +229,6 @@ function ManagePeopleDialog({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{fullName(selected)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{selected.uniqueId}</p>
                   </div>
                   <Button type="button" variant="ghost" size="icon" onClick={() => { setSelected(null); setQuery(''); }}>
                     <X className="size-4" />
@@ -251,7 +249,7 @@ function ManagePeopleDialog({
                 </div>
               ) : (
                 <Command className="rounded-lg border" shouldFilter={false}>
-                  <CommandInput placeholder="Search by name or student ID..." value={query} onValueChange={setQuery} />
+                  <CommandInput placeholder="Search by name..." value={query} onValueChange={setQuery} />
                   <CommandList className="max-h-[220px]">
                     {deferredQuery.length < 2 ? (
                       <div className="py-5 text-center text-sm text-muted-foreground">
@@ -274,7 +272,6 @@ function ManagePeopleDialog({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">{fullName(student)}</p>
-                              <p className="font-mono text-xs text-muted-foreground">{student.uniqueId}</p>
                             </div>
                           </CommandItem>
                         ))}
@@ -368,7 +365,6 @@ export default function ClubPeoplePage() {
   const filtered = useMemo(() => {
     let result = filterBySearchQuery(directory, deferredSearch, (person) => [
       fullName(person),
-      person.uniqueId,
       person.kind,
       person.clubRole,
     ]);
@@ -588,9 +584,6 @@ function PersonRow({
           ) : null}
           {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
-        {person.uniqueId ? (
-          <p className="truncate text-[11px] text-muted-foreground">{person.uniqueId}</p>
-        ) : null}
       </div>
       {showManage ? (
         <div className="flex gap-2 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
