@@ -15,7 +15,7 @@ function SuperAdminRoster() {
   const user = useLiveCurrentUser();
 
   if (!user) return null;
-  if (!hasRole(user, "SUPER_ADMIN")) return <Redirect href="/admin" />;
+  if (!hasRole(user, "SUPER_ADMIN")) return <Redirect href="../" />;
 
   return <RosterScreen />;
 }

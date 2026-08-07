@@ -15,7 +15,7 @@ function SchoolDayAdminOnly() {
   const user = useLiveCurrentUser();
 
   if (!user) return null;
-  if (!hasRole(user, "ADMIN", "SUPER_ADMIN")) return <Redirect href="/admin" />;
+  if (!hasRole(user, "ADMIN", "SUPER_ADMIN")) return <Redirect href="../" />;
 
   return <SchoolDayScreen />;
 }

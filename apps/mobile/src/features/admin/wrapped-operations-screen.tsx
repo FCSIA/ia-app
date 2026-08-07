@@ -29,7 +29,7 @@ export function WrappedOperationsScreen() {
   const { showToast } = useToast();
 
   if (user && !isAdmin) {
-    return <Redirect href="/admin" />;
+    return <Redirect href="../" />;
   }
 
   async function runGeneration(kind: RunKind) {
