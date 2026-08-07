@@ -27,6 +27,7 @@ import {
 } from '@/components/schedule/schedule-utils';
 import { useToast } from '@/hooks/use-toast';
 import { hasRole, useCurrentUser } from '@/lib/auth';
+import type { ImportedScheduleRow } from '@/lib/schedule-ocr';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { ScheduleDraftState, ScheduleTabState } from '../_types';
 import {
@@ -243,9 +244,33 @@ function useScheduleWorkspaceValue() {
     toast({ title: 'Copied Monday classes to Tuesday through Thursday' });
   };
 
+  const applyImportedSchedule = (rows: ImportedScheduleRow[]) => {
+    const weekdays: ScheduleWeekday[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'];
+    setScheduleEntries((current) => {
+      let next = current.filter((entry) => !weekdays.includes(entry.weekday));
+      for (const weekday of weekdays) {
+        for (const row of rows) {
+          next = replaceScheduleEntry(
+            next,
+            weekday,
+            row.periodNumber,
+            row.course ?? { className: row.className },
+          );
+        }
+      }
+      return next;
+    });
+    setSelectedWeekday('MONDAY');
+    toast({
+      title: 'Schedule imported',
+      description: 'Review the classes, then save your schedule.',
+    });
+  };
+
   return {
     acceptFriendRequest,
     adminWeekday,
+    applyImportedSchedule,
     blocks,
     canEditOwnSchedule,
     canManageBlocks,
