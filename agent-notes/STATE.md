@@ -2,9 +2,9 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Establish durable mobile UI foundations and a readable, compact
-  club workspace without mechanically compressing unrelated workflows.
+- **Branch**: `codex/57-global-search`
+- **Goal**: Replace the oversized clubs/calendar/search change with a four-part
+  stacked series whose final slice adds access-checked global search.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -50,6 +50,12 @@
 
 ### Frontend and Routing
 
+- The web club directory centers `Your clubs`, uses the group-user icon, and no
+  longer exposes the retired `/clubs/[clubId]/tags` route.
+- Students can review browser-local OCR matches from an Infinite Campus Term
+  schedule screenshot before applying Monday-Thursday classes and saving.
+- The calendar follows active theme tokens, Flex Friday uses the compact app
+  shell hierarchy, and Cmd+K searches people plus access-checked club channels.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and

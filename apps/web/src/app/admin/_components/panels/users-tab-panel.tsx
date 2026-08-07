@@ -2,9 +2,17 @@
 
 import { AdminUsersTab } from '../users/users-tab';
 import { useAdminUsers } from '../../_hooks/use-admin-users';
+import { useSearchParams } from 'next/navigation';
 
 export function UsersTabPanel() {
-  const users = useAdminUsers('users');
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams?.get('search') ?? '';
+
+  return <UsersTabPanelContent key={initialSearch} initialSearch={initialSearch} />;
+}
+
+function UsersTabPanelContent({ initialSearch }: { initialSearch: string }) {
+  const users = useAdminUsers('users', initialSearch);
 
   return (
     <AdminUsersTab

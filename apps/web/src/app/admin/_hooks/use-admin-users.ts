@@ -28,11 +28,11 @@ type DisplayedUsersPageState = {
   page: UsersPage | undefined;
 };
 
-export function useAdminUsers(activeTab: AdminTabId) {
+export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
   const user = useCurrentUser();
   const { toast } = useToast();
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => initialSearch);
   const deferredSearch = useDeferredValue(search);
   const [userRoleGroup, setUserRoleGroup] = useState<AdminUserRoleGroup>('students');
   const [isUserMutationPending, setIsUserMutationPending] = useState(false);

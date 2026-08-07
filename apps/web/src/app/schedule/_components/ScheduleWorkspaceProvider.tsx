@@ -41,7 +41,7 @@ const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
 const EMPTY_SEARCH_RESULTS: ScheduleSearchResult[] = [];
 
-function useScheduleWorkspaceValue() {
+function useScheduleWorkspaceValue(initialSearch: string) {
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -60,7 +60,7 @@ function useScheduleWorkspaceValue() {
   }));
   const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => initialSearch);
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraftState>({
@@ -322,8 +322,14 @@ type ScheduleWorkspaceValue = ReturnType<typeof useScheduleWorkspaceValue>;
 
 const ScheduleWorkspaceContext = createContext<ScheduleWorkspaceValue | null>(null);
 
-export function ScheduleWorkspaceProvider({ children }: { children: ReactNode }) {
-  const value = useScheduleWorkspaceValue();
+export function ScheduleWorkspaceProvider({
+  children,
+  initialSearch = '',
+}: {
+  children: ReactNode;
+  initialSearch?: string;
+}) {
+  const value = useScheduleWorkspaceValue(initialSearch);
   return (
     <ScheduleWorkspaceContext.Provider value={value}>
       {children}
