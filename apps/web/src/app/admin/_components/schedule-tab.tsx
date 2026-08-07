@@ -39,7 +39,7 @@ export function AdminScheduleTab({
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {['First Name', 'Last Name', 'Student ID', 'Grade Level', 'Major Pathway', 'Minor Pathway (optional)'].map((field) => (
-              <Badge key={field} variant="dot" size="sm">
+              <Badge key={field} variant="solid" size="sm">
                 {field}
               </Badge>
             ))}

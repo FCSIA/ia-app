@@ -37,7 +37,6 @@ const badgeVariants = cva(
     variants: {
       variant: {
         solid: "",
-        dot: "border border-border text-foreground",
       },
       size: {
         sm: "h-5 px-2 text-[11px] gap-1",
@@ -73,24 +72,18 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   ) => {
     const shape = useShape();
     const colorValue = badgeColors[color];
-    const isSolid = variant === "solid";
-    const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;
 
-    const colorStyle = isSolid
-      ? color === "gray"
-        ? {
-            backgroundColor: "var(--muted)",
-            borderColor: "var(--border)",
-            color: "var(--foreground)",
-          }
-        : {
-            color: colorValue,
-            borderColor: `color-mix(in srgb, ${colorValue} 38%, transparent)`,
-            backgroundColor: `color-mix(in srgb, ${colorValue} 16%, var(--background))`,
-          }
-      : {};
-
-    const dotColor = color === "gray" ? "var(--muted-foreground)" : colorValue;
+    const colorStyle = color === "gray"
+      ? {
+          backgroundColor: "var(--muted)",
+          borderColor: "var(--border)",
+          color: "var(--foreground)",
+        }
+      : {
+          color: colorValue,
+          borderColor: `color-mix(in srgb, ${colorValue} 38%, transparent)`,
+          backgroundColor: `color-mix(in srgb, ${colorValue} 16%, var(--background))`,
+        };
 
     return (
       <span
@@ -99,16 +92,6 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
         style={{ ...colorStyle, ...style }}
         {...props}
       >
-        {!isSolid && (
-          <span
-            className="shrink-0 rounded-full"
-            style={{
-              width: dotSize,
-              height: dotSize,
-              backgroundColor: dotColor,
-            }}
-          />
-        )}
         {children}
       </span>
     );

@@ -122,7 +122,7 @@ export function AuditTable({
                     ) : null}
                   </TableCell>
                   <TableCell className={`${d.cell} min-w-0 align-top`}>
-                    <Badge variant="dot" size="sm" className="max-w-full font-mono text-[11px]">
+                    <Badge variant="solid" size="sm" className="max-w-full font-mono text-[11px]">
                       <span className="truncate">{event.action}</span>
                     </Badge>
                   </TableCell>

@@ -11,9 +11,10 @@
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsc --noEmit"
+    "test": "vitest run"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "4.1.9"
   }
 }

@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, ChevronRight, Clock, RefreshCw, SlidersHorizontal, Timer } from "lucide-react-native";
-import { pickNavigationLoadingMessage } from "@ia/fun-facts";
+import { pickNavigationLoadingFact } from "@ia/fun-facts";
 import { AppHeader } from "@/components/app-header";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
@@ -16,6 +16,7 @@ import {
   Progress,
   ScreenLoader,
   IaLoadingMark,
+  LoadingFact,
   Section,
   Skeleton,
   Txt,
@@ -187,7 +188,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
   const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, EMPTY_ARGS);
   const registrations = useQuery(api.flexFriday.registration.getMyRegistrations, EMPTY_ARGS);
   const schedule = useOfflineValue("dashboard-schedule", liveSchedule);
-  const [funFact, setFunFact] = useState(pickNavigationLoadingMessage);
+  const [funFact, setFunFact] = useState(pickNavigationLoadingFact);
   const [layout, setLayout] = useState<DashboardWidgetId[]>([...DEFAULT_DASHBOARD_WIDGETS]);
 
   useEffect(() => {
@@ -350,11 +351,11 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
             label="Show another fun fact"
             size="sm"
             variant="ghost"
-            onPress={() => setFunFact(pickNavigationLoadingMessage())}
+            onPress={() => setFunFact(pickNavigationLoadingFact())}
           />
         }
       >
-        <Txt tone="muted">{funFact}</Txt>
+        <LoadingFact fact={funFact} />
       </Section>
     );
   }
