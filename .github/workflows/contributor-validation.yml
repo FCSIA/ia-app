@@ -16,6 +16,11 @@ jobs:
     name: Lint, test, and build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Build-time placeholders only. The validation job never starts or contacts
+      # a Convex deployment and receives no deployment credentials.
+      NEXT_PUBLIC_CONVEX_URL: http://127.0.0.1:3210
+      NEXT_PUBLIC_CONVEX_SITE_URL: http://127.0.0.1:3211
     steps:
       - uses: actions/checkout@v5
         with:
