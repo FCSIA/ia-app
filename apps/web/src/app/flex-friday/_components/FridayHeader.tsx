@@ -1,11 +1,11 @@
-import React from 'react';
+import type { CreditsSummaryData } from './CreditsSummary';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { CreditsSummary } from './CreditsSummary';
 import { ViewSwitcher } from './ViewSwitcher';
-import { FlexFridayDoc } from '../_types';
+import type { FlexFridayDoc } from '../_types';
 
 interface Props {
   fridays: FlexFridayDoc[];
@@ -16,7 +16,7 @@ interface Props {
   isStudent: boolean;
   activeView: 'schedule' | 'audit';
   onViewChange: (view: 'schedule' | 'audit') => void;
-  credits: any;
+  credits: CreditsSummaryData | null | undefined;
 }
 
 export function FridayHeader({
@@ -31,19 +31,9 @@ export function FridayHeader({
   credits,
 }: Props) {
   return (
-    <div className="mb-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Flex Friday</h1>
-        {canManage && (
-          <Button size="sm" onClick={onAddFriday} className="flex items-center gap-2">
-            <Plus size={16} /> Schedule Friday
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-full max-w-[240px]">
+    <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="w-full sm:w-60">
             <Select
               value={selectedFriday?._id}
               onValueChange={(id) => {
@@ -51,7 +41,7 @@ export function FridayHeader({
                 if (friday) onSelectFriday(friday);
               }}
             >
-              <SelectTrigger placeholder="Select a Friday..." />
+              <SelectTrigger placeholder="Select a Friday" />
               <SelectContent>
                 {fridays.map((f, i) => (
                   <SelectItem key={f._id} value={f._id} index={i}>
@@ -64,8 +54,14 @@ export function FridayHeader({
           {!isStudent && <ViewSwitcher activeView={activeView} onViewChange={onViewChange} />}
         </div>
 
-        {isStudent && credits != null && <CreditsSummary credits={credits} />}
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {isStudent && credits != null && <CreditsSummary credits={credits} />}
+          {canManage && (
+            <Button size="sm" onClick={onAddFriday}>
+              <Plus data-icon="inline-start" /> Schedule Friday
+            </Button>
+          )}
+        </div>
     </div>
   );
 }

@@ -16,6 +16,7 @@ a monthly grid.
 - Searches title, description, and location on the client for the current range.
 - Lets users create and delete their own personal entries.
 - Shows published events and Flex Friday rows through linked calendar entries.
+- Uses the active app theme across month, day, and resource views.
 
 ## Source Files
 
