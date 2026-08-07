@@ -175,7 +175,6 @@ function getSearchableText(message: ClubChannelMessage) {
   return [
     message.body,
     fullName(message.author),
-    message.author.uniqueId,
     ...message.attachments.map((a) => a.fileName),
   ]
     .filter(Boolean)
@@ -1001,14 +1000,7 @@ export default function ClubChannelPage({
       detail: '',
       kind: 'tag' as const,
     })) ?? [];
-    const people = (mentionContext?.members ?? [])
-      .map((person) => ({
-        token: person.uniqueId,
-        label: `${person.firstName} ${person.lastName}`.trim(),
-        detail: '',
-        kind: 'person' as const,
-      }));
-    return [...builtIns, ...tags, ...people];
+    return [...builtIns, ...tags];
   }, [mentionContext]);
 
   const selectedThread = selectedThreadResult?.root ?? null;

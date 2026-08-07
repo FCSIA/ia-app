@@ -39,21 +39,18 @@ export function validateClubImageMetadata(
   return { mimeType, size: metadata.size };
 }
 
-async function deleteRejectedUpload(
-  ctx: MutationCtx,
-  storageId: Id<"_storage">,
-) {
+async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
+  const metadata = await ctx.db.system.get("_storage", storageId);
+  if (!metadata) throw new ConvexError("Upload not found");
+  return metadata;
+}
+
+async function deleteRejectedUpload(ctx: MutationCtx, storageId: Id<"_storage">) {
   try {
     await ctx.storage.delete(storageId);
   } catch {
     // Best effort cleanup. The user-facing validation error is more useful.
   }
-}
-
-async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) {
-  const metadata = await ctx.db.system.get("_storage", storageId);
-  if (!metadata) throw new ConvexError("Upload not found");
-  return metadata;
 }
 
 export const generateUploadUrl = mutation({

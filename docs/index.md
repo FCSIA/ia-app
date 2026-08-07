@@ -12,6 +12,8 @@ same change.
 
 - [Developer setup](reference/getting-started.md) - local environment, Convex dev deployment,
   seed/reset, and demo accounts.
+- [FERPA compliance audit](compliance/ferpa-compliance-audit.md) - student data
+  privacy findings, legal baseline, vendor checklist, and remediation plan.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.
 - [Azure portability review](architecture/azure-portability.md) - backend

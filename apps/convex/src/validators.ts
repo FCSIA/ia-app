@@ -100,6 +100,65 @@ export type NotificationPreferenceLevel = Infer<
   typeof notificationPreferenceLevelValidator
 >;
 
+export const disclosureActionValidator = v.union(
+  v.literal("STUDENT_EXPORT"),
+);
+
+export type DisclosureAction = Infer<typeof disclosureActionValidator>;
+
+export const disclosureRecordCategoryValidator = v.union(
+  v.literal("student_directory_export"),
+);
+
+export type DisclosureRecordCategory = Infer<typeof disclosureRecordCategoryValidator>;
+
+export const disclosureRecipientTypeValidator = v.union(
+  v.literal("internal_school_official"),
+);
+
+export type DisclosureRecipientType = Infer<typeof disclosureRecipientTypeValidator>;
+
+export const disclosureLegalBasisValidator = v.union(
+  v.literal("FERPA school official / legitimate educational interest"),
+);
+
+export type DisclosureLegalBasis = Infer<typeof disclosureLegalBasisValidator>;
+
+export const disclosureLegitimateInterestValidator = v.union(
+  v.literal("Student administration export requested from admin UI"),
+);
+
+export type DisclosureLegitimateInterest = Infer<
+  typeof disclosureLegitimateInterestValidator
+>;
+
+export const studentExportDisclosureMetaValidator = v.object({
+  rowCount: v.number(),
+});
+
+export type StudentExportDisclosureMeta = Infer<
+  typeof studentExportDisclosureMetaValidator
+>;
+
+export const appUserPublicValidator = v.object({
+  id: v.id("users"),
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  roles: v.array(appRoleValidator),
+  role: v.union(appRoleValidator, v.null()),
+  gradeLevel: v.union(v.number(), v.null()),
+  major: v.union(pathwayValidator, v.null()),
+  minor: v.union(pathwayValidator, v.null()),
+  email: v.union(v.string(), v.null()),
+  isActive: v.boolean(),
+  directoryOptOut: v.boolean(),
+  mustResetPassword: v.boolean(),
+  dashboardLayout: v.array(v.string()),
+  avatarUrl: v.union(v.string(), v.null()),
+  customBackgroundUrl: v.union(v.string(), v.null()),
+});
+
 export const clubMemberRoleValidator = v.union(
   v.literal("MEMBER"),
   v.literal("LEADER"),

@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type {
+  DisclosureAction,
+  DisclosureLegitimateInterest,
+  DisclosureLegalBasis,
+  DisclosureRecipientType,
+  DisclosureRecordCategory,
+  StudentExportDisclosureMeta,
+} from "../validators";
 
 export const actorValidator = v.union(
   v.object({
@@ -83,6 +91,34 @@ export async function logAuditEvent(
     action: input.action,
     entityType: input.entityType,
     entityId: input.entityId,
+    meta: input.meta,
+    createdAt: Date.now(),
+  });
+}
+
+export async function logDisclosureEvent(
+  ctx: MutationCtx,
+  input: {
+    actorId?: Id<"users">;
+    studentId?: Id<"users">;
+    action: DisclosureAction;
+    recordCategory: DisclosureRecordCategory;
+    recipientType: DisclosureRecipientType;
+    recipientUserId: Id<"users">;
+    legalBasis: DisclosureLegalBasis;
+    legitimateInterest: DisclosureLegitimateInterest;
+    meta: StudentExportDisclosureMeta;
+  },
+) {
+  await ctx.db.insert("disclosureEvents", {
+    actorId: input.actorId,
+    studentId: input.studentId,
+    action: input.action,
+    recordCategory: input.recordCategory,
+    recipientType: input.recipientType,
+    recipientUserId: input.recipientUserId,
+    legalBasis: input.legalBasis,
+    legitimateInterest: input.legitimateInterest,
     meta: input.meta,
     createdAt: Date.now(),
   });

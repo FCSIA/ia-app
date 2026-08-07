@@ -4,7 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
-import { getUser } from '@/lib/auth';
+import { useCurrentUser, type AppUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -19,8 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/lib/use-is-client';
 
 type RegistrationRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyRegistrations>[number];
 type AssignmentRecord = FunctionReturnType<typeof api.flexFriday.registration.getMyAssignments>[number];
@@ -74,13 +75,8 @@ export default function FlexFridayPassPage() {
 }
 
 function FlexFridayPassContent() {
-  // `getUser()` reads localStorage → null on the server. Defer user-derived
-  // render output until after mount so SSR and the first client render match.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  const user = mounted ? getUser() : null;
+  const mounted = useIsClient();
+  const user = useCurrentUser();
   const searchParams = useSearchParams();
   const requestedFridayId = searchParams?.get('fridayId') ?? null;
 
@@ -228,7 +224,7 @@ function PassCard({
   isPast,
 }: {
   group: FridayGroup;
-  user: ReturnType<typeof getUser>;
+  user: AppUser | null;
   isPast: boolean;
 }) {
   // Sort workshops by earliest session start time
@@ -280,7 +276,6 @@ function PassCard({
             <span className="font-semibold text-foreground">
               {user?.firstName} {user?.lastName}
             </span>
-            {user?.uniqueId ? <span className="ml-2">#{user.uniqueId}</span> : null}
           </div>
         </div>
       </CardContent>

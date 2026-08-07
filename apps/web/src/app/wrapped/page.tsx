@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery as useConvexQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
-import { getUser, hasRole } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
 import { computeWrappedAvailability } from '@/lib/wrapped';
+import { useIsClient } from '@/lib/use-is-client';
 
 import { buildSlides } from './_lib/utils';
 import { SlideView } from './_components/slide/SlideView';
@@ -16,12 +17,11 @@ import { LoadingState } from './_components/feedback/LoadingState';
 import { ErrorState } from './_components/feedback/ErrorState';
 
 export default function WrappedPage() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsClient();
 
-  const user = mounted ? getUser() : null;
+  const user = useCurrentUser();
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'You';
-  const isAdmin = mounted && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
 
   // Recompute availability each mount + tick every 60s so the countdown
   // decrements without a page refresh (and the gate flips open at 12:00 AM

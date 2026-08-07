@@ -53,7 +53,6 @@ export function FriendScheduleCard({
               friend.visibility === 'PUBLIC' ? 'bg-emerald-500' : friend.visibility === 'PRIVATE' ? 'bg-amber-500' : 'bg-muted-foreground/40'
             }`} />
           </div>
-          <p className="font-mono text-[11px] text-muted-foreground mt-0.5">{friend.user.uniqueId}</p>
         </div>
         {isPublic && (
           <div className="flex items-center gap-3 shrink-0">
