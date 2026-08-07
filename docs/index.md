@@ -12,6 +12,8 @@ same change.
 
 - [Developer setup](reference/getting-started.md) - local environment, Convex dev deployment,
   seed/reset, and demo accounts.
+- [Student contributor review](reference/contributor-review.md) - untrusted pull-request
+  boundaries, maintainer review, and the Codex Security CLI enablement gate.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.
 - [Azure portability review](architecture/azure-portability.md) - backend
