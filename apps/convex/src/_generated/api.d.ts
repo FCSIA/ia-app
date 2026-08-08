@@ -17,8 +17,8 @@ import type * as announcements_serialize from "../announcements/serialize.js";
 import type * as audit__lib from "../audit/_lib.js";
 import type * as audit_events from "../audit/events.js";
 import type * as auth from "../auth.js";
-import type * as auth_loginRateLimitPlugin from "../auth/loginRateLimitPlugin.js";
 import type * as authLoginRateLimit from "../authLoginRateLimit.js";
+import type * as auth_loginRateLimitPlugin from "../auth/loginRateLimitPlugin.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as clubs__lib from "../clubs/_lib.js";
 import type * as clubs_access from "../clubs/access.js";
@@ -81,6 +81,7 @@ import type * as schedule_scheduleChangeNotifications from "../schedule/schedule
 import type * as schedule_seed from "../schedule/seed.js";
 import type * as schedule_shareLinkSecurity from "../schedule/shareLinkSecurity.js";
 import type * as schedule_shareLinks from "../schedule/shareLinks.js";
+import type * as search_global from "../search/global.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
 import type * as uploads_chatAttachments from "../uploads/chatAttachments.js";
@@ -110,8 +111,8 @@ declare const fullApi: ApiFromModules<{
   "audit/_lib": typeof audit__lib;
   "audit/events": typeof audit_events;
   auth: typeof auth;
-  "auth/loginRateLimitPlugin": typeof auth_loginRateLimitPlugin;
   authLoginRateLimit: typeof authLoginRateLimit;
+  "auth/loginRateLimitPlugin": typeof auth_loginRateLimitPlugin;
   bootstrap: typeof bootstrap;
   "clubs/_lib": typeof clubs__lib;
   "clubs/access": typeof clubs_access;
@@ -174,6 +175,7 @@ declare const fullApi: ApiFromModules<{
   "schedule/seed": typeof schedule_seed;
   "schedule/shareLinkSecurity": typeof schedule_shareLinkSecurity;
   "schedule/shareLinks": typeof schedule_shareLinks;
+  "search/global": typeof search_global;
   seed: typeof seed;
   stats: typeof stats;
   "uploads/chatAttachments": typeof uploads_chatAttachments;

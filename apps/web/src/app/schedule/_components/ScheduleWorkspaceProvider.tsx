@@ -54,7 +54,7 @@ function schoolDateKey() {
   return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
 }
 
-function useScheduleWorkspaceValue() {
+function useScheduleWorkspaceValue(initialSearch: string) {
   const { isAuthenticated } = useConvexAuth();
   const user = useCurrentUser();
   const searchParams = useSearchParams();
@@ -78,7 +78,7 @@ function useScheduleWorkspaceValue() {
   }));
   const [selectedDateKey, setSelectedDateKey] = useState(schoolDateKey);
   const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>("MONDAY");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => initialSearch);
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraftState>({
@@ -448,10 +448,12 @@ const ScheduleWorkspaceContext = createContext<ScheduleWorkspaceValue | null>(
 
 export function ScheduleWorkspaceProvider({
   children,
+  initialSearch = '',
 }: {
   children: ReactNode;
+  initialSearch?: string;
 }) {
-  const value = useScheduleWorkspaceValue();
+  const value = useScheduleWorkspaceValue(initialSearch);
   return (
     <ScheduleWorkspaceContext.Provider value={value}>
       {children}

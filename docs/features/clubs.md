@@ -15,6 +15,8 @@ join requests, join codes, tags, and a workspace UI.
 - Shows a club workspace with announcements, people, channels, and settings.
 - Lets members search channel names and message history, then open a result in
   its conversation.
+- Lets signed-in users find people and every club channel they can read from the
+  global command palette.
 - Collects files and images previously shared in each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
@@ -51,6 +53,7 @@ join requests, join codes, tags, and a workspace UI.
 - `api.clubs.invitations.redeemJoinCode`
 - `api.clubs.channels.*`
 - `api.clubs.shared.listChannelAttachments`
+- `api.search.global.palette`
 - `api.clubs.tags.*`
 
 ## Data Model
