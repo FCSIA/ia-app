@@ -62,11 +62,6 @@ export default function FlexPassScreen() {
           <Txt variant="display" numberOfLines={2}>
             {name}
           </Txt>
-          {user?.uniqueId ? (
-            <Txt variant="label" tone="muted">
-              {user.uniqueId}
-            </Txt>
-          ) : null}
         </View>
 
         <View

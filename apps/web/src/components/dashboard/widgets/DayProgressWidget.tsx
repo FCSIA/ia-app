@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from 'convex/react';
-import { parse, isAfter, isBefore, differenceInMinutes } from 'date-fns';
-import { Timer, CheckCircle2 } from 'lucide-react';
-import { api } from '~/apps/convex/src/_generated/api';
-import { Panel } from '@/components/layout/page-frame';
-import { Progress } from '@/components/ui/progress';
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
+import { parse, isAfter, isBefore, differenceInMinutes } from "date-fns";
+import { Timer, CheckCircle2 } from "lucide-react";
+import { api } from "~/apps/convex/src/_generated/api";
+import { Panel } from "@/components/layout/page-frame";
+import { Progress } from "@/components/ui/progress";
 
 export function DayProgressWidget() {
   const [now, setNow] = useState(new Date());
@@ -16,40 +16,52 @@ export function DayProgressWidget() {
     return () => clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(api.schedule.dashboard.get);
+  const scheduleData = useQuery(api.schedule.dashboard.get, {});
 
   const progress = useMemo(() => {
-    if (!scheduleData?.blocks || scheduleData.blocks.length === 0) return null;
+    if (!scheduleData?.resolvedDay.blocks.length) return null;
 
-    const blocks = scheduleData.blocks;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const blocks = scheduleData.resolvedDay.blocks;
+    const todayStr = scheduleData.resolvedDay.dateKey;
 
-    // Find first block start and last block end
-    const startTimes = blocks
-      .map((b) => parse(`${todayStr} ${b.startTime}`, 'yyyy-MM-dd HH:mm', new Date()))
-      .filter((d: Date) => !isNaN(d.getTime()));
-    const endTimes = blocks
-      .map((b) => parse(`${todayStr} ${b.endTime}`, 'yyyy-MM-dd HH:mm', new Date()))
-      .filter((d: Date) => !isNaN(d.getTime()));
+    let dayStart: Date | null = null;
+    let dayEnd: Date | null = null;
+    for (const block of blocks) {
+      const start = parse(
+        `${todayStr} ${block.startTime}`,
+        "yyyy-MM-dd HH:mm",
+        new Date(),
+      );
+      const end = parse(
+        `${todayStr} ${block.endTime}`,
+        "yyyy-MM-dd HH:mm",
+        new Date(),
+      );
+      if (!isNaN(start.getTime()) && (!dayStart || start < dayStart))
+        dayStart = start;
+      if (!isNaN(end.getTime()) && (!dayEnd || end > dayEnd)) dayEnd = end;
+    }
 
-    if (startTimes.length === 0 || endTimes.length === 0) return null;
-
-    const dayStart = new Date(Math.min(...startTimes.map((d: Date) => d.getTime())));
-    const dayEnd = new Date(Math.max(...endTimes.map((d: Date) => d.getTime())));
+    if (!dayStart || !dayEnd) return null;
 
     const totalMinutes = differenceInMinutes(dayEnd, dayStart);
     const elapsedMinutes = differenceInMinutes(now, dayStart);
 
     if (totalMinutes <= 0 || isNaN(totalMinutes)) return null;
 
-    if (isBefore(now, dayStart)) return { percent: 0, status: 'Not started', remaining: totalMinutes };
-    if (isAfter(now, dayEnd)) return { percent: 100, status: 'Done for the day', remaining: 0 };
+    if (isBefore(now, dayStart))
+      return { percent: 0, status: "Not started", remaining: totalMinutes };
+    if (isAfter(now, dayEnd))
+      return { percent: 100, status: "Done for the day", remaining: 0 };
 
-    const percent = Math.max(0, Math.min(100, (elapsedMinutes / totalMinutes) * 100));
+    const percent = Math.max(
+      0,
+      Math.min(100, (elapsedMinutes / totalMinutes) * 100),
+    );
     const remaining = totalMinutes - elapsedMinutes;
 
-    return { percent, status: 'In progress', remaining };
-  }, [scheduleData?.blocks, now]);
+    return { percent, status: "In progress", remaining };
+  }, [scheduleData?.resolvedDay, now]);
 
   if (!progress) {
     return (
@@ -62,8 +74,8 @@ export function DayProgressWidget() {
   }
 
   return (
-    <Panel 
-      title="Day Progress" 
+    <Panel
+      title="Day Progress"
       action={<Timer className="size-4 text-muted-foreground" />}
     >
       <div className="flex flex-col gap-4">
@@ -73,8 +85,8 @@ export function DayProgressWidget() {
               {Math.round(progress.percent)}%
             </p>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {progress.percent >= 100 
-                ? 'School day complete' 
+              {progress.percent >= 100
+                ? "School day complete"
                 : `${progress.remaining} mins remaining`}
             </p>
           </div>
@@ -85,10 +97,12 @@ export function DayProgressWidget() {
           ) : null}
         </div>
 
-        <Progress 
-          value={progress.percent} 
-          className="h-3 w-full rounded-full bg-muted/40" 
-          indicatorClassName={progress.percent >= 100 ? 'bg-emerald-500' : 'bg-primary'}
+        <Progress
+          value={progress.percent}
+          className="h-3 w-full rounded-full bg-muted/40"
+          indicatorClassName={
+            progress.percent >= 100 ? "bg-emerald-500" : "bg-primary"
+          }
         />
       </div>
     </Panel>

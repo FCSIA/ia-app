@@ -14,6 +14,7 @@ import {
   Megaphone,
   ShieldAlert,
   Sparkles,
+  RefreshCcw,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   FLEX_FRIDAY: Sparkles,
   CONTENT_MODERATED: ShieldAlert,
   FRIEND_REQUEST: Users,
+  FRIEND_SCHEDULE_CHANGE: RefreshCcw,
 };
 
 export function NotificationSettingsPanel() {
@@ -94,23 +96,6 @@ export function NotificationSettingsPanel() {
               </div>
             );
           })}
-          <div
-            title="Required"
-            className="flex min-w-0 items-center justify-between gap-3 py-1.5"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <ShieldAlert className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <p className="truncate text-sm font-medium text-foreground">Admin broadcast push</p>
-            </div>
-            <NotificationScopeSwitch
-              category="SCHOOL_ANNOUNCEMENT"
-              label="Admin broadcast push"
-              scopeKey="admin-push"
-              locked
-              compact
-              className="shrink-0"
-            />
-          </div>
         </div>
       </section>
       {!hasAdministrativeClubAccess ? (

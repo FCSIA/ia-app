@@ -70,8 +70,17 @@ import type * as rateLimits from "../rateLimits.js";
 import type * as schedule__lib from "../schedule/_lib.js";
 import type * as schedule_blocks from "../schedule/blocks.js";
 import type * as schedule_dashboard from "../schedule/dashboard.js";
+import type * as schedule_dayPlans from "../schedule/dayPlans.js";
+import type * as schedule_dayResolver from "../schedule/dayResolver.js";
 import type * as schedule_friends from "../schedule/friends.js";
+import type * as schedule_groupComparison from "../schedule/groupComparison.js";
+import type * as schedule_groupPolicy from "../schedule/groupPolicy.js";
+import type * as schedule_groups from "../schedule/groups.js";
+import type * as schedule_migrations from "../schedule/migrations.js";
+import type * as schedule_scheduleChangeNotifications from "../schedule/scheduleChangeNotifications.js";
 import type * as schedule_seed from "../schedule/seed.js";
+import type * as schedule_shareLinkSecurity from "../schedule/shareLinkSecurity.js";
+import type * as schedule_shareLinks from "../schedule/shareLinks.js";
 import type * as search_global from "../search/global.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
@@ -155,8 +164,17 @@ declare const fullApi: ApiFromModules<{
   "schedule/_lib": typeof schedule__lib;
   "schedule/blocks": typeof schedule_blocks;
   "schedule/dashboard": typeof schedule_dashboard;
+  "schedule/dayPlans": typeof schedule_dayPlans;
+  "schedule/dayResolver": typeof schedule_dayResolver;
   "schedule/friends": typeof schedule_friends;
+  "schedule/groupComparison": typeof schedule_groupComparison;
+  "schedule/groupPolicy": typeof schedule_groupPolicy;
+  "schedule/groups": typeof schedule_groups;
+  "schedule/migrations": typeof schedule_migrations;
+  "schedule/scheduleChangeNotifications": typeof schedule_scheduleChangeNotifications;
   "schedule/seed": typeof schedule_seed;
+  "schedule/shareLinkSecurity": typeof schedule_shareLinkSecurity;
+  "schedule/shareLinks": typeof schedule_shareLinks;
   "search/global": typeof search_global;
   seed: typeof seed;
   stats: typeof stats;
@@ -200,5 +218,6 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
+  migrations: import("@convex-dev/migrations/_generated/component.js").ComponentApi<"migrations">;
   rateLimiter: import("@convex-dev/rate-limiter/_generated/component.js").ComponentApi<"rateLimiter">;
 };

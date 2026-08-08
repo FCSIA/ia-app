@@ -189,7 +189,7 @@ export default function FlexFridayPage() {
 
               {/* Attendance Overlay/Panel */}
               {flex.attendanceWorkshopId && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <div>
                   <AttendancePanel
                     roster={flex.rosterData}
                     isLoading={flex.rosterLoading}

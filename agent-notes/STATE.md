@@ -11,6 +11,24 @@
 
 ## Current Truth
 
+### Open PR Reconciliation (2026-08-07)
+
+- PRs #69-#72 replace the superseded #57 branch as a four-layer clubs, schedule
+  OCR, calendar/Flex UI, and access-checked search stack.
+- PRs #73, #77, and draft #76 are independent notification, client-state ADR,
+  and FERPA/compliance reconciliations based on `main`.
+- PR #75 is the friend-link/private-group layer stacked on special-day PR #74.
+- PR #79 is the login/loading-facts layer stacked on design-system PR #78.
+- PR #80 is the student-contribution workflow layer stacked on PR #78. Its
+  least-privilege GitHub workflow passes frozen install, brand verification,
+  lint, tests, and all package builds without deployment credentials.
+- React Doctor is green across the open reconciliation PRs. The refreshed PR
+  #75 and #76 scans report zero errors and zero warnings.
+- Issue #41 is closed with code-backed notification category semantics. Issues
+  #46, #51-#53, #56, #58-#59, and #62-#63 remain open only until their linked
+  PRs merge. Parent, school-input, policy, and underspecified feature issues
+  remain open with explicit unblockers recorded in GitHub.
+
 ### Backend on Convex
 
 | Domain | Status |
@@ -141,6 +159,26 @@
   no longer use mask fades that can imply nonexistent overflow; the chat
   scroller keeps its own measured edge treatment. Behavior-owned chat, menu,
   editor, tab, and attachment scrollports retain their existing contracts.
+- Web schedules now use a Fluid-first two-pane workspace: the selected school
+  day stays mounted while date data refreshes, dates use the shadcn calendar
+  popover, class pickers are anchored only to explicit row toggles, school times
+  are displayed in 12-hour format, and friend links are created and revoked in
+  a compact non-modal popover with locally generated IA-branded QR sharing.
+  Schedule groups now have their own top-level tab and compact create popover;
+  auth-sensitive schedule queries stop during logout, and student IDs are no
+  longer rendered across web or mobile UI surfaces.
+- Web UI handoff now follows the required primitive-first gate in
+  `agent-notes/WEB_UI_WORKFLOW.md`: agents must inspect current Fluid docs,
+  rendered and Code examples, APIs, registry source, and local adapters; choose
+  primitives by semantics; preserve proximity registration; and escalate shared
+  primitive gaps instead of patching pages. ESLint now keeps semantic tables,
+  headless-library imports, interactive badges, raw pressed buttons, and direct
+  clipboard use behind shared UI contracts.
+- The schedule editor now uses indexed Fluid table rows, Discover Clubs forwards
+  CardGroup indices like the channel-list reference, the date picker matches the
+  current DayPicker/Fluid DOM contract, quick filters use a shared ToggleGroup,
+  and visible friend/join values use Fluid InputCopy. Event Share uses the native
+  share sheet with a centralized copy fallback.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -160,6 +198,18 @@
 
 ### Remaining Debt
 
+- The club workspace selector is route navigation and should use the current
+  Fluid Dropdown popup contract. The existing retrofit is intentionally not
+  extended: current Fluid `MenuItem` lacks the leading-media and link-composition
+  API needed for club logos and native navigation. The proposed shared API is a
+  constrained `leadingMedia` slot plus `render={<Link ... />}` composition while
+  `MenuItem` retains ownership of label, current/check state, index registration,
+  roving focus, and close-on-select. Approve and implement that shared primitive
+  API before migrating the selector and the remaining legacy dropdown
+  compositions.
+- Signed-in visual interaction QA is still required for the repaired proximity
+  highlights, calendar geometry, course picker density, copy controls, filters,
+  and keyboard/reduced-motion states because browser control was unavailable.
 - Mobile v1 is repo-local store-ready. Remaining mobile launch blockers are
   external: school-controlled EAS project id/account owner, Apple/Google store
   accounts, universal-link domain files, reviewer credentials on a demo
@@ -173,6 +223,14 @@
 
 ### Verification (latest)
 
+- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+  primitive workflow and remediation slices.
+- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+  unused-import warnings.
+- `direnv exec . pnpm --filter web build` - pass through compilation,
+  TypeScript, page data, all 18 static pages, and route optimization.
+- `pnpm --filter mobile typecheck` - pass
+- `pnpm lint` - pass with 7 existing web warnings outside this slice
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (14 files, 47 tests)
@@ -214,24 +272,30 @@ narrowed in draft PR #45.
 
 ## Next Work
 
-1. Reload the mobile Club workspace on a physical device and verify the
+1. Review and merge the replacement stacks in base-first order: #69 -> #70 ->
+   #71 -> #72, #74 -> #75, and #78 -> #79 / #80. Review independent PRs #73 and
+   #77 separately; keep draft #76 blocked until district/legal decisions land.
+2. For issue #65, approve a pinned Codex Security command/action, its exit-code
+   contract, fork-PR secret policy, findings retention, required check name, and
+   triage owner before adding that gate.
+3. Reload the mobile Club workspace on a physical device and verify the
    horizontal category header, 44px channels, chat rhythm, keyboard, and sheet
    behavior; no simulator was booted for the corrective pass.
-2. Review and merge draft PR #45 after the web chat visual/interaction pass.
-3. Deploy the Convex schema/index/function changes to the target deployment
+4. Review and merge draft PR #45 after the web chat visual/interaction pass.
+5. Deploy the Convex schema/index/function changes to the target deployment
    before production student/staff use.
-4. Coordinate with the FERPA session before touching `docs/compliance/` or the
-   FERPA entry in `docs/index.md`.
-5. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+6. Coordinate with district/legal owners before representing the FERPA work as
+   production-ready or changing unresolved policy sections.
+7. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-6. Address the remaining lower-priority hardening debt listed above.
+8. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 
 ```bash
-pnpm --filter cvx codegen
-pnpm --filter cvx typecheck
-pnpm lint
-pnpm build
-pnpm test
+direnv exec . pnpm --filter cvx codegen
+direnv exec . pnpm --filter cvx typecheck
+direnv exec . pnpm lint
+direnv exec . pnpm build
+direnv exec . pnpm test
 ```

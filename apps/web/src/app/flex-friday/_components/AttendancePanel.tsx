@@ -81,7 +81,7 @@ export function AttendancePanel({
     <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">Attendance roster</h3>
-        <Badge variant="dot" color="gray" size="sm">
+        <Badge variant="solid" color="gray" size="sm">
           {students.length} {students.length === 1 ? 'student' : 'students'}
         </Badge>
       </div>
@@ -96,7 +96,7 @@ export function AttendancePanel({
                   {student.lastName}, {student.firstName}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Grade {student.gradeLevel || '—'} · {student.uniqueId}
+                  Grade {student.gradeLevel || '—'}
                 </p>
               </div>
 

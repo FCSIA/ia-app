@@ -1,0 +1,51 @@
+name: Contributor Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contributor-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Build-time placeholders only. The validation job never starts or contacts
+      # a Convex deployment and receives no deployment credentials.
+      NEXT_PUBLIC_CONVEX_URL: http://127.0.0.1:3210
+      NEXT_PUBLIC_CONVEX_SITE_URL: http://127.0.0.1:3211
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify generated brand assets
+        run: pnpm brand:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

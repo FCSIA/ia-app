@@ -59,6 +59,22 @@ export const scheduleWeekdayValidator = v.union(
 
 export type ScheduleWeekday = Infer<typeof scheduleWeekdayValidator>;
 
+export const scheduleLunchPeriodValidator = v.union(
+  v.literal("PERIOD_4"),
+  v.literal("PERIOD_5"),
+);
+
+export type ScheduleLunchPeriod = Infer<typeof scheduleLunchPeriodValidator>;
+
+export const schoolDayTemplateKindValidator = v.union(
+  v.literal("REGULAR"),
+  v.literal("SPECIAL"),
+);
+
+export type SchoolDayTemplateKind = Infer<
+  typeof schoolDayTemplateKindValidator
+>;
+
 export const schoolDayBlockKindValidator = v.union(
   v.literal("PERIOD"),
   v.literal("CUSTOM"),
@@ -73,6 +89,13 @@ export const friendshipStatusValidator = v.union(
 
 export type FriendshipStatus = Infer<typeof friendshipStatusValidator>;
 
+export const friendShareLinkModeValidator = v.union(
+  v.literal("REQUEST"),
+  v.literal("AUTO_ACCEPT"),
+);
+
+export type FriendShareLinkMode = Infer<typeof friendShareLinkModeValidator>;
+
 export const notificationCategoryValidator = v.union(
   v.literal("SCHOOL_ANNOUNCEMENT"),
   v.literal("CLUB_ANNOUNCEMENT"),
@@ -85,6 +108,7 @@ export const notificationCategoryValidator = v.union(
   v.literal("FLEX_FRIDAY"),
   v.literal("CONTENT_MODERATED"),
   v.literal("FRIEND_REQUEST"),
+  v.literal("FRIEND_SCHEDULE_CHANGE"),
 );
 
 export type NotificationCategory = Infer<typeof notificationCategoryValidator>;
