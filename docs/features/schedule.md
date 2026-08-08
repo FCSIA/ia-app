@@ -13,6 +13,7 @@ and special-day plans without rewriting student course choices.
 ## What It Does
 
 - Students build a 5-day schedule from official courses, with a manual class-name option when a class is not in the catalog.
+- Students can upload an Infinite Campus Schedule Term screenshot. Browser-local OCR proposes period/course matches for review, then applies the reviewed classes Monday through Thursday before the normal save step.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
 - Students choose public/private schedule visibility.
@@ -32,6 +33,7 @@ and special-day plans without rewriting student course choices.
 - Backend: `apps/convex/src/schedule/`
 - Web page: `apps/web/src/app/schedule/page.tsx`
 - Schedule components: `apps/web/src/components/schedule/`
+- OCR parser: `apps/web/src/lib/schedule-ocr.ts`
 - Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
 ## Convex Surface

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { ScheduleDayEditor } from "@/components/schedule/schedule-day-editor";
+import { ScheduleImportDialog } from "@/components/schedule/schedule-import-dialog";
 import { ResolvedDayPanel } from "@/components/schedule/resolved-day-panel";
 import {
   WEEKDAYS,
@@ -17,6 +18,7 @@ import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
 export function MySchedulePanel() {
   const {
+    applyImportedSchedule,
     blocks,
     courses,
     currentStatus,
@@ -121,14 +123,23 @@ export function MySchedulePanel() {
                   </TabsList>
                 </Tabs>
               </div>
-              <Button
-                asChild
-                variant="secondary"
-                size="sm"
-                leadingIcon={BookOpen}
-              >
-                <Link href="/courses">Course catalog</Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <ScheduleImportDialog
+                  courses={courses}
+                  onApply={(rows) => {
+                    applyImportedSchedule(rows);
+                    setSelectedWeekday("MONDAY");
+                  }}
+                />
+                <Button
+                  asChild
+                  variant="secondary"
+                  size="sm"
+                  leadingIcon={BookOpen}
+                >
+                  <Link href="/courses">Course catalog</Link>
+                </Button>
+              </div>
             </div>
           </header>
 
