@@ -40,7 +40,7 @@ export function FunFactWidget() {
       }
     >
       <div
-        className="flex h-40 w-full min-w-0 items-center overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28"
+        className="flex h-40 w-full min-w-0 items-center overflow-hidden rounded-[1.4rem] bg-muted/20 p-5 sm:h-32 md:h-28"
         title={fact.text}
       >
         <LoadingFact fact={fact} className="w-full" />
