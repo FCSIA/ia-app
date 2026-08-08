@@ -1,3 +1,6 @@
+# Convex local dev
+\\
+
 # Dependencies
 node_modules
 node_modules.nosync
@@ -88,3 +91,6 @@ Microsoft/
 !apps/api/uploads/.gitkeep
 apps/api/uploads/*
 .env*
+
+# data
+.data

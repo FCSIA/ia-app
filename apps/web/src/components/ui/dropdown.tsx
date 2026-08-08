@@ -20,10 +20,18 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
-import { shapeMap } from "@/lib/shape-context";
 import { Elevated } from "@/lib/elevated";
 
-const shape = shapeMap.rounded;
+// Dropdowns deliberately keep compact radii even when the app's global
+// `--radius` token is generous. Semantic `rounded-lg`/`rounded-xl` utilities
+// resolve through that token, so fixed values preserve the intended nested
+// 12px surface -> 8px item hierarchy.
+const shape = {
+  item: "rounded-[8px]",
+  bg: "rounded-[8px]",
+  focusRing: "rounded-[10px]",
+  container: "rounded-[12px]",
+} as const;
 
 interface MenuItemRenderOptions {
   radio: boolean;
@@ -72,6 +80,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       measureItems();
     }, [measureItems, children]);
 
+    const keyboardModeRef = useRef(false);
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
@@ -86,7 +95,15 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             if (typeof ref === "function") ref(node);
             else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
           }}
-          onMouseEnter={handlers.onMouseEnter}
+          onPointerMoveCapture={() => {
+            keyboardModeRef.current = false;
+            setFocusedIndex(null);
+          }}
+          onMouseEnter={() => {
+            keyboardModeRef.current = false;
+            setFocusedIndex(null);
+            handlers.onMouseEnter();
+          }}
           onMouseMove={handlers.onMouseMove}
           onMouseLeave={handlers.onMouseLeave}
           onFocus={(e) => {
@@ -96,9 +113,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             if (indexAttr != null) {
               const idx = Number(indexAttr);
               setActiveIndex(idx);
-              setFocusedIndex(
-                (e.target as HTMLElement).matches(":focus-visible") ? idx : null
-              );
+              setFocusedIndex(keyboardModeRef.current ? idx : null);
             }
           }}
           onBlur={(e) => {
@@ -107,6 +122,7 @@ const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
             setActiveIndex(null);
           }}
           onKeyDown={(e) => {
+            keyboardModeRef.current = true;
             const items = Array.from(
               containerRef.current?.querySelectorAll('[role="menuitemradio"]') ?? []
             ) as HTMLElement[];
@@ -231,6 +247,7 @@ Dropdown.displayName = "Dropdown";
 interface DropdownMenuContextValue {
   open: boolean;
   disabled: boolean;
+  keyboardModeRef: React.MutableRefObject<boolean>;
 }
 
 const DropdownMenuContext = createContext<DropdownMenuContextValue | null>(null);
@@ -261,6 +278,7 @@ function DropdownMenu({
   disabled = false,
 }: DropdownMenuProps) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const keyboardModeRef = useRef(false);
   const open = openProp !== undefined ? openProp : internalOpen;
 
   const handleOpenChange = useCallback(
@@ -271,7 +289,10 @@ function DropdownMenu({
     [openProp, onOpenChange]
   );
 
-  const context = useMemo(() => ({ open, disabled }), [open, disabled]);
+  const context = useMemo(
+    () => ({ open, disabled, keyboardModeRef }),
+    [open, disabled]
+  );
 
   return (
     <DropdownMenuContext.Provider value={context}>
@@ -298,9 +319,29 @@ interface DropdownTriggerProps
 }
 
 const DropdownTrigger = forwardRef<HTMLButtonElement, DropdownTriggerProps>(
-  ({ render, children, disabled, ...props }, ref) => {
-    const { disabled: rootDisabled } = useDropdownMenuContext();
+  (
+    {
+      render,
+      children,
+      disabled,
+      onPointerDownCapture,
+      onKeyDownCapture,
+      ...props
+    },
+    ref
+  ) => {
+    const { disabled: rootDisabled, keyboardModeRef } = useDropdownMenuContext();
     const isDisabled = disabled || rootDisabled;
+    const modalityProps = {
+      onPointerDownCapture: (event: React.PointerEvent<HTMLButtonElement>) => {
+        keyboardModeRef.current = false;
+        onPointerDownCapture?.(event);
+      },
+      onKeyDownCapture: (event: React.KeyboardEvent<HTMLButtonElement>) => {
+        keyboardModeRef.current = true;
+        onKeyDownCapture?.(event);
+      },
+    };
 
     if (render) {
       return (
@@ -308,6 +349,7 @@ const DropdownTrigger = forwardRef<HTMLButtonElement, DropdownTriggerProps>(
           ref={ref}
           asChild
           disabled={isDisabled}
+          {...modalityProps}
           {...props}
         >
           {render}
@@ -316,7 +358,12 @@ const DropdownTrigger = forwardRef<HTMLButtonElement, DropdownTriggerProps>(
     }
 
     return (
-      <DropdownMenuPrimitive.Trigger ref={ref} disabled={isDisabled} {...props}>
+      <DropdownMenuPrimitive.Trigger
+        ref={ref}
+        disabled={isDisabled}
+        {...modalityProps}
+        {...props}
+      >
         {children}
       </DropdownMenuPrimitive.Trigger>
     );
@@ -352,7 +399,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
     },
     ref
   ) => {
-    const { open } = useDropdownMenuContext();
+    const { open, keyboardModeRef } = useDropdownMenuContext();
     const containerRef = useRef<HTMLDivElement>(null);
     const {
       activeIndex,
@@ -479,11 +526,19 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                     ).current = node;
                 }}
                 onMouseEnter={() => {
+                  keyboardModeRef.current = false;
                   handlers.onMouseEnter();
+                  setFocusedIndex(null);
+                }}
+                onPointerMoveCapture={() => {
+                  keyboardModeRef.current = false;
                   setFocusedIndex(null);
                 }}
                 onMouseMove={handlers.onMouseMove}
                 onMouseLeave={handlers.onMouseLeave}
+                onKeyDownCapture={() => {
+                  keyboardModeRef.current = true;
+                }}
                 onFocus={(event) => {
                   const indexAttribute = (event.target as HTMLElement)
                     .closest("[data-proximity-index]")
@@ -491,11 +546,7 @@ const DropdownContent = forwardRef<HTMLDivElement, DropdownContentProps>(
                   if (indexAttribute != null) {
                     const index = Number(indexAttribute);
                     setActiveIndex(index);
-                    setFocusedIndex(
-                      (event.target as HTMLElement).matches(":focus-visible")
-                        ? index
-                        : null
-                    );
+                    setFocusedIndex(keyboardModeRef.current ? index : null);
                   }
                 }}
                 onBlur={(event) => {
@@ -641,6 +692,7 @@ export {
   DropdownMenu,
   DropdownTrigger,
   DropdownContent,
+  shape as dropdownShape,
 };
 export type {
   DropdownProps,

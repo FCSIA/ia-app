@@ -34,11 +34,10 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import {
+  DropdownContent,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Dropdown, DropdownLabel, DropdownSeparator } from '@/components/ui/dropdown';
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
 import { MenuItem } from '@/components/ui/menu-item';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
@@ -217,6 +216,24 @@ export function AppShell({
       : String(unreadData.count)
     : undefined;
 
+  const searchScopeToggle = channelSearch ? (
+    <Tooltip
+      content={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
+    >
+      <button
+        type="button"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+        aria-label={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
+        onClick={() => {
+          channelSearch.onValueChange('');
+          setSearchScope((current) => current === 'everything' ? 'channel' : 'everything');
+        }}
+      >
+        <ArrowLeftRight className="size-3.5" />
+      </button>
+    </Tooltip>
+  ) : null;
+
   return (
     <Fragment>
       <div className="app-root flex min-h-screen w-full bg-background">
@@ -336,8 +353,8 @@ export function AppShell({
             <div className="flex min-w-0 flex-1 items-center gap-4">
               {headerSlot ?? <div className="min-w-0 flex-1" />}
             </div>
-            <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-[#6B97FF] lg:flex">
-              {channelSearch && searchScope === 'channel' ? (
+            {channelSearch && searchScope === 'channel' ? (
+              <div className="hidden h-9 w-80 items-center rounded-full bg-surface-2 px-1.5 text-sm text-muted-foreground shadow-surface-1 focus-within:ring-1 focus-within:ring-[#6B97FF] lg:flex">
                 <label className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
                   <Search className="size-4 shrink-0" />
                   <span className="sr-only">Search #{channelSearch.channelName}</span>
@@ -348,92 +365,65 @@ export function AppShell({
                     className="h-8 min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </label>
-              ) : (
-                <button
+                <span className="mx-1 h-4 w-px shrink-0 bg-border/70" aria-hidden />
+                {searchScopeToggle}
+              </div>
+            ) : (
+              <div className="hidden items-center gap-1 lg:flex">
+                <Button
                   type="button"
-                  className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-full px-1.5 text-left outline-none transition-colors hover:text-foreground"
+                  variant="secondary"
+                  size="lg"
+                  className="w-80 justify-start rounded-full pl-4 pr-3 text-left text-muted-foreground hover:text-foreground [&>span]:w-full [&>span>span]:w-full"
                   onClick={() => setCommandOpen(true)}
                 >
                   <Search className="size-4 shrink-0" />
                   <span className="flex-1">Search everything</span>
-                  <KbdGroup>
+                  <KbdGroup className="shrink-0">
                     {commandHint ? <Kbd>⌘</Kbd> : <Kbd>Ctrl</Kbd>}
                     <Kbd>K</Kbd>
                   </KbdGroup>
-                </button>
-              )}
-              {channelSearch ? (
-                <>
-                  <span className="mx-1 h-4 w-px shrink-0 bg-border/70" aria-hidden />
-                  <Tooltip
-                    content={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
-                  >
-                    <button
-                      type="button"
-                      className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
-                      aria-label={searchScope === 'everything' ? `Search #${channelSearch.channelName}` : 'Search everything'}
-                      onClick={() => {
-                        channelSearch.onValueChange('');
-                        setSearchScope((current) => current === 'everything' ? 'channel' : 'everything');
-                      }}
-                    >
-                      <ArrowLeftRight className="size-3.5" />
-                    </button>
-                  </Tooltip>
-                </>
-              ) : null}
-            </div>
+                </Button>
+                {searchScopeToggle}
+              </div>
+            )}
             {user ? (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-3 rounded-full bg-surface-2 py-1.5 pl-1.5 pr-3 shadow-surface-1 transition-colors hover:bg-hover focus:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]"
-                  >
-                    <UserAvatar
-                      firstName={user.firstName}
-                      lastName={user.lastName}
-                      avatarUrl={user.avatarUrl}
-                      className="size-8"
-                      fallbackClassName="text-xs"
-                    />
-                    <div className="hidden min-w-0 leading-tight sm:block">
-                      <p className="truncate text-left text-sm font-medium text-foreground">
+                <DropdownTrigger
+                  render={
+                    <Button variant="secondary" size="lg" className="pl-0 pr-3 rounded-full">
+                      <UserAvatar
+                        firstName={user.firstName}
+                        lastName={user.lastName}
+                        avatarUrl={user.avatarUrl}
+                        className="size-9"
+                        fallbackClassName="text-xs"
+                      />
+                      <span className="pl-1 hidden truncate sm:inline">
                         {user.firstName} {user.lastName}
-                      </p>
-                    </div>
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 p-1">
-                  <Dropdown className="w-60">
-                    <DropdownLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {user.firstName} {user.lastName}
-                        </p>
-                      </div>
-                    </DropdownLabel>
-                    <DropdownSeparator />
-                    <MenuItem
-                      icon={Settings}
-                      label="Settings"
-                      index={0}
-                      onSelect={() => {
-                        navigationLoading?.startNavigation('/profile');
-                        router.push('/profile');
-                      }}
-                    />
-                    <DropdownSeparator />
-                    <MenuItem
-                      icon={LogOut}
-                      label="Sign out"
-                      index={1}
-                      onSelect={handleLogout}
-                      className="text-red-500 [&_svg]:text-red-500"
-                    />
-                  </Dropdown>
-                </DropdownMenuContent>
+                      </span>
+                      <ChevronDown aria-hidden className="size-4 text-muted-foreground" />
+                    </Button>
+                  }
+                />
+                <DropdownContent align="end" className="w-48">
+                  <MenuItem
+                    icon={Settings}
+                    label="Settings"
+                    index={0}
+                    onSelect={() => {
+                      navigationLoading?.startNavigation('/profile');
+                      router.push('/profile');
+                    }}
+                  />
+                  <MenuItem
+                    icon={LogOut}
+                    label="Sign out"
+                    index={1}
+                    onSelect={handleLogout}
+                    className="hover:[&_svg]:text-red-500"
+                  />
+                </DropdownContent>
               </DropdownMenu>
             ) : null}
           </header>

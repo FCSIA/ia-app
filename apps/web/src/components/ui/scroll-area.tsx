@@ -15,6 +15,7 @@ import {
   type ComponentRef,
   type PointerEventHandler,
   type Ref,
+  type UIEventHandler,
 } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
@@ -43,6 +44,13 @@ function setRef<T>(ref: Ref<T> | undefined, value: T | null) {
   else if (ref) ref.current = value;
 }
 
+function updateViewportEdges(viewport: HTMLDivElement) {
+  const atStart = viewport.scrollTop <= 1;
+  const atEnd = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 1;
+  viewport.dataset.atScrollStart = String(atStart);
+  viewport.dataset.atScrollEnd = String(atEnd);
+}
+
 const ScrollArea = forwardRef<
   ComponentRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
@@ -68,6 +76,7 @@ const ScrollArea = forwardRef<
     const [hovering, setHovering] = useState(false);
     const [scrolling, setScrolling] = useState(false);
     const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const internalViewportRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(
       () => () => {
@@ -76,7 +85,41 @@ const ScrollArea = forwardRef<
       [],
     );
 
-    const handleScroll = () => {
+    useEffect(() => {
+      const viewport = internalViewportRef.current;
+      if (!viewport) return;
+
+      const update = () => updateViewportEdges(viewport);
+      update();
+
+      const resizeObserver = new ResizeObserver(update);
+      resizeObserver.observe(viewport);
+      if (viewport.firstElementChild instanceof HTMLElement) {
+        resizeObserver.observe(viewport.firstElementChild);
+      }
+
+      const mutationObserver = new MutationObserver(update);
+      mutationObserver.observe(viewport, {
+        attributes: true,
+        attributeFilter: ["hidden"],
+        childList: true,
+        subtree: true,
+      });
+
+      return () => {
+        resizeObserver.disconnect();
+        mutationObserver.disconnect();
+      };
+    }, [children, isTouchPrimary]);
+
+    const setViewportRef = (node: HTMLDivElement | null) => {
+      internalViewportRef.current = node;
+      setRef(viewportRef, node);
+      if (node) requestAnimationFrame(() => updateViewportEdges(node));
+    };
+
+    const handleScroll: UIEventHandler<HTMLDivElement> = (event) => {
+      updateViewportEdges(event.currentTarget);
       setScrolling(true);
       if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
       scrollTimerRef.current = setTimeout(() => setScrolling(false), SCROLL_LINGER_MS);
@@ -106,7 +149,7 @@ const ScrollArea = forwardRef<
             {...props}
           >
             <div
-              ref={(node) => setRef(viewportRef, node)}
+              ref={setViewportRef}
               data-slot="scroll-area-viewport"
               tabIndex={0}
               className={cn(
@@ -115,6 +158,7 @@ const ScrollArea = forwardRef<
                 orientation === "horizontal" && "overflow-x-auto",
                 orientation === "both" && "overflow-auto",
               )}
+              onScroll={handleScroll}
             >
               {children}
             </div>
@@ -131,7 +175,7 @@ const ScrollArea = forwardRef<
               {...props}
             >
               <ScrollAreaPrimitive.Viewport
-                ref={(node) => setRef(viewportRef, node)}
+                ref={setViewportRef}
                 data-slot="scroll-area-viewport"
                 className={viewportClasses}
                 onScroll={handleScroll}

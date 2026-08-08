@@ -260,7 +260,7 @@ export const list = query({
         filtered.push(channel);
       }
     }
-    
+
     return filtered;
   },
 });
@@ -330,7 +330,7 @@ export const postMessage = mutation({
     if (
       args.clientGeneratedId &&
       Array.from(args.clientGeneratedId).length >
-        MAX_CLIENT_MESSAGE_ID_CHARACTERS
+      MAX_CLIENT_MESSAGE_ID_CHARACTERS
     ) {
       throw new ConvexError("Client message ID is too long");
     }
@@ -376,12 +376,12 @@ export const postMessage = mutation({
     const mentionTokens = boundedPortableMentionTokens(trimmedBody, bodyMarkdown);
     const mentionPlan = mentionTokens.length
       ? await resolveChannelMentionPlan(ctx, {
-          channel,
-          context,
-          tokens: mentionTokens,
-          channelAudienceIds: await channelAudience(ctx, channel),
-          authorId: user._id,
-        })
+        channel,
+        context,
+        tokens: mentionTokens,
+        channelAudienceIds: await channelAudience(ctx, channel),
+        authorId: user._id,
+      })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
 
     const messageId = await ctx.db.insert("clubChannelMessages", {
@@ -585,11 +585,11 @@ async function serializeMessage(
   const reactions = isDeleted
     ? []
     : await ctx.db
-        .query("clubChannelMessageReactions")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .collect();
+      .query("clubChannelMessageReactions")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .collect();
   const reactionMap = new Map<
     string,
     { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
@@ -612,11 +612,11 @@ async function serializeMessage(
   const attachments = isDeleted
     ? []
     : await ctx.db
-        .query("clubChannelMessageAttachments")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .collect();
+      .query("clubChannelMessageAttachments")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .collect();
 
   const replies = await ctx.db
     .query("clubChannelMessages")
@@ -703,12 +703,12 @@ async function serializeMessageSummary(
   const reactionRows = isDeleted
     ? []
     : await ctx.db
-        .query("clubChannelMessageReactions")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .order("desc")
-        .take(MAX_SUMMARY_REACTION_ROWS + 1);
+      .query("clubChannelMessageReactions")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .order("desc")
+      .take(MAX_SUMMARY_REACTION_ROWS + 1);
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
   const reactionMap = new Map<
     string,
@@ -730,12 +730,12 @@ async function serializeMessageSummary(
   const attachmentRowsNewest = isDeleted
     ? []
     : await ctx.db
-        .query("clubChannelMessageAttachments")
-        .withIndex("by_messageId_and_createdAt", (q) =>
-          q.eq("messageId", message._id),
-        )
-        .order("desc")
-        .take(MAX_SUMMARY_ATTACHMENTS + 1);
+      .query("clubChannelMessageAttachments")
+      .withIndex("by_messageId_and_createdAt", (q) =>
+        q.eq("messageId", message._id),
+      )
+      .order("desc")
+      .take(MAX_SUMMARY_ATTACHMENTS + 1);
   const attachmentsTruncated = attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
   const attachments = chronologicalFromNewest(
     attachmentRowsNewest.slice(0, MAX_SUMMARY_ATTACHMENTS),
@@ -771,14 +771,14 @@ async function serializeMessageSummary(
 
   const latestReply = includeLatestReply
     ? (
-        await ctx.db
-          .query("clubChannelMessages")
-          .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
-            q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
-          )
-          .order("desc")
-          .take(1)
-      )[0] ?? null
+      await ctx.db
+        .query("clubChannelMessages")
+        .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+          q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
+        )
+        .order("desc")
+        .take(1)
+    )[0] ?? null
     : null;
 
   return {
@@ -816,11 +816,11 @@ async function serializeMessageSummary(
     hasReplies: !!latestReply,
     latestReplyPreview: latestReply
       ? {
-          _id: latestReply._id,
-          body: latestReply.deletedAt ? "" : latestReply.body,
-          isDeleted: !!latestReply.deletedAt,
-          createdAt: new Date(latestReply.createdAt).toISOString(),
-        }
+        _id: latestReply._id,
+        body: latestReply.deletedAt ? "" : latestReply.body,
+        isDeleted: !!latestReply.deletedAt,
+        createdAt: new Date(latestReply.createdAt).toISOString(),
+      }
       : null,
     poll,
   };
@@ -941,9 +941,9 @@ export const getMentionContext = query({
         .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
       channel.visibility === "PRIVATE"
         ? ctx.db
-            .query("clubChannelMemberships")
-            .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-            .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS)
+          .query("clubChannelMemberships")
+          .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
+          .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS)
         : Promise.resolve([]),
       ctx.db
         .query("clubTags")

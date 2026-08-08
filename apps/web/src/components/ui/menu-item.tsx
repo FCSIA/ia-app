@@ -9,14 +9,9 @@ import {
 } from "react";
 import type { IconComponent } from "@/lib/icon-context";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDropdown } from "@/components/ui/dropdown";
+import { dropdownShape as shape, useDropdown } from "@/components/ui/dropdown";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { shapeMap } from "@/lib/shape-context";
-
-// Dropdown menus intentionally use compact rounded geometry even when the
-// surrounding application is using the global pill shape.
-const shape = shapeMap.rounded;
 
 interface MenuItemProps extends HTMLAttributes<HTMLDivElement> {
   icon?: IconComponent;
@@ -106,7 +101,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
         ) : null}
         <span className="inline-grid min-w-0 flex-1 text-[13px]">
           <span
-            className="invisible col-start-1 row-start-1 truncate [text-box:trim-both_cap_alphabetic]"
+            className="invisible col-start-1 row-start-1 truncate"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -114,7 +109,7 @@ const MenuItem = forwardRef<HTMLDivElement, MenuItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 truncate transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
+              "col-start-1 row-start-1 truncate transition-[color,font-variation-settings] duration-80",
               isActive || checked
                 ? "text-foreground"
                 : "text-muted-foreground"

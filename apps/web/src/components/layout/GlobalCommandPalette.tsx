@@ -33,6 +33,7 @@ import {
   CommandShortcut,
 } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   useGlobalCommandActions,
   type CommandAction,
@@ -77,17 +78,15 @@ function ActionRow({ action, onSelect }: { action: CommandAction; onSelect: () =
   return (
     <CommandItem value={commandValue(action)} onSelect={onSelect}>
       <action.Icon />
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-medium">{action.label}</span>
-          {action.badge ? (
-            <Badge variant="solid" className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">
-              {action.badge}
-            </Badge>
-          ) : null}
-        </div>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="min-w-0 truncate font-medium">{action.label}</span>
+        {action.badge ? (
+          <Badge variant="solid" className="h-5 shrink-0 rounded-full px-1.5 text-[10px]">
+            {action.badge}
+          </Badge>
+        ) : null}
         {action.detail ? (
-          <p className="truncate text-xs text-muted-foreground">{action.detail}</p>
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{action.detail}</span>
         ) : null}
       </div>
     </CommandItem>
@@ -145,6 +144,7 @@ function GlobalCommandPaletteContent({
   const router = useRouter();
   const navigationLoading = useNavigationLoadingOptional();
   const [searchValue, setSearchValue] = useState('');
+  const hasSearch = searchValue.trim().length > 0;
   const deferredSearch = useDeferredValue(searchValue.trim());
   const shouldLoad = open && !!user;
   const shouldLoadMemberships = shouldLoad && !isSuperAdmin(user);
@@ -244,42 +244,53 @@ function GlobalCommandPaletteContent({
         onValueChange={setSearchValue}
         placeholder="Search IA: people, club channels, pages, events..."
       />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Best matches">
-          {suggestedActions.map((action) => (
-            <ActionRow key={action.id} action={action} onSelect={() => run(action.href)} />
-          ))}
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Pages">
-          {[...navActions]
-            .sort((left, right) => pageOrder.indexOf(left.id) - pageOrder.indexOf(right.id))
-            .map((action) => (
-              <CommandItem
-                key={action.id}
-                value={commandValue(action)}
-                onSelect={() => run(action.href)}
-              >
-                <action.Icon />
-                <span className="truncate">{action.label}</span>
-                {action.detail ? <CommandShortcut>{action.detail}</CommandShortcut> : null}
+      <ScrollArea
+        viewportClassName="scroll-fade-y [&>div]:!block [&>div]:w-full [&>div]:min-w-0"
+        className="h-[min(28rem,65vh)]"
+      >
+        <div className="min-w-0 p-2">
+          <CommandList className="w-full min-w-0 max-h-none overflow-visible p-0">
+            {hasSearch ? (
+              <>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup heading="Best matches">
+                  {suggestedActions.map((action) => (
+                    <ActionRow key={action.id} action={action} onSelect={() => run(action.href)} />
+                  ))}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            ) : null}
+            <CommandGroup heading="Pages">
+              {[...navActions]
+                .sort((left, right) => pageOrder.indexOf(left.id) - pageOrder.indexOf(right.id))
+                .map((action) => (
+                  <CommandItem
+                    key={action.id}
+                    value={commandValue(action)}
+                    onSelect={() => run(action.href)}
+                  >
+                    <action.Icon />
+                    <span className="min-w-0 truncate">{action.label}</span>
+                    {action.detail ? <CommandShortcut>{action.detail}</CommandShortcut> : null}
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+            {hasSearch ? <ActionGroups groups={groups} run={run} /> : null}
+            <CommandGroup heading="Account">
+              <CommandItem value="profile account settings preferences" onSelect={() => run('/profile')}>
+                <User />
+                <span className="min-w-0 truncate">Profile and settings</span>
               </CommandItem>
-            ))}
-        </CommandGroup>
-        <ActionGroups groups={groups} run={run} />
-        <CommandGroup heading="Account">
-          <CommandItem value="profile account settings preferences" onSelect={() => run('/profile')}>
-            <User />
-            Profile and settings
-          </CommandItem>
-          <CommandItem value="search command palette cmd k" onSelect={() => onOpenChange(false)}>
-            <Search />
-            Close search
-            <CommandShortcut>Esc</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
+              <CommandItem value="search command palette cmd k" onSelect={() => onOpenChange(false)}>
+                <Search />
+                <span className="min-w-0 truncate">Close search</span>
+                <CommandShortcut>Esc</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </div>
+      </ScrollArea>
     </>
   );
 }

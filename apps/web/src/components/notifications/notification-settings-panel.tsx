@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
+import { cn } from '@/lib/utils';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
 import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
@@ -39,6 +40,10 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
 
 export function NotificationSettingsPanel() {
   const user = useCurrentUser();
+  const preferences = useQuery(api.notifications.preferences.list);
+  const [optimisticGlobalEnabled, setOptimisticGlobalEnabled] = useState<
+    Partial<Record<NotificationCategory, boolean>>
+  >({});
   const hasAdministrativeClubAccess = isSuperAdmin(user);
   const myClubs = useQuery(
     api.clubs.management.getMyClubs,
@@ -77,13 +82,26 @@ export function NotificationSettingsPanel() {
         <div className="flex flex-col gap-1">
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
+            const preference = preferences?.find(
+              (entry) => entry.category === setting.key && entry.scopeKey === 'global',
+            );
+            const enabled =
+              optimisticGlobalEnabled[setting.key] ??
+              (preference ? preference.enabled !== false : setting.defaultEnabled);
+
             return (
               <div
                 key={setting.key}
                 className="flex min-w-0 items-center justify-between gap-3 py-1.5"
               >
                 <div className="flex min-w-0 items-center gap-2">
-                  <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <Icon
+                    className={cn(
+                      'size-4 shrink-0',
+                      enabled ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    aria-hidden
+                  />
                   <p className="truncate text-sm font-medium text-foreground">{setting.label}</p>
                 </div>
                 <NotificationScopeSwitch
@@ -92,6 +110,16 @@ export function NotificationSettingsPanel() {
                   defaultEnabled={setting.defaultEnabled}
                   compact
                   className="shrink-0"
+                  onOptimisticChange={(nextEnabled) => {
+                    setOptimisticGlobalEnabled((current) => {
+                      if (nextEnabled === null) {
+                        const next = { ...current };
+                        delete next[setting.key];
+                        return next;
+                      }
+                      return { ...current, [setting.key]: nextEnabled };
+                    });
+                  }}
                 />
               </div>
             );
@@ -210,7 +238,7 @@ function ClubNotificationChannels({
                     className={channelEnabled ? 'size-3.5 shrink-0 text-primary' : 'size-3.5 shrink-0 text-muted-foreground'}
                     aria-hidden
                   />
-                  <p className="truncate text-sm font-medium">#{channel.name}</p>
+                  <p className="truncate text-sm font-medium">{channel.name}</p>
                 </div>
                 <NotificationScopeSwitch
                   category="CLUB_CHANNEL_MENTION"
