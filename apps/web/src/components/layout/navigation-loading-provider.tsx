@@ -66,21 +66,19 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
 
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(false);
+  const [hideRequested, setHideRequested] = useState(false);
 
   const pendingRef = useRef(false);
   const visibleRef = useRef(false);
   const routeAtStartRef = useRef(currentKey);
   const shownAtRef = useRef(0);
   const showDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimers = useCallback(() => {
     if (showDelayTimerRef.current) clearTimeout(showDelayTimerRef.current);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
     showDelayTimerRef.current = null;
-    hideTimerRef.current = null;
     maxTimerRef.current = null;
   }, []);
 
@@ -89,6 +87,7 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     visibleRef.current = false;
     setPending(false);
     setVisible(false);
+    setHideRequested(false);
   }, []);
 
   const finishNavigation = useCallback(() => {
@@ -108,14 +107,7 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     if (!visibleRef.current) {
       return;
     }
-
-    const elapsed = Date.now() - shownAtRef.current;
-    const delay = Math.max(0, MIN_VISIBLE_MS - elapsed);
-    hideTimerRef.current = setTimeout(() => {
-      visibleRef.current = false;
-      setVisible(false);
-      hideTimerRef.current = null;
-    }, delay);
+    setHideRequested(true);
   }, []);
 
   const beginNavigation = useCallback(() => {
@@ -125,6 +117,7 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     visibleRef.current = false;
     setPending(true);
     setVisible(false);
+    setHideRequested(false);
 
     showDelayTimerRef.current = setTimeout(() => {
       showDelayTimerRef.current = null;
@@ -185,10 +178,21 @@ export function NavigationLoadingProvider({ children }: { children: ReactNode })
     if (!pendingRef.current) return;
     if (currentKey === routeAtStartRef.current) return;
     finishNavigation();
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
   }, [currentKey, finishNavigation]);
+
+  useEffect(() => {
+    if (!hideRequested || !visible) return;
+
+    const elapsed = Date.now() - shownAtRef.current;
+    const delay = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    const hideTimer = setTimeout(() => {
+      visibleRef.current = false;
+      setVisible(false);
+      setHideRequested(false);
+    }, delay);
+
+    return () => clearTimeout(hideTimer);
+  }, [hideRequested, visible]);
 
   useEffect(() => clearTimers, [clearTimers]);
 
