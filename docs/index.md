@@ -16,6 +16,8 @@ same change.
   backend, auth, storage, and deployment fit together.
 - [Azure portability review](architecture/azure-portability.md) - backend
   modularity, Convex migration risks, and district Azure deployment planning.
+- [Client state ownership](architecture/client-state-ownership.md) - why the
+  app is not adopting Zustand or XState now and what would trigger a pilot.
 - [Frontend overview](frontend/frontend-overview.md) - Next.js app structure and
   browser-side conventions.
 - [Convex backend overview](backend/convex-overview.md) - function layout,
@@ -46,6 +48,7 @@ same change.
 - [Data flow](architecture/data-flow.md)
 - [Deployment](architecture/deployment.md)
 - [Azure portability review](architecture/azure-portability.md)
+- [Client state ownership](architecture/client-state-ownership.md)
 
 ## Backend
 
