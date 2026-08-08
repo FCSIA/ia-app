@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { pickNavigationLoadingFact } from '@ia/fun-facts';
 import { authClient } from '@/lib/auth-client';
 import { clearAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -10,16 +11,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { LoadingFact } from '@/components/ui/loading-fact';
 
 export default function LoginPage() {
   const router = useRouter();
   const [uniqueId, setUniqueId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingFact, setLoadingFact] = useState(pickNavigationLoadingFact);
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoadingFact(pickNavigationLoadingFact());
     setLoading(true);
     try {
       const result = await authClient.signIn.username({
@@ -45,73 +49,104 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-background/70 backdrop-blur-xl">
-        <CardHeader className="text-center space-y-2 pb-6">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-2"
-            style={{
-              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-              boxShadow: '0 8px 30px rgba(249,115,22,0.35)',
-            }}
-          >
-            <Image
-              src="/icons/logo.png"
-              alt="Innovation Academy phoenix"
-              width={64}
-              height={64}
-              priority
-              className="size-full object-cover"
-            />
+    <main className="grid min-h-screen bg-background lg:grid-cols-[minmax(28rem,0.86fr)_minmax(0,1.14fr)]">
+      <section className="flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
+        <Card className="w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5">
+          <CardHeader className="space-y-3 pb-6">
+            <div className="mb-1 flex flex-col items-center gap-2 self-center">
+              <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+                <Image
+                  src="/icons/logo.png"
+                  alt="Innovation Academy phoenix"
+                  width={56}
+                  height={56}
+                  priority
+                  className="size-full object-contain"
+                />
+              </div>
+              <p className="text-sm font-medium text-primary">Innovation Academy</p>
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="text-2xl font-semibold tracking-tight">Sign in</CardTitle>
+              <CardDescription>Use your school ID and password.</CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="uniqueId">School ID</Label>
+                <Input
+                  id="uniqueId"
+                  name="username"
+                  type="text"
+                  placeholder="School ID"
+                  value={uniqueId}
+                  onChange={(event) => setUniqueId(event.target.value)}
+                  required
+                  autoFocus
+                  autoCapitalize="characters"
+                  autoComplete="username"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  On your first sign-in, use the temporary password provided by an administrator.
+                </p>
+              </div>
+
+              <Button type="submit" size="lg" loading={loading} className="w-full">
+                Sign in
+              </Button>
+
+              {loading ? (
+                <LoadingFact
+                  fact={loadingFact}
+                  compact
+                  className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5"
+                />
+              ) : null}
+            </form>
+
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              Contact your school administrator if you cannot sign in.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="relative hidden min-h-screen overflow-hidden bg-primary lg:block" aria-hidden="true">
+        <Image
+          src="/images/login-campus.webp"
+          alt=""
+          fill
+          priority
+          sizes="(min-width: 1024px) 58vw, 0px"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/30 via-transparent to-primary/15" />
+        <div className="absolute inset-x-0 bottom-0 p-10 text-white">
+          <div className="max-w-lg rounded-2xl border border-white/20 bg-black/25 p-5 backdrop-blur-sm">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-white/75">IA School App</p>
+            <p className="mt-2 text-xl font-medium leading-snug">
+              Classes, clubs, events, and school updates in one place.
+            </p>
           </div>
-          <CardTitle className="text-2xl font-bold">IA School App</CardTitle>
-          <CardDescription>Sign in to continue</CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="uniqueId">Student / Staff ID</Label>
-              <Input
-                id="uniqueId"
-                type="text"
-                placeholder="e.g. STU001"
-                value={uniqueId}
-                onChange={(e) => setUniqueId(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-1 text-center">
-                First login: use the given temporary password given from admin
-              </p>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full"
-            >
-              {loading ? 'Signing in…' : 'Sign In'}
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            Contact your admin if you cannot log in
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }

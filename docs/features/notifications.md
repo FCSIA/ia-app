@@ -18,6 +18,8 @@ browser push delivery for subscribed devices.
 - Stores per-category and scoped preferences.
 - Stores per-user browser push subscriptions.
 - Sends Web Push for categories configured at `PUSH` or `TIME_SENSITIVE`.
+- Activates supported alert categories for push when a user explicitly enables
+  browser push, while preserving explicit opt-outs.
 
 ## Source Files
 
@@ -36,6 +38,7 @@ browser push delivery for subscribed devices.
 - `api.notifications.inbox.markAllRead`
 - `api.notifications.preferences.list`
 - `api.notifications.preferences.upsert`
+- `api.notifications.preferences.activatePush`
 - `api.notifications.push.getPublicKey`
 - `api.notifications.push.listMine`
 - `api.notifications.push.upsertSubscription`
@@ -54,7 +57,7 @@ also supports category and scope keys such as global, club, and channel scopes.
 
 The validator includes school announcements, club announcements, club join
 requests, club channel messages, mentions, thread replies, events, Flex Friday,
-content moderation, and friend requests.
+content moderation, friend requests, and friend schedule changes.
 
 ## Browser Push
 
@@ -76,17 +79,23 @@ The same public key must also be present in `apps/web/.env.local` as
 Push is a best-effort delivery channel. Expired browser subscriptions are
 disabled when push services return a permanent failure.
 
+Enabling Browser push registers the current browser and upgrades the user's
+active alert preferences to `PUSH`. A global `OFF` preference remains off, and
+all-message channel alerts remain separately opt-in in channel settings.
+
 Channel-message fanout runs in a scheduled mutation after the sender's message
 transaction commits. Preference resolution uses exact indexed scope and global
 fallback lookups, so fanout does not scan a user's full category preference set.
 
 ## Current Delivery
 
-The inbox, preference system, and Web Push subscription flow are active. Current
-Convex delivery rows are created in the implemented friend-request flow and can
-fan out to browser push when the target user has an active subscription and a
-push-enabled preference. Other categories are modeled for domain fanout and
-should be verified when each domain starts delivering rows.
+The inbox, preference system, and Web Push subscription flow are active.
+Announcements, events, Flex Friday entries, club activity, channel messages and
+mentions, friend requests, material public-schedule changes, and moderation
+reports create delivery rows. Schedule-change fanout is cursor-paginated after
+the save transaction, rechecks that the source schedule is still public and
+current, and contains no class details. Eligible rows fan out to browser push
+when the recipient has an active subscription and a push-enabled preference.
 
 ## Known Limits
 

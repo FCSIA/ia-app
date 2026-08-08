@@ -74,7 +74,7 @@ export function AttendancePanel({
     <div className="mt-4 space-y-2 border-t pt-4 border-foreground/5">
       <div className="flex items-center justify-between mb-3 px-1">
         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Attendance Roster</h4>
-        <Badge variant="dot" color="gray" className="text-[9px] font-bold border-foreground/10 text-muted-foreground">
+        <Badge variant="solid" color="gray" className="text-[9px] font-bold border-foreground/10 text-muted-foreground">
           {students.length} STUDENTS
         </Badge>
       </div>
@@ -89,7 +89,7 @@ export function AttendancePanel({
                   {student.lastName}, {student.firstName}
                 </p>
                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                  Grade {student.gradeLevel || '—'} · {student.uniqueId}
+                  Grade {student.gradeLevel || '—'}
                 </p>
               </div>
 

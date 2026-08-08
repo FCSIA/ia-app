@@ -39,6 +39,7 @@ pnpm-debug.log*
 Thumbs.db
 agent-notes/*
 !agent-notes/IDIOMATIC_CONVEX_TODO.md
+!agent-notes/WEB_UI_WORKFLOW.md
 
 # Editors
 .idea

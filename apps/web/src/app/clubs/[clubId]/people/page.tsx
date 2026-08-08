@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
@@ -8,7 +8,6 @@ import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
   Check,
-  Copy,
   QrCode,
   Send,
   Sparkles,
@@ -45,6 +44,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { InputCopy } from '@/components/ui/input-copy';
 import { Label } from '@/components/ui/label';
 import { SearchInput } from '@/components/ui/search';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,6 +56,10 @@ import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
 type StudentResult = FunctionReturnType<typeof api.clubs.invitations.searchInviteCandidates>[number];
+
+const subscribeToOrigin = () => () => undefined;
+const getClientOrigin = () => window.location.origin;
+const getServerOrigin = () => '';
 
 function ManagePeopleDialog({
   club,
@@ -74,6 +78,7 @@ function ManagePeopleDialog({
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
   const [result, setResult] = useState<{ invited: number; skipped: number; errors: string[] } | null>(null);
+  const origin = useSyncExternalStore(subscribeToOrigin, getClientOrigin, getServerOrigin);
 
   const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
 
@@ -113,11 +118,10 @@ function ManagePeopleDialog({
     }
   };
 
-  const joinUrl =
-    typeof window === 'undefined'
-      ? ''
-      : `${window.location.origin}/clubs/${club._id}?joinCode=${club.activeJoinCode?.code ?? ''}`;
-  const qrUrl = club.activeJoinCode?.code
+  const joinUrl = origin && club.activeJoinCode?.code
+    ? `${origin}/clubs/${club._id}?joinCode=${club.activeJoinCode.code}`
+    : '';
+  const qrUrl = joinUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
     : null;
 
@@ -152,10 +156,11 @@ function ManagePeopleDialog({
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={qrUrl} alt="Club join QR code" className="size-56 rounded-md border bg-white p-2" />
-                  <Button type="button" variant="tertiary" onClick={() => navigator.clipboard?.writeText(joinUrl)}>
-                    <Copy className="mr-2 size-4" />
-                    Copy link
-                  </Button>
+                  <InputCopy
+                    value={joinUrl}
+                    variant="button"
+                    className="w-full max-w-sm"
+                  />
                 </>
               ) : (
                 <>
@@ -180,14 +185,13 @@ function ManagePeopleDialog({
           <TabPanel value="code" className="mt-4">
             <div className="flex flex-col gap-4 rounded-lg border p-5">
               {club.activeJoinCode?.code ? (
-                <div className="rounded-lg bg-muted/40 p-4 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Active code
-                  </p>
-                  <p className="mt-1.5 text-3xl font-bold tracking-[0.32em]">
-                    {club.activeJoinCode.code}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <InputCopy
+                    value={club.activeJoinCode.code}
+                    label="Active code"
+                    variant="button"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Generated{' '}
                     {club.activeJoinCode.updatedAt
                       ? formatDistanceToNow(new Date(club.activeJoinCode.updatedAt), { addSuffix: true })
@@ -198,16 +202,6 @@ function ManagePeopleDialog({
                 <p className="text-sm text-muted-foreground">No active join code yet.</p>
               )}
               <div className="flex flex-wrap gap-2">
-                {club.activeJoinCode?.code ? (
-                  <Button
-                    type="button"
-                    variant="tertiary"
-                    onClick={() => navigator.clipboard?.writeText(club.activeJoinCode?.code ?? '')}
-                  >
-                    <Copy className="mr-2 size-4" />
-                    Copy code
-                  </Button>
-                ) : null}
                 <Button
                   onClick={() =>
                     void generateJoinCode({ clubId }).then(() =>
@@ -230,7 +224,6 @@ function ManagePeopleDialog({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{fullName(selected)}</p>
-                    <p className="font-mono text-xs text-muted-foreground">{selected.uniqueId}</p>
                   </div>
                   <Button type="button" variant="ghost" size="icon" onClick={() => { setSelected(null); setQuery(''); }}>
                     <X className="size-4" />
@@ -251,7 +244,7 @@ function ManagePeopleDialog({
                 </div>
               ) : (
                 <Command className="rounded-lg border" shouldFilter={false}>
-                  <CommandInput placeholder="Search by name or student ID..." value={query} onValueChange={setQuery} />
+                  <CommandInput placeholder="Search by name..." value={query} onValueChange={setQuery} />
                   <CommandList className="max-h-[220px]">
                     {deferredQuery.length < 2 ? (
                       <div className="py-5 text-center text-sm text-muted-foreground">
@@ -274,7 +267,6 @@ function ManagePeopleDialog({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">{fullName(student)}</p>
-                              <p className="font-mono text-xs text-muted-foreground">{student.uniqueId}</p>
                             </div>
                           </CommandItem>
                         ))}
@@ -471,7 +463,7 @@ export default function ClubPeoplePage() {
                               {fullName(request.requester)}
                             </p>
                             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                              {request.requester.uniqueId || 'Student'} · Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                              Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                             </p>
                           </div>
                           <div className="flex shrink-0 gap-2">
@@ -586,11 +578,8 @@ function PersonRow({
               {formatClubRole(person.clubRole)}
             </Badge>
           ) : null}
-          {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
+          {isCurrentUser ? <Badge variant="solid" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
-        {person.uniqueId ? (
-          <p className="truncate text-[11px] text-muted-foreground">{person.uniqueId}</p>
-        ) : null}
       </div>
       {showManage ? (
         <div className="flex gap-2 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">

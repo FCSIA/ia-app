@@ -53,6 +53,7 @@ interface ColorPickerProps
   onFormatChange?: (format: ColorFormat) => void;
   swatches?: string[];
   hideEyedropper?: boolean;
+  hideAlpha?: boolean;
 }
 
 interface ColorPickerPopoverProps extends ColorPickerProps {
@@ -981,6 +982,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
       onFormatChange,
       swatches,
       hideEyedropper,
+      hideAlpha,
       className,
       ...props
     },
@@ -1107,16 +1109,19 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 
         <div className="flex flex-col gap-1">
           <HueSlider h={hsv.h} onChange={(h) => updateHsv({ h })} />
-          <AlphaSlider
-            a={hsv.a}
-            solidColor={solidColorString}
-            onChange={(a) => updateHsv({ a })}
-          />
+          {!hideAlpha ? (
+            <AlphaSlider
+              a={hsv.a}
+              solidColor={solidColorString}
+              onChange={(a) => updateHsv({ a })}
+            />
+          ) : null}
         </div>
 
         <ColorInputsRow
           parsed={parsed}
           format={currentFormat}
+          hideAlpha={hideAlpha}
           onChannelChange={(channel, value) => {
             const p = { ...parsed };
             switch (channel) {
@@ -1170,7 +1175,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
           }}
         />
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className={cn("grid gap-2", hideEyedropper ? "grid-cols-1" : "grid-cols-2")}>
           <FormatDropdown value={currentFormat} onChange={handleFormatChange} />
           {!hideEyedropper && <EyeDropperButton onPick={handleEyedrop} />}
         </div>
@@ -1203,10 +1208,12 @@ type ChannelKey =
 function ColorInputsRow({
   parsed,
   format,
+  hideAlpha,
   onChannelChange,
 }: {
   parsed: ParsedColor;
   format: ColorFormat;
+  hideAlpha?: boolean;
   onChannelChange: (key: ChannelKey, value: string) => void;
 }) {
   const alphaPct = Math.round(parsed.a * 100);
@@ -1214,25 +1221,25 @@ function ColorInputsRow({
   if (format === "hex") {
     const hexNoHash = parsed.hex.replace(/^#/, "").toUpperCase();
     return (
-      <div className="grid grid-cols-2 gap-2">
+      <div className={cn("grid gap-2", hideAlpha ? "grid-cols-1" : "grid-cols-2")}>
         <ColorInput
           value={hexNoHash}
           onCommit={(next) => onChannelChange("hex", next.startsWith("#") ? next : `#${next}`)}
           ariaLabel="Hex value"
           prefix="#"
         />
-        <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
+        {!hideAlpha ? <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} /> : null}
       </div>
     );
   }
 
   if (format === "rgb") {
     return (
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className={cn("grid gap-1.5", hideAlpha ? "grid-cols-3" : "grid-cols-4")}>
         <ColorInput value={String(parsed.r)} onCommit={(n) => onChannelChange("r", n)} ariaLabel="Red" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
         <ColorInput value={String(parsed.g)} onCommit={(n) => onChannelChange("g", n)} ariaLabel="Green" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
         <ColorInput value={String(parsed.b)} onCommit={(n) => onChannelChange("b", n)} ariaLabel="Blue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
-        <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
+        {!hideAlpha ? <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} /> : null}
       </div>
     );
   }
@@ -1240,11 +1247,11 @@ function ColorInputsRow({
   if (format === "hsl") {
     const hsl = rgbToHsl(parsed.r, parsed.g, parsed.b);
     return (
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className={cn("grid gap-1.5", hideAlpha ? "grid-cols-3" : "grid-cols-4")}>
         <ColorInput value={String(Math.round(hsl.h))} onCommit={(n) => onChannelChange("hSL", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
         <ColorInput value={String(Math.round(hsl.s * 100))} onCommit={(n) => onChannelChange("sSL", n)} ariaLabel="Saturation" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
         <ColorInput value={String(Math.round(hsl.l * 100))} onCommit={(n) => onChannelChange("lSL", n)} ariaLabel="Lightness" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
-        <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
+        {!hideAlpha ? <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} /> : null}
       </div>
     );
   }
@@ -1252,11 +1259,11 @@ function ColorInputsRow({
   // oklch
   const oklch = rgbToOklch(parsed.r, parsed.g, parsed.b);
   return (
-    <div className="grid grid-cols-4 gap-1.5">
+    <div className={cn("grid gap-1.5", hideAlpha ? "grid-cols-3" : "grid-cols-4")}>
       <ColorInput value={(oklch.L * 100).toFixed(0)} onCommit={(n) => onChannelChange("L", n)} ariaLabel="Lightness" align="center" inputMode="decimal" nudgeStep={1} nudgeShiftStep={10} />
       <ColorInput value={oklch.C.toFixed(2)} onCommit={(n) => onChannelChange("C", n)} ariaLabel="Chroma" align="center" inputMode="decimal" nudgeStep={0.01} nudgeShiftStep={0.1} decimals={2} />
       <ColorInput value={oklch.H.toFixed(0)} onCommit={(n) => onChannelChange("H", n)} ariaLabel="Hue" align="center" inputMode="numeric" nudgeStep={1} nudgeShiftStep={10} />
-      <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} />
+      {!hideAlpha ? <AlphaInput value={alphaPct} onCommit={(n) => onChannelChange("alphaPercent", String(n))} /> : null}
     </div>
   );
 }

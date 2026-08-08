@@ -26,3 +26,11 @@ export const loginRateLimiter = new RateLimiter(components.rateLimiter, {
     period: LOGIN_ATTEMPTS_IP_WINDOW,
   },
 });
+
+export const friendLinkRateLimiter = new RateLimiter(components.rateLimiter, {
+  redemptionsByUser: {
+    kind: "fixed window",
+    rate: 12,
+    period: MINUTE,
+  },
+});

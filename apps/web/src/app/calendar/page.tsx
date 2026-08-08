@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   format,
   startOfMonth,

@@ -71,17 +71,24 @@ export function useAdminUsers(activeTab: AdminTabId) {
   );
 
   let displayedPage = displayedPageState.page;
+  const isSearchChangeOnly =
+    displayedPageState.activeTab === activeTab &&
+    displayedPageState.userRoleGroup === userRoleGroup &&
+    displayedPageState.search !== deferredSearch;
+
   if (
     displayedPageState.activeTab !== activeTab ||
     displayedPageState.search !== deferredSearch ||
     displayedPageState.userRoleGroup !== userRoleGroup
   ) {
-    displayedPage = undefined;
+    if (!isSearchChangeOnly) {
+      displayedPage = undefined;
+    }
     setDisplayedPageState({
       activeTab,
       search: deferredSearch,
       userRoleGroup,
-      page: undefined,
+      page: isSearchChangeOnly ? displayedPageState.page : undefined,
     });
   } else if (usersPage && displayedPageState.page !== usersPage) {
     displayedPage = usersPage;
@@ -191,7 +198,7 @@ export function useAdminUsers(activeTab: AdminTabId) {
       void runUserMutation(
         () => resetPassword({ userId: targetUser._id as Id<'users'> }),
         'Temporary password generated',
-        (result) => `${targetUser.uniqueId}: ${result.temporaryPassword}`,
+        (result) => `${targetUser.firstName} ${targetUser.lastName}: ${result.temporaryPassword}`,
       ),
     onDeleteUsers: async (userIds: string[]) =>
       await runUserMutation(

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useDeferredValue, useMemo, useState } from 'react';
-import { Check, ChevronsUpDown, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useDeferredValue, useMemo, useState } from "react";
+import { Check, ChevronsUpDown, PenLine, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -10,11 +10,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-import { CourseMeta, formatCourseNumbers } from './course-meta';
-import type { CourseSummary } from './types';
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { formatCourseNumbers } from "./course-meta";
+import type { CourseSummary } from "./types";
 
 type CoursePickerProps = {
   courses: CourseSummary[];
@@ -24,7 +28,10 @@ type CoursePickerProps = {
   preferredGradeLevel?: number;
   disabled?: boolean;
   className?: string;
+  displayValue?: string;
   iconOnly?: boolean;
+  actionVisibility?: "always" | "row-interaction";
+  onManualEntry?: () => void;
 };
 
 export function CoursePicker({
@@ -35,11 +42,19 @@ export function CoursePicker({
   preferredGradeLevel,
   disabled,
   className,
+  displayValue,
   iconOnly,
+  actionVisibility = "always",
+  onManualEntry,
 }: CoursePickerProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setQuery("");
+  };
 
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? null,
@@ -58,7 +73,8 @@ export function CoursePicker({
         (right.minGrade == null || preferredGradeLevel >= right.minGrade) &&
         (right.maxGrade == null || preferredGradeLevel <= right.maxGrade);
 
-      if (leftMatchesGrade !== rightMatchesGrade) return leftMatchesGrade ? -1 : 1;
+      if (leftMatchesGrade !== rightMatchesGrade)
+        return leftMatchesGrade ? -1 : 1;
       return left.title.localeCompare(right.title);
     });
 
@@ -77,84 +93,118 @@ export function CoursePicker({
   }, [courses, deferredQuery, preferredGradeLevel]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {iconOnly ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             type="button"
             disabled={disabled}
-            className={cn("h-6 w-6 p-0 rounded bg-muted/50 hover:bg-muted font-normal text-muted-foreground", className)}
+            aria-label={
+              selectedCourse?.title || displayValue
+                ? `Change class: ${selectedCourse?.title || displayValue}`
+                : placeholder
+            }
+            className={cn(
+              "font-normal text-muted-foreground",
+              actionVisibility === "row-interaction" &&
+                "pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100",
+              className,
+            )}
           >
-            <ChevronsUpDown className="size-3.5" />
+            <ChevronsUpDown />
           </Button>
         ) : (
           <Button
             variant="tertiary"
             type="button"
             disabled={disabled}
+            trailingIcon={ChevronsUpDown}
             className={cn(
               "w-full justify-between text-left",
-              className || "h-auto min-h-11 rounded-2xl border-border/70 bg-background/80 px-4 py-3 shadow-sm"
+              className ||
+                "h-auto min-h-11 rounded-2xl border-border/70 bg-background/80 px-4 py-3 shadow-sm",
             )}
           >
-            <div className="min-w-0 flex-1 truncate">
+            <span className="min-w-0 flex-1 truncate">
               <span className="truncate text-sm font-medium text-foreground">
-                {selectedCourse ? selectedCourse.title : placeholder}
+                {selectedCourse?.title || displayValue || placeholder}
               </span>
-            </div>
-            <ChevronsUpDown className="ml-2 size-3.5 shrink-0 text-muted-foreground" />
+            </span>
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(32rem,calc(100vw-2rem))] rounded-2xl border-border/70 p-0">
+      <PopoverContent
+        align="start"
+        className="w-[min(32rem,calc(100vw-2rem))] overflow-hidden rounded-2xl p-0"
+      >
         <Command shouldFilter={false}>
-          <div className="relative border-b">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <CommandInput
-              value={query}
-              onValueChange={setQuery}
-              placeholder="Search by title, code, or department"
-              className="pl-9"
-            />
-          </div>
-          <CommandList className="max-h-[22rem]">
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Search by title, code, or department"
+          />
+          <CommandList className="max-h-[22rem] p-1">
             <CommandEmpty>No courses found.</CommandEmpty>
-            <CommandGroup className="p-2">
-              {selectedCourse ? (
+            <CommandGroup className="p-0">
+              {selectedCourse || displayValue ? (
                 <CommandItem
                   value="clear-course"
                   onSelect={() => {
                     onChange(null);
-                    setOpen(false);
+                    handleOpenChange(false);
                   }}
-                  className="mb-1 rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                  className="rounded-xl px-3 py-2 text-sm text-muted-foreground"
                 >
-                  <X className="mr-2 size-4" />
+                  <X />
                   Clear selection
+                </CommandItem>
+              ) : null}
+              {onManualEntry ? (
+                <CommandItem
+                  value="class-not-in-catalog"
+                  onSelect={() => {
+                    handleOpenChange(false);
+                    onManualEntry();
+                  }}
+                  className="rounded-xl px-3 py-2 text-sm"
+                >
+                  <PenLine />
+                  Class not in the catalog
                 </CommandItem>
               ) : null}
               {filteredCourses.map((course) => {
                 const isSelected = course.id === selectedCourseId;
+                const metadata = [
+                  course.department,
+                  formatCourseNumbers(course),
+                  course.gradeText ? `Grades ${course.gradeText}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
                   <CommandItem
                     key={course.id}
                     value={`${course.title} ${formatCourseNumbers(course)}`}
                     onSelect={() => {
                       onChange(course);
-                      setOpen(false);
+                      handleOpenChange(false);
                     }}
-                    className="rounded-xl px-3 py-2"
+                    className="min-h-11 rounded-xl px-3 py-2"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{course.title}</p>
-                      <CourseMeta course={course} className="mt-1 gap-1.5" />
+                    <div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:justify-between sm:gap-4">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {course.title}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground sm:mt-0 sm:max-w-[48%] sm:text-right">
+                        {metadata}
+                      </p>
                     </div>
                     <Check
                       className={cn(
-                        'ml-3 size-4 shrink-0 text-orange-600 transition-opacity',
-                        isSelected ? 'opacity-100' : 'opacity-0',
+                        "ml-1 shrink-0 text-orange-600 transition-opacity",
+                        isSelected ? "opacity-100" : "opacity-0",
                       )}
                     />
                   </CommandItem>

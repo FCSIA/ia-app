@@ -486,9 +486,9 @@ function ClubNavigationPanel({
               {canManageChannels ? <CreateChannelTrigger clubId={clubId} /> : null}
             </div>
 
-            <CardGroup orientation="inline" separated className="gap-0.5">
-              {channels.length > 0 ? (
-                channels.map((channel) => {
+            {channels.length > 0 ? (
+              <CardGroup orientation="inline" separated className="gap-0.5">
+                {channels.map((channel) => {
                   const active = channel._id === activeChannelId;
                   return (
                     <Card
@@ -530,13 +530,13 @@ function ClubNavigationPanel({
                       ) : null}
                     </Card>
                   );
-                })
-              ) : (
-                <div className="px-2 py-3 text-xs text-muted-foreground">
-                  No channels yet.
-                </div>
-              )}
-            </CardGroup>
+                })}
+              </CardGroup>
+            ) : (
+              <div className="px-2 py-3 text-xs text-muted-foreground">
+                No channels yet.
+              </div>
+            )}
           </section>
         </div>
       </ScrollArea>

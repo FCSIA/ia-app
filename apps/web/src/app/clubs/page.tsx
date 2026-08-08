@@ -9,7 +9,7 @@ import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog'
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup } from '@/components/ui/card';
+import { Card, CardGroup, type CardProps } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SearchInput } from '@/components/ui/search';
@@ -214,9 +214,9 @@ export default function ClubsLandingPage() {
             </div>
 
             {isLoading ? (
-              <div className="flex flex-col gap-2 p-3">
-                {DISCOVERY_SKELETON_IDS.map((id) => (
-                  <Skeleton key={id} className="h-[4.5rem] w-full" />
+                <div className="flex flex-col gap-2 p-3">
+                  {DISCOVERY_SKELETON_IDS.map((id) => (
+                    <Skeleton key={id} className="h-[4.5rem] w-full" />
                 ))}
               </div>
             ) : filteredClubs.length > 0 ? (
@@ -284,8 +284,8 @@ function ClubListRow({
   density: 'compact' | 'default';
   joined?: boolean;
   badge?: React.ReactNode;
-  /** Injected by CardGroup and forwarded to the underlying Fluid Card. */
-  index?: number;
+  /** Forwarded by CardGroup so the rendered Card can register its geometry. */
+  index?: CardProps['index'];
 }) {
   if (density === 'compact') {
     return (
