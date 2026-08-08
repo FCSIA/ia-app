@@ -6,6 +6,7 @@ import {
   notificationPreferenceLevelValidator,
 } from "../validators";
 import { preferenceValidator, scopeKey, toPreference } from "./_lib";
+import { activatePushPreferences } from "./_pushActivation";
 
 export const list = query({
   args: {},
@@ -157,5 +158,20 @@ export const resetChannel = mutation({
       if (preference && !preference.locked) await ctx.db.delete(preference._id);
     }
     return null;
+  },
+});
+
+/**
+ * Makes an explicit device-push opt-in useful immediately. Existing OFF
+ * preferences remain off, and high-volume all-channel-message alerts remain
+ * opt-in at the channel level.
+ */
+export const activatePush = mutation({
+  args: {},
+  returns: v.object({ updated: v.number() }),
+  handler: async (ctx) => {
+    const user = await getCurrentAppUser(ctx);
+    const updated = await activatePushPreferences(ctx, user._id);
+    return { updated };
   },
 });
