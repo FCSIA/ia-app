@@ -44,6 +44,10 @@ export const notificationSubjectValidator = v.union(
     friendshipId: v.id("studentScheduleFriends"),
   }),
   v.object({
+    kind: v.literal("friendSchedule"),
+    friendUserId: v.id("users"),
+  }),
+  v.object({
     kind: v.literal("system"),
   }),
 );

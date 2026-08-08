@@ -1,52 +1,60 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { Clock3, Sparkles } from 'lucide-react';
-import { useScheduleWorkspace } from './ScheduleWorkspaceProvider';
+import Link from "next/link";
+import { ArrowRight, Clock3 } from "lucide-react";
+import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
 export function ScheduleStatusBar() {
   const { currentStatus, nextEntry } = useScheduleWorkspace();
 
+  const currentLabel = currentStatus.currentEntry?.course
+    ? currentStatus.currentEntry.course.title
+    : currentStatus.currentEntry?.className ||
+      currentStatus.currentBlock?.label ||
+      "No active block";
+  const nextLabel = nextEntry?.course
+    ? nextEntry.course.title
+    : nextEntry?.className ||
+      currentStatus.nextBlock?.label ||
+      "School day complete";
+
   return (
-    <div className="flex items-center gap-6 text-sm">
-      <div className="flex items-center gap-2">
-        <Clock3 className="size-3.5 text-muted-foreground" />
-        <span className="text-muted-foreground">Now:</span>
-        {currentStatus.currentBlock ? (
-          currentStatus.currentEntry?.course ? (
-            <Link
-              href={`/courses/${currentStatus.currentEntry.course.slug}`}
-              className="font-medium text-foreground transition-colors hover:text-primary"
-            >
-              {currentStatus.currentEntry.course.title}
-            </Link>
-          ) : (
-            <span className="font-medium text-foreground">
-              {currentStatus.currentEntry?.className || currentStatus.currentBlock.label}
-            </span>
-          )
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <Clock3 className="size-4 shrink-0 text-primary" aria-hidden="true" />
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Now
+        </span>
+        {currentStatus.currentEntry?.course ? (
+          <Link
+            href={`/courses/${currentStatus.currentEntry.course.slug}`}
+            className="truncate font-semibold text-foreground transition-colors hover:text-primary"
+          >
+            {currentLabel}
+          </Link>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="truncate font-semibold text-foreground">
+            {currentLabel}
+          </span>
         )}
       </div>
-      <div className="hidden items-center gap-2 sm:flex">
-        <Sparkles className="size-3.5 text-muted-foreground" />
-        <span className="text-muted-foreground">Next:</span>
-        {currentStatus.nextBlock ? (
-          nextEntry?.course ? (
-            <Link
-              href={`/courses/${nextEntry.course.slug}`}
-              className="font-medium text-foreground transition-colors hover:text-primary"
-            >
-              {nextEntry.course.title}
-            </Link>
-          ) : (
-            <span className="font-medium text-foreground">
-              {nextEntry?.className || currentStatus.nextBlock.label}
-            </span>
-          )
+      <ArrowRight
+        className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+        aria-hidden="true"
+      />
+      <div className="hidden min-w-0 items-baseline gap-2 sm:flex">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Next
+        </span>
+        {nextEntry?.course ? (
+          <Link
+            href={`/courses/${nextEntry.course.slug}`}
+            className="truncate font-medium text-foreground transition-colors hover:text-primary"
+          >
+            {nextLabel}
+          </Link>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="truncate text-muted-foreground">{nextLabel}</span>
         )}
       </div>
     </div>

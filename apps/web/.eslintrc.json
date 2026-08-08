@@ -7,5 +7,47 @@
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": "warn",
     "react-hooks/exhaustive-deps": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.{ts,tsx}"],
+      "excludedFiles": ["src/components/ui/**/*", "src/lib/share.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@radix-ui/*", "@base-ui/*"],
+                "message": "Import the local components/ui adapter. Read agent-notes/WEB_UI_WORKFLOW.md before adding or changing a primitive."
+              }
+            ]
+          }
+        ],
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "JSXOpeningElement[name.name='table']",
+            "message": "Use the shared Fluid Table primitive so semantics, geometry registration, and row motion stay consistent."
+          },
+          {
+            "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='onClick']",
+            "message": "Badge is non-interactive metadata. Use a semantic shared button, toggle, or filter control."
+          },
+          {
+            "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='aria-pressed']",
+            "message": "Badge is non-interactive metadata. Use a semantic shared toggle or filter control."
+          },
+          {
+            "selector": "CallExpression[callee.property.name='writeText'][callee.object.object.name='navigator'][callee.object.property.name='clipboard']",
+            "message": "Use InputCopy for visible copyable values or the shared share utility for Share actions."
+          },
+          {
+            "selector": "JSXOpeningElement[name.name='button'] > JSXAttribute[name.name='aria-pressed']",
+            "message": "Use a shared toggle, CheckboxGroup, or filter control instead of a custom pressed button."
+          }
+        ]
+      }
+    }
+  ]
 }

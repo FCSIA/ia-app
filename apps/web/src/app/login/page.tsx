@@ -80,7 +80,7 @@ export default function LoginPage() {
                   id="uniqueId"
                   name="username"
                   type="text"
-                  placeholder="e.g. STU001"
+                  placeholder="School ID"
                   value={uniqueId}
                   onChange={(event) => setUniqueId(event.target.value)}
                   required

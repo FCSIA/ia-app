@@ -155,7 +155,7 @@ export function parseStudentCsv(text: string): StudentCsvPreview {
       if (!firstName) rowIssues.push({ row: record.line, message: "First name is required." });
       if (!lastName) rowIssues.push({ row: record.line, message: "Last name is required." });
       if (uniqueId && seenIds.has(uniqueId)) {
-        rowIssues.push({ row: record.line, message: `Student ID ${uniqueId} appears more than once in this file.` });
+        rowIssues.push({ row: record.line, message: "A student ID appears more than once in this file." });
       }
       if (email && !/^[^\s@]+@[^\s@]+$/.test(email)) {
         rowIssues.push({ row: record.line, message: `Email “${email}” is not valid.` });

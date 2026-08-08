@@ -80,6 +80,12 @@ export const NOTIFICATION_CATEGORY_DETAILS = {
     description: 'Schedule friend requests and related friend updates.',
     label: 'Friend Requests',
   },
+  FRIEND_SCHEDULE_CHANGE: {
+    badgeLabel: 'Schedule',
+    defaultEnabled: true,
+    description: 'Updates when a friend changes a schedule they share with you.',
+    label: 'Friend Schedule Changes',
+  },
 } as const satisfies Record<NotificationCategory, NotificationCategoryDetails>;
 
 export const NOTIFICATION_CATEGORY_OPTIONS: NotificationCategoryOption[] = Object.entries(NOTIFICATION_CATEGORY_DETAILS).map(

@@ -2,11 +2,12 @@
 
 ## Active Focus
 
-- **Branch**: `codex/65-contributor-workflow`
-- **Goal**: Finish the issue/PR reconciliation with a safe student contribution
-  workflow stacked on the canonical design-system work.
-- **Production boundary**: No reconciliation branch was merged or pushed to
-  `main`; every implementation remains in a reviewable PR.
+- **Branch**: `codex/49-friend-groups-reconcile`
+- **Goal**: Reconcile friend share links and private schedule groups on top of
+  the merged special-day schedule stack.
+- **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
+  and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
+  asked.
 
 ## Current Truth
 
@@ -152,6 +153,26 @@
   no longer use mask fades that can imply nonexistent overflow; the chat
   scroller keeps its own measured edge treatment. Behavior-owned chat, menu,
   editor, tab, and attachment scrollports retain their existing contracts.
+- Web schedules now use a Fluid-first two-pane workspace: the selected school
+  day stays mounted while date data refreshes, dates use the shadcn calendar
+  popover, class pickers are anchored only to explicit row toggles, school times
+  are displayed in 12-hour format, and friend links are created and revoked in
+  a compact non-modal popover with locally generated IA-branded QR sharing.
+  Schedule groups now have their own top-level tab and compact create popover;
+  auth-sensitive schedule queries stop during logout, and student IDs are no
+  longer rendered across web or mobile UI surfaces.
+- Web UI handoff now follows the required primitive-first gate in
+  `agent-notes/WEB_UI_WORKFLOW.md`: agents must inspect current Fluid docs,
+  rendered and Code examples, APIs, registry source, and local adapters; choose
+  primitives by semantics; preserve proximity registration; and escalate shared
+  primitive gaps instead of patching pages. ESLint now keeps semantic tables,
+  headless-library imports, interactive badges, raw pressed buttons, and direct
+  clipboard use behind shared UI contracts.
+- The schedule editor now uses indexed Fluid table rows, Discover Clubs forwards
+  CardGroup indices like the channel-list reference, the date picker matches the
+  current DayPicker/Fluid DOM contract, quick filters use a shared ToggleGroup,
+  and visible friend/join values use Fluid InputCopy. Event Share uses the native
+  share sheet with a centralized copy fallback.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
@@ -171,6 +192,18 @@
 
 ### Remaining Debt
 
+- The club workspace selector is route navigation and should use the current
+  Fluid Dropdown popup contract. The existing retrofit is intentionally not
+  extended: current Fluid `MenuItem` lacks the leading-media and link-composition
+  API needed for club logos and native navigation. The proposed shared API is a
+  constrained `leadingMedia` slot plus `render={<Link ... />}` composition while
+  `MenuItem` retains ownership of label, current/check state, index registration,
+  roving focus, and close-on-select. Approve and implement that shared primitive
+  API before migrating the selector and the remaining legacy dropdown
+  compositions.
+- Signed-in visual interaction QA is still required for the repaired proximity
+  highlights, calendar geometry, course picker density, copy controls, filters,
+  and keyboard/reduced-motion states because browser control was unavailable.
 - Mobile v1 is repo-local store-ready. Remaining mobile launch blockers are
   external: school-controlled EAS project id/account owner, Apple/Google store
   accounts, universal-link domain files, reviewer credentials on a demo
@@ -184,6 +217,14 @@
 
 ### Verification (latest)
 
+- `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
+  primitive workflow and remediation slices.
+- `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
+  unused-import warnings.
+- `direnv exec . pnpm --filter web build` - pass through compilation,
+  TypeScript, page data, all 18 static pages, and route optimization.
+- `pnpm --filter mobile typecheck` - pass
+- `pnpm lint` - pass with 7 existing web warnings outside this slice
 - `pnpm --filter cvx codegen` - pass
 - `pnpm --filter cvx typecheck` - pass
 - `pnpm --filter cvx test` - pass (14 files, 47 tests)
@@ -246,9 +287,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-pnpm --filter cvx codegen
-pnpm --filter cvx typecheck
-pnpm lint
-pnpm build
-pnpm test
+direnv exec . pnpm --filter cvx codegen
+direnv exec . pnpm --filter cvx typecheck
+direnv exec . pnpm lint
+direnv exec . pnpm build
+direnv exec . pnpm test
 ```

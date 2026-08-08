@@ -115,11 +115,6 @@ export function AuditTable({
                     <div className="truncate font-medium text-foreground">
                       {event.actor ? `${event.actor.firstName} ${event.actor.lastName}` : 'System'}
                     </div>
-                    {event.actor?.uniqueId ? (
-                      <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-                        {event.actor.uniqueId}
-                      </div>
-                    ) : null}
                   </TableCell>
                   <TableCell className={`${d.cell} min-w-0 align-top`}>
                     <Badge variant="solid" size="sm" className="max-w-full font-mono text-[11px]">

@@ -27,6 +27,7 @@ export function resolveScheduleTab(
   canManageBlocks: boolean,
 ): ScheduleTab {
   if (requestedTab === 'friends' && canEditOwnSchedule) return 'friends';
+  if (requestedTab === 'groups' && canEditOwnSchedule) return 'groups';
   if (requestedTab === 'admin' && canManageBlocks) return 'admin';
   if (requestedTab === 'my' && canEditOwnSchedule) return 'my';
   if (canEditOwnSchedule) return 'my';

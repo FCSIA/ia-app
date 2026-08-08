@@ -33,6 +33,7 @@ const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
   FLEX_FRIDAY: 'pink',
   CONTENT_MODERATED: 'red',
   FRIEND_REQUEST: 'cyan',
+  FRIEND_SCHEDULE_CHANGE: 'orange',
 };
 
 function NotificationListSkeleton() {
