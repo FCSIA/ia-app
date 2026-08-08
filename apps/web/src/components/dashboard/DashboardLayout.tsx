@@ -279,7 +279,7 @@ export function DashboardLayout() {
 
   return (
     <PageFrame className="pb-24 pt-0">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-end">
             <div className="flex items-center gap-3">
