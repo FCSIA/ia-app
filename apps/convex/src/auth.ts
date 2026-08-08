@@ -61,6 +61,7 @@ const configuredAuthHostnames = Array.from(
       "localhost",
       "127.0.0.1",
       "10.0.2.2",
+      "ia-app-alpha.vercel.app",
       "*-sreyassabbanis-projects.vercel.app",
     ].filter((host): host is string => Boolean(host)),
   ),
@@ -77,7 +78,8 @@ function isTrustedVercelPreviewOrigin(origin: string) {
     const { hostname, protocol } = new URL(origin);
     return (
       protocol === "https:" &&
-      hostname.endsWith("-sreyassabbanis-projects.vercel.app")
+      (hostname.endsWith("-sreyassabbanis-projects.vercel.app") ||
+        hostname === "ia-app-alpha.vercel.app")
     );
   } catch {
     return false;
