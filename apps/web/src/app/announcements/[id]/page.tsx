@@ -241,7 +241,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               >
                 {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType}
               </Badge>
-              <Badge variant="dot" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+              <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                 {audienceLabel}
               </Badge>
               {announcement.status !== 'ACTIVE' ? (

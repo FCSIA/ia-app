@@ -106,7 +106,6 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{fullName(selected)}</p>
-                  <p className="mt-0.5 font-mono text-xs text-muted-foreground">{selected.uniqueId}</p>
                 </div>
                 <button
                   type="button"
@@ -137,7 +136,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             ) : (
               <Command className="rounded-xl border shadow-sm" shouldFilter={false}>
                 <CommandInput
-                  placeholder="Search by name or student ID…"
+                  placeholder="Search by name…"
                   value={query}
                   onValueChange={setQuery}
                 />
@@ -166,7 +165,6 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{fullName(student)}</p>
-                            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{student.uniqueId}</p>
                           </div>
                         </CommandItem>
                       ))}

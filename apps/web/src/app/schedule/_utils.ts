@@ -1,13 +1,22 @@
 import type { CourseSummary } from '@/components/courses/types';
-import type { StudentScheduleDraftEntry } from '@/components/schedule/types';
+import type {
+  ScheduleLunchPeriod,
+  StudentScheduleDraftEntry,
+} from '@/components/schedule/types';
 import type { ScheduleTab } from './_types';
 
 export type ScheduleClassSelection = CourseSummary | { className: string };
 
-export function buildScheduleRecord(entries: StudentScheduleDraftEntry[], isPublic: boolean) {
+export function buildScheduleRecord(
+  entries: StudentScheduleDraftEntry[],
+  isPublic: boolean,
+  lunchPeriod: ScheduleLunchPeriod | null,
+) {
   return {
     id: 'draft',
     isPublic,
+    lunchPeriod,
+    lunchNeedsResolution: lunchPeriod === null,
     entries,
   };
 }
@@ -18,6 +27,7 @@ export function resolveScheduleTab(
   canManageBlocks: boolean,
 ): ScheduleTab {
   if (requestedTab === 'friends' && canEditOwnSchedule) return 'friends';
+  if (requestedTab === 'groups' && canEditOwnSchedule) return 'groups';
   if (requestedTab === 'admin' && canManageBlocks) return 'admin';
   if (requestedTab === 'my' && canEditOwnSchedule) return 'my';
   if (canEditOwnSchedule) return 'my';

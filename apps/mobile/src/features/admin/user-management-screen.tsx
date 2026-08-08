@@ -206,7 +206,7 @@ export function UserManagementScreen() {
               accessibilityLabel="Search people"
               value={search}
               onChangeText={setSearch}
-              placeholder="Name, ID, or email"
+              placeholder="Name or email"
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
@@ -241,7 +241,7 @@ export function UserManagementScreen() {
                 />
               )}
               title={`${user.firstName} ${user.lastName}`}
-              subtitle={`${user.uniqueId} · ${summarizeRoles(user.roles)}`}
+              subtitle={summarizeRoles(user.roles)}
               trailing={!user.isActive ? <Badge label="Inactive" color="red" variant="dot" /> : undefined}
               onPress={() => openUser(user)}
             />
@@ -252,7 +252,7 @@ export function UserManagementScreen() {
           {status !== "LoadingFirstPage" && results.length === 0 ? (
             <Empty
               title="No people found"
-              body={search ? "Try a different name, ID, or email." : "No accounts match this group."}
+              body={search ? "Try a different name or email." : "No accounts match this group."}
               icon={UserRoundX}
             />
           ) : null}
@@ -276,7 +276,6 @@ export function UserManagementScreen() {
         {selectedUser ? (
           <View style={{ gap: spacing.lg }}>
             <View style={{ gap: spacing.xs }}>
-              <Txt variant="body">{selectedUser.uniqueId}</Txt>
               {selectedUser.email ? <Txt tone="muted" selectable>{selectedUser.email}</Txt> : null}
               <Badge
                 label={selectedUser.isActive ? "Active" : "Inactive"}

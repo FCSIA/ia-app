@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   createContext,
@@ -10,79 +10,121 @@ import {
   useState,
   type ReactNode,
   type SetStateAction,
-} from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
-import type { CourseSummary } from '@/components/courses/types';
+} from "react";
+import { useSearchParams } from "next/navigation";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import type { CourseSummary } from "@/components/courses/types";
 import type {
   ScheduleSearchResult,
+  ScheduleLunchPeriod,
   ScheduleWeekday,
   SchoolDayBlock,
   StudentScheduleDraftEntry,
-} from '@/components/schedule/types';
+} from "@/components/schedule/types";
 import {
   copyDayEntries,
   findScheduleEntry,
   getCurrentScheduleStatus,
-} from '@/components/schedule/schedule-utils';
-import { useToast } from '@/hooks/use-toast';
-import { hasRole, useCurrentUser } from '@/lib/auth';
-import { api } from '~/apps/convex/src/_generated/api';
-import type { ScheduleDraftState, ScheduleTabState } from '../_types';
+} from "@/components/schedule/schedule-utils";
+import { useToast } from "@/hooks/use-toast";
+import { hasRole, useCurrentUser } from "@/lib/auth";
+import { api } from "~/apps/convex/src/_generated/api";
+import type { ScheduleDraftState, ScheduleTabState } from "../_types";
 import {
   buildScheduleRecord,
   replaceScheduleEntry,
   resolveScheduleTab,
   type ScheduleClassSelection,
-} from '../_utils';
+} from "../_utils";
 
 const EMPTY_BLOCKS: SchoolDayBlock[] = [];
 const EMPTY_COURSES: CourseSummary[] = [];
 const EMPTY_SEARCH_RESULTS: ScheduleSearchResult[] = [];
+const SCHOOL_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function schoolDateKey() {
+  const parts = SCHOOL_DATE_FORMATTER.formatToParts(new Date());
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
+}
 
 function useScheduleWorkspaceValue() {
+  const { isAuthenticated } = useConvexAuth();
   const user = useCurrentUser();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const incomingRequestsRef = useRef<HTMLDivElement | null>(null);
 
-  const canEditOwnSchedule = !!user && hasRole(user, 'STUDENT');
-  const canManageBlocks = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const requestedTab = searchParams?.get('tab') ?? null;
-  const requestedSection = searchParams?.get('section') ?? null;
+  const canEditOwnSchedule = !!user && hasRole(user, "STUDENT");
+  const canManageBlocks = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN");
+  const requestedTab = searchParams?.get("tab") ?? null;
+  const requestedSection = searchParams?.get("section") ?? null;
 
   const [tabState, setTabState] = useState<ScheduleTabState>(() => ({
     requestedTab,
     canEditOwnSchedule,
     canManageBlocks,
-    activeTab: resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks),
+    activeTab: resolveScheduleTab(
+      requestedTab,
+      canEditOwnSchedule,
+      canManageBlocks,
+    ),
   }));
-  const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>('MONDAY');
-  const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>('MONDAY');
-  const [search, setSearch] = useState('');
+  const [selectedDateKey, setSelectedDateKey] = useState(schoolDateKey);
+  const [adminWeekday, setAdminWeekday] = useState<ScheduleWeekday>("MONDAY");
+  const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const normalizedDeferredSearch = deferredSearch.trim();
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraftState>({
     source: undefined,
     entries: [],
     isPublic: false,
+    lunchPeriod: "PERIOD_5",
   });
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [isBulkEditing, setIsBulkEditing] = useState(false);
-  const [draftAdminBlocks, setDraftAdminBlocks] = useState<Record<string, SchoolDayBlock>>({});
+  const [draftAdminBlocks, setDraftAdminBlocks] = useState<
+    Record<string, SchoolDayBlock>
+  >({});
 
-  const data = useQuery(api.schedule.dashboard.get);
-  const courses = useQuery(api.courses.catalog.list, { limit: 200 }) ?? EMPTY_COURSES;
+  const queriedData = useQuery(
+    api.schedule.dashboard.get,
+    isAuthenticated ? { dateKey: selectedDateKey } : "skip",
+  );
+  const previousDataRef = useRef(queriedData);
+  useEffect(() => {
+    if (queriedData !== undefined) previousDataRef.current = queriedData;
+  }, [queriedData]);
+  const data = isAuthenticated
+    ? (queriedData ?? previousDataRef.current)
+    : undefined;
+  const courses =
+    useQuery(
+      api.courses.catalog.list,
+      isAuthenticated ? { limit: 200 } : "skip",
+    ) ?? EMPTY_COURSES;
   const sourceSchedule = data?.mySchedule;
 
   let scheduleEntries = scheduleDraft.entries;
   let isPublic = scheduleDraft.isPublic;
+  let lunchPeriod = scheduleDraft.lunchPeriod;
   if (scheduleDraft.source !== sourceSchedule) {
     scheduleEntries = sourceSchedule?.entries ?? [];
     isPublic = sourceSchedule?.isPublic ?? false;
-    setScheduleDraft({ source: sourceSchedule, entries: scheduleEntries, isPublic });
+    lunchPeriod = sourceSchedule ? sourceSchedule.lunchPeriod : "PERIOD_5";
+    setScheduleDraft({
+      source: sourceSchedule,
+      entries: scheduleEntries,
+      isPublic,
+      lunchPeriod,
+    });
   }
 
   let activeTab = tabState.activeTab;
@@ -91,45 +133,88 @@ function useScheduleWorkspaceValue() {
     tabState.canEditOwnSchedule !== canEditOwnSchedule ||
     tabState.canManageBlocks !== canManageBlocks
   ) {
-    activeTab = resolveScheduleTab(requestedTab, canEditOwnSchedule, canManageBlocks);
-    setTabState({ requestedTab, canEditOwnSchedule, canManageBlocks, activeTab });
+    activeTab = resolveScheduleTab(
+      requestedTab,
+      canEditOwnSchedule,
+      canManageBlocks,
+    );
+    setTabState({
+      requestedTab,
+      canEditOwnSchedule,
+      canManageBlocks,
+      activeTab,
+    });
   }
 
-  const selectedTab = resolveScheduleTab(activeTab, canEditOwnSchedule, canManageBlocks);
+  const selectedTab = resolveScheduleTab(
+    activeTab,
+    canEditOwnSchedule,
+    canManageBlocks,
+  );
   const setActiveTab = (tab: string) => {
     setTabState((current) => ({
       ...current,
       activeTab: resolveScheduleTab(tab, canEditOwnSchedule, canManageBlocks),
     }));
   };
-  const setScheduleEntries = (value: SetStateAction<StudentScheduleDraftEntry[]>) => {
+  const setScheduleEntries = (
+    value: SetStateAction<StudentScheduleDraftEntry[]>,
+  ) => {
     setScheduleDraft((current) => ({
       ...current,
-      entries: typeof value === 'function' ? value(current.entries) : value,
+      entries: typeof value === "function" ? value(current.entries) : value,
     }));
   };
   const setIsPublic = (value: SetStateAction<boolean>) => {
     setScheduleDraft((current) => ({
       ...current,
-      isPublic: typeof value === 'function' ? value(current.isPublic) : value,
+      isPublic: typeof value === "function" ? value(current.isPublic) : value,
     }));
+  };
+  const setLunchPeriod = (nextLunchPeriod: ScheduleLunchPeriod) => {
+    const targetPeriod = nextLunchPeriod === "PERIOD_4" ? 4 : 5;
+    const conflict = scheduleEntries.find(
+      (entry) => entry.periodNumber === targetPeriod,
+    );
+    if (conflict) {
+      toast({
+        title: `Period ${targetPeriod} still has a class`,
+        description:
+          "Remove or move that class before changing your lunch period.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    setScheduleDraft((current) => ({
+      ...current,
+      lunchPeriod: nextLunchPeriod,
+    }));
+    return true;
   };
 
   useEffect(() => {
-    if (selectedTab !== 'friends' || requestedSection !== 'requests') return;
-    incomingRequestsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (selectedTab !== "friends" || requestedSection !== "requests") return;
+    incomingRequestsRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }, [data?.incomingRequests?.length, requestedSection, selectedTab]);
 
   const searchResults =
     useQuery(
       api.schedule.friends.search,
-      canEditOwnSchedule && normalizedDeferredSearch.length >= 2
+      isAuthenticated &&
+        canEditOwnSchedule &&
+        normalizedDeferredSearch.length >= 2
         ? { query: normalizedDeferredSearch, limit: 20 }
-        : 'skip',
+        : "skip",
     ) ?? EMPTY_SEARCH_RESULTS;
   const isSearching =
-    canEditOwnSchedule && normalizedDeferredSearch.length >= 2 && searchResults.length === 0;
-  const searchIsDeferred = canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
+    canEditOwnSchedule &&
+    normalizedDeferredSearch.length >= 2 &&
+    searchResults.length === 0;
+  const searchIsDeferred =
+    canEditOwnSchedule && search.trim() !== normalizedDeferredSearch;
 
   const saveSchedule = useMutation(api.schedule.dashboard.save);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
@@ -150,71 +235,93 @@ function useScheduleWorkspaceValue() {
       toast({ title: successTitle });
     } catch (error) {
       toast({
-        title: error instanceof Error ? error.message : 'Request failed',
-        variant: 'destructive',
+        title: error instanceof Error ? error.message : "Request failed",
+        variant: "destructive",
       });
     } finally {
       setPendingAction(null);
     }
   };
 
-  const handleSaveSchedule = () =>
+  const handleSaveSchedule = () => {
+    if (!lunchPeriod) {
+      toast({
+        title: "Choose your lunch period",
+        description:
+          "Remove the class in Period 4 or Period 5, then choose that slot for lunch.",
+        variant: "destructive",
+      });
+      return;
+    }
     void runScheduleAction(
-      'save-schedule',
+      "save-schedule",
       () =>
         saveSchedule({
           isPublic,
-          entries: scheduleEntries.map(({ weekday, periodNumber, courseId, className }) => ({
-            weekday,
-            periodNumber,
-            courseId,
-            className,
-          })),
+          lunchPeriod,
+          entries: scheduleEntries.map(
+            ({ weekday, periodNumber, courseId, className }) => ({
+              weekday,
+              periodNumber,
+              courseId,
+              className,
+            }),
+          ),
         }),
-      'Schedule saved',
+      "Schedule saved",
     );
+  };
 
   const handleBulkSaveAdminBlocks = () => {
     setIsBulkEditing(false);
     if (!data?.blocks) return;
-    
+
     void runScheduleAction(
-      'save-admin-blocks',
+      "save-admin-blocks",
       async () => {
         const promises = [];
         for (const block of data.blocks) {
           const draft = draftAdminBlocks[block.id];
           if (draft) {
-            const hasChanged = draft.label !== block.label || draft.startTime !== block.startTime || draft.endTime !== block.endTime;
+            const hasChanged =
+              draft.label !== block.label ||
+              draft.startTime !== block.startTime ||
+              draft.endTime !== block.endTime;
             if (hasChanged) {
-              promises.push(updateBlock({
-                blockId: block.id,
-                label: draft.periodNumber ? undefined : draft.label,
-                startTime: draft.startTime,
-                endTime: draft.endTime,
-                kind: draft.periodNumber ? 'PERIOD' : 'CUSTOM',
-                periodNumber: draft.periodNumber ?? undefined,
-                weekday: draft.weekday
-              }));
+              promises.push(
+                updateBlock({
+                  blockId: block.id,
+                  label: draft.periodNumber ? undefined : draft.label,
+                  startTime: draft.startTime,
+                  endTime: draft.endTime,
+                  kind: draft.periodNumber ? "PERIOD" : "CUSTOM",
+                  periodNumber: draft.periodNumber ?? undefined,
+                  weekday: draft.weekday,
+                }),
+              );
             }
           }
         }
         await Promise.all(promises);
         if (canEditOwnSchedule) {
-          setActiveTab('my');
+          setActiveTab("my");
         }
       },
-      'Blocks saved successfully'
+      "Blocks saved successfully",
     );
   };
 
   const blocks = data?.blocks ?? EMPTY_BLOCKS;
   const draftSchedule = useMemo(
-    () => buildScheduleRecord(scheduleEntries, isPublic),
-    [isPublic, scheduleEntries],
+    () => buildScheduleRecord(scheduleEntries, isPublic, lunchPeriod),
+    [isPublic, lunchPeriod, scheduleEntries],
   );
   const currentStatus = useMemo(
-    () => getCurrentScheduleStatus(canEditOwnSchedule ? draftSchedule : null, blocks),
+    () =>
+      getCurrentScheduleStatus(
+        canEditOwnSchedule ? draftSchedule : null,
+        blocks,
+      ),
     [blocks, canEditOwnSchedule, draftSchedule],
   );
   const nextEntry =
@@ -237,10 +344,18 @@ function useScheduleWorkspaceValue() {
   };
 
   const copyMondayToWeek = () => {
+    if (!scheduleEntries.some((entry) => entry.weekday === 'MONDAY')) {
+      toast({
+        title: 'Add classes to Monday before copying',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setScheduleEntries((current) =>
-      copyDayEntries(current, 'MONDAY', ['TUESDAY', 'WEDNESDAY', 'THURSDAY']),
+      copyDayEntries(current, 'MONDAY', ['TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']),
     );
-    toast({ title: 'Copied Monday classes to Tuesday through Thursday' });
+    toast({ title: 'Copied Monday classes to Tuesday through Friday. Save to keep changes.' });
   };
 
   return {
@@ -260,8 +375,10 @@ function useScheduleWorkspaceValue() {
     editingBlockId,
     handleSaveSchedule,
     incomingRequestsRef,
-    isLoading: data === undefined,
+    isLoading:
+      queriedData === undefined && previousDataRef.current === undefined,
     isPublic,
+    lunchPeriod,
     isSearching,
     nextEntry,
     normalizedDeferredSearch,
@@ -273,15 +390,16 @@ function useScheduleWorkspaceValue() {
     searchIsDeferred,
     searchResults,
     selectedTab,
-    selectedWeekday,
+    selectedDateKey,
     sendFriendRequest,
     setActiveTab,
     setAdminWeekday,
     setCreatingDay,
     setEditingBlockId,
     setIsPublic,
+    setLunchPeriod,
     setSearch,
-    setSelectedWeekday,
+    setSelectedDateKey,
     updateBlock,
     updateScheduleEntry,
     user,
@@ -295,9 +413,15 @@ function useScheduleWorkspaceValue() {
 
 type ScheduleWorkspaceValue = ReturnType<typeof useScheduleWorkspaceValue>;
 
-const ScheduleWorkspaceContext = createContext<ScheduleWorkspaceValue | null>(null);
+const ScheduleWorkspaceContext = createContext<ScheduleWorkspaceValue | null>(
+  null,
+);
 
-export function ScheduleWorkspaceProvider({ children }: { children: ReactNode }) {
+export function ScheduleWorkspaceProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const value = useScheduleWorkspaceValue();
   return (
     <ScheduleWorkspaceContext.Provider value={value}>
@@ -308,6 +432,9 @@ export function ScheduleWorkspaceProvider({ children }: { children: ReactNode })
 
 export function useScheduleWorkspace() {
   const value = use(ScheduleWorkspaceContext);
-  if (!value) throw new Error('useScheduleWorkspace must be used inside ScheduleWorkspaceProvider');
+  if (!value)
+    throw new Error(
+      "useScheduleWorkspace must be used inside ScheduleWorkspaceProvider",
+    );
   return value;
 }

@@ -147,6 +147,8 @@ The detailed architecture and feature list starts in [docs/architecture/overview
 
 ## Documentation
 
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Safe student contribution workflow and pull-request checks.
+- [SECURITY.md](./SECURITY.md) - Private vulnerability reporting and testing boundaries.
 - [docs/reference/getting-started.md](./docs/reference/getting-started.md) — Step-by-step developer environment setup.
 - [docs/index.md](./docs/index.md) — Current documentation hub.
 - [docs/architecture/overview.md](./docs/architecture/overview.md) — Current Convex-era architecture.

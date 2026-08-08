@@ -17,9 +17,12 @@
     "mobile:ios": "pnpm --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
     "mobile:android": "pnpm --filter mobile android",
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
+    "brand:check": "node scripts/generate-brand-assets.mjs --check",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {
+    "sharp": "0.34.5",
     "turbo": "^2.10.8",
     "typescript": "~6.0.3",
     "vercel": "^54.21.1"

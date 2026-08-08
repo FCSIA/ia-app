@@ -140,9 +140,6 @@ export default function ClubPeopleScreen() {
                           <Txt style={{ fontWeight: "700" }} numberOfLines={1}>
                             {requesterName}
                           </Txt>
-                          <Txt variant="caption" tone="muted" numberOfLines={1}>
-                            {request.requester?.uniqueId}
-                          </Txt>
                         </View>
                       </View>
                       <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -200,7 +197,7 @@ export default function ClubPeopleScreen() {
                             {name}
                           </Txt>
                           <Txt variant="caption" tone="muted" numberOfLines={1}>
-                            {role}{person.uniqueId ? ` · ${person.uniqueId}` : ""}
+                            {role}
                           </Txt>
                         </View>
                         {canManagePerson ? (

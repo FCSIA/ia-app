@@ -1,0 +1,12 @@
+# Security-sensitive paths require the repository maintainer's review.
+/.github/ @virajdas
+/SECURITY.md @virajdas
+/apps/convex/src/schema.ts @virajdas
+/apps/convex/src/auth.ts @virajdas
+/apps/convex/src/auth.config.ts @virajdas
+/apps/convex/src/betterAuth/ @virajdas
+/apps/convex/src/http.ts @virajdas
+/apps/convex/src/uploads/ @virajdas
+/apps/convex/src/moderation/ @virajdas
+/docs/compliance/ @virajdas
+/docs/backend/convex-local-production.md @virajdas
