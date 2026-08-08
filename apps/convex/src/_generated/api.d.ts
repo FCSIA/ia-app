@@ -59,6 +59,7 @@ import type * as moderation_keywords from "../moderation/keywords.js";
 import type * as moderation_reportValidation from "../moderation/reportValidation.js";
 import type * as moderation_reports from "../moderation/reports.js";
 import type * as notifications__lib from "../notifications/_lib.js";
+import type * as notifications__pushActivation from "../notifications/_pushActivation.js";
 import type * as notifications_delivery from "../notifications/delivery.js";
 import type * as notifications_deliveryPreference from "../notifications/deliveryPreference.js";
 import type * as notifications_inbox from "../notifications/inbox.js";
@@ -153,6 +154,7 @@ declare const fullApi: ApiFromModules<{
   "moderation/reportValidation": typeof moderation_reportValidation;
   "moderation/reports": typeof moderation_reports;
   "notifications/_lib": typeof notifications__lib;
+  "notifications/_pushActivation": typeof notifications__pushActivation;
   "notifications/delivery": typeof notifications_delivery;
   "notifications/deliveryPreference": typeof notifications_deliveryPreference;
   "notifications/inbox": typeof notifications_inbox;
