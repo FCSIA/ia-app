@@ -82,8 +82,8 @@ it does not undo database I/O or other usage already metered this month.
 ## Secrets
 
 Runtime secrets such as Better Auth credentials belong in the Convex deployment
-environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; reset is available
-only as the internal dashboard function `bootstrap:resetAndSeed`.
+environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; invoke the
+internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
 
 ## Web Push
 

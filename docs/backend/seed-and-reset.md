@@ -8,23 +8,35 @@ tags: [backend, seed, convex]
 
 Demo data is managed inside Convex. There are no local `pnpm db:seed`,
 `pnpm db:reset`, or `pnpm db:clear` commands, and seeding does not use a
-bootstrap secret.
+bootstrap secret. Use the Convex CLI to invoke the internal reset function.
 
 Seeding is not automatic on a new deployment. A fresh deployment has schema and
 functions only until an operator runs the reset action below.
 
-## Dashboard Reset
+## CLI Reset
 
-Open the Convex Dashboard for the selected deployment and run the internal
-function:
+Run the reset against the isolated local deployment:
 
-```text
-bootstrap:resetAndSeed
+```bash
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:resetAndSeed \
+  '{"profile":"development"}'
+```
+
+Check its asynchronous progress until it reaches `COMPLETE`:
+
+```bash
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:seedStatus \
+  '{}' \
+  --watch
 ```
 
 The function is destructive. It clears demo auth/app data and schedules the
-reset asynchronously; a successful dashboard call means the run started, not
-that it completed.
+reset asynchronously; a successful CLI call means the run started, not that it
+completed.
 
 `resetAndSeed` accepts an optional seed profile. With no argument (or
 `{"profile":"development"}`), it uses the development profile: 50 students
@@ -36,6 +48,12 @@ and 119 staff. Use `{"profile":"full"}` only when the full 1,500-student,
 cursor, start/update time, completion time, and any error. Wait for `COMPLETE`
 or investigate `FAILED`; the completion and error fields are the authoritative
 run outcome.
+
+## Dashboard Alternative
+
+Open the Convex Dashboard for the selected deployment and run the internal
+function `bootstrap:resetAndSeed`. Use the same development profile argument,
+then run `bootstrap:seedStatus` to monitor completion.
 
 ## Seed Flow
 

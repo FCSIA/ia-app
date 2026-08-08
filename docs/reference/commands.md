@@ -44,25 +44,29 @@ because the monorepo exceeds Vercel's default upload file limit.
 | `pnpm --filter cvx codegen`   | Regenerate Convex generated files  |
 | `pnpm --filter cvx typecheck` | Typecheck Convex functions         |
 | `pnpm --filter cvx deploy`    | Deploy Convex backend changes      |
-| `pnpm --filter cvx exec convex deployment create local` | Create this worktree's local backend once |
-| `pnpm --filter cvx exec convex deployment select local` | Select this worktree's local backend |
 | `pnpm sync:convex-env` | Sync the selected Convex URLs to the web and mobile apps |
 
 ## Demo Data
 
 There are no local `pnpm db:seed`, `pnpm db:reset`, or `pnpm db:clear`
-commands. To destructively recreate demo data, open the Convex Dashboard and run
-the internal function:
+commands. To destructively recreate demo data on the local deployment:
 
-```text
-bootstrap:resetAndSeed
+```bash
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:resetAndSeed \
+  '{"profile":"development"}'
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:seedStatus \
+  '{}' \
+  --watch
 ```
 
 Seed/reset does not use `BOOTSTRAP_SECRET`. The default development profile
 seeds 50 students and 119 staff; pass `{"profile":"full"}` for 1,500 students
-and 119 staff. The function schedules small internal batches.
-`bootstrap:seedStatus` reads the seed run and reports `IDLE`, `RUNNING`,
-`COMPLETE`, or `FAILED`, including completion time and any error.
+and 119 staff. The function schedules small internal batches. The dashboard
+provides the same internal functions as an alternative.
 
 ## Package Management
 

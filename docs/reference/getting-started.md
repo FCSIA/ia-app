@@ -74,18 +74,30 @@ settings expect VAPID keys before push can be enabled.
 
 ## Demo Data & Reset
 
-Demo data is reset from the Convex Dashboard, not through a local CLI command.
-Run the internal function:
+Reset the local demo data from the CLI:
 
-```text
-bootstrap:resetAndSeed
+```bash
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:resetAndSeed \
+  '{"profile":"development"}'
+```
+
+Monitor the asynchronous run:
+
+```bash
+pnpm --filter cvx exec convex run \
+  --deployment local \
+  bootstrap:seedStatus \
+  '{}' \
+  --watch
 ```
 
 This destructively recreates seeded users, clubs, courses, announcements,
 schedules, friendships, moderation keywords, and notification preferences. It
 defaults to a 50-student, 119-staff development profile; pass
-`{"profile":"full"}` only for the 1,500-student full profile. Use
-`bootstrap:seedStatus` to report progress (`COMPLETE` or `FAILED`).
+`{"profile":"full"}` only for the 1,500-student full profile. The dashboard
+also provides these internal functions when a visual workflow is preferred.
 
 ## Demo Accounts
 

@@ -145,9 +145,9 @@ after no legacy row remains without `lunchPeriod`.
 
 ## Seed Data
 
-The dashboard-only `bootstrap:resetAndSeed` action runs the schedule seed in
-batches after users and courses exist. The schedule seed function is internal and
-is not a local CLI entrypoint.
+The internal `bootstrap:resetAndSeed` action runs the schedule seed in batches
+after users and courses exist. Invoke the orchestrator from the Convex CLI or
+Dashboard; the individual schedule seed function is not a local CLI entrypoint.
 
 ## Related
 

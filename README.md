@@ -98,11 +98,18 @@ pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "<private-key>"
 pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
-Then seed demo data from the Convex Dashboard with internal function
-`bootstrap:resetAndSeed`. It defaults to a 50-student, 119-staff development
-profile; pass `{"profile":"full"}` only for the 1,500-student full profile.
-Use `bootstrap:seedStatus` to confirm the run reaches `COMPLETE` (or report its
-`FAILED` error).
+Then seed the small demo profile from the CLI:
+
+```bash
+pnpm --filter cvx exec convex run --deployment local \
+  bootstrap:resetAndSeed '{"profile":"development"}'
+pnpm --filter cvx exec convex run --deployment local \
+  bootstrap:seedStatus '{}' --watch
+```
+
+It seeds 50 students and 119 staff. Pass `{"profile":"full"}` only for the
+1,500-student full profile. The Convex Dashboard provides the same internal
+functions as an alternative.
 
 `pnpm dev` starts the web and Convex watchers against the selected local
 deployment. See [Convex Local And Production Runtime](./docs/backend/convex-local-production.md)

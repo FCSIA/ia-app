@@ -63,9 +63,9 @@ helpers.
 
 ## Seed/Reset Flow
 
-Demo reset runs from the Convex Dashboard through the internal function
-`bootstrap:resetAndSeed`. The app does not expose local seed/reset CLI commands
-or a bootstrap secret.
+Demo reset invokes the internal `bootstrap:resetAndSeed` function from the
+Convex CLI or Dashboard. The app does not expose `pnpm db:seed`,
+`pnpm db:reset`, `pnpm db:clear`, or a bootstrap secret.
 
 ## Related
 
