@@ -23,14 +23,17 @@ export function AdminShell({
   children,
 }: AdminShellProps) {
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => onTabChange(value as AdminTabId)}
-      className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
-    >
-      <div className="flex shrink-0 flex-col gap-3 pb-3 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-xl font-bold text-foreground">Admin Panel</h1>
-        <TabsList>
+    <div className="grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]">
+      <h1 className="pb-3 text-xl font-bold text-foreground lg:col-start-1 lg:row-start-1">
+        Admin Panel
+      </h1>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => onTabChange(value as AdminTabId)}
+        className="contents"
+      >
+        <TabsList className="mb-3 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end">
           <TabItem value="users" icon={Users} label="Users" />
           {isSuperAdmin ? (
             <TabItem value="schedule" icon={CalendarDays} label="Schedule" />
@@ -45,9 +48,11 @@ export function AdminShell({
           ) : null}
           <TabItem value="audit" icon={FileText} label="Audit Log" />
         </TabsList>
-      </div>
 
-      {children}
-    </Tabs>
+        <div className="col-start-1 row-start-3 flex min-h-0 lg:col-span-2 lg:row-start-2">
+          {children}
+        </div>
+      </Tabs>
+    </div>
   );
 }
