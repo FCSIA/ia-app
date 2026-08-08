@@ -8,7 +8,9 @@ import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
   pathwayValidator,
+  scheduleLunchPeriodValidator,
   scheduleWeekdayValidator,
+  schoolDayTemplateKindValidator,
   clubMemberRoleValidator,
   inviteStatusValidator,
   clubChannelVisibilityValidator,
@@ -265,9 +267,14 @@ export const schema = defineSchema({
   studentSchedules: defineTable({
     userId: v.id("users"),
     isPublic: v.boolean(),
+    // Widen-first migration: readers resolve missing legacy values while the
+    // backfill runs, and every current write stores one exclusive assignment.
+    lunchPeriod: v.optional(scheduleLunchPeriodValidator),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_lunchPeriod", ["lunchPeriod"]),
 
   studentScheduleEntries: defineTable({
     scheduleId: v.id("studentSchedules"),
@@ -317,6 +324,56 @@ export const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_weekday_and_startTime", ["weekday", "startTime"]),
+
+  schoolDayTemplates: defineTable({
+    name: v.string(),
+    kind: schoolDayTemplateKindValidator,
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_kind_and_name", ["kind", "name"]),
+
+  schoolDayTemplateBlocks: defineTable({
+    templateId: v.id("schoolDayTemplates"),
+    position: v.number(),
+    label: v.string(),
+    periodNumber: v.optional(v.number()),
+    startTime: v.string(),
+    endTime: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_templateId_and_position", ["templateId", "position"]),
+
+  schoolScheduleSettings: defineTable({
+    key: v.string(),
+    regularTemplateId: v.id("schoolDayTemplates"),
+    updatedById: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  schoolDayDateOverrides: defineTable({
+    dateKey: v.string(),
+    name: v.string(),
+    sourceTemplateId: v.optional(v.id("schoolDayTemplates")),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_dateKey", ["dateKey"])
+    .index("by_sourceTemplateId", ["sourceTemplateId"]),
+
+  schoolDayDateBlocks: defineTable({
+    overrideId: v.id("schoolDayDateOverrides"),
+    position: v.number(),
+    label: v.string(),
+    periodNumber: v.optional(v.number()),
+    startTime: v.string(),
+    endTime: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_overrideId_and_position", ["overrideId", "position"]),
 
   announcements: defineTable({
     authorId: v.id("users"),

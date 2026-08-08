@@ -16,6 +16,7 @@
   "dependencies": {
     "@better-auth/expo": "^1.6.11",
     "@convex-dev/better-auth": "0.12.2",
+    "@convex-dev/migrations": "0.3.4",
     "@convex-dev/rate-limiter": "^0.3.2",
     "better-auth": "1.6.11",
     "convex": "1.39.1",

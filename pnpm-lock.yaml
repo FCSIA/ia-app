@@ -39,6 +39,9 @@ importers:
       '@convex-dev/better-auth':
         specifier: 0.12.2
         version: 0.12.2(@standard-schema/spec@1.1.0)(better-auth@1.6.11(@prisma/client@6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3))(next@16.2.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(prisma@6.19.2(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.9(@edge-runtime/vm@5.0.0)(@types/node@22.19.13)(vite@8.1.0(@types/node@22.19.13)(esbuild@0.27.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.0))))(convex@1.39.1(react@19.2.3))(hono@4.12.31)(react@19.2.3)(typescript@5.9.3)
+      '@convex-dev/migrations':
+        specifier: 0.3.4
+        version: 0.3.4(convex@1.39.1(react@19.2.3))
       '@convex-dev/rate-limiter':
         specifier: ^0.3.2
         version: 0.3.2(convex@1.39.1(react@19.2.3))(react@19.2.3)
@@ -1194,6 +1197,11 @@ packages:
       better-auth: '>=1.6.9 <1.7.0'
       convex: ^1.25.0
       react: 19.2.3
+
+  '@convex-dev/migrations@0.3.4':
+    resolution: {integrity: sha512-fCUkc4hDzkZTgxicjV1WN4QfUdDDPPrMtvC7VgSLTGssg1B8pm+XlPC6NbZ2Aes38Xf5iiodX+y8VnU96narKQ==}
+    peerDependencies:
+      convex: ^1.24.8
 
   '@convex-dev/rate-limiter@0.3.2':
     resolution: {integrity: sha512-+oBPsBfFbzdxiF/9XaaTQmVnvDlvEfg/c69/v8LxTbw4VLuiflIKlfnPQL8OS0azXQQ11hcPWHmU8ytFmHKDXA==}
@@ -10581,6 +10589,10 @@ snapshots:
       - '@standard-schema/spec'
       - hono
       - typescript
+
+  '@convex-dev/migrations@0.3.4(convex@1.39.1(react@19.2.3))':
+    dependencies:
+      convex: 1.39.1(react@19.2.3)
 
   '@convex-dev/rate-limiter@0.3.2(convex@1.39.1(react@19.2.3))(react@19.2.3)':
     dependencies:
