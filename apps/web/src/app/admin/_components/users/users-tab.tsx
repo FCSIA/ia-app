@@ -26,6 +26,7 @@ import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 
 const ROLE_BADGE_LIMIT = 2;
+const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
@@ -242,7 +243,6 @@ function UserTableSection({
   const selectedCount = selectedUserIds.size;
   const selectedVisibleCount = selectableUsers.filter((user) => selectedUserIds.has(user._id)).length;
   const areAllVisibleUsersSelected = selectableUsers.length > 0 && selectedVisibleCount === selectableUsers.length;
-  const headers = ['Select', 'ID', 'Name', 'Grade', 'Roles', 'Status', 'Actions'];
 
   const toggleUser = (userId: string, selected: boolean) => {
     setSelectedUserIds((current) => {
@@ -360,7 +360,6 @@ function UserTableSection({
       <Table className={`${d.table} table-fixed`}>
         <colgroup>
           <col className="w-10" />
-          <col className="w-[116px]" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
           <col />
@@ -377,7 +376,7 @@ function UserTableSection({
                 aria-label="Select all users shown on this page"
               />
             </TableHead>
-            {headers.slice(1).map((header) => (
+            {USER_TABLE_HEADERS.slice(1).map((header) => (
               <TableHead key={header} className={d.head}>
                 {header}
               </TableHead>
@@ -387,7 +386,7 @@ function UserTableSection({
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={headers.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
+              <TableCell colSpan={USER_TABLE_HEADERS.length} className="px-3 py-8 text-center text-xs text-muted-foreground">
                 {emptyMessage}
               </TableCell>
             </TableRow>
@@ -401,9 +400,6 @@ function UserTableSection({
                     disabled={!canDeleteUsers || user._id === currentUserId || isDeleteUsersPending}
                     aria-label={`Select ${user.firstName} ${user.lastName}`}
                   />
-                </TableCell>
-                <TableCell className={`${d.cell} overflow-hidden`}>
-                  <span className="font-mono text-[11px] text-muted-foreground">{user.uniqueId}</span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>

@@ -43,7 +43,7 @@ import { MenuItem } from '@/components/ui/menu-item';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
 import { useNavigationLoadingOptional } from '@/components/layout/navigation-loading-provider';
 import { PageTransition } from '@/components/layout/page-transition';
@@ -401,9 +401,6 @@ export function AppShell({
                       <p className="truncate text-left text-sm font-medium text-foreground">
                         {user.firstName} {user.lastName}
                       </p>
-                      <p className="truncate text-left text-[11px] text-muted-foreground">
-                        {user.uniqueId}
-                      </p>
                     </div>
                     <ChevronDown className="size-4 text-muted-foreground" />
                   </button>
@@ -414,9 +411,6 @@ export function AppShell({
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
                           {user.firstName} {user.lastName}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.uniqueId}
                         </p>
                       </div>
                     </DropdownLabel>

@@ -13,7 +13,7 @@ export default function SettingsScreen() {
       <ListRow
         leading={<Avatar uri={user?.avatarUrl} name={fullName} size={44} />}
         title={fullName || "Innovation Academy"}
-        subtitle={user?.uniqueId ? `${user.uniqueId} · Profile and account` : "Profile and account"}
+        subtitle="Profile and account"
         onPress={() => router.push("/profile" as never)}
       />
 

@@ -327,7 +327,6 @@ export function MyWeekView() {
                         />
                       }
                       title={`${student.firstName} ${student.lastName}`}
-                      subtitle={student.uniqueId}
                       trailing={
                         canRespond ? (
                           <Button
@@ -450,7 +449,7 @@ export function MyWeekView() {
                         </Txt>
                         <Txt variant="caption" tone="muted">
                           {friend.visibility === "PUBLIC"
-                            ? friend.user.uniqueId
+                            ? "Shared schedule"
                             : friend.visibility === "PRIVATE"
                               ? "Private schedule"
                               : "No schedule yet"}

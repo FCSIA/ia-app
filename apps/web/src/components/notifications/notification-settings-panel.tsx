@@ -14,6 +14,7 @@ import {
   Megaphone,
   ShieldAlert,
   Sparkles,
+  RefreshCcw,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, LucideIcon> = {
   FLEX_FRIDAY: Sparkles,
   CONTENT_MODERATED: ShieldAlert,
   FRIEND_REQUEST: Users,
+  FRIEND_SCHEDULE_CHANGE: RefreshCcw,
 };
 
 export function NotificationSettingsPanel() {

@@ -410,13 +410,6 @@ export default function ClubDetailScreen() {
                               >
                                 {requesterName}
                               </Txt>
-                              <Txt
-                                variant="caption"
-                                tone="muted"
-                                numberOfLines={1}
-                              >
-                                {request.requester?.uniqueId}
-                              </Txt>
                             </View>
                           </View>
                           <View

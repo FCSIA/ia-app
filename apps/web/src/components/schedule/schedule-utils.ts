@@ -32,6 +32,19 @@ export function parseTimeToMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
+export function formatScheduleTime(value: string) {
+  const [hours, minutes] = value
+    .split(":")
+    .map((segment) => Number.parseInt(segment, 10));
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour = ((hours + 11) % 12) + 1;
+  return `${hour}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+export function formatScheduleTimeRange(start: string, end: string) {
+  return `${formatScheduleTime(start)} – ${formatScheduleTime(end)}`;
+}
+
 export function formatDuration(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;

@@ -89,7 +89,7 @@ export function AttendancePanel({
                   {student.lastName}, {student.firstName}
                 </p>
                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                  Grade {student.gradeLevel || '—'} · {student.uniqueId}
+                  Grade {student.gradeLevel || '—'}
                 </p>
               </div>
 

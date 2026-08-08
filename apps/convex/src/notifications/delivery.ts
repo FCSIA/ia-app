@@ -16,6 +16,7 @@ export type NotificationSubject =
   | { kind: "flexFriday"; flexFridayId: Id<"flexFridays"> }
   | { kind: "moderationReport"; reportId: Id<"moderationReports"> }
   | { kind: "friendRequest"; friendshipId: Id<"studentScheduleFriends"> }
+  | { kind: "friendSchedule"; friendUserId: Id<"users"> }
   | { kind: "system" };
 
 type DeliveryInput = {
@@ -117,6 +118,13 @@ async function deliveryDecision(
   }
 
   const preference = await resolveNotificationPreference(ctx, { userId, category, scopeKey });
+  return preferenceDeliveryDecision(category, preference);
+}
+
+export function preferenceDeliveryDecision(
+  category: NotificationCategory,
+  preference: Awaited<ReturnType<typeof resolveNotificationPreference>>,
+) {
   if (preference) {
     return {
       create: preference.enabled && preference.level !== "OFF",

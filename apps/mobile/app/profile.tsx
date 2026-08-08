@@ -106,7 +106,6 @@ export default function ProfileScreen() {
         <Avatar uri={user?.avatarUrl} name={fullName} size={72} />
         <View style={{ flex: 1, gap: spacing.xs }}>
           <Txt variant="title">{fullName || "Innovation Academy"}</Txt>
-          <Txt tone="muted">{user?.uniqueId}</Txt>
         </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>

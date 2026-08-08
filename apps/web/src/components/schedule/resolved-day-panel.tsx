@@ -1,15 +1,28 @@
-'use client';
+"use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  TriangleAlert,
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { formatScheduleTimeRange } from "./schedule-utils";
 import type {
   ResolvedSchoolDay,
   ScheduleLunchPeriod,
   StudentScheduleDraftEntry,
-} from './types';
+} from "./types";
 
 type ResolvedDayPanelProps = {
   day: ResolvedSchoolDay;
@@ -36,6 +49,20 @@ function dateLabel(dateKey: string) {
   return DATE_LABEL_FORMATTER.format(new Date(`${dateKey}T12:00:00.000Z`));
 }
 
+function dateFromKey(dateKey: string) {
+  const [year, month, day] = dateKey
+    .split("-")
+    .map((segment) => Number.parseInt(segment, 10));
+  return new Date(year, month - 1, day, 12);
+}
+
+function dateKeyFromDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function ResolvedDayPanel({
   day,
   entries,
@@ -43,109 +70,132 @@ export function ResolvedDayPanel({
   selectedDateKey,
   onDateChange,
 }: ResolvedDayPanelProps) {
-  const lunchNumber = lunchPeriod === 'PERIOD_4' ? 4 : lunchPeriod === 'PERIOD_5' ? 5 : null;
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const lunchNumber =
+    lunchPeriod === "PERIOD_4" ? 4 : lunchPeriod === "PERIOD_5" ? 5 : null;
 
   return (
     <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
-      <div className="flex flex-col gap-3 bg-surface-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <CalendarDays className="size-4 text-primary" />
-            <h2 className="truncate text-sm font-semibold text-foreground">{dateLabel(selectedDateKey)}</h2>
-            {day.isSpecial ? (
-              <Badge color="orange" size="sm">Special day</Badge>
-            ) : (
-              <Badge size="sm">Regular day</Badge>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{day.name}</p>
-        </div>
+      <div className="flex flex-col gap-3 bg-surface-3 px-4 py-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          School day
+        </p>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="size-8 p-0"
+            size="icon-sm"
             aria-label="Previous day"
             onClick={() => onDateChange(shiftDateKey(selectedDateKey, -1))}
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft />
           </Button>
-          <Input
-            type="date"
-            aria-label="Schedule date"
-            value={selectedDateKey}
-            onChange={(event) => {
-              const nextDate = event.target.value;
-              if (/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) onDateChange(nextDate);
-            }}
-            className="h-8 w-[9.25rem] bg-surface-2 px-2 text-xs"
-          />
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="tertiary"
+                size="md"
+                className="min-w-0 flex-1 justify-start"
+                leadingIcon={CalendarDays}
+              >
+                {dateLabel(selectedDateKey)}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={dateFromKey(selectedDateKey)}
+                defaultMonth={dateFromKey(selectedDateKey)}
+                onSelect={(date) => {
+                  if (!date) return;
+                  onDateChange(dateKeyFromDate(date));
+                  setCalendarOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            className="size-8 p-0"
+            size="icon-sm"
             aria-label="Next day"
             onClick={() => onDateChange(shiftDateKey(selectedDateKey, 1))}
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight />
           </Button>
         </div>
+        {day.isSpecial ? (
+          <div className="flex items-center gap-2 px-9">
+            <Badge color="orange" size="sm">
+              Special day
+            </Badge>
+            <span className="truncate text-xs text-muted-foreground">
+              {day.name}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {lunchPeriod === null ? (
-        <div className="flex items-start gap-2 border-b border-border/50 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-500" />
-          <p>
-            Lunch is unresolved because both Period 4 and Period 5 still contain classes.
-            Clear one slot, then choose it as lunch below.
-          </p>
-        </div>
+        <Alert className="rounded-none border-x-0">
+          <TriangleAlert />
+          <AlertTitle>Choose a lunch period</AlertTitle>
+          <AlertDescription>
+            Lunch is unresolved because both Period 4 and Period 5 still contain
+            classes. Clear one slot, then choose it as lunch below.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="divide-y divide-border/40">
-        {day.blocks.length > 0 ? day.blocks.map((block) => {
-          const isLunch = block.periodNumber === lunchNumber;
-          const entry =
-            day.weekday && block.periodNumber !== null && !isLunch
-              ? entries.find(
-                  (candidate) =>
-                    candidate.weekday === day.weekday &&
-                    candidate.periodNumber === block.periodNumber,
-                ) ?? null
-              : null;
-          const title = isLunch
-            ? 'Lunch'
-            : block.periodNumber === null
-              ? block.displayLabel
-              : entry?.className || block.displayLabel;
-          return (
-            <div
-              key={block.key}
-              className={cn(
-                'grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 text-sm',
-                isLunch && 'bg-primary/[0.055]',
-              )}
-            >
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {block.startTime}–{block.endTime}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">{title}</p>
-                {block.periodNumber !== null ? (
-                  <p className="text-[11px] text-muted-foreground">
-                    {isLunch ? `Period ${block.periodNumber} lunch` : `Canonical Period ${block.periodNumber}`}
+        {day.blocks.length > 0 ? (
+          day.blocks.map((block) => {
+            const isLunch = block.periodNumber === lunchNumber;
+            const entry =
+              day.weekday && block.periodNumber !== null && !isLunch
+                ? (entries.find(
+                    (candidate) =>
+                      candidate.weekday === day.weekday &&
+                      candidate.periodNumber === block.periodNumber,
+                  ) ?? null)
+                : null;
+            const title = isLunch
+              ? "Lunch"
+              : block.periodNumber === null
+                ? block.displayLabel
+                : entry?.className || block.displayLabel;
+            return (
+              <div
+                key={block.key}
+                className={cn(
+                  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 text-sm",
+                  isLunch && "bg-primary/[0.055]",
+                )}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">
+                    {title}
                   </p>
-                ) : null}
+                  <p className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                    {formatScheduleTimeRange(block.startTime, block.endTime)}
+                    {block.periodNumber !== null ? (
+                      <>
+                        {" · "}
+                        {isLunch
+                          ? `Period ${block.periodNumber} lunch`
+                          : `Period ${block.periodNumber}`}
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {block.durationMinutes}m
+                </span>
               </div>
-              <span className="text-[11px] tabular-nums text-muted-foreground">
-                {block.durationMinutes}m
-              </span>
-            </div>
-          );
-        }) : (
+            );
+          })
+        ) : (
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">
             No school schedule is assigned to this date.
           </p>
@@ -154,7 +204,8 @@ export function ResolvedDayPanel({
 
       {day.isSpecial && day.omittedPeriods.length > 0 ? (
         <p className="border-t border-border/40 px-4 py-2.5 text-xs text-muted-foreground">
-          Not meeting: {day.omittedPeriods.map((period) => `Period ${period}`).join(', ')}
+          Not meeting:{" "}
+          {day.omittedPeriods.map((period) => `Period ${period}`).join(", ")}
         </p>
       ) : null}
     </section>

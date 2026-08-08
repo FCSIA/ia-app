@@ -89,6 +89,13 @@ export const friendshipStatusValidator = v.union(
 
 export type FriendshipStatus = Infer<typeof friendshipStatusValidator>;
 
+export const friendShareLinkModeValidator = v.union(
+  v.literal("REQUEST"),
+  v.literal("AUTO_ACCEPT"),
+);
+
+export type FriendShareLinkMode = Infer<typeof friendShareLinkModeValidator>;
+
 export const notificationCategoryValidator = v.union(
   v.literal("SCHOOL_ANNOUNCEMENT"),
   v.literal("CLUB_ANNOUNCEMENT"),
@@ -101,6 +108,7 @@ export const notificationCategoryValidator = v.union(
   v.literal("FLEX_FRIDAY"),
   v.literal("CONTENT_MODERATED"),
   v.literal("FRIEND_REQUEST"),
+  v.literal("FRIEND_SCHEDULE_CHANGE"),
 );
 
 export type NotificationCategory = Infer<typeof notificationCategoryValidator>;

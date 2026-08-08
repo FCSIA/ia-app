@@ -98,22 +98,47 @@ References:
 
 ## Required audit workflow
 
-1. Run `pnpm dlx shadcn@latest info --json` from `apps/web` and record the
+1. Run `direnv exec . pnpm dlx shadcn@latest info --json` and record the
    configured base, style, icon library, aliases, and installed components.
-2. Fetch the current docs for the configured base with `pnpm dlx shadcn@latest
-   docs <component>`. Compare Base and Radix docs when a migration or copied
-   example is involved.
-3. Before updating an installed component, use `add --dry-run` and `add --diff`.
+2. For each Fluid component, explicitly inspect its current live documentation,
+   rendered example, Code example, API, exact registry source, and local copy.
+   If browser access is unavailable, record the fallback and leave visual QA
+   unverified.
+3. Fetch the current shadcn docs for the configured base with `pnpm dlx
+   shadcn@latest docs <component>`. Compare Base and Radix docs when a migration
+   or copied example is involved.
+4. Before updating an installed component, use `add --dry-run` and `add --diff`.
    Do not overwrite local Fluid adaptations blindly.
-4. Inspect the local dependency primitives and the rendered DOM. Check wrappers,
+5. Inspect the local dependency primitives and the rendered DOM. Check wrappers,
    direct-child selectors, `data-*` states, trigger props, portals, and focus
    ownership.
-5. Verify computed control geometry: outer height, content box, icon size,
+6. Verify computed control geometry: outer height, content box, icon size,
    padding, gaps, and any negative margin. Test both resting and open states.
-6. Fix a shared contract mismatch in `components/ui`; use page-level classes
+7. Fix a shared contract mismatch in `components/ui`; use page-level classes
    only for layout that is genuinely unique to that page.
-7. Typecheck and lint, then visually exercise open/close, hover, focus, keyboard,
+8. Typecheck and lint, then visually exercise open/close, hover, focus, keyboard,
    disabled, selected, and narrow-width states. Type safety alone is not proof.
+
+## Direct-child and motion contracts
+
+Fluid proximity components register item geometry. A component can render with
+no errors while silently losing the shared moving highlight if an index or ref
+is swallowed by an intermediate component.
+
+- `CardGroup` should contain direct `Card` children. If a feature wrapper is
+  necessary, it must accept the injected numeric `index` and forward it to the
+  rendered `Card`.
+- Fluid `TableRow` instances in a moving-highlight body need stable numeric
+  indices.
+- Do not put another library's menu item inside a Fluid proximity group. Choose
+  one owner for focus, selection, geometry registration, and animation.
+- Inspect positioning and overflow ancestors when a moving highlight, border,
+  focus ring, or separator is clipped at rounded corners.
+
+The web channel list in `components/clubs/club-workspace.tsx` is the current
+golden reference for `CardGroup` registration and highlight movement. See
+`agent-notes/WEB_UI_WORKFLOW.md` for the semantic `Table` versus `CardGroup`
+decision and escalation protocol.
 
 ## Review questions
 

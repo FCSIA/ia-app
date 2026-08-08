@@ -280,7 +280,6 @@ function PassCard({
             <span className="font-semibold text-foreground">
               {user?.firstName} {user?.lastName}
             </span>
-            {user?.uniqueId ? <span className="ml-2">#{user.uniqueId}</span> : null}
           </div>
         </div>
       </CardContent>
