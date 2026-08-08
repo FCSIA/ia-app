@@ -2,32 +2,28 @@
 
 ## Active Focus
 
-- **Branch**: `codex/57-global-search`
-- **Goal**: Replace the oversized clubs/calendar/search change with a four-part
-  stacked series whose final slice adds access-checked global search.
+- **Branch**: `main`
+- **Goal**: Keep the merged reconciliation work stable while the excluded draft
+  FERPA and login follow-ups remain under separate review.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
 
-### Open PR Reconciliation (2026-08-07)
+### PR Reconciliation (2026-08-08)
 
-- PRs #69-#72 replace the superseded #57 branch as a four-layer clubs, schedule
-  OCR, calendar/Flex UI, and access-checked search stack.
-- PRs #73, #77, and draft #76 are independent notification, client-state ADR,
-  and FERPA/compliance reconciliations based on `main`.
-- PR #75 is the friend-link/private-group layer stacked on special-day PR #74.
-- PR #79 is the login/loading-facts layer stacked on design-system PR #78.
-- PR #80 is the student-contribution workflow layer stacked on PR #78. Its
-  least-privilege GitHub workflow passes frozen install, brand verification,
-  lint, tests, and all package builds without deployment credentials.
-- React Doctor is green across the open reconciliation PRs. The refreshed PR
-  #75 and #76 scans report zero errors and zero warnings.
-- Issue #41 is closed with code-backed notification category semantics. Issues
-  #46, #51-#53, #56, #58-#59, and #62-#63 remain open only until their linked
-  PRs merge. Parent, school-input, policy, and underspecified feature issues
-  remain open with explicit unblockers recorded in GitHub.
+- All ready reconciliation PRs are merged: #69-#75, #77, and #80.
+- The stacked clubs/OCR/calendar/search series preserved ancestry with normal
+  merges through #71, then squash-merged its final #72 layer.
+- The special-day #74 base was normally merged before squash-merging its #75
+  friend-link/private-group layer. Independent #73, #77, and #80 were
+  squash-merged.
+- React Doctor and Contributor Validation passed on every refreshed branch;
+  local brand, lint, test, and production-build checks passed on the combined
+  result.
+- Draft FERPA PR #76 and draft login follow-up PR #83 remain open and untouched.
+- GitHub reports no remaining open issues.
 
 ### Backend on Convex
 
