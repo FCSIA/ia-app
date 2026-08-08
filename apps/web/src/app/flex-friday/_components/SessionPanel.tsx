@@ -1,11 +1,10 @@
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
-import { cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardAction, CardGroup } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 
 interface Props {
   sessions: any[];
@@ -31,12 +30,12 @@ export function SessionPanel({
   onSearchChange,
 }: Props) {
   return (
-    <div className="space-y-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Sessions</h2>
         {canManage && (
-          <Button size="sm" onClick={onAddSession} variant="tertiary" className="h-8 gap-1">
-            <Plus size={14} /> Add Session
+          <Button size="sm" onClick={onAddSession} variant="tertiary">
+            <Plus data-icon="inline-start" /> Add session
           </Button>
         )}
       </div>
@@ -44,30 +43,30 @@ export function SessionPanel({
       <SearchInput
         value={search}
         onValueChange={onSearchChange}
-        placeholder="Search sessions..."
+        placeholder="Search sessions"
       />
 
-      <div className="space-y-2">
+      <div>
         {sessions.length === 0 ? (
-          <Card className="border-dashed py-8 text-center bg-muted/20">
-            <p className="text-muted-foreground text-sm">No sessions found</p>
-          </Card>
+          <Empty className="border border-border/60 py-8">
+            <EmptyHeader>
+              <EmptyTitle>No sessions found</EmptyTitle>
+              <EmptyDescription>Try a different search or add a session.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          sessions.map((s) => (
-            <Card
-              key={s._id}
-              onClick={() => onSelectSession(s)}
-              className={cn(
-                'cursor-pointer transition-colors',
-                selectedSession?._id === s._id
-                  ? 'border-primary ring-1 ring-primary bg-primary/5'
-                  : 'hover:bg-muted/50'
-              )}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between gap-2">
+          <CardGroup orientation="inline" border="outlined">
+            {sessions.map((s) => (
+              <Card
+                key={s._id}
+                onClick={() => onSelectSession(s)}
+                label={`Select ${s.title}`}
+                selected={selectedSession?._id === s._id}
+                className="min-h-16 gap-2 px-3 py-2"
+              >
+                <div className="flex w-full items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="mb-1 flex items-center gap-2">
                       <h3 className="font-medium text-sm text-foreground truncate">
                         {s.title}
                       </h3>
@@ -81,36 +80,38 @@ export function SessionPanel({
                   </div>
 
                   {canManage && (
-                    <div className="flex items-center gap-0.5">
+                    <CardAction className="flex items-center gap-0.5">
                       <Button
                         size="icon-sm"
                         variant="ghost"
+                        aria-label={`Edit ${s.title}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           onEditSession(s);
                         }}
                       >
-                        <Pencil size={12} />
+                        <Pencil />
                       </Button>
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        className="text-red-500 hover:bg-red-500/10"
+                        className="text-destructive hover:bg-destructive/10"
+                        aria-label={`Delete ${s.title}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteSession(s);
                         }}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 />
                       </Button>
-                    </div>
+                    </CardAction>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))
+              </Card>
+            ))}
+          </CardGroup>
         )}
       </div>
-    </div>
+    </section>
   );
 }

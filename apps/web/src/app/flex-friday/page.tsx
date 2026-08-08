@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
@@ -21,7 +22,7 @@ import { AttendancePanel } from './_components/AttendancePanel';
 
 // Constants & Types
 import { EMPTY_SESSION_FORM, EMPTY_WORKSHOP_FORM } from './_constants';
-import { SessionForm as SessionFormType, WorkshopForm as WorkshopFormType } from './_types';
+import type { SessionForm as SessionFormType, WorkshopForm as WorkshopFormType } from './_types';
 
 export default function FlexFridayPage() {
   const { toast } = useToast();
@@ -122,8 +123,11 @@ export default function FlexFridayPage() {
   };
 
   return (
-    <AppShell>
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <AppShell
+      headerSlot={<h1 className="truncate text-lg font-semibold tracking-tight text-foreground">Flex Friday</h1>}
+      mainClassName="flex-1 px-3 pb-4 pt-3 md:px-4"
+    >
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
         <FridayHeader
           fridays={flex.fridays}
           selectedFriday={flex.selectedFriday}
@@ -137,15 +141,16 @@ export default function FlexFridayPage() {
         />
 
         {flex.isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground font-bold italic animate-pulse">Loading Flex Friday data...</p>
+          <div className="grid gap-4 lg:grid-cols-12">
+            <Skeleton className="h-72 lg:col-span-4" />
+            <Skeleton className="h-72 lg:col-span-8" />
           </div>
         ) : flex.activeView === 'audit' ? (
           <AuditView auditEvents={flex.auditEvents} isLoading={flex.auditLoading} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
             {/* Sessions Column */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="lg:col-span-4">
               <SessionPanel
                 sessions={flex.sessions}
                 selectedSession={flex.selectedSession}
@@ -160,7 +165,7 @@ export default function FlexFridayPage() {
             </div>
 
             {/* Workshops Column */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="flex flex-col gap-4 lg:col-span-8">
               <WorkshopPanel
                 workshops={flex.workshops}
                 selectedSession={flex.selectedSession}
@@ -184,7 +189,7 @@ export default function FlexFridayPage() {
 
               {/* Attendance Overlay/Panel */}
               {flex.attendanceWorkshopId && (
-                <div className="mt-8 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div>
                   <AttendancePanel
                     roster={flex.rosterData}
                     isLoading={flex.rosterLoading}

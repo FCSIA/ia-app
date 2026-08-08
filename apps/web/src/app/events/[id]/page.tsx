@@ -151,7 +151,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
               <div className="pt-6 border-t flex flex-wrap gap-3">
                 <Button variant="tertiary" leadingIcon={Calendar}>
-                  Add to Calendar
+                  Add to Your Calendar
                 </Button>
                 <Button
                   variant="tertiary"

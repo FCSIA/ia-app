@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -6,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Clock, X, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { FlexAttendanceStatus } from '~/apps/convex/src/validators';
 
 export type AttendanceStatus = FlexAttendanceStatus;
@@ -32,26 +34,31 @@ export function AttendancePanel({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="mt-4 p-6 text-center rounded-xl border border-dashed border-foreground/10 bg-foreground/[0.01]">
-        <p className="text-xs font-bold text-muted-foreground animate-pulse uppercase tracking-widest">Loading roster...</p>
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mt-4 p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-600">
-        <p className="text-xs font-bold uppercase tracking-wider mb-1">Roster Error</p>
-        <p className="text-xs font-medium opacity-80">{error.message}</p>
-      </div>
+      <Alert variant="destructive">
+        <AlertTitle>Could not load the roster</AlertTitle>
+        <AlertDescription>{error.message}</AlertDescription>
+      </Alert>
     );
   }
 
   if (!roster) {
     return (
-      <div className="mt-4 p-6 text-center rounded-xl border border-dashed border-foreground/10 bg-foreground/[0.01]">
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">No roster data available</p>
-      </div>
+      <Empty className="border border-border/60 py-8">
+        <EmptyHeader>
+          <EmptyTitle>No roster available</EmptyTitle>
+          <EmptyDescription>This workshop does not have roster data yet.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
@@ -71,11 +78,11 @@ export function AttendancePanel({
   );
 
   return (
-    <div className="mt-4 space-y-2 border-t pt-4 border-foreground/5">
-      <div className="flex items-center justify-between mb-3 px-1">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Attendance Roster</h4>
-        <Badge variant="solid" color="gray" className="text-[9px] font-bold border-foreground/10 text-muted-foreground">
-          {students.length} STUDENTS
+    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">Attendance roster</h3>
+        <Badge variant="solid" color="gray" size="sm">
+          {students.length} {students.length === 1 ? 'student' : 'students'}
         </Badge>
       </div>
 
@@ -83,12 +90,12 @@ export function AttendancePanel({
         {students.map((student) => {
           const status = attendanceMap.get(student._id);
           return (
-            <div key={student._id} className="flex items-center justify-between p-2.5 rounded-xl border border-foreground/5 bg-foreground/[0.01] hover:bg-foreground/[0.02] transition-colors group">
+            <div key={student._id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-background p-2.5 transition-colors hover:bg-hover">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-foreground truncate">
+                <p className="truncate text-sm font-medium text-foreground">
                   {student.lastName}, {student.firstName}
                 </p>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
+                <p className="text-xs text-muted-foreground">
                   Grade {student.gradeLevel || '—'}
                 </p>
               </div>
@@ -98,55 +105,59 @@ export function AttendancePanel({
                   size="icon-sm"
                   variant="ghost"
                   className={cn(
-                    "h-8 w-8 rounded-lg transition-all",
-                    status === 'PRESENT' ? "bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-600"
+                    status === 'PRESENT' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-700'
                   )}
+                  aria-label={`${status === 'PRESENT' ? 'Clear present status for' : 'Mark present:'} ${student.firstName} ${student.lastName}`}
+                  aria-pressed={status === 'PRESENT'}
                   onClick={() => status === 'PRESENT' ? onClear(student._id) : onMark(student._id, 'PRESENT')}
                   disabled={isMarking}
                 >
-                  <Check size={14} strokeWidth={3} />
+                  <Check />
                 </Button>
                 <Button
                   size="icon-sm"
                   variant="ghost"
                   className={cn(
-                    "h-8 w-8 rounded-lg transition-all",
-                    status === 'ABSENT' ? "bg-red-500 text-white hover:bg-red-600 shadow-sm" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-600"
+                    status === 'ABSENT' ? 'bg-destructive/15 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
                   )}
+                  aria-label={`${status === 'ABSENT' ? 'Clear absent status for' : 'Mark absent:'} ${student.firstName} ${student.lastName}`}
+                  aria-pressed={status === 'ABSENT'}
                   onClick={() => status === 'ABSENT' ? onClear(student._id) : onMark(student._id, 'ABSENT')}
                   disabled={isMarking}
                 >
-                  <X size={14} strokeWidth={3} />
+                  <X />
                 </Button>
                 <Button
                   size="icon-sm"
                   variant="ghost"
                   className={cn(
-                    "h-8 w-8 rounded-lg transition-all",
-                    status === 'TARDY' ? "bg-sky-500 text-white hover:bg-sky-600 shadow-sm" : "text-muted-foreground hover:bg-sky-500/10 hover:text-sky-600"
+                    status === 'TARDY' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300' : 'text-muted-foreground hover:bg-sky-500/10 hover:text-sky-700'
                   )}
+                  aria-label={`${status === 'TARDY' ? 'Clear tardy status for' : 'Mark tardy:'} ${student.firstName} ${student.lastName}`}
+                  aria-pressed={status === 'TARDY'}
                   onClick={() => status === 'TARDY' ? onClear(student._id) : onMark(student._id, 'TARDY')}
                   disabled={isMarking}
                 >
-                  <Clock size={14} strokeWidth={3} />
+                  <Clock />
                 </Button>
                 <Button
                   size="icon-sm"
                   variant="ghost"
                   className={cn(
-                    "h-8 w-8 rounded-lg transition-all",
-                    status === 'EXCUSED' ? "bg-amber-500 text-white hover:bg-amber-600 shadow-sm" : "text-muted-foreground hover:bg-amber-500/10 hover:text-amber-600"
+                    status === 'EXCUSED' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'text-muted-foreground hover:bg-amber-500/10 hover:text-amber-700'
                   )}
+                  aria-label={`${status === 'EXCUSED' ? 'Clear excused status for' : 'Mark excused:'} ${student.firstName} ${student.lastName}`}
+                  aria-pressed={status === 'EXCUSED'}
                   onClick={() => status === 'EXCUSED' ? onClear(student._id) : onMark(student._id, 'EXCUSED')}
                   disabled={isMarking}
                 >
-                  <Minus size={14} strokeWidth={3} />
+                  <Minus />
                 </Button>
               </div>
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

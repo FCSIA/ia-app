@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Pencil, Trash2, MapPin, Users, Ticket, CheckCircle } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
 import { cn } from '@/lib/utils';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
 interface Props {
   workshops: any[];
@@ -41,7 +41,7 @@ export function WorkshopPanel({
   actionPending,
 }: Props) {
   return (
-    <div className="space-y-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
         <h2 className="text-lg font-semibold text-foreground">Workshops</h2>
@@ -52,50 +52,56 @@ export function WorkshopPanel({
           )}
         </div>
         {canManage && (
-          <Button 
-            size="sm" 
-            onClick={onAddWorkshop} 
+          <Button
+            size="sm"
+            onClick={onAddWorkshop}
             disabled={!selectedSession}
             variant="tertiary"
-            title={!selectedSession ? "Select a session first" : "Add Workshop"}
-            className="h-8 gap-1"
+            title={!selectedSession ? 'Select a session first' : 'Add workshop'}
           >
-            <Plus size={14} className="stroke-[2.5]" /> Add Workshop
+            <Plus data-icon="inline-start" /> Add workshop
           </Button>
         )}
       </div>
 
       {!selectedSession ? (
-        <div className="h-48 flex items-center justify-center p-8 rounded-2xl border-2 border-dashed border-foreground/5 bg-foreground/[0.01]">
-          <p className="text-muted-foreground text-sm font-medium">Select a session to view or add workshops</p>
-        </div>
+        <Empty className="border border-border/60 py-10">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Ticket /></EmptyMedia>
+            <EmptyTitle>Select a session</EmptyTitle>
+            <EmptyDescription>Choose a session to view its workshops.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
           <SearchInput
             value={search}
             onValueChange={onSearchChange}
-            placeholder="Search workshops..."
+            placeholder="Search workshops"
           />
 
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {workshops.length === 0 ? (
-              <div className="h-32 rounded-xl border-2 border-dashed border-foreground/5 flex items-center justify-center bg-foreground/[0.01]">
-                <p className="text-muted-foreground text-sm font-medium">No workshops found in this session</p>
-              </div>
+              <Empty className="border border-border/60 py-8">
+                <EmptyHeader>
+                  <EmptyTitle>No workshops found</EmptyTitle>
+                  <EmptyDescription>Try a different search or add a workshop.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               workshops.map((w) => {
                 const isRegistered = myRegWorkshopIds.has(w._id);
-                const isFull = w.capacity && w._count?.registrations >= w.capacity;
+                const isFull = !!w.capacity && w._count?.registrations >= w.capacity;
                 const linkedSessions = w.linkedSessions || [];
                 const spansMultiple = linkedSessions.length > 1;
 
                 return (
-                  <Card key={w._id} className="overflow-hidden border-foreground/5 bg-background hover:shadow-lg transition-all duration-300 rounded-2xl group">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between gap-4">
+                  <Card key={w._id} className="overflow-hidden border-border/60 bg-background transition-shadow hover:shadow-surface-1">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h3 className="font-bold text-foreground text-lg leading-tight group-hover:text-accent-600 transition-colors">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold leading-tight text-foreground">
                               {w.title}
                             </h3>
                             {spansMultiple && (
@@ -106,29 +112,29 @@ export function WorkshopPanel({
                           </div>
                           
                           {w.description && (
-                            <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
+                            <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                               {w.description}
                             </p>
                           )}
 
-                          <div className="flex flex-wrap gap-4 text-xs font-semibold">
+                          <div className="flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
                             {w.location && (
-                              <span className="flex items-center gap-1.5 text-muted-foreground bg-foreground/[0.03] px-2 py-1 rounded-md">
-                                <MapPin size={12} className="text-accent-500" />
+                              <span className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1">
+                                <MapPin className="size-3.5" />
                                 {w.location}
                               </span>
                             )}
                             <span className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-md",
-                              isFull ? "text-red-600 bg-red-500/5" : "text-muted-foreground bg-foreground/[0.03]"
+                              'flex items-center gap-1.5 rounded-md bg-muted px-2 py-1',
+                              isFull && 'text-destructive',
                             )}>
-                              <Users size={12} className={cn(isFull ? "text-red-500" : "text-accent-500")} />
+                              <Users className="size-3.5" />
                               {w._count?.registrations}{w.capacity ? `/${w.capacity}` : ''} registered
                             </span>
                           </div>
 
                           {spansMultiple && (
-                            <div className="mt-4 flex flex-wrap gap-1.5 border-t pt-3 border-foreground/5">
+                            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
                               {linkedSessions.map((ls: any) => (
                                 <Badge key={ls._id} variant="solid" color="gray" className="text-[9px] uppercase tracking-tighter py-0 px-1.5 font-bold">
                                   {ls.title} · {formatTimeRange(ls.startTime, ls.endTime)}
@@ -138,24 +144,19 @@ export function WorkshopPanel({
                           )}
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        <div className="flex shrink-0 flex-row gap-2 sm:flex-col">
                           {isStudent && (
                             <Button
                               size="sm"
                               variant={isRegistered ? 'tertiary' : 'primary'}
-                              className={cn(
-                                "h-9 px-4 font-bold rounded-xl transition-all",
-                                isRegistered 
-                                  ? "border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5" 
-                                  : "bg-accent-600 hover:bg-accent-700 shadow-sm shadow-accent-500/20"
-                              )}
+                              loading={actionPending != null}
                               disabled={(!isRegistered && isFull) || actionPending != null}
                               onClick={() => isRegistered ? onUnregister(w._id) : onRegister(w._id)}
                             >
                               {isRegistered ? (
-                                <><CheckCircle size={14} className="mr-1.5" /> Registered</>
+                                <><CheckCircle data-icon="inline-start" /> Registered</>
                               ) : (
-                                <><Ticket size={14} className="mr-1.5" /> Register</>
+                                <><Ticket data-icon="inline-start" /> Register</>
                               )}
                             </Button>
                           )}
@@ -165,7 +166,6 @@ export function WorkshopPanel({
                               <Button
                                 size="sm"
                                 variant="tertiary"
-                                className="h-9 px-3 font-bold rounded-xl border-foreground/10 hover:bg-foreground/5"
                                 onClick={() => onAttendance(w._id)}
                               >
                                 Roster
@@ -173,18 +173,19 @@ export function WorkshopPanel({
                               <Button
                                 size="icon-sm"
                                 variant="ghost"
-                                className="h-9 w-9 rounded-xl hover:bg-foreground/5"
+                                aria-label={`Edit ${w.title}`}
                                 onClick={() => onEditWorkshop(w)}
                               >
-                                <Pencil size={14} className="text-muted-foreground" />
+                                <Pencil />
                               </Button>
                               <Button
                                 size="icon-sm"
                                 variant="ghost"
-                                className="h-9 w-9 rounded-xl hover:bg-red-500/10 hover:text-red-600"
+                                className="text-destructive hover:bg-destructive/10"
+                                aria-label={`Delete ${w.title}`}
                                 onClick={() => onDeleteWorkshop(w)}
                               >
-                                <Trash2 size={14} />
+                                <Trash2 />
                               </Button>
                             </div>
                           )}
@@ -198,6 +199,6 @@ export function WorkshopPanel({
           </div>
         </>
       )}
-    </div>
+    </section>
   );
 }
