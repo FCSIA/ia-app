@@ -33,7 +33,7 @@ export function CourseMeta({
 
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <Badge variant="dot" className="rounded-full text-[11px] font-medium">
+      <Badge variant="solid" className="rounded-full text-[11px] font-medium">
         {course.department}
       </Badge>
       {courseNumbers ? (

@@ -24,6 +24,7 @@ const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
   FLEX_FRIDAY: "Flex Friday",
   CONTENT_MODERATED: "Moderation",
   FRIEND_REQUEST: "Friend request",
+  FRIEND_SCHEDULE_CHANGE: "Schedule update",
 };
 
 export default function NotificationsScreen() {

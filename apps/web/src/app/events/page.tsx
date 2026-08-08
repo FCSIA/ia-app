@@ -37,7 +37,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
                 {event.status.replace(/_/g, ' ')}
               </Badge>
               <Badge
-                variant="dot"
+                variant="solid"
                 className={event.club ? 'text-blue-500 border-blue-500/30 bg-blue-500/10' : ''}
               >
                 {event.club?.name || 'General'}

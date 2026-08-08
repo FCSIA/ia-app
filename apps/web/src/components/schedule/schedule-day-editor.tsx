@@ -1,19 +1,47 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Lock } from 'lucide-react';
+import { useState } from "react";
+import { Lock } from "lucide-react";
 
-import { CoursePicker } from '@/components/courses/course-picker';
-import type { CourseSummary } from '@/components/courses/types';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { getBlocksForDay, getPeriodNumbersForDay, getCurrentScheduleStatus } from './schedule-utils';
-import { SchoolDayBlock, ScheduleWeekday, StudentScheduleDraftEntry } from './types';
+import { CoursePicker } from "@/components/courses/course-picker";
+import type { CourseSummary } from "@/components/courses/types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import {
+  formatScheduleTimeRange,
+  getBlocksForDay,
+  getCurrentScheduleStatus,
+  getPeriodNumbersForDay,
+} from "./schedule-utils";
+import {
+  ScheduleLunchPeriod,
+  SchoolDayBlock,
+  ScheduleWeekday,
+  StudentScheduleDraftEntry,
+} from "./types";
 
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
@@ -21,6 +49,7 @@ type ScheduleDayEditorProps = {
   entries: StudentScheduleDraftEntry[];
   courses: CourseSummary[];
   preferredGradeLevel?: number;
+  lunchPeriod: ScheduleLunchPeriod | null;
   onChange: (
     weekday: ScheduleWeekday,
     periodNumber: number,
@@ -40,11 +69,12 @@ export function ScheduleDayEditor({
   entries,
   courses,
   preferredGradeLevel,
+  lunchPeriod,
   onChange,
   currentStatus,
 }: ScheduleDayEditorProps) {
   const [manualPeriod, setManualPeriod] = useState<number | null>(null);
-  const [manualClassName, setManualClassName] = useState('');
+  const [manualClassName, setManualClassName] = useState("");
   const activeStatus =
     currentStatus !== undefined
       ? currentStatus
@@ -56,19 +86,20 @@ export function ScheduleDayEditor({
 
   const openManualEntry = (periodNumber: number) => {
     const existing = entries.find(
-      (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
+      (entry) =>
+        entry.weekday === weekday && entry.periodNumber === periodNumber,
     );
-    setManualClassName(existing?.courseId ? '' : existing?.className ?? '');
+    setManualClassName(existing?.courseId ? "" : (existing?.className ?? ""));
     setManualPeriod(periodNumber);
   };
 
   const closeManualEntry = () => {
     setManualPeriod(null);
-    setManualClassName('');
+    setManualClassName("");
   };
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4">
       {/* Custom (non-period) blocks — rendered as a small inline notice */}
       {customBlocks.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -81,19 +112,24 @@ export function ScheduleDayEditor({
               <div
                 key={block.id}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors',
+                  "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                   isCurrentCustom
-                    ? 'border-primary/60 bg-primary/10 text-primary font-medium shadow-xs'
-                    : 'border-border/50 text-foreground',
+                    ? "border-primary/60 bg-primary/10 text-primary font-medium shadow-xs"
+                    : "border-border/50 text-foreground",
                 )}
               >
                 <Lock className="size-3 text-muted-foreground" />
                 <span className="font-medium">{block.label}</span>
                 <span className="text-xs text-muted-foreground">
-                  {block.startTime} – {block.endTime}
+                  {formatScheduleTimeRange(block.startTime, block.endTime)}
                 </span>
                 {isCurrentCustom && (
-                  <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                  <Badge
+                    color="orange"
+                    size="sm"
+                    variant="solid"
+                    className="font-semibold uppercase text-[10px]"
+                  >
                     Now
                   </Badge>
                 )}
@@ -104,127 +140,143 @@ export function ScheduleDayEditor({
       )}
 
       {/* Period slots */}
-      <div className="rounded-xl border border-border/40 bg-muted/20 overflow-hidden divide-y divide-border/40">
-        {/* Table header */}
-        <div className="flex items-center gap-4 px-4 py-2 bg-muted/50 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-          <div className="w-8 shrink-0 text-center">Per</div>
-          <div className="flex-1">Class</div>
-          <div className="w-24 shrink-0 text-right hidden sm:block">Time</div>
-        </div>
-        {/* Rows */}
-        {periodNumbers.map((periodNumber) => {
-          const entry = entries.find(
-            (item) => item.weekday === weekday && item.periodNumber === periodNumber,
-          );
-          const matchingBlock = dayBlocks.find((block) => block.periodNumber === periodNumber);
-          const isCurrent =
-            activeStatus?.weekday === weekday &&
-            activeStatus?.currentBlock?.periodNumber === periodNumber;
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-background/45">
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow className="bg-muted/45 text-[11px] uppercase tracking-wider">
+              <TableHead className="w-12 text-center text-muted-foreground">
+                #
+              </TableHead>
+              <TableHead className="text-muted-foreground">Class</TableHead>
+              <TableHead className="hidden w-40 text-right text-muted-foreground sm:table-cell">
+                Time
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {periodNumbers.map((periodNumber, rowIndex) => {
+              const entry = entries.find(
+                (item) =>
+                  item.weekday === weekday &&
+                  item.periodNumber === periodNumber,
+              );
+              const matchingBlock = dayBlocks.find(
+                (block) => block.periodNumber === periodNumber,
+              );
+              const isCurrent =
+                activeStatus?.weekday === weekday &&
+                activeStatus?.currentBlock?.periodNumber === periodNumber;
+              const isLunch =
+                (lunchPeriod === "PERIOD_4" && periodNumber === 4) ||
+                (lunchPeriod === "PERIOD_5" && periodNumber === 5);
 
-          return (
-            <div
-              key={periodNumber}
-              className={cn(
-                'flex items-center gap-4 px-4 py-2 transition-colors border-l-4',
-                isCurrent
-                  ? 'bg-primary/10 border-l-primary shadow-xs'
-                  : 'border-l-transparent hover:bg-muted/30',
-              )}
-            >
-              {/* Period Number */}
-              <div
-                className={cn(
-                  'w-8 shrink-0 text-center font-semibold',
-                  isCurrent ? 'text-primary font-bold' : 'text-foreground',
-                )}
-              >
-                {periodNumber}
-              </div>
-
-              {/* Course Selector / Link */}
-              <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-                {entry?.course ? (
-                  <>
-                    <Link
-                      href={`/courses/${entry.course.slug}`}
-                      className="text-sm font-medium text-foreground hover:underline transition-colors truncate"
-                    >
-                      {entry.course.title}
-                    </Link>
-                    <CoursePicker
-                      courses={courses}
-                      selectedCourseId={entry.courseId}
-                      preferredGradeLevel={preferredGradeLevel}
-                      onChange={(course) => onChange(weekday, periodNumber, course)}
-                      placeholder=""
-                      iconOnly
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
-                      Other
-                    </Button>
-                  </>
-                ) : entry ? (
-                  <>
-                    <span className="truncate text-sm font-medium text-foreground">{entry.className}</span>
-                    <CoursePicker
-                      courses={courses}
-                      selectedCourseId={null}
-                      preferredGradeLevel={preferredGradeLevel}
-                      onChange={(course) => onChange(weekday, periodNumber, course)}
-                      placeholder="Select class..."
-                      iconOnly
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
-                      Other
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex w-full max-w-[320px] items-center gap-1">
-                    <CoursePicker
-                      courses={courses}
-                      selectedCourseId={null}
-                      preferredGradeLevel={preferredGradeLevel}
-                      onChange={(course) => onChange(weekday, periodNumber, course)}
-                      placeholder="Select class..."
-                      className="h-8 min-h-0 bg-transparent border-transparent hover:bg-muted/50 px-2 py-0 rounded-md shadow-none text-muted-foreground"
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
-                      Other
-                    </Button>
-                  </div>
-                )}
-
-                {isCurrent && (
-                  <Badge
-                    color="orange"
-                    size="sm"
-                    variant="dot"
-                    className="shrink-0 font-bold tracking-wider uppercase text-[10px]"
+              return (
+                <TableRow
+                  key={periodNumber}
+                  index={rowIndex}
+                  className={cn(
+                    "group border-l-2 last:border-b-0",
+                    isCurrent
+                      ? "bg-primary/10 border-l-primary shadow-xs"
+                      : "border-l-transparent",
+                  )}
+                >
+                  {/* Period Number */}
+                  <TableCell
+                    className={cn(
+                      "w-12 px-3 py-2.5 text-center text-sm font-semibold tabular-nums",
+                      isCurrent ? "text-primary font-bold" : "text-foreground",
+                    )}
                   >
-                    Current Class
-                  </Badge>
-                )}
-              </div>
+                    {periodNumber}
+                  </TableCell>
 
-              {/* Time block */}
-              <div
-                className={cn(
-                  'w-24 shrink-0 text-right hidden sm:block text-[11px] font-mono',
-                  isCurrent ? 'text-primary font-semibold' : 'text-muted-foreground',
-                )}
-              >
-                {matchingBlock ? `${matchingBlock.startTime} - ${matchingBlock.endTime}` : '—'}
-              </div>
-            </div>
-          );
-        })}
+                  {/* Course Selector / Link */}
+                  <TableCell className="min-w-0 px-3 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {isLunch ? (
+                        <div className="flex min-h-8 flex-1 items-center gap-2 text-sm font-medium text-foreground">
+                          <Lock className="size-3.5 text-primary" />
+                          Lunch
+                        </div>
+                      ) : (
+                        <>
+                          <div className="min-w-0 flex-1">
+                            <span
+                              className={cn(
+                                "block truncate text-sm",
+                                entry
+                                  ? "font-medium text-foreground"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {entry?.course?.title ||
+                                entry?.className ||
+                                "Select class…"}
+                            </span>
+                          </div>
+                          <CoursePicker
+                            courses={courses}
+                            selectedCourseId={entry?.courseId ?? null}
+                            displayValue={
+                              entry?.courseId ? undefined : entry?.className
+                            }
+                            preferredGradeLevel={preferredGradeLevel}
+                            onChange={(course) =>
+                              onChange(weekday, periodNumber, course)
+                            }
+                            onManualEntry={() => openManualEntry(periodNumber)}
+                            placeholder="Select class…"
+                            iconOnly
+                          />
+                        </>
+                      )}
+
+                      {isCurrent && (
+                        <Badge
+                          color="orange"
+                          size="sm"
+                          variant="solid"
+                          className="shrink-0 font-bold uppercase tracking-wider"
+                        >
+                          Now
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+
+                  {/* Time block */}
+                  <TableCell
+                    className={cn(
+                      "hidden w-40 px-3 py-2.5 text-right text-[11px] tabular-nums sm:table-cell",
+                      isCurrent
+                        ? "text-primary font-semibold"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {matchingBlock
+                      ? formatScheduleTimeRange(
+                          matchingBlock.startTime,
+                          matchingBlock.endTime,
+                        )
+                      : "—"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </div>
-      <Dialog open={manualPeriod !== null} onOpenChange={(open) => !open && closeManualEntry()}>
+      <Dialog
+        open={manualPeriod !== null}
+        onOpenChange={(open) => !open && closeManualEntry()}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add a class not in the catalog</DialogTitle>
             <DialogDescription>
-              Enter the class name shown on your schedule. You can change it later.
+              Enter the class name shown on your schedule. You can change it
+              later.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -247,10 +299,16 @@ export function ScheduleDayEditor({
                   placeholder="e.g. Work-based learning"
                   required
                 />
-                <FieldDescription>This will not create a new catalog course.</FieldDescription>
+                <FieldDescription>
+                  This will not create a new catalog course.
+                </FieldDescription>
               </Field>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="ghost" onClick={closeManualEntry}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={closeManualEntry}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={!manualClassName.trim()}>
@@ -264,4 +322,3 @@ export function ScheduleDayEditor({
     </div>
   );
 }
-

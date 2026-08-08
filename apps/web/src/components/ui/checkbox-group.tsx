@@ -131,7 +131,9 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           }}
           onKeyDown={(e) => {
             const items = Array.from(
-              containerRef.current?.querySelectorAll('[role="checkbox"]') ?? []
+              containerRef.current?.querySelectorAll(
+                '[data-proximity-index]:not([aria-disabled="true"])'
+              ) ?? []
             ) as HTMLElement[];
             const currentIdx = items.indexOf(e.target as HTMLElement);
             if (currentIdx === -1) return;
@@ -254,10 +256,14 @@ interface CheckboxItemProps extends HTMLAttributes<HTMLDivElement> {
   index: number;
   checked: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
 const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
-  ({ label, index, checked, onToggle, className, ...props }, ref) => {
+  (
+    { label, index, checked, onToggle, disabled = false, className, ...props },
+    ref
+  ) => {
     const internalRef = useRef<HTMLDivElement>(null);
     const hasMounted = useRef(false);
     const { registerItem, activeIndex } = useCheckboxGroup();
@@ -283,19 +289,33 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
-        tabIndex={0}
+        tabIndex={disabled ? -1 : 0}
         role="checkbox"
         aria-checked={checked}
+        aria-disabled={disabled || undefined}
         aria-label={label}
-        onClick={onToggle}
+        onClick={disabled ? undefined : onToggle}
+        onMouseDown={(e) => {
+          if (disabled) {
+            e.preventDefault();
+            return;
+          }
+          const interactive = (e.target as HTMLElement).closest(
+            'button:not([tabindex="-1"]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (interactive && interactive !== e.currentTarget) return;
+          e.preventDefault();
+          e.currentTarget.focus();
+        }}
         onKeyDown={(e) => {
-          if (e.key === " " || e.key === "Enter") {
+          if (!disabled && (e.key === " " || e.key === "Enter")) {
             e.preventDefault();
             onToggle();
           }
         }}
         className={cn(
           `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none`,
+          disabled && "cursor-not-allowed opacity-50",
           className
         )}
         {...props}
@@ -303,10 +323,13 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         {/* Checkbox — Radix primitive for accessibility */}
         <CheckboxPrimitive.Root
           checked={checked}
-          onCheckedChange={() => onToggle()}
+          disabled={disabled}
+          onCheckedChange={() => {
+            if (!disabled) onToggle();
+          }}
           tabIndex={-1}
           aria-hidden
-          className="relative w-[18px] h-[18px] shrink-0 appearance-none bg-transparent p-0 border-0 outline-none cursor-pointer"
+          className="relative size-[15px] shrink-0 appearance-none border-0 bg-transparent p-0 outline-none disabled:cursor-not-allowed"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Border */}
@@ -333,7 +356,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="absolute inset-0 text-foreground"
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-foreground"
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 1 }}
@@ -367,7 +390,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
         {/* Label */}
         <span className="inline-grid text-[13px]">
           <span
-            className="col-start-1 row-start-1 invisible"
+            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -375,7 +398,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               checked || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"

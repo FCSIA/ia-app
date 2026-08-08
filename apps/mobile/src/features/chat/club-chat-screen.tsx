@@ -213,7 +213,7 @@ export function ClubChatScreen({
     const people = (channelContext?.members ?? []).map((person) => {
       const name =
         [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-        person.uniqueId;
+        "Member";
       return {
         token: person.uniqueId,
         label: name,

@@ -20,6 +20,7 @@ export function PushNotificationSettings() {
   const serverSubscriptions = useQuery(api.notifications.push.listMine) ?? [];
   const upsertSubscription = useMutation(api.notifications.push.upsertSubscription);
   const removeSubscription = useMutation(api.notifications.push.removeSubscription);
+  const activatePush = useMutation(api.notifications.preferences.activatePush);
   const [permission, setPermission] = useState<PermissionStateLabel>('checking');
   const [localEndpoint, setLocalEndpoint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,6 +75,7 @@ export function PushNotificationSettings() {
         subscription: subscriptionToPayload(subscription),
         userAgent: navigator.userAgent,
       });
+      await activatePush({});
       setPermission(permissionState());
       setLocalEndpoint(subscription.endpoint);
     } catch (err) {

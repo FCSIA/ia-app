@@ -65,10 +65,10 @@ function SearchInput({
     <div className={cn("relative flex items-center", styles.group, className)}>
       <Search className={cn("pointer-events-none absolute left-3 text-muted-foreground", styles.icon)} />
       <Input
-        type="search"
+        type="text"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        className={cn("min-w-0 pl-9 pr-9", styles.input, inputClassName)}
+        className={cn("min-w-0 px-9", styles.input, inputClassName)}
         {...props}
       />
       {!hideClearButton && value ? (

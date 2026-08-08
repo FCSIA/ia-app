@@ -97,7 +97,7 @@ export function WrappedSnapshotsTab({
                     <p className="text-sm font-medium text-foreground">
                       {schoolYearLabel(status.schoolYear)} launch readiness
                     </p>
-                    <Badge variant={isCurrent ? 'solid' : 'dot'} color={isCurrent ? 'green' : 'amber'}>
+                    <Badge variant="solid" color={isCurrent ? 'green' : 'amber'}>
                       {isCurrent ? 'Current' : 'Needs attention'}
                     </Badge>
                   </div>

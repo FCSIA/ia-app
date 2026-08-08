@@ -26,7 +26,12 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 const weekdays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"] as const;
 const fallbackPeriods = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const lunchPeriodOptions = [
+  { value: "PERIOD_4", label: "Period 4" },
+  { value: "PERIOD_5", label: "Period 5" },
+] as const;
 type Weekday = (typeof weekdays)[number];
+type LunchPeriod = "PERIOD_4" | "PERIOD_5";
 
 export function MyWeekView() {
   const liveData = useQuery(api.schedule.dashboard.get, {});
@@ -40,6 +45,7 @@ export function MyWeekView() {
   const { color } = useTheme();
   const [editing, setEditing] = useState(false);
   const [isPublic, setIsPublic] = useState(true);
+  const [lunchPeriod, setLunchPeriod] = useState<LunchPeriod | null>(null);
   const [draftEntries, setDraftEntries] = useState<any[]>([]);
   const [selectedDay, setSelectedDay] = useState<Weekday>(initialWeekday);
   const [selectedPeriod, setSelectedPeriod] = useState(1);
@@ -66,9 +72,34 @@ export function MyWeekView() {
   }, [courses, courseSearch]);
 
   function startEditing(schedule: any) {
+    const nextLunchPeriod = schedule.mySchedule?.lunchPeriod ?? null;
     setIsPublic(schedule.mySchedule?.isPublic ?? true);
+    setLunchPeriod(nextLunchPeriod);
     setDraftEntries([...(schedule.mySchedule?.entries ?? [])]);
+    if (nextLunchPeriod && selectedPeriod === lunchPeriodNumber(nextLunchPeriod)) {
+      setSelectedPeriod(nextLunchPeriod === "PERIOD_4" ? 5 : 4);
+    }
     setEditing(true);
+  }
+
+  function selectLunchPeriod(nextLunchPeriod: LunchPeriod) {
+    const periodNumber = lunchPeriodNumber(nextLunchPeriod);
+    const conflict = draftEntries.find(
+      (entry) => entry.periodNumber === periodNumber,
+    );
+    if (conflict) {
+      showToast({
+        title: `Period ${periodNumber} has a class`,
+        body: `Clear or move the ${formatWeekday(conflict.weekday)} class before making it lunch.`,
+      });
+      return;
+    }
+
+    setLunchPeriod(nextLunchPeriod);
+    if (selectedPeriod === periodNumber) {
+      setSelectedPeriod(nextLunchPeriod === "PERIOD_4" ? 5 : 4);
+      setCourseSearch("");
+    }
   }
 
   function setCourse(course: any) {
@@ -103,17 +134,28 @@ export function MyWeekView() {
   }
 
   async function saveDraft() {
+    if (!lunchPeriod) {
+      showToast({
+        title: "Choose a lunch period",
+        body: "Lunch must be either Period 4 or Period 5.",
+      });
+      return;
+    }
+
     try {
       await saveSchedule({
         isPublic,
-        entries: draftEntries
-          .filter((entry) => entry.courseId)
-          .map((entry) => ({
+        lunchPeriod,
+        entries: draftEntries.reduce<any[]>((result, entry) => {
+          if (!(entry.className ?? entry.course?.title)?.trim()) return result;
+          result.push({
             weekday: entry.weekday,
             periodNumber: entry.periodNumber,
-            courseId: entry.courseId,
-            className: entry.className ?? entry.course?.title ?? 'Class',
-          })),
+            courseId: entry.courseId ?? null,
+            className: entry.className ?? entry.course?.title ?? "Class",
+          });
+          return result;
+        }, []),
       });
       setEditing(false);
       showToast({ title: "Schedule saved", tone: "success" });
@@ -169,6 +211,7 @@ export function MyWeekView() {
                   day={selectedDay}
                   entries={visibleEntries}
                   blocks={schedule.blocks}
+                  lunchPeriod={editing ? lunchPeriod : schedule.mySchedule?.lunchPeriod}
                   selectedPeriod={editing ? selectedPeriod : undefined}
                   onSelectPeriod={editing ? setSelectedPeriod : undefined}
                 />
@@ -183,6 +226,19 @@ export function MyWeekView() {
                     padding: spacing.lg,
                   }}
                 >
+                  <View style={{ gap: spacing.sm }}>
+                    <View style={{ gap: spacing.xs }}>
+                      <Txt variant="label">Lunch period</Txt>
+                      <Txt variant="caption" tone="muted">
+                        Choose one lunch for every regular school day. Classes in the other slot stay unchanged.
+                      </Txt>
+                    </View>
+                    <LunchPeriodPicker
+                      value={lunchPeriod}
+                      onChange={selectLunchPeriod}
+                    />
+                  </View>
+
                   <View
                     style={{
                       minHeight: spacing.xl * 2,
@@ -271,7 +327,6 @@ export function MyWeekView() {
                         />
                       }
                       title={`${student.firstName} ${student.lastName}`}
-                      subtitle={student.uniqueId}
                       trailing={
                         canRespond ? (
                           <Button
@@ -394,7 +449,7 @@ export function MyWeekView() {
                         </Txt>
                         <Txt variant="caption" tone="muted">
                           {friend.visibility === "PUBLIC"
-                            ? friend.user.uniqueId
+                            ? "Shared schedule"
                             : friend.visibility === "PRIVATE"
                               ? "Private schedule"
                               : "No schedule yet"}
@@ -452,6 +507,7 @@ export function MyWeekView() {
                         day={selectedDay}
                         entries={friend.schedule.entries}
                         blocks={schedule.blocks}
+                        lunchPeriod={friend.schedule.lunchPeriod}
                         embedded
                       />
                     ) : null}
@@ -471,6 +527,7 @@ function ScheduleTable({
   day,
   entries,
   blocks,
+  lunchPeriod,
   selectedPeriod,
   onSelectPeriod,
   embedded = false,
@@ -478,20 +535,25 @@ function ScheduleTable({
   day: Weekday;
   entries: any[];
   blocks: any[];
+  lunchPeriod?: LunchPeriod | null;
   selectedPeriod?: number;
   onSelectPeriod?: (period: number) => void;
   embedded?: boolean;
 }) {
   const { color } = useTheme();
+  const lunchNumber = lunchPeriod ? lunchPeriodNumber(lunchPeriod) : null;
   const dayEntries = entries.filter((entry) => entry.weekday === day);
   const dayBlocks = blocks
-    .filter((block) => block.weekday === day)
+    .filter(
+      (block) =>
+        block.weekday === day &&
+        (block.periodNumber !== null || block.label.trim().toLowerCase() !== "lunch"),
+    )
     .sort((left, right) => left.startTime.localeCompare(right.startTime));
-  const blockPeriods = new Set(
-    dayBlocks
-      .map((block) => block.periodNumber)
-      .filter((period): period is number => typeof period === "number"),
-  );
+  const blockPeriods = new Set<number>();
+  for (const block of dayBlocks) {
+    if (typeof block.periodNumber === "number") blockPeriods.add(block.periodNumber);
+  }
   const displayedPeriods = dayBlocks.length
     ? blockPeriods
     : new Set<number>(fallbackPeriods);
@@ -566,11 +628,13 @@ function ScheduleTable({
       </View>
 
       {rows.map((row, index) => {
+        const isLunch = row.periodNumber === lunchNumber;
         const entry =
-          typeof row.periodNumber === "number"
+          typeof row.periodNumber === "number" && !isLunch
             ? dayEntries.find((item) => item.periodNumber === row.periodNumber)
             : null;
-        const selectable = !!onSelectPeriod && typeof row.periodNumber === "number";
+        const selectable =
+          !!onSelectPeriod && typeof row.periodNumber === "number" && !isLunch;
         const selected = row.periodNumber === selectedPeriod;
         const courseSlug = !selectable ? entry?.course?.slug : undefined;
         const content = (
@@ -585,7 +649,11 @@ function ScheduleTable({
               borderBottomWidth:
                 index === rows.length - 1 ? 0 : StyleSheet.hairlineWidth,
               borderColor: color("border"),
-              backgroundColor: selected ? color("accent") : "transparent",
+              backgroundColor: selected
+                ? color("accent")
+                : isLunch
+                  ? color("secondary")
+                  : "transparent",
             }}
           >
             <View
@@ -602,12 +670,18 @@ function ScheduleTable({
             <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
               <Txt
                 variant="label"
-                tone={entry || row.periodNumber === null ? "default" : "muted"}
+                tone={entry || row.periodNumber === null || isLunch ? "default" : "muted"}
                 numberOfLines={2}
               >
-                {entry?.className ?? (row.periodNumber === null ? row.label : "—")}
+                {isLunch
+                  ? "Lunch"
+                  : entry?.className ?? (row.periodNumber === null ? row.label : "—")}
               </Txt>
-              {entry?.course?.department ? (
+              {isLunch ? (
+                <Txt variant="caption" tone="muted" numberOfLines={1}>
+                  Period {row.periodNumber}
+                </Txt>
+              ) : entry?.course?.department ? (
                 <Txt variant="caption" tone="muted" numberOfLines={1}>
                   {entry.course.department}
                 </Txt>
@@ -658,6 +732,63 @@ function ScheduleTable({
       })}
     </View>
   );
+}
+
+function LunchPeriodPicker({
+  value,
+  onChange,
+}: {
+  value: LunchPeriod | null;
+  onChange: (value: LunchPeriod) => void;
+}) {
+  const { color } = useTheme();
+  return (
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel="Lunch period"
+      style={{ flexDirection: "row", gap: spacing.sm }}
+    >
+      {lunchPeriodOptions.map((option) => {
+        const selected = value === option.value;
+        return (
+          <PressableScale
+            key={option.value}
+            accessibilityRole="radio"
+            accessibilityLabel={`${option.label} lunch`}
+            accessibilityState={{ checked: selected }}
+            onPress={() => onChange(option.value)}
+            style={{
+              flex: 1,
+              minHeight: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: radii.lg,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: selected ? color("primary") : color("border"),
+              backgroundColor: selected ? color("accent") : color("card"),
+              paddingHorizontal: spacing.md,
+            }}
+          >
+            <Txt
+              variant="label"
+              style={{ color: selected ? color("primary") : color("foreground") }}
+            >
+              {option.label}
+            </Txt>
+          </PressableScale>
+        );
+      })}
+    </View>
+  );
+}
+
+function lunchPeriodNumber(lunchPeriod: LunchPeriod) {
+  return lunchPeriod === "PERIOD_4" ? 4 : 5;
+}
+
+function formatWeekday(weekday: string) {
+  const label = weekday.toLowerCase();
+  return `${label[0]?.toUpperCase() ?? ""}${label.slice(1)}`;
 }
 
 function initialWeekday(): Weekday {

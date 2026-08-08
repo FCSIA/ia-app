@@ -15,6 +15,7 @@ const categories = [
   ["EVENT", "Events"],
   ["FLEX_FRIDAY", "Flex Friday"],
   ["FRIEND_REQUEST", "Friend requests"],
+  ["FRIEND_SCHEDULE_CHANGE", "Friend schedule changes"],
 ] as const;
 
 export default function NotificationSettingsScreen() {
