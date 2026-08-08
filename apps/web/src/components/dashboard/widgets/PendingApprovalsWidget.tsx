@@ -37,14 +37,14 @@ export function PendingApprovalsWidget() {
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge
-                      variant="dot"
+                      variant="solid"
                       className="border-transparent bg-amber-500/15 text-amber-500"
                     >
                       Pending
                     </Badge>
                     {event.club?.name && (
                       <Badge
-                        variant="dot"
+                        variant="solid"
                         className="text-blue-500 border-blue-500/30 bg-blue-500/10"
                       >
                         {event.club.name}

@@ -121,6 +121,19 @@ Every mapped item needs a stable key:
 ))}
 ```
 
+## Badges
+
+Use `Badge` only for short status, role, or category labels that need to be
+scanned as a group. The web primitive has one `solid` treatment with semantic
+colors and three sizes. Do not recreate pill styles at feature call sites or
+add a decorative leading-dot variant; that variant duplicated the same label,
+was inconsistently visible across themes, and added clutter without conveying
+another state.
+
+Use plain text for metadata such as dates, counts, and explanatory copy. If a
+label already has an icon or surrounding control that communicates its state,
+prefer the simpler text treatment instead of adding another badge.
+
 ## Chat Surfaces
 
 Use the local `MessageScroller` components for message timelines and threads.

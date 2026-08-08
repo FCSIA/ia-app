@@ -2,12 +2,19 @@ import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
+  scheduleLunchPeriodValidator,
   scheduleWeekdayValidator,
   schoolDayBlockKindValidator,
 } from "../validators";
 import { toCourseSummary } from "../courses/_lib";
 import type { AppRole } from "../../lib/roles";
 import { deliverNotification as deliverNotificationRow } from "../notifications/delivery";
+import {
+  findLunchCourseConflict,
+  normalizeDayBlocks,
+  resolveLunchPeriod,
+  type DayBlockInput,
+} from "./dayResolver";
 
 export const schoolDayBlockValidator = v.object({
   id: v.id("schoolDayBlocks"),
@@ -34,7 +41,44 @@ export const studentScheduleEntryValidator = v.object({
 export const studentScheduleRecordValidator = v.object({
   id: v.id("studentSchedules"),
   isPublic: v.boolean(),
+  lunchPeriod: v.union(scheduleLunchPeriodValidator, v.null()),
+  lunchNeedsResolution: v.boolean(),
   entries: v.array(studentScheduleEntryValidator),
+});
+
+export const resolvedSchoolDayBlockValidator = v.object({
+  key: v.string(),
+  position: v.number(),
+  label: v.string(),
+  displayLabel: v.string(),
+  periodNumber: v.union(v.number(), v.null()),
+  startTime: v.string(),
+  endTime: v.string(),
+  durationMinutes: v.number(),
+  kind: v.union(v.literal("PERIOD"), v.literal("LUNCH"), v.literal("CUSTOM")),
+  entry: v.union(studentScheduleEntryValidator, v.null()),
+});
+
+export const resolvedSchoolDayValidator = v.object({
+  dateKey: v.string(),
+  weekday: v.union(scheduleWeekdayValidator, v.null()),
+  lunchPeriod: v.union(scheduleLunchPeriodValidator, v.null()),
+  lunchNeedsResolution: v.boolean(),
+  isSpecial: v.boolean(),
+  name: v.string(),
+  source: v.union(
+    v.literal("REGULAR_TEMPLATE"),
+    v.literal("DATE_OVERRIDE"),
+    v.literal("LEGACY"),
+  ),
+  sourceId: v.union(
+    v.id("schoolDayTemplates"),
+    v.id("schoolDayDateOverrides"),
+    v.null(),
+  ),
+  sourceTemplateId: v.union(v.id("schoolDayTemplates"), v.null()),
+  blocks: v.array(resolvedSchoolDayBlockValidator),
+  omittedPeriods: v.array(v.number()),
 });
 
 export const scheduleFriendUserValidator = v.object({
@@ -60,6 +104,7 @@ export const scheduleFriendRequestValidator = v.object({
 export const scheduleDashboardValidator = v.object({
   mySchedule: v.union(studentScheduleRecordValidator, v.null()),
   blocks: v.array(schoolDayBlockValidator),
+  resolvedDay: resolvedSchoolDayValidator,
   friends: v.array(scheduleFriendValidator),
   incomingRequests: v.array(scheduleFriendRequestValidator),
   outgoingRequests: v.array(scheduleFriendRequestValidator),
@@ -205,9 +250,20 @@ export async function serializeScheduleForUser(
       left.periodNumber - right.periodNumber,
   );
 
+  const inferredLunchPeriod = resolveLunchPeriod(
+    schedule.lunchPeriod,
+    serializedEntries,
+  );
+  const hasLunchConflict = inferredLunchPeriod
+    ? findLunchCourseConflict(serializedEntries, inferredLunchPeriod) !== null
+    : false;
+  const lunchPeriod = hasLunchConflict ? null : inferredLunchPeriod;
+
   return {
     id: schedule._id,
     isPublic: schedule.isPublic,
+    lunchPeriod,
+    lunchNeedsResolution: lunchPeriod === null,
     entries: serializedEntries,
   };
 }
@@ -394,6 +450,41 @@ export async function deleteSeedBatch(ctx: MutationCtx) {
   }
 
   if (entries.length === 0) {
+    const [dateBlocks, templateBlocks] = await Promise.all([
+      ctx.db.query("schoolDayDateBlocks").take(1000),
+      ctx.db.query("schoolDayTemplateBlocks").take(1000),
+    ]);
+    for (const block of dateBlocks) {
+      await ctx.db.delete(block._id);
+      deleted.blocks += 1;
+    }
+    for (const block of templateBlocks) {
+      await ctx.db.delete(block._id);
+      deleted.blocks += 1;
+    }
+    if (dateBlocks.length > 0 || templateBlocks.length > 0) return deleted;
+
+    const [overrides, settings, templates] = await Promise.all([
+      ctx.db.query("schoolDayDateOverrides").take(500),
+      ctx.db.query("schoolScheduleSettings").take(10),
+      ctx.db.query("schoolDayTemplates").take(100),
+    ]);
+    for (const override of overrides) {
+      await ctx.db.delete(override._id);
+      deleted.blocks += 1;
+    }
+    for (const setting of settings) {
+      await ctx.db.delete(setting._id);
+      deleted.blocks += 1;
+    }
+    for (const template of templates) {
+      await ctx.db.delete(template._id);
+      deleted.blocks += 1;
+    }
+    if (overrides.length > 0 || settings.length > 0 || templates.length > 0) {
+      return deleted;
+    }
+
     const schedules = await ctx.db.query("studentSchedules").take(500);
     for (const schedule of schedules) {
       await ctx.db.delete(schedule._id);
@@ -441,6 +532,60 @@ export async function seedDefaultBlocks(ctx: MutationCtx, actorId: Id<"users">, 
     }
   }
   return blocksInserted;
+}
+
+export async function seedRegularDayTemplate(
+  ctx: MutationCtx,
+  actorId: Id<"users">,
+  now: number,
+  inputBlocks: readonly DayBlockInput[],
+) {
+  const name = "Regular day";
+  const existing = await ctx.db
+    .query("schoolDayTemplates")
+    .withIndex("by_name", (q) => q.eq("name", name))
+    .unique();
+  const templateId = existing?._id ??
+    (await ctx.db.insert("schoolDayTemplates", {
+      name,
+      kind: "REGULAR",
+      createdById: actorId,
+      createdAt: now,
+      updatedAt: now,
+    }));
+  const existingBlocks = await ctx.db
+    .query("schoolDayTemplateBlocks")
+    .withIndex("by_templateId_and_position", (q) =>
+      q.eq("templateId", templateId),
+    )
+    .take(25);
+  if (existingBlocks.length === 0) {
+    for (const block of normalizeDayBlocks([...inputBlocks])) {
+      await ctx.db.insert("schoolDayTemplateBlocks", {
+        templateId,
+        position: block.position,
+        label: block.label,
+        periodNumber: block.periodNumber ?? undefined,
+        startTime: block.startTime,
+        endTime: block.endTime,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+  const settings = await ctx.db
+    .query("schoolScheduleSettings")
+    .withIndex("by_key", (q) => q.eq("key", "default"))
+    .unique();
+  if (!settings) {
+    await ctx.db.insert("schoolScheduleSettings", {
+      key: "default",
+      regularTemplateId: templateId,
+      updatedById: actorId,
+      updatedAt: now,
+    });
+  }
+  return templateId;
 }
 
 export async function seedAcceptedFriendPairs(

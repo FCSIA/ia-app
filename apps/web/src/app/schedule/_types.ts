@@ -1,4 +1,8 @@
-import type { StudentScheduleDraftEntry, StudentScheduleRecord } from '@/components/schedule/types';
+import type {
+  ScheduleLunchPeriod,
+  StudentScheduleDraftEntry,
+  StudentScheduleRecord,
+} from '@/components/schedule/types';
 
 export type ScheduleTab = 'my' | 'friends' | 'admin';
 
@@ -13,4 +17,5 @@ export type ScheduleDraftState = {
   source: StudentScheduleRecord | null | undefined;
   entries: StudentScheduleDraftEntry[];
   isPublic: boolean;
+  lunchPeriod: ScheduleLunchPeriod | null;
 };

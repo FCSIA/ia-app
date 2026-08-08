@@ -2,14 +2,31 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Establish durable mobile UI foundations and a readable, compact
-  club workspace without mechanically compressing unrelated workflows.
-- **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
-  and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
-  asked.
+- **Branch**: `codex/65-contributor-workflow`
+- **Goal**: Finish the issue/PR reconciliation with a safe student contribution
+  workflow stacked on the canonical design-system work.
+- **Production boundary**: No reconciliation branch was merged or pushed to
+  `main`; every implementation remains in a reviewable PR.
 
 ## Current Truth
+
+### Open PR Reconciliation (2026-08-07)
+
+- PRs #69-#72 replace the superseded #57 branch as a four-layer clubs, schedule
+  OCR, calendar/Flex UI, and access-checked search stack.
+- PRs #73, #77, and draft #76 are independent notification, client-state ADR,
+  and FERPA/compliance reconciliations based on `main`.
+- PR #75 is the friend-link/private-group layer stacked on special-day PR #74.
+- PR #79 is the login/loading-facts layer stacked on design-system PR #78.
+- PR #80 is the student-contribution workflow layer stacked on PR #78. Its
+  least-privilege GitHub workflow passes frozen install, brand verification,
+  lint, tests, and all package builds without deployment credentials.
+- React Doctor is green across the open reconciliation PRs. The refreshed PR
+  #75 and #76 scans report zero errors and zero warnings.
+- Issue #41 is closed with code-backed notification category semantics. Issues
+  #46, #51-#53, #56, #58-#59, and #62-#63 remain open only until their linked
+  PRs merge. Parent, school-input, policy, and underspecified feature issues
+  remain open with explicit unblockers recorded in GitHub.
 
 ### Backend on Convex
 
@@ -208,17 +225,23 @@ narrowed in draft PR #45.
 
 ## Next Work
 
-1. Reload the mobile Club workspace on a physical device and verify the
+1. Review and merge the replacement stacks in base-first order: #69 -> #70 ->
+   #71 -> #72, #74 -> #75, and #78 -> #79 / #80. Review independent PRs #73 and
+   #77 separately; keep draft #76 blocked until district/legal decisions land.
+2. For issue #65, approve a pinned Codex Security command/action, its exit-code
+   contract, fork-PR secret policy, findings retention, required check name, and
+   triage owner before adding that gate.
+3. Reload the mobile Club workspace on a physical device and verify the
    horizontal category header, 44px channels, chat rhythm, keyboard, and sheet
    behavior; no simulator was booted for the corrective pass.
-2. Review and merge draft PR #45 after the web chat visual/interaction pass.
-3. Deploy the Convex schema/index/function changes to the target deployment
+4. Review and merge draft PR #45 after the web chat visual/interaction pass.
+5. Deploy the Convex schema/index/function changes to the target deployment
    before production student/staff use.
-4. Coordinate with the FERPA session before touching `docs/compliance/` or the
-   FERPA entry in `docs/index.md`.
-5. Decide whether the legacy `apps/api` app and `packages/contracts` should be
+6. Coordinate with district/legal owners before representing the FERPA work as
+   production-ready or changing unresolved policy sections.
+7. Decide whether the legacy `apps/api` app and `packages/contracts` should be
    deleted now or retained temporarily for reference.
-6. Address the remaining lower-priority hardening debt listed above.
+8. Address the remaining lower-priority hardening debt listed above.
 
 ## Handoff Commands
 

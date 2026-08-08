@@ -1,5 +1,5 @@
 import type { ExpoConfig } from "expo/config";
-import { type ConfigPlugin, withEntitlementsPlist } from "expo/config-plugins";
+import { type ConfigPlugin, withEntitlementsPlist, withPlugins } from "expo/config-plugins";
 
 const easProjectId = process.env.EAS_PROJECT_ID;
 const expoOwner = process.env.EXPO_ACCOUNT_OWNER;
@@ -111,8 +111,6 @@ const config: ExpoConfig = {
         },
       },
     ],
-    ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
-    notificationsPlugin,
   ],
   updates: easProjectId
     ? {
@@ -133,4 +131,7 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+export default withPlugins(config, [
+  ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
+  notificationsPlugin,
+]);

@@ -13,7 +13,12 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { getBlocksForDay, getPeriodNumbersForDay, getCurrentScheduleStatus } from './schedule-utils';
-import { SchoolDayBlock, ScheduleWeekday, StudentScheduleDraftEntry } from './types';
+import {
+  ScheduleLunchPeriod,
+  SchoolDayBlock,
+  ScheduleWeekday,
+  StudentScheduleDraftEntry,
+} from './types';
 
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
@@ -21,6 +26,7 @@ type ScheduleDayEditorProps = {
   entries: StudentScheduleDraftEntry[];
   courses: CourseSummary[];
   preferredGradeLevel?: number;
+  lunchPeriod: ScheduleLunchPeriod | null;
   onChange: (
     weekday: ScheduleWeekday,
     periodNumber: number,
@@ -40,6 +46,7 @@ export function ScheduleDayEditor({
   entries,
   courses,
   preferredGradeLevel,
+  lunchPeriod,
   onChange,
   currentStatus,
 }: ScheduleDayEditorProps) {
@@ -93,7 +100,7 @@ export function ScheduleDayEditor({
                   {block.startTime} – {block.endTime}
                 </span>
                 {isCurrentCustom && (
-                  <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                  <Badge color="orange" size="sm" variant="solid" className="font-semibold uppercase text-[10px]">
                     Now
                   </Badge>
                 )}
@@ -120,12 +127,15 @@ export function ScheduleDayEditor({
           const isCurrent =
             activeStatus?.weekday === weekday &&
             activeStatus?.currentBlock?.periodNumber === periodNumber;
+          const isLunch =
+            (lunchPeriod === 'PERIOD_4' && periodNumber === 4) ||
+            (lunchPeriod === 'PERIOD_5' && periodNumber === 5);
 
           return (
             <div
               key={periodNumber}
               className={cn(
-                'flex items-center gap-4 px-4 py-2 transition-colors border-l-4',
+                'group flex items-center gap-4 border-l-4 px-4 py-2 transition-colors',
                 isCurrent
                   ? 'bg-primary/10 border-l-primary shadow-xs'
                   : 'border-l-transparent hover:bg-muted/30',
@@ -143,7 +153,12 @@ export function ScheduleDayEditor({
 
               {/* Course Selector / Link */}
               <div className="flex-1 min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-                {entry?.course ? (
+                {isLunch ? (
+                  <div className="flex min-h-8 items-center gap-2 text-sm font-medium text-foreground">
+                    <Lock className="size-3.5 text-primary" />
+                    Lunch
+                  </div>
+                ) : entry?.course ? (
                   <>
                     <Link
                       href={`/courses/${entry.course.slug}`}
@@ -158,8 +173,15 @@ export function ScheduleDayEditor({
                       onChange={(course) => onChange(weekday, periodNumber, course)}
                       placeholder=""
                       iconOnly
+                      actionVisibility="row-interaction"
                     />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100"
+                      onClick={() => openManualEntry(periodNumber)}
+                    >
                       Other
                     </Button>
                   </>
@@ -173,8 +195,15 @@ export function ScheduleDayEditor({
                       onChange={(course) => onChange(weekday, periodNumber, course)}
                       placeholder="Select class..."
                       iconOnly
+                      actionVisibility="row-interaction"
                     />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100"
+                      onClick={() => openManualEntry(periodNumber)}
+                    >
                       Other
                     </Button>
                   </>
@@ -186,9 +215,16 @@ export function ScheduleDayEditor({
                       preferredGradeLevel={preferredGradeLevel}
                       onChange={(course) => onChange(weekday, periodNumber, course)}
                       placeholder="Select class..."
+                      actionVisibility="row-interaction"
                       className="h-8 min-h-0 bg-transparent border-transparent hover:bg-muted/50 px-2 py-0 rounded-md shadow-none text-muted-foreground"
                     />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openManualEntry(periodNumber)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(pointer:coarse)]:pointer-events-auto [@media(pointer:coarse)]:opacity-100"
+                      onClick={() => openManualEntry(periodNumber)}
+                    >
                       Other
                     </Button>
                   </div>
@@ -198,7 +234,7 @@ export function ScheduleDayEditor({
                   <Badge
                     color="orange"
                     size="sm"
-                    variant="dot"
+                    variant="solid"
                     className="shrink-0 font-bold tracking-wider uppercase text-[10px]"
                   >
                     Current Class
@@ -264,4 +300,3 @@ export function ScheduleDayEditor({
     </div>
   );
 }
-

@@ -145,7 +145,7 @@ export function AnnouncementCard({
                 </Badge>
               ) : null}
               {announcement.isBookmarked ? (
-                <Badge variant="dot" color="blue" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1 transition-all duration-150 hover:-translate-y-px')}>
+                <Badge variant="solid" color="blue" className={cn(ANNOUNCEMENT_BADGE_TEXT_CLASS, 'gap-1 transition-all duration-150 hover:-translate-y-px')}>
                   <BookmarkCheck className="size-3" />
                   Saved
                 </Badge>
@@ -156,7 +156,7 @@ export function AnnouncementCard({
                 </Badge>
               ) : null}
               {announcement.status === 'REJECTED' ? (
-                <Badge variant="dot" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Needs changes
                 </Badge>
               ) : null}
@@ -166,7 +166,7 @@ export function AnnouncementCard({
                 </Badge>
               ) : null}
               {announcement.status === 'ARCHIVED' ? (
-                <Badge variant="dot" color="gray" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
+                <Badge variant="solid" color="gray" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
                   Archived
                 </Badge>
               ) : null}
@@ -197,7 +197,7 @@ export function AnnouncementCard({
                   }
                 >
                   <Badge
-                    variant="dot"
+                    variant="solid"
                     color="emerald"
                     className={cn(
                       ANNOUNCEMENT_BADGE_TEXT_CLASS,

@@ -2,10 +2,12 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import {
   BASE_BLOCKS,
+  REGULAR_TEMPLATE_BLOCKS,
   SCHEDULE_WEEKDAYS,
   buildScheduleCourses,
   compareStudents,
   stableScheduleVisibility,
+  stableLunchPeriod,
 } from "../../seed-data/schedule";
 import {
   isStudentUser,
@@ -13,6 +15,7 @@ import {
   deleteSeedBatch,
   seedDefaultBlocks,
   seedAcceptedFriendPairs,
+  seedRegularDayTemplate,
 } from "./_lib";
 
 export const seedFromStaticData = internalMutation({
@@ -87,6 +90,14 @@ export const seedFromStaticData = internalMutation({
     const friendshipsInserted = isFirstPage
       ? await seedAcceptedFriendPairs(ctx, students, now)
       : 0;
+    if (isFirstPage) {
+      await seedRegularDayTemplate(
+        ctx,
+        actor._id,
+        now,
+        REGULAR_TEMPLATE_BLOCKS,
+      );
+    }
 
     let schedulesUpserted = 0;
     let entriesInserted = 0;
@@ -94,6 +105,11 @@ export const seedFromStaticData = internalMutation({
     for (const student of students.slice(cursor, cursor + batchSize)) {
       const scheduleCourses = buildScheduleCourses(student, courseMap);
       if (scheduleCourses.length === 0) continue;
+      const lunchPeriod = stableLunchPeriod(student.uniqueId);
+      const lunchNumber = lunchPeriod === "PERIOD_4" ? 4 : 5;
+      const instructionalPeriods = [1, 2, 3, 4, 5, 6, 7, 8].filter(
+        (periodNumber) => periodNumber !== lunchNumber,
+      );
 
       const existingSchedule = await ctx.db
         .query("studentSchedules")
@@ -104,6 +120,7 @@ export const seedFromStaticData = internalMutation({
         (await ctx.db.insert("studentSchedules", {
           userId: student._id,
           isPublic: stableScheduleVisibility(student.uniqueId),
+          lunchPeriod,
           createdAt: now,
           updatedAt: now,
         }));
@@ -111,6 +128,7 @@ export const seedFromStaticData = internalMutation({
       if (existingSchedule) {
         await ctx.db.patch(existingSchedule._id, {
           isPublic: stableScheduleVisibility(student.uniqueId),
+          lunchPeriod,
           updatedAt: now,
         });
       }
@@ -126,14 +144,18 @@ export const seedFromStaticData = internalMutation({
         await ctx.db.delete(entry._id);
       }
 
-      for (const [index, course] of scheduleCourses.entries()) {
+      for (const [index, course] of scheduleCourses
+        .slice(0, instructionalPeriods.length)
+        .entries()) {
+        const periodNumber = instructionalPeriods[index];
+        if (!periodNumber) continue;
         for (const weekday of SCHEDULE_WEEKDAYS) {
           await ctx.db.insert("studentScheduleEntries", {
             scheduleId,
             userId: student._id,
             courseId: course._id,
             weekday: weekday as any,
-            periodNumber: index + 1,
+            periodNumber,
             className: course.title,
             createdAt: now,
             updatedAt: now,
