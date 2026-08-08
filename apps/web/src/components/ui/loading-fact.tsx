@@ -35,7 +35,7 @@ export function LoadingFact({
           <Lightbulb className="size-4" aria-hidden />
         )}
       </span>
-      <p className="min-w-0 leading-relaxed">{fact.text}</p>
+      <p className="min-w-0 flex-1 leading-relaxed">{fact.text}</p>
     </div>
   );
 }
