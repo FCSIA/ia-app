@@ -100,7 +100,7 @@ export function ScheduleDayEditor({
                   {block.startTime} – {block.endTime}
                 </span>
                 {isCurrentCustom && (
-                  <Badge color="orange" size="sm" variant="dot" className="font-semibold uppercase text-[10px]">
+                  <Badge color="orange" size="sm" variant="solid" className="font-semibold uppercase text-[10px]">
                     Now
                   </Badge>
                 )}
@@ -234,7 +234,7 @@ export function ScheduleDayEditor({
                   <Badge
                     color="orange"
                     size="sm"
-                    variant="dot"
+                    variant="solid"
                     className="shrink-0 font-bold tracking-wider uppercase text-[10px]"
                   >
                     Current Class

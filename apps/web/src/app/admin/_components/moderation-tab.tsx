@@ -78,7 +78,7 @@ export function ModerationTab({
           <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-foreground">Custom Keywords</p>
-              <Badge variant="dot" color="blue" size="sm">
+              <Badge variant="solid" color="blue" size="sm">
                 glin-profanity enabled
               </Badge>
             </div>
@@ -156,12 +156,12 @@ export function ModerationTab({
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge
                           size="sm"
-                          variant={r.status === 'RESOLVED' ? 'dot' : 'solid'}
+                          variant="solid"
                           color={r.status === 'PENDING' ? 'amber' : r.status === 'RESOLVED' ? 'emerald' : 'gray'}
                         >
                           {r.status}
                         </Badge>
-                        <Badge variant="dot" size="sm">{r.contentType}</Badge>
+                        <Badge variant="solid" size="sm">{r.contentType}</Badge>
                       </div>
                       <p className="text-sm font-medium text-foreground">{r.reason}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
