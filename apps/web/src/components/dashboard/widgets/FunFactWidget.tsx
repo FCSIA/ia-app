@@ -24,8 +24,8 @@ export function FunFactWidget() {
   return (
     <Panel
       title="Did you know?"
-      className="w-full min-w-0"
-      contentClassName="min-w-0"
+      className="w-full min-w-0 h-[200px]"
+      contentClassName="min-w-0 flex flex-col justify-center"
       action={
         <Button
           type="button"
@@ -40,7 +40,7 @@ export function FunFactWidget() {
       }
     >
       <div
-        className="flex h-40 w-full min-w-0 items-center overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5 sm:h-32 md:h-28"
+        className="flex w-full min-w-0 flex-1 items-center overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5"
         title={fact.text}
       >
         <LoadingFact fact={fact} className="w-full" />

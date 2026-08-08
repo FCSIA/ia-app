@@ -541,7 +541,7 @@ export function AdminUsersTab({
           />
         ) : (
           <UserTableSection
-            key={`${userRoleGroup}:${search}:${pageIndex}`}
+            key={`${userRoleGroup}:${pageIndex}`}
             title={selectedUserRoleMeta.label}
             emptyMessage={selectedUserRoleMeta.emptyMessage}
             users={users}
