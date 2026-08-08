@@ -24,7 +24,8 @@ export function FunFactWidget() {
   return (
     <Panel
       title="Did you know?"
-      className="w-full min-w-0 h-[200px]"
+      className="w-full min-w-0"
+      style={{ height: 200 }}
       contentClassName="min-w-0 flex flex-col justify-center"
       action={
         <Button
