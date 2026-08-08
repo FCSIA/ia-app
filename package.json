@@ -14,6 +14,7 @@
     "convex:dev": "pnpm --filter cvx dev",
     "db:generate": "pnpm --filter cvx codegen",
     "db:studio": "pnpm --filter cvx exec convex dashboard",
+    "setup:convex-local": "node scripts/setup-convex-local.mjs",
     "mobile:ios": "pnpm --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
     "mobile:android": "pnpm --filter mobile android",

@@ -31,21 +31,19 @@ cp .env.example .env
 # 2. Install dependencies
 pnpm install
 
-# 3. Create & select this worktree's local Convex deployment
-pnpm --filter cvx exec convex deployment create local
-pnpm --filter cvx exec convex deployment select local
+# 3. Create/select this worktree's local Convex deployment, initialize its
+#    Better Auth environment, and sync its URLs to the frontend apps
+pnpm setup:convex-local
 
-# 4. Sync Convex environment variables to frontend apps
-pnpm sync:convex-env
-
-# 5. Start development servers
+# 4. Start development servers
 pnpm dev
 ```
 
 > [!IMPORTANT]
-> Create the local deployment once per worktree; select it and sync the frontend
-> environment before starting `pnpm dev`. Do not copy `apps/convex/.env.local`
-> from another worktree.
+> Run `pnpm setup:convex-local` once in each worktree and whenever its local
+> deployment selection needs repair. The command preserves existing deployment
+> secrets and settings. Do not copy `apps/convex/.env.local` from another
+> worktree.
 
 ## Browser Push Keys (Optional)
 
@@ -116,9 +114,7 @@ pnpm build            # Production build check
 If you see `Convex is not configured for this checkout`:
 
 ```bash
-pnpm --filter cvx exec convex deployment create local
-pnpm --filter cvx exec convex deployment select local
-pnpm sync:convex-env
+pnpm setup:convex-local
 ```
 
 ### Stale Build Caches

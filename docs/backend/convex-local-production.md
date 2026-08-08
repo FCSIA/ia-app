@@ -182,14 +182,14 @@ and agent, including feature, schema, seed, and ordinary local test work. Each
 worktree gets an isolated backend.
 
 ```bash
-# Run once in a new worktree.
-pnpm --filter cvx exec convex deployment create local
-
-# Run whenever selecting this worktree's local backend.
-pnpm --filter cvx exec convex deployment select local
-pnpm sync:convex-env
+pnpm setup:convex-local
 pnpm dev
 ```
+
+The setup command creates or selects the worktree-local deployment, initializes
+the required Better Auth deployment variables only when missing, repairs the
+local URL pair from Convex's port configuration, and syncs those URLs to the
+frontend apps. Existing deployment variables are preserved.
 
 When using local deployment mode:
 
@@ -239,11 +239,12 @@ inspect `git worktree list` and the current worktree's
 `apps/convex/.env.local`. Use an isolated local deployment unless Mode B's
 specific need applies. Stop `pnpm dev` / `pnpm cvx:dev` watchers pointed at a
 shared deployment before switching selections, and never copy
-`apps/convex/.env.local` between worktrees. `pnpm sync:convex-env` must run
-after each selection so the web app follows the same backend. It rejects a
-mixed configuration where `CONVEX_URL` and `CONVEX_SITE_URL` point at different
-deployments. If the system `node` is unsupported, run Convex commands through
-`direnv exec .` so this repo supplies Node 24.
+`apps/convex/.env.local` between worktrees. Use `pnpm setup:convex-local` for
+local selection and initialization; use `pnpm sync:convex-env` after selecting
+a cloud deployment so the clients follow the same backend. The sync command
+rejects a mixed configuration where `CONVEX_URL` and `CONVEX_SITE_URL` point at
+different deployments. If the system `node` is unsupported, run Convex
+commands through `direnv exec .` so this repo supplies Node 24.
 
 If a shared deployment has data that no longer validates against a branch's
 schema, isolate the branch instead of attempting to reseed through a failed

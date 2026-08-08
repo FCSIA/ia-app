@@ -77,21 +77,16 @@ pnpm --filter cvx exec convex dashboard
 > [!IMPORTANT]
 > Do not run `pnpx convex dev`, `npx convex dev`, or other Convex commands from the repository root. This monorepo's Convex app lives in `apps/convex`, so root-level Convex commands can initialize and push an empty `convex/` app. Use `pnpm --filter cvx ...` from the root instead.
 
-On a new checkout, create and select its local Convex backend:
+On a new checkout, initialize its local Convex backend and auth environment:
 
 ```bash
-pnpm --filter cvx exec convex deployment create local
-pnpm --filter cvx exec convex deployment select local
-pnpm sync:convex-env
+pnpm setup:convex-local
 pnpm dev
 ```
 
-Then set required secrets on the **new** deployment (once):
-
-```bash
-pnpm --filter cvx exec convex env set BETTER_AUTH_SECRET "<long-random-string>"
-pnpm --filter cvx exec convex env set SITE_URL http://localhost:3000
-```
+The setup command generates `BETTER_AUTH_SECRET` and defaults `SITE_URL` only
+when they are missing, repairs the local URL pair, and syncs the selected URLs
+to the web and mobile apps. Rerunning it preserves existing deployment values.
 
 Browser push also needs VAPID keys. Generate one key pair, put the public key in
 `apps/web/.env.local`, and set the matching Convex deployment values:

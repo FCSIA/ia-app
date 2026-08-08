@@ -40,12 +40,13 @@ because the monorepo exceeds Vercel's default upload file limit.
 | ----------------------------- | ---------------------------------- |
 | `pnpm db:generate`            | Regenerate Convex generated files  |
 | `pnpm db:studio`              | Start Convex dev/dashboard tooling |
+| `pnpm setup:convex-local` | Create/select local Convex, initialize auth, and sync client URLs |
 | `pnpm --filter cvx codegen`   | Regenerate Convex generated files  |
 | `pnpm --filter cvx typecheck` | Typecheck Convex functions         |
 | `pnpm --filter cvx deploy`    | Deploy Convex backend changes      |
 | `pnpm --filter cvx exec convex deployment create local` | Create this worktree's local backend once |
 | `pnpm --filter cvx exec convex deployment select local` | Select this worktree's local backend |
-| `pnpm sync:convex-env` | Sync the selected Convex URLs to the web app |
+| `pnpm sync:convex-env` | Sync the selected Convex URLs to the web and mobile apps |
 
 ## Demo Data
 

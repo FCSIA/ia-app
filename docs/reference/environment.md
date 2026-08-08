@@ -43,17 +43,20 @@ worktrees: doing so makes separate code branches deploy to and write data into
 the same Convex deployment. Stop any `pnpm dev` or `pnpm cvx:dev` watcher using
 that deployment before changing a worktree's selection.
 
-For ordinary worktree development, give each worktree its own local backend:
+For ordinary worktree development, initialize each worktree's own local backend:
 
 ```bash
-# Run once in a new worktree.
-pnpm --filter cvx exec convex deployment create local
-
-# Run whenever selecting the worktree's local backend.
-pnpm --filter cvx exec convex deployment select local
-pnpm sync:convex-env
+pnpm setup:convex-local
 pnpm dev
 ```
+
+`pnpm setup:convex-local` creates or selects the worktree-local deployment,
+repairs its local URL pair from the Convex port configuration, generates
+`BETTER_AUTH_SECRET` only when it is missing, defaults `SITE_URL` only when it
+is missing, and then runs `pnpm sync:convex-env`. Existing deployment variables
+are preserved. Use `pnpm sync:convex-env` by itself after ordinary URL or mobile
+host changes; it does not create deployments or modify deployment-scoped
+secrets.
 
 After selection, both `CONVEX_URL` and `CONVEX_SITE_URL` must be local URLs (or
 both must identify the same named cloud deployment). `pnpm sync:convex-env`

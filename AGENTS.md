@@ -42,10 +42,11 @@ Start by reading `agent-notes/STATE.md`, then the smallest relevant file under `
 - Stop `pnpm dev` / `pnpm cvx:dev` watchers that target a shared deployment
   before switching a worktree. Never copy `apps/convex/.env.local` between
   worktrees; run `pnpm sync:convex-env` after selecting the deployment instead.
-- For a new isolated local backend, run `pnpm --filter cvx exec convex
-  deployment create local`, then `pnpm --filter cvx exec convex deployment
-  select local`, `pnpm sync:convex-env`, and `pnpm dev`. For an existing local
-  backend, omit the create command.
+- For a new or existing isolated local backend, run
+  `pnpm setup:convex-local`, then `pnpm dev`. The setup command creates or
+  selects the worktree-local deployment, initializes missing auth variables,
+  repairs its URL pair, and syncs the clients without overwriting existing
+  deployment variables.
 - On a deployment that already contains incompatible data, use widen → migrate
   → narrow: first accept both shapes, backfill/clean the data, verify it, then
   remove the old shape. Do not deploy a narrowing schema first.
