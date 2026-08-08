@@ -71,7 +71,7 @@ export function SessionPanel({
                       <h3 className="font-medium text-sm text-foreground truncate">
                         {s.title}
                       </h3>
-                      <Badge variant="dot" color={s.sessionType === 'TEACHER_ASSIGNED' ? 'amber' : 'emerald'} className="text-[10px]">
+                      <Badge variant="solid" color={s.sessionType === 'TEACHER_ASSIGNED' ? 'amber' : 'emerald'} className="text-[10px]">
                         {s.sessionType === 'TEACHER_ASSIGNED' ? 'Assigned' : 'Choice'}
                       </Badge>
                     </div>

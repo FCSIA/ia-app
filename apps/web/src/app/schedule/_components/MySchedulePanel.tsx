@@ -60,7 +60,7 @@ export function MySchedulePanel() {
                     {selectedDay?.label ?? "School day"}
                   </h2>
                   {selectedWeekday === todayWeekday ? (
-                    <Badge size="sm" variant="dot" color="blue">
+                    <Badge size="sm" variant="solid" color="blue">
                       Today
                     </Badge>
                   ) : null}

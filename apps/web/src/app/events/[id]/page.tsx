@@ -92,7 +92,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 {event.status.replace(/_/g, ' ')}
               </Badge>
               {event.club && (
-                <Badge variant="dot" className="text-blue-500 border-blue-500/30">
+                <Badge variant="solid" className="text-blue-500 border-blue-500/30">
                   {event.club.name}
                 </Badge>
               )}

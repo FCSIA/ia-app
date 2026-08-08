@@ -578,7 +578,7 @@ function PersonRow({
               {formatClubRole(person.clubRole)}
             </Badge>
           ) : null}
-          {isCurrentUser ? <Badge variant="dot" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
+          {isCurrentUser ? <Badge variant="solid" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
       </div>
       {showManage ? (

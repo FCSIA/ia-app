@@ -127,7 +127,7 @@ export function ScheduleDayEditor({
                   <Badge
                     color="orange"
                     size="sm"
-                    variant="dot"
+                    variant="solid"
                     className="font-semibold uppercase text-[10px]"
                   >
                     Now
@@ -236,7 +236,7 @@ export function ScheduleDayEditor({
                         <Badge
                           color="orange"
                           size="sm"
-                          variant="dot"
+                          variant="solid"
                           className="shrink-0 font-bold uppercase tracking-wider"
                         >
                           Now

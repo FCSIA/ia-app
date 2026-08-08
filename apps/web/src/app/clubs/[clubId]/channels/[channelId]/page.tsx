@@ -416,7 +416,7 @@ function MessageAuthorPreview({
             {roleLabels.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-1">
                 {roleLabels.map((role) => (
-                  <Badge key={role} variant="dot" className="h-5 text-[10px]">
+                  <Badge key={role} variant="solid" className="h-5 text-[10px]">
                     {role}
                   </Badge>
                 ))}
@@ -582,7 +582,7 @@ function MessageRow({
               : formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
           </span>
           {message.isPinned ? (
-            <Badge variant="dot" color="amber" className="h-5 text-[10px]">
+            <Badge variant="solid" color="amber" className="h-5 text-[10px]">
               Pinned
             </Badge>
           ) : null}

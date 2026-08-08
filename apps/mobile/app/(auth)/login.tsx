@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, TextField, Txt } from "@/components/ui";
+import { pickNavigationLoadingFact } from "@ia/fun-facts";
+import { Button, LoadingFact, TextField, Txt } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
@@ -12,10 +13,12 @@ export default function LoginScreen() {
   const [uniqueId, setUniqueId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingFact, setLoadingFact] = useState(pickNavigationLoadingFact);
   const canSubmit = !!uniqueId.trim() && !!password;
 
   async function signIn() {
     if (!canSubmit || loading) return;
+    setLoadingFact(pickNavigationLoadingFact());
     setLoading(true);
     try {
       const result = await authClient.signIn.username({
@@ -55,14 +58,13 @@ export default function LoginScreen() {
                   borderRadius: radii.md,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: color("primary"),
                   marginBottom: spacing.sm,
                 }}
               >
                 <Image
                   source={require("../../assets/logo.png")}
                   accessibilityLabel="Innovation Academy phoenix"
-                  style={{ width: 40, height: 40 }}
+                  style={{ width: 48, height: 48, borderRadius: radii.md }}
                   resizeMode="contain"
                 />
               </View>
@@ -98,6 +100,7 @@ export default function LoginScreen() {
                 />
               </View>
               <Button title="Sign in" loading={loading} disabled={!canSubmit} onPress={() => void signIn()} />
+              {loading ? <LoadingFact fact={loadingFact} /> : null}
             </View>
           </View>
         </ScrollView>

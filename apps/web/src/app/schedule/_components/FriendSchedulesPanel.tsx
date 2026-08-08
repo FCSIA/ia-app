@@ -99,11 +99,11 @@ export function FriendSchedulesPanel() {
                         </p>
                       </div>
                       {status === "FRIENDS" ? (
-                        <Badge size="sm" variant="dot" color="green">
+                        <Badge size="sm" variant="solid" color="green">
                           Friend
                         </Badge>
                       ) : status === "REQUEST_SENT" ? (
-                        <Badge size="sm" variant="dot">
+                        <Badge size="sm" variant="solid">
                           Pending
                         </Badge>
                       ) : status === "REQUEST_RECEIVED" ? (

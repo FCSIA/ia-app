@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
-import { HexColorPicker } from 'react-colorful';
 import {
   CUSTOM_COLORS_STORAGE_KEY,
   applyCustomColors,
@@ -11,6 +10,7 @@ import {
   type CustomColors,
 } from '@/app/providers';
 import { Button } from '@/components/ui/button';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -271,23 +271,15 @@ function CustomColorsPanel() {
               </button>
               {isOpen ? (
                 <div className="space-y-2 border-t border-foreground/[0.08] p-3">
-                  <HexColorPicker
-                    color={hex ?? '#888888'}
-                    onChange={(value) => handleChange(key, value)}
-                    style={{ width: '100%', height: 180 }}
+                  <ColorPicker
+                    value={hex ?? '#888888'}
+                    format="hex"
+                    hideAlpha
+                    onValueChange={(value) => handleChange(key, value.slice(0, 7))}
+                    swatches={['#f95b01', '#2563eb', '#16a34a', '#7c3aed', '#0f172a', '#f8fafc']}
+                    className="w-full"
                   />
-                  <div className="flex items-center justify-between gap-2">
-                    <input
-                      type="text"
-                      aria-label={`${label} color hex`}
-                      value={hex ?? ''}
-                      placeholder="#rrggbb"
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        if (/^#[0-9a-fA-F]{6}$/.test(value)) handleChange(key, value);
-                      }}
-                      className="w-28 rounded-md border border-foreground/15 bg-background px-2 py-1 font-mono text-xs"
-                    />
+                  <div className="flex justify-end">
                     {hex ? (
                       <Button
                         type="button"

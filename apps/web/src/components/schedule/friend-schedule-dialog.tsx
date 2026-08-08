@@ -161,7 +161,7 @@ export function FriendScheduleDialog({
                         <Badge
                           color="orange"
                           size="sm"
-                          variant="dot"
+                          variant="solid"
                           className="shrink-0 font-bold uppercase text-[10px]"
                         >
                           Current Class
@@ -218,7 +218,7 @@ export function FriendScheduleDialog({
                           <Badge
                             color="orange"
                             size="sm"
-                            variant="dot"
+                            variant="solid"
                             className="font-semibold uppercase text-[10px]"
                           >
                             Now

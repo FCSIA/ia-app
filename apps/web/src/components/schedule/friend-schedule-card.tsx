@@ -58,7 +58,7 @@ export function FriendScheduleCard({
           <div className="mt-1 flex items-center">
             <Badge
               size="sm"
-              variant="dot"
+              variant="solid"
               color={
                 friend.visibility === "PUBLIC"
                   ? "green"

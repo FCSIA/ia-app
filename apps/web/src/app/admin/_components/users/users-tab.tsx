@@ -44,7 +44,7 @@ function RoleSummary({ roles }: { roles: string[] }) {
       title={fullLabel}
     >
       {visibleRoles.map((role) => (
-        <Badge key={role} variant="dot" size="sm" className="min-w-0 max-w-[118px] shrink-0">
+        <Badge key={role} variant="solid" size="sm" className="min-w-0 max-w-[118px] shrink-0">
           <span className="truncate">{roleLabel(role)}</span>
         </Badge>
       ))}

@@ -344,10 +344,18 @@ function useScheduleWorkspaceValue() {
   };
 
   const copyMondayToWeek = () => {
+    if (!scheduleEntries.some((entry) => entry.weekday === 'MONDAY')) {
+      toast({
+        title: 'Add classes to Monday before copying',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setScheduleEntries((current) =>
-      copyDayEntries(current, "MONDAY", ["TUESDAY", "WEDNESDAY", "THURSDAY"]),
+      copyDayEntries(current, 'MONDAY', ['TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']),
     );
-    toast({ title: "Copied Monday classes to Tuesday through Thursday" });
+    toast({ title: 'Copied Monday classes to Tuesday through Friday. Save to keep changes.' });
   };
 
   return {
