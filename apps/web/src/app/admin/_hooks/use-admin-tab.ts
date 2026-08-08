@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 export const ADMIN_TABS = [
   'users',
@@ -38,7 +38,6 @@ export function resolveAdminTab(
 }
 
 export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedTab = searchParams?.get('tab') ?? null;
@@ -51,9 +50,9 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
       params.delete('tab');
       const query = params.toString();
       const path = pathname ?? '/admin';
-      router.replace(query ? `${path}?${query}` : path, { scroll: false });
+      window.history.replaceState(null, '', query ? `${path}?${query}` : path);
     }
-  }, [pathname, requestedTab, router, searchParams]);
+  }, [pathname, requestedTab, searchParams]);
 
   const setTab = useCallback(
     (tab: AdminTabId) => {
@@ -68,9 +67,9 @@ export function useAdminTab(isSuperAdmin: boolean, canManageWrapped: boolean) {
 
       const query = params.toString();
       const path = pathname ?? '/admin';
-      router.replace(query ? `${path}?${query}` : path, { scroll: false });
+      window.history.replaceState(null, '', query ? `${path}?${query}` : path);
     },
-    [canManageWrapped, isSuperAdmin, pathname, router, searchParams],
+    [canManageWrapped, isSuperAdmin, pathname, searchParams],
   );
 
   return {

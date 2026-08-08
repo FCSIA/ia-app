@@ -95,10 +95,14 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       });
     }, []);
 
-    // Resolve value: explicit value > selectedIndex lookup > defaultValue
+    // Resolve value: explicit value > selectedIndex lookup > uncontrolled state.
+    // Fall back to the first registered tab so Radix stays controlled from the
+    // first visible commit even when no default value was provided.
     const resolvedValue =
       value ??
-      (selectedIndex != null ? valueOrder[selectedIndex] : uncontrolledValue);
+      (selectedIndex != null
+        ? valueOrder[selectedIndex]
+        : uncontrolledValue ?? valueOrder[0]);
 
     const handleValueChange = useCallback(
       (newValue: string) => {
@@ -111,7 +115,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           if (idx !== -1) onSelect(idx);
         }
       },
-      [onValueChange, onSelect, valueOrder]
+      [onValueChange, onSelect, selectedIndex, value, valueOrder]
     );
 
     return (
@@ -124,9 +128,8 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
       >
         <TabsPrimitive.Root
           ref={ref}
-          value={resolvedValue}
+          value={resolvedValue ?? ""}
           onValueChange={handleValueChange}
-          defaultValue={resolvedValue == null ? defaultValue : undefined}
           activationMode="automatic"
           {...props}
         >
@@ -398,7 +401,10 @@ interface TabItemProps
 }
 
 const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
-  ({ value, icon: Icon, label, _index = 0, className, ...props }, ref) => {
+  (
+    { value, icon: Icon, label, _index = 0, className, onClick, ...props },
+    ref
+  ) => {
     const internalRef = useRef<HTMLButtonElement>(null);
     const { registerTab, hoveredIndex, selectedValue, setOptimisticIdx } = useTabsList();
 
@@ -412,7 +418,10 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
 
     return (
       <TabsPrimitive.Trigger
-        onClick={() => setOptimisticIdx(_index)}
+        onClick={(event) => {
+          setOptimisticIdx(_index);
+          onClick?.(event);
+        }}
         ref={(node) => {
           (
             internalRef as React.MutableRefObject<HTMLButtonElement | null>
