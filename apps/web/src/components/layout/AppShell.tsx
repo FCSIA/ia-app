@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown';
 import { MenuItem } from '@/components/ui/menu-item';
 import { Tooltip } from '@/components/ui/tooltip';
-import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { GlobalCommandPalette } from '@/components/layout/GlobalCommandPalette';
@@ -170,18 +170,44 @@ export function AppShell({
     swipeStartRef.current = { x: touch.clientX, y: touch.clientY, at: performance.now() };
   };
 
-  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+  const revealNavigationFromSwipe = (
+    clientX: number,
+    clientY: number,
+    minimumDistance: number,
+  ) => {
     const start = swipeStartRef.current;
-    swipeStartRef.current = null;
-    if (!start || event.changedTouches.length !== 1) return;
+    if (!start) return false;
 
-    const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - start.x;
-    const deltaY = Math.abs(touch.clientY - start.y);
+    const deltaX = clientX - start.x;
+    const deltaY = Math.abs(clientY - start.y);
     const elapsed = performance.now() - start.at;
-    if (deltaX >= 72 && deltaX > deltaY * 1.4 && deltaY <= 64 && elapsed <= 650) {
-      swipeActionRef.current();
+    if (
+      deltaX < minimumDistance ||
+      deltaX <= deltaY * 1.4 ||
+      deltaY > 64 ||
+      elapsed > 650
+    ) {
+      return false;
     }
+
+    swipeStartRef.current = null;
+    swipeActionRef.current();
+    return true;
+  };
+
+  const handleTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    // Start the Sheet's slide-in while the finger is still moving instead of
+    // waiting until release, so the navigation visibly follows the gesture.
+    revealNavigationFromSwipe(touch.clientX, touch.clientY, 36);
+  };
+
+  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    revealNavigationFromSwipe(touch.clientX, touch.clientY, 72);
+    swipeStartRef.current = null;
   };
 
   useEffect(() => {
@@ -287,6 +313,7 @@ export function AppShell({
       <div
         className="app-root flex min-h-screen w-full bg-background"
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={() => {
           swipeStartRef.current = null;
@@ -345,6 +372,7 @@ export function AppShell({
           <SheetContent side="left" className="w-72 border-r bg-sidebar p-0 text-sidebar-foreground">
             <VisuallyHidden>
               <SheetTitle>Navigation</SheetTitle>
+              <SheetDescription>Navigate to another area of the app.</SheetDescription>
             </VisuallyHidden>
             <div className="flex h-full flex-col">
               <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
