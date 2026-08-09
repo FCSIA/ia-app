@@ -17,7 +17,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/components/ui/input-group";
+} from "@/components/ui/input-control-group";
 import { Spinner } from "@/components/ui/spinner";
 import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";

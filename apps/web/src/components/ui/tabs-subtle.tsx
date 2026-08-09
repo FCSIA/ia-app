@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useId,
   useRef,
   useState,
   useCallback,
@@ -12,10 +11,11 @@ import {
   type ReactNode,
   type HTMLAttributes,
 } from "react";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
-import { springs } from "@/lib/springs";
+import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
@@ -24,8 +24,7 @@ interface TabsSubtleContextValue {
   registerTab: (index: number, element: HTMLElement | null) => void;
   hoveredIndex: number | null;
   selectedIndex: number;
-  onSelect: (index: number) => void;
-  idPrefix: string;
+  idPrefix: string | undefined;
   activeLabel: boolean;
 }
 
@@ -47,12 +46,10 @@ interface TabsSubtleProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect
 }
 
 const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
-  ({ children, selectedIndex, onSelect, idPrefix: idPrefixProp, activeLabel = false, className, ...props }, ref) => {
+  ({ children, selectedIndex, onSelect, idPrefix, activeLabel = false, className, ...props }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
-    const generatedId = useId();
     const shape = useShape();
-    const idPrefix = idPrefixProp || generatedId;
 
     const {
       activeIndex: hoveredIndex,
@@ -115,143 +112,141 @@ const TabsSubtle = forwardRef<HTMLDivElement, TabsSubtleProps>(
 
     return (
       <TabsSubtleContext.Provider
-        value={{ registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix, activeLabel }}
+        value={{ registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel }}
       >
-        <div
-          ref={(node) => {
-            (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            if (typeof ref === "function") ref(node);
-            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          onFocus={(e) => {
-            const indexAttr = (e.target as HTMLElement)
-              .closest("[data-proximity-index]")
-              ?.getAttribute("data-proximity-index");
-            if (indexAttr != null) {
-              const idx = Number(indexAttr);
-              setHoveredIndex(idx);
-              setFocusedIndex(
-                (e.target as HTMLElement).matches(":focus-visible") ? idx : null
-              );
-            }
-          }}
-          onBlur={(e) => {
-            if (containerRef.current?.contains(e.relatedTarget as Node)) return;
-            setFocusedIndex(null);
-            if (isMouseInside.current) return;
-            setHoveredIndex(null);
-          }}
-          onKeyDown={(e) => {
-            const items = Array.from(
-              containerRef.current?.querySelectorAll('[role="tab"]') ?? []
-            ) as HTMLElement[];
-            const currentIdx = items.indexOf(e.target as HTMLElement);
-            if (currentIdx === -1) return;
-
-            if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
-              e.preventDefault();
-              const next = ["ArrowRight", "ArrowDown"].includes(e.key)
-                ? (currentIdx + 1) % items.length
-                : (currentIdx - 1 + items.length) % items.length;
-              items[next].focus();
-            } else if (e.key === "Home") {
-              e.preventDefault();
-              items[0]?.focus();
-            } else if (e.key === "End") {
-              e.preventDefault();
-              items[items.length - 1]?.focus();
-            }
-          }}
-          className={cn(
-            "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-full scrollbar-hide -my-1 py-1",
-            className
-          )}
-          role="tablist"
-          {...props}
+        {/* Root is merged into List via `asChild` so a single <div> is
+            emitted. Radix owns
+            role="tablist", roving tabindex, and Arrow/Home/End keyboard
+            navigation. Radix tab values are strings, so the numeric
+            selectedIndex is mapped through String()/Number().
+            `activationMode="manual"` keeps manual activation: arrows move
+            focus, Enter/Space selects. */}
+        <TabsPrimitive.Root
+          asChild
+          value={String(selectedIndex)}
+          onValueChange={(value) => onSelect(Number(value))}
+          activationMode="manual"
         >
-          {/* Selected pill */}
-          {selectedRect && (
-            <motion.div
-              className={cn("absolute bg-active pointer-events-none", shape.bg)}
-              initial={false}
-              animate={{
-                left: selectedRect.left,
-                width: selectedRect.width,
-                top: selectedRect.top,
-                height: selectedRect.height,
-                opacity: isHovering ? 0.8 : 1,
-              }}
-              transition={{
-                ...springs.moderate,
-                opacity: { duration: 0.08 },
-              }}
-            />
-          )}
-
-          {/* Hover pill */}
-          <AnimatePresence>
-            {hoverRect && !isHoveringSelected && selectedRect && (
+          <TabsPrimitive.List
+            ref={(node: HTMLDivElement | null) => {
+              containerRef.current = node;
+              if (typeof ref === "function") ref(node);
+              else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            onFocus={(e: React.FocusEvent<HTMLDivElement>) => {
+              const indexAttr = (e.target as HTMLElement)
+                .closest("[data-proximity-index]")
+                ?.getAttribute("data-proximity-index");
+              if (indexAttr != null) {
+                const idx = Number(indexAttr);
+                setHoveredIndex(idx);
+                setFocusedIndex(
+                  (e.target as HTMLElement).matches(":focus-visible") ? idx : null
+                );
+              }
+            }}
+            onBlur={(e: React.FocusEvent<HTMLDivElement>) => {
+              if (containerRef.current?.contains(e.relatedTarget as Node)) return;
+              setFocusedIndex(null);
+              if (isMouseInside.current) return;
+              setHoveredIndex(null);
+            }}
+            className={cn(
+              // -mx-1 px-1 / -my-1 py-1 give the 2px-outset focus ring room
+              // to draw without being clipped by overflow-x-auto. The
+              // max-width allows for the negative margins: fit-content
+              // parents size against the margin box (8px narrower than the
+              // border box), so a plain max-w-full would clamp the list 8px
+              // too small and clip the first/last tab's ring.
+              "relative flex items-center gap-0.5 select-none overflow-x-auto max-w-[calc(100%_+_8px)] scrollbar-hide -mx-1 px-1 -my-1 py-1",
+              className
+            )}
+            {...props}
+          >
+            {/* Selected pill */}
+            {selectedRect && (
               <motion.div
                 className={cn("absolute bg-active pointer-events-none", shape.bg)}
-                initial={{
+                initial={false}
+                animate={{
                   left: selectedRect.left,
                   width: selectedRect.width,
                   top: selectedRect.top,
                   height: selectedRect.height,
-                  opacity: 0,
+                  opacity: isHovering ? 0.8 : 1,
                 }}
-                animate={{
-                  left: hoverRect.left,
-                  width: hoverRect.width,
-                  top: hoverRect.top,
-                  height: hoverRect.height,
-                  opacity: 0.4,
-                }}
-                exit={
-                  !isMouseInside.current && selectedRect
-                    ? {
-                        left: selectedRect.left,
-                        width: selectedRect.width,
-                        top: selectedRect.top,
-                        height: selectedRect.height,
-                        opacity: 0,
-                        transition: { ...springs.moderate, opacity: { duration: 0.06 } },
-                      }
-                    : { opacity: 0, transition: { duration: 0.06 } }
-                }
                 transition={{
-                  ...springs.fast,
+                  ...spring.moderate,
                   opacity: { duration: 0.08 },
                 }}
               />
             )}
-          </AnimatePresence>
 
-          {/* Focus ring */}
-          <AnimatePresence>
-            {focusRect && (
-              <motion.div
-                className={cn("absolute pointer-events-none z-20 border border-[#6B97FF]", shape.focusRing)}
-                initial={false}
-                animate={{
-                  left: focusRect.left - 2,
-                  top: focusRect.top - 2,
-                  width: focusRect.width + 4,
-                  height: focusRect.height + 4,
-                }}
-                exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                transition={{
-                  ...springs.fast,
-                  opacity: { duration: 0.08 },
-                }}
-              />
-            )}
-          </AnimatePresence>
+            {/* Hover pill */}
+            <AnimatePresence>
+              {hoverRect && !isHoveringSelected && selectedRect && (
+                <motion.div
+                  className={cn("absolute bg-active pointer-events-none", shape.bg)}
+                  initial={{
+                    left: selectedRect.left,
+                    width: selectedRect.width,
+                    top: selectedRect.top,
+                    height: selectedRect.height,
+                    opacity: 0,
+                  }}
+                  animate={{
+                    left: hoverRect.left,
+                    width: hoverRect.width,
+                    top: hoverRect.top,
+                    height: hoverRect.height,
+                    opacity: 0.4,
+                  }}
+                  exit={
+                    !isMouseInside.current && selectedRect
+                      ? {
+                          left: selectedRect.left,
+                          width: selectedRect.width,
+                          top: selectedRect.top,
+                          height: selectedRect.height,
+                          opacity: 0,
+                          transition: { ...spring.moderate, opacity: { duration: 0.06 } },
+                        }
+                      : { opacity: 0, transition: spring.fast.exit }
+                  }
+                  transition={{
+                    ...spring.fast,
+                    opacity: { duration: 0.08 },
+                  }}
+                />
+              )}
+            </AnimatePresence>
 
-          {children}
-        </div>
+            {/* Focus ring */}
+            <AnimatePresence>
+              {focusRect && (
+                <motion.div
+                  className={cn("absolute pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]", shape.focusRing)}
+                  initial={false}
+                  animate={{
+                    left: focusRect.left - 2,
+                    top: focusRect.top - 2,
+                    width: focusRect.width + 4,
+                    height: focusRect.height + 4,
+                  }}
+                  exit={{ opacity: 0, transition: spring.fast.exit }}
+                  transition={{
+                    ...spring.fast,
+                    opacity: { duration: 0.08 },
+                  }}
+                />
+              )}
+            </AnimatePresence>
+
+            {children}
+          </TabsPrimitive.List>
+        </TabsPrimitive.Root>
       </TabsSubtleContext.Provider>
     );
   }
@@ -267,9 +262,9 @@ interface TabsSubtleItemProps extends HTMLAttributes<HTMLButtonElement> {
 
 const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
   ({ icon: Icon, label, index, className, ...props }, ref) => {
-    const internalRef = useRef<HTMLButtonElement>(null);
+    const internalRef = useRef<HTMLButtonElement | null>(null);
     const shape = useShape();
-    const { registerTab, hoveredIndex, selectedIndex, onSelect, idPrefix, activeLabel } =
+    const { registerTab, hoveredIndex, selectedIndex, idPrefix, activeLabel } =
       useTabsSubtle();
 
     useEffect(() => {
@@ -283,9 +278,11 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     const showLabel = !collapseLabel || isSelected;
 
     const labelContent = (
+      // Both stacked spans carry the text-box trim so the invisible bold
+      // sizer and the visible label keep identical boxes.
       <span className="inline-grid text-[13px] whitespace-nowrap">
         <span
-          className="col-start-1 row-start-1 invisible"
+          className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
           style={{ fontVariationSettings: fontWeights.semibold }}
           aria-hidden="true"
         >
@@ -293,7 +290,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         </span>
         <span
           className={cn(
-            "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+            "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
             isActive ? "text-foreground" : "text-muted-foreground"
           )}
           style={{
@@ -308,23 +305,26 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
     );
 
     return (
-      <button
-        ref={(node) => {
-          (internalRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
+      // Radix Trigger renders a native <button type="button"> and wires
+      // role="tab", aria-selected, roving tabindex, and activation for us.
+      // id/aria-controls are only overridden when an idPrefix is supplied so
+      // externally rendered TabsSubtlePanel elements stay linked.
+      <TabsPrimitive.Trigger
+        ref={(node: HTMLButtonElement | null) => {
+          internalRef.current = node;
           if (typeof ref === "function") ref(node);
           else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
         }}
+        value={String(index)}
         data-proximity-index={index}
-        id={`${idPrefix}-tab-${index}`}
-        role="tab"
-        aria-selected={isSelected}
-        aria-controls={`${idPrefix}-panel-${index}`}
+        id={idPrefix ? `${idPrefix}-tab-${index}` : undefined}
+        aria-controls={idPrefix ? `${idPrefix}-panel-${index}` : undefined}
         aria-label={collapseLabel && !showLabel ? label : undefined}
-        tabIndex={isSelected ? 0 : -1}
-        onClick={() => onSelect(index)}
         className={cn(
-          "relative z-10 flex items-center px-3 py-2 cursor-pointer bg-transparent border-none outline-none",
-          collapseLabel ? "h-8" : "gap-2",
+          // Fixed heights (was py-2 around a 19.5px line box ≈ 35.5px) so the
+          // text-box trim on the label doesn't shrink the tab.
+          "relative z-10 flex items-center px-3 cursor-pointer bg-transparent border-none outline-none",
+          collapseLabel ? "h-8" : "h-9 gap-2",
           shape.bg,
           className
         )}
@@ -350,7 +350,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
                 animate={{ width: "auto", opacity: 1, marginLeft: 8 }}
                 exit={{ width: 0, opacity: 0, marginLeft: 0 }}
                 transition={{
-                  ...springs.fast,
+                  ...spring.fast,
                   opacity: { duration: 0.06 },
                 }}
               >
@@ -361,7 +361,7 @@ const TabsSubtleItem = forwardRef<HTMLButtonElement, TabsSubtleItemProps>(
         ) : (
           labelContent
         )}
-      </button>
+      </TabsPrimitive.Trigger>
     );
   }
 );
@@ -375,6 +375,9 @@ interface TabsSubtlePanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 
+// Rendered outside <TabsSubtle> at every call site, so it cannot use Radix's
+// Tabs.Content (which requires the Tabs.Root context). It stays a plain
+// tabpanel linked to its tab through the shared idPrefix.
 const TabsSubtlePanel = forwardRef<HTMLDivElement, TabsSubtlePanelProps>(
   ({ index, selectedIndex, idPrefix, children, className, ...props }, ref) => {
     const isSelected = selectedIndex === index;

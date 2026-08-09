@@ -13,21 +13,34 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
-import { springs } from "@/lib/springs";
+import { spring, exitFallbackMs } from "@/lib/springs";
 import { useShape } from "@/lib/shape-context";
+import { SurfaceProvider, useSurface } from "@/lib/surface-context";
+import { surfaceClasses } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
+
+const DIALOG_OFFSET = 4;
 
 const DialogOpenContext = createContext(false);
 
 function Dialog({
   children,
   open: controlledOpen,
+  defaultOpen,
   onOpenChange,
   ...props
 }: DialogPrimitive.DialogProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  // Internal state always tracks changes, and the consumer's onOpenChange is
+  // notified alongside it — a listener must not replace state handling, or an
+  // uncontrolled dialog with an onOpenChange prop could never open. The Root
+  // below is always controlled by `open`, so defaultOpen seeds our state
+  // instead of being forwarded.
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? false);
   const open = controlledOpen ?? uncontrolledOpen;
-  const handleOpenChange = onOpenChange ?? setUncontrolledOpen;
+  const handleOpenChange = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
 
   return (
     <DialogOpenContext.Provider value={open}>
@@ -44,58 +57,63 @@ const DialogClose = DialogPrimitive.Close;
 interface DialogContentProps
   extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: "sm" | "lg";
+  /** Portal target. When set, the overlay and panel render inside this element
+   *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
+   *  with a `position: relative; overflow: hidden` container — and usually
+   *  `<Dialog modal={false}>` — to scope a dialog to a bounded region, e.g. a
+   *  docs preview. Defaults to the document body / full-viewport behaviour. */
+  container?: HTMLElement | null;
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, size = "sm", ...props }, ref) => {
+  ({ className, children, size = "sm", container, ...props }, ref) => {
     const XIcon = useIcon("x");
     const open = useContext(DialogOpenContext);
     const shape = useShape();
+    const substrate = useSurface();
+    const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
       if (open) setMounted(true);
     }, [open]);
 
+    // Fallback release for the deferred unmount: onAnimationComplete on the
+    // panel is the primary signal, but rAF-driven animation callbacks can
+    // stall in throttled/background tabs — leaving an invisible full-screen
+    // overlay (and Radix's scroll lock) in place. Both exit tweens run at
+    // spring.slow.exit, so the fallback tracks that tier.
+    useEffect(() => {
+      if (open) return;
+      const id = setTimeout(() => setMounted(false), exitFallbackMs(spring.slow));
+      return () => clearTimeout(id);
+    }, [open]);
+
     const handleExitComplete = () => {
       if (!open) setMounted(false);
     };
 
-    if (!open && !mounted) return null;
+    if (!mounted) return null;
 
     return (
-      <DialogPrimitive.Portal forceMount>
+      <DialogPrimitive.Portal forceMount container={container ?? undefined}>
         <DialogPrimitive.Overlay asChild forceMount>
           <motion.div
-            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/80"
+            className={cn(
+              container ? "absolute" : "fixed",
+              "inset-0 z-50 bg-black/40 dark:bg-black/80"
+            )}
             initial={{ opacity: 0 }}
             animate={{ opacity: open ? 1 : 0 }}
-            transition={open ? springs.slow : springs.moderate}
+            transition={open ? spring.slow : spring.slow.exit}
           />
         </DialogPrimitive.Overlay>
-        <DialogPrimitive.Content 
-          ref={ref} 
-          asChild 
-          forceMount
-          onPointerDownOutside={(e) => {
-            if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
-              e.preventDefault();
-            }
-            props.onPointerDownOutside?.(e);
-          }}
-          onInteractOutside={(e) => {
-            if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
-              e.preventDefault();
-            }
-            props.onInteractOutside?.(e);
-          }}
-          {...props}
-        >
+        <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
           <motion.div
             className={cn(
-              "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
-              "bg-card border border-border/60",
-              "shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+              container ? "absolute" : "fixed",
+              "left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
+              surfaceClasses(dialogLevel),
               "p-6 focus:outline-none",
               size === "sm" && "max-w-[400px]",
               size === "lg" && "max-w-[540px]",
@@ -109,20 +127,22 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               x: "-50%",
               y: "-50%",
             }}
-            transition={open ? springs.slow : springs.moderate}
+            transition={open ? spring.slow : spring.slow.exit}
             onAnimationComplete={handleExitComplete}
           >
-            {children}
-            <DialogPrimitive.Close asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-3 top-3"
-              >
-                <XIcon />
-                <span className="sr-only">Close</span>
-              </Button>
-            </DialogPrimitive.Close>
+            <SurfaceProvider value={dialogLevel}>
+              {children}
+              <DialogPrimitive.Close asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute right-3 top-3"
+                >
+                  <XIcon />
+                  <span className="sr-only">Close</span>
+                </Button>
+              </DialogPrimitive.Close>
+            </SurfaceProvider>
           </motion.div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

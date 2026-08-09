@@ -28,15 +28,12 @@ const badgeColors = {
 type BadgeColor = keyof typeof badgeColors;
 
 const badgeVariants = cva(
-  // `leading-none` is important: without an explicit line-height the text
-  // inherits a taller one (e.g. 1.5), which reserves descender space that
-  // all-caps role labels don't use — making the text float high inside the
-  // pill. Tightening the line box lets `items-center` optically center it.
-  "inline-flex items-center border font-medium leading-none whitespace-nowrap",
+  "inline-flex items-center font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
         solid: "",
+        dot: "border border-border text-foreground",
       },
       size: {
         sm: "h-5 px-2 text-[11px] gap-1",
@@ -72,18 +69,19 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   ) => {
     const shape = useShape();
     const colorValue = badgeColors[color];
+    const isSolid = variant === "solid";
+    const dotSize = size === "sm" ? 6 : size === "lg" ? 8 : 7;
 
-    const colorStyle = color === "gray"
-      ? {
-          backgroundColor: "var(--muted)",
-          borderColor: "var(--border)",
-          color: "var(--foreground)",
-        }
-      : {
-          color: colorValue,
-          borderColor: `color-mix(in srgb, ${colorValue} 38%, transparent)`,
-          backgroundColor: `color-mix(in srgb, ${colorValue} 16%, var(--background))`,
-        };
+    const colorStyle = isSolid
+      ? color === "gray"
+        ? { backgroundColor: "var(--accent)", color: "var(--foreground)" }
+        : {
+            color: "var(--foreground)",
+            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, var(--background))`,
+          }
+      : {};
+
+    const dotColor = color === "gray" ? "var(--muted-foreground)" : colorValue;
 
     return (
       <span
@@ -92,7 +90,20 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
         style={{ ...colorStyle, ...style }}
         {...props}
       >
-        {children}
+        {!isSolid && (
+          <span
+            className="shrink-0 rounded-full"
+            style={{
+              width: dotSize,
+              height: dotSize,
+              backgroundColor: dotColor,
+            }}
+          />
+        )}
+        {/* text-box needs a block container — the badge root is a flex
+            container, so the label gets its own span. Height is fixed (h-*),
+            so trimming only recenters the letterforms. */}
+        <span className="[text-box:trim-both_cap_alphabetic]">{children}</span>
       </span>
     );
   }

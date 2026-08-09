@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cn } from "@/lib/utils";
-import { springs } from "@/lib/springs";
+import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
@@ -26,6 +26,9 @@ interface RadioGroupContextValue {
   selectedIndex: number | null;
   selectedValue?: string;
   onValueChange?: (value: string) => void;
+  /** Whether any item in the group is currently selected. Drives the roving
+   *  tabindex fallback: with no selection, the first item must stay tabbable
+   *  or the whole group becomes unreachable by keyboard. */
   hasSelection: boolean;
 }
 
@@ -69,6 +72,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       value !== undefined
         ? childValues.findIndex((childValue) => childValue === value)
         : selectedIndex ?? -1;
+    // Covers all three selection APIs: value, selectedIndex, per-item selected.
     const hasSelection =
       resolvedSelectedIndex >= 0 ||
       Children.toArray(children)
@@ -109,8 +113,11 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
           setActiveIndex(null);
         }}
         onKeyDown={(e) => {
+          // Scope to row wrappers only. The hidden radio primitive also
+          // carries role="radio", so a bare [role="radio"] selector matches
+          // twice per row and arrows land on the invisible control.
           const items = Array.from(
-            containerRef.current?.querySelectorAll('[data-proximity-index]') ?? []
+            containerRef.current?.querySelectorAll("[data-proximity-index]") ?? []
           ) as HTMLElement[];
           const currentIdx = items.indexOf(e.target as HTMLElement);
           if (currentIdx === -1) return;
@@ -134,7 +141,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         }}
         role="radiogroup"
         className={cn(
-          "relative flex w-72 max-w-full flex-col select-none",
+          "relative flex flex-col w-72 max-w-full select-none",
           className
         )}
         {...props}
@@ -152,7 +159,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
               opacity: 1,
             }}
             transition={{
-              ...springs.moderate,
+              ...spring.moderate,
               opacity: { duration: 0.08 },
             }}
           />
@@ -178,9 +185,9 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                 width: activeRect.width,
                 height: activeRect.height,
               }}
-              exit={{ opacity: 0, transition: { duration: 0.06 } }}
+              exit={{ opacity: 0, transition: spring.fast.exit }}
               transition={{
-                ...springs.fast,
+                ...spring.fast,
                 opacity: { duration: 0.08 },
               }}
             />
@@ -199,9 +206,9 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                 width: focusRect.width + 4,
                 height: focusRect.height + 4,
               }}
-              exit={{ opacity: 0, transition: { duration: 0.06 } }}
+              exit={{ opacity: 0, transition: spring.fast.exit }}
               transition={{
-                ...springs.fast,
+                ...spring.fast,
                 opacity: { duration: 0.08 },
               }}
             />
@@ -212,6 +219,12 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       </div>
     );
 
+    // If `value` is provided (controlled-by-value mode), always wrap with the
+    // Radix RadioGroup primitive — even when `onValueChange` is absent. The
+    // inner `<RadioGroupPrimitive.Item>` rendered by each RadioItem requires a
+    // parent RadioGroup context; without it, Radix throws on context reads.
+    // The wrapper just doesn't forward changes when the consumer doesn't ask
+    // to be notified.
     if (value !== undefined) {
       return (
         <RadioGroupContext.Provider
@@ -226,7 +239,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         >
           <RadioGroupPrimitive.Root
             value={value}
-            onValueChange={(nextValue) => onValueChange?.(nextValue)}
+            onValueChange={(v) => onValueChange?.(v)}
             asChild
           >
             {content}
@@ -305,18 +318,26 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
         }}
         data-proximity-index={index}
+        // Roving tabindex: selected item is the tab stop; with no selection the
+        // first item takes it so the group stays keyboard-reachable.
         tabIndex={isSelected ? 0 : !hasSelection && index === 0 ? 0 : -1}
         role="radio"
         aria-checked={isSelected}
         aria-label={label}
         onClick={handleSelect}
-        onMouseDown={(event) => {
-          const interactive = (event.target as HTMLElement).closest(
-            'button:not([tabindex="-1"]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        onMouseDown={(e) => {
+          // Clicking the 15px radio circle would natively focus the hidden
+          // primitive (nearest focusable ancestor of the click target), after
+          // which arrow-key nav dead-zones: the group keydown handler can't
+          // find the target among the row wrappers. Prevent the native focus
+          // move (click still fires) and land focus on the row instead. Skip
+          // genuinely interactive children so we don't hijack their focus.
+          const interactive = (e.target as HTMLElement).closest(
+            'button:not([tabindex="-1"]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           );
-          if (interactive && interactive !== event.currentTarget) return;
-          event.preventDefault();
-          event.currentTarget.focus();
+          if (interactive && interactive !== e.currentTarget) return;
+          e.preventDefault();
+          e.currentTarget.focus();
         }}
         onKeyDown={(e) => {
           if (e.key === " " || e.key === "Enter") {
@@ -325,13 +346,15 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex h-8 cursor-pointer items-center gap-2.5 ${shape.item} px-3 outline-none`,
+          // Fixed height (was py-1.5 around a 19.5px line box ≈ 31.5px) so the
+          // text-box trim on the label doesn't shrink the row.
+          `relative z-10 flex h-8 items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none`,
           className
         )}
         {...props}
       >
         {/* Radio circle */}
-        <div className="relative size-[15px] shrink-0">
+        <div className="relative w-[15px] h-[15px] shrink-0">
           {/* Border */}
           <div
             className={cn(
@@ -354,7 +377,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
                 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.3, transition: { duration: 0.04 } }}
-                transition={springs.fast}
+                transition={spring.fast}
               >
                 <div className="w-[8px] h-[8px] rounded-full bg-foreground" />
               </motion.div>
@@ -363,9 +386,11 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         </div>
 
         {/* Label */}
+        {/* Both stacked spans carry the text-box trim so the invisible bold
+            sizer and the visible label keep identical boxes. */}
         <span className="inline-grid text-[13px]">
           <span
-            className="invisible col-start-1 row-start-1 [text-box:trim-both_cap_alphabetic]"
+            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >

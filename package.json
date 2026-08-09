@@ -20,6 +20,7 @@
     "mobile:android": "pnpm --filter mobile android",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
     "brand:check": "node scripts/generate-brand-assets.mjs --check",
+    "fluid:update": "node scripts/update-fluid-components.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {

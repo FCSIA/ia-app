@@ -133,7 +133,19 @@ pnpm --filter cvx exec convex dashboard  # Open local/dev Convex Dashboard conso
 pnpm lint         # Lint all workspaces
 pnpm build        # Build all workspaces for production
 pnpm test         # Run test suites
+pnpm fluid:update # Preview updates for every Radix Fluid Functionalism component
 ```
+
+Fluid component refreshes are intentionally dry-run by default. Review the
+reported changes, then apply the current registry sources with:
+
+```bash
+pnpm fluid:update -- --write
+```
+
+The updater replaces Fluid-owned component files and their registry
+dependencies. Compound controls that use shadcn's addon API live separately
+from Fluid's `input-group`, so a refresh cannot overwrite that API.
 
 ---
 
