@@ -63,6 +63,25 @@ function ClubPickerItem({
   index: number;
 }) {
   const router = useRouter();
+  const ClubLogoIcon = ({ className }: { className?: string }) => (
+    <span
+      className={cn(
+        "flex size-7 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary",
+        className,
+      )}
+    >
+      {club.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolveMediaUrl(club.logoUrl)}
+          alt=""
+          className="size-full bg-background object-cover"
+        />
+      ) : (
+        club.name.charAt(0).toUpperCase()
+      )}
+    </span>
+  );
 
   return (
     <MenuItem
@@ -71,20 +90,7 @@ function ClubPickerItem({
       checked={active}
       onSelect={() => router.push(`/clubs/${club._id}`)}
       className="h-11 px-2.5"
-      leading={
-        <span className="flex size-7 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-          {club.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolveMediaUrl(club.logoUrl)}
-              alt={club.name}
-              className="size-full bg-background object-cover"
-            />
-          ) : (
-            club.name.charAt(0).toUpperCase()
-          )}
-        </span>
-      }
+      icon={ClubLogoIcon}
     />
   );
 }
@@ -506,7 +512,7 @@ function ClubNavigationPanel({
           <div className="my-3 h-px bg-border/70" />
 
           <section aria-labelledby={`channels-${density}`}>
-            <div className="flex h-7 items-center justify-between px-2">
+            <div className="flex h-7 items-center justify-between pl-2 pr-1">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <ChevronDown className="size-3" />
                 <h2
@@ -545,22 +551,8 @@ function ClubNavigationPanel({
                       />
                       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
                       {canManageChannels ? (
-                        <CardAction className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                          <ChannelActionsTrigger clubId={clubId} channel={channel} />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              onDeleteChannel(channel);
-                            }}
-                            className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Delete ${channel.name}`}
-                          >
-                            <Trash2 />
-                          </Button>
+                        <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                          <ChannelActionsTrigger clubId={clubId} channel={channel} onDeleteChannel={onDeleteChannel} />
                         </CardAction>
                       ) : null}
                     </Card>
@@ -609,9 +601,11 @@ function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
 function ChannelActionsTrigger({
   clubId,
   channel,
+  onDeleteChannel
 }: {
   clubId: Id<"clubs">;
   channel: ClubNavigationChannel;
+  onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -625,10 +619,24 @@ function ChannelActionsTrigger({
           e.stopPropagation();
           setOpen(true);
         }}
-        className="size-6 text-muted-foreground hover:text-foreground"
+        className="size-6 text-muted-foreground hover:text-foreground !bg-transparent"
         aria-label="Edit channel"
       >
         <Pencil />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onDeleteChannel(channel);
+        }}
+        className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete ${channel.name}`}
+      >
+        <Trash2 />
       </Button>
       <ChannelDialog
         clubId={clubId}

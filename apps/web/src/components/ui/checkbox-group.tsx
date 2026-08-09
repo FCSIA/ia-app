@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { cn } from "@/lib/utils";
-import { springs } from "@/lib/springs";
+import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
@@ -184,7 +184,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
                   }}
                   exit={{ opacity: 0, transition: { duration: 0.12 } }}
                   transition={{
-                    ...springs.moderate,
+                    ...spring.moderate,
                     opacity: { duration: 0.08 },
                   }}
                 />
@@ -214,7 +214,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
                 }}
                 exit={{ opacity: 0, transition: { duration: 0.06 } }}
                 transition={{
-                  ...springs.fast,
+                  ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
               />
@@ -235,7 +235,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
                 }}
                 exit={{ opacity: 0, transition: { duration: 0.06 } }}
                 transition={{
-                  ...springs.fast,
+                  ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
               />

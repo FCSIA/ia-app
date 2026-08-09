@@ -244,7 +244,6 @@ export function ChannelNotificationSettings({
               </Button>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">Mute #{channelName}</p>
-                <p className="text-xs text-muted-foreground">Choose how long.</p>
               </div>
             </div>
             {MUTE_DURATIONS.map((option) => (
@@ -267,13 +266,6 @@ export function ChannelNotificationSettings({
           <div className="flex flex-col gap-2">
             <div className="px-2 pt-1">
               <p className="truncate text-sm font-semibold">#{channelName}</p>
-              <p className="text-xs text-muted-foreground">
-                {muted
-                  ? 'Muted'
-                  : mode === 'default'
-                    ? 'Using club defaults'
-                    : `${mode} notifications`}
-              </p>
             </div>
             <Button
               type="button"

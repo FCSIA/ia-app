@@ -17,6 +17,7 @@ import { useShape } from "@/lib/shape-context";
 const buttonVariants = cva(
   [
     "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer",
+    "whitespace-nowrap align-middle [&_svg]:shrink-0",
     "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
@@ -52,11 +53,12 @@ const buttonVariants = cva(
       variant: "primary",
       size: "md",
     },
-  }
+  },
 );
 
 interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
@@ -69,9 +71,11 @@ interface ButtonProps
 }
 
 const bgVariants: Record<string, string> = {
-  primary: "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
+  primary:
+    "bg-foreground group-hover:bg-foreground/90 group-active:bg-foreground/80",
   secondary: "bg-accent group-hover:bg-accent/80 group-active:bg-accent",
-  tertiary: "border border-border bg-transparent group-hover:bg-hover group-active:bg-active",
+  tertiary:
+    "border border-border bg-transparent group-hover:bg-hover group-active:bg-active",
   ghost: "bg-transparent group-hover:bg-hover group-active:bg-active",
 };
 
@@ -98,7 +102,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       style,
       ...props
     },
-    ref
+    ref,
   ) => {
     // asChild: the user's element becomes the root, but the button's internal
     // structure (bg layer, content wrapper, spinner, icons) must survive. Slot
@@ -111,7 +115,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         : null;
     const Comp = asChildElement ? Slot : "button";
     const label = asChildElement ? asChildElement.props.children : children;
-    const isIconOnly = size === "icon" || size === "icon-sm" || size === "icon-lg";
+    const isIconOnly =
+      size === "icon" || size === "icon-sm" || size === "icon-lg";
     const iconSize = size === "sm" ? 14 : size === "lg" ? 20 : 16;
     // Spinner box tracks the button height (sm is h-7, lg/icon are h-9, …) so
     // the loading glyph stays proportionate across sizes.
@@ -134,13 +139,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           aria-hidden
           className={cn(
             "absolute inset-0 rounded-[inherit] transition-[background-color,transform] duration-80 group-active:scale-[0.98]",
-            bgClass
+            bgClass,
           )}
         />
-        <span className="relative inline-flex items-center justify-center gap-[inherit]">
+        <span className="relative inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit]">
           {loading ? (
             <>
-              <span className="flex items-center justify-center gap-[inherit] opacity-0">
+              <span className="flex min-w-0 flex-row flex-nowrap items-center justify-center gap-[inherit] opacity-0">
                 {LeadingIcon && !isIconOnly && (
                   <LeadingIcon size={iconSize} strokeWidth={2} />
                 )}
@@ -163,14 +168,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                     pathLength="100"
                     style={{
                       strokeDasharray: "15 85",
-                      animation: "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
+                      animation:
+                        "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
                     }}
                   />
                 </svg>
               </span>
             </>
           ) : isIconOnly ? (
-            <span className="[&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
+            <span className="inline-flex shrink-0 items-center justify-center [&_svg]:stroke-[1.5] [&_svg]:transition-[stroke-width] [&_svg]:duration-80 group-hover:[&_svg]:stroke-[2]">
               {label}
             </span>
           ) : (
@@ -179,6 +185,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 <LeadingIcon
                   size={iconSize}
                   strokeWidth={1.5}
+                  aria-hidden="true"
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
@@ -186,11 +193,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                   on the label span (a blockified flex item), not the flex root.
                   The button's height is fixed (h-*), so this doesn't change
                   layout — it just centers the cap-to-baseline box optically. */}
-              <span className="[text-box:trim-both_cap_alphabetic]">{label}</span>
+              <span className="inline-flex min-w-0 max-w-full flex-row flex-nowrap items-center justify-center gap-[inherit] truncate whitespace-nowrap [text-box:trim-both_cap_alphabetic] [&>svg]:shrink-0">
+                {label}
+              </span>
               {TrailingIcon && (
                 <TrailingIcon
                   size={iconSize}
                   strokeWidth={1.5}
+                  aria-hidden="true"
                   className="transition-[stroke-width] duration-80 group-hover:stroke-[2]"
                 />
               )}
@@ -211,7 +221,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             iconRight: !isIconOnly && !!TrailingIcon,
           }),
           shape.button,
-          className
+          className,
         )}
         // asChild roots (e.g. an anchor) don't take the disabled attribute —
         // Slot would spread it onto the element as invalid HTML.
@@ -224,7 +234,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           : internals}
       </Comp>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

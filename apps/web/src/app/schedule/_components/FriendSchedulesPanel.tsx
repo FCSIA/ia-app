@@ -13,10 +13,10 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
+  InputControl,
+  InputControlAddon,
+  InputControlButton,
+  InputControlInput,
 } from "@/components/ui/input-control-group";
 import { Spinner } from "@/components/ui/spinner";
 import { TabPanel } from "@/components/ui/tabs";
@@ -55,29 +55,29 @@ export function FriendSchedulesPanel() {
               </h2>
               <p className="text-xs text-muted-foreground">Search by name.</p>
             </div>
-            <InputGroup>
-              <InputGroupAddon>
+            <InputControl>
+              <InputControlAddon>
                 <Search aria-hidden="true" />
-              </InputGroupAddon>
-              <InputGroupInput
+              </InputControlAddon>
+              <InputControlInput
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search students"
               />
-              <InputGroupAddon align="inline-end">
+              <InputControlAddon align="inline-end">
                 {isSearching || searchIsDeferred ? (
                   <Spinner />
                 ) : search ? (
-                  <InputGroupButton
+                  <InputControlButton
                     size="icon-xs"
                     aria-label="Clear search"
                     onClick={() => setSearch("")}
                   >
                     <X />
-                  </InputGroupButton>
+                  </InputControlButton>
                 ) : null}
-              </InputGroupAddon>
-            </InputGroup>
+              </InputControlAddon>
+            </InputControl>
 
             {deferredSearch.trim().length < 2 ? null : searchResults.length >
               0 ? (

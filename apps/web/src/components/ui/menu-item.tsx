@@ -14,11 +14,7 @@ import type { IconComponent } from "@/lib/icon-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fontWeights } from "@/lib/font-weight";
-import { shapeMap } from "@/lib/shape-context";
-
-// MenuItem is only used inside Dropdown, which opts out of the global pill
-// shape — see dropdown.tsx for the rationale.
-const shape = shapeMap.rounded;
+import { dropdownShape as shape } from "@/components/ui/dropdown-shape";
 
 // ---------------------------------------------------------------------------
 // Dropdown context — the single shared context for every Dropdown build.

@@ -20,8 +20,8 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
-import { shapeMap } from "@/lib/shape-context";
 import { Elevated } from "@/lib/elevated";
+import { dropdownShape as shape } from "@/components/ui/dropdown-shape";
 import {
   DropdownContext,
   useDropdown,
@@ -29,12 +29,6 @@ import {
   type DropdownContextValue,
   type MenuItemRenderOptions,
 } from "@/components/ui/menu-item";
-
-// Dropdown opts out of the global pill/rounded shape context — popover surfaces
-// look cleaner with the smaller "rounded" radii regardless of how the rest of
-// the UI is shaped (the heavy pill bubbling distorts perceived padding at this
-// scale and produces the corner-shadow asymmetry).
-const shape = shapeMap.rounded;
 
 // ---------------------------------------------------------------------------
 // Panel context — shared by the inline Dropdown and the popup DropdownContent.

@@ -136,16 +136,24 @@ pnpm test         # Run test suites
 pnpm fluid:update # Preview updates for every Radix Fluid Functionalism component
 ```
 
-Fluid component refreshes are intentionally dry-run by default. Review the
-reported changes, then apply the current registry sources with:
+Fluid component refreshes are intentionally dry-run by default. Preview all
+components or narrow the report by name:
 
 ```bash
-pnpm fluid:update -- --write
+pnpm fluid:update
+pnpm fluid:update button select tabs
 ```
 
-The updater replaces Fluid-owned component files and their registry
-dependencies. Compound controls that use shadcn's addon API live separately
-from Fluid's `input-group`, so a refresh cannot overwrite that API.
+Writing requires an explicit component list:
+
+```bash
+pnpm fluid:update -- --write select tabs
+```
+
+App-adapted primitives are protected from automatic replacement because their
+public APIs or DOM contracts support existing product behavior. Review and
+merge those registry diffs manually. Compound controls using shadcn's addon API
+also live separately from Fluid's `input-group`.
 
 ---
 
