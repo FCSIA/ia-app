@@ -9,9 +9,13 @@ import { api } from '~/apps/convex/src/_generated/api';
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
 export type CachedDisplayUser = Pick<AppUser, '_id' | 'firstName' | 'lastName' | 'avatarUrl'>;
 
+const USER_CACHE_KEY = 'ia_user:v1';
+const LEGACY_USER_CACHE_KEY = 'ia_user';
+
 export function getUser(): CachedDisplayUser | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem('ia_user');
+  localStorage.removeItem(LEGACY_USER_CACHE_KEY);
+  const raw = localStorage.getItem(USER_CACHE_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as CachedDisplayUser;
@@ -29,14 +33,17 @@ export function cacheUser(user: AppUser | null) {
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
     };
-    localStorage.setItem('ia_user', JSON.stringify(display));
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(display));
+    localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   } else {
-    localStorage.removeItem('ia_user');
+    localStorage.removeItem(USER_CACHE_KEY);
+    localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   }
 }
 
 export function clearAuth() {
-  localStorage.removeItem('ia_user');
+  localStorage.removeItem(USER_CACHE_KEY);
+  localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   localStorage.removeItem('ia_token');
   if ('caches' in window) void caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
   navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_AUTH_CACHES' });

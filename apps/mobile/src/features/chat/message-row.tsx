@@ -571,16 +571,14 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                         ? "Thread"
                         : `${message.replyCount} ${message.replyCount === 1 ? "reply" : "replies"}`}
                     </Txt>
-                    {message.latestReplyPreview || message.replies?.length ? (
+                    {message.latestReplyPreview ? (
                       <Txt
                         variant="caption"
                         tone="muted"
                         numberOfLines={1}
                         style={{ minWidth: 0, flex: 1 }}
                       >
-                        {message.latestReplyPreview?.body ||
-                          message.replies?.[message.replies.length - 1]?.body ||
-                          "Open thread"}
+                        {message.latestReplyPreview.body || "Open thread"}
                       </Txt>
                     ) : null}
                   </PressableScale>

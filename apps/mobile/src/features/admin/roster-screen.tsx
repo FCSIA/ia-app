@@ -89,12 +89,12 @@ export function RosterScreen() {
     const invalidCopy = invalidRows
       ? ` ${invalidRows} invalid ${invalidRows === 1 ? "row is" : "rows are"} excluded.`
       : "";
-    const passwordCopy =
+    const credentialNotice =
       " A separate credentials CSV will open in the share sheet. Share it only through an approved school channel.";
 
     Alert.alert(
       `Create ${rows.length} ${rows.length === 1 ? "account" : "accounts"}?`,
-      `This creates live student accounts.${invalidCopy} Existing student IDs are skipped and never overwritten.${passwordCopy}`,
+      `This creates live student accounts.${invalidCopy} Existing student IDs are skipped and never overwritten.${credentialNotice}`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Import", onPress: () => void performImport() },

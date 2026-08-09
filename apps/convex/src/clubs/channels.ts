@@ -18,7 +18,7 @@ import {
   canPostInChannel,
   type ClubContext,
 } from "./access";
-import { toClubUserRef } from "./serialize";
+import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import type { Doc, Id } from "../_generated/dataModel";
 import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
 import {
@@ -74,6 +74,89 @@ const MAX_THREAD_PARENT_DEPTH = 8;
 const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 const MAX_CHANNEL_SEARCH_RESULTS = 30;
+
+const messageAttachmentValidator = v.object({
+  _id: v.id("clubChannelMessageAttachments"),
+  _creationTime: v.number(),
+  messageId: v.id("clubChannelMessages"),
+  fileName: v.string(),
+  fileUrl: v.string(),
+  mimeType: v.optional(v.string()),
+  size: v.optional(v.number()),
+  createdAt: v.string(),
+});
+const messageReactionValidator = v.object({
+  emoji: v.string(),
+  count: v.number(),
+  reactedByCurrentUser: v.boolean(),
+  reactors: v.array(clubUserRefValidator),
+  countIsCapped: v.boolean(),
+});
+const messagePollValidator = v.union(
+  v.object({
+    question: v.string(),
+    options: v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        count: v.number(),
+        votedByCurrentUser: v.boolean(),
+      }),
+    ),
+    totalVotes: v.number(),
+    votesTruncated: v.optional(v.boolean()),
+  }),
+  v.null(),
+);
+const messageSummaryValidator = v.object({
+  _id: v.id("clubChannelMessages"),
+  _creationTime: v.number(),
+  channelId: v.id("clubChannels"),
+  authorId: v.id("users"),
+  parentMessageId: v.optional(v.id("clubChannelMessages")),
+  body: v.string(),
+  bodyMarkdown: v.optional(v.string()),
+  bodyRich: v.optional(v.any()),
+  isPinned: v.boolean(),
+  pinnedAt: v.union(v.string(), v.null()),
+  isDeleted: v.boolean(),
+  deletedAt: v.union(v.string(), v.null()),
+  createdAt: v.string(),
+  updatedAt: v.string(),
+  threadRootId: v.id("clubChannelMessages"),
+  author: clubUserRefValidator,
+  mentions: v.array(v.string()),
+  attachments: v.array(messageAttachmentValidator),
+  attachmentsTruncated: v.boolean(),
+  reactions: v.array(messageReactionValidator),
+  reactionsTruncated: v.boolean(),
+  replyCount: v.number(),
+  replyCountIsExact: v.boolean(),
+  hasReplies: v.boolean(),
+  latestReplyPreview: v.union(
+    v.object({
+      _id: v.id("clubChannelMessages"),
+      body: v.string(),
+      isDeleted: v.boolean(),
+      createdAt: v.string(),
+    }),
+    v.null(),
+  ),
+  poll: messagePollValidator,
+});
+const messagePageValidator = v.object({
+  page: v.array(messageSummaryValidator),
+  isDone: v.boolean(),
+  continueCursor: v.string(),
+  pageStatus: v.optional(
+    v.union(
+      v.literal("SplitRecommended"),
+      v.literal("SplitRequired"),
+      v.null(),
+    ),
+  ),
+  splitCursor: v.optional(v.union(v.string(), v.null())),
+});
 
 type PlannedMention = {
   kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG";
@@ -668,7 +751,11 @@ async function serializeMessage(
   }
 
   return {
-    ...message,
+    _id: message._id,
+    _creationTime: message._creationTime,
+    channelId: message.channelId,
+    authorId: message.authorId,
+    parentMessageId: message.parentMessageId,
     body: isDeleted ? "" : message.body,
     bodyMarkdown: isDeleted ? undefined : message.bodyMarkdown,
     bodyRich: isDeleted ? undefined : message.bodyRich,
@@ -795,7 +882,11 @@ async function serializeMessageSummary(
     : null;
 
   return {
-    ...message,
+    _id: message._id,
+    _creationTime: message._creationTime,
+    channelId: message.channelId,
+    authorId: message.authorId,
+    parentMessageId: message.parentMessageId,
     body: isDeleted ? "" : message.body,
     bodyMarkdown: isDeleted ? undefined : message.bodyMarkdown,
     bodyRich: isDeleted ? undefined : message.bodyRich,
@@ -829,7 +920,6 @@ async function serializeMessageSummary(
       countIsCapped: reactionsTruncated,
     })),
     reactionsTruncated,
-    replies: [],
     replyCount: latestReply ? 1 : 0,
     replyCountIsExact: includeLatestReply && !latestReply,
     hasReplies: !!latestReply,
@@ -1032,7 +1122,7 @@ export const getMessagePage = query({
     channelId: v.id("clubChannels"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.object({ page: v.array(v.any()), isDone: v.boolean(), continueCursor: v.string(), pageStatus: v.optional(v.any()), splitCursor: v.optional(v.any()) }),
+  returns: messagePageValidator,
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyMessagePage(args.paginationOpts.cursor);
@@ -1066,7 +1156,7 @@ export const searchMessages = query({
     channelId: v.id("clubChannels"),
     search: v.string(),
   },
-  returns: v.array(v.any()),
+  returns: v.array(messageSummaryValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
@@ -1103,7 +1193,14 @@ export const getThread = query({
     channelId: v.id("clubChannels"),
     messageId: v.id("clubChannelMessages"),
   },
-  returns: v.union(v.object({ root: v.any(), replies: v.array(v.any()), hasMoreReplies: v.boolean() }), v.null()),
+  returns: v.union(
+    v.object({
+      root: messageSummaryValidator,
+      replies: v.array(messageSummaryValidator),
+      hasMoreReplies: v.boolean(),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
@@ -1149,7 +1246,7 @@ export const getThread = query({
 
 export const getMessages = query({
   args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
-  returns: v.array(v.any()),
+  returns: v.array(messageSummaryValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
@@ -1167,7 +1264,9 @@ export const getMessages = query({
     const roots = chronologicalFromNewest(rootsNewest);
 
     const messages = await Promise.all(
-      roots.map((m) => serializeMessage(ctx, m._id, user._id)),
+      roots.map((message) =>
+        serializeMessageSummary(ctx, message, user._id, true),
+      ),
     );
     return messages.filter((m): m is NonNullable<typeof m> => !!m);
   },

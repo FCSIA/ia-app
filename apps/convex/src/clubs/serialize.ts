@@ -3,6 +3,57 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
 import { canPostInChannel, canReadChannel } from "./access";
+import { clubChannelVisibilityValidator } from "../validators";
+
+export const clubUserRefValidator = v.object({
+  _id: v.id("users"),
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  roles: v.array(v.string()),
+  avatarUrl: v.union(v.string(), v.null()),
+});
+
+export const clubViewerStateValidator = v.object({
+  isMember: v.boolean(),
+  hasClubRole: v.boolean(),
+  isSponsor: v.boolean(),
+  isAdmin: v.boolean(),
+  canAccessWorkspace: v.boolean(),
+  canManageChannels: v.boolean(),
+  canManageMembership: v.boolean(),
+  canApproveJoinRequests: v.boolean(),
+  hasPendingJoinRequest: v.boolean(),
+});
+
+export const visibleClubChannelValidator = v.object({
+  _id: v.id("clubChannels"),
+  _creationTime: v.number(),
+  clubId: v.id("clubs"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  visibility: clubChannelVisibilityValidator,
+  createdById: v.id("users"),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  viewerCanRead: v.boolean(),
+  viewerCanPost: v.boolean(),
+  memberships: v.array(v.object({ userId: v.id("users") })),
+  _count: v.object({ messages: v.number() }),
+});
+
+export const workspaceClubChannelValidator = v.object({
+  _id: v.id("clubChannels"),
+  clubId: v.id("clubs"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  visibility: clubChannelVisibilityValidator,
+  createdById: v.id("users"),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  memberships: v.array(v.object({ userId: v.id("users") })),
+  viewerCanPost: v.boolean(),
+});
 
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
 export function toClubUserRef(user: Doc<"users">) {
@@ -129,7 +180,15 @@ export async function getVisibleChannels(
       .take(500);
 
     result.push({
-      ...channel,
+      _id: channel._id,
+      _creationTime: channel._creationTime,
+      clubId: channel.clubId,
+      name: channel.name,
+      description: channel.description,
+      visibility: channel.visibility,
+      createdById: channel.createdById,
+      createdAt: channel.createdAt,
+      updatedAt: channel.updatedAt,
       ...viewer,
       memberships: memberships.map((m) => ({ userId: m.userId })),
       _count: { messages: messages.length },
