@@ -8,7 +8,7 @@ describe("upload metadata validation", () => {
   test("uses stored MIME type instead of client fallback for chat attachments", () => {
     expect(() =>
       validateChatAttachmentMetadata({ contentType: "image/svg+xml", size: 1024 }),
-    ).toThrow("This file type is not allowed");
+    ).toThrow("This file type is not supported");
   });
 
   test("rejects oversized chat attachments from stored metadata", () => {
@@ -26,11 +26,16 @@ describe("upload metadata validation", () => {
     ).toEqual({ mimeType: "application/pdf", size: 2048 });
   });
 
-  test("uses a safe generic MIME type when storage has none", () => {
-    expect(validateChatAttachmentMetadata({ size: 512 })).toEqual({
-      mimeType: "application/octet-stream",
-      size: 512,
-    });
+  test("rejects missing and unknown stored MIME types", () => {
+    expect(() => validateChatAttachmentMetadata({ size: 512 })).toThrow(
+      "This file type is not supported",
+    );
+    expect(() =>
+      validateChatAttachmentMetadata({
+        contentType: "application/octet-stream",
+        size: 512,
+      }),
+    ).toThrow("This file type is not supported");
   });
 
   test("only allows raster club images", () => {

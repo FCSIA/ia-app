@@ -1,19 +1,16 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import {
+  isSupportedStoredFileMime,
+  normalizeStoredFileMime,
+} from "./fileSignatures";
 
 export const MAX_CHAT_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_CHANNEL_MESSAGE_ATTACHMENTS = 5;
 export const STAGED_CHAT_ATTACHMENT_TTL_MS = 60 * 60 * 1000;
 
 const MAX_CHAT_ATTACHMENT_FILE_NAME_CHARACTERS = 160;
-const BLOCKED_CHAT_ATTACHMENT_TYPES = new Set([
-  "application/javascript",
-  "image/svg+xml",
-  "text/html",
-  "text/javascript",
-]);
-
 type StorageMetadataInput = {
   contentType?: string;
   size: number;
@@ -35,18 +32,17 @@ export function normalizeChatAttachmentFileName(fileName: string) {
 }
 
 export function validateChatAttachmentMetadata(metadata: StorageMetadataInput) {
-  const mimeType = (metadata.contentType ?? "application/octet-stream")
-    .split(";", 1)[0]
-    .trim()
-    .toLowerCase();
+  const mimeType = normalizeStoredFileMime(
+    metadata.contentType ?? "application/octet-stream",
+  );
   if (!Number.isFinite(metadata.size) || metadata.size < 0) {
     throw new ConvexError("File size is invalid");
   }
   if (metadata.size > MAX_CHAT_ATTACHMENT_BYTES) {
     throw new ConvexError("File too large");
   }
-  if (BLOCKED_CHAT_ATTACHMENT_TYPES.has(mimeType)) {
-    throw new ConvexError("This file type is not allowed");
+  if (!isSupportedStoredFileMime(mimeType)) {
+    throw new ConvexError("This file type is not supported");
   }
   return { mimeType, size: metadata.size };
 }

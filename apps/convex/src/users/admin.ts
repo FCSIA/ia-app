@@ -36,6 +36,7 @@ import {
   normalizeUniqueId,
   adminUserProfileValidator,
   assertCanActOn,
+  assertCanResetPassword,
   betterAuthRoleForAppRoles,
   isPrivilegeReduction,
   revokeBetterAuthSessions,
@@ -788,16 +789,7 @@ export const resetPassword = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
-    assertCanActOn(actor, target);
-
-    if (
-      actor.roles.includes("SUPPORT_STAFF") &&
-      !target.roles.some((role) =>
-        ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-      )
-    ) {
-      throw new ConvexError("Support staff can only reset student passwords.");
-    }
+    assertCanResetPassword(actor, target);
 
     if (!target.authUserId) {
       throw new ConvexError("User is not linked to an auth account.");

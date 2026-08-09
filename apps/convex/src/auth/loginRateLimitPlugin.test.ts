@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { credentialIdentifier, isCredentialPath, trustedClientIp } from "./loginRateLimitPlugin";
+import {
+  APIError,
+} from "better-auth/api";
+import {
+  credentialIdentifier,
+  credentialIdentifierForRequest,
+  isCredentialPath,
+  isFailedCredentialResponse,
+  trustedClientIp,
+} from "./loginRateLimitPlugin";
 import { loginBackoffMs } from "../authLoginRateLimit";
 
 describe("credential rate-limit routing", () => {
@@ -11,6 +20,38 @@ describe("credential rate-limit routing", () => {
   test("extracts both username and email identifiers", () => {
     expect(credentialIdentifier({ username: "STU001" })).toBe("STU001");
     expect(credentialIdentifier({ email: "stu001@fcstu.org" })).toBe("stu001@fcstu.org");
+  });
+
+  test("keys password changes by the authenticated account without a body identifier", () => {
+    expect(
+      credentialIdentifierForRequest(
+        "/change-password",
+        { currentPassword: "old", newPassword: "new" },
+        "auth-user-1",
+      ),
+    ).toBe("auth-user-1");
+    expect(
+      credentialIdentifierForRequest("/change-password", {}, undefined),
+    ).toBe("unauthenticated-change-password");
+  });
+
+  test("counts both unauthorized login and invalid current-password failures", () => {
+    expect(
+      isFailedCredentialResponse(
+        APIError.from("UNAUTHORIZED", {
+          code: "INVALID_CREDENTIALS",
+          message: "bad login",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isFailedCredentialResponse(
+        APIError.from("BAD_REQUEST", {
+          code: "INVALID_PASSWORD",
+          message: "bad current password",
+        }),
+      ),
+    ).toBe(true);
   });
 
   test("uses a platform IP or the right-most forwarded hop", () => {

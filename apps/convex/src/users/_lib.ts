@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { hashPassword } from "better-auth/crypto";
-import { authComponent, createAuth } from "../auth";
+import { createAuth } from "../auth";
 import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
@@ -242,6 +242,21 @@ export function assertCanActOn(
   }
 }
 
+export function assertCanResetPassword(
+  actor: Pick<Doc<"users">, "roles">,
+  target: Pick<Doc<"users">, "roles">,
+) {
+  assertCanActOn(actor, target);
+  if (
+    actor.roles.includes("SUPPORT_STAFF") &&
+    !target.roles.some((role) =>
+      ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
+    )
+  ) {
+    throw new ConvexError("Support staff can only reset student passwords.");
+  }
+}
+
 export async function syncBetterAuthRole(
   ctx: MutationCtx,
   target: Pick<Doc<"users">, "authUserId" | "roles">,
@@ -261,10 +276,12 @@ export async function revokeBetterAuthSessions(
   authUserId: string | undefined,
 ) {
   if (!authUserId) return;
-  const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-  await auth.api.revokeUserSessions({
-    body: { userId: authUserId },
-    headers,
+  await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+    input: {
+      model: "session",
+      where: [{ field: "userId", value: authUserId }],
+    },
+    paginationOpts: { cursor: null, numItems: 1000 },
   });
 }
 

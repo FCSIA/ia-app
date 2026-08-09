@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest";
 import {
   assertCanActOn,
+  assertCanResetPassword,
   assertInitialPasswordAllowed,
   betterAuthRoleForAppRoles,
   generateTemporaryPassword,
   isPrivilegeReduction,
+  revokeBetterAuthSessions,
 } from "./_lib";
 
 describe("generateTemporaryPassword", () => {
@@ -51,6 +53,21 @@ describe("privileged account boundaries", () => {
     ).not.toThrow();
   });
 
+  test("allows support staff to reset students but no staff accounts", () => {
+    expect(() =>
+      assertCanResetPassword(
+        { roles: ["SUPPORT_STAFF"] as never },
+        { roles: ["STUDENT"] as never },
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertCanResetPassword(
+        { roles: ["SUPPORT_STAFF"] as never },
+        { roles: ["TEACHER"] as never },
+      ),
+    ).toThrow(/only reset student passwords/i);
+  });
+
   test("treats role removal and tier demotion as session-revoking reductions", () => {
     expect(isPrivilegeReduction(["ADMIN"], ["STUDENT"])).toBe(true);
     expect(
@@ -76,5 +93,30 @@ describe("initial password validation", () => {
     expect(() =>
       assertInitialPasswordAllowed("RandomPass42!", "STU001"),
     ).not.toThrow();
+  });
+});
+
+describe("session revocation", () => {
+  test("deletes the target user's sessions through the trusted adapter", async () => {
+    const calls: unknown[] = [];
+    await revokeBetterAuthSessions(
+      {
+        runMutation: async (_reference: unknown, args: unknown) => {
+          calls.push(args);
+          return null;
+        },
+      } as never,
+      "auth-user-1",
+    );
+
+    expect(calls).toEqual([
+      {
+        input: {
+          model: "session",
+          where: [{ field: "userId", value: "auth-user-1" }],
+        },
+        paginationOpts: { cursor: null, numItems: 1000 },
+      },
+    ]);
   });
 });

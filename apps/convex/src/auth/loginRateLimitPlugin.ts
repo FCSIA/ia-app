@@ -1,6 +1,11 @@
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { isRunMutationCtx } from "@convex-dev/better-auth/utils";
-import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
+import {
+  APIError,
+  createAuthMiddleware,
+  getAuthoritativeSessionFromCtx,
+  isAPIError,
+} from "better-auth/api";
 import type { BetterAuthPlugin } from "better-auth";
 import { internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
@@ -24,6 +29,26 @@ export function credentialIdentifier(body: unknown) {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+export function credentialIdentifierForRequest(
+  path: string | undefined,
+  body: unknown,
+  sessionUserId?: string,
+) {
+  return (
+    credentialIdentifier(body) ??
+    (path === "/change-password"
+      ? sessionUserId || "unauthenticated-change-password"
+      : null)
+  );
+}
+
+export function isFailedCredentialResponse(returned: unknown) {
+  if (!isAPIError(returned)) return false;
+  if (returned.status === "UNAUTHORIZED") return true;
+  const code = (returned as { body?: { code?: unknown } }).body?.code;
+  return code === "INVALID_PASSWORD";
+}
+
 export function trustedClientIp(request: Request | undefined) {
   if (!request) return "unknown";
   const platform = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip");
@@ -45,7 +70,15 @@ export function createLoginRateLimitPlugin(
               return;
             }
 
-            const identifier = credentialIdentifier(ctx.body);
+            const session =
+              ctx.path === "/change-password"
+                ? await getAuthoritativeSessionFromCtx(ctx)
+                : null;
+            const identifier = credentialIdentifierForRequest(
+              ctx.path,
+              ctx.body,
+              session?.user.id,
+            );
             if (!identifier) return;
             const ip = trustedClientIp(ctx.request);
 
@@ -75,10 +108,22 @@ export function createLoginRateLimitPlugin(
               return;
             }
 
-            const identifier = credentialIdentifier(ctx.body);
+            const session =
+              ctx.path === "/change-password"
+                ? await getAuthoritativeSessionFromCtx(ctx)
+                : null;
+            const identifier = credentialIdentifierForRequest(
+              ctx.path,
+              ctx.body,
+              session?.user.id,
+            );
             if (!identifier) return;
 
-            if (ctx.context.newSession) {
+            const returned = ctx.context.returned;
+            if (
+              ctx.context.newSession ||
+              (ctx.path === "/change-password" && !isAPIError(returned))
+            ) {
               await convexCtx.runMutation(
                 internal.authLoginRateLimit.clearFailedLoginAttemptsMutation,
                 { identifier },
@@ -86,8 +131,7 @@ export function createLoginRateLimitPlugin(
               return;
             }
 
-            const returned = ctx.context.returned;
-            if (isAPIError(returned) && returned.status === "UNAUTHORIZED") {
+            if (isFailedCredentialResponse(returned)) {
               await convexCtx.runMutation(
                 internal.authLoginRateLimit.recordFailedLoginAttemptMutation,
                 { identifier },
