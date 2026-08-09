@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, Fragment, type ReactNode } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type TouchEvent as ReactTouchEvent,
+} from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -118,12 +126,14 @@ export function AppShell({
   mainClassName,
   pageTransitionClassName,
   channelSearch,
+  onMobileSwipeRight,
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
   mainClassName?: string;
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
+  onMobileSwipeRight?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -135,6 +145,44 @@ export function AppShell({
   const { toast } = useToast();
   const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? '/dashboard';
+  const swipeStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
+  const swipeActionRef = useRef(onMobileSwipeRight ?? (() => setMobileOpen(true)));
+
+  useEffect(() => {
+    swipeActionRef.current = onMobileSwipeRight ?? (() => setMobileOpen(true));
+  }, [onMobileSwipeRight]);
+
+  const handleTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (window.matchMedia('(min-width: 768px)').matches || event.touches.length !== 1) {
+      swipeStartRef.current = null;
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(
+        '[data-swipe-navigation-ignore], input, textarea, select, [contenteditable="true"], [role="slider"], [role="tablist"]',
+      )
+    ) {
+      swipeStartRef.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, at: performance.now() };
+  };
+
+  const handleTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || event.changedTouches.length !== 1) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = Math.abs(touch.clientY - start.y);
+    const elapsed = performance.now() - start.at;
+    if (deltaX >= 72 && deltaX > deltaY * 1.4 && deltaY <= 64 && elapsed <= 650) {
+      swipeActionRef.current();
+    }
+  };
 
   useEffect(() => {
     setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));
@@ -236,7 +284,14 @@ export function AppShell({
 
   return (
     <Fragment>
-      <div className="app-root flex min-h-screen w-full bg-background">
+      <div
+        className="app-root flex min-h-screen w-full bg-background"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => {
+          swipeStartRef.current = null;
+        }}
+      >
         {/* Narrow dark sidebar (icon-only, sticky).
             z-40 creates a stacking context above all sibling content (including
             the clubs workspace secondary sidebar at bg-background / z-auto), so
@@ -387,6 +442,16 @@ export function AppShell({
                 {searchScopeToggle}
               </div>
             )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 lg:hidden"
+              aria-label="Search"
+              onClick={() => setCommandOpen(true)}
+            >
+              <Search />
+            </Button>
             {user ? (
               <DropdownMenu>
                 <DropdownTrigger
