@@ -47,7 +47,6 @@ const unitMemberValidator = v.object({
     uniqueId: v.string(),
     firstName: v.string(),
     lastName: v.string(),
-    email: v.union(v.string(), v.null()),
     roles: v.array(v.string()),
     avatarUrl: v.union(v.string(), v.null()),
   }),
