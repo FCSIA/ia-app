@@ -118,6 +118,13 @@ export const schema = defineSchema({
       "createdAt",
     ]),
 
+  loginFailures: defineTable({
+    accountKey: v.string(),
+    failureCount: v.number(),
+    lockedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_accountKey", ["accountKey"]),
+
   notificationDeliveries: defineTable({
     userId: v.id("users"),
     category: notificationCategoryValidator,

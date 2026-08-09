@@ -1,6 +1,6 @@
 import type { GenericCtx } from "@convex-dev/better-auth";
 import { isRunMutationCtx } from "@convex-dev/better-auth/utils";
-import { APIError, createAuthMiddleware, getIp, isAPIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import type { BetterAuthPlugin } from "better-auth";
 import { internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
@@ -10,7 +10,25 @@ function formatRetryMessage(reason: LoginRateLimitReason, retryAfterSec: number)
   if (reason === "account_locked") {
     return `Too many failed login attempts for this account. Try again in ${retryAfterSec} seconds.`;
   }
-  return `Too many login attempts from this network. Try again in ${retryAfterSec} seconds.`;
+  return `Too many login attempts. Try again in ${retryAfterSec} seconds.`;
+}
+
+export function isCredentialPath(path: string | undefined) {
+  return path?.startsWith("/sign-in/") === true || path === "/change-password" || path === "/forget-password";
+}
+
+export function credentialIdentifier(body: unknown) {
+  if (!body || typeof body !== "object") return null;
+  const typed = body as { username?: unknown; email?: unknown };
+  const value = typed.username ?? typed.email;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+export function trustedClientIp(request: Request | undefined) {
+  if (!request) return "unknown";
+  const platform = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-real-ip");
+  if (platform?.trim()) return platform.trim();
+  return request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
 }
 
 export function createLoginRateLimitPlugin(
@@ -21,26 +39,19 @@ export function createLoginRateLimitPlugin(
     hooks: {
       before: [
         {
-          matcher: (ctx) => ctx.path === "/sign-in/username",
+          matcher: (ctx) => isCredentialPath(ctx.path),
           handler: createAuthMiddleware(async (ctx) => {
             if (!isRunMutationCtx(convexCtx)) {
               return;
             }
 
-            const username = ctx.body?.username;
-            if (typeof username !== "string" || !username.trim()) {
-              return;
-            }
-
-            const ip = ctx.request
-              ? (getIp(ctx.request, ctx.context.options) ??
-                ctx.request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-                "unknown")
-              : "unknown";
+            const identifier = credentialIdentifier(ctx.body);
+            if (!identifier) return;
+            const ip = trustedClientIp(ctx.request);
 
             const result = await convexCtx.runMutation(
               internal.authLoginRateLimit.assessLoginAttemptMutation,
-              { username, ip },
+              { identifier, ip },
             );
 
             if (!result.allowed) {
@@ -58,21 +69,19 @@ export function createLoginRateLimitPlugin(
       ],
       after: [
         {
-          matcher: (ctx) => ctx.path === "/sign-in/username",
+          matcher: (ctx) => isCredentialPath(ctx.path),
           handler: createAuthMiddleware(async (ctx) => {
             if (!isRunMutationCtx(convexCtx)) {
               return;
             }
 
-            const username = ctx.body?.username;
-            if (typeof username !== "string" || !username.trim()) {
-              return;
-            }
+            const identifier = credentialIdentifier(ctx.body);
+            if (!identifier) return;
 
             if (ctx.context.newSession) {
               await convexCtx.runMutation(
                 internal.authLoginRateLimit.clearFailedLoginAttemptsMutation,
-                { username },
+                { identifier },
               );
               return;
             }
@@ -81,7 +90,7 @@ export function createLoginRateLimitPlugin(
             if (isAPIError(returned) && returned.status === "UNAUTHORIZED") {
               await convexCtx.runMutation(
                 internal.authLoginRateLimit.recordFailedLoginAttemptMutation,
-                { username },
+                { identifier },
               );
             }
           }),

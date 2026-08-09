@@ -11,6 +11,15 @@ overrides:
   react-dom: "19.2.3"
   "@types/react": "19.2.7"
   "@types/react-dom": "19.2.3"
+  ws: ">=8.21.0"
+  postcss: ">=8.5.18"
+  lodash: ">=4.18.0"
+  sharp: ">=0.35.0"
+  hono: ">=4.12.34"
+  effect: ">=3.20.0"
+  brace-expansion: ">=5.0.9"
+  js-yaml: ">=4.3.1"
+  nanoid: ">=5.1.16"
 
 onlyBuiltDependencies:
   - bcrypt
@@ -19,6 +28,10 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 allowBuilds:
+  '@prisma/client': false
+  '@prisma/engines': false
   esbuild: true
+  prisma: false
   sharp: true
+  tesseract.js: false
   unrs-resolver: true
