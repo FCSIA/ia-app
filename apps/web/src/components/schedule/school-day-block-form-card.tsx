@@ -5,7 +5,7 @@ import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { parseTimeToMinutes } from './schedule-utils';
 import { SchoolDayBlock, SchoolDayBlockPayload, ScheduleWeekday } from './types';
 
@@ -84,16 +84,14 @@ export function SchoolDayBlockFormCard({
         <div className="space-y-1.5">
           <Label className="text-xs">Block type</Label>
           <Select value={kind} onValueChange={(value) => setKind(value as 'PERIOD' | 'CUSTOM')}>
-            <SelectTrigger className="h-9" placeholder="" />
+            <SelectTrigger placeholder="" />
             <SelectContent>
-              <SelectGroup>
-                <SelectItem index={0} value="PERIOD">
-                  Period block
-                </SelectItem>
-                <SelectItem index={1} value="CUSTOM">
-                  Custom block
-                </SelectItem>
-              </SelectGroup>
+              <SelectItem index={0} value="PERIOD">
+                Period block
+              </SelectItem>
+              <SelectItem index={1} value="CUSTOM">
+                Custom block
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -102,15 +100,13 @@ export function SchoolDayBlockFormCard({
           <div className="space-y-1.5">
             <Label className="text-xs">Period</Label>
             <Select value={periodNumber} onValueChange={setPeriodNumber}>
-              <SelectTrigger className="h-9" placeholder="" />
+              <SelectTrigger placeholder="" />
               <SelectContent>
-                <SelectGroup>
-                  {Array.from({ length: 8 }, (_, index) => (
-                    <SelectItem index={index} key={index + 1} value={(index + 1).toString()}>
-                      Period {index + 1}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
+                {Array.from({ length: 8 }, (_, index) => (
+                  <SelectItem index={index} key={index + 1} value={(index + 1).toString()}>
+                    Period {index + 1}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

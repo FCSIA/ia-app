@@ -18,7 +18,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { parseInfiniteCampusSchedule, type ImportedScheduleRow, type OcrScheduleRow } from '@/lib/schedule-ocr';
@@ -216,18 +216,16 @@ export function ScheduleImportDialog({
                               );
                             }}
                           >
-                            <SelectTrigger className="w-full" />
+                            <SelectTrigger />
                             <SelectContent>
-                              <SelectGroup>
-                                <SelectItem value="custom" index={0}>
-                                  {row.className} (use OCR text)
+                              <SelectItem value="custom" index={0}>
+                                {row.className} (use OCR text)
+                              </SelectItem>
+                              {courses.map((course, courseIndex) => (
+                                <SelectItem key={course.id} value={course.id} index={courseIndex + 1}>
+                                  {course.title}
                                 </SelectItem>
-                                {courses.map((course, courseIndex) => (
-                                  <SelectItem key={course.id} value={course.id} index={courseIndex + 1}>
-                                    {course.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
+                              ))}
                             </SelectContent>
                           </Select>
                           <p className="mt-1 truncate text-[11px] text-muted-foreground" title={row.sourceText}>

@@ -194,11 +194,13 @@
   and visible friend/join values use Fluid InputCopy. Event Share uses the native
   share sheet with a centralized copy fallback.
 - Superadmin day plans now use the REUI Sortable interaction for pointer, touch,
-  and keyboard block reordering while keeping school time slots fixed. The
-  admin date chooser shares the current shadcn Popover + Calendar composition,
-  inner date/template navigation uses Fluid Tabs, and schedule option fields use
-  the current Radix-backed Fluid Select behavior. Applying a template is labeled
-  and explained as a date-plan replacement instead of a clipboard-style clone.
+  and keyboard block reordering while keeping school time slots fixed; redundant
+  arrow controls and the superadmin-only one-item tab list are removed. The admin
+  date chooser uses the current shadcn Popover + Calendar composition with fixed
+  Tailwind v4 CSS-variable sizing, while date/template navigation and schedule
+  option fields use the exact current Fluid Radix Tabs and Select sources without
+  call-site styling overrides. Applying a template is labeled and explained as a
+  date-plan replacement instead of a clipboard-style clone.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained

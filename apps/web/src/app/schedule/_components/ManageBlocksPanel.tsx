@@ -4,10 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import {
-  ArrowDown,
-  ArrowRight,
-  ArrowUp,
-  CalendarClock,
+  CalendarPlus,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -25,7 +22,6 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
@@ -205,7 +201,7 @@ function PlanBlockEditor({
               className="group bg-surface-2 data-[dragging=true]:relative data-[dragging=true]:z-20 data-[dragging=true]:rounded-lg data-[dragging=true]:shadow-surface-3"
             >
               <div className="grid gap-2 px-3 py-3 md:grid-cols-[2.25rem_minmax(8rem,1fr)_minmax(12rem,0.9fr)_2.25rem] md:items-center">
-                <div className="flex items-center gap-0.5 max-md:order-4">
+                <div className="flex items-center max-md:order-4">
                   {!readOnly ? (
                     <SortableItemHandle
                       render={
@@ -213,7 +209,6 @@ function PlanBlockEditor({
                           type="button"
                           variant="ghost"
                           size="icon-sm"
-                          className="size-6 text-muted-foreground"
                           aria-label={`Drag ${block.label} to reorder`}
                         />
                       }
@@ -221,48 +216,11 @@ function PlanBlockEditor({
                       <GripVertical />
                     </SortableItemHandle>
                   ) : (
-                    <GripVertical
-                      className="size-3.5 text-muted-foreground/35"
-                      aria-hidden="true"
-                    />
+                    <GripVertical aria-hidden="true" />
                   )}
-                  {!readOnly ? (
-                    <div className="flex md:flex-col">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-5"
-                        aria-label={`Move ${block.label} earlier`}
-                        disabled={index === 0}
-                        onClick={() =>
-                          onChange(
-                            reorderBlockIdentity(blocks, index, index - 1),
-                          )
-                        }
-                      >
-                        <ArrowUp className="size-3" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-5"
-                        aria-label={`Move ${block.label} later`}
-                        disabled={index === blocks.length - 1}
-                        onClick={() =>
-                          onChange(
-                            reorderBlockIdentity(blocks, index, index + 1),
-                          )
-                        }
-                      >
-                        <ArrowDown className="size-3" />
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
 
-                <div className="grid min-w-0 gap-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)]">
                   <Select
                     value={
                       block.periodNumber === null
@@ -287,22 +245,20 @@ function PlanBlockEditor({
                       }
                     }}
                   >
-                    <SelectTrigger className="h-8 min-w-0 w-full" />
+                    <SelectTrigger />
                     <SelectContent>
-                      <SelectGroup>
-                        {Array.from({ length: 8 }, (_, periodIndex) => (
-                          <SelectItem
-                            key={periodIndex + 1}
-                            index={periodIndex}
-                            value={String(periodIndex + 1)}
-                          >
-                            Period {periodIndex + 1}
-                          </SelectItem>
-                        ))}
-                        <SelectItem index={8} value="CUSTOM">
-                          Custom block
+                      {Array.from({ length: 8 }, (_, periodIndex) => (
+                        <SelectItem
+                          key={periodIndex + 1}
+                          index={periodIndex}
+                          value={String(periodIndex + 1)}
+                        >
+                          Period {periodIndex + 1}
                         </SelectItem>
-                      </SelectGroup>
+                      ))}
+                      <SelectItem index={8} value="CUSTOM">
+                        Custom block
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
@@ -353,7 +309,7 @@ function PlanBlockEditor({
                       )
                     }
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 />
                   </Button>
                 ) : (
                   <span />
@@ -369,6 +325,7 @@ function PlanBlockEditor({
             variant="ghost"
             size="sm"
             className="m-2"
+            leadingIcon={Plus}
             onClick={() => {
               const previousEnd = blocks.at(-1)?.endTime ?? "08:00";
               onChange([
@@ -382,26 +339,11 @@ function PlanBlockEditor({
               ]);
             }}
           >
-            <Plus className="size-3.5" />
             Add block
           </Button>
         ) : null}
       </div>
       <PlanPreview blocks={blocks} />
-    </div>
-  );
-}
-
-function WorkspaceModeSwitch() {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
-      <TabsList>
-        <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
-        <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
-      </TabsList>
-      <p className="text-xs text-muted-foreground">
-        Times are school-local (America/New_York).
-      </p>
     </div>
   );
 }
@@ -440,7 +382,7 @@ function DatePlanWorkspace({
   onResetDate: () => void;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-5">
       <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 shadow-surface-1 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1.5">
@@ -455,7 +397,7 @@ function DatePlanWorkspace({
                 aria-label="Previous date"
                 onClick={() => onDateKeyChange(shiftDateKey(dateKey, -1))}
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft />
               </Button>
               <ScheduleDatePicker
                 id="admin-schedule-date"
@@ -470,29 +412,24 @@ function DatePlanWorkspace({
                 aria-label="Next date"
                 onClick={() => onDateKeyChange(shiftDateKey(dateKey, 1))}
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight />
               </Button>
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Template source</Label>
             <Select value={selectedTemplateId} onValueChange={onTemplateSelect}>
-              <SelectTrigger
-                className="h-8 min-w-[13rem]"
-                placeholder="Choose template"
-              />
+              <SelectTrigger placeholder="Choose template" />
               <SelectContent>
-                <SelectGroup>
-                  {workspace.templates.map((template, index) => (
-                    <SelectItem
-                      key={template.id}
-                      index={index}
-                      value={template.id}
-                    >
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
+                {workspace.templates.map((template, index) => (
+                  <SelectItem
+                    key={template.id}
+                    index={index}
+                    value={template.id}
+                  >
+                    {template.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -500,24 +437,21 @@ function DatePlanWorkspace({
             type="button"
             variant="tertiary"
             size="sm"
+            leadingIcon={CalendarPlus}
             disabled={!selectedApplyTemplate || pending !== null}
             loading={pending === "apply-date"}
             onClick={onApplyTemplate}
           >
-            <ArrowRight />
             Use template
           </Button>
         </div>
-        <div className="flex items-center gap-2">
-          {workspace.override ? (
-            <Badge color="orange" size="sm">
-              Custom date plan
-            </Badge>
-          ) : (
-            <Badge size="sm">Uses regular template</Badge>
-          )}
-          <CalendarClock className="size-4 text-muted-foreground" />
-        </div>
+        {workspace.override ? (
+          <Badge color="orange" size="sm">
+            Custom date plan
+          </Badge>
+        ) : (
+          <Badge size="sm">Uses regular template</Badge>
+        )}
       </div>
 
       <p className="-mt-3 text-xs text-muted-foreground">
@@ -543,20 +477,20 @@ function DatePlanWorkspace({
             <Button
               type="button"
               size="sm"
+              leadingIcon={Save}
               disabled={pending !== null}
               onClick={onSaveDate}
             >
-              <Save className="size-3.5" />
               Save date
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
+              leadingIcon={RotateCcw}
               disabled={pending !== null}
               onClick={onResetDate}
             >
-              <RotateCcw className="size-3.5" />
               Return to regular template
             </Button>
           </div>
@@ -617,7 +551,7 @@ function TemplateWorkspace({
   onDeleteTemplate: () => void;
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-5">
       <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 shadow-surface-1 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1.5">
           <Label className="text-xs">Template</Label>
@@ -625,30 +559,25 @@ function TemplateWorkspace({
             value={isNewTemplate ? "__new__" : selectedTemplateId}
             onValueChange={onTemplateSelect}
           >
-            <SelectTrigger
-              className="h-8 min-w-[15rem]"
-              placeholder="Choose template"
-            />
+            <SelectTrigger placeholder="Choose template" />
             <SelectContent>
-              <SelectGroup>
-                {workspace.templates.map((template, index) => (
-                  <SelectItem
-                    key={template.id}
-                    index={index}
-                    value={template.id}
-                  >
-                    {template.name}
-                  </SelectItem>
-                ))}
-                {isNewTemplate ? (
-                  <SelectItem
-                    index={workspace.templates.length}
-                    value="__new__"
-                  >
-                    New template
-                  </SelectItem>
-                ) : null}
-              </SelectGroup>
+              {workspace.templates.map((template, index) => (
+                <SelectItem
+                  key={template.id}
+                  index={index}
+                  value={template.id}
+                >
+                  {template.name}
+                </SelectItem>
+              ))}
+              {isNewTemplate ? (
+                <SelectItem
+                  index={workspace.templates.length}
+                  value="__new__"
+                >
+                  New template
+                </SelectItem>
+              ) : null}
             </SelectContent>
           </Select>
         </div>
@@ -656,9 +585,9 @@ function TemplateWorkspace({
           type="button"
           variant="tertiary"
           size="sm"
+          leadingIcon={Plus}
           onClick={onNewTemplate}
         >
-          <Plus className="size-3.5" />
           New template
         </Button>
       </div>
@@ -682,16 +611,14 @@ function TemplateWorkspace({
               onTemplateKindChange(value as TemplateKind)
             }
           >
-            <SelectTrigger className="w-full" />
+            <SelectTrigger />
             <SelectContent>
-              <SelectGroup>
-                <SelectItem index={0} value="REGULAR">
-                  Regular
-                </SelectItem>
-                <SelectItem index={1} value="SPECIAL">
-                  Special
-                </SelectItem>
-              </SelectGroup>
+              <SelectItem index={0} value="REGULAR">
+                Regular
+              </SelectItem>
+              <SelectItem index={1} value="SPECIAL">
+                Special
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -706,10 +633,10 @@ function TemplateWorkspace({
         <Button
           type="button"
           size="sm"
+          leadingIcon={Save}
           disabled={pending !== null}
           onClick={onSaveTemplate}
         >
-          <Save className="size-3.5" />
           Save template
         </Button>
         {!isNewTemplate && activeTemplate?.kind === "REGULAR" ? (
@@ -732,10 +659,10 @@ function TemplateWorkspace({
             variant="ghost"
             size="sm"
             className="text-destructive hover:text-destructive"
+            leadingIcon={Trash2}
             disabled={pending !== null}
             onClick={onDeleteTemplate}
           >
-            <Trash2 className="size-3.5" />
             Delete
           </Button>
         ) : null}
@@ -841,18 +768,21 @@ export function ManageBlocksPanel() {
   const selectedApplyTemplate = activeTemplate ?? regularTemplate;
 
   return (
-    <TabPanel value="admin" className="mt-5 space-y-5">
+    <div className="space-y-5">
       <Tabs
         value={mode}
         onValueChange={(value) => setMode(value as "dates" | "templates")}
       >
-        <WorkspaceModeSwitch />
+        <TabsList>
+          <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
+          <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
+        </TabsList>
 
         {workspace === undefined ? (
           <div className="mt-5 h-48 animate-pulse rounded-xl bg-muted/30" />
         ) : (
           <>
-            <TabPanel value="dates" className="mt-5">
+            <TabPanel value="dates">
               <DatePlanWorkspace
                 workspace={workspace}
                 dateKey={dateKey}
@@ -905,7 +835,7 @@ export function ManageBlocksPanel() {
                 }
               />
             </TabPanel>
-            <TabPanel value="templates" className="mt-5">
+            <TabPanel value="templates">
               <TemplateWorkspace
                 workspace={workspace}
                 selectedTemplateId={selectedTemplateId}
@@ -973,6 +903,6 @@ export function ManageBlocksPanel() {
           </>
         )}
       </Tabs>
-    </TabPanel>
+    </div>
   );
 }
