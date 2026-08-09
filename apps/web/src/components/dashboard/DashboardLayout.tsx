@@ -151,12 +151,17 @@ function DragGhost({ widget }: { widget: WidgetDefinition }) {
 
 // ─── Main layout ─────────────────────────────────────────────────────────────
 
-export function DashboardLayout() {
+export function DashboardLayout({
+  editing,
+  onEditingChange,
+}: {
+  editing: boolean;
+  onEditingChange: (editing: boolean) => void;
+}) {
   const user = useCurrentUser();
   const { toast } = useToast();
   const updateDashboardLayout = useMutation(api.users.me.updateDashboardLayout);
   const [layout, setLayout] = useState<string[] | null>(null);
-  const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [columnCount, setColumnCount] = useState(2);
@@ -203,8 +208,8 @@ export function DashboardLayout() {
       saveLayout(user._id, layout);
       toast({ title: 'Dashboard saved across all devices' });
     }
-    setEditing(false);
-  }, [layout, toast, updateDashboardLayout, user]);
+    onEditingChange(false);
+  }, [layout, onEditingChange, toast, updateDashboardLayout, user]);
 
   const handleReset = useCallback(() => {
     if (!user) return;
@@ -281,91 +286,79 @@ export function DashboardLayout() {
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-end">
-            <div className="flex items-center gap-3">
-              {editing ? (
-                <>
-                  <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="tertiary"
-                        size="sm"
-                        className="h-9 gap-2 rounded-full px-4"
-                        disabled={missingWidgets.length === 0}
-                      >
-                        <Plus className="size-4" />
-                        Add widget
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg rounded-[2rem]">
-                      <DialogHeader>
-                        <DialogTitle>Add a widget</DialogTitle>
-                        <DialogDescription>
-                          Choose a widget to add to your dashboard.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="mt-4 grid gap-2">
-                        {missingWidgets.length === 0 ? (
-                          <p className="py-6 text-center text-sm text-muted-foreground">
-                            All available widgets are already on your dashboard.
-                          </p>
-                        ) : (
-                          missingWidgets.map((widget) => (
-                            <button
-                              key={widget.id}
-                              type="button"
-                              onClick={() => handleAdd(widget.id)}
-                              className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
-                            >
-                              <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                <LayoutGrid className="size-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-foreground">
-                                  {widget.label}
-                                </p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {widget.description}
-                                </p>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+          {editing ? (
+            <div className="flex items-center justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      className="h-9 gap-2 rounded-full px-4"
+                      disabled={missingWidgets.length === 0}
+                    >
+                      <Plus className="size-4" />
+                      Add widget
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg rounded-[2rem]">
+                    <DialogHeader>
+                      <DialogTitle>Add a widget</DialogTitle>
+                      <DialogDescription>
+                        Choose a widget to add to your dashboard.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4 grid gap-2">
+                      {missingWidgets.length === 0 ? (
+                        <p className="py-6 text-center text-sm text-muted-foreground">
+                          All available widgets are already on your dashboard.
+                        </p>
+                      ) : (
+                        missingWidgets.map((widget) => (
+                          <button
+                            key={widget.id}
+                            type="button"
+                            onClick={() => handleAdd(widget.id)}
+                            className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
+                          >
+                            <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                              <LayoutGrid className="size-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-foreground">
+                                {widget.label}
+                              </p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {widget.description}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleReset}
-                    className="h-9 gap-2 rounded-full px-4"
-                  >
-                    <RotateCcw className="size-4" />
-                    Reset
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    size="sm"
-                    className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Save className="size-4" />
-                    Done
-                  </Button>
-                </>
-              ) : (
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setEditing(true)}
-                  className="h-9 gap-2 rounded-full bg-background px-4 font-medium transition hover:bg-muted"
+                  onClick={handleReset}
+                  className="h-9 gap-2 rounded-full px-4"
                 >
-                  <LayoutGrid className="size-4" />
-                  Customize
+                  <RotateCcw className="size-4" />
+                  Reset
                 </Button>
-              )}
+                <Button
+                  onClick={handleSave}
+                  size="sm"
+                  className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <Save className="size-4" />
+                  Done
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {/* Static / Fixed widgets (cannot be moved or removed) */}
           {fixedIds.map((id) => {
