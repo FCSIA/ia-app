@@ -46,6 +46,11 @@ on the Convex `users` table.
 | Remove members    | No          | No      | Yes     | Yes   | Yes         |
 | Promote to leader | No          | No      | Yes     | Yes   | Yes         |
 
+Club sponsors, club leaders, admins, and super admins can configure a club's
+nested structure and assign existing club members within it. A unit-local
+`LEADER` assignment and title describe responsibility inside that unit; they do
+not grant club-wide management permissions.
+
 ### Events
 
 | Permission          | STUDENT | TEACHER  | SPONSOR  | ADMIN | SUPER_ADMIN |

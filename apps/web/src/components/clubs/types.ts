@@ -21,6 +21,11 @@ export type ClubUserRef = ClubPerson;
 export type ClubChannelMessage = FunctionReturnType<
   typeof api.clubs.channels.getMessagePage
 >['page'][number];
+export type ClubHierarchy = FunctionReturnType<typeof api.clubs.hierarchy.list>;
+export type ClubUnit = ClubHierarchy['units'][number];
+export type ClubUnitMember = FunctionReturnType<
+  typeof api.clubs.hierarchy.listMembers
+>[number];
 
 export type { AppRole } from '~/apps/convex/lib/roles';
 

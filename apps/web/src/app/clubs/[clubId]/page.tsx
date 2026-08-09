@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
@@ -21,6 +21,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
+import { ClubStructureActions } from '@/components/clubs/dialogs/hierarchy-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
 import { formatClubRole, fullName, hasClubLeadershipRole } from '@/components/clubs/types';
@@ -359,12 +360,14 @@ export default function ClubOverviewPage() {
   const { toast } = useToast();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
+  const redeemedUnitJoinRef = useRef<string | null>(null);
 
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
 
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const redeemJoinCode = useMutation(api.clubs.invitations.redeemJoinCode);
+  const joinUnit = useMutation(api.clubs.hierarchy.join);
 
   useEffect(() => {
     const code = searchParams?.get('joinCode');
@@ -379,6 +382,30 @@ export default function ClubOverviewPage() {
       );
     }
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
+
+  useEffect(() => {
+    const unitId = searchParams?.get('unitId') as Id<'clubUnits'> | null;
+    const unitCode = searchParams?.get('unitCode');
+    if (!unitId || !unitCode) return;
+    const redemptionKey = `${unitId}:${unitCode}`;
+    if (
+      !club?.viewer.canAccessWorkspace ||
+      redeemedUnitJoinRef.current === redemptionKey
+    ) {
+      return;
+    }
+
+    redeemedUnitJoinRef.current = redemptionKey;
+    void joinUnit({ clubId, unitId, code: unitCode.trim().toUpperCase() })
+      .then(() => toast({ title: 'Joined club group' }))
+      .catch((error: unknown) => {
+        redeemedUnitJoinRef.current = null;
+        toast({
+          title: error instanceof Error ? error.message : 'Could not join club group',
+          variant: 'destructive',
+        });
+      });
+  }, [club?.viewer.canAccessWorkspace, clubId, joinUnit, searchParams, toast]);
 
   const announcements =
     useQuery(
@@ -420,7 +447,9 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const actions = null;
+  const actions = club.viewer.canManageMembership ? (
+    <ClubStructureActions club={club} />
+  ) : null;
 
   const rightPane = (
     <div className="space-y-5 p-4">

@@ -1,0 +1,625 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import {
+  Crown,
+  Ellipsis,
+  GitBranch,
+  Plus,
+  QrCode,
+  Save,
+  Trash2,
+  UserRoundPlus,
+  Users,
+} from 'lucide-react';
+import type {
+  ClubDetail,
+  ClubHierarchy,
+  ClubUnit,
+  ClubUnitMember,
+} from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
+import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { PeoplePicker } from '@/components/clubs/people-picker';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownContent,
+  DropdownMenu,
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { InputCopy } from '@/components/ui/input-copy';
+import { MenuItem } from '@/components/ui/menu-item';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+type UnitJoinPolicy = ClubUnit['joinPolicy'];
+
+const joinPolicyOptions: Array<{ value: UnitJoinPolicy; label: string }> = [
+  { value: 'ASSIGN_ONLY', label: 'Managers assign members' },
+  { value: 'OPEN', label: 'Any club member can join' },
+  { value: 'CODE', label: 'Join code or QR required' },
+];
+
+type FlatUnit = { unit: ClubUnit; depth: number };
+
+function flattenUnits(units: ClubUnit[]) {
+  const children = new Map<string | null, ClubUnit[]>();
+  for (const unit of units) {
+    const key = unit.parentUnitId ?? null;
+    children.set(key, [...(children.get(key) ?? []), unit]);
+  }
+  for (const siblings of children.values()) {
+    siblings.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+  }
+
+  const rows: FlatUnit[] = [];
+  const visit = (parentId: string | null, depth: number) => {
+    for (const unit of children.get(parentId) ?? []) {
+      rows.push({ unit, depth });
+      visit(unit._id, depth + 1);
+    }
+  };
+  visit(null, 0);
+  return rows;
+}
+
+function mutationError(error: unknown) {
+  return error instanceof Error ? error.message : 'Something went wrong';
+}
+
+export function ClubStructureActions({
+  club,
+}: {
+  club: ClubDetail;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownTrigger
+          render={
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label="More club actions"
+            >
+              <Ellipsis className="size-4" />
+            </Button>
+          }
+        />
+        <DropdownContent align="end" className="w-56">
+          <MenuItem
+            index={0}
+            icon={GitBranch}
+            label="Manage club structure"
+            onSelect={() => setOpen(true)}
+          />
+        </DropdownContent>
+      </DropdownMenu>
+      <HierarchyDialog club={club} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+function HierarchyDialog({
+  club,
+  open,
+  onOpenChange,
+}: {
+  club: ClubDetail;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const hierarchy = useQuery(
+    api.clubs.hierarchy.list,
+    open ? { clubId: club._id } : 'skip',
+  ) as ClubHierarchy | undefined;
+  const [selectedId, setSelectedId] = useState<Id<'clubUnits'> | null>(null);
+  const [createParentId, setCreateParentId] = useState<Id<'clubUnits'> | null | undefined>();
+  const flatUnits = useMemo(() => flattenUnits(hierarchy?.units ?? []), [hierarchy?.units]);
+
+  useEffect(() => {
+    if (!hierarchy) return;
+    if (selectedId && hierarchy.units.some((unit) => unit._id === selectedId)) return;
+    setSelectedId(hierarchy.units[0]?._id ?? null);
+  }, [hierarchy, selectedId]);
+
+  const selectedUnit = hierarchy?.units.find((unit) => unit._id === selectedId) ?? null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        size="lg"
+        className="flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col overflow-hidden p-0"
+      >
+        <DialogHeader className="border-b px-5 pb-4 pt-5">
+          <DialogTitle>Club structure</DialogTitle>
+          <DialogDescription>
+            Build any mix of programs, teams, houses, rooms, subsystems, or other groups.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col border-b bg-muted/25 md:border-b-0 md:border-r">
+            <div className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{club.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {hierarchy?.units.length ?? 0} units
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="tertiary"
+                aria-label="Add top-level unit"
+                onClick={() => setCreateParentId(null)}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            <ScrollArea className="max-h-52 flex-1 md:max-h-none">
+              <div className="space-y-0.5 p-2">
+                {flatUnits.map(({ unit, depth }) => (
+                  <Button
+                    key={unit._id}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-current={selectedId === unit._id ? 'page' : undefined}
+                    className={cn(
+                      'h-9 w-full justify-start gap-2 px-2 font-normal',
+                      selectedId === unit._id && 'bg-active font-medium text-foreground',
+                    )}
+                    style={{ paddingLeft: `${8 + Math.min(depth, 8) * 16}px` }}
+                    onClick={() => {
+                      setSelectedId(unit._id);
+                      setCreateParentId(undefined);
+                    }}
+                  >
+                    <GitBranch className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-left">{unit.name}</span>
+                    {unit.viewerRole === 'LEADER' ? (
+                      <Crown className="size-3.5 shrink-0 text-amber-500" />
+                    ) : null}
+                  </Button>
+                ))}
+                {hierarchy && hierarchy.units.length === 0 ? (
+                  <div className="px-3 py-8 text-center">
+                    <GitBranch className="mx-auto size-7 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-medium">No structure yet</p>
+                    <p className="mt-1 text-xs leading-4 text-muted-foreground">
+                      Start with FRC, IT, TSA, or any top-level division.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </ScrollArea>
+          </aside>
+
+          <ScrollArea className="min-h-0">
+            <div className="p-4 sm:p-5">
+              {createParentId !== undefined ? (
+                <CreateUnitForm
+                  clubId={club._id}
+                  parent={hierarchy?.units.find((unit) => unit._id === createParentId) ?? null}
+                  onCancel={() => setCreateParentId(undefined)}
+                  onCreated={(unitId) => {
+                    setSelectedId(unitId);
+                    setCreateParentId(undefined);
+                  }}
+                />
+              ) : selectedUnit ? (
+                <UnitDetail
+                  key={selectedUnit._id}
+                  club={club}
+                  unit={selectedUnit}
+                  onAddChild={() => setCreateParentId(selectedUnit._id)}
+                  onArchived={() => setSelectedId(null)}
+                />
+              ) : (
+                <div className="flex min-h-64 flex-col items-center justify-center text-center">
+                  <GitBranch className="size-9 text-muted-foreground" />
+                  <h3 className="mt-3 text-base font-semibold">Create the first unit</h3>
+                  <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                    Levels and labels are entirely up to this club.
+                  </p>
+                  <Button className="mt-4" onClick={() => setCreateParentId(null)}>
+                    <Plus className="mr-1.5 size-4" /> Add top-level unit
+                  </Button>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateUnitForm({
+  clubId,
+  parent,
+  onCancel,
+  onCreated,
+}: {
+  clubId: Id<'clubs'>;
+  parent: ClubUnit | null;
+  onCancel: () => void;
+  onCreated: (unitId: Id<'clubUnits'>) => void;
+}) {
+  const { toast } = useToast();
+  const createUnit = useMutation(api.clubs.hierarchy.create);
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState('');
+  const [description, setDescription] = useState('');
+  const [joinPolicy, setJoinPolicy] = useState<UnitJoinPolicy>('ASSIGN_ONLY');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const unitId = await createUnit({
+        clubId,
+        parentUnitId: parent?._id,
+        name,
+        kind: kind || undefined,
+        description: description || undefined,
+        joinPolicy,
+      });
+      toast({ title: `${name.trim()} created` });
+      onCreated(unitId);
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-semibold">
+          {parent ? `Add a unit inside ${parent.name}` : 'Add a top-level unit'}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The type is a label, not a fixed level. You can nest another kind beneath it later.
+        </p>
+      </div>
+      <UnitFields
+        name={name}
+        kind={kind}
+        description={description}
+        joinPolicy={joinPolicy}
+        onNameChange={setName}
+        onKindChange={setKind}
+        onDescriptionChange={setDescription}
+        onJoinPolicyChange={setJoinPolicy}
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="tertiary" onClick={onCancel}>Cancel</Button>
+        <Button loading={saving} disabled={!name.trim()} onClick={() => void save()}>
+          Create unit
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function UnitFields({
+  name,
+  kind,
+  description,
+  joinPolicy,
+  onNameChange,
+  onKindChange,
+  onDescriptionChange,
+  onJoinPolicyChange,
+}: {
+  name: string;
+  kind: string;
+  description: string;
+  joinPolicy: UnitJoinPolicy;
+  onNameChange: (value: string) => void;
+  onKindChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onJoinPolicyChange: (value: UnitJoinPolicy) => void;
+}) {
+  const selectedJoinPolicy = joinPolicyOptions.find(
+    (option) => option.value === joinPolicy,
+  )!;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field>
+        <FieldLabel htmlFor="unit-name">Name</FieldLabel>
+        <Input id="unit-name" value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="FRC 8866, IT, House A" />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="unit-kind">Type label</FieldLabel>
+        <Input id="unit-kind" value={kind} onChange={(event) => onKindChange(event.target.value)} placeholder="Program, House, Room, Subsystem" />
+      </Field>
+      <Field className="sm:col-span-2">
+        <FieldLabel htmlFor="unit-description">Description</FieldLabel>
+        <Textarea id="unit-description" value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="What this unit owns or who it is for" rows={3} />
+      </Field>
+      <Field className="sm:col-span-2">
+        <FieldLabel>Joining</FieldLabel>
+        <Select
+          value={selectedJoinPolicy.label}
+          onValueChange={(label) => {
+            const option = joinPolicyOptions.find((candidate) => candidate.label === label);
+            if (option) onJoinPolicyChange(option.value);
+          }}
+        >
+          <SelectTrigger className="w-full" placeholder="Choose join policy" />
+          <SelectContent>
+            {joinPolicyOptions.map((option, index) => (
+              <SelectItem key={option.value} index={index} value={option.label}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+    </div>
+  );
+}
+
+function UnitDetail({
+  club,
+  unit,
+  onAddChild,
+  onArchived,
+}: {
+  club: ClubDetail;
+  unit: ClubUnit;
+  onAddChild: () => void;
+  onArchived: () => void;
+}) {
+  const { toast } = useToast();
+  const updateUnit = useMutation(api.clubs.hierarchy.update);
+  const archiveUnit = useMutation(api.clubs.hierarchy.archive);
+  const [name, setName] = useState(unit.name);
+  const [kind, setKind] = useState(unit.kind ?? '');
+  const [description, setDescription] = useState(unit.description ?? '');
+  const [joinPolicy, setJoinPolicy] = useState<UnitJoinPolicy>(unit.joinPolicy);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateUnit({
+        clubId: club._id,
+        unitId: unit._id,
+        name,
+        kind,
+        description,
+        joinPolicy,
+      });
+      toast({ title: 'Unit saved' });
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const archive = async () => {
+    if (!confirm(`Archive ${unit.name}? It must have no children or assigned members.`)) return;
+    try {
+      await archiveUnit({ clubId: club._id, unitId: unit._id });
+      toast({ title: `${unit.name} archived` });
+      onArchived();
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="space-y-7">
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold">{unit.name}</h3>
+              {unit.kind ? <Badge variant="solid">{unit.kind}</Badge> : null}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Edit this unit or add another level beneath it.</p>
+          </div>
+          <Button variant="tertiary" size="sm" onClick={onAddChild}>
+            <Plus className="mr-1.5 size-4" /> Add child
+          </Button>
+        </div>
+        <UnitFields
+          name={name}
+          kind={kind}
+          description={description}
+          joinPolicy={joinPolicy}
+          onNameChange={setName}
+          onKindChange={setKind}
+          onDescriptionChange={setDescription}
+          onJoinPolicyChange={setJoinPolicy}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => void archive()}>
+            <Trash2 className="mr-1.5 size-4" /> Archive unit
+          </Button>
+          <Button loading={saving} disabled={!name.trim()} onClick={() => void save()}>
+            <Save className="mr-1.5 size-4" /> Save changes
+          </Button>
+        </div>
+      </section>
+
+      <MemberManager club={club} unit={unit} />
+      <JoinCodePanel clubId={club._id} unit={unit} />
+    </div>
+  );
+}
+
+function MemberManager({ club, unit }: { club: ClubDetail; unit: ClubUnit }) {
+  const { toast } = useToast();
+  const members = useQuery(api.clubs.hierarchy.listMembers, {
+    clubId: club._id,
+    unitId: unit._id,
+  }) as ClubUnitMember[] | undefined;
+  const setMember = useMutation(api.clubs.hierarchy.setMember);
+  const removeMember = useMutation(api.clubs.hierarchy.removeMember);
+  const people = useMemo(
+    () => club.directory.filter((person) => person.kind === 'MEMBER'),
+    [club.directory],
+  );
+  const selectedIds: string[] = members?.map((member) => member.userId) ?? [];
+
+  const changeSelection = async (nextIds: string[]) => {
+    if (!members) return;
+    const addedId = nextIds.find((id) => !selectedIds.includes(id));
+    const removedId = selectedIds.find((id) => !nextIds.includes(id));
+    try {
+      if (addedId) {
+        await setMember({ clubId: club._id, unitId: unit._id, memberId: addedId as Id<'users'>, role: 'MEMBER' });
+      } else if (removedId) {
+        await removeMember({
+          clubId: club._id,
+          unitId: unit._id,
+          memberId: removedId as Id<'users'>,
+        });
+      }
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+    }
+  };
+
+  return (
+    <section className="space-y-3 border-t pt-5">
+      <div>
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><Users className="size-4" /> Members and leaders</h3>
+        <p className="mt-1 text-xs leading-4 text-muted-foreground">Assignments are local to this unit. Leadership here does not grant club-wide admin access.</p>
+      </div>
+      <PeoplePicker people={people} selectedIds={selectedIds} onChange={(ids) => void changeSelection(ids)} placeholder="Assign club members" />
+      <div className="space-y-2">
+        {members?.map((member) => (
+          <UnitMemberRow key={member._id} clubId={club._id} unitId={unit._id} member={member} />
+        ))}
+        {members?.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">No one is assigned yet.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function UnitMemberRow({
+  clubId,
+  unitId,
+  member,
+}: {
+  clubId: Id<'clubs'>;
+  unitId: Id<'clubUnits'>;
+  member: ClubUnitMember;
+}) {
+  const { toast } = useToast();
+  const setMember = useMutation(api.clubs.hierarchy.setMember);
+  const [title, setTitle] = useState(member.title ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async (role = member.role) => {
+    setSaving(true);
+    try {
+      await setMember({ clubId, unitId, memberId: member.userId, role, title: role === 'LEADER' ? title : undefined });
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-2 rounded-lg border bg-background p-2.5 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(8rem,12rem)_auto] sm:items-center">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <ClubAvatar person={member.user} className="size-8" fallbackClassName="text-[10px]" />
+        <span className="truncate text-sm font-medium">{fullName(member.user)}</span>
+      </div>
+      <Select
+        value={member.role === 'LEADER' ? 'Leader' : 'Member'}
+        onValueChange={(value) =>
+          void save(value === 'Leader' ? 'LEADER' : 'MEMBER')
+        }
+      >
+        <SelectTrigger className="w-full min-w-0" />
+        <SelectContent>
+          <SelectItem index={0} value="Member">Member</SelectItem>
+          <SelectItem index={1} value="Leader">Leader</SelectItem>
+        </SelectContent>
+      </Select>
+      {member.role === 'LEADER' ? (
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Executive, Logistics…" aria-label={`Leadership title for ${fullName(member.user)}`} />
+      ) : <span className="hidden text-xs text-muted-foreground sm:block">No local title</span>}
+      <Button type="button" size="icon-sm" variant="ghost" loading={saving} disabled={member.role !== 'LEADER'} aria-label={`Save ${fullName(member.user)} title`} onClick={() => void save()}>
+        <Save className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+function JoinCodePanel({ clubId, unit }: { clubId: Id<'clubs'>; unit: ClubUnit }) {
+  const { toast } = useToast();
+  const generateJoinCode = useMutation(api.clubs.hierarchy.generateJoinCode);
+  const [origin, setOrigin] = useState('');
+  useEffect(() => setOrigin(window.location.origin), []);
+  const joinUrl = origin && unit.joinCode
+    ? `${origin}/clubs/${clubId}?unitId=${unit._id}&unitCode=${unit.joinCode}`
+    : '';
+  const qrUrl = joinUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
+    : null;
+
+  return (
+    <section className="space-y-3 border-t pt-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-semibold"><QrCode className="size-4" /> Join code and QR</h3>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground">Only existing members of this club can redeem a unit link.</p>
+        </div>
+        <Button variant="tertiary" size="sm" onClick={() => void generateJoinCode({ clubId, unitId: unit._id }).then(() => toast({ title: 'Unit join code rotated' })).catch((error) => toast({ title: mutationError(error), variant: 'destructive' }))}>
+          {unit.joinCode ? 'Rotate code' : 'Generate code'}
+        </Button>
+      </div>
+      {joinUrl && qrUrl ? (
+        <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qrUrl} alt={`Join ${unit.name} QR code`} className="size-36 rounded-md border bg-white p-2" />
+          <div className="min-w-0 space-y-2">
+            <InputCopy value={joinUrl} variant="button" />
+            <p className="text-xs text-muted-foreground">Printing or sharing this QR lets club members join {unit.name} directly.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          <UserRoundPlus className="size-5 shrink-0" /> Generate a code when this unit is ready for self-join.
+        </div>
+      )}
+    </section>
+  );
+}

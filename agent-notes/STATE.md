@@ -57,6 +57,11 @@
 
 - Club access now distinguishes ordinary members from `LEADER`/`SPONSOR`
   management roles and uses indexed membership/sponsor lookups.
+- Clubs now support manager-configured arbitrary internal trees through generic
+  units rather than fixed subclub/group levels. Units have free-form type
+  labels, direct member/leader assignments with local titles, per-unit join
+  policies and revocable QR codes, and audited mutations. Web management is
+  tucked into the club overview's top-right three-dots menu.
 - Club creation uses the staff/admin allowlist; club deactivation requires admin
   roles; workspace detail data is hidden from authenticated users who cannot
   access the club workspace.
