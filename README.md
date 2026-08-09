@@ -122,7 +122,9 @@ Demo seed/reset can also be run from the Convex Dashboard via internal function 
 | Web App          | http://localhost:3000                                  |
 | Convex Dashboard | https://dashboard.convex.dev (or run `pnpm db:studio`) |
 
-Demo accounts are seeded with their ID as the password, for example `STU001` / `STU001`. See [docs/reference/getting-started.md](./docs/reference/getting-started.md#5-test-accounts) for a complete list of demo logins.
+Demo accounts receive random, one-time temporary passwords. After a seed run
+completes, use `bootstrap:claimSeedCredentials` with its run id and store the
+output securely. See [docs/reference/getting-started.md](./docs/reference/getting-started.md#5-test-accounts).
 
 ## Common Commands
 

@@ -101,12 +101,15 @@ also provides these internal functions when a visual workflow is preferred.
 
 ## Demo Accounts
 
-Seeded accounts use their unique ID as the password:
+Seeded accounts receive random temporary passwords. After `seedStatus` reports
+`COMPLETE`, run `bootstrap:claimSeedCredentials` with that run id. Repeat while
+`remaining` is `true`; claimed batches are immediately deleted and unclaimed
+credentials expire after 24 hours. The generated IDs include:
 
-- `SUPER001` / `SUPER001` (Super Admin)
-- `ADMIN001` / `ADMIN001` (School Admin)
-- `TCH001` / `TCH001` (Teacher / Staff)
-- `STU001` / `STU001` (Student)
+- `SUPER001` (Super Admin)
+- `ADMIN001` (School Admin)
+- `TCH001` (Teacher / Staff)
+- `STU001` (Student)
 
 ## Daily Workflow & Commands
 

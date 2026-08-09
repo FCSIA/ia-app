@@ -980,6 +980,15 @@ export const schema = defineSchema({
     completedAt: v.optional(v.union(v.number(), v.null())),
     error: v.optional(v.union(v.string(), v.null())),
   }).index("by_key", ["key"]),
+
+  seedCredentials: defineTable({
+    runId: v.string(),
+    uniqueId: v.string(),
+    temporaryPassword: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_runId_and_createdAt", ["runId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
 });
 
 export default schema;

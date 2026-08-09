@@ -113,7 +113,8 @@ presentation. Common helper locations:
 | `TCH001`          | `TEACHER`, `SPONSOR`   |
 | `STU001`-`STU010` | `STUDENT`              |
 
-All seeded accounts use the unique ID as the password.
+Seeded accounts use random temporary passwords retrieved once through
+`bootstrap:claimSeedCredentials` after the run completes.
 
 ## Related
 

@@ -6,11 +6,22 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { seedProfileValidator, type SeedProfile } from "./validators";
+import { isLocalDemoSeedEnabled } from "./seed";
 import { createLinkedUser } from "./users/_lib";
 
 const USER_BATCH_SIZE = 1;
 const SCHEDULE_BATCH_SIZE = 20;
 const SEED_RUN_KEY = "demo-reset";
+const SEED_CREDENTIAL_BATCH_SIZE = 50;
+const SEED_CREDENTIAL_TTL_MS = 24 * 60 * 60 * 1000;
+
+function assertLocalDemoSeedEnabled() {
+  if (!isLocalDemoSeedEnabled(process.env.ALLOW_LOCAL_DEMO_SEED)) {
+    throw new Error(
+      "Demo seed is disabled. Run it only on an isolated local deployment configured by pnpm setup:convex-local.",
+    );
+  }
+}
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -27,6 +38,7 @@ export const resetAndSeed = internalAction({
     nextStep: v.string(),
   }),
   handler: async (ctx, args) => {
+    assertLocalDemoSeedEnabled();
     const runId = String(Date.now());
     const profile = args.profile ?? "development";
     await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
@@ -59,6 +71,9 @@ export const resetAndSeedStep = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    if (args.phase === "start") {
+      assertLocalDemoSeedEnabled();
+    }
     const now = Date.now();
     const profile: SeedProfile = args.profile ?? "development";
     if (args.phase === "start") {
@@ -66,6 +81,13 @@ export const resetAndSeedStep = internalMutation({
         .query("seedRuns")
         .withIndex("by_key", (q) => q.eq("key", SEED_RUN_KEY))
         .unique();
+      if (existing && existing.runId !== args.runId) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.bootstrap.cleanupSeedCredentialsForRun,
+          { runId: existing.runId },
+        );
+      }
       if (existing) {
         await ctx.db.patch(existing._id, {
           runId: args.runId,
@@ -143,6 +165,10 @@ export const resetAndSeedStep = internalMutation({
         const result: {
           deleted: number;
           upserted: number;
+          generatedCredentials: Array<{
+            uniqueId: string;
+            temporaryPassword: string;
+          }>;
           nextCursor: string | null;
           isDone: boolean;
         } = await ctx.runMutation(internal.seed.run, {
@@ -151,6 +177,15 @@ export const resetAndSeedStep = internalMutation({
           batchSize: USER_BATCH_SIZE,
           profile,
         });
+
+        for (const credential of result.generatedCredentials) {
+          await ctx.db.insert("seedCredentials", {
+            runId: args.runId,
+            uniqueId: credential.uniqueId,
+            temporaryPassword: credential.temporaryPassword,
+            createdAt: Date.now(),
+          });
+        }
 
         if (!result.isDone) {
           await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
@@ -262,6 +297,7 @@ export const seedStatus = internalQuery({
     updatedAt: v.union(v.number(), v.null()),
     completedAt: v.union(v.number(), v.null()),
     error: v.union(v.string(), v.null()),
+    credentialsAvailable: v.boolean(),
   }),
   handler: async (ctx) => {
     const run = await ctx.db
@@ -280,6 +316,7 @@ export const seedStatus = internalQuery({
         updatedAt: null,
         completedAt: null,
         error: null,
+        credentialsAvailable: false,
       };
     }
 
@@ -291,6 +328,11 @@ export const seedStatus = internalQuery({
           ? ("FAILED" as const)
           : ("RUNNING" as const));
 
+    const credential = await ctx.db
+      .query("seedCredentials")
+      .withIndex("by_runId_and_createdAt", (q) => q.eq("runId", run.runId))
+      .first();
+
     return {
       runId: run.runId,
       status: inferredStatus,
@@ -301,7 +343,91 @@ export const seedStatus = internalQuery({
       updatedAt: run.updatedAt,
       completedAt: run.completedAt ?? null,
       error: run.error ?? null,
+      credentialsAvailable: credential !== null,
     };
+  },
+});
+
+export const claimSeedCredentials = internalMutation({
+  args: { runId: v.string() },
+  returns: v.object({
+    credentials: v.array(
+      v.object({
+        uniqueId: v.string(),
+        temporaryPassword: v.string(),
+      }),
+    ),
+    remaining: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const run = await ctx.db
+      .query("seedRuns")
+      .withIndex("by_key", (q) => q.eq("key", SEED_RUN_KEY))
+      .unique();
+    if (!run || run.runId !== args.runId || run.status !== "COMPLETE") {
+      throw new Error("Seed credentials can only be claimed for the current completed run.");
+    }
+
+    const records = await ctx.db
+      .query("seedCredentials")
+      .withIndex("by_runId_and_createdAt", (q) => q.eq("runId", args.runId))
+      .take(SEED_CREDENTIAL_BATCH_SIZE + 1);
+    const claimed = records.slice(0, SEED_CREDENTIAL_BATCH_SIZE);
+    for (const record of claimed) {
+      await ctx.db.delete(record._id);
+    }
+    return {
+      credentials: claimed.map(({ uniqueId, temporaryPassword }) => ({
+        uniqueId,
+        temporaryPassword,
+      })),
+      remaining: records.length > SEED_CREDENTIAL_BATCH_SIZE,
+    };
+  },
+});
+
+export const cleanupSeedCredentialsForRun = internalMutation({
+  args: { runId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const records = await ctx.db
+      .query("seedCredentials")
+      .withIndex("by_runId_and_createdAt", (q) => q.eq("runId", args.runId))
+      .take(100);
+    for (const record of records) {
+      await ctx.db.delete(record._id);
+    }
+    if (records.length === 100) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.bootstrap.cleanupSeedCredentialsForRun,
+        args,
+      );
+    }
+    return null;
+  },
+});
+
+export const sweepExpiredSeedCredentials = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const expiresBefore = Date.now() - SEED_CREDENTIAL_TTL_MS;
+    const records = await ctx.db
+      .query("seedCredentials")
+      .withIndex("by_createdAt", (q) => q.lt("createdAt", expiresBefore))
+      .take(100);
+    for (const record of records) {
+      await ctx.db.delete(record._id);
+    }
+    if (records.length === 100) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.bootstrap.sweepExpiredSeedCredentials,
+        {},
+      );
+    }
+    return null;
   },
 });
 

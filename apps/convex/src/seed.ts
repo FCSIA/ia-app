@@ -447,7 +447,7 @@ export const run = internalMutation({
   returns: v.object({
     deleted: v.number(),
     upserted: v.number(),
-    privilegedCredentials: v.array(
+    generatedCredentials: v.array(
       v.object({
         uniqueId: v.string(),
         temporaryPassword: v.string(),
@@ -477,7 +477,7 @@ export const run = internalMutation({
         return {
           deleted: usersToDelete.length,
           upserted: 0,
-          privilegedCredentials: [],
+          generatedCredentials: [],
           nextCursor: "0",
           isDone: false,
         };
@@ -485,7 +485,7 @@ export const run = internalMutation({
     }
 
     let upserted = 0;
-    const privilegedCredentials: Array<{
+    const generatedCredentials: Array<{
       uniqueId: string;
       temporaryPassword: string;
     }> = [];
@@ -502,13 +502,8 @@ export const run = internalMutation({
         ...student,
         mustResetPassword: true,
       });
-      if (
-        student.roles.some((role: AppRole) =>
-          ["ADMIN", "SUPER_ADMIN"].includes(role),
-        ) &&
-        result.temporaryPassword
-      ) {
-        privilegedCredentials.push({
+      if (result.temporaryPassword) {
+        generatedCredentials.push({
           uniqueId: student.uniqueId,
           temporaryPassword: result.temporaryPassword,
         });
@@ -523,7 +518,7 @@ export const run = internalMutation({
     return {
       deleted: 0,
       upserted,
-      privilegedCredentials,
+      generatedCredentials,
       nextCursor: nextIndex < seedUsers.length ? String(nextIndex) : null,
       isDone: nextIndex >= seedUsers.length,
     };
