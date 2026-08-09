@@ -26,3 +26,10 @@ syncs the local URLs to the clients. A named cloud dev deployment requires a
 specific need such as a public URL, physical-device testing, a webhook, or
 shared dashboard access. Never copy `.env.local` between worktrees or run two
 schema-changing watchers against the same deployment.
+
+## Agent Skills
+
+Official Convex skills live at repo-root `.agents/skills/` with lockfile
+`skills-lock.json`. Refresh them from the repo root with
+`npx skills add get-convex/agent-skills --yes`. Skill auto-install is disabled
+in `convex.json`; do not create a second skills tree under `apps/convex/`.

@@ -134,8 +134,9 @@ References:
    padding, gaps, and any negative margin. Test both resting and open states.
 7. Fix a shared contract mismatch in `components/ui`; use page-level classes
    only for layout that is genuinely unique to that page.
-8. Typecheck and lint, then visually exercise open/close, hover, focus, keyboard,
-   disabled, selected, and narrow-width states. Type safety alone is not proof.
+8. Typecheck and lint, then diagnostically exercise open/close, hover, focus,
+   keyboard, disabled, selected, and narrow-width states. Type safety alone is
+   not proof of behavior, and agent inspection is not design approval.
 
 ## Direct-child and motion contracts
 
