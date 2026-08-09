@@ -135,19 +135,11 @@ function ManagePeopleDialog({
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="qr" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabItem value="qr" label="Qr">
-              <QrCode className="size-4" />
-            </TabItem>
-            <TabItem value="code" label="Code">
-              <Sparkles className="size-4" />
-            </TabItem>
-            <TabItem value="single" label="Single">
-              <UserPlus className="size-4" />
-            </TabItem>
-            <TabItem value="bulk" label="Bulk">
-              <Upload className="size-4" />
-            </TabItem>
+          <TabsList>
+            <TabItem value="qr" label="QR" icon={QrCode} />
+            <TabItem value="code" label="Code" icon={Sparkles} />
+            <TabItem value="single" label="Single" icon={UserPlus} />
+            <TabItem value="bulk" label="Bulk" icon={Upload} />
           </TabsList>
 
           <TabPanel value="qr" className="mt-4">
@@ -401,26 +393,21 @@ export default function ClubPeoplePage() {
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="flex shrink-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-            <Tabs value={visibleFilter} onValueChange={setFilter} className="w-full sm:w-auto">
-              <TabsList className={`grid h-9 w-full ${canApproveRequests ? 'grid-cols-5' : 'grid-cols-4'} rounded-lg bg-muted p-0.5 sm:inline-flex sm:w-auto`}>
-                <TabItem value="all" className="rounded-md px-2 text-xs" label="All">
-                  All <span className="ml-1.5 opacity-50">{stats.all}</span>
-                </TabItem>
-                <TabItem value="leaders" className="rounded-md px-2 text-xs" label="Leaders">
-                  Leaders <span className="ml-1.5 opacity-50">{stats.leaders}</span>
-                </TabItem>
-                <TabItem value="sponsors" className="rounded-md px-2 text-xs" label="Sponsors">
-                  Sponsors <span className="ml-1.5 opacity-50">{stats.sponsors}</span>
-                </TabItem>
-                <TabItem value="members" className="rounded-md px-2 text-xs" label="Members">
-                  Members <span className="ml-1.5 opacity-50">{stats.members}</span>
-                </TabItem>
-                {canApproveRequests ? (
-                  <TabItem value="requests" className="rounded-md px-2 text-xs" label="Requests">
-                    Requests <span className="ml-1.5 opacity-50">{pendingJoinRequests.length}</span>
-                  </TabItem>
-                ) : null}
-              </TabsList>
+            <Tabs value={visibleFilter} onValueChange={setFilter} className="min-w-0 sm:w-auto">
+              <div className="min-w-0 overflow-x-auto pb-1">
+                <TabsList>
+                  <TabItem value="all" label={`All ${stats.all}`} />
+                  <TabItem value="leaders" label={`Leaders ${stats.leaders}`} />
+                  <TabItem value="sponsors" label={`Sponsors ${stats.sponsors}`} />
+                  <TabItem value="members" label={`Members ${stats.members}`} />
+                  {canApproveRequests ? (
+                    <TabItem
+                      value="requests"
+                      label={`Requests ${pendingJoinRequests.length}`}
+                    />
+                  ) : null}
+                </TabsList>
+              </div>
             </Tabs>
 
             <div className="flex w-full justify-end gap-2 sm:w-auto">

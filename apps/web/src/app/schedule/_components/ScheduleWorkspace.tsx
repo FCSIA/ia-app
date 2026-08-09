@@ -49,7 +49,7 @@ export function ScheduleWorkspace() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               {canEditOwnSchedule || canManageBlocks ? (
                 <div className="min-w-0 overflow-x-auto pb-1 lg:pb-0">
-                  <TabsList className="w-max min-w-full lg:min-w-0">
+                  <TabsList>
                     {canEditOwnSchedule ? (
                       <TabItem
                         value="my"

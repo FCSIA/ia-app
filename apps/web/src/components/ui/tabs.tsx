@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSurface } from "@/lib/surface-context";
+import { surfaceClasses } from "@/lib/surface-classes";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 /* ─────────────────────── Contexts ─────────────────────── */
@@ -151,6 +153,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const substrate = useSurface();
+    const indicatorLevel = Math.min(substrate + 3, 8);
     const valueOrderCtx = useContext(TabsValueOrderContext);
     const [optimisticIdx, setOptimisticIdx] = useState<number | null>(null);
 
@@ -231,9 +235,9 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const isHoveringSelected = hoveredIndex === activeSelectedIdx;
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
-    // Auto-assign _index to children
+    // Auto-assign _index to component children without leaking it onto DOM nodes.
     const indexedChildren = Children.map(children, (child, i) => {
-      if (isValidElement(child)) {
+      if (isValidElement(child) && typeof child.type !== "string") {
         return cloneElement(child, { _index: i } as Record<string, unknown>);
       }
       return child;
@@ -290,7 +294,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
           {selectedRect && (
             <motion.div
               className={cn(
-                "absolute pointer-events-none bg-background shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4)]",
+                "absolute pointer-events-none",
+                surfaceClasses(indicatorLevel),
                 shape.bg
               )}
               initial={false}
@@ -358,7 +363,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
             {focusRect && (
               <motion.div
                 className={cn(
-                  "absolute pointer-events-none z-20 border border-[#6B97FF]",
+                  "absolute pointer-events-none z-20 border",
+                  "border-[color:var(--focus-ring,#6B97FF)]",
                   shape.focusRing
                 )}
                 initial={false}
@@ -435,7 +441,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         value={value}
         data-proximity-index={_index}
         className={cn(
-          "relative z-10 flex items-center gap-2 px-3 py-1.5 cursor-pointer bg-transparent border-none outline-none",
+          "relative z-10 flex h-8 cursor-pointer items-center gap-2 border-none bg-transparent px-3 outline-none",
           className
         )}
         {...props}
@@ -452,7 +458,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         )}
         <span className="inline-grid text-[13px] whitespace-nowrap">
           <span
-            className="col-start-1 row-start-1 invisible"
+            className="invisible col-start-1 row-start-1 [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -460,7 +466,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               isActive ? "text-foreground" : "text-muted-foreground"
             )}
             style={{
