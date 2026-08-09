@@ -17,17 +17,29 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           {!editing ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 shrink-0 px-2 sm:px-3"
-              aria-label="Customize dashboard"
-              onClick={() => setEditing(true)}
-            >
-              <LayoutGrid />
-              <span className="hidden sm:inline">Customize</span>
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0 sm:hidden"
+                aria-label="Customize dashboard"
+                onClick={() => setEditing(true)}
+              >
+                <LayoutGrid />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="hidden h-8 shrink-0 px-3 sm:inline-flex"
+                aria-label="Customize dashboard"
+                leadingIcon={LayoutGrid}
+                onClick={() => setEditing(true)}
+              >
+                Customize
+              </Button>
+            </>
           ) : null}
         </div>
       }

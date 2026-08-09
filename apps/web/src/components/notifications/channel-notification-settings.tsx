@@ -221,7 +221,7 @@ export function ChannelNotificationSettings({
       <Tooltip content="Channel notification settings">
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label="Channel notification settings">
-            {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+            {muted ? <BellOff /> : <Bell />}
           </Button>
         </PopoverTrigger>
       </Tooltip>
@@ -280,6 +280,7 @@ export function ChannelNotificationSettings({
               variant="ghost"
               size="sm"
               className="w-full justify-start"
+              leadingIcon={muted ? Bell : BellOff}
               onClick={() => {
                 if (muted) {
                   void setMuted(false);
@@ -289,7 +290,6 @@ export function ChannelNotificationSettings({
                 }
               }}
             >
-              {muted ? <Bell /> : <BellOff />}
               {muted ? 'Unmute channel' : 'Mute channel'}
             </Button>
             <Separator />
