@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
+import { getCurrentAppUser } from "../../lib/currentUser";
 import { pathwayValidator } from "../validators";
 import {
   courseDetailValidator,
@@ -23,6 +24,7 @@ export const list = query({
   },
   returns: v.array(courseSummaryValidator),
   handler: async (ctx, args) => {
+    await getCurrentAppUser(ctx);
     const limit = normalizeCourseLimit(args.limit);
     const courses = await listCourseCandidates(ctx, args);
 
@@ -55,6 +57,7 @@ export const listPage = query({
   },
   returns: coursePageValidator,
   handler: async (ctx, args) => {
+    await getCurrentAppUser(ctx);
     const search = args.q?.trim();
     const department = args.department?.trim() || undefined;
 
@@ -120,6 +123,7 @@ export const get = query({
   },
   returns: v.union(courseDetailValidator, v.null()),
   handler: async (ctx, args) => {
+    await getCurrentAppUser(ctx);
     const course = await ctx.db
       .query("courses")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))

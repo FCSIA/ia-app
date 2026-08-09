@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useConvex, useMutation } from "convex/react";
+import { useAction, useConvex, useMutation } from "convex/react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -22,7 +22,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 export default function ProfileScreen() {
   const user = useCurrentUser();
   const convex = useConvex();
-  const saveImage = useMutation(api.users.me.saveUserImage);
+  const saveImage = useAction(api.users.me.saveUserImage);
   const clearImage = useMutation(api.users.me.clearUserImage);
   const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);

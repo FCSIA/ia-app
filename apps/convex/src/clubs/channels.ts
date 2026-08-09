@@ -62,6 +62,10 @@ import {
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
+export function canChangePrivateChannelVisibility(input: { isSponsor: boolean; isAdmin: boolean; isExplicitMember: boolean }) {
+  return input.isSponsor || input.isAdmin || input.isExplicitMember;
+}
+
 const MAX_SUMMARY_ATTACHMENTS = 12;
 const MAX_SUMMARY_REACTION_ROWS = 500;
 const MAX_SUMMARY_POLL_VOTES = 500;
@@ -680,7 +684,13 @@ async function serializeMessage(
     author: toClubUserRef(author),
     mentions: [],
     attachments: attachments.map((a) => ({
-      ...a,
+      _id: a._id,
+      _creationTime: a._creationTime,
+      messageId: a.messageId,
+      fileName: a.fileName,
+      fileUrl: a.fileUrl,
+      mimeType: a.mimeType,
+      size: a.size,
       createdAt: new Date(a.createdAt).toISOString(),
     })),
     reactions: [...reactionMap.values()],
@@ -801,7 +811,13 @@ async function serializeMessageSummary(
     author: toClubUserRef(author),
     mentions: [],
     attachments: attachments.map((attachment) => ({
-      ...attachment,
+      _id: attachment._id,
+      _creationTime: attachment._creationTime,
+      messageId: attachment.messageId,
+      fileName: attachment.fileName,
+      fileUrl: attachment.fileUrl,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
       createdAt: new Date(attachment.createdAt).toISOString(),
     })),
     attachmentsTruncated,
@@ -1013,6 +1029,7 @@ export const getMessagePage = query({
     channelId: v.id("clubChannels"),
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.object({ page: v.array(v.any()), isDone: v.boolean(), continueCursor: v.string(), pageStatus: v.optional(v.any()), splitCursor: v.optional(v.any()) }),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyMessagePage(args.paginationOpts.cursor);
@@ -1046,6 +1063,7 @@ export const searchMessages = query({
     channelId: v.id("clubChannels"),
     search: v.string(),
   },
+  returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
@@ -1082,6 +1100,7 @@ export const getThread = query({
     channelId: v.id("clubChannels"),
     messageId: v.id("clubChannelMessages"),
   },
+  returns: v.union(v.object({ root: v.any(), replies: v.array(v.any()), hasMoreReplies: v.boolean() }), v.null()),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
@@ -1127,6 +1146,7 @@ export const getThread = query({
 
 export const getMessages = query({
   args: { clubId: v.id("clubs"), channelId: v.id("clubChannels") },
+  returns: v.array(v.any()),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
@@ -1159,6 +1179,7 @@ export const update = mutation({
       v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("MEMBER_READONLY")),
     ),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
@@ -1166,13 +1187,26 @@ export const update = mutation({
     const context = await getClubContext(ctx, channel.clubId, user);
     if (!context.canManageChannels) throw new ConvexError("Not authorized");
 
+    if (channel.visibility === "PRIVATE" && args.visibility && args.visibility !== "PRIVATE") {
+      const explicitMember = await ctx.db.query("clubChannelMemberships")
+        .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channel._id).eq("userId", user._id)).unique();
+      if (!canChangePrivateChannelVisibility({ isSponsor: context.isSponsor, isAdmin: context.isAdmin, isExplicitMember: !!explicitMember })) {
+        throw new ConvexError("Private channel membership is required to change visibility");
+      }
+    }
+
     const { channelId, ...updates } = args;
     await ctx.db.patch(channelId, { ...updates, updatedAt: Date.now() });
+    if (args.visibility && args.visibility !== channel.visibility) {
+      await logAuditEvent(ctx, { actorId: user._id, action: "club.channel_visibility_changed", entityType: "clubChannel", entityId: channel._id, meta: { from: channel.visibility, to: args.visibility, clubId: channel.clubId } });
+    }
+    return null;
   },
 });
 
 export const remove = mutation({
   args: { channelId: v.id("clubChannels") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
@@ -1180,6 +1214,8 @@ export const remove = mutation({
     const context = await getClubContext(ctx, channel.clubId, user);
     if (!context.canManageChannels) throw new ConvexError("Not authorized");
     await ctx.db.delete(args.channelId);
+    await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedChannel, { channelId: args.channelId });
+    return null;
   },
 });
 

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { query, mutation } from "../_generated/server";
+import { action, internalMutation, query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import {
   getCurrentAppUser,
   getMaybeCurrentAppUserUnchecked,
@@ -13,6 +14,8 @@ import {
 } from "../uploads/limits";
 import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
 import { claimUploadIntent } from "../uploads/uploadIntents";
+import { assertSafeStoredFile } from "../uploads/fileSignatures";
+import { recordUploadUsage } from "../uploads/quota";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 
@@ -58,7 +61,7 @@ export const updateDashboardLayout = mutation({
   },
 });
 
-export const saveUserImage = mutation({
+export const saveUserImageMutation = internalMutation({
   args: {
     kind: userImageKindValidator,
     uploadIntentId: v.id("uploadIntents"),
@@ -85,13 +88,19 @@ export const saveUserImage = mutation({
 
     const mimeType = (metadata.contentType ?? args.mimeType).toLowerCase();
 
-    if (!mimeType.startsWith("image/")) {
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType)) {
       await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Only image uploads are allowed");
     }
     if (metadata.size > maxBytes) {
       await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Image too large");
+    }
+    try {
+      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: metadata.size });
+    } catch (error) {
+      await deleteStoredFile(ctx, args.storageId);
+      throw error;
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
@@ -121,6 +130,23 @@ export const saveUserImage = mutation({
       throw new ConvexError("User not found.");
     }
     return toUserSelfProfile(updated);
+  },
+});
+
+export const saveUserImage = action({
+  args: { kind: userImageKindValidator, uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), mimeType: v.string(), size: v.number() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args): Promise<ReturnType<typeof toUserSelfProfile>> => {
+    const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "USER_IMAGE" });
+    try {
+      const response = await fetch(prepared.url);
+      if (!response.ok) throw new ConvexError("Upload not found");
+      await assertSafeStoredFile(await response.blob(), (prepared.contentType ?? args.mimeType).toLowerCase());
+    } catch (error) {
+      await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, { uploadIntentId: args.uploadIntentId, storageId: args.storageId });
+      throw error;
+    }
+    return ctx.runMutation(internal.users.me.saveUserImageMutation, args);
   },
 });
 

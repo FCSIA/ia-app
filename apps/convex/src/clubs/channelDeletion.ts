@@ -94,3 +94,23 @@ export const cleanupDeletedMessage = internalMutation({
     return null;
   },
 });
+
+export const cleanupDeletedChannel = internalMutation({
+  args: { channelId: v.id("clubChannels") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const [messages, memberships] = await Promise.all([
+      ctx.db.query("clubChannelMessages").withIndex("by_channelId_and_createdAt", (q) => q.eq("channelId", args.channelId)).take(50),
+      ctx.db.query("clubChannelMemberships").withIndex("by_channelId", (q) => q.eq("channelId", args.channelId)).take(100),
+    ]);
+    for (const membership of memberships) await ctx.db.delete(membership._id);
+    for (const message of messages) {
+      if (!message.deletedAt) await ctx.db.patch(message._id, { deletedAt: Date.now() });
+      await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedMessage, { messageId: message._id });
+    }
+    if (messages.length === 50 || memberships.length === 100) {
+      await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedChannel, args);
+    }
+    return null;
+  },
+});

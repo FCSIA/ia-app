@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import { File, type UploadTask } from "expo-file-system";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { useToast } from "@/components/ui";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
@@ -30,7 +30,7 @@ type ItemUpdater = (
 export function useManagedChatAttachments() {
   const { showToast } = useToast();
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const finalizeAttachment = useMutation(
+  const finalizeAttachment = useAction(
     api.uploads.files.finalizeChatAttachment,
   );
   const discardAttachment = useMutation(

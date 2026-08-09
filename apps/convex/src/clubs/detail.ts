@@ -18,6 +18,7 @@ import {
 
 export const get = query({
   args: { clubId: v.id("clubs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const club = await ctx.db.get(args.clubId);
@@ -156,12 +157,13 @@ export const get = query({
         (r): r is NonNullable<typeof r> => !!r,
       ),
       activeJoinCode:
-        context.canManageMembership && club.joinCode
+        context.canManageMembership && club.joinCode && club.joinCodeExpiresAt && club.joinCodeExpiresAt > Date.now()
           ? {
               code: club.joinCode,
               updatedAt: club.joinCodeUpdatedAt
                 ? new Date(club.joinCodeUpdatedAt).toISOString()
                 : null,
+              expiresAt: new Date(club.joinCodeExpiresAt).toISOString(),
             }
           : null,
     };
@@ -171,6 +173,7 @@ export const get = query({
 /** Small, stable payload for the club shell on every workspace route. */
 export const getWorkspaceNavigation = query({
   args: { clubId: v.id("clubs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;

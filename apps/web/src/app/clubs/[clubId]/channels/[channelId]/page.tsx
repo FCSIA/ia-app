@@ -2,7 +2,7 @@
 
 import { use, useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import Image from 'next/image';
 import {
   BarChart3,
@@ -888,7 +888,7 @@ export default function ClubChannelPage({
   );
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const finalizeChatAttachment = useMutation(api.uploads.files.finalizeChatAttachment);
+  const finalizeChatAttachment = useAction(api.uploads.files.finalizeChatAttachment);
   const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage).withOptimisticUpdate(
     (localStore, args) => {

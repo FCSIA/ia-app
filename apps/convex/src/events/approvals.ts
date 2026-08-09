@@ -1,14 +1,14 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { serializeEvent } from "./serialize";
+import { getCurrentAppUser } from "../../lib/currentUser";
+import { serializeEvent, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 
 export const listPendingForSponsor = query({
   args: {},
+  returns: v.array(serializedEventValidator),
   handler: async (ctx) => {
-    const user = await getMaybeCurrentAppUser(ctx);
-    if (!user) return [];
+    const user = await getCurrentAppUser(ctx);
     const approvals = await ctx.db
       .query("eventApprovals")
       .withIndex("by_sponsorId_and_status", (q) =>
@@ -33,6 +33,7 @@ export const approveEvent = mutation({
     eventId: v.id("events"),
     note: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const approval = await ctx.db
@@ -106,6 +107,7 @@ export const approveEvent = mutation({
       entityType: "EVENT",
       createdAt: Date.now(),
     });
+    return null;
   },
 });
 
@@ -114,6 +116,7 @@ export const rejectEvent = mutation({
     eventId: v.id("events"),
     note: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const approval = await ctx.db
@@ -145,5 +148,6 @@ export const rejectEvent = mutation({
       entityType: "EVENT",
       createdAt: Date.now(),
     });
+    return null;
   },
 });

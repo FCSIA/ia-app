@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { serializeEvent, serializeEventDetail } from "./serialize";
+import { getCurrentAppUser } from "../../lib/currentUser";
+import { serializeEvent, serializeEventDetail, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
@@ -15,8 +15,9 @@ function isAdmin(user: { roles: string[] } | null) {
 
 export const list = query({
   args: { clubId: v.optional(v.id("clubs")) },
+  returns: v.array(serializedEventValidator),
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getCurrentAppUser(ctx);
     const admin = isAdmin(user);
 
     let events = args.clubId
@@ -47,8 +48,9 @@ export const list = query({
 
 export const get = query({
   args: { eventId: v.id("events") },
+  returns: v.union(serializedEventDetailValidator, v.null()),
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getCurrentAppUser(ctx);
     const event = await ctx.db.get(args.eventId);
     if (!event) return null;
 
@@ -74,6 +76,7 @@ export const create = mutation({
     endAt: v.optional(v.number()),
     clubId: v.optional(v.id("clubs")),
   },
+  returns: v.id("events"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const admin = isAdmin(user);
@@ -194,6 +197,7 @@ export const create = mutation({
 
 export const cancel = mutation({
   args: { eventId: v.id("events") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const event = await ctx.db.get(args.eventId);
@@ -224,5 +228,6 @@ export const cancel = mutation({
       entityType: "EVENT",
       createdAt: Date.now(),
     });
+    return null;
   },
 });

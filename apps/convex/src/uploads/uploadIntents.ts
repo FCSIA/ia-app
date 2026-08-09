@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import { getCurrentAppUser } from "../../lib/currentUser";
 
 export const UPLOAD_INTENT_TTL_MS = 60 * 60 * 1000;
 
@@ -81,6 +82,7 @@ export async function claimUploadIntent(
     ...input,
     now: Date.now(),
   });
+  if (!metadata) throw new ConvexError("Upload not found");
 
   if (!authorizedIntent.storageId) {
     await ctx.db.patch(authorizedIntent._id, {
@@ -100,6 +102,31 @@ export const cleanupUploadIntent = internalMutation({
     if (!intent.claimedAt && intent.storageId) {
       await ctx.storage.delete(intent.storageId).catch(() => {});
     }
+    await ctx.db.delete(intent._id);
+    return null;
+  },
+});
+
+export const prepareUploadValidation = internalMutation({
+  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), purpose: uploadPurposeValidator },
+  returns: v.object({ url: v.string(), contentType: v.optional(v.string()), size: v.number() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const metadata = await claimUploadIntent(ctx, { ...args, uploaderId: user._id });
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) throw new ConvexError("Upload not found");
+    return { url, contentType: metadata.contentType, size: metadata.size };
+  },
+});
+
+export const discardRejectedUpload = internalMutation({
+  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const intent = await ctx.db.get(args.uploadIntentId);
+    if (!intent || intent.uploaderId !== user._id || intent.storageId !== args.storageId) throw new ConvexError("Unauthorized");
+    await ctx.storage.delete(args.storageId).catch(() => {});
     await ctx.db.delete(intent._id);
     return null;
   },

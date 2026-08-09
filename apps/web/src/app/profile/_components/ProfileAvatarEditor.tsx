@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { EditableAvatar } from '@/components/ui/editable-avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +16,7 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const saveUserImage = useMutation(api.users.me.saveUserImage);
+  const saveUserImage = useAction(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
 
   async function handleFile(file: File) {

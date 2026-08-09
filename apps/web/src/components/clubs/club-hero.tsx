@@ -9,7 +9,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMutation } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,8 @@ export function ClubHero({
   const { toast } = useToast();
   const updateClub = useMutation(api.clubs.management.update);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const finalizeClubImage = useMutation(api.uploads.files.finalizeClubImage);
+  const finalizeClubImage = useAction(api.uploads.files.finalizeClubImage);
+  const clearClubImage = useMutation(api.uploads.files.clearClubImage);
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
@@ -51,12 +52,14 @@ export function ClubHero({
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
 
-  const uploadClubImage = async (file: File) => {
+  const uploadClubImage = async (kind: "logo" | "banner", file: File) => {
     const { storageId, uploadIntentId } = await uploadFileToConvex(
       { generateUploadUrl: () => generateUploadUrl({ purpose: "CLUB_IMAGE" }) },
       file,
     );
     return finalizeClubImage({
+      clubId: club._id,
+      kind,
       uploadIntentId,
       storageId,
       originalName: file.name,
@@ -68,8 +71,7 @@ export function ClubHero({
   const handleQuickLogoUpload = async (file: File) => {
     setUploadingLogo(true);
     try {
-      const uploaded = await uploadClubImage(file);
-      await updateClub({ clubId: club._id, logoUrl: uploaded.url });
+      const uploaded = await uploadClubImage("logo", file);
       toast({ title: "Club logo updated" });
 
       setForm((c) => ({ ...c, logoUrl: uploaded.url }));
@@ -98,7 +100,7 @@ export function ClubHero({
     const setBusy = kind === "logo" ? setUploadingLogo : setUploadingBanner;
     setBusy(true);
     try {
-      const uploaded = await uploadClubImage(file);
+      const uploaded = await uploadClubImage(kind, file);
       setForm((c) => ({
         ...c,
         [kind === "logo" ? "logoUrl" : "bannerUrl"]: uploaded.url,
@@ -128,8 +130,6 @@ export function ClubHero({
       clubId: club._id,
       overview: form.overview || undefined,
       accentColor: form.accentColor || undefined,
-      logoUrl: form.logoUrl || undefined,
-      bannerUrl: form.bannerUrl || undefined,
       memberLimit,
     }).then(() => {
       toast({ title: "Club branding saved" });
@@ -275,7 +275,7 @@ export function ClubHero({
                       size="sm"
                       variant="ghost"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => setForm((c) => ({ ...c, bannerUrl: "" }))}
+                      onClick={() => void clearClubImage({ clubId: club._id, kind: "banner" }).then(() => setForm((c) => ({ ...c, bannerUrl: "" })))}
                     >
                       <Trash2 className="mr-1.5 size-3.5" /> Remove
                     </Button>
@@ -298,7 +298,7 @@ export function ClubHero({
                   fallbackClassName="rounded-md bg-muted text-muted-foreground"
                   imageUrl={resolveMediaUrl(form.logoUrl)}
                   loading={uploadingLogo}
-                  onRemove={() => setForm((c) => ({ ...c, logoUrl: "" }))}
+                  onRemove={() => void clearClubImage({ clubId: club._id, kind: "logo" }).then(() => setForm((c) => ({ ...c, logoUrl: "" })))}
                   onUpload={(file) => void handleUpload("logo", file)}
                   removeLabel="Remove"
                   uploadLabel="Upload logo"

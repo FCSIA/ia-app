@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
+export type CachedDisplayUser = Pick<AppUser, '_id' | 'firstName' | 'lastName' | 'avatarUrl'>;
 
-export function getUser(): AppUser | null {
+export function getUser(): CachedDisplayUser | null {
   if (typeof window === 'undefined') return null;
   const raw = localStorage.getItem('ia_user');
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as AppUser;
+    return JSON.parse(raw) as CachedDisplayUser;
   } catch {
     return null;
   }
@@ -22,7 +23,13 @@ export function getUser(): AppUser | null {
 export function cacheUser(user: AppUser | null) {
   if (typeof window === 'undefined') return;
   if (user) {
-    localStorage.setItem('ia_user', JSON.stringify(user));
+    const display: CachedDisplayUser = {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+    };
+    localStorage.setItem('ia_user', JSON.stringify(display));
   } else {
     localStorage.removeItem('ia_user');
   }
@@ -54,21 +61,13 @@ export function isSuperAdmin(user: AppUser | null): boolean {
 export function useCurrentUser(): AppUser | null {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
-  const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
-
-  useEffect(() => {
-    setCachedUser(getUser());
-  }, []);
-
   useEffect(() => {
     if (user) {
       cacheUser(user);
-      setCachedUser(user);
     } else if (!isLoading && !isAuthenticated) {
       cacheUser(null);
-      setCachedUser(null);
     }
   }, [isAuthenticated, isLoading, user]);
 
-  return user ?? cachedUser;
+  return user ?? null;
 }

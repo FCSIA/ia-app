@@ -33,3 +33,11 @@ export const friendLinkRateLimiter = new RateLimiter(components.rateLimiter, {
     period: MINUTE,
   },
 });
+
+export const clubJoinRateLimiter = new RateLimiter(components.rateLimiter, {
+  codeRedemptionsByUser: { kind: "fixed window", rate: 8, period: MINUTE },
+});
+
+export const uploadRateLimiter = new RateLimiter(components.rateLimiter, {
+  urlsByUser: { kind: "fixed window", rate: 20, period: MINUTE },
+});

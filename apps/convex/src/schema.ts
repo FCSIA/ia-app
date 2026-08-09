@@ -70,6 +70,8 @@ export const schema = defineSchema({
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_uniqueId", ["uniqueId"])
     .index("by_email", ["email"])
+    .index("by_avatarStorageId", ["avatarStorageId"])
+    .index("by_customBackgroundStorageId", ["customBackgroundStorageId"])
     .index("by_isActive", ["isActive"])
     .index("by_lastName_and_firstName", ["lastName", "firstName"])
     .index("by_isStudent_and_lastName_and_firstName", [
@@ -484,18 +486,23 @@ export const schema = defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
     bannerUrl: v.optional(v.string()),
+    bannerStorageId: v.optional(v.id("_storage")),
     accentColor: v.optional(v.string()),
     overview: v.optional(v.string()),
     joinPolicy: clubJoinPolicyValidator,
     memberLimit: v.optional(v.number()),
     joinCode: v.optional(v.string()),
     joinCodeUpdatedAt: v.optional(v.number()),
+    joinCodeExpiresAt: v.optional(v.number()),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_isActive", ["isActive"])
+    .index("by_logoStorageId", ["logoStorageId"])
+    .index("by_bannerStorageId", ["bannerStorageId"])
     .index("by_isActive_and_name", ["isActive", "name"]),
 
   clubMembers: defineTable({
@@ -652,7 +659,9 @@ export const schema = defineSchema({
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+  })
+    .index("by_messageId_and_createdAt", ["messageId", "createdAt"])
+    .index("by_storageId", ["storageId"]),
 
   clubChannelAttachmentUploads: defineTable({
     uploaderId: v.id("users"),
@@ -678,6 +687,15 @@ export const schema = defineSchema({
     claimedAt: v.optional(v.number()),
   })
     .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
+  uploadUsage: defineTable({
+    uploaderId: v.id("users"),
+    uploadIntentId: v.id("uploadIntents"),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_uploadIntentId", ["uploadIntentId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
   clubChannelMessageReactions: defineTable({

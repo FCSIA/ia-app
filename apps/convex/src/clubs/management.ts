@@ -3,7 +3,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
-import { clubSummaryValidator, clubSummaryWithCounts } from "./serialize";
+import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
 import type { AppRole } from "../../lib/roles";
 
 const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
@@ -27,6 +27,11 @@ export const getAll = query({
 
 export const getOne = query({
   args: { clubId: v.id("clubs") },
+  returns: v.union(v.object({
+    ...clubSummaryValidator.fields,
+    viewer: v.any(),
+    members: v.array(v.object({ _id: v.id("clubMembers"), userId: v.id("users"), role: v.optional(v.string()), joinedAt: v.number() })),
+  }), v.null()),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
@@ -41,9 +46,9 @@ export const getOne = query({
       .collect();
 
     return {
-      ...club,
-      viewer: context,
-      members,
+      ...(await clubSummaryWithCounts(ctx, club)),
+      viewer: toViewerState(context),
+      members: members.map((member) => ({ _id: member._id, userId: member.userId, role: member.role, joinedAt: member.joinedAt })),
     };
   },
 });
@@ -56,6 +61,7 @@ export const create = mutation({
     memberLimit: v.optional(v.number()),
     sponsorIds: v.optional(v.array(v.id("users"))),
   },
+  returns: v.id("clubs"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireAnyRole(user, [...CLUB_CREATION_ROLES]);
@@ -106,12 +112,11 @@ export const update = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     overview: v.optional(v.string()),
-    logoUrl: v.optional(v.string()),
-    bannerUrl: v.optional(v.string()),
     accentColor: v.optional(v.string()),
     joinPolicy: v.optional(v.union(v.literal("OPEN"), v.literal("REQUEST"))),
     memberLimit: v.optional(v.union(v.number(), v.null())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const { clubId, memberLimit, ...updates } = args;
@@ -129,8 +134,6 @@ export const update = mutation({
       ...(updates.overview !== undefined
         ? { overview: updates.overview?.trim() || undefined }
         : {}),
-      ...(updates.logoUrl !== undefined ? { logoUrl: updates.logoUrl || undefined } : {}),
-      ...(updates.bannerUrl !== undefined ? { bannerUrl: updates.bannerUrl || undefined } : {}),
       ...(updates.accentColor !== undefined
         ? { accentColor: updates.accentColor || undefined }
         : {}),
@@ -138,6 +141,9 @@ export const update = mutation({
 
     if (cleanUpdates.name !== undefined && !cleanUpdates.name) {
       throw new ConvexError("Club name is required");
+    }
+    if (cleanUpdates.accentColor !== undefined && cleanUpdates.accentColor && !/^#[0-9a-fA-F]{6}$/.test(cleanUpdates.accentColor)) {
+      throw new ConvexError("Accent color must be a six-digit hex color");
     }
 
     if (
@@ -162,11 +168,13 @@ export const update = mutation({
       entityType: "Club",
       entityId: clubId,
     });
+    return null;
   },
 });
 
 export const deactivate = mutation({
   args: { clubId: v.id("clubs") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireAnyRole(user, ["ADMIN", "SUPER_ADMIN"]);
@@ -179,6 +187,7 @@ export const deactivate = mutation({
       entityType: "Club",
       entityId: args.clubId,
     });
+    return null;
   },
 });
 
@@ -188,6 +197,7 @@ export const setMemberRole = mutation({
     memberId: v.id("users"),
     role: v.optional(v.union(v.literal("MEMBER"), v.literal("LEADER"), v.literal("SPONSOR"))),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
@@ -214,11 +224,13 @@ export const setMemberRole = mutation({
       entityId: args.clubId,
       meta: { memberId: args.memberId, role: args.role },
     });
+    return null;
   },
 });
 
 export const removeMember = mutation({
   args: { clubId: v.id("clubs"), memberId: v.id("users") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
@@ -245,11 +257,13 @@ export const removeMember = mutation({
       entityId: args.clubId,
       meta: { memberId: args.memberId },
     });
+    return null;
   },
 });
 
 export const getMyClubs = query({
   args: {},
+  returns: v.object({ memberOf: v.array(clubSummaryValidator), sponsoring: v.array(clubSummaryValidator) }),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return { memberOf: [], sponsoring: [] };
@@ -287,6 +301,11 @@ export const getMyClubs = query({
 
 export const listMyInvites = query({
   args: {},
+  returns: v.array(v.object({
+    _id: v.id("clubInvites"),
+    club: v.object({ _id: v.id("clubs"), name: v.string(), description: v.union(v.string(), v.null()) }),
+    sender: v.object({ _id: v.id("users"), firstName: v.string(), lastName: v.string() }),
+  })),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];

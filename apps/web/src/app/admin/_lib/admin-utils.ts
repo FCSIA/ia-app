@@ -49,8 +49,9 @@ export function refreshWrappedResultTitle(generated: number, skipped: number) {
 }
 
 
-function escapeCsvCell(value: unknown) {
-  const stringValue = String(value ?? '');
+export function escapeCsvCell(value: unknown) {
+  const rawValue = String(value ?? '');
+  const stringValue = /^[\t ]*[=+\-@]/.test(rawValue) ? `'${rawValue}` : rawValue;
   if (/[",\n]/.test(stringValue)) {
     return `"${stringValue.replace(/"/g, '""')}"`;
   }
