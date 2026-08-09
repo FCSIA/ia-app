@@ -52,12 +52,12 @@ export default function ReportPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Send a thought, feature request, improvement idea, or concern. Your message goes directly to school staff.
+              Send a thought, feature request, improvement idea, or concern. ANYTHING! Don't like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
             </p>
           </div>
         </div>
 
-        <Panel title="What would you like to share?" description="Include enough detail for staff to understand your idea and follow up.">
+        <Panel title="What would you like to share?" tone="accent">
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <Textarea
               aria-label="Share your feedback"

@@ -12,7 +12,7 @@ import {
   type Ref,
 } from 'react';
 import { cn } from '@/lib/utils';
-import { springs } from '@/lib/springs';
+import { spring } from '@/lib/springs';
 
 type SwitchProps = Omit<
   ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>,
@@ -56,7 +56,7 @@ function Switch({
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
   const hasMounted = useRef(false);
-  const transition = thumbTransition ?? springs.fast;
+  const transition = thumbTransition ?? spring.fast;
   const thumbWidth = pressed ? 20 : hovered ? 18 : THUMB_SIZE;
   const thumbHeight = pressed ? 12 : THUMB_SIZE;
   const thumbX = checked

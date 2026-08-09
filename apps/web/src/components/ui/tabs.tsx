@@ -18,9 +18,11 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
-import { springs } from "@/lib/springs";
+import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
+import { useSurface } from "@/lib/surface-context";
+import { surfaceClasses } from "@/lib/surface-classes";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 
 /* ─────────────────────── Contexts ─────────────────────── */
@@ -96,8 +98,8 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
     }, []);
 
     // Resolve value: explicit value > selectedIndex lookup > uncontrolled state.
-    // Fall back to the first registered tab so Radix stays controlled from the
-    // first visible commit even when no default value was provided.
+    // Uncontrolled with no defaultValue falls back to the first tab so the
+    // FF layer's selectedValue matches what the primitive shows.
     const resolvedValue =
       value ??
       (selectedIndex != null
@@ -115,7 +117,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           if (idx !== -1) onSelect(idx);
         }
       },
-      [onValueChange, onSelect, selectedIndex, value, valueOrder]
+      [onValueChange, onSelect, valueOrder, value, selectedIndex]
     );
 
     return (
@@ -126,6 +128,14 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
           selectedValue: resolvedValue,
         }}
       >
+        {/*
+          Always controlled: feeding the primitive an undefined-then-defined
+          value flips it from uncontrolled to controlled, which Radix warns
+          about in dev. valueOrder is empty on the first commit, so fall back
+          to an empty-string sentinel — TabsList's layout effect populates
+          valueOrder pre-paint, so the corrected value lands before anything
+          is visible.
+        */}
         <TabsPrimitive.Root
           ref={ref}
           value={resolvedValue ?? ""}
@@ -151,6 +161,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const isMouseInside = useRef(false);
     const shape = useShape();
+    const substrate = useSurface();
+    // Active pill lifts 3 levels above substrate (1 above the muted track + 2 for pop).
+    // On the page (substrate 1) this lands on surface 4 — matches the original design.
+    // Inside a dialog (substrate 5) it lifts to surface 8 instead of staying at 4.
+    const indicatorLevel = Math.min(substrate + 3, 8);
     const valueOrderCtx = useContext(TabsValueOrderContext);
     const [optimisticIdx, setOptimisticIdx] = useState<number | null>(null);
 
@@ -185,19 +200,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
       [registerItem]
     );
 
-    // Measure on children change
+    // Measure on children change (resizes are covered by useProximityHover's
+    // own container ResizeObserver)
     useEffect(() => {
       measureItems();
     }, [measureItems, children]);
-
-    // Remeasure on resize
-    useEffect(() => {
-      const el = containerRef.current;
-      if (!el) return;
-      const ro = new ResizeObserver(() => measureItems());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [measureItems]);
 
     // Track mouse inside
     const handleMouseMove = useCallback(
@@ -231,9 +238,11 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     const isHoveringSelected = hoveredIndex === activeSelectedIdx;
     const isHovering = hoveredIndex !== null && !isHoveringSelected;
 
-    // Auto-assign _index to children
+    // Auto-assign _index to children.
+    // Skip plain DOM elements — injecting _index into e.g. a <div>
+    // triggers React's unknown-prop warning.
     const indexedChildren = Children.map(children, (child, i) => {
-      if (isValidElement(child)) {
+      if (isValidElement(child) && typeof child.type !== "string") {
         return cloneElement(child, { _index: i } as Record<string, unknown>);
       }
       return child;
@@ -290,7 +299,8 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
           {selectedRect && (
             <motion.div
               className={cn(
-                "absolute pointer-events-none bg-background shadow-sm dark:shadow-[0_1px_2px_rgba(0,0,0,0.4)]",
+                "absolute pointer-events-none",
+                surfaceClasses(indicatorLevel),
                 shape.bg
               )}
               initial={false}
@@ -302,7 +312,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                 opacity: isHovering ? 0.85 : 1,
               }}
               transition={{
-                ...springs.moderate,
+                ...spring.moderate,
                 opacity: { duration: 0.08 },
               }}
             />
@@ -339,14 +349,14 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                         height: selectedRect.height,
                         opacity: 0,
                         transition: {
-                          ...springs.moderate,
+                          ...spring.moderate,
                           opacity: { duration: 0.06 },
                         },
                       }
-                    : { opacity: 0, transition: { duration: 0.06 } }
+                    : { opacity: 0, transition: spring.fast.exit }
                 }
                 transition={{
-                  ...springs.fast,
+                  ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
               />
@@ -358,7 +368,7 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
             {focusRect && (
               <motion.div
                 className={cn(
-                  "absolute pointer-events-none z-20 border border-[#6B97FF]",
+                  "absolute pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]",
                   shape.focusRing
                 )}
                 initial={false}
@@ -368,9 +378,9 @@ const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                   width: focusRect.width + 4,
                   height: focusRect.height + 4,
                 }}
-                exit={{ opacity: 0, transition: { duration: 0.06 } }}
+                exit={{ opacity: 0, transition: spring.fast.exit }}
                 transition={{
-                  ...springs.fast,
+                  ...spring.fast,
                   opacity: { duration: 0.08 },
                 }}
               />
@@ -401,10 +411,7 @@ interface TabItemProps
 }
 
 const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
-  (
-    { value, icon: Icon, label, _index = 0, className, onClick, ...props },
-    ref
-  ) => {
+  ({ value, icon: Icon, label, _index = 0, className, onClick, ...props }, ref) => {
     const internalRef = useRef<HTMLButtonElement>(null);
     const { registerTab, hoveredIndex, selectedValue, setOptimisticIdx } = useTabsList();
 
@@ -418,9 +425,11 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
 
     return (
       <TabsPrimitive.Trigger
-        onClick={(event) => {
+        // Composed (not spread-overridable): a consumer onClick must not
+        // replace the optimistic indicator jump.
+        onClick={(e) => {
           setOptimisticIdx(_index);
-          onClick?.(event);
+          onClick?.(e);
         }}
         ref={(node) => {
           (
@@ -435,7 +444,9 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         value={value}
         data-proximity-index={_index}
         className={cn(
-          "relative z-10 flex items-center gap-2 px-3 py-1.5 cursor-pointer bg-transparent border-none outline-none",
+          // Fixed height (not py) so the text-box trim below doesn't shrink
+          // the tab — browsers without text-box support render identically.
+          "relative z-10 flex h-8 items-center gap-2 px-3 cursor-pointer bg-transparent border-none outline-none",
           className
         )}
         {...props}
@@ -450,9 +461,11 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
             )}
           />
         )}
+        {/* Both stacked spans carry the text-box trim so the invisible bold
+            sizer and the visible label keep identical boxes. */}
         <span className="inline-grid text-[13px] whitespace-nowrap">
           <span
-            className="col-start-1 row-start-1 invisible"
+            className="col-start-1 row-start-1 invisible [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -460,7 +473,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               isActive ? "text-foreground" : "text-muted-foreground"
             )}
             style={{

@@ -138,7 +138,7 @@ export default function NotificationsPage() {
           </div>
 
           <Tabs defaultValue="inbox" className="w-full">
-            <TabsList className="w-full sm:w-auto">
+            <TabsList>
               <TabItem value="inbox" icon={Bell} label="Inbox" />
               <TabItem value="settings" icon={Settings} label="Settings" />
             </TabsList>

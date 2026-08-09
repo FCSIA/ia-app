@@ -24,6 +24,24 @@ rendered UI as wrong spacing, oversized icons, broken focus, or a trigger that
 does not open. Do not begin by tweaking page-level Tailwind classes when the
 primitive contract may be wrong.
 
+## Registry ownership and updates
+
+`pnpm fluid:update` is preview-only unless the caller supplies both `--write`
+and an explicit component list. It must never overwrite the whole registry in
+one operation.
+
+Components listed as adapted in `scripts/update-fluid-components.mjs` preserve
+product-required APIs or DOM contracts. The script blocks automatic writes for
+them. Review the current rendered example, Code example, API, registry source,
+local source, and all callsites, then merge the upstream change deliberately.
+Do not bypass the guard merely to make the local file match the registry.
+
+Registry-managed components may be updated selectively after reviewing the
+dry-run. App-owned compositions must use distinct semantic names and filenames;
+for example, `InputControl` is the inline addon/action composition, while
+Fluid's `InputGroup` remains the animated labeled-field group. Do not create
+same-name compatibility exports between the two.
+
 ## Concrete failure: `InputGroupButton`
 
 The copied shadcn `InputGroupButton` assumed that its icon was a direct SVG
@@ -116,8 +134,9 @@ References:
    padding, gaps, and any negative margin. Test both resting and open states.
 7. Fix a shared contract mismatch in `components/ui`; use page-level classes
    only for layout that is genuinely unique to that page.
-8. Typecheck and lint, then visually exercise open/close, hover, focus, keyboard,
-   disabled, selected, and narrow-width states. Type safety alone is not proof.
+8. Typecheck and lint, then diagnostically exercise open/close, hover, focus,
+   keyboard, disabled, selected, and narrow-width states. Type safety alone is
+   not proof of behavior, and agent inspection is not design approval.
 
 ## Direct-child and motion contracts
 

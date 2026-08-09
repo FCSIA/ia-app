@@ -179,7 +179,7 @@ export function useGlobalCommandActions({
 
     const channelActions: CommandAction[] = (globalResults?.channels ?? []).map((channel) => ({
       id: `channel-${channel._id}`,
-      label: `#${channel.name}`,
+      label: `${channel.name}`,
       detail: channel.club.name,
       href: `/clubs/${channel.club._id}/channels/${channel._id}`,
       Icon: Hash,

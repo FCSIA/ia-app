@@ -12,7 +12,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { TabItem, Tabs, TabsList } from "@/components/ui/tabs";
+import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
 import { FriendSchedulesPanel } from "./FriendSchedulesPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
@@ -43,30 +43,24 @@ export function ScheduleWorkspace() {
     <AppShell>
       <PageFrame className="gap-5">
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
-          <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
-            {canEditOwnSchedule ? <ScheduleStatusBar /> : null}
+          {canEditOwnSchedule ? (
+            <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
+              <ScheduleStatusBar />
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              {canEditOwnSchedule || canManageBlocks ? (
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0 overflow-x-auto pb-1 lg:pb-0">
-                  <TabsList className="w-max min-w-full lg:min-w-0">
-                    {canEditOwnSchedule ? (
-                      <TabItem
-                        value="my"
-                        label="My week"
-                        icon={CalendarRange}
-                      />
-                    ) : null}
-                    {canEditOwnSchedule ? (
-                      <TabItem
-                        value="friends"
-                        label="Friends"
-                        icon={UsersRound}
-                      />
-                    ) : null}
-                    {canEditOwnSchedule ? (
-                      <TabItem value="groups" label="Groups" icon={Users} />
-                    ) : null}
+                  <TabsList>
+                    <TabItem
+                      value="my"
+                      label="My week"
+                      icon={CalendarRange}
+                    />
+                    <TabItem
+                      value="friends"
+                      label="Friends"
+                      icon={UsersRound}
+                    />
+                    <TabItem value="groups" label="Groups" icon={Users} />
                     {canManageBlocks ? (
                       <TabItem
                         value="admin"
@@ -76,10 +70,9 @@ export function ScheduleWorkspace() {
                     ) : null}
                   </TabsList>
                 </div>
-              ) : null}
 
-              {selectedTab === "my" && canEditOwnSchedule ? (
-                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                {selectedTab === "my" ? (
+                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                   <Switch
                     label="Visible to friends"
                     checked={isPublic}
@@ -101,15 +94,24 @@ export function ScheduleWorkspace() {
                   >
                     Save schedule
                   </Button>
-                </div>
-              ) : null}
-            </div>
-          </header>
+                  </div>
+                ) : null}
+              </div>
+            </header>
+          ) : null}
 
           {canEditOwnSchedule ? <MySchedulePanel /> : null}
           {canEditOwnSchedule ? <FriendSchedulesPanel /> : null}
           {canEditOwnSchedule ? <ScheduleGroupsPanel /> : null}
-          {canManageBlocks ? <ManageBlocksPanel /> : null}
+          {canManageBlocks ? (
+            canEditOwnSchedule ? (
+              <TabPanel value="admin" className="mt-5">
+                <ManageBlocksPanel />
+              </TabPanel>
+            ) : (
+              <ManageBlocksPanel />
+            )
+          ) : null}
         </Tabs>
       </PageFrame>
     </AppShell>

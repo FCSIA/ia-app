@@ -112,7 +112,7 @@ export function MySchedulePanel() {
                     }
                   }}
                 >
-                  <TabsList className="w-max">
+                  <TabsList>
                     {WEEKDAYS.map((day) => (
                       <TabItem
                         key={day.value}

@@ -33,21 +33,23 @@ export function AdminShell({
         onValueChange={(value) => onTabChange(value as AdminTabId)}
         className="contents"
       >
-        <TabsList className="mb-3 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end">
-          <TabItem value="users" icon={Users} label="Users" />
-          {isSuperAdmin ? (
-            <TabItem value="schedule" icon={CalendarDays} label="Schedule" />
-          ) : null}
-          <TabItem
-            value="moderation"
-            icon={MessageSquareWarning}
-            label={pendingReports > 0 ? `Reports (${pendingReports})` : 'Reports'}
-          />
-          {canManageWrapped ? (
-            <TabItem value="wrapped" icon={Sparkles} label="Wrapped" />
-          ) : null}
-          <TabItem value="audit" icon={FileText} label="Audit Log" />
-        </TabsList>
+        <div className="mb-3 min-w-0 max-w-full justify-self-start overflow-x-auto lg:col-start-2 lg:row-start-1 lg:justify-self-end">
+          <TabsList>
+            <TabItem value="users" icon={Users} label="Users" />
+            {isSuperAdmin ? (
+              <TabItem value="schedule" icon={CalendarDays} label="Schedule" />
+            ) : null}
+            <TabItem
+              value="moderation"
+              icon={MessageSquareWarning}
+              label={pendingReports > 0 ? `Reports (${pendingReports})` : 'Reports'}
+            />
+            {canManageWrapped ? (
+              <TabItem value="wrapped" icon={Sparkles} label="Wrapped" />
+            ) : null}
+            <TabItem value="audit" icon={FileText} label="Audit Log" />
+          </TabsList>
+        </div>
 
         <div className="col-start-1 row-start-3 flex min-h-0 lg:col-span-2 lg:row-start-2">
           {children}

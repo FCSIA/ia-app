@@ -2,21 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory, NotificationPreferenceLevel } from '~/apps/convex/src/validators';
@@ -52,6 +42,13 @@ const MUTE_DURATIONS = [
   { label: 'For 24 hours', duration: 24 * 60 * 60_000 },
   { label: 'Until I turn it back on', duration: null },
 ] as const;
+
+const NOTIFICATION_MODES: Array<{ value: NotificationMode; label: string }> = [
+  { value: 'default', label: 'Club default' },
+  { value: 'all', label: 'All messages' },
+  { value: 'mentions', label: 'Only @mentions' },
+  { value: 'nothing', label: 'Nothing' },
+];
 
 type NotificationPreference = {
   category: NotificationCategory;
@@ -128,6 +125,8 @@ export function ChannelNotificationSettings({
   const muteRequestVersion = useRef(0);
   const [optimisticMode, setOptimisticMode] = useState<NotificationMode | null>(null);
   const [optimisticMuted, setOptimisticMuted] = useState<boolean | null>(null);
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<'settings' | 'mute'>('settings');
 
   const storedMode = storedNotificationMode(preferences, channelId);
   const mode = optimisticMode ?? storedMode;
@@ -212,66 +211,100 @@ export function ChannelNotificationSettings({
   };
 
   return (
-    <DropdownMenu>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setView('settings');
+      }}
+    >
       <Tooltip content="Channel notification settings">
-        <DropdownMenuTrigger asChild>
+        <PopoverTrigger asChild>
           <Button variant="ghost" size="icon-sm" aria-label="Channel notification settings">
-            {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+            {muted ? <BellOff /> : <Bell />}
           </Button>
-        </DropdownMenuTrigger>
+        </PopoverTrigger>
       </Tooltip>
-      <DropdownMenuContent align="start" className="w-72 p-1.5">
-        <DropdownMenuLabel className="px-2 py-1.5">
-          <span className="block truncate text-sm">#{channelName}</span>
-          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-            {muted ? 'Muted' : mode === 'default' ? 'Using category default' : `${mode} notifications`}
-          </span>
-        </DropdownMenuLabel>
-        {muted ? (
-          <DropdownMenuItem onSelect={() => void setMuted(false)}>
-            <Bell className="size-4" />
-            Unmute channel
-          </DropdownMenuItem>
+      <PopoverContent
+        align="start"
+        collisionPadding={8}
+        className="w-72 max-w-[calc(100vw-1rem)] p-2"
+      >
+        {view === 'mute' ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1 px-1 pb-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Back to notification settings"
+                onClick={() => setView('settings')}
+              >
+                <ArrowLeft />
+              </Button>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">Mute #{channelName}</p>
+              </div>
+            </div>
+            {MUTE_DURATIONS.map((option) => (
+              <Button
+                key={option.label}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {
+                  void setMuted(true, option.duration);
+                  setOpen(false);
+                }}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         ) : (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <BellOff className="size-4" />
-              Mute channel
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-60 p-1.5">
-              {MUTE_DURATIONS.map((option) => (
-                <DropdownMenuItem
-                  key={option.label}
-                  onSelect={() => void setMuted(true, option.duration)}
-                >
-                  {option.label}
-                </DropdownMenuItem>
+          <div className="flex flex-col gap-2">
+            <div className="px-2 pt-1">
+              <p className="truncate text-sm font-semibold">#{channelName}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              leadingIcon={muted ? Bell : BellOff}
+              onClick={() => {
+                if (muted) {
+                  void setMuted(false);
+                  setOpen(false);
+                } else {
+                  setView('mute');
+                }
+              }}
+            >
+              {muted ? 'Unmute channel' : 'Mute channel'}
+            </Button>
+            <Separator />
+            <RadioGroup
+              value={mode}
+              onValueChange={(value) => {
+                void setMode(value as NotificationMode);
+                setOpen(false);
+              }}
+              className="w-full"
+            >
+              {NOTIFICATION_MODES.map((option, index) => (
+                <RadioItem
+                  key={option.value}
+                  index={index}
+                  value={option.value}
+                  label={option.label}
+                />
               ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+            </RadioGroup>
+          </div>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup
-          value={mode}
-          onValueChange={(value) => void setMode(value as NotificationMode)}
-        >
-          <DropdownMenuRadioItem value="default" className="items-start py-2">
-            <span>
-              <span className="block font-medium">Use category default</span>
-              <span className="block text-xs text-muted-foreground">Inherit club settings</span>
-            </span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="all" className="py-2">
-            All messages
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="mentions" className="py-2">
-            Only @mentions
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="nothing" className="py-2">
-            Nothing
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }

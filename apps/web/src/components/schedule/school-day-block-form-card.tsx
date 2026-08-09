@@ -5,12 +5,7 @@ import { Plus, Save, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { parseTimeToMinutes } from './schedule-utils';
 import { SchoolDayBlock, SchoolDayBlockPayload, ScheduleWeekday } from './types';
 
@@ -52,7 +47,7 @@ export function SchoolDayBlockFormCard({
 }: SchoolDayBlockFormCardProps) {
   const [kind, setKind] = useState<'PERIOD' | 'CUSTOM'>(block?.periodNumber ? 'PERIOD' : 'CUSTOM');
   const [periodNumber, setPeriodNumber] = useState<string>(block?.periodNumber?.toString() ?? '1');
-  const [label, setLabel] = useState<string>(block?.periodNumber ? '' : block?.label ?? '');
+  const [label, setLabel] = useState<string>(block?.periodNumber ? '' : (block?.label ?? ''));
   const [startTime, setStartTime] = useState<string>(block?.startTime ?? '08:10');
   const [endTime, setEndTime] = useState<string>(block?.endTime ?? '08:55');
   const [previousBlock, setPreviousBlock] = useState<SchoolDayBlock | undefined>(block);
@@ -61,7 +56,7 @@ export function SchoolDayBlockFormCard({
     setPreviousBlock(block);
     setKind(block?.periodNumber ? 'PERIOD' : 'CUSTOM');
     setPeriodNumber(block?.periodNumber?.toString() ?? '1');
-    setLabel(block?.periodNumber ? '' : block?.label ?? '');
+    setLabel(block?.periodNumber ? '' : (block?.label ?? ''));
     setStartTime(block?.startTime ?? '08:10');
     setEndTime(block?.endTime ?? '08:55');
   }
@@ -89,10 +84,14 @@ export function SchoolDayBlockFormCard({
         <div className="space-y-1.5">
           <Label className="text-xs">Block type</Label>
           <Select value={kind} onValueChange={(value) => setKind(value as 'PERIOD' | 'CUSTOM')}>
-            <SelectTrigger className="h-9" placeholder="" />
+            <SelectTrigger placeholder="" />
             <SelectContent>
-              <SelectItem index={0} value="PERIOD">Period block</SelectItem>
-              <SelectItem index={0} value="CUSTOM">Custom block</SelectItem>
+              <SelectItem index={0} value="PERIOD">
+                Period block
+              </SelectItem>
+              <SelectItem index={1} value="CUSTOM">
+                Custom block
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -101,10 +100,10 @@ export function SchoolDayBlockFormCard({
           <div className="space-y-1.5">
             <Label className="text-xs">Period</Label>
             <Select value={periodNumber} onValueChange={setPeriodNumber}>
-              <SelectTrigger className="h-9" placeholder="" />
+              <SelectTrigger placeholder="" />
               <SelectContent>
                 {Array.from({ length: 8 }, (_, index) => (
-                  <SelectItem index={0} key={index + 1} value={(index + 1).toString()}>
+                  <SelectItem index={index} key={index + 1} value={(index + 1).toString()}>
                     Period {index + 1}
                   </SelectItem>
                 ))}
@@ -127,21 +126,11 @@ export function SchoolDayBlockFormCard({
       <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Start time</Label>
-          <Input
-            type="time"
-            value={startTime}
-            onChange={(event) => setStartTime(event.target.value)}
-            className="h-9"
-          />
+          <Input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="h-9" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">End time</Label>
-          <Input
-            type="time"
-            value={endTime}
-            onChange={(event) => setEndTime(event.target.value)}
-            className="h-9"
-          />
+          <Input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="h-9" />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Duration (min)</Label>

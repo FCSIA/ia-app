@@ -1,0 +1,87 @@
+import { useEffect, useRef, type TouchEvent as ReactTouchEvent } from "react";
+
+function useMobileNavigationSwipe(onSwipeRight: () => void) {
+  const swipeStartRef = useRef<{ x: number; y: number; at: number } | null>(
+    null,
+  );
+  const swipeActionRef = useRef(onSwipeRight);
+
+  useEffect(() => {
+    swipeActionRef.current = onSwipeRight;
+  }, [onSwipeRight]);
+
+  const revealNavigationFromSwipe = (
+    clientX: number,
+    clientY: number,
+    minimumDistance: number,
+  ) => {
+    const start = swipeStartRef.current;
+    if (!start) return false;
+
+    const deltaX = clientX - start.x;
+    const deltaY = Math.abs(clientY - start.y);
+    const elapsed = performance.now() - start.at;
+    if (
+      deltaX < minimumDistance ||
+      deltaX <= deltaY * 1.4 ||
+      deltaY > 64 ||
+      elapsed > 650
+    ) {
+      return false;
+    }
+
+    swipeStartRef.current = null;
+    swipeActionRef.current();
+    return true;
+  };
+
+  const onTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (
+      window.matchMedia("(min-width: 768px)").matches ||
+      event.touches.length !== 1
+    ) {
+      swipeStartRef.current = null;
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(
+        '[data-swipe-navigation-ignore], input, textarea, select, [contenteditable="true"], [role="slider"], [role="tablist"]',
+      )
+    ) {
+      swipeStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    swipeStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      at: performance.now(),
+    };
+  };
+
+  const onTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    // Start the Sheet's slide-in while the finger is still moving instead of
+    // waiting until release, so the navigation visibly follows the gesture.
+    revealNavigationFromSwipe(touch.clientX, touch.clientY, 36);
+  };
+
+  const onTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.changedTouches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    revealNavigationFromSwipe(touch.clientX, touch.clientY, 72);
+    swipeStartRef.current = null;
+  };
+
+  const onTouchCancel = () => {
+    swipeStartRef.current = null;
+  };
+
+  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
+}
+
+export { useMobileNavigationSwipe };

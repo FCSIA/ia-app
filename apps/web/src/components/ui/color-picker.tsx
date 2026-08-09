@@ -14,7 +14,7 @@ import {
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { springs } from "@/lib/springs";
+import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { Slider } from "@/components/ui/slider";
@@ -441,7 +441,7 @@ function SaturationSquare({ h, s, v, onChange }: SaturationSquareProps) {
           left: `${s * 100}%`,
           top: `${(1 - v) * 100}%`,
         }}
-        transition={dragging.current ? { duration: 0 } : springs.fast}
+        transition={dragging.current ? { duration: 0 } : spring.fast}
         style={{
           transform: "translate(-50%, -50%)",
           width: 14,
@@ -665,7 +665,7 @@ function FormatDropdown({
             ref={panelRef}
             initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
             animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            transition={springs.fast}
+            transition={spring.fast}
             style={{ transformOrigin: "top center", minWidth: rect.width }}
           >
             <Dropdown checkedIndex={checkedIdx} className="!w-auto min-w-full">
@@ -1430,7 +1430,7 @@ const ColorPickerPopover = forwardRef<HTMLDivElement, ColorPickerPopoverProps>(
                 initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
                 animate={{ opacity: 1, y: 0, scaleY: 1 }}
                 exit={{ opacity: 0, y: -4, scaleY: 0.96 }}
-                transition={springs.moderate}
+                transition={spring.moderate}
                 style={{ transformOrigin: "top left" }}
               >
                 <ColorPicker

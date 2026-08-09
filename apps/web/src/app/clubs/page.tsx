@@ -190,7 +190,7 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:max-h-[calc(100dvh-9rem)]">
+        <section className="flex min-w-0 flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 lg:h-[calc(100dvh-9rem)]">
             <div className="flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-semibold text-foreground">Discover clubs</h2>

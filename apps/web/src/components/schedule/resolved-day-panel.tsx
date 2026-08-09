@@ -1,22 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  TriangleAlert,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { ScheduleDatePicker } from "./schedule-date-picker";
 import { formatScheduleTimeRange } from "./schedule-utils";
 import type {
   ResolvedSchoolDay,
@@ -32,35 +21,10 @@ type ResolvedDayPanelProps = {
   onDateChange: (dateKey: string) => void;
 };
 
-const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  timeZone: 'UTC',
-});
-
 function shiftDateKey(dateKey: string, amount: number) {
   const date = new Date(`${dateKey}T12:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + amount);
   return date.toISOString().slice(0, 10);
-}
-
-function dateLabel(dateKey: string) {
-  return DATE_LABEL_FORMATTER.format(new Date(`${dateKey}T12:00:00.000Z`));
-}
-
-function dateFromKey(dateKey: string) {
-  const [year, month, day] = dateKey
-    .split("-")
-    .map((segment) => Number.parseInt(segment, 10));
-  return new Date(year, month - 1, day, 12);
-}
-
-function dateKeyFromDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 export function ResolvedDayPanel({
@@ -70,7 +34,6 @@ export function ResolvedDayPanel({
   selectedDateKey,
   onDateChange,
 }: ResolvedDayPanelProps) {
-  const [calendarOpen, setCalendarOpen] = useState(false);
   const lunchNumber =
     lunchPeriod === "PERIOD_4" ? 4 : lunchPeriod === "PERIOD_5" ? 5 : null;
 
@@ -91,30 +54,11 @@ export function ResolvedDayPanel({
           >
             <ChevronLeft />
           </Button>
-          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="tertiary"
-                size="md"
-                className="min-w-0 flex-1 justify-start"
-                leadingIcon={CalendarDays}
-              >
-                {dateLabel(selectedDateKey)}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateFromKey(selectedDateKey)}
-                defaultMonth={dateFromKey(selectedDateKey)}
-                onSelect={(date) => {
-                  if (!date) return;
-                  onDateChange(dateKeyFromDate(date));
-                  setCalendarOpen(false);
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <ScheduleDatePicker
+            dateKey={selectedDateKey}
+            onDateChange={onDateChange}
+            className="flex-1"
+          />
           <Button
             type="button"
             variant="ghost"

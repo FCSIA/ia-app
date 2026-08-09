@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from "react";
 
-const SurfaceContext = createContext(1);
+const SurfaceContext = createContext<number>(1);
 
-export function useSurface() {
+export function useSurface(): number {
   return useContext(SurfaceContext);
 }
 
@@ -16,7 +16,7 @@ export function SurfaceProvider({
   children: ReactNode;
 }) {
   return (
-    <SurfaceContext.Provider value={Math.max(1, Math.min(8, Math.round(value)))}>
+    <SurfaceContext.Provider value={Math.max(1, Math.min(8, value))}>
       {children}
     </SurfaceContext.Provider>
   );

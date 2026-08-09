@@ -29,7 +29,7 @@ import {
 import { Card, CardAction, CardGroup } from "@/components/ui/card";
 import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -63,6 +63,25 @@ function ClubPickerItem({
   index: number;
 }) {
   const router = useRouter();
+  const ClubLogoIcon = ({ className }: { className?: string }) => (
+    <span
+      className={cn(
+        "flex size-7 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary",
+        className,
+      )}
+    >
+      {club.logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={resolveMediaUrl(club.logoUrl)}
+          alt=""
+          className="size-full bg-background object-cover"
+        />
+      ) : (
+        club.name.charAt(0).toUpperCase()
+      )}
+    </span>
+  );
 
   return (
     <MenuItem
@@ -71,20 +90,7 @@ function ClubPickerItem({
       checked={active}
       onSelect={() => router.push(`/clubs/${club._id}`)}
       className="h-11 px-2.5"
-      leading={
-        <span className="flex size-7 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
-          {club.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolveMediaUrl(club.logoUrl)}
-              alt={club.name}
-              className="size-full bg-background object-cover"
-            />
-          ) : (
-            club.name.charAt(0).toUpperCase()
-          )}
-        </span>
-      }
+      icon={ClubLogoIcon}
     />
   );
 }
@@ -124,6 +130,10 @@ type ClubWorkspaceProps = {
   children: ReactNode;
   rightPane?: ReactNode;
   resizableRightPane?: boolean;
+  mobileRightPane?: {
+    title: string;
+    onClose: () => void;
+  };
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
@@ -135,6 +145,7 @@ export function ClubWorkspace({
   children,
   rightPane,
   resizableRightPane = false,
+  mobileRightPane,
   title,
   actions,
   contentClassName,
@@ -228,6 +239,7 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
+      onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
@@ -255,6 +267,9 @@ export function ClubWorkspace({
         <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
           <SheetContent side="left" className="w-72 border-r bg-card p-0">
             <SheetTitle className="sr-only">Club navigation</SheetTitle>
+            <SheetDescription className="sr-only">
+              Browse this club and its channels.
+            </SheetDescription>
             <ClubNavigationPanel
               density="mobile"
               clubId={clubId}
@@ -275,6 +290,24 @@ export function ClubWorkspace({
                 }
               }}
             />
+          </SheetContent>
+        </Sheet>
+
+        <Sheet
+          open={!!rightPane && !!mobileRightPane && !isResizablePaneViewport}
+          onOpenChange={(open) => {
+            if (!open) mobileRightPane?.onClose();
+          }}
+        >
+          <SheetContent
+            side="right"
+            className="w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden"
+          >
+            <SheetTitle className="sr-only">{mobileRightPane?.title}</SheetTitle>
+            <SheetDescription className="sr-only">
+              Read and reply to this message thread.
+            </SheetDescription>
+            {rightPane}
           </SheetContent>
         </Sheet>
 
@@ -391,11 +424,17 @@ function ClubNavigationPanel({
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
+  const channelRowClassName = density === "mobile" ? "min-h-9" : "min-h-8";
   const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   return (
     <div className="flex size-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border/70 p-2">
+      <div
+        className={cn(
+          "shrink-0 border-b border-border/70 p-2",
+          density === "mobile" && "pr-12",
+        )}
+      >
         {showClubPicker ? (
           <DropdownMenu>
             <DropdownTrigger
@@ -473,7 +512,7 @@ function ClubNavigationPanel({
           <div className="my-3 h-px bg-border/70" />
 
           <section aria-labelledby={`channels-${density}`}>
-            <div className="mb-0.5 flex h-7 items-center justify-between px-2">
+            <div className="flex h-7 items-center justify-between pl-2 pr-1">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <ChevronDown className="size-3" />
                 <h2
@@ -499,7 +538,7 @@ function ClubNavigationPanel({
                       selected={active}
                       className={cn(
                         "group gap-1.5 rounded-md px-2 text-sm font-medium",
-                        rowClassName,
+                        channelRowClassName,
                         active ? "text-foreground" : "text-muted-foreground",
                       )}
                     >
@@ -512,20 +551,8 @@ function ClubNavigationPanel({
                       />
                       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
                       {canManageChannels ? (
-                        <CardAction className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                          <ChannelActionsTrigger clubId={clubId} channel={channel} />
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              onDeleteChannel(channel);
-                            }}
-                            className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                            aria-label={`Delete ${channel.name}`}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                        <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                          <ChannelActionsTrigger clubId={clubId} channel={channel} onDeleteChannel={onDeleteChannel} />
                         </CardAction>
                       ) : null}
                     </Card>
@@ -558,13 +585,13 @@ function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
   return (
     <>
       <Button
-        size="icon"
+        size="icon-sm"
         variant="ghost"
-        className="size-5 rounded text-muted-foreground hover:text-foreground"
+        className="size-6 text-muted-foreground hover:text-foreground"
         onClick={() => setOpen(true)}
         aria-label="Create channel"
       >
-        <Plus className="size-3.5" />
+        <Plus />
       </Button>
       <ChannelDialog clubId={clubId} open={open} onOpenChange={setOpen} />
     </>
@@ -574,25 +601,43 @@ function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
 function ChannelActionsTrigger({
   clubId,
   channel,
+  onDeleteChannel
 }: {
   clubId: Id<"clubs">;
   channel: ClubNavigationChannel;
+  onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setOpen(true);
         }}
-        className="p-1 hover:bg-muted rounded transition-all"
+        className="size-6 text-muted-foreground hover:text-foreground !bg-transparent"
         aria-label="Edit channel"
       >
-        <Pencil className="size-3" />
-      </button>
+        <Pencil />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onDeleteChannel(channel);
+        }}
+        className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        aria-label={`Delete ${channel.name}`}
+      >
+        <Trash2 />
+      </Button>
       <ChannelDialog
         clubId={clubId}
         channel={channel}

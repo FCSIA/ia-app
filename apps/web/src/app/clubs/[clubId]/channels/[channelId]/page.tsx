@@ -46,6 +46,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -61,7 +72,6 @@ import {
 } from '@/components/clubs/channel-message-composer';
 import {
   ClubChannelVisibilityIcon,
-  getClubChannelVisibilityDescription,
   getClubChannelVisibilityLabel,
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
@@ -150,6 +160,7 @@ type ComposerSubmitArgs = {
   bodyMarkdown: string;
   bodyRich: ClubChannelMessageRichBody | null;
   parentMessageId?: string;
+  replyToMessageId?: string;
   files: File[];
   pollQuestion?: string;
   pollOptions?: Array<{ id: string; label: string }>;
@@ -497,6 +508,8 @@ function PollCard({
 
 function MessageRow({
   message,
+  replyTarget,
+  onStartReply,
   onOpenThread,
   onToggleReaction,
   onTogglePin,
@@ -519,6 +532,8 @@ function MessageRow({
   compact = false,
 }: {
   message: ClubChannelMessage;
+  replyTarget?: ClubChannelMessage;
+  onStartReply: (messageId: string) => void;
   onOpenThread: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
@@ -553,14 +568,17 @@ function MessageRow({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
-    <Message
-      className={cn(
-        'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
-        compact ? 'py-1.5' : 'py-2.5',
-        isSending &&
-          'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
-      )}
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild disabled={isDeleted || isSending || isEditing}>
+        <div>
+          <Message
+            className={cn(
+              'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
+              compact ? 'py-1.5' : 'py-2.5',
+              isSending &&
+                'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
+            )}
+          >
       <MessageAvatar className="self-start overflow-visible bg-transparent">
         <MessageAuthorPreview
           author={message.author}
@@ -606,6 +624,20 @@ function MessageRow({
             align="start"
             className="mt-1"
           >
+            {message.replyToMessageId ? (
+              <div className="mb-1 flex min-w-0 items-baseline gap-1.5 border-l-2 border-border pl-2 text-xs text-muted-foreground">
+                <span className="shrink-0 font-medium text-foreground">
+                  {replyTarget ? fullName(replyTarget.author) : 'Earlier message'}
+                </span>
+                <span className="truncate">
+                  {replyTarget
+                    ? replyTarget.isDeleted
+                      ? 'Message deleted'
+                      : replyTarget.body || 'Attachment'
+                    : 'Message unavailable'}
+                </span>
+              </div>
+            ) : null}
             {isDeleted || hasBody ? (
               <BubbleContent
                 className={cn(
@@ -706,9 +738,22 @@ function MessageRow({
                         size="icon-sm"
                         className="size-7"
                         aria-label="Reply"
-                        onClick={() => onOpenThread(message.threadRootId)}
+                        onClick={() => onStartReply(message._id)}
                       >
                         <Reply className="size-3.5" />
+                      </Button>
+                    </Tooltip>
+                  ) : null}
+                  {!compact ? (
+                    <Tooltip content="Open thread">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-7"
+                        aria-label="Open thread"
+                        onClick={() => onOpenThread(message.threadRootId)}
+                      >
+                        <MessageSquareText className="size-3.5" />
                       </Button>
                     </Tooltip>
                   ) : null}
@@ -823,7 +868,79 @@ function MessageRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Message>
+          </Message>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuGroup>
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <SmilePlus />
+              Add reaction
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-44">
+              <ContextMenuGroup>
+                {QUICK_REACTIONS.map((reaction) => (
+                  <ContextMenuItem
+                    key={reaction.value}
+                    disabled={isReactionPending}
+                    onSelect={() => onToggleReaction(message._id, reaction.value)}
+                  >
+                    <span className="text-base">{reaction.label}</span>
+                    {reaction.name}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuGroup>
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+          {!compact ? (
+            <>
+              <ContextMenuItem onSelect={() => onStartReply(message._id)}>
+                <Reply />
+                Reply
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => onOpenThread(message.threadRootId)}>
+                <MessageSquareText />
+                Open thread
+              </ContextMenuItem>
+            </>
+          ) : null}
+          {isAuthor ? (
+            <ContextMenuItem onSelect={() => onStartEdit(message._id)}>
+              <Pencil />
+              Edit
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuItem onSelect={() => onReport?.(message._id)}>
+              <Flag />
+              Report
+            </ContextMenuItem>
+          )}
+          {canModerate && !compact ? (
+            <ContextMenuItem
+              disabled={isPinPending}
+              onSelect={() => onTogglePin(message._id, !message.isPinned)}
+            >
+              {message.isPinned ? <PinOff /> : <Pin />}
+              {message.isPinned ? 'Unpin' : 'Pin'}
+            </ContextMenuItem>
+          ) : null}
+        </ContextMenuGroup>
+        {isAuthor || canModerate ? <ContextMenuSeparator /> : null}
+        {isAuthor || canModerate ? (
+          <ContextMenuGroup>
+            <ContextMenuItem
+              disabled={isDeletePending}
+              className="text-destructive focus:text-destructive"
+              onSelect={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 />
+              Delete
+            </ContextMenuItem>
+          </ContextMenuGroup>
+        ) : null}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -842,6 +959,7 @@ export default function ClubChannelPage({
   const [editingMessageId, setEditingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [replyingToMessageId, setReplyingToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
@@ -922,6 +1040,7 @@ export default function ClubChannelPage({
     bodyMarkdown,
     bodyRich,
     parentMessageId,
+    replyToMessageId,
     files,
     pollQuestion,
     pollOptions,
@@ -961,6 +1080,7 @@ export default function ClubChannelPage({
         bodyMarkdown: bodyMarkdown.trim() || undefined,
         bodyRich: body.trim() ? bodyRich ?? undefined : undefined,
         parentMessageId: parentMessageId as Id<'clubChannelMessages'> | undefined,
+        replyToMessageId: replyToMessageId as Id<'clubChannelMessages'> | undefined,
         pollQuestion,
         pollOptions,
         attachments: attachmentUploadIds,
@@ -969,6 +1089,7 @@ export default function ClubChannelPage({
       if (mode === 'thread') {
         setReplyComposerResetKey((current) => current + 1);
       } else {
+        setReplyingToMessageId(null);
         setRootComposerResetKey((current) => current + 1);
       }
       await postPromise;
@@ -1021,6 +1142,13 @@ export default function ClubChannelPage({
     () => [...messages, ...threadReplies],
     [messages, threadReplies],
   );
+  const messagesById = useMemo(
+    () => new Map(flattenedMessages.map((message) => [message._id, message])),
+    [flattenedMessages],
+  );
+  const replyingToMessage = replyingToMessageId
+    ? messagesById.get(replyingToMessageId) ?? null
+    : null;
 
   const matchingIds = useMemo(() => {
     if (!normalizedSearch) return new Set<string>();
@@ -1075,8 +1203,20 @@ export default function ClubChannelPage({
       <div>
         <MessageRow
           message={message}
+          replyTarget={
+            message.replyToMessageId
+              ? messagesById.get(message.replyToMessageId)
+              : undefined
+          }
           currentUserId={user?._id}
-          onOpenThread={(threadId) => setSelectedThreadId(threadId as Id<'clubChannelMessages'>)}
+          onStartReply={(messageId) => {
+            setReplyingToMessageId(messageId as Id<'clubChannelMessages'>);
+            setSelectedThreadId(null);
+          }}
+          onOpenThread={(threadId) => {
+            setReplyingToMessageId(null);
+            setSelectedThreadId(threadId as Id<'clubChannelMessages'>);
+          }}
           onToggleReaction={(messageId, emoji) =>
             void toggleReaction({
               messageId: messageId as Id<'clubChannelMessages'>,
@@ -1173,18 +1313,13 @@ export default function ClubChannelPage({
   const title: ReactNode = (
     <div className="flex min-w-0 items-center gap-2">
       <ClubChannelVisibilityIcon visibility={channel.visibility} className="text-muted-foreground" />
-      <div className="min-w-0">
-        <h1 className="truncate text-base font-semibold text-foreground">{channel.name}</h1>
-        <p className="truncate text-xs text-muted-foreground">
-          {channel.description || getClubChannelVisibilityDescription(channel.visibility)}
-        </p>
-      </div>
+      <h1 className="truncate text-base font-semibold text-foreground">{channel.name}</h1>
     </div>
   );
 
   const rightPane = selectedThread ? (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-12 xl:pr-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
@@ -1193,11 +1328,12 @@ export default function ClubChannelPage({
         </div>
         <Button
           variant="ghost"
-          size="sm"
-          className="size-7 p-0"
+          size="icon-sm"
+          className="hidden size-7 xl:inline-flex"
+          aria-label="Close thread"
           onClick={() => setSelectedThreadId(null)}
         >
-          <X className="size-4" />
+          <X />
         </Button>
       </div>
 
@@ -1254,6 +1390,10 @@ export default function ClubChannelPage({
       title={title}
       rightPane={rightPane}
       resizableRightPane
+      mobileRightPane={{
+        title: 'Thread',
+        onClose: () => setSelectedThreadId(null),
+      }}
       contentClassName="relative flex flex-col bg-card"
       scrollOwner="content"
       channelSearch={{
@@ -1332,16 +1472,47 @@ export default function ClubChannelPage({
       <div className="absolute inset-x-0 bottom-0 z-10 border-t bg-card p-2">
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
-            <ChannelMessageComposer
-              key={`root-${rootComposerResetKey}`}
-              onSubmit={(args) => void submitMessage({ ...args, mode: 'root' })}
-              isPending={sendingMode === 'root'}
-              suggestionEntries={suggestionEntries}
-              placeholder={`Message #${channel.name}`}
-              submitLabel="Send"
-              canCreatePoll={canModerateChannel}
-              onMentionIntent={() => setMentionContextRequested(true)}
-            />
+            <div className="flex flex-col gap-1.5">
+              {replyingToMessageId ? (
+                <div className="flex min-w-0 items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+                  <div className="min-w-0 truncate">
+                    Replying to{' '}
+                    <span className="font-medium text-foreground">
+                      {replyingToMessage
+                        ? fullName(replyingToMessage.author)
+                        : 'an earlier message'}
+                    </span>
+                    {replyingToMessage?.body ? ` · ${replyingToMessage.body}` : ''}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-7 shrink-0"
+                    aria-label="Cancel reply"
+                    onClick={() => setReplyingToMessageId(null)}
+                  >
+                    <X />
+                  </Button>
+                </div>
+              ) : null}
+              <ChannelMessageComposer
+                key={`root-${rootComposerResetKey}`}
+                onSubmit={(args) =>
+                  void submitMessage({
+                    ...args,
+                    replyToMessageId: replyingToMessageId ?? undefined,
+                    mode: 'root',
+                  })
+                }
+                isPending={sendingMode === 'root'}
+                suggestionEntries={suggestionEntries}
+                placeholder={`Message #${channel.name}`}
+                submitLabel="Send"
+                canCreatePoll={canModerateChannel}
+                onMentionIntent={() => setMentionContextRequested(true)}
+              />
+            </div>
           ) : (
             <div className="rounded-lg border bg-background/95 px-3 py-2">
               <p className="text-sm font-medium text-foreground">

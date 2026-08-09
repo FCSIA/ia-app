@@ -17,11 +17,11 @@ import {
 } from '@/components/ui/attachment';
 import { Button } from '@/components/ui/button';
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupTextarea,
-} from '@/components/ui/input-group';
+  InputControl,
+  InputControlAddon,
+  InputControlButton,
+  InputControlTextarea,
+} from '@/components/ui/input-control-group';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
@@ -91,7 +91,7 @@ function MarkToolButton({
   const active = !!marks[mark];
 
   return (
-    <InputGroupButton
+    <InputControlButton
       type="button"
       size="icon-sm"
       aria-label={label}
@@ -107,7 +107,7 @@ function MarkToolButton({
       }}
     >
       <Icon data-icon="inline-start" />
-    </InputGroupButton>
+    </InputControlButton>
   );
 }
 
@@ -311,14 +311,14 @@ export function ChannelMessageComposer({
             </div>
           ) : null}
 
-          <InputGroup
+          <InputControl
             className={cn(
               'h-auto min-h-10 overflow-hidden rounded-lg',
               'border-border bg-muted shadow-none',
             )}
           >
             {isMarkdownSource ? (
-              <InputGroupTextarea
+              <InputControlTextarea
                 aria-label="Markdown message source"
                 value={markdownSource}
                 onChange={(event) => setMarkdownSource(event.target.value)}
@@ -344,7 +344,7 @@ export function ChannelMessageComposer({
             )}
 
             {hasComposerTools ? (
-              <InputGroupAddon align="inline-start" className="self-end p-1 pl-2 pr-0">
+              <InputControlAddon align="inline-start" className="self-end p-1 pl-2 pr-0">
                 <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -360,7 +360,7 @@ export function ChannelMessageComposer({
                   <PopoverContent side="top" align="start" className="w-auto p-1">
                     <div className="flex items-center gap-0.5">
                       {canAttach ? (
-                        <InputGroupButton
+                        <InputControlButton
                           type="button"
                           size="icon-sm"
                           aria-label="Attach files"
@@ -371,10 +371,10 @@ export function ChannelMessageComposer({
                           }}
                         >
                           <Paperclip data-icon="inline-start" />
-                        </InputGroupButton>
+                        </InputControlButton>
                       ) : null}
                       {canCreatePoll ? (
-                        <InputGroupButton
+                        <InputControlButton
                           type="button"
                           size="icon-sm"
                           aria-label={pollOpen ? 'Remove poll' : 'Create a poll'}
@@ -385,7 +385,7 @@ export function ChannelMessageComposer({
                           }}
                         >
                           <BarChart3 data-icon="inline-start" />
-                        </InputGroupButton>
+                        </InputControlButton>
                       ) : null}
                       {!isMarkdownSource && (canAttach || canCreatePoll) ? (
                         <Separator orientation="vertical" className="mx-0.5 h-4" />
@@ -410,7 +410,7 @@ export function ChannelMessageComposer({
                             mark="underline"
                             onApply={() => setToolsOpen(false)}
                           />
-                          <InputGroupButton
+                          <InputControlButton
                             type="button"
                             size="icon-sm"
                             aria-label="Mention someone"
@@ -423,16 +423,16 @@ export function ChannelMessageComposer({
                             }}
                           >
                             <AtSign data-icon="inline-start" />
-                          </InputGroupButton>
+                          </InputControlButton>
                         </>
                       ) : null}
                     </div>
                   </PopoverContent>
                 </Popover>
-              </InputGroupAddon>
+              </InputControlAddon>
             ) : null}
 
-            <InputGroupAddon align="inline-end" className="self-end p-1 pl-0 pr-2">
+            <InputControlAddon align="inline-end" className="self-end p-1 pl-0 pr-2">
               <Tooltip content={isPending ? 'Sending…' : submitLabel}>
                 <Button
                   type="button"
@@ -446,8 +446,8 @@ export function ChannelMessageComposer({
                   <Send data-icon="inline-start" />
                 </Button>
               </Tooltip>
-            </InputGroupAddon>
-          </InputGroup>
+            </InputControlAddon>
+          </InputControl>
         </div>
       </MentionablesProvider>
 

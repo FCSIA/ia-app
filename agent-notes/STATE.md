@@ -66,7 +66,9 @@
   roles; workspace detail data is hidden from authenticated users who cannot
   access the club workspace.
 - Channel reads/writes/reactions/polls now validate channel access, parent
-  message channel ownership, and poll option membership.
+  message channel ownership, inline reply target ownership, and poll option
+  membership. Inline replies use an optional `replyToMessageId`; only
+  `parentMessageId` creates a thread.
 - Channel message deletion now erases content immediately, retains roots only
   while they anchor replies, and removes attachments/storage plus related
   reactions, mentions, and poll votes in bounded scheduled batches.
@@ -152,18 +154,29 @@
 - Web channel chat now uses paginated message summaries, bounded thread reads,
   shared optimistic message insertion and reactions, concurrent attachment
   staging, compact shadcn chat/composer primitives, names-only mention results,
-  out-of-flow message actions, and a nested Discord-style channel-alert
-  popover with persisted timed mutes. The club shell now uses a narrow
+  out-of-flow message actions, long-press/right-click context menus, quoted
+  channel replies that remain in the main timeline, explicit thread actions,
+  mobile PWA thread sheets, and a
+  collision-aware single-surface channel-alert popover with Fluid radio choices
+  and persisted timed mutes. The club shell now uses a narrow
   navigation subscription, channel permissions load separately from the
   bounded mention audience, and notification preference fanout uses exact
   indexed lookups.
 - Web club pages now use a compact, channel-first workspace inspired by Discord's
   conversational density: the shared club/channel navigation is available on
-  desktop and mobile, messages render as a flat hover-action timeline, and the
+  desktop and mobile, mobile right-swipes begin the navigation reveal animation
+  before touch release, messages render
+  as a flat hover-action timeline, and the
   club directory, overview, people, tags, and composer use tighter flat rows
   instead of spacious nested cards. Channel reactions now stay in document flow,
   the solid composer and message spacing preserve clear separation, channel
   alerts update optimistically, and pinned messages live in the channel toolbar.
+- The web PWA header exposes search without a keyboard shortcut hint on compact
+  screens. Dashboard customization lives in the header, and the greeting is a
+  borderless date summary instead of a live seconds clock.
+- Web tab call sites use the shared current Fluid Tabs appearance and keep
+  overflow/layout concerns on parent containers rather than restyling tab lists
+  or tab items per page.
 - Web club navigation and discovery use Fluid Card groups and nested surface
   levels, with primitive-backed dropdown selection, Fluid ScrollArea panes,
   sticky personal clubs, and channel/global search switching. Notification
@@ -197,6 +210,14 @@
   current DayPicker/Fluid DOM contract, quick filters use a shared ToggleGroup,
   and visible friend/join values use Fluid InputCopy. Event Share uses the native
   share sheet with a centralized copy fallback.
+- Superadmin day plans now use the REUI Sortable interaction for pointer, touch,
+  and keyboard block reordering while keeping school time slots fixed; redundant
+  arrow controls and the superadmin-only one-item tab list are removed. The admin
+  date chooser uses the current shadcn Popover + Calendar composition with fixed
+  Tailwind v4 CSS-variable sizing, while date/template navigation and schedule
+  option fields use the exact current Fluid Radix Tabs and Select sources without
+  call-site styling overrides. Applying a template is labeled and explained as a
+  date-plan replacement instead of a clipboard-style clone.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
