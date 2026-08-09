@@ -44,10 +44,10 @@ export function EditableAvatar({
   const canRemove = editable && Boolean(imageUrl) && Boolean(onRemove);
   const revealClass = loading
     ? 'opacity-100'
-    : 'opacity-0 group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100';
+    : 'opacity-0 group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100 [@media(pointer:coarse)]:opacity-100';
   const interactionClass = loading
     ? 'pointer-events-auto'
-    : 'pointer-events-none group-hover/avatar:pointer-events-auto group-focus-within/avatar:pointer-events-auto';
+    : 'pointer-events-none group-hover/avatar:pointer-events-auto group-focus-within/avatar:pointer-events-auto [@media(pointer:coarse)]:pointer-events-auto';
 
   return (
     <div
@@ -86,13 +86,13 @@ export function EditableAvatar({
                 disabled={inputDisabled}
                 onClick={open}
                 className={cn(
-                  'absolute inset-0 flex cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-t from-black/55 via-black/25 to-black/5 text-white transition-opacity duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                  'absolute inset-0 flex cursor-pointer items-center justify-center rounded-2xl bg-gradient-to-t from-black/55 via-black/25 to-black/5 text-white transition-opacity duration-150 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [@media(pointer:coarse)]:inset-auto [@media(pointer:coarse)]:bottom-0 [@media(pointer:coarse)]:right-0 [@media(pointer:coarse)]:size-9 [@media(pointer:coarse)]:rounded-full [@media(pointer:coarse)]:border [@media(pointer:coarse)]:border-border/70 [@media(pointer:coarse)]:bg-background/95 [@media(pointer:coarse)]:text-foreground [@media(pointer:coarse)]:shadow-sm [@media(pointer:coarse)]:[background-image:none]',
                   revealClass,
                   interactionClass,
                 )}
                 aria-label={uploadLabel}
               >
-                <span className="flex size-9 scale-95 items-center justify-center rounded-full border border-white/20 bg-background/95 text-foreground shadow-sm backdrop-blur transition-transform duration-150 group-hover/avatar:scale-100 group-focus-within/avatar:scale-100 motion-reduce:transition-none">
+                <span className="flex size-9 scale-95 items-center justify-center rounded-full border border-white/20 bg-background/95 text-foreground shadow-sm backdrop-blur transition-transform duration-150 group-hover/avatar:scale-100 group-focus-within/avatar:scale-100 motion-reduce:transition-none [@media(pointer:coarse)]:scale-100 [@media(pointer:coarse)]:border-0 [@media(pointer:coarse)]:bg-transparent [@media(pointer:coarse)]:shadow-none [@media(pointer:coarse)]:backdrop-blur-none">
                   {loading ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
                 </span>
               </button>
@@ -130,7 +130,7 @@ export function EditableAvatar({
           onClick={onRemove}
           disabled={disabled || loading}
           className={cn(
-            'absolute right-1 top-1 z-10 flex size-7 cursor-pointer items-center justify-center rounded-full border border-border/70 bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition-[color,opacity,transform] duration-150 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none',
+            'absolute right-1 top-1 z-10 flex size-7 cursor-pointer items-center justify-center rounded-full border border-border/70 bg-background/95 text-muted-foreground shadow-sm backdrop-blur transition-[color,opacity,transform] duration-150 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none [@media(pointer:coarse)]:left-0 [@media(pointer:coarse)]:right-auto',
             revealClass,
             interactionClass,
           )}

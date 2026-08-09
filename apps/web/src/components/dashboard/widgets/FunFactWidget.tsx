@@ -24,23 +24,23 @@ export function FunFactWidget() {
   return (
     <Panel
       title="Did you know?"
-      className="w-full min-w-0 h-52"
-      contentClassName="min-w-0 flex flex-col justify-center"
+      className="w-full min-w-0 [&>div:first-child]:flex-row [&>div:first-child]:items-center [&>div:first-child]:justify-between"
+      contentClassName="min-w-0 px-6 pb-6 pt-3 sm:p-6"
       action={
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="size-8 rounded-full"
+          size="icon-sm"
+          className="rounded-full"
           onClick={nextMessage}
           aria-label="Show another fact"
         >
-          <RefreshCw className="size-4" />
+          <RefreshCw />
         </Button>
       }
     >
       <div
-        className="flex w-full min-w-0 flex-1 items-center overflow-hidden rounded-[1.4rem] border border-border/70 bg-muted/20 p-5"
+        className="flex min-h-20 w-full min-w-0 items-center rounded-[1.4rem] bg-muted/20 p-4 sm:min-h-24 sm:p-5"
         title={fact.text}
       >
         <LoadingFact fact={fact} className="w-full" />
