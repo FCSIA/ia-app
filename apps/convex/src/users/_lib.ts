@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
+import { hashPassword } from "better-auth/crypto";
 import { authComponent, createAuth } from "../auth";
+import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { type AppRole } from "../../lib/roles";
@@ -199,6 +201,93 @@ export function betterAuthRoleForAppRoles(roles: string[]) {
     return "support_staff";
   }
   return "user";
+}
+
+export function privilegeTierForRoles(roles: readonly string[]) {
+  if (roles.includes("SUPER_ADMIN")) return 4;
+  if (roles.includes("ADMIN")) return 3;
+  if (roles.includes("SUPPORT_STAFF")) return 2;
+  if (roles.includes("STUDENT_ADMIN")) return 1;
+  return 0;
+}
+
+export function isPrivilegeReduction(
+  currentRoles: readonly string[],
+  nextRoles: readonly string[],
+) {
+  return (
+    privilegeTierForRoles(nextRoles) < privilegeTierForRoles(currentRoles) ||
+    currentRoles.some((role) => !nextRoles.includes(role))
+  );
+}
+
+export function assertCanActOn(
+  actor: Pick<Doc<"users">, "roles">,
+  target: Pick<Doc<"users">, "roles">,
+) {
+  if (privilegeTierForRoles(target.roles) >= privilegeTierForRoles(actor.roles)) {
+    throw new ConvexError(
+      "You cannot act on an account with equal or greater privileges.",
+    );
+  }
+}
+
+export async function syncBetterAuthRole(
+  ctx: MutationCtx,
+  target: Pick<Doc<"users">, "authUserId" | "roles">,
+) {
+  if (!target.authUserId) return;
+  await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: "user",
+      where: [{ field: "_id", value: target.authUserId }],
+      update: { role: betterAuthRoleForAppRoles(target.roles) },
+    },
+  });
+}
+
+export async function revokeBetterAuthSessions(
+  ctx: MutationCtx,
+  authUserId: string | undefined,
+) {
+  if (!authUserId) return;
+  const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+  await auth.api.revokeUserSessions({
+    body: { userId: authUserId },
+    headers,
+  });
+}
+
+export async function setBetterAuthPassword(
+  ctx: MutationCtx,
+  authUserId: string,
+  password: string,
+) {
+  const account = (await ctx.runQuery(
+    components.betterAuth.adapter.findOne,
+    {
+      model: "account",
+      where: [
+        { field: "userId", value: authUserId },
+        { field: "providerId", value: "credential" },
+      ],
+    },
+  )) as { _id: string } | null;
+
+  if (!account) {
+    throw new ConvexError("Credential account not found.");
+  }
+
+  await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: "account",
+      where: [{ field: "_id", value: account._id }],
+      update: {
+        password: await hashPassword(password),
+        updatedAt: Date.now(),
+      },
+    },
+  });
 }
 
 export async function assertUniqueUserKeys(

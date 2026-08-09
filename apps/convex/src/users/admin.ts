@@ -35,6 +35,12 @@ import {
   listUsersResultValidator,
   normalizeUniqueId,
   adminUserProfileValidator,
+  assertCanActOn,
+  betterAuthRoleForAppRoles,
+  isPrivilegeReduction,
+  revokeBetterAuthSessions,
+  setBetterAuthPassword,
+  syncBetterAuthRole,
   studentExportRowValidator,
   studentImportResultValidator,
   toAdminUserProfile,
@@ -535,6 +541,17 @@ export const activate = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
+
+    if (!target.authUserId) {
+      throw new ConvexError("User is not linked to an auth account.");
+    }
+
+    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+    await auth.api.unbanUser({
+      body: { userId: target.authUserId },
+      headers,
+    });
 
     await ctx.db.patch(target._id, {
       isActive: true,
@@ -573,13 +590,21 @@ export const deactivate = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
 
-    const targetIsPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (targetIsPrivileged && !actor.roles.includes("SUPER_ADMIN")) {
-      throw new ConvexError("Only super admins can deactivate admin accounts.");
+    if (!target.authUserId) {
+      throw new ConvexError("User is not linked to an auth account.");
     }
+
+    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+    await auth.api.banUser({
+      body: {
+        userId: target.authUserId,
+        banReason: "Account deactivated in Innovation Academy",
+      },
+      headers,
+    });
+    await revokeBetterAuthSessions(ctx, target.authUserId);
 
     await ctx.db.patch(target._id, {
       isActive: false,
@@ -634,6 +659,7 @@ export const deleteUsers = mutation({
 
     for (const target of targets) {
       if (!target) continue;
+      assertCanActOn(actor, target);
 
       if (target.authUserId) {
         await ctx.runMutation(components.betterAuth.dev.deleteUserData, {
@@ -680,10 +706,24 @@ export const assignRoles = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
 
     const nextRoles = Array.from(new Set(args.roles));
     if (nextRoles.length === 0) {
       throw new ConvexError("User must have at least one role.");
+    }
+
+    if (
+      nextRoles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role)) &&
+      !actor.roles.includes("SUPER_ADMIN")
+    ) {
+      throw new ConvexError("Only super admins can assign admin roles.");
+    }
+    if (
+      nextRoles.includes("SUPER_ADMIN") &&
+      !target.roles.includes("SUPER_ADMIN")
+    ) {
+      throw new ConvexError("Super-admin promotion requires an out-of-band process.");
     }
 
     const nextPrivileged = nextRoles.some((role) =>
@@ -723,6 +763,12 @@ export const assignRoles = mutation({
       updatedAt: Date.now(),
     });
 
+    const updatedRolesTarget = { ...target, roles: nextRoles as any };
+    await syncBetterAuthRole(ctx, updatedRolesTarget);
+    if (isPrivilegeReduction(target.roles, nextRoles)) {
+      await revokeBetterAuthSessions(ctx, target.authUserId);
+    }
+
     await logAuditEvent(ctx, {
       actorId: actor._id,
       action: "user.roles_assigned",
@@ -754,13 +800,7 @@ export const resetPassword = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
-
-    const targetIsPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (targetIsPrivileged && !actor.roles.includes("SUPER_ADMIN")) {
-      throw new ConvexError("Only super admins can reset admin passwords.");
-    }
+    assertCanActOn(actor, target);
 
     if (
       actor.roles.includes("SUPPORT_STAFF") &&
@@ -776,15 +816,8 @@ export const resetPassword = mutation({
     }
 
     const temporaryPassword = generateTemporaryPassword();
-    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-
-    await auth.api.setUserPassword({
-      body: {
-        userId: target.authUserId,
-        newPassword: temporaryPassword,
-      },
-      headers,
-    });
+    await setBetterAuthPassword(ctx, target.authUserId, temporaryPassword);
+    await revokeBetterAuthSessions(ctx, target.authUserId);
 
     await ctx.db.patch(target._id, {
       mustResetPassword: true,
@@ -799,5 +832,49 @@ export const resetPassword = mutation({
     });
 
     return { temporaryPassword };
+  },
+});
+
+export const reconcileBetterAuthRoles = internalMutation({
+  args: {
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({
+    repaired: v.number(),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({
+      numItems: 25,
+      cursor: args.cursor ?? null,
+    });
+
+    let repaired = 0;
+    for (const user of page.page) {
+      if (!user.authUserId) continue;
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "user",
+          where: [{ field: "_id", value: user.authUserId }],
+          update: { role: betterAuthRoleForAppRoles(user.roles) },
+        },
+      });
+      repaired += 1;
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.users.admin.reconcileBetterAuthRoles,
+        { cursor: page.continueCursor },
+      );
+    }
+
+    return {
+      repaired,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
   },
 });
