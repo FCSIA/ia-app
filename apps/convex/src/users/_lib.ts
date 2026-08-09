@@ -203,6 +203,18 @@ export function betterAuthRoleForAppRoles(roles: string[]) {
   return "user";
 }
 
+export function assertInitialPasswordAllowed(
+  password: string,
+  uniqueId: string,
+) {
+  if (password.length < 12) {
+    throw new ConvexError("Password must be at least 12 characters.");
+  }
+  if (password.toUpperCase() === uniqueId.toUpperCase()) {
+    throw new ConvexError("Password cannot match the user's unique ID.");
+  }
+}
+
 export function privilegeTierForRoles(roles: readonly string[]) {
   if (roles.includes("SUPER_ADMIN")) return 4;
   if (roles.includes("ADMIN")) return 3;
@@ -318,6 +330,8 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
   const email = normalizeEmail(args.email ?? buildStudentEmail(uniqueId));
   const password = args.password ?? generateTemporaryPassword();
   const now = Date.now();
+
+  assertInitialPasswordAllowed(password, uniqueId);
 
   await assertUniqueUserKeys(ctx, uniqueId, email);
 

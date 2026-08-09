@@ -88,7 +88,6 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
 
   const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
   const [studentCsvInputKey, setStudentCsvInputKey] = useState(0);
-  const [generatePasswords, setGeneratePasswords] = useState(true);
   const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -102,7 +101,7 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
       setIsImporting(true);
       try {
         const rows = parseStudentCsv(await studentCsvFile.text());
-        const data = await importStudents({ rows, generatePasswords });
+        const data = await importStudents({ rows });
         setLastStudentImport(data);
         setStudentCsvFile(null);
         setStudentCsvInputKey((current) => current + 1);
@@ -165,8 +164,6 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
     enabled: activeTab === 'schedule',
     studentCsvInputKey,
     setStudentCsvFile,
-    generatePasswords,
-    setGeneratePasswords,
     canImport: !!studentCsvFile,
     isImporting: importStudentsMutation.isPending,
     onImport: () => importStudentsMutation.mutate(),

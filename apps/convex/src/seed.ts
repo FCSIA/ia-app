@@ -15,6 +15,10 @@ const STUDENT_COUNT_BY_PROFILE: Record<SeedProfile, number> = {
   full: 1500,
 };
 
+export function isLocalDemoSeedEnabled(value: string | undefined) {
+  return value === "true";
+}
+
 const FIRST_NAMES = [
   "James",
   "Mary",
@@ -151,7 +155,6 @@ const ANCHOR_STUDENTS = [
     major: "INFORMATION_TECHNOLOGY" as Pathway,
     minor: "ENGINEERING" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU001",
   },
   {
     uniqueId: "STU002",
@@ -162,7 +165,6 @@ const ANCHOR_STUDENTS = [
     major: "HEALTH_SCIENCE" as Pathway,
     minor: "INFORMATION_TECHNOLOGY" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU002",
   },
   {
     uniqueId: "STU003",
@@ -173,7 +175,6 @@ const ANCHOR_STUDENTS = [
     major: "ENGINEERING" as Pathway,
     minor: "INFORMATION_TECHNOLOGY" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU003",
   },
   {
     uniqueId: "STU004",
@@ -184,7 +185,6 @@ const ANCHOR_STUDENTS = [
     major: "INFORMATION_TECHNOLOGY" as Pathway,
     minor: "HEALTH_SCIENCE" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU004",
   },
   {
     uniqueId: "STU005",
@@ -195,7 +195,6 @@ const ANCHOR_STUDENTS = [
     major: "ENGINEERING" as Pathway,
     minor: "INFORMATION_TECHNOLOGY" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU005",
   },
   {
     uniqueId: "STU006",
@@ -206,7 +205,6 @@ const ANCHOR_STUDENTS = [
     major: "INFORMATION_TECHNOLOGY" as Pathway,
     minor: "ENGINEERING" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU006",
   },
   {
     uniqueId: "STU007",
@@ -217,7 +215,6 @@ const ANCHOR_STUDENTS = [
     major: "HEALTH_SCIENCE" as Pathway,
     minor: "ENGINEERING" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU007",
   },
   {
     uniqueId: "STU008",
@@ -228,7 +225,6 @@ const ANCHOR_STUDENTS = [
     major: "ENGINEERING" as Pathway,
     minor: "HEALTH_SCIENCE" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU008",
   },
   {
     uniqueId: "STU009",
@@ -239,7 +235,6 @@ const ANCHOR_STUDENTS = [
     major: "INFORMATION_TECHNOLOGY" as Pathway,
     minor: "HEALTH_SCIENCE" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU009",
   },
   {
     uniqueId: "STU010",
@@ -250,7 +245,6 @@ const ANCHOR_STUDENTS = [
     major: "HEALTH_SCIENCE" as Pathway,
     minor: "INFORMATION_TECHNOLOGY" as Pathway,
     roles: ["STUDENT"] as AppRole[],
-    password: "STU010",
   },
 ];
 
@@ -298,7 +292,6 @@ function generateUsers(studentCount: number) {
       lastName: "Admin",
       email: "superadmin@ia.school",
       roles: ["SUPER_ADMIN", "ADMIN"] as AppRole[],
-      password: "SUPER001",
     },
     {
       uniqueId: "ADMIN001",
@@ -306,7 +299,6 @@ function generateUsers(studentCount: number) {
       lastName: "Admin",
       email: "admin001@ia.school",
       roles: ["ADMIN"] as AppRole[],
-      password: "ADMIN001",
     },
     {
       uniqueId: "TCH001",
@@ -314,7 +306,6 @@ function generateUsers(studentCount: number) {
       lastName: "Smith",
       email: "tch001@ia.school",
       roles: ["TEACHER"] as AppRole[],
-      password: "TCH001",
     },
   ];
 
@@ -332,7 +323,6 @@ function generateUsers(studentCount: number) {
       lastName,
       email: `admin${String(i).padStart(3, "0")}@ia.school`,
       roles: ["ADMIN"] as AppRole[],
-      password: uniqueId,
     });
   }
 
@@ -346,7 +336,6 @@ function generateUsers(studentCount: number) {
       lastName,
       email: `tch${String(i).padStart(3, "0")}@ia.school`,
       roles: ["TEACHER"] as AppRole[],
-      password: uniqueId,
     });
   }
 
@@ -360,7 +349,6 @@ function generateUsers(studentCount: number) {
       lastName,
       email: `stf${String(i).padStart(3, "0")}@ia.school`,
       roles: ["SUPPORT_STAFF"] as AppRole[],
-      password: uniqueId,
     });
   }
 
@@ -429,7 +417,6 @@ function generateUsers(studentCount: number) {
       major: major as Pathway,
       minor: minor as Pathway,
       roles: ["STUDENT"] as AppRole[],
-      password: uniqueId,
     });
   }
 
@@ -460,10 +447,21 @@ export const run = internalMutation({
   returns: v.object({
     deleted: v.number(),
     upserted: v.number(),
+    privilegedCredentials: v.array(
+      v.object({
+        uniqueId: v.string(),
+        temporaryPassword: v.string(),
+      }),
+    ),
     nextCursor: v.union(v.string(), v.null()),
     isDone: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    if (!isLocalDemoSeedEnabled(process.env.ALLOW_LOCAL_DEMO_SEED)) {
+      throw new Error(
+        "Demo seed is disabled. Run it only on an isolated local deployment configured by pnpm setup:convex-local.",
+      );
+    }
     const profile = args.profile ?? "development";
     const seedUsers = getSeedUsers(profile);
     const cursor = Math.max(0, Number.parseInt(args.cursor ?? "0", 10) || 0);
@@ -479,6 +477,7 @@ export const run = internalMutation({
         return {
           deleted: usersToDelete.length,
           upserted: 0,
+          privilegedCredentials: [],
           nextCursor: "0",
           isDone: false,
         };
@@ -486,6 +485,10 @@ export const run = internalMutation({
     }
 
     let upserted = 0;
+    const privilegedCredentials: Array<{
+      uniqueId: string;
+      temporaryPassword: string;
+    }> = [];
     for (const student of seedUsers.slice(cursor, cursor + batchSize)) {
       const existing = await ctx.db
         .query("users")
@@ -495,10 +498,21 @@ export const run = internalMutation({
         upserted += 1;
         continue;
       }
-      await createLinkedUser(ctx, {
+      const result = await createLinkedUser(ctx, {
         ...student,
-        mustResetPassword: false,
+        mustResetPassword: true,
       });
+      if (
+        student.roles.some((role: AppRole) =>
+          ["ADMIN", "SUPER_ADMIN"].includes(role),
+        ) &&
+        result.temporaryPassword
+      ) {
+        privilegedCredentials.push({
+          uniqueId: student.uniqueId,
+          temporaryPassword: result.temporaryPassword,
+        });
+      }
       upserted += 1;
     }
 
@@ -509,6 +523,7 @@ export const run = internalMutation({
     return {
       deleted: 0,
       upserted,
+      privilegedCredentials,
       nextCursor: nextIndex < seedUsers.length ? String(nextIndex) : null,
       isDone: nextIndex >= seedUsers.length,
     };

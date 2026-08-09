@@ -106,5 +106,17 @@ if (!getDeploymentEnv("SITE_URL")) {
   console.log("Preserved the existing local SITE_URL.");
 }
 
+if (!getDeploymentEnv("ALLOW_LOCAL_DEMO_SEED")) {
+  convex([
+    "env",
+    "set",
+    "--deployment",
+    "local",
+    "ALLOW_LOCAL_DEMO_SEED",
+    "true",
+  ]);
+  console.log("Enabled demo seeding for this isolated local deployment.");
+}
+
 run(process.execPath, [join(root, "scripts", "sync-convex-env.mjs")]);
 console.log("Local Convex setup is ready. Run `pnpm dev` to start the app.");

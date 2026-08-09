@@ -10,8 +10,6 @@ export function ScheduleTabPanel() {
     <AdminScheduleTab
       studentCsvInputKey={schedule.studentCsvInputKey}
       onStudentCsvFileChange={schedule.setStudentCsvFile}
-      generatePasswords={schedule.generatePasswords}
-      onGeneratePasswordsChange={schedule.setGeneratePasswords}
       canImport={schedule.canImport}
       isImporting={schedule.isImporting}
       onImport={schedule.onImport}

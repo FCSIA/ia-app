@@ -86,7 +86,7 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
-    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 12 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,

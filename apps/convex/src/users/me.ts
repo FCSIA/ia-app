@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUserUnchecked,
+} from "../../lib/currentUser";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -28,7 +31,7 @@ export const me = query({
   args: {},
   returns: v.union(userSelfProfileValidator, v.null()),
   handler: async (ctx) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUserUnchecked(ctx);
     if (!user) return null;
     return toUserSelfProfile(user);
   },

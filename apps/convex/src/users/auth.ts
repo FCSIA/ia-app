@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { authComponent, createAuth } from "../auth";
 import { mutation } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
-import { getCurrentAppUser } from "../../lib/currentUser";
+import { getCurrentAppUserForPasswordReset } from "../../lib/currentUser";
 
 export const changePassword = mutation({
   args: {
@@ -11,7 +11,7 @@ export const changePassword = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
+    const user = await getCurrentAppUserForPasswordReset(ctx);
     const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
 
     await auth.api.changePassword({

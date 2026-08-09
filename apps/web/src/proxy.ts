@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isAuthenticated } from '@/lib/auth-server';
+import { fetchAuthQuery } from '@/lib/auth-server';
+import { api } from '~/apps/convex/src/_generated/api';
 
 /**
  * Next.js 16 Proxy (formerly Middleware)
@@ -10,6 +12,10 @@ import { isAuthenticated } from '@/lib/auth-server';
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuth = await isAuthenticated();
+  const currentUser = isAuth
+    ? await fetchAuthQuery(api.users.me.me, {}).catch(() => null)
+    : null;
+  const mustResetPassword = currentUser?.mustResetPassword === true;
 
   // 1. Redirect unauthenticated users from protected routes to login
   const protectedRoutes = [
@@ -25,6 +31,8 @@ export async function proxy(request: NextRequest) {
     '/wrapped',
     '/notifications',
     '/profile',
+    '/change-password',
+    '/report',
   ];
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
@@ -35,9 +43,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (isAuth && mustResetPassword && pathname !== '/change-password') {
+    return NextResponse.redirect(new URL('/change-password', request.url));
+  }
+
+  if (pathname === '/change-password' && isAuth && !mustResetPassword) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   // 2. Redirect authenticated users away from the login page
   if (pathname === '/login' && isAuth) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(
+      new URL(mustResetPassword ? '/change-password' : '/dashboard', request.url),
+    );
   }
 
   // 3. Handle root path redirect

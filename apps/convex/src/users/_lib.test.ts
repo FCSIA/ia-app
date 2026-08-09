@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   assertCanActOn,
+  assertInitialPasswordAllowed,
   betterAuthRoleForAppRoles,
   generateTemporaryPassword,
   isPrivilegeReduction,
@@ -58,5 +59,22 @@ describe("privileged account boundaries", () => {
     expect(isPrivilegeReduction(["STUDENT"], ["STUDENT", "SPONSOR"])).toBe(
       false,
     );
+  });
+});
+
+describe("initial password validation", () => {
+  test("rejects short and unique-ID passwords", () => {
+    expect(() => assertInitialPasswordAllowed("short", "STU001")).toThrow(
+      /at least 12/i,
+    );
+    expect(() =>
+      assertInitialPasswordAllowed("STUDENT00001", "student00001"),
+    ).toThrow(/cannot match/i);
+  });
+
+  test("accepts a strong unrelated temporary password", () => {
+    expect(() =>
+      assertInitialPasswordAllowed("RandomPass42!", "STU001"),
+    ).not.toThrow();
   });
 });
