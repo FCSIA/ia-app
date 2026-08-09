@@ -1,62 +1,55 @@
 "use client";
 
 import {
-  forwardRef,
-  useRef,
-  useEffect,
-  useState,
-  useCallback,
-  useId,
   createContext,
+  forwardRef,
+  useCallback,
   useContext,
-  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
   type HTMLAttributes,
+  type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { AnimatePresence, motion } from "framer-motion";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
 import { springs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
+import { Elevated } from "@/lib/elevated";
 
-// ---------------------------------------------------------------------------
-// Select context
-// ---------------------------------------------------------------------------
+const SELECTION_ACK_MS = 300;
+const EXIT_FALLBACK_MS = 180;
 
 interface SelectContextValue {
   value: string;
-  onChange: (value: string) => void;
   open: boolean;
-  setOpen: (open: boolean) => void;
-  disabled: boolean;
-  triggerRef: React.RefObject<HTMLButtonElement | null>;
-  labelMap: React.MutableRefObject<Map<string, string>>;
-  contentId: string;
+  unmount: () => void;
 }
 
 const SelectContext = createContext<SelectContextValue | null>(null);
 
 function useSelectContext() {
-  const ctx = useContext(SelectContext);
-  if (!ctx) throw new Error("Select compound components must be inside <Select>");
-  return ctx;
+  const context = useContext(SelectContext);
+  if (!context) {
+    throw new Error("Select compound components must be inside <Select>");
+  }
+  return context;
 }
 
-// Content context for proximity hover
 interface SelectContentContextValue {
   registerItem: (index: number, element: HTMLElement | null) => void;
   activeIndex: number | null;
   checkedIndex?: number;
 }
 
-const SelectContentContext =
-  createContext<SelectContentContextValue | null>(null);
-
-// ---------------------------------------------------------------------------
-// Select (root)
-// ---------------------------------------------------------------------------
+const SelectContentContext = createContext<SelectContentContextValue | null>(
+  null,
+);
 
 interface SelectProps {
   children: ReactNode;
@@ -79,78 +72,95 @@ function Select({
 }: SelectProps) {
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const [open, setOpen] = useState(false);
+  const [radixOpen, setRadixOpen] = useState(false);
   const currentValue = value !== undefined ? value : internalValue;
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const labelMap = useRef(new Map<string, string>());
-  const contentId = useId();
+  const lastPickRef = useRef(0);
+  const acknowledgmentTimeoutRef = useRef<number | null>(null);
 
-  const onChange = useCallback(
-    (v: string) => {
-      if (value === undefined) setInternalValue(v);
-      onValueChange?.(v);
-      setOpen(false);
-      requestAnimationFrame(() => triggerRef.current?.focus());
+  const cancelAcknowledgment = useCallback(() => {
+    if (acknowledgmentTimeoutRef.current !== null) {
+      window.clearTimeout(acknowledgmentTimeoutRef.current);
+      acknowledgmentTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cancelAcknowledgment, [cancelAcknowledgment]);
+
+  const handleValueChange = useCallback(
+    (nextValue: string) => {
+      lastPickRef.current = performance.now();
+      if (value === undefined) setInternalValue(nextValue);
+      onValueChange?.(nextValue);
     },
-    [value, onValueChange]
+    [onValueChange, value],
+  );
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && performance.now() - lastPickRef.current < 100) {
+        cancelAcknowledgment();
+        acknowledgmentTimeoutRef.current = window.setTimeout(() => {
+          acknowledgmentTimeoutRef.current = null;
+          setOpen(false);
+        }, SELECTION_ACK_MS);
+        return;
+      }
+
+      cancelAcknowledgment();
+      setOpen(nextOpen);
+      if (nextOpen) setRadixOpen(true);
+    },
+    [cancelAcknowledgment],
+  );
+
+  const unmount = useCallback(() => setRadixOpen(false), []);
+  const contextValue = useMemo(
+    () => ({ value: currentValue, open, unmount }),
+    [currentValue, open, unmount],
   );
 
   return (
-    <SelectContext.Provider
-      value={{
-        value: currentValue,
-        onChange,
-        open,
-        setOpen,
-        disabled,
-        triggerRef,
-        labelMap,
-        contentId,
-      }}
-    >
-      {children}
-      {name && (
-        <input
-          type="hidden"
-          name={name}
-          value={currentValue}
-          required={required}
-        />
-      )}
+    <SelectContext.Provider value={contextValue}>
+      <SelectPrimitive.Root
+        value={currentValue}
+        onValueChange={handleValueChange}
+        open={radixOpen}
+        onOpenChange={handleOpenChange}
+        disabled={disabled}
+        name={name}
+        required={required}
+      >
+        {children}
+      </SelectPrimitive.Root>
     </SelectContext.Provider>
   );
 }
 
 Select.displayName = "Select";
 
-// ---------------------------------------------------------------------------
-// SelectTrigger
-// ---------------------------------------------------------------------------
-
 const triggerVariants = cva(
   [
-    "group inline-flex items-center justify-between gap-2 outline-none cursor-pointer",
-    "text-[13px] h-9 px-3 min-w-[160px]",
-    "transition-all duration-80",
-    "disabled:opacity-50 disabled:pointer-events-none",
-    "focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
+    "group inline-flex min-w-[160px] cursor-pointer items-center justify-between gap-2 px-3 text-[13px] outline-none",
+    "h-9 transition-all duration-80",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]",
   ],
   {
     variants: {
       variant: {
         bordered:
-          "border border-border bg-transparent text-foreground hover:bg-muted",
+          "border border-border bg-transparent text-foreground hover:bg-hover",
         borderless:
-          "border border-transparent bg-transparent text-foreground hover:bg-muted",
+          "border border-transparent bg-transparent text-foreground hover:bg-hover",
       },
     },
-    defaultVariants: {
-      variant: "bordered",
-    },
-  }
+    defaultVariants: { variant: "bordered" },
+  },
 );
 
 interface SelectTriggerProps
-  extends Omit<HTMLAttributes<HTMLButtonElement>, "children">,
+  extends
+    Omit<HTMLAttributes<HTMLButtonElement>, "children">,
     VariantProps<typeof triggerVariants> {
   icon?: IconComponent;
   placeholder?: string;
@@ -159,97 +169,68 @@ interface SelectTriggerProps
 
 const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
   (
-    { className, variant, icon: Icon, placeholder = "Select…", error, ...props },
-    ref
+    {
+      className,
+      variant,
+      icon: Icon,
+      placeholder = "Select…",
+      error,
+      ...props
+    },
+    ref,
   ) => {
-    const { value, open, setOpen, disabled, triggerRef, labelMap, contentId } =
-      useSelectContext();
     const shape = useShape();
-    const label = value ? labelMap.current.get(value) ?? value : undefined;
 
     return (
-      <div className="flex flex-col gap-1">
-      <button
-        ref={(node) => {
-          (
-            triggerRef as React.MutableRefObject<HTMLButtonElement | null>
-          ).current = node;
-          if (typeof ref === "function") ref(node);
-          else if (ref)
-            (
-              ref as React.MutableRefObject<HTMLButtonElement | null>
-            ).current = node;
-        }}
-        type="button"
-        role="combobox"
-        aria-controls={contentId}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        disabled={disabled}
-        onClick={() => setOpen(!open)}
-        onKeyDown={(e) => {
-          if (
-            !open &&
-            (e.key === "ArrowDown" ||
-              e.key === "ArrowUp" ||
-              e.key === "Enter" ||
-              e.key === " ")
-          ) {
-            e.preventDefault();
-            setOpen(true);
-          }
-        }}
-        aria-invalid={!!error || undefined}
-        className={cn(
-          triggerVariants({ variant }),
-          shape.input,
-          error && "border-destructive/50 hover:border-destructive/50",
-          className
-        )}
-        {...props}
-      >
-        <span className="flex items-center gap-2 min-w-0 flex-1">
-          {Icon && (
-            <Icon
-              size={16}
-              strokeWidth={1.5}
-              className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-hover:text-foreground group-hover:stroke-[2]"
-            />
+      <div className="flex min-w-0 flex-col gap-1">
+        <SelectPrimitive.Trigger
+          ref={ref}
+          aria-invalid={!!error || undefined}
+          className={cn(
+            triggerVariants({ variant }),
+            shape.input,
+            error && "border-destructive/50 hover:border-destructive/50",
+            className,
           )}
-          <span className="min-w-0 flex-1 text-left truncate">
-            {label ?? (
-              <span className="text-muted-foreground">{placeholder}</span>
-            )}
-          </span>
-        </span>
-
-        <svg
-          width={16}
-          height={16}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 text-muted-foreground transition-colors duration-80 group-hover:text-foreground"
+          {...props}
         >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {error && (
-        <span className="text-[12px] text-destructive pl-3">{error}</span>
-      )}
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            {Icon ? (
+              <Icon
+                size={16}
+                strokeWidth={1.5}
+                className="shrink-0 text-muted-foreground transition-[color,stroke-width] duration-80 group-hover:text-foreground group-hover:stroke-[2]"
+              />
+            ) : null}
+            <span className="-my-1 min-w-0 flex-1 truncate py-1 text-left [text-box:trim-both_cap_alphabetic] group-data-[placeholder]:text-muted-foreground">
+              <SelectPrimitive.Value placeholder={placeholder} />
+            </span>
+          </span>
+          <SelectPrimitive.Icon asChild>
+            <svg
+              width={16}
+              height={16}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0 text-muted-foreground transition-colors duration-80 group-hover:text-foreground"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </SelectPrimitive.Icon>
+        </SelectPrimitive.Trigger>
+        {error ? (
+          <span className="pl-3 text-[12px] text-destructive">{error}</span>
+        ) : null}
       </div>
     );
-  }
+  },
 );
 
 SelectTrigger.displayName = "SelectTrigger";
-
-// ---------------------------------------------------------------------------
-// SelectContent
-// ---------------------------------------------------------------------------
 
 interface SelectContentProps {
   className?: string;
@@ -258,12 +239,9 @@ interface SelectContentProps {
 
 const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
   ({ className, children }, ref) => {
-    const { open, setOpen, value, triggerRef, contentId } = useSelectContext();
+    const { open, value, unmount } = useSelectContext();
     const shape = useShape();
     const containerRef = useRef<HTMLDivElement>(null);
-    const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
-    const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
-
     const {
       activeIndex,
       setActiveIndex,
@@ -273,333 +251,177 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
       registerItem,
       measureItems,
     } = useProximityHover(containerRef);
-
     const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-    const [checkedIndex, setCheckedIndex] = useState<number | undefined>(
-      undefined
-    );
+    const [checkedIndex, setCheckedIndex] = useState<number | undefined>();
 
-    const updateGeometry = useCallback(() => {
-      if (!triggerRef.current) return;
-      setTriggerRect(triggerRef.current.getBoundingClientRect());
-    }, [triggerRef]);
-
-    // Capture trigger rect synchronously when opening
     useEffect(() => {
-      if (open) updateGeometry();
-      else setTriggerRect(null);
-    }, [open, updateGeometry]);
+      if (open) return;
+      const timeout = window.setTimeout(unmount, EXIT_FALLBACK_MS);
+      return () => window.clearTimeout(timeout);
+    }, [open, unmount]);
 
-    // Keep portal position correct inside scrollable panels/dialogs.
     useEffect(() => {
       if (!open) return;
-      updateGeometry();
-      const onChange = () => updateGeometry();
-      window.addEventListener("resize", onChange);
-      window.addEventListener("scroll", onChange, true);
-      return () => {
-        window.removeEventListener("resize", onChange);
-        window.removeEventListener("scroll", onChange, true);
-      };
-    }, [open, updateGeometry]);
-
-    // Measure items + detect checked AFTER the portal has mounted
-    // triggerRect being set means the portal will render on the next commit
-    useEffect(() => {
-      if (!open || !triggerRect) return;
-      // Double rAF: first waits for React commit, second for layout
-      let inner: number;
-      const outer = requestAnimationFrame(() => {
-        inner = requestAnimationFrame(() => {
+      let innerFrame = 0;
+      const outerFrame = requestAnimationFrame(() => {
+        innerFrame = requestAnimationFrame(() => {
           measureItems();
-          const container = containerRef.current;
-          if (container) {
-            setContentSize({
-              width: container.offsetWidth,
-              height: container.offsetHeight,
-            });
-            const items = Array.from(
-              container.querySelectorAll("[data-proximity-index]")
-            ) as HTMLElement[];
-            const idx = items.findIndex(
-              (el) => el.getAttribute("data-value") === value
-            );
-            if (idx !== -1) setCheckedIndex(idx);
-            else setCheckedIndex(undefined);
-
-            // Focus the container so keyboard events work;
-            // don't focus an item directly to avoid showing a focus ring
-            containerRef.current?.focus({ preventScroll: true });
-          }
+          const items = Array.from(
+            containerRef.current?.querySelectorAll("[data-proximity-index]") ??
+              [],
+          ) as HTMLElement[];
+          const index = items.findIndex(
+            (item) => item.getAttribute("data-value") === value,
+          );
+          setCheckedIndex(index >= 0 ? index : undefined);
         });
       });
       return () => {
-        cancelAnimationFrame(outer);
-        cancelAnimationFrame(inner);
+        cancelAnimationFrame(outerFrame);
+        cancelAnimationFrame(innerFrame);
       };
-    }, [open, triggerRect, measureItems, value]);
+    }, [measureItems, open, value]);
 
-    // Close on escape
     useEffect(() => {
-      if (!open) return;
-      const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          setOpen(false);
-          triggerRef.current?.focus();
-        }
-      };
-      document.addEventListener("keydown", onKey);
-      return () => document.removeEventListener("keydown", onKey);
-    }, [open, setOpen, triggerRef]);
-
-    // Close on click outside
-    useEffect(() => {
-      if (!open) return;
-      const onPointer = (e: MouseEvent) => {
-        if (
-          !containerRef.current?.contains(e.target as Node) &&
-          !triggerRef.current?.contains(e.target as Node)
-        ) {
-          setOpen(false);
-        }
-      };
-      document.addEventListener("mousedown", onPointer);
-      return () => document.removeEventListener("mousedown", onPointer);
-    }, [open, setOpen, triggerRef]);
-
-    // Keyboard nav inside content
-    const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent) => {
-        const items = Array.from(
-          containerRef.current?.querySelectorAll(
-            '[role="option"]:not([data-disabled])'
-          ) ?? []
-        ) as HTMLElement[];
-        const currentIdx = items.indexOf(e.target as HTMLElement);
-
-        if (
-          ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft"].includes(e.key)
-        ) {
-          e.preventDefault();
-          if (currentIdx === -1) {
-            // No item focused yet — focus checked or first item
-            const checked =
-              value !== ""
-                ? items.find((item) => item.getAttribute("data-value") === value)
-                : null;
-            (checked ?? items[0])?.focus();
-          } else {
-            const next = ["ArrowDown", "ArrowRight"].includes(e.key)
-              ? (currentIdx + 1) % items.length
-              : (currentIdx - 1 + items.length) % items.length;
-            items[next]?.focus();
-          }
-        } else if (e.key === "Home") {
-          e.preventDefault();
-          items[0]?.focus();
-        } else if (e.key === "End") {
-          e.preventDefault();
-          items[items.length - 1]?.focus();
-        }
-      },
-      [value]
-    );
-
-    // Render hidden when closed so items can register labels
-    if (!open) {
-      return (
-        <div hidden aria-hidden="true">
-          {children}
-        </div>
-      );
-    }
-
-    if (!triggerRect) return null;
+      if (open) return;
+      setCheckedIndex(undefined);
+      setActiveIndex(null);
+      setFocusedIndex(null);
+    }, [open, setActiveIndex]);
 
     const activeRect = activeIndex !== null ? itemRects[activeIndex] : null;
     const checkedRect =
-      checkedIndex != null ? itemRects[checkedIndex] : null;
+      checkedIndex !== undefined ? itemRects[checkedIndex] : null;
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== checkedIndex;
-    const viewportPadding = 8;
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    const estimatedHeight = contentSize.height || 300;
-    const spaceBelow = viewportHeight - triggerRect.bottom - viewportPadding;
-    const spaceAbove = triggerRect.top - viewportPadding;
-    const openAbove =
-      spaceBelow < Math.min(estimatedHeight, 240) && spaceAbove > spaceBelow;
-    const availableHeight = openAbove ? spaceAbove : spaceBelow;
-    const top = openAbove
-      ? Math.max(viewportPadding, triggerRect.top - estimatedHeight - 6)
-      : triggerRect.bottom + 6;
-    const left = Math.min(
-      Math.max(viewportPadding, triggerRect.left),
-      Math.max(
-        viewportPadding,
-        viewportWidth -
-          viewportPadding -
-          (contentSize.width || triggerRect.width)
-      )
+    const contentValue = useMemo(
+      () => ({ registerItem, activeIndex, checkedIndex }),
+      [activeIndex, checkedIndex, registerItem],
     );
-    const maxHeight = Math.max(96, availableHeight - 6);
 
-    return createPortal(
-      <SelectContentContext.Provider
-        value={{ registerItem, activeIndex, checkedIndex }}
-      >
-        <div
-          style={{
-            position: "fixed",
-            top,
-            left,
-            minWidth: triggerRect.width,
-            zIndex: 80,
-            pointerEvents: "auto",
-          }}
+    return (
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          className="z-50"
         >
           <motion.div
-            initial={{ opacity: 0, y: openAbove ? 4 : -4, scaleY: 0.96 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
+            initial={{ opacity: 0, y: -4, scaleY: 0.96 }}
+            animate={
+              open
+                ? { opacity: 1, y: 0, scaleY: 1 }
+                : { opacity: 0, y: -4, scaleY: 0.96 }
+            }
             transition={springs.fast}
-            style={{ transformOrigin: openAbove ? "bottom center" : "top center" }}
+            style={{ transformOrigin: "top center" }}
+            onAnimationComplete={() => {
+              if (!open) unmount();
+            }}
           >
-          <div
-            ref={(node) => {
-              (
-                containerRef as React.MutableRefObject<HTMLDivElement | null>
-              ).current = node;
-              if (typeof ref === "function") ref(node);
-              else if (ref)
-                (
-                  ref as React.MutableRefObject<HTMLDivElement | null>
-                ).current = node;
-            }}
-            role="listbox"
-            id={contentId}
-            tabIndex={-1}
-            onMouseEnter={() => {
-              handlers.onMouseEnter();
-              setFocusedIndex(null);
-            }}
-            onMouseMove={handlers.onMouseMove}
-            onMouseLeave={handlers.onMouseLeave}
-            onPointerDown={(e) => e.stopPropagation()}
-            onFocus={(e) => {
-              const indexAttr = (e.target as HTMLElement)
-                .closest("[data-proximity-index]")
-                ?.getAttribute("data-proximity-index");
-              if (indexAttr != null) {
-                const idx = Number(indexAttr);
-                setActiveIndex(idx);
-                setFocusedIndex(
-                  (e.target as HTMLElement).matches(":focus-visible")
-                    ? idx
-                    : null
-                );
-              }
-            }}
-            onBlur={(e) => {
-              if (containerRef.current?.contains(e.relatedTarget as Node))
-                return;
-              setFocusedIndex(null);
-              setActiveIndex(null);
-            }}
-            onKeyDown={handleKeyDown}
-            style={{ maxHeight }}
-            className={cn(
-              `relative flex flex-col gap-0.5 overflow-y-auto ${shape.container} bg-card shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-border/60 p-1 select-none outline-none`,
-              className
-            )}
-          >
-            {/* Selected background */}
-            <AnimatePresence>
-              {checkedRect && (
-                <motion.div
-                  className={`absolute ${shape.bg} bg-active pointer-events-none`}
-                  initial={false}
-                  animate={{
-                    top: checkedRect.top,
-                    left: checkedRect.left,
-                    width: checkedRect.width,
-                    height: checkedRect.height,
-                    opacity: isHoveringOther ? 0.8 : 1,
+            <SelectContentContext.Provider value={contentValue}>
+              <SelectPrimitive.Viewport asChild>
+                <Elevated
+                  offset={2}
+                  shadowLevel={3}
+                  ref={(node: HTMLDivElement | null) => {
+                    containerRef.current = node;
+                    if (typeof ref === "function") ref(node);
+                    else if (ref) ref.current = node;
                   }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                  transition={{
-                    ...springs.moderate,
-                    opacity: { duration: 0.08 },
+                  onMouseEnter={() => {
+                    handlers.onMouseEnter();
+                    setFocusedIndex(null);
                   }}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Hover background */}
-            <AnimatePresence>
-              {activeRect && (
-                <motion.div
-                  key={sessionRef.current}
-                  className={`absolute ${shape.bg} bg-hover pointer-events-none`}
-                  initial={{
-                    opacity: 0,
-                    top: checkedRect?.top ?? activeRect.top,
-                    left: checkedRect?.left ?? activeRect.left,
-                    width: checkedRect?.width ?? activeRect.width,
-                    height: checkedRect?.height ?? activeRect.height,
+                  onMouseMove={handlers.onMouseMove}
+                  onMouseLeave={handlers.onMouseLeave}
+                  onFocus={(event) => {
+                    const indexValue = (event.target as HTMLElement)
+                      .closest("[data-proximity-index]")
+                      ?.getAttribute("data-proximity-index");
+                    if (indexValue === null || indexValue === undefined) return;
+                    const index = Number(indexValue);
+                    setActiveIndex(index);
+                    setFocusedIndex(
+                      (event.target as HTMLElement).matches(":focus-visible")
+                        ? index
+                        : null,
+                    );
                   }}
-                  animate={{
-                    opacity: 1,
-                    top: activeRect.top,
-                    left: activeRect.left,
-                    width: activeRect.width,
-                    height: activeRect.height,
+                  onBlur={(event) => {
+                    if (
+                      containerRef.current?.contains(
+                        event.relatedTarget as Node,
+                      )
+                    )
+                      return;
+                    setFocusedIndex(null);
+                    setActiveIndex(null);
                   }}
-                  exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                  transition={{
-                    ...springs.fast,
-                    opacity: { duration: 0.08 },
-                  }}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* Focus ring */}
-            <AnimatePresence>
-              {focusRect && (
-                <motion.div
-                  className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
-                  initial={false}
-                  animate={{
-                    left: focusRect.left - 2,
-                    top: focusRect.top - 2,
-                    width: focusRect.width + 4,
-                    height: focusRect.height + 4,
-                  }}
-                  exit={{ opacity: 0, transition: { duration: 0.06 } }}
-                  transition={{
-                    ...springs.fast,
-                    opacity: { duration: 0.08 },
-                  }}
-                />
-              )}
-            </AnimatePresence>
-
-            {children}
-          </div>
+                  className={cn(
+                    "relative flex max-h-[min(300px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] select-none flex-col gap-0.5 overflow-y-auto p-1 outline-none ![scrollbar-width:thin]",
+                    shape.container,
+                    className,
+                  )}
+                >
+                  {open && checkedRect ? (
+                    <motion.div
+                      className={cn(
+                        "pointer-events-none absolute bg-active",
+                        shape.bg,
+                      )}
+                      initial={false}
+                      animate={{ ...checkedRect, opacity: 1 }}
+                      transition={springs.moderate}
+                    />
+                  ) : null}
+                  <AnimatePresence>
+                    {open && activeRect ? (
+                      <motion.div
+                        key={sessionRef.current}
+                        className={cn(
+                          "pointer-events-none absolute bg-hover",
+                          shape.bg,
+                        )}
+                        initial={{ ...activeRect, opacity: 0 }}
+                        animate={{ ...activeRect, opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={springs.fast}
+                      />
+                    ) : null}
+                  </AnimatePresence>
+                  <AnimatePresence>
+                    {open && focusRect ? (
+                      <motion.div
+                        className={cn(
+                          "pointer-events-none absolute z-20 border border-[color:var(--focus-ring,#6B97FF)]",
+                          shape.focusRing,
+                        )}
+                        initial={false}
+                        animate={{
+                          left: focusRect.left - 2,
+                          top: focusRect.top - 2,
+                          width: focusRect.width + 4,
+                          height: focusRect.height + 4,
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={springs.fast}
+                      />
+                    ) : null}
+                  </AnimatePresence>
+                  {children}
+                </Elevated>
+              </SelectPrimitive.Viewport>
+            </SelectContentContext.Provider>
           </motion.div>
-        </div>
-      </SelectContentContext.Provider>,
-      document.body
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
     );
-  }
+  },
 );
 
 SelectContent.displayName = "SelectContent";
-
-// ---------------------------------------------------------------------------
-// SelectItem
-// ---------------------------------------------------------------------------
 
 interface SelectItemProps extends HTMLAttributes<HTMLDivElement> {
   icon?: IconComponent;
@@ -619,133 +441,88 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       disabled = false,
       ...props
     },
-    ref
+    ref,
   ) => {
-    const selectCtx = useSelectContext();
-    const contentCtx = useContext(SelectContentContext);
+    const selectContext = useSelectContext();
+    const contentContext = useContext(SelectContentContext);
     const internalRef = useRef<HTMLDivElement>(null);
     const shape = useShape();
-    const hasMounted = useRef(false);
+    const registerItem = contentContext?.registerItem;
 
     useEffect(() => {
-      hasMounted.current = true;
-    }, []);
+      if (!registerItem) return;
+      registerItem(index, internalRef.current);
+      return () => registerItem(index, null);
+    }, [index, registerItem]);
 
-    // Register label with root context
-    useEffect(() => {
-      if (typeof children === "string") {
-        selectCtx.labelMap.current.set(value, children);
-      }
-    }, [value, children, selectCtx.labelMap]);
-
-    // Register with proximity hover (only when content context exists = open)
-    useEffect(() => {
-      contentCtx?.registerItem(index, internalRef.current);
-      return () => contentCtx?.registerItem(index, null);
-    }, [index, contentCtx]);
-
-    const isActive = contentCtx?.activeIndex === index;
-    const isChecked = selectCtx.value === value;
-    const skipAnimation = !hasMounted.current;
+    const isActive = contentContext?.activeIndex === index;
+    const isChecked = selectContext.value === value;
 
     return (
-      <div
+      <SelectPrimitive.Item
+        value={value}
+        disabled={disabled}
+        textValue={typeof children === "string" ? children : undefined}
         ref={(node) => {
-          (
-            internalRef as React.MutableRefObject<HTMLDivElement | null>
-          ).current = node;
+          internalRef.current = node;
           if (typeof ref === "function") ref(node);
-          else if (ref)
-            (ref as React.MutableRefObject<HTMLDivElement | null>).current =
-              node;
+          else if (ref) ref.current = node;
         }}
         data-proximity-index={index}
         data-value={value}
-        data-disabled={disabled || undefined}
-        role="option"
-        aria-selected={isChecked}
-        aria-label={typeof children === "string" ? children : undefined}
-        tabIndex={
-          isChecked ? 0 : index === (contentCtx?.checkedIndex ?? 0) ? 0 : -1
-        }
-        onClick={() => {
-          if (!disabled) selectCtx.onChange(value);
-        }}
-        onPointerUp={(e) => {
-          if (!disabled) {
-            e.preventDefault();
-            selectCtx.onChange(value);
-          }
-        }}
-        onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && !disabled) {
-            e.preventDefault();
-            selectCtx.onChange(value);
-          }
-        }}
         className={cn(
-          `relative z-10 flex items-center gap-2 ${shape.item} px-2 py-2 text-[13px] cursor-pointer outline-none select-none`,
-          "transition-[color] duration-80",
-          isActive || isChecked
-            ? "text-foreground"
-            : "text-muted-foreground",
-          disabled && "opacity-50 pointer-events-none",
-          className
+          "relative z-10 flex h-9 shrink-0 cursor-pointer select-none items-center gap-2 px-2 text-[13px] outline-none transition-colors duration-80",
+          shape.item,
+          isActive || isChecked ? "text-foreground" : "text-muted-foreground",
+          disabled && "pointer-events-none opacity-50",
+          className,
         )}
         {...props}
       >
-        {Icon && (
+        {Icon ? (
           <Icon
             size={16}
             strokeWidth={isActive || isChecked ? 2 : 1.5}
             className="shrink-0 transition-[color,stroke-width] duration-80"
           />
-        )}
-
-        <span className="flex-1 min-w-0 truncate">{children}</span>
-
-        <AnimatePresence>
-          {isChecked && (
-            <motion.svg
-              key="check"
-              width={16}
-              height={16}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 text-foreground"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 1 }}
-            >
-              <motion.path
-                d="M4 12L9 17L20 6"
-                initial={{ pathLength: skipAnimation ? 1 : 0 }}
-                animate={{
-                  pathLength: 1,
-                  transition: { duration: 0.08, ease: "easeOut" },
-                }}
-                exit={{
-                  pathLength: 0,
-                  transition: { duration: 0.04, ease: "easeIn" },
-                }}
-              />
-            </motion.svg>
-          )}
-        </AnimatePresence>
-      </div>
+        ) : null}
+        <span className="-my-1 min-w-0 flex-1 truncate py-1 [text-box:trim-both_cap_alphabetic]">
+          <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+        </span>
+        <span aria-hidden className="size-4 shrink-0">
+          <AnimatePresence>
+            {isChecked ? (
+              <motion.svg
+                key="check"
+                width={16}
+                height={16}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 1 }}
+              >
+                <motion.path
+                  d="M4 12L9 17L20 6"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  exit={{ pathLength: 0 }}
+                  transition={{ duration: 0.08, ease: "easeOut" }}
+                />
+              </motion.svg>
+            ) : null}
+          </AnimatePresence>
+        </span>
+      </SelectPrimitive.Item>
     );
-  }
+  },
 );
 
 SelectItem.displayName = "SelectItem";
-
-// ---------------------------------------------------------------------------
-// SelectGroup + SelectLabel + SelectSeparator
-// ---------------------------------------------------------------------------
 
 function SelectGroup({
   children,
@@ -759,22 +536,18 @@ function SelectGroup({
   );
 }
 
-SelectGroup.displayName = "SelectGroup";
-
 const SelectLabel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "px-2 py-1.5 text-[11px] text-muted-foreground",
-        className
+        "shrink-0 px-2 py-1.5 text-[11px] text-muted-foreground",
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
-
-SelectLabel.displayName = "SelectLabel";
 
 const SelectSeparator = forwardRef<
   HTMLDivElement,
@@ -783,16 +556,14 @@ const SelectSeparator = forwardRef<
   <div
     ref={ref}
     role="separator"
-    className={cn("my-1 -mx-1 h-px bg-border/60", className)}
+    className={cn("-mx-1 my-1 h-px shrink-0 bg-border/60", className)}
     {...props}
   />
 ));
 
+SelectGroup.displayName = "SelectGroup";
+SelectLabel.displayName = "SelectLabel";
 SelectSeparator.displayName = "SelectSeparator";
-
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
 
 export {
   Select,
@@ -805,4 +576,9 @@ export {
   triggerVariants,
 };
 
-export type { SelectProps, SelectTriggerProps, SelectContentProps, SelectItemProps };
+export type {
+  SelectProps,
+  SelectTriggerProps,
+  SelectContentProps,
+  SelectItemProps,
+};

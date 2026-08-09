@@ -18,14 +18,10 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  parseInfiniteCampusSchedule,
-  type ImportedScheduleRow,
-  type OcrScheduleRow,
-} from '@/lib/schedule-ocr';
+import { parseInfiniteCampusSchedule, type ImportedScheduleRow, type OcrScheduleRow } from '@/lib/schedule-ocr';
 
 export function ScheduleImportDialog({
   courses,
@@ -85,9 +81,7 @@ export function ScheduleImportDialog({
         const result = await worker.recognize(file);
         const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
         if (!parsed.length) {
-          setError(
-            'No period and course pairs were found. Try a sharper screenshot of Infinite Campus Term view.',
-          );
+          setError('No period and course pairs were found. Try a sharper screenshot of Infinite Campus Term view.');
         } else {
           setRows(parsed);
         }
@@ -194,7 +188,9 @@ export function ScheduleImportDialog({
                       <TableHead className="w-16">Period</TableHead>
                       <TableHead>Course</TableHead>
                       <TableHead className="w-20">Match</TableHead>
-                      <TableHead className="w-12"><span className="sr-only">Remove</span></TableHead>
+                      <TableHead className="w-12">
+                        <span className="sr-only">Remove</span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -222,14 +218,16 @@ export function ScheduleImportDialog({
                           >
                             <SelectTrigger className="w-full" />
                             <SelectContent>
-                              <SelectItem value="custom" index={0}>
-                                {row.className} (use OCR text)
-                              </SelectItem>
-                              {courses.map((course, courseIndex) => (
-                                <SelectItem key={course.id} value={course.id} index={courseIndex + 1}>
-                                  {course.title}
+                              <SelectGroup>
+                                <SelectItem value="custom" index={0}>
+                                  {row.className} (use OCR text)
                                 </SelectItem>
-                              ))}
+                                {courses.map((course, courseIndex) => (
+                                  <SelectItem key={course.id} value={course.id} index={courseIndex + 1}>
+                                    {course.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                           <p className="mt-1 truncate text-[11px] text-muted-foreground" title={row.sourceText}>

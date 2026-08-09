@@ -5,12 +5,14 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import {
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   CalendarClock,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Copy,
   GripVertical,
+  LayoutTemplate,
   Plus,
   RotateCcw,
   Save,
@@ -23,11 +25,18 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
-import { TabPanel } from "@/components/ui/tabs";
+import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
+import {
+  Sortable,
+  SortableItem,
+  SortableItemHandle,
+} from "@/components/reui/sortable";
 import { formatScheduleTime } from "@/components/schedule/schedule-utils";
+import { ScheduleDatePicker } from "@/components/schedule/schedule-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "~/apps/convex/src/_generated/api";
 
@@ -95,6 +104,10 @@ function reorderBlockIdentity(blocks: PlanBlock[], from: number, to: number) {
   if (!moved) return blocks;
   reordered.splice(to, 0, moved);
   return reordered.map((block, index) => ({ ...block, ...timeSlots[index] }));
+}
+
+function planBlockValue(block: PlanBlock) {
+  return `${block.periodNumber ?? "custom"}:${block.label}:${block.startTime}:${block.endTime}`;
 }
 
 function PlanPreview({ blocks }: { blocks: PlanBlock[] }) {
@@ -174,146 +187,181 @@ function PlanBlockEditor({
           <span>Time</span>
           <span />
         </div>
-        <div className="divide-y divide-border/40">
+        <Sortable
+          value={blocks}
+          onValueChange={() => undefined}
+          onMove={({ activeIndex, overIndex }) =>
+            onChange(reorderBlockIdentity(blocks, activeIndex, overIndex))
+          }
+          getItemValue={planBlockValue}
+          strategy="vertical"
+          className="divide-y divide-border/40"
+        >
           {blocks.map((block, index) => (
-            <div
-              key={`${block.startTime}-${block.endTime}-${block.periodNumber ?? "custom"}`}
-              className="group grid gap-2 px-3 py-3 md:grid-cols-[2.25rem_minmax(8rem,1fr)_minmax(12rem,0.9fr)_2.25rem] md:items-center"
+            <SortableItem
+              key={planBlockValue(block)}
+              value={planBlockValue(block)}
+              disabled={readOnly}
+              className="group bg-surface-2 data-[dragging=true]:relative data-[dragging=true]:z-20 data-[dragging=true]:rounded-lg data-[dragging=true]:shadow-surface-3"
             >
-              <div className="flex items-center gap-0.5 max-md:order-4">
-                <GripVertical
-                  className="size-3.5 text-muted-foreground/60"
-                  aria-hidden="true"
-                />
-                {!readOnly ? (
-                  <div className="flex md:flex-col">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-5"
-                      aria-label={`Move ${block.label} earlier`}
-                      disabled={index === 0}
-                      onClick={() =>
-                        onChange(reorderBlockIdentity(blocks, index, index - 1))
+              <div className="grid gap-2 px-3 py-3 md:grid-cols-[2.25rem_minmax(8rem,1fr)_minmax(12rem,0.9fr)_2.25rem] md:items-center">
+                <div className="flex items-center gap-0.5 max-md:order-4">
+                  {!readOnly ? (
+                    <SortableItemHandle
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="size-6 text-muted-foreground"
+                          aria-label={`Drag ${block.label} to reorder`}
+                        />
                       }
                     >
-                      <ArrowUp className="size-3" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-5"
-                      aria-label={`Move ${block.label} later`}
-                      disabled={index === blocks.length - 1}
-                      onClick={() =>
-                        onChange(reorderBlockIdentity(blocks, index, index + 1))
-                      }
-                    >
-                      <ArrowDown className="size-3" />
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="grid min-w-0 gap-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
-                <Select
-                  value={
-                    block.periodNumber === null
-                      ? "CUSTOM"
-                      : String(block.periodNumber)
-                  }
-                  disabled={readOnly}
-                  onValueChange={(value) => {
-                    if (value === "CUSTOM") {
-                      update(index, {
-                        periodNumber: null,
-                        label: block.periodNumber
-                          ? "Custom block"
-                          : block.label,
-                      });
-                    } else {
-                      const periodNumber = Number(value);
-                      update(index, {
-                        periodNumber,
-                        label: `Period ${periodNumber}`,
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-8 min-w-0 w-full" />
-                  <SelectContent>
-                    {Array.from({ length: 8 }, (_, periodIndex) => (
-                      <SelectItem
-                        key={periodIndex + 1}
-                        index={periodIndex}
-                        value={String(periodIndex + 1)}
+                      <GripVertical />
+                    </SortableItemHandle>
+                  ) : (
+                    <GripVertical
+                      className="size-3.5 text-muted-foreground/35"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {!readOnly ? (
+                    <div className="flex md:flex-col">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-5"
+                        aria-label={`Move ${block.label} earlier`}
+                        disabled={index === 0}
+                        onClick={() =>
+                          onChange(
+                            reorderBlockIdentity(blocks, index, index - 1),
+                          )
+                        }
                       >
-                        Period {periodIndex + 1}
-                      </SelectItem>
-                    ))}
-                    <SelectItem index={8} value="CUSTOM">
-                      Custom block
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  aria-label={`Label for block ${index + 1}`}
-                  value={block.label}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    update(index, { label: event.target.value })
-                  }
-                  className="h-8 min-w-0 bg-transparent"
-                />
-              </div>
+                        <ArrowUp className="size-3" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-5"
+                        aria-label={`Move ${block.label} later`}
+                        disabled={index === blocks.length - 1}
+                        onClick={() =>
+                          onChange(
+                            reorderBlockIdentity(blocks, index, index + 1),
+                          )
+                        }
+                      >
+                        <ArrowDown className="size-3" />
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
 
-              <div className="flex min-w-0 items-center gap-1.5">
-                <Input
-                  type="time"
-                  aria-label={`${block.label} start time`}
-                  value={block.startTime}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    update(index, { startTime: event.target.value })
-                  }
-                  className="h-8 min-w-0 bg-transparent px-2 text-xs"
-                />
-                <span className="text-xs text-muted-foreground">–</span>
-                <Input
-                  type="time"
-                  aria-label={`${block.label} end time`}
-                  value={block.endTime}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    update(index, { endTime: event.target.value })
-                  }
-                  className="h-8 min-w-0 bg-transparent px-2 text-xs"
-                />
-              </div>
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                  <Select
+                    value={
+                      block.periodNumber === null
+                        ? "CUSTOM"
+                        : String(block.periodNumber)
+                    }
+                    disabled={readOnly}
+                    onValueChange={(value) => {
+                      if (value === "CUSTOM") {
+                        update(index, {
+                          periodNumber: null,
+                          label: block.periodNumber
+                            ? "Custom block"
+                            : block.label,
+                        });
+                      } else {
+                        const periodNumber = Number(value);
+                        update(index, {
+                          periodNumber,
+                          label: `Period ${periodNumber}`,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 min-w-0 w-full" />
+                    <SelectContent>
+                      <SelectGroup>
+                        {Array.from({ length: 8 }, (_, periodIndex) => (
+                          <SelectItem
+                            key={periodIndex + 1}
+                            index={periodIndex}
+                            value={String(periodIndex + 1)}
+                          >
+                            Period {periodIndex + 1}
+                          </SelectItem>
+                        ))}
+                        <SelectItem index={8} value="CUSTOM">
+                          Custom block
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    aria-label={`Label for block ${index + 1}`}
+                    value={block.label}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      update(index, { label: event.target.value })
+                    }
+                    className="h-8 min-w-0 bg-transparent"
+                  />
+                </div>
 
-              {!readOnly ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-destructive opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
-                  aria-label={`Remove ${block.label}`}
-                  onClick={() =>
-                    onChange(
-                      blocks.filter((_, blockIndex) => blockIndex !== index),
-                    )
-                  }
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              ) : (
-                <span />
-              )}
-            </div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Input
+                    type="time"
+                    aria-label={`${block.label} start time`}
+                    value={block.startTime}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      update(index, { startTime: event.target.value })
+                    }
+                    className="h-8 min-w-0 bg-transparent px-2 text-xs"
+                  />
+                  <span className="text-xs text-muted-foreground">–</span>
+                  <Input
+                    type="time"
+                    aria-label={`${block.label} end time`}
+                    value={block.endTime}
+                    disabled={readOnly}
+                    onChange={(event) =>
+                      update(index, { endTime: event.target.value })
+                    }
+                    className="h-8 min-w-0 bg-transparent px-2 text-xs"
+                  />
+                </div>
+
+                {!readOnly ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-destructive opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(pointer:coarse)]:opacity-100"
+                    aria-label={`Remove ${block.label}`}
+                    onClick={() =>
+                      onChange(
+                        blocks.filter((_, blockIndex) => blockIndex !== index),
+                      )
+                    }
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                ) : (
+                  <span />
+                )}
+              </div>
+            </SortableItem>
           ))}
-        </div>
+        </Sortable>
 
         {!readOnly ? (
           <Button
@@ -344,33 +392,13 @@ function PlanBlockEditor({
   );
 }
 
-function WorkspaceModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: "dates" | "templates";
-  onChange: (mode: "dates" | "templates") => void;
-}) {
+function WorkspaceModeSwitch() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
-      <div className="flex items-center gap-1 rounded-lg bg-surface-2 p-1 shadow-surface-1">
-        <Button
-          type="button"
-          variant={mode === "dates" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => onChange("dates")}
-        >
-          Calendar dates
-        </Button>
-        <Button
-          type="button"
-          variant={mode === "templates" ? "secondary" : "ghost"}
-          size="sm"
-          onClick={() => onChange("templates")}
-        >
-          Templates
-        </Button>
-      </div>
+      <TabsList>
+        <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
+        <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
+      </TabsList>
       <p className="text-xs text-muted-foreground">
         Times are school-local (America/New_York).
       </p>
@@ -429,15 +457,11 @@ function DatePlanWorkspace({
               >
                 <ChevronLeft className="size-4" />
               </Button>
-              <Input
+              <ScheduleDatePicker
                 id="admin-schedule-date"
-                type="date"
-                value={dateKey}
-                onChange={(event) => {
-                  if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value))
-                    onDateKeyChange(event.target.value);
-                }}
-                className="h-8 w-[9.25rem]"
+                dateKey={dateKey}
+                onDateChange={onDateKeyChange}
+                className="w-[13rem]"
               />
               <Button
                 type="button"
@@ -451,22 +475,24 @@ function DatePlanWorkspace({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Clone a template</Label>
+            <Label className="text-xs">Template source</Label>
             <Select value={selectedTemplateId} onValueChange={onTemplateSelect}>
               <SelectTrigger
                 className="h-8 min-w-[13rem]"
                 placeholder="Choose template"
               />
               <SelectContent>
-                {workspace.templates.map((template, index) => (
-                  <SelectItem
-                    key={template.id}
-                    index={index}
-                    value={template.id}
-                  >
-                    {template.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {workspace.templates.map((template, index) => (
+                    <SelectItem
+                      key={template.id}
+                      index={index}
+                      value={template.id}
+                    >
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -475,16 +501,17 @@ function DatePlanWorkspace({
             variant="tertiary"
             size="sm"
             disabled={!selectedApplyTemplate || pending !== null}
+            loading={pending === "apply-date"}
             onClick={onApplyTemplate}
           >
-            <Copy className="size-3.5" />
-            {workspace.override ? "Replace override" : "Customize date"}
+            <ArrowRight />
+            Use template
           </Button>
         </div>
         <div className="flex items-center gap-2">
           {workspace.override ? (
             <Badge color="orange" size="sm">
-              Date override
+              Custom date plan
             </Badge>
           ) : (
             <Badge size="sm">Uses regular template</Badge>
@@ -492,6 +519,12 @@ function DatePlanWorkspace({
           <CalendarClock className="size-4 text-muted-foreground" />
         </div>
       </div>
+
+      <p className="-mt-3 text-xs text-muted-foreground">
+        {workspace.override
+          ? "Using a template replaces this date’s blocks. Student classes stay linked to their period numbers."
+          : "Using a template creates an editable plan for this date without changing the reusable template."}
+      </p>
 
       {workspace.override ? (
         <div className="space-y-4">
@@ -524,7 +557,7 @@ function DatePlanWorkspace({
               onClick={onResetDate}
             >
               <RotateCcw className="size-3.5" />
-              Reset override
+              Return to regular template
             </Button>
           </div>
         </div>
@@ -597,16 +630,25 @@ function TemplateWorkspace({
               placeholder="Choose template"
             />
             <SelectContent>
-              {workspace.templates.map((template, index) => (
-                <SelectItem key={template.id} index={index} value={template.id}>
-                  {template.name}
-                </SelectItem>
-              ))}
-              {isNewTemplate ? (
-                <SelectItem index={workspace.templates.length} value="__new__">
-                  New template
-                </SelectItem>
-              ) : null}
+              <SelectGroup>
+                {workspace.templates.map((template, index) => (
+                  <SelectItem
+                    key={template.id}
+                    index={index}
+                    value={template.id}
+                  >
+                    {template.name}
+                  </SelectItem>
+                ))}
+                {isNewTemplate ? (
+                  <SelectItem
+                    index={workspace.templates.length}
+                    value="__new__"
+                  >
+                    New template
+                  </SelectItem>
+                ) : null}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -642,12 +684,14 @@ function TemplateWorkspace({
           >
             <SelectTrigger className="w-full" />
             <SelectContent>
-              <SelectItem index={0} value="REGULAR">
-                Regular
-              </SelectItem>
-              <SelectItem index={1} value="SPECIAL">
-                Special
-              </SelectItem>
+              <SelectGroup>
+                <SelectItem index={0} value="REGULAR">
+                  Regular
+                </SelectItem>
+                <SelectItem index={1} value="SPECIAL">
+                  Special
+                </SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -798,125 +842,137 @@ export function ManageBlocksPanel() {
 
   return (
     <TabPanel value="admin" className="mt-5 space-y-5">
-      <WorkspaceModeSwitch mode={mode} onChange={setMode} />
+      <Tabs
+        value={mode}
+        onValueChange={(value) => setMode(value as "dates" | "templates")}
+      >
+        <WorkspaceModeSwitch />
 
-      {workspace === undefined ? (
-        <div className="h-48 animate-pulse rounded-xl bg-muted/30" />
-      ) : mode === "dates" ? (
-        <DatePlanWorkspace
-          workspace={workspace}
-          dateKey={dateKey}
-          onDateKeyChange={setDateKey}
-          selectedTemplateId={selectedTemplateId}
-          onTemplateSelect={(templateId) => {
-            setSelectedTemplateId(templateId);
-            setIsNewTemplate(false);
-          }}
-          selectedApplyTemplate={selectedApplyTemplate}
-          pending={pending}
-          dateName={dateName}
-          onDateNameChange={setDateName}
-          dateBlocks={dateBlocks}
-          onDateBlocksChange={setDateBlocks}
-          regularTemplate={regularTemplate}
-          onApplyTemplate={() => {
-            if (!selectedApplyTemplate) return;
-            void run(
-              "apply-date",
-              () =>
-                applyTemplate({
-                  dateKey,
-                  templateId: selectedApplyTemplate.id,
-                }),
-              "Template copied to date",
-            );
-          }}
-          onSaveDate={() =>
-            void run(
-              "save-date",
-              () =>
-                saveDateOverride({
-                  overrideId: workspace.override?.id,
-                  dateKey,
-                  name: dateName,
-                  sourceTemplateId:
-                    workspace.override?.sourceTemplateId ?? null,
-                  blocks: dateBlocks,
-                }),
-              "Date schedule saved",
-            )
-          }
-          onResetDate={() =>
-            void run(
-              "reset-date",
-              () => resetDateOverride({ dateKey }),
-              "Date reset to regular schedule",
-            )
-          }
-        />
-      ) : (
-        <TemplateWorkspace
-          workspace={workspace}
-          selectedTemplateId={selectedTemplateId}
-          isNewTemplate={isNewTemplate}
-          onTemplateSelect={(templateId) => {
-            if (templateId === "__new__") return;
-            setIsNewTemplate(false);
-            setSelectedTemplateId(templateId);
-          }}
-          onNewTemplate={() => {
-            setIsNewTemplate(true);
-            setTemplateName("New special day");
-            setTemplateKind("SPECIAL");
-            setTemplateBlocks(
-              dateBlocks.length > 0 ? [...dateBlocks] : EMPTY_BLOCKS,
-            );
-          }}
-          templateName={templateName}
-          onTemplateNameChange={setTemplateName}
-          templateKind={templateKind}
-          onTemplateKindChange={setTemplateKind}
-          templateBlocks={templateBlocks}
-          onTemplateBlocksChange={setTemplateBlocks}
-          pending={pending}
-          activeTemplate={activeTemplate}
-          onSaveTemplate={() =>
-            void run(
-              "save-template",
-              async () => {
-                const saved = await saveTemplate({
-                  templateId: isNewTemplate ? undefined : activeTemplate?.id,
-                  name: templateName,
-                  kind: templateKind,
-                  blocks: templateBlocks,
-                });
-                setSelectedTemplateId(saved.id);
-                setIsNewTemplate(false);
-              },
-              "Template saved",
-            )
-          }
-          onSetRegular={() => {
-            if (!activeTemplate) return;
-            void run(
-              "set-regular",
-              () => setRegularTemplate({ templateId: activeTemplate.id }),
-              "Regular template updated",
-            );
-          }}
-          onDeleteTemplate={() => {
-            if (!activeTemplate) return;
-            void run(
-              "delete-template",
-              async () => {
-                await deleteTemplate({ templateId: activeTemplate.id });
-                setSelectedTemplateId("");
-              },
-              "Template deleted",
-            );
-          }}
-        />
-      )}
+        {workspace === undefined ? (
+          <div className="mt-5 h-48 animate-pulse rounded-xl bg-muted/30" />
+        ) : (
+          <>
+            <TabPanel value="dates" className="mt-5">
+              <DatePlanWorkspace
+                workspace={workspace}
+                dateKey={dateKey}
+                onDateKeyChange={setDateKey}
+                selectedTemplateId={selectedTemplateId}
+                onTemplateSelect={(templateId) => {
+                  setSelectedTemplateId(templateId);
+                  setIsNewTemplate(false);
+                }}
+                selectedApplyTemplate={selectedApplyTemplate}
+                pending={pending}
+                dateName={dateName}
+                onDateNameChange={setDateName}
+                dateBlocks={dateBlocks}
+                onDateBlocksChange={setDateBlocks}
+                regularTemplate={regularTemplate}
+                onApplyTemplate={() => {
+                  if (!selectedApplyTemplate) return;
+                  void run(
+                    "apply-date",
+                    () =>
+                      applyTemplate({
+                        dateKey,
+                        templateId: selectedApplyTemplate.id,
+                      }),
+                    "Template copied to date",
+                  );
+                }}
+                onSaveDate={() =>
+                  void run(
+                    "save-date",
+                    () =>
+                      saveDateOverride({
+                        overrideId: workspace.override?.id,
+                        dateKey,
+                        name: dateName,
+                        sourceTemplateId:
+                          workspace.override?.sourceTemplateId ?? null,
+                        blocks: dateBlocks,
+                      }),
+                    "Date schedule saved",
+                  )
+                }
+                onResetDate={() =>
+                  void run(
+                    "reset-date",
+                    () => resetDateOverride({ dateKey }),
+                    "Date reset to regular schedule",
+                  )
+                }
+              />
+            </TabPanel>
+            <TabPanel value="templates" className="mt-5">
+              <TemplateWorkspace
+                workspace={workspace}
+                selectedTemplateId={selectedTemplateId}
+                isNewTemplate={isNewTemplate}
+                onTemplateSelect={(templateId) => {
+                  if (templateId === "__new__") return;
+                  setIsNewTemplate(false);
+                  setSelectedTemplateId(templateId);
+                }}
+                onNewTemplate={() => {
+                  setIsNewTemplate(true);
+                  setTemplateName("New special day");
+                  setTemplateKind("SPECIAL");
+                  setTemplateBlocks(
+                    dateBlocks.length > 0 ? [...dateBlocks] : EMPTY_BLOCKS,
+                  );
+                }}
+                templateName={templateName}
+                onTemplateNameChange={setTemplateName}
+                templateKind={templateKind}
+                onTemplateKindChange={setTemplateKind}
+                templateBlocks={templateBlocks}
+                onTemplateBlocksChange={setTemplateBlocks}
+                pending={pending}
+                activeTemplate={activeTemplate}
+                onSaveTemplate={() =>
+                  void run(
+                    "save-template",
+                    async () => {
+                      const saved = await saveTemplate({
+                        templateId: isNewTemplate
+                          ? undefined
+                          : activeTemplate?.id,
+                        name: templateName,
+                        kind: templateKind,
+                        blocks: templateBlocks,
+                      });
+                      setSelectedTemplateId(saved.id);
+                      setIsNewTemplate(false);
+                    },
+                    "Template saved",
+                  )
+                }
+                onSetRegular={() => {
+                  if (!activeTemplate) return;
+                  void run(
+                    "set-regular",
+                    () => setRegularTemplate({ templateId: activeTemplate.id }),
+                    "Regular template updated",
+                  );
+                }}
+                onDeleteTemplate={() => {
+                  if (!activeTemplate) return;
+                  void run(
+                    "delete-template",
+                    async () => {
+                      await deleteTemplate({ templateId: activeTemplate.id });
+                      setSelectedTemplateId("");
+                    },
+                    "Template deleted",
+                  );
+                }}
+              />
+            </TabPanel>
+          </>
+        )}
+      </Tabs>
     </TabPanel>
   );
 }
