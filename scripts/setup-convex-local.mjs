@@ -122,5 +122,13 @@ if (!getDeploymentEnv("ALLOW_LOCAL_DEMO_SEED")) {
   console.log("Enabled demo seeding for this isolated local deployment.");
 }
 
+if (!getDeploymentEnv("BETTER_AUTH_MAINTENANCE_SECRET")) {
+  convex([
+    "env", "set", "--deployment", "local", "BETTER_AUTH_MAINTENANCE_SECRET",
+    randomBytes(32).toString("hex"),
+  ]);
+  console.log("Generated BETTER_AUTH_MAINTENANCE_SECRET for local maintenance.");
+}
+
 run(process.execPath, [join(root, "scripts", "sync-convex-env.mjs")]);
 console.log("Local Convex setup is ready. Run `pnpm dev` to start the app.");

@@ -39,6 +39,7 @@ import {
   betterAuthRoleForAppRoles,
   isPrivilegeReduction,
   revokeBetterAuthSessions,
+  searchText,
   setBetterAuthPassword,
   syncBetterAuthRole,
   studentExportRowValidator,
@@ -646,8 +647,11 @@ export const deleteUsers = mutation({
       assertCanActOn(actor, target);
 
       if (target.authUserId) {
+        const maintenanceSecret = process.env.BETTER_AUTH_MAINTENANCE_SECRET;
+        if (!maintenanceSecret) throw new ConvexError("Auth maintenance is not configured.");
         await ctx.runMutation(components.betterAuth.dev.deleteUserData, {
           userId: target.authUserId,
+          maintenanceSecret,
         });
       }
       if (target.avatarStorageId) {
@@ -860,5 +864,82 @@ export const reconcileBetterAuthRoles = internalMutation({
       isDone: page.isDone,
       continueCursor: page.continueCursor,
     };
+  },
+});
+
+export const rotateAllCredentialAccountsBatch = internalMutation({
+  args: {
+    acknowledgeBulkSignOut: v.literal(true),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({
+    credentials: v.array(
+      v.object({
+        userId: v.id("users"),
+        uniqueId: v.string(),
+        temporaryPassword: v.string(),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({
+      numItems: 10,
+      cursor: args.cursor ?? null,
+    });
+    const credentials = [];
+
+    for (const user of page.page) {
+      if (!user.authUserId) continue;
+      const credentialAccount = await ctx.runQuery(
+        components.betterAuth.adapter.findOne,
+        {
+          model: "account",
+          where: [
+            { field: "userId", value: user.authUserId },
+            { field: "providerId", value: "credential" },
+          ],
+        },
+      );
+      if (!credentialAccount) continue;
+
+      const temporaryPassword = generateTemporaryPassword();
+      await setBetterAuthPassword(ctx, user.authUserId, temporaryPassword);
+      await revokeBetterAuthSessions(ctx, user.authUserId);
+      await ctx.db.patch(user._id, {
+        mustResetPassword: true,
+        updatedAt: Date.now(),
+      });
+      await logAuditEvent(ctx, {
+        action: "user.legacy_credential_rotated",
+        entityType: "user",
+        entityId: user._id,
+      });
+      credentials.push({
+        userId: user._id,
+        uniqueId: user.uniqueId,
+        temporaryPassword,
+      });
+    }
+
+    return {
+      credentials,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+export const rebuildPrivateUserSearchIndex = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.object({ updated: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({ numItems: 100, cursor: args.cursor ?? null });
+    for (const user of page.page) {
+      await ctx.db.patch(user._id, { searchText: searchText({ uniqueId: user.uniqueId, firstName: user.firstName, lastName: user.lastName }), updatedAt: Date.now() });
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.users.admin.rebuildPrivateUserSearchIndex, { cursor: page.continueCursor });
+    return { updated: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });

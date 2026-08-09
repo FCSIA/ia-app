@@ -148,13 +148,11 @@ export function searchText(args: {
   uniqueId: string;
   firstName: string;
   lastName: string;
-  email?: string;
 }) {
   return [
     args.uniqueId,
     args.firstName,
     args.lastName,
-    args.email,
     fullName(args.firstName, args.lastName),
   ]
     .filter(Boolean)
@@ -367,7 +365,6 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
       uniqueId,
       firstName: args.firstName,
       lastName: args.lastName,
-      email,
     }),
     createdAt: now,
     updatedAt: now,

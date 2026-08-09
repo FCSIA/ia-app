@@ -558,3 +558,22 @@ build-tool findings remain for `image-size` (`GHSA-w3rx-r6r6-pgpr` and
 through `2.0.2`. The application does not invoke the affected ICNS, JXL, or HEIF
 parsers at runtime. CI ignores only these two advisory IDs until a patched
 release exists; all other high findings still fail the build.
+
+## Required post-deploy reconciliation
+
+Production was not selected or changed during remediation. After this branch is
+merged and deployed, an authorized operator must:
+
+1. Run `users/admin:reconcileBetterAuthRoles` until `isDone` is true.
+2. Run `users/admin:rebuildPrivateUserSearchIndex` until `isDone` is true.
+3. Run `users/admin:rotateAllCredentialAccountsBatch` with
+   `acknowledgeBulkSignOut: true`, securely record and distribute every returned
+   temporary password, and continue with the returned cursor until `isDone` is
+   true. This intentionally rotates every credential account because historical
+   seed/import provenance was not stored, revokes all affected sessions, forces
+   password reset, and writes one `user.legacy_credential_rotated` audit event
+   per user.
+
+The credential rotation is deliberately not self-scheduling: scheduled return
+values would discard the only copy of the randomly generated temporary
+passwords.

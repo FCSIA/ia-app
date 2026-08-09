@@ -19,6 +19,12 @@ export async function writeOfflineCache<T>(key: string, value: T) {
   }
 }
 
+export async function clearOfflineCache() {
+  const keys = await AsyncStorage.getAllKeys();
+  const offlineKeys = keys.filter((key) => key.startsWith("ia_offline_"));
+  if (offlineKeys.length) await AsyncStorage.multiRemove(offlineKeys);
+}
+
 export function useOfflineValue<T>(key: string, liveValue: T | undefined | null) {
   const [cachedValue, setCachedValue] = useState<T | null | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);

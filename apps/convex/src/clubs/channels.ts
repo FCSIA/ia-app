@@ -50,6 +50,7 @@ import {
   boundedPortableMentionTokens,
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
+import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
 import {
   MAX_CHANNEL_CONTEXT_SOURCE_ROWS,
@@ -328,6 +329,8 @@ export const postMessage = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const messageRate = await contentRateLimiter.limit(ctx, "messagesByUser", { key: user._id });
+    if (!messageRate.ok) throw new ConvexError("You are sending messages too quickly");
     const channel = await ctx.db.get(args.channelId);
 
     if (!channel) throw new ConvexError("Channel not found");

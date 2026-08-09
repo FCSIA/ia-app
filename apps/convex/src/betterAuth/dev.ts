@@ -5,10 +5,19 @@ import { v } from "convex/values";
 const tables = ["session", "account", "verification", "user"] as const;
 const MAX_AUTH_RECORDS_PER_USER = 100;
 
+// These component mutations are callable only from the parent app, and the
+// parent must also present a deployment-specific maintenance capability. Keep
+// this guard even if component exports or routing change in the future.
+function assertMaintenanceSecret(value: string) {
+  const expected = process.env.BETTER_AUTH_MAINTENANCE_SECRET;
+  if (!expected || value.length < 32 || value !== expected) throw new Error("Auth maintenance is disabled");
+}
+
 export const clearAuthData = mutation({
-  args: {},
+  args: { maintenanceSecret: v.string() },
   returns: v.record(v.string(), v.number()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    assertMaintenanceSecret(args.maintenanceSecret);
     const deleted: Record<string, number> = {};
 
     for (const table of tables) {
@@ -28,6 +37,7 @@ export const clearAuthData = mutation({
 export const deleteUserData = mutation({
   args: {
     userId: v.string(),
+    maintenanceSecret: v.string(),
   },
   returns: v.object({
     accounts: v.number(),
@@ -35,6 +45,7 @@ export const deleteUserData = mutation({
     user: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    assertMaintenanceSecret(args.maintenanceSecret);
     const [sessions, accounts] = await Promise.all([
       ctx.db
         .query("session")

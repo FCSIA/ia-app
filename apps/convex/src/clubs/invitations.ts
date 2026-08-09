@@ -5,7 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
 import { clubAudience, deliverMany, deliverNotification } from "../notifications/delivery";
-import { clubJoinRateLimiter } from "../rateLimits";
+import { clubJoinRateLimiter, contentRateLimiter } from "../rateLimits";
 
 const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const JOIN_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -166,6 +166,8 @@ export const requestToJoin = mutation({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const rate = await contentRateLimiter.limit(ctx, "joinRequestsByUser", { key: user._id });
+    if (!rate.ok) throw new Error("Too many join requests. Try again later.");
     const club = await ctx.db.get(args.clubId);
 
     if (!club || !club.isActive) {

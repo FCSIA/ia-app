@@ -11,6 +11,7 @@ import {
   type PreparedAvatarImage,
 } from "@/lib/avatar-image";
 import { unregisterStoredNativePushToken } from "@/lib/push";
+import { clearOfflineCache } from "@/lib/offline-cache";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
@@ -82,6 +83,7 @@ export default function ProfileScreen() {
         onPress: async () => {
           await unregisterStoredNativePushToken(convex).catch(() => {});
           await authClient.signOut();
+          await clearOfflineCache();
           router.replace("/login");
         },
       },

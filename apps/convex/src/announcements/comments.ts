@@ -4,6 +4,7 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { logAuditEvent } from "../audit/_lib";
 import { assertAnnouncementAccess, commentWithAuthorValidator } from "./_lib";
 import { serializeComment } from "./serialize";
+import { contentRateLimiter } from "../rateLimits";
 
 export const list = query({
   args: { announcementId: v.id("announcements") },
@@ -31,6 +32,8 @@ export const add = mutation({
   returns: v.id("comments"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const rate = await contentRateLimiter.limit(ctx, "commentsByUser", { key: user._id });
+    if (!rate.ok) throw new ConvexError("You are commenting too quickly");
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertAnnouncementAccess(ctx, ann, user._id, user.roles);

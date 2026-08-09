@@ -38,6 +38,8 @@ export function cacheUser(user: AppUser | null) {
 export function clearAuth() {
   localStorage.removeItem('ia_user');
   localStorage.removeItem('ia_token');
+  if ('caches' in window) void caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
+  navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_AUTH_CACHES' });
 }
 
 export function hasRole(user: AppUser | null, ...roles: AppRole[]): boolean {

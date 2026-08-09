@@ -29,11 +29,12 @@ jobs:
   react-doctor:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: millionco/react-doctor@v2
+      - uses: millionco/react-doctor@736abc183ac491b4e954fc6bedec3a9a1b73d38b # v2
         with:
           # Keep CI reproducible; upgrade this deliberately after reviewing the changelog.
           version: "0.9.8"

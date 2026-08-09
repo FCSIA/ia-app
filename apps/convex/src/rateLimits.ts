@@ -41,3 +41,10 @@ export const clubJoinRateLimiter = new RateLimiter(components.rateLimiter, {
 export const uploadRateLimiter = new RateLimiter(components.rateLimiter, {
   urlsByUser: { kind: "fixed window", rate: 20, period: MINUTE },
 });
+
+export const contentRateLimiter = new RateLimiter(components.rateLimiter, {
+  messagesByUser: { kind: "token bucket", rate: 30, period: MINUTE, capacity: 10 },
+  reportsByUser: { kind: "fixed window", rate: 5, period: 10 * MINUTE },
+  joinRequestsByUser: { kind: "fixed window", rate: 10, period: 10 * MINUTE },
+  commentsByUser: { kind: "token bucket", rate: 12, period: MINUTE, capacity: 5 },
+});

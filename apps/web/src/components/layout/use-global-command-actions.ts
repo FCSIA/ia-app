@@ -169,12 +169,12 @@ export function useGlobalCommandActions({
     const peopleActions: CommandAction[] = (globalResults?.people ?? []).map((person) => ({
       id: `person-${person._id}`,
       label: `${person.firstName} ${person.lastName}`,
-      detail: person.roles[0]?.replace(/_/g, ' ') || 'IA community member',
+      detail: 'IA community member',
       href: hasRole(user, 'STUDENT')
         ? `/schedule?tab=friends&search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`
         : `/admin?search=${encodeURIComponent(`${person.firstName} ${person.lastName}`)}`,
       Icon: UserRound,
-      keywords: ['person', 'people', ...person.roles],
+      keywords: ['person', 'people'],
     }));
 
     const channelActions: CommandAction[] = (globalResults?.channels ?? []).map((channel) => ({

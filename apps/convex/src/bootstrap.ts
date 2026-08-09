@@ -94,8 +94,10 @@ export const resetAndSeedStep = internalMutation({
       }
 
       try {
+        const maintenanceSecret = process.env.BETTER_AUTH_MAINTENANCE_SECRET;
+        if (!maintenanceSecret) throw new Error("BETTER_AUTH_MAINTENANCE_SECRET is required for reset");
         await ctx.runMutation(internal.courses.seed.run, { reset: true });
-        await ctx.runMutation(components.betterAuth.dev.clearAuthData, {});
+        await ctx.runMutation(components.betterAuth.dev.clearAuthData, { maintenanceSecret });
         await ctx.scheduler.runAfter(0, internal.bootstrap.resetAndSeedStep, {
           phase: "users",
           runId: args.runId,
