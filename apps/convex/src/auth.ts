@@ -62,7 +62,6 @@ const configuredAuthHostnames = Array.from(
       "127.0.0.1",
       "10.0.2.2",
       "ia-app-alpha.vercel.app",
-      "*-sreyassabbanis-projects.vercel.app",
     ].filter((host): host is string => Boolean(host)),
   ),
 );
@@ -77,9 +76,7 @@ function isTrustedVercelPreviewOrigin(origin: string) {
   try {
     const { hostname, protocol } = new URL(origin);
     return (
-      protocol === "https:" &&
-      (hostname.endsWith("-sreyassabbanis-projects.vercel.app") ||
-        hostname === "ia-app-alpha.vercel.app")
+      protocol === "https:" && hostname === "ia-app-alpha.vercel.app"
     );
   } catch {
     return false;
@@ -95,9 +92,32 @@ function trustedOrigins(request?: Request) {
 }
 
 const supportStaffAc = defaultAc.newRole({
-  user: ["get", "set-password"],
+  user: ["get"],
   session: [],
 });
+
+const appAdminAc = defaultAc.newRole({
+  user: ["create", "list", "get", "ban", "set-password"],
+  session: ["list", "revoke"],
+});
+
+export const disabledAdminHttpPaths = [
+  "/is-username-available",
+  "/admin/set-role",
+  "/admin/create-user",
+  "/admin/update-user",
+  "/admin/list-users",
+  "/admin/list-user-sessions",
+  "/admin/ban-user",
+  "/admin/unban-user",
+  "/admin/impersonate-user",
+  "/admin/stop-impersonating",
+  "/admin/remove-user",
+  "/admin/set-user-password",
+  "/admin/get-user",
+  "/admin/revoke-user-session",
+  "/admin/revoke-user-sessions",
+] as const;
 
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
@@ -115,7 +135,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
     basePath: "/api/auth",
     trustedOrigins,
     database: authComponent.adapter(ctx),
-    disabledPaths: ["/is-username-available"],
+    disabledPaths: [...disabledAdminHttpPaths],
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,
@@ -142,9 +162,10 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       }),
       admin({
         defaultRole: "user",
-        adminRoles: ["admin", "support_staff"],
+        adminRoles: ["admin", "super_admin"],
         roles: {
-          admin: adminAc,
+          admin: appAdminAc,
+          super_admin: adminAc,
           support_staff: supportStaffAc,
           user: userAc,
         },

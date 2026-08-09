@@ -189,7 +189,10 @@ export function generateTemporaryPassword(length = 12) {
 }
 
 export function betterAuthRoleForAppRoles(roles: string[]) {
-  if (roles.includes("ADMIN") || roles.includes("SUPER_ADMIN")) {
+  if (roles.includes("SUPER_ADMIN")) {
+    return "super_admin";
+  }
+  if (roles.includes("ADMIN")) {
     return "admin";
   }
   if (roles.includes("SUPPORT_STAFF")) {
