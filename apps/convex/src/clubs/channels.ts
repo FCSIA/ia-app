@@ -316,12 +316,14 @@ export const postMessage = mutation({
     bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
+    replyToMessageId: v.optional(v.id("clubChannelMessages")),
     attachments: v.optional(v.array(v.id("clubChannelAttachmentUploads"))),
     pollQuestion: v.optional(v.string()),
     pollOptions: v.optional(v.array(clubChannelPollOptionValidator)),
     clientGeneratedId: v.optional(v.string()),
     clientSentAt: v.optional(v.number()),
   },
+  returns: v.id("clubChannelMessages"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const channel = await ctx.db.get(args.channelId);
@@ -360,6 +362,9 @@ export const postMessage = mutation({
       throw new ConvexError("Message cannot be empty");
     }
 
+    if (args.parentMessageId && args.replyToMessageId) {
+      throw new ConvexError("A message cannot be both a channel reply and a thread reply");
+    }
     if (args.parentMessageId) {
       const parent = await ctx.db.get(args.parentMessageId);
       if (!parent || parent.channelId !== channel._id) {
@@ -369,6 +374,19 @@ export const postMessage = mutation({
         throw new ConvexError("Replies must target a root message");
       }
       if (parent.deletedAt) {
+        throw new ConvexError("Cannot reply to a deleted message");
+      }
+    }
+
+    if (args.replyToMessageId) {
+      const replyTarget = await ctx.db.get(args.replyToMessageId);
+      if (!replyTarget || replyTarget.channelId !== channel._id) {
+        throw new ConvexError("Reply target not found");
+      }
+      if (replyTarget.parentMessageId) {
+        throw new ConvexError("Channel replies must target a root message");
+      }
+      if (replyTarget.deletedAt) {
         throw new ConvexError("Cannot reply to a deleted message");
       }
     }
@@ -388,6 +406,7 @@ export const postMessage = mutation({
       channelId: args.channelId,
       authorId: user._id,
       parentMessageId: args.parentMessageId,
+      replyToMessageId: args.replyToMessageId,
       body: trimmedBody,
       bodyMarkdown,
       bodyRich: args.bodyRich,
@@ -529,6 +548,7 @@ type SerializedClubMessage = {
   channelId: Id<"clubChannels">;
   authorId: Id<"users">;
   parentMessageId?: Id<"clubChannelMessages">;
+  replyToMessageId?: Id<"clubChannelMessages">;
   body: string;
   bodyMarkdown?: string;
   bodyRich?: unknown;
@@ -1246,6 +1266,7 @@ export const deleteMessage = mutation({
         channelId: channel._id,
         clubId: channel.clubId,
         parentMessageId: message.parentMessageId ?? null,
+        replyToMessageId: message.replyToMessageId ?? null,
       },
     });
     await ctx.scheduler.runAfter(

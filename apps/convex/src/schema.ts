@@ -640,6 +640,7 @@ export const schema = defineSchema({
     channelId: v.id("clubChannels"),
     authorId: v.id("users"),
     parentMessageId: v.optional(v.id("clubChannelMessages")),
+    replyToMessageId: v.optional(v.id("clubChannelMessages")),
     body: v.string(),
     bodyMarkdown: v.optional(v.string()),
     bodyRich: v.optional(v.any()),

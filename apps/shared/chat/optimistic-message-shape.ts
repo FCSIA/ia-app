@@ -15,6 +15,7 @@ export type OptimisticMessageShapeInput = {
   bodyMarkdown?: string;
   bodyRich?: unknown;
   parentMessageId?: string;
+  replyToMessageId?: string;
   pollQuestion?: string;
   pollOptions?: Array<{ id: string; label: string }>;
   clientGeneratedId?: string;
@@ -61,6 +62,7 @@ export function createOptimisticMessageShape(
     channelId: args.channelId,
     authorId: author._id,
     parentMessageId: args.parentMessageId,
+    replyToMessageId: args.replyToMessageId,
     body: args.body.trim(),
     bodyMarkdown: args.bodyMarkdown?.trim() || undefined,
     bodyRich: args.bodyRich,

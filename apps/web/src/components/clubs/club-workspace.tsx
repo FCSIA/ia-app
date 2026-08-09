@@ -29,7 +29,7 @@ import {
 import { Card, CardAction, CardGroup } from "@/components/ui/card";
 import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -124,6 +124,10 @@ type ClubWorkspaceProps = {
   children: ReactNode;
   rightPane?: ReactNode;
   resizableRightPane?: boolean;
+  mobileRightPane?: {
+    title: string;
+    onClose: () => void;
+  };
   title?: ReactNode;
   actions?: ReactNode;
   contentClassName?: string;
@@ -135,6 +139,7 @@ export function ClubWorkspace({
   children,
   rightPane,
   resizableRightPane = false,
+  mobileRightPane,
   title,
   actions,
   contentClassName,
@@ -256,6 +261,9 @@ export function ClubWorkspace({
         <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
           <SheetContent side="left" className="w-72 border-r bg-card p-0">
             <SheetTitle className="sr-only">Club navigation</SheetTitle>
+            <SheetDescription className="sr-only">
+              Browse this club and its channels.
+            </SheetDescription>
             <ClubNavigationPanel
               density="mobile"
               clubId={clubId}
@@ -276,6 +284,24 @@ export function ClubWorkspace({
                 }
               }}
             />
+          </SheetContent>
+        </Sheet>
+
+        <Sheet
+          open={!!rightPane && !!mobileRightPane && !isResizablePaneViewport}
+          onOpenChange={(open) => {
+            if (!open) mobileRightPane?.onClose();
+          }}
+        >
+          <SheetContent
+            side="right"
+            className="w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden"
+          >
+            <SheetTitle className="sr-only">{mobileRightPane?.title}</SheetTitle>
+            <SheetDescription className="sr-only">
+              Read and reply to this message thread.
+            </SheetDescription>
+            {rightPane}
           </SheetContent>
         </Sheet>
 
