@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { fullName, type ClubDirectoryEntry } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
@@ -62,21 +61,19 @@ export function SetRoleDialog({ person, onOpenChange }: Props) {
           </AlertDescription>
         </Alert>
 
-        <RadioGroup value={role} onValueChange={setRole} className="space-y-2">
-          {OPTIONS.map((option) => (
-            <Label
+        <RadioGroup value={role} onValueChange={setRole} className="w-full">
+          {OPTIONS.map((option, index) => (
+            <RadioItem
               key={option.value}
-              htmlFor={`role-${option.value}`}
-              className="flex cursor-pointer items-center gap-3 rounded-md border px-3 py-3 has-[:checked]:border-primary has-[:checked]:bg-primary/[0.04]"
-            >
-              <RadioItem index={0} value={option.value} label={option.label} className="p-0" />
-              <div className="space-y-0.5 flex-1">
-                <p className="text-sm font-medium">{option.label}</p>
-                <p className="text-xs text-muted-foreground">{option.detail}</p>
-              </div>
-            </Label>
+              index={index}
+              value={option.value}
+              label={option.label}
+            />
           ))}
         </RadioGroup>
+        <p className="text-xs text-muted-foreground">
+          {OPTIONS.find((option) => option.value === role)?.detail}
+        </p>
 
         <DialogFooter>
           <Button variant="tertiary" onClick={() => onOpenChange(false)}>

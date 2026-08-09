@@ -46,6 +46,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -61,7 +71,6 @@ import {
 } from '@/components/clubs/channel-message-composer';
 import {
   ClubChannelVisibilityIcon,
-  getClubChannelVisibilityDescription,
   getClubChannelVisibilityLabel,
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
@@ -553,14 +562,17 @@ function MessageRow({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   return (
-    <Message
-      className={cn(
-        'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
-        compact ? 'py-1.5' : 'py-2.5',
-        isSending &&
-          'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
-      )}
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild disabled={isDeleted || isSending || isEditing}>
+        <div>
+          <Message
+            className={cn(
+              'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
+              compact ? 'py-1.5' : 'py-2.5',
+              isSending &&
+                'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
+            )}
+          >
       <MessageAvatar className="self-start overflow-visible bg-transparent">
         <MessageAuthorPreview
           author={message.author}
@@ -823,7 +835,71 @@ function MessageRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Message>
+          </Message>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <SmilePlus className="mr-2 size-4" />
+            Add reaction
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-44">
+            {QUICK_REACTIONS.map((reaction) => (
+              <ContextMenuItem
+                key={reaction.value}
+                disabled={isReactionPending}
+                onSelect={() => onToggleReaction(message._id, reaction.value)}
+              >
+                <span className="mr-2 text-base">{reaction.label}</span>
+                {reaction.name}
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        {!compact ? (
+          <ContextMenuItem onSelect={() => onOpenThread(message.threadRootId)}>
+            <Reply className="mr-2 size-4" />
+            Reply
+          </ContextMenuItem>
+        ) : null}
+        {isAuthor ? (
+          <ContextMenuItem onSelect={() => onStartEdit(message._id)}>
+            <Pencil className="mr-2 size-4" />
+            Edit
+          </ContextMenuItem>
+        ) : (
+          <ContextMenuItem onSelect={() => onReport?.(message._id)}>
+            <Flag className="mr-2 size-4" />
+            Report
+          </ContextMenuItem>
+        )}
+        {canModerate && !compact ? (
+          <ContextMenuItem
+            disabled={isPinPending}
+            onSelect={() => onTogglePin(message._id, !message.isPinned)}
+          >
+            {message.isPinned ? (
+              <PinOff className="mr-2 size-4" />
+            ) : (
+              <Pin className="mr-2 size-4" />
+            )}
+            {message.isPinned ? 'Unpin' : 'Pin'}
+          </ContextMenuItem>
+        ) : null}
+        {isAuthor || canModerate ? <ContextMenuSeparator /> : null}
+        {isAuthor || canModerate ? (
+          <ContextMenuItem
+            disabled={isDeletePending}
+            className="text-destructive focus:text-destructive"
+            onSelect={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="mr-2 size-4" />
+            Delete
+          </ContextMenuItem>
+        ) : null}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -1172,12 +1248,7 @@ export default function ClubChannelPage({
   const title: ReactNode = (
     <div className="flex min-w-0 items-center gap-2">
       <ClubChannelVisibilityIcon visibility={channel.visibility} className="text-muted-foreground" />
-      <div className="min-w-0">
-        <h1 className="truncate text-base font-semibold text-foreground">{channel.name}</h1>
-        <p className="truncate text-xs text-muted-foreground">
-          {channel.description || getClubChannelVisibilityDescription(channel.visibility)}
-        </p>
-      </div>
+      <h1 className="truncate text-base font-semibold text-foreground">{channel.name}</h1>
     </div>
   );
 

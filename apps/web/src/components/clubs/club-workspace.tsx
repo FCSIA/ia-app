@@ -228,6 +228,7 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
+      onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
@@ -391,11 +392,17 @@ function ClubNavigationPanel({
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
+  const channelRowClassName = density === "mobile" ? "min-h-9" : "min-h-8";
   const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   return (
     <div className="flex size-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border/70 p-2">
+      <div
+        className={cn(
+          "shrink-0 border-b border-border/70 p-2",
+          density === "mobile" && "pr-12",
+        )}
+      >
         {showClubPicker ? (
           <DropdownMenu>
             <DropdownTrigger
@@ -473,7 +480,7 @@ function ClubNavigationPanel({
           <div className="my-3 h-px bg-border/70" />
 
           <section aria-labelledby={`channels-${density}`}>
-            <div className="mb-0.5 flex h-7 items-center justify-between px-2">
+            <div className="flex h-7 items-center justify-between px-2">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <ChevronDown className="size-3" />
                 <h2
@@ -499,7 +506,7 @@ function ClubNavigationPanel({
                       selected={active}
                       className={cn(
                         "group gap-1.5 rounded-md px-2 text-sm font-medium",
-                        rowClassName,
+                        channelRowClassName,
                         active ? "text-foreground" : "text-muted-foreground",
                       )}
                     >
@@ -512,20 +519,22 @@ function ClubNavigationPanel({
                       />
                       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
                       {canManageChannels ? (
-                        <CardAction className="flex shrink-0 items-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        <CardAction className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                           <ChannelActionsTrigger clubId={clubId} channel={channel} />
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
                               onDeleteChannel(channel);
                             }}
-                            className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Delete ${channel.name}`}
                           >
-                            <Trash2 className="size-3.5" />
-                          </button>
+                            <Trash2 />
+                          </Button>
                         </CardAction>
                       ) : null}
                     </Card>
@@ -558,13 +567,13 @@ function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
   return (
     <>
       <Button
-        size="icon"
+        size="icon-sm"
         variant="ghost"
-        className="size-5 rounded text-muted-foreground hover:text-foreground"
+        className="size-6 text-muted-foreground hover:text-foreground"
         onClick={() => setOpen(true)}
         aria-label="Create channel"
       >
-        <Plus className="size-3.5" />
+        <Plus />
       </Button>
       <ChannelDialog clubId={clubId} open={open} onOpenChange={setOpen} />
     </>
@@ -581,18 +590,20 @@ function ChannelActionsTrigger({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon-sm"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           setOpen(true);
         }}
-        className="p-1 hover:bg-muted rounded transition-all"
+        className="size-6 text-muted-foreground hover:text-foreground"
         aria-label="Edit channel"
       >
-        <Pencil className="size-3" />
-      </button>
+        <Pencil />
+      </Button>
       <ChannelDialog
         clubId={clubId}
         channel={channel}

@@ -79,8 +79,6 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
     const focusRect = focusedIndex !== null ? itemRects[focusedIndex] : null;
     const selectedRect =
       resolvedSelectedIndex >= 0 ? itemRects[resolvedSelectedIndex] : null;
-    const isHoveringOther =
-      activeIndex !== null && activeIndex !== resolvedSelectedIndex;
     const shape = useShape();
 
     const content = (
@@ -136,7 +134,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         }}
         role="radiogroup"
         className={cn(
-          "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
+          "relative flex w-72 max-w-full flex-col select-none",
           className
         )}
         {...props}
@@ -151,7 +149,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
               left: selectedRect.left,
               width: selectedRect.width,
               height: selectedRect.height,
-              opacity: isHoveringOther ? 0.8 : 1,
+              opacity: 1,
             }}
             transition={{
               ...springs.moderate,
@@ -193,7 +191,7 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
         <AnimatePresence>
           {focusRect && (
             <motion.div
-              className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[#6B97FF]`}
+              className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-[color:var(--focus-ring,#6B97FF)]`}
               initial={false}
               animate={{
                 left: focusRect.left - 2,
@@ -312,6 +310,14 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         aria-checked={isSelected}
         aria-label={label}
         onClick={handleSelect}
+        onMouseDown={(event) => {
+          const interactive = (event.target as HTMLElement).closest(
+            'button:not([tabindex="-1"]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          );
+          if (interactive && interactive !== event.currentTarget) return;
+          event.preventDefault();
+          event.currentTarget.focus();
+        }}
         onKeyDown={(e) => {
           if (e.key === " " || e.key === "Enter") {
             e.preventDefault();
@@ -319,13 +325,13 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none`,
+          `relative z-10 flex h-8 cursor-pointer items-center gap-2.5 ${shape.item} px-3 outline-none`,
           className
         )}
         {...props}
       >
         {/* Radio circle */}
-        <div className="relative w-[18px] h-[18px] shrink-0">
+        <div className="relative size-[15px] shrink-0">
           {/* Border */}
           <div
             className={cn(
@@ -359,7 +365,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
         {/* Label */}
         <span className="inline-grid text-[13px]">
           <span
-            className="col-start-1 row-start-1 invisible"
+            className="invisible col-start-1 row-start-1 [text-box:trim-both_cap_alphabetic]"
             style={{ fontVariationSettings: fontWeights.semibold }}
             aria-hidden="true"
           >
@@ -367,7 +373,7 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80",
+              "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               isSelected || isActive
                 ? "text-foreground"
                 : "text-muted-foreground"
