@@ -26,6 +26,12 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   optional unit-local leadership title.
 - Supports manager assignment, open self-join, and revocable code/QR self-join
   at each unit.
+
+On web, hierarchy administration is intentionally tucked into the three-dots
+menu in the top-right of `/clubs/[clubId]`. It opens a two-pane tree editor for
+club sponsors, club leaders, and admins; ordinary members do not see the
+management action. Unit QR links return to the club overview and redeem the
+specific unit code after the app confirms the viewer is already a club member.
 - Supports public, private, and member-read-only channels.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
