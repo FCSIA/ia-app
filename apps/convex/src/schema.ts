@@ -17,6 +17,8 @@ import {
   clubChannelVisibilityValidator,
   clubChannelPollOptionValidator,
   clubJoinPolicyValidator,
+  clubUnitJoinPolicyValidator,
+  clubUnitMemberRoleValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
   eventStatusValidator,
@@ -502,6 +504,52 @@ export const schema = defineSchema({
     .index("by_clubId_and_role", ["clubId", "role"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
     .index("by_userId_and_clubId", ["userId", "clubId"]),
+
+  clubUnits: defineTable({
+    clubId: v.id("clubs"),
+    parentUnitId: v.optional(v.id("clubUnits")),
+    name: v.string(),
+    kind: v.optional(v.string()),
+    description: v.optional(v.string()),
+    joinPolicy: clubUnitJoinPolicyValidator,
+    joinCode: v.optional(v.string()),
+    joinCodeUpdatedAt: v.optional(v.number()),
+    position: v.number(),
+    isActive: v.boolean(),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clubId_and_parentUnitId_and_position", [
+      "clubId",
+      "parentUnitId",
+      "position",
+    ])
+    .index("by_parentUnitId_and_position", ["parentUnitId", "position"])
+    .index("by_parentUnitId_and_isActive_and_position", [
+      "parentUnitId",
+      "isActive",
+      "position",
+    ])
+    .index("by_clubId_and_isActive_and_position", [
+      "clubId",
+      "isActive",
+      "position",
+    ]),
+
+  clubUnitMembers: defineTable({
+    clubId: v.id("clubs"),
+    unitId: v.id("clubUnits"),
+    userId: v.id("users"),
+    role: clubUnitMemberRoleValidator,
+    title: v.optional(v.string()),
+    joinedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_unitId_and_userId", ["unitId", "userId"])
+    .index("by_unitId_and_role", ["unitId", "role"])
+    .index("by_userId_and_clubId", ["userId", "clubId"])
+    .index("by_clubId_and_unitId", ["clubId", "unitId"]),
 
   clubSponsors: defineTable({
     clubId: v.id("clubs"),

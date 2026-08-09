@@ -157,6 +157,21 @@ export const clubJoinPolicyValidator = v.union(
 
 export type ClubJoinPolicy = Infer<typeof clubJoinPolicyValidator>;
 
+export const clubUnitJoinPolicyValidator = v.union(
+  v.literal("ASSIGN_ONLY"),
+  v.literal("OPEN"),
+  v.literal("CODE"),
+);
+
+export type ClubUnitJoinPolicy = Infer<typeof clubUnitJoinPolicyValidator>;
+
+export const clubUnitMemberRoleValidator = v.union(
+  v.literal("MEMBER"),
+  v.literal("LEADER"),
+);
+
+export type ClubUnitMemberRole = Infer<typeof clubUnitMemberRoleValidator>;
+
 export const clubJoinRequestStatusValidator = v.union(
   v.literal("PENDING"),
   v.literal("APPROVED"),

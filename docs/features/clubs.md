@@ -7,7 +7,7 @@ tags: [feature, clubs, membership, channels]
 [Home](../index.md)
 
 Clubs are student organizations with membership, sponsors, channels, invites,
-join requests, join codes, tags, and a workspace UI.
+join requests, join codes, tags, nested internal structure, and a workspace UI.
 
 ## What It Does
 
@@ -20,6 +20,12 @@ join requests, join codes, tags, and a workspace UI.
 - Collects files and images previously shared in each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
+- Lets club managers model an arbitrary internal tree of programs, teams,
+  houses, rooms, subsystems, committees, or other locally named units.
+- Assigns club members to any number of units as members or leaders, with an
+  optional unit-local leadership title.
+- Supports manager assignment, open self-join, and revocable code/QR self-join
+  at each unit.
 - Supports public, private, and member-read-only channels.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
@@ -55,12 +61,14 @@ join requests, join codes, tags, and a workspace UI.
 - `api.clubs.shared.listChannelAttachments`
 - `api.search.global.palette`
 - `api.clubs.tags.*`
+- `api.clubs.hierarchy.*`
 
 ## Data Model
 
 Core tables:
 
 - `clubs`, `clubMembers`, `clubSponsors`
+- `clubUnits`, `clubUnitMembers`
 - `clubInvites`, `clubJoinRequests`
 - `clubChannels`, `clubChannelMemberships`
 - `clubTags`, `clubTagMembers`
@@ -75,6 +83,30 @@ uses Plate for rich marks and structured mentions, while read-only timelines use
 `https` links remain clickable after Plate content is serialized.
 Person mentions show the member's name while their portable `user://` link
 keeps the stable school unique ID used for backend resolution.
+
+### Arbitrary hierarchy contract
+
+`clubUnits` is an adjacency-list tree scoped to one club. `parentUnitId` is
+optional, so a club can have several roots, and every node uses the same shape
+at every depth. `kind` is a display label rather than an enum: examples include
+Program, Team, House, Room, Subsystem, and Committee. This deliberately avoids
+encoding Robotics, Pathway Leadership, TSA, or a fixed subclub/group depth in
+the schema. A safety limit of 12 levels and 250 active units per club prevents
+pathological trees without prescribing the school's organization model.
+
+`clubUnitMembers` records direct assignments only. A student must first be a
+member of the containing club, may belong to several units, and can be a
+`MEMBER` or `LEADER` independently in each one. Leaders may have a free-form
+local title such as Executive, Logistics, House Leader, or Room Leader.
+Ancestor membership is not synthesized into database rows; the tree supplies
+organizational context while explicit assignments remain auditable.
+
+Existing club sponsors, club leaders, and admins can manage the full tree.
+Unit leadership does not grant club-wide administration. Units do not create a
+second announcement, channel, notification, or club-role system; those remain
+owned by the containing club unless a future product slice deliberately adds a
+unit scope. Join codes are scoped to one unit and can only be redeemed by an
+existing club member.
 
 The club workspace shell uses a narrow navigation query rather than subscribing
 every club route to the full member, tag, request, and message-count payload.
@@ -114,6 +146,8 @@ replies, and reuses the same private/read-only channel access rules as chat.
 ## Side Effects
 
 Club management and channel changes create audit rows where implemented.
+Hierarchy creation, updates, assignment changes, code rotation, joins, and
+archival create club-unit audit rows.
 Channel attachment uploads use Convex storage. A finalized upload becomes a
 short-lived, user-owned stage; posting consumes that stage, rechecks storage
 metadata, and derives the download URL server-side. Unused stages expire after
