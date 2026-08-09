@@ -32,7 +32,7 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
     setUploading(true);
     try {
       await uploadUserImage(
-        { generateUploadUrl: () => generateUploadUrl({}) },
+        { generateUploadUrl: () => generateUploadUrl({ purpose: "USER_IMAGE" }) },
         (args) => saveUserImage(args),
         'avatar',
         file,

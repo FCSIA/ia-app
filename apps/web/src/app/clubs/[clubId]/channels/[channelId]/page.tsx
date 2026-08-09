@@ -932,11 +932,12 @@ export default function ClubChannelPage({
     try {
       const uploadResults = await Promise.allSettled(
         files.map(async (file) => {
-          const storageId = await uploadFileToConvex(
-            { generateUploadUrl: () => generateUploadUrl({}) },
+          const { storageId, uploadIntentId } = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({ purpose: 'CHAT_ATTACHMENT' }) },
             file,
           );
           return finalizeChatAttachment({
+            uploadIntentId,
             storageId,
             fileName: file.name,
           });

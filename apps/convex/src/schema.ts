@@ -658,6 +658,21 @@ export const schema = defineSchema({
     .index("by_storageId", ["storageId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
+  uploadIntents: defineTable({
+    uploaderId: v.id("users"),
+    purpose: v.union(
+      v.literal("CHAT_ATTACHMENT"),
+      v.literal("CLUB_IMAGE"),
+      v.literal("USER_IMAGE"),
+    ),
+    storageId: v.optional(v.id("_storage")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    claimedAt: v.optional(v.number()),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
     userId: v.id("users"),

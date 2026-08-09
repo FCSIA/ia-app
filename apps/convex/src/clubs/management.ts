@@ -3,7 +3,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
-import { clubSummaryWithCounts } from "./serialize";
+import { clubSummaryValidator, clubSummaryWithCounts } from "./serialize";
 import type { AppRole } from "../../lib/roles";
 
 const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
@@ -14,7 +14,9 @@ export function canCreateClub(roles: readonly AppRole[]) {
 
 export const getAll = query({
   args: {},
+  returns: v.array(clubSummaryValidator),
   handler: async (ctx) => {
+    await getCurrentAppUser(ctx);
     const clubs = await ctx.db
       .query("clubs")
       .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))

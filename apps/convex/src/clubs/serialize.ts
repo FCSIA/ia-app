@@ -1,4 +1,5 @@
 import type { Doc, Id } from "../_generated/dataModel";
+import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
 import { canPostInChannel, canReadChannel } from "./access";
@@ -10,11 +11,31 @@ export function toClubUserRef(user: Doc<"users">) {
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
-    email: user.email ?? null,
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
   };
 }
+
+export const clubSummaryValidator = v.object({
+  _id: v.id("clubs"),
+  _creationTime: v.number(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  logoUrl: v.optional(v.string()),
+  bannerUrl: v.optional(v.string()),
+  accentColor: v.optional(v.string()),
+  overview: v.optional(v.string()),
+  joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST")),
+  memberLimit: v.optional(v.number()),
+  isActive: v.boolean(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  role: v.union(v.string(), v.null()),
+  _count: v.object({
+    members: v.number(),
+    channels: v.number(),
+  }),
+});
 
 export function toViewerState(context: ClubContext) {
   return {
@@ -58,7 +79,19 @@ export async function clubSummaryWithCounts(
     .collect();
 
   return {
-    ...club,
+    _id: club._id,
+    _creationTime: club._creationTime,
+    name: club.name,
+    description: club.description,
+    logoUrl: club.logoUrl,
+    bannerUrl: club.bannerUrl,
+    accentColor: club.accentColor,
+    overview: club.overview,
+    joinPolicy: club.joinPolicy,
+    memberLimit: club.memberLimit,
+    isActive: club.isActive,
+    createdAt: club.createdAt,
+    updatedAt: club.updatedAt,
     role: role ?? null,
     _count: {
       members: members.length,

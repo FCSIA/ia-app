@@ -14,6 +14,7 @@ const localConfigPath = join(
   "default",
   "config.json",
 );
+const convexCli = join(root, "node_modules", "convex", "bin", "main.js");
 
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, {
@@ -23,7 +24,7 @@ const run = (command, args, options = {}) => {
   });
 
   if (result.error) throw result.error;
-  if (result.status !== 0) {
+  if (result.status !== 0 && !options.allowFailure) {
     if (options.capture) {
       if (result.stdout) process.stdout.write(result.stdout);
       if (result.stderr) process.stderr.write(result.stderr);
@@ -35,7 +36,7 @@ const run = (command, args, options = {}) => {
 };
 
 const convex = (args, options) =>
-  run("convex", args, { cwd: convexDir, ...options });
+  run(process.execPath, [convexCli, ...args], { cwd: convexDir, ...options });
 
 if (existsSync(localConfigPath)) {
   convex(["deployment", "select", "local"]);
@@ -76,7 +77,10 @@ writeFileSync(
 );
 
 const getDeploymentEnv = (name) =>
-  convex(["env", "get", "--deployment", "local", name], { capture: true });
+  convex(["env", "get", "--deployment", "local", name], {
+    capture: true,
+    allowFailure: true,
+  });
 
 if (!getDeploymentEnv("BETTER_AUTH_SECRET")) {
   convex([

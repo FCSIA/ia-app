@@ -86,7 +86,7 @@ function CustomBackgroundPanel() {
 
   async function uploadAndSave(file: File) {
     await uploadUserImage(
-      { generateUploadUrl: () => generateUploadUrl({}) },
+      { generateUploadUrl: () => generateUploadUrl({ purpose: "USER_IMAGE" }) },
       (args) => saveUserImage(args),
       'background',
       file,

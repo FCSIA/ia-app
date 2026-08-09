@@ -44,7 +44,9 @@ export default function ProfileScreen() {
       const asset = result.assets[0];
       setAvatarUploading(true);
       prepared = await prepareAvatarImage(asset.uri);
-      const uploadUrl = await generateUploadUrl({});
+      const { uploadUrl, uploadIntentId } = await generateUploadUrl({
+        purpose: "USER_IMAGE",
+      });
       const upload = await prepared.file.upload(uploadUrl, {
         httpMethod: "POST",
         headers: { "Content-Type": prepared.mimeType },
@@ -56,6 +58,7 @@ export default function ProfileScreen() {
       const { storageId } = JSON.parse(upload.body) as { storageId: Id<"_storage"> };
       await saveImage({
         kind: "avatar",
+        uploadIntentId,
         storageId,
         mimeType: prepared.mimeType,
         size: prepared.size,

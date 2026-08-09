@@ -1,9 +1,8 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
-  anonymousClubContext,
   canPostInChannel,
   canReadChannel,
   getChannelViewerContext,
@@ -20,13 +19,11 @@ import {
 export const get = query({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getCurrentAppUser(ctx);
     const club = await ctx.db.get(args.clubId);
     if (!club || !club.isActive) return null;
 
-    const context = user
-      ? await getViewerContext(ctx, args.clubId, user)
-      : anonymousClubContext(club);
+    const context = await getViewerContext(ctx, args.clubId, user);
 
     const [memberships, sponsorsRows, tags, pendingRequests] = await Promise.all([
       ctx.db
@@ -142,7 +139,7 @@ export const get = query({
       club,
       context.membership?.role ?? null,
     );
-    const channels = user && context.canAccessWorkspace
+    const channels = context.canAccessWorkspace
       ? await getVisibleChannels(ctx, args.clubId, context, user._id)
       : [];
 

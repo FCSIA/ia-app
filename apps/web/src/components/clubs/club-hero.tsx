@@ -52,11 +52,12 @@ export function ClubHero({
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadClubImage = async (file: File) => {
-    const storageId = await uploadFileToConvex(
-      { generateUploadUrl: () => generateUploadUrl({}) },
+    const { storageId, uploadIntentId } = await uploadFileToConvex(
+      { generateUploadUrl: () => generateUploadUrl({ purpose: "CLUB_IMAGE" }) },
       file,
     );
     return finalizeClubImage({
+      uploadIntentId,
       storageId,
       originalName: file.name,
       mimeType: file.type || "application/octet-stream",

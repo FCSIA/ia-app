@@ -3,11 +3,15 @@ import { compressImageForUpload, type ImageCompressPreset } from '@/lib/compress
 import { uploadFileToConvex } from '@/lib/convex-upload';
 
 type UploadClient = {
-  generateUploadUrl: () => Promise<string>;
+  generateUploadUrl: () => Promise<{
+    uploadUrl: string;
+    uploadIntentId: Id<'uploadIntents'>;
+  }>;
 };
 
 type SaveUserImage = (args: {
   kind: 'avatar' | 'background';
+  uploadIntentId: Id<'uploadIntents'>;
   storageId: Id<'_storage'>;
   mimeType: string;
   size: number;
@@ -20,9 +24,10 @@ export async function uploadUserImage(
   file: File,
 ) {
   const compressed = await compressImageForUpload(file, kind);
-  const storageId = await uploadFileToConvex(convex, compressed);
+  const { storageId, uploadIntentId } = await uploadFileToConvex(convex, compressed);
   await saveUserImage({
     kind,
+    uploadIntentId,
     storageId,
     mimeType: compressed.type,
     size: compressed.size,

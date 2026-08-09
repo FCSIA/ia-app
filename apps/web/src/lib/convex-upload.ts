@@ -1,14 +1,22 @@
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
 type UploadClient = {
-  generateUploadUrl: () => Promise<string>;
+  generateUploadUrl: () => Promise<{
+    uploadUrl: string;
+    uploadIntentId: Id<'uploadIntents'>;
+  }>;
+};
+
+export type ConvexUploadResult = {
+  storageId: Id<'_storage'>;
+  uploadIntentId: Id<'uploadIntents'>;
 };
 
 export async function uploadFileToConvex(
   convex: UploadClient,
   file: File,
-): Promise<Id<'_storage'>> {
-  const uploadUrl = await convex.generateUploadUrl();
+): Promise<ConvexUploadResult> {
+  const { uploadUrl, uploadIntentId } = await convex.generateUploadUrl();
   const response = await fetch(uploadUrl, {
     method: 'POST',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -20,5 +28,5 @@ export async function uploadFileToConvex(
   }
 
   const json = (await response.json()) as { storageId: Id<'_storage'> };
-  return json.storageId;
+  return { storageId: json.storageId, uploadIntentId };
 }

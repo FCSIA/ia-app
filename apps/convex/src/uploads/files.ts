@@ -9,6 +9,11 @@ import {
   normalizeChatAttachmentFileName,
   validateChatAttachmentMetadata,
 } from "./chatAttachments";
+import {
+  claimUploadIntent,
+  UPLOAD_INTENT_TTL_MS,
+  uploadPurposeValidator,
+} from "./uploadIntents";
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
 
@@ -57,16 +62,35 @@ async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) 
 }
 
 export const generateUploadUrl = mutation({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    await getCurrentAppUser(ctx);
-    return await ctx.storage.generateUploadUrl();
+  args: { purpose: uploadPurposeValidator },
+  returns: v.object({
+    uploadUrl: v.string(),
+    uploadIntentId: v.id("uploadIntents"),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const now = Date.now();
+    const uploadIntentId = await ctx.db.insert("uploadIntents", {
+      uploaderId: user._id,
+      purpose: args.purpose,
+      createdAt: now,
+      expiresAt: now + UPLOAD_INTENT_TTL_MS,
+    });
+    await ctx.scheduler.runAfter(
+      UPLOAD_INTENT_TTL_MS,
+      internal.uploads.uploadIntents.cleanupUploadIntent,
+      { uploadIntentId },
+    );
+    return {
+      uploadUrl: await ctx.storage.generateUploadUrl(),
+      uploadIntentId,
+    };
   },
 });
 
 export const finalizeChatAttachment = mutation({
   args: {
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     fileName: v.string(),
   },
@@ -78,6 +102,12 @@ export const finalizeChatAttachment = mutation({
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "CHAT_ATTACHMENT",
+    });
     const existing = await ctx.db
       .query("clubChannelAttachmentUploads")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
@@ -147,6 +177,7 @@ export const discardChatAttachment = mutation({
 
 export const finalizeClubImage = mutation({
   args: {
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     originalName: v.string(),
     mimeType: v.string(),
@@ -168,6 +199,13 @@ export const finalizeClubImage = mutation({
       user.roles.includes("STUDENT_LEADER") ||
       user.roles.includes("STUDENT_ADMIN");
     if (!canUpload) throw new ConvexError("Unauthorized");
+
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "CLUB_IMAGE",
+    });
 
     const metadata = await getUploadedMetadata(ctx, args.storageId);
 

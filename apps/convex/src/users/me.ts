@@ -12,6 +12,7 @@ import {
   MAX_USER_BACKGROUND_BYTES,
 } from "../uploads/limits";
 import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { claimUploadIntent } from "../uploads/uploadIntents";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 
@@ -60,6 +61,7 @@ export const updateDashboardLayout = mutation({
 export const saveUserImage = mutation({
   args: {
     kind: userImageKindValidator,
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     mimeType: v.string(),
     size: v.number(),
@@ -67,6 +69,12 @@ export const saveUserImage = mutation({
   returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "USER_IMAGE",
+    });
     const maxBytes =
       args.kind === "avatar" ? MAX_USER_AVATAR_BYTES : MAX_USER_BACKGROUND_BYTES;
     const metadata = await ctx.db.system.get("_storage", args.storageId);

@@ -74,7 +74,9 @@ export function useManagedChatAttachments() {
       let task: UploadTask | undefined;
       let stagedId: Id<"clubChannelAttachmentUploads"> | undefined;
       try {
-        const uploadUrl = await generateUploadUrl({});
+        const { uploadUrl, uploadIntentId } = await generateUploadUrl({
+          purpose: "CHAT_ATTACHMENT",
+        });
         if (
           generationRef.current !== generationAtStart ||
           !itemsRef.current.some((entry) => entry.localId === item.localId)
@@ -115,6 +117,7 @@ export function useManagedChatAttachments() {
         // Finalizing gives the server ownership of validation and lets any
         // abandoned upload be deleted through the staged-upload API.
         const finalized = await finalizeAttachment({
+          uploadIntentId,
           storageId: rawStorageId as Id<"_storage">,
           fileName: item.fileName,
         });
