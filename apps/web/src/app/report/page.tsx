@@ -52,7 +52,7 @@ export default function ReportPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Send a thought, feature request, improvement idea, or concern. ANYTHING! Don't like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
+              Send a thought, feature request, improvement idea, or concern. ANYTHING! Don&apos;t like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
             </p>
           </div>
         </div>
