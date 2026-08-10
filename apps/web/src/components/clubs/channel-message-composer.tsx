@@ -301,11 +301,11 @@ export function ChannelMessageComposer({
                 type="button"
                 size="sm"
                 variant="ghost"
+                leadingIcon={Plus}
                 className="self-start"
                 onClick={() => setPollOptions((current) => [...current, ''])}
                 disabled={pollOptions.length >= 6}
               >
-                <Plus data-icon="inline-start" />
                 Add option
               </Button>
             </div>

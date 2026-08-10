@@ -190,8 +190,7 @@ function GroupWorkspaceHeader({
       <div className="flex items-center gap-1.5">
         <Popover>
           <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-2.5 text-xs">
-              <Plus className="size-3.5" />
+            <Button size="sm" leadingIcon={Plus} className="h-8 px-2.5 text-xs">
               Add friends
             </Button>
           </PopoverTrigger>

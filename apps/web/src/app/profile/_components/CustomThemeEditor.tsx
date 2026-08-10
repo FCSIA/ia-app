@@ -179,11 +179,11 @@ function CustomBackgroundPanel() {
             type="button"
             size="sm"
             variant="ghost"
+            leadingIcon={Trash2}
             disabled={uploading}
             onClick={() => void handleRemove()}
             className="rounded-full text-muted-foreground hover:text-destructive"
           >
-            <Trash2 className="size-4" />
             Remove
           </Button>
         ) : null}
@@ -304,10 +304,10 @@ function CustomColorsPanel() {
           type="button"
           size="sm"
           variant="ghost"
+          leadingIcon={RotateCcw}
           onClick={handleResetAll}
           className="rounded-full text-muted-foreground hover:text-foreground"
         >
-          <RotateCcw className="size-4" />
           Reset all colors
         </Button>
       ) : null}

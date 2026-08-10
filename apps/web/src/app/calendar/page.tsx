@@ -575,14 +575,15 @@ export default function CalendarPage() {
             <Button
               variant="tertiary"
               size="sm"
+              leadingIcon={Settings2}
               onClick={() => toast({ title: 'Calendar Settings', description: 'Calendar settings are coming soon!' })}
             >
-              <Settings2 data-icon="inline-start" /> Settings
+              Settings
             </Button>
             <AddCalendarEntryDialog 
               trigger={
-                <Button size="sm">
-                  <Plus data-icon="inline-start" /> New booking
+                <Button size="sm" leadingIcon={Plus}>
+                  New booking
                 </Button>
               }
             />

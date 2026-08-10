@@ -92,8 +92,8 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
     >
       <DialogTrigger asChild>
         {trigger || (
-          <Button size="sm" className="flex items-center gap-2 rounded-xl">
-            <Plus size={16} /> Add Reminder
+          <Button size="sm" leadingIcon={Plus} className="rounded-xl">
+            Add Reminder
           </Button>
         )}
       </DialogTrigger>

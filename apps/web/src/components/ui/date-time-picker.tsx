@@ -60,6 +60,7 @@ export function DateTimePicker({
           <Button
             type="button"
             variant="tertiary"
+            leadingIcon={CalendarClock}
             disabled={disabled}
             className={cn(
               'w-full justify-start text-left font-normal',
@@ -67,7 +68,6 @@ export function DateTimePicker({
               buttonClassName,
             )}
           >
-            <CalendarClock className="mr-2 size-4" />
             {selectedDateTime ? format(selectedDateTime, 'PPP · p') : placeholder}
           </Button>
         </PopoverTrigger>

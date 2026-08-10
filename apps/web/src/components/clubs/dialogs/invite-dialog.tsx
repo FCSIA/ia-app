@@ -117,6 +117,7 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                 </button>
                 <Button
                   size="sm"
+                  leadingIcon={Send}
                   onClick={() =>
                     void sendInvite({
                       clubId,
@@ -129,7 +130,6 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
                   }
                   className="shrink-0"
                 >
-                  <Send className="mr-1.5 size-3.5" />
                   Send
                 </Button>
               </div>
@@ -195,11 +195,11 @@ export function InviteDialog({ clubId, open, onOpenChange }: Props) {
             />
             <Button
               variant="tertiary"
+              leadingIcon={Upload}
               className="w-full"
               disabled={!csvFile || csvPending}
               onClick={() => void handleCsvUpload()}
             >
-              <Upload className="mr-2 size-4" />
               {csvPending ? 'Uploading…' : 'Upload CSV'}
             </Button>
           </div>

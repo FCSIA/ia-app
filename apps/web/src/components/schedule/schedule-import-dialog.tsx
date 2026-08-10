@@ -116,8 +116,7 @@ export function ScheduleImportDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <ScanLine data-icon="inline-start" />
+        <Button variant="ghost" size="sm" leadingIcon={ScanLine}>
           Import IC
         </Button>
       </DialogTrigger>
@@ -271,8 +270,7 @@ export function ScheduleImportDialog({
               Use {rows.length} {rows.length === 1 ? 'class' : 'classes'}
             </Button>
           ) : (
-            <Button type="button" onClick={() => void scan()} disabled={!file || scanning}>
-              <ScanLine data-icon="inline-start" />
+            <Button type="button" leadingIcon={ScanLine} onClick={() => void scan()} disabled={!file || scanning}>
               Scan screenshot
             </Button>
           )}

@@ -183,10 +183,10 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
       <Button
         type="button"
         variant="tertiary"
+        leadingIcon={KeyRound}
         disabled={isFull}
         onClick={() => setRedeemOpen((current) => !current)}
       >
-        <KeyRound className="mr-2 size-4" />
         Use join code
       </Button>
       {redeemOpen ? (
@@ -267,22 +267,22 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
           <div className="flex flex-wrap gap-2">
             {club.joinPolicy === 'OPEN' ? (
               <Button
+                leadingIcon={UserPlus}
                 onClick={() =>
                   void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))
                 }
                 disabled={isFull}
               >
-                <UserPlus className="mr-2 size-4" />
                 {isFull ? 'Club is full' : 'Join club'}
               </Button>
             ) : (
               <Button
+                leadingIcon={UserPlus}
                 onClick={() =>
                   void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))
                 }
                 disabled={isFull || club.viewer.hasPendingJoinRequest}
               >
-                <UserPlus className="mr-2 size-4" />
                 {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
               </Button>
             )}
@@ -532,16 +532,15 @@ export default function ClubOverviewPage() {
               <Button
                 size="sm"
                 variant="tertiary"
+                leadingIcon={UserPlus}
                 disabled={isFull}
                 onClick={() => setInviteOpen(true)}
               >
-                <UserPlus className="mr-1.5 size-4" />
                 {isFull ? 'Club is full' : 'Invite member'}
               </Button>
             ) : null}
             {canPost ? (
-              <Button size="sm" onClick={() => setAnnounceOpen(true)}>
-                <Megaphone className="mr-1.5 size-4" />
+              <Button size="sm" leadingIcon={Megaphone} onClick={() => setAnnounceOpen(true)}>
                 {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
               </Button>
             ) : null}

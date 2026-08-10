@@ -294,10 +294,10 @@ export function DashboardLayout({
                     <Button
                       variant="tertiary"
                       size="sm"
-                      className="h-9 gap-2 rounded-full px-4"
+                      leadingIcon={Plus}
+                      className="h-9 rounded-full px-4"
                       disabled={missingWidgets.length === 0}
                     >
-                      <Plus className="size-4" />
                       Add widget
                     </Button>
                   </DialogTrigger>

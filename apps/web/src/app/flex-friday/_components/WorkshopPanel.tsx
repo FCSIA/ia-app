@@ -54,12 +54,13 @@ export function WorkshopPanel({
         {canManage && (
           <Button
             size="sm"
+            leadingIcon={Plus}
             onClick={onAddWorkshop}
             disabled={!selectedSession}
             variant="tertiary"
             title={!selectedSession ? 'Select a session first' : 'Add workshop'}
           >
-            <Plus data-icon="inline-start" /> Add workshop
+            Add workshop
           </Button>
         )}
       </div>
@@ -149,15 +150,12 @@ export function WorkshopPanel({
                             <Button
                               size="sm"
                               variant={isRegistered ? 'tertiary' : 'primary'}
+                              leadingIcon={isRegistered ? CheckCircle : Ticket}
                               loading={actionPending != null}
                               disabled={(!isRegistered && isFull) || actionPending != null}
                               onClick={() => isRegistered ? onUnregister(w._id) : onRegister(w._id)}
                             >
-                              {isRegistered ? (
-                                <><CheckCircle data-icon="inline-start" /> Registered</>
-                              ) : (
-                                <><Ticket data-icon="inline-start" /> Register</>
-                              )}
+                              {isRegistered ? 'Registered' : 'Register'}
                             </Button>
                           )}
 

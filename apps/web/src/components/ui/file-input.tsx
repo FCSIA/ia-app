@@ -67,12 +67,12 @@ export function FileInput({
           type="button"
           size={buttonSize}
           variant={buttonVariant}
+          leadingIcon={Upload}
           loading={loading}
           disabled={isDisabled}
           onClick={open}
           className={cn("rounded-full", buttonClassName)}
         >
-          <Upload className="size-4" />
           {label}
         </Button>
       )}

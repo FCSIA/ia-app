@@ -57,8 +57,8 @@ export function FridayHeader({
         <div className="flex flex-wrap items-center gap-2">
           {isStudent && credits != null && <CreditsSummary credits={credits} />}
           {canManage && (
-            <Button size="sm" onClick={onAddFriday}>
-              <Plus data-icon="inline-start" /> Schedule Friday
+            <Button size="sm" leadingIcon={Plus} onClick={onAddFriday}>
+              Schedule Friday
             </Button>
           )}
         </div>

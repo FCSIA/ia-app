@@ -247,8 +247,8 @@ function HierarchyDialog({
                   <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                     Levels and labels are entirely up to this club.
                   </p>
-                  <Button className="mt-4" onClick={() => setCreateParentId(null)}>
-                    <Plus className="mr-1.5 size-4" /> Add top-level unit
+                  <Button className="mt-4" leadingIcon={Plus} onClick={() => setCreateParentId(null)}>
+                    Add top-level unit
                   </Button>
                 </div>
               )}
@@ -450,8 +450,8 @@ function UnitDetail({
             </div>
             <p className="mt-1 text-sm text-muted-foreground">Edit this unit or add another level beneath it.</p>
           </div>
-          <Button variant="tertiary" size="sm" onClick={onAddChild}>
-            <Plus className="mr-1.5 size-4" /> Add child
+          <Button variant="tertiary" size="sm" leadingIcon={Plus} onClick={onAddChild}>
+            Add child
           </Button>
         </div>
         <UnitFields
@@ -465,11 +465,11 @@ function UnitDetail({
           onJoinPolicyChange={setJoinPolicy}
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => void archive()}>
-            <Trash2 className="mr-1.5 size-4" /> Archive unit
+          <Button variant="ghost" size="sm" leadingIcon={Trash2} className="text-destructive hover:text-destructive" onClick={() => void archive()}>
+            Archive unit
           </Button>
-          <Button loading={saving} disabled={!name.trim()} onClick={() => void save()}>
-            <Save className="mr-1.5 size-4" /> Save changes
+          <Button leadingIcon={Save} loading={saving} disabled={!name.trim()} onClick={() => void save()}>
+            Save changes
           </Button>
         </div>
       </section>

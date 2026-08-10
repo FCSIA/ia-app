@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import {
   ImagePlus,
-  Loader2,
   Palette,
   Settings2,
   Trash2,
@@ -167,10 +166,11 @@ export function ClubHero({
           <Button
             variant="secondary"
             size="sm"
+            leadingIcon={Settings2}
             onClick={openEditor}
-            className="absolute right-2 top-2 h-8 gap-1.5 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
+            className="absolute right-2 top-2 h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
           >
-            <Settings2 className="size-3.5" /> Customize
+            Customize
           </Button>
         )}
       </div>
@@ -259,14 +259,11 @@ export function ClubHero({
                     type="button"
                     size="sm"
                     variant="tertiary"
+                    leadingIcon={ImagePlus}
+                    loading={uploadingBanner}
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={uploadingBanner}
                   >
-                    {uploadingBanner ? (
-                      <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                    ) : (
-                      <ImagePlus className="mr-1.5 size-3.5" />
-                    )}
                     Upload banner
                   </Button>
                   {form.bannerUrl && (
@@ -274,10 +271,11 @@ export function ClubHero({
                       type="button"
                       size="sm"
                       variant="ghost"
+                      leadingIcon={Trash2}
                       className="text-destructive hover:text-destructive"
                       onClick={() => void clearClubImage({ clubId: club._id, kind: "banner" }).then(() => setForm((c) => ({ ...c, bannerUrl: "" })))}
                     >
-                      <Trash2 className="mr-1.5 size-3.5" /> Remove
+                      Remove
                     </Button>
                   )}
                 </div>

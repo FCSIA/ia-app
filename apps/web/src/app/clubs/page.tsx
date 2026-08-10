@@ -113,13 +113,13 @@ export default function ClubsLandingPage() {
                   </div>
                   <Button
                     size="sm"
+                    leadingIcon={Check}
                     onClick={() =>
                       void respondToInvite({ inviteId: invite._id, accept: true }).then(() =>
                         toast({ title: 'Invite accepted' }),
                       )
                     }
                   >
-                    <Check data-icon="inline-start" />
                     Accept
                   </Button>
                   <Button
@@ -205,8 +205,7 @@ export default function ClubsLandingPage() {
                   className="min-w-0 flex-1 sm:w-64"
                 />
                 {canCreate ? (
-                  <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus data-icon="inline-start" />
+                  <Button size="sm" leadingIcon={Plus} onClick={() => setCreateOpen(true)}>
                     New club
                   </Button>
                 ) : null}

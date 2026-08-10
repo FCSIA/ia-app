@@ -46,8 +46,7 @@ export default function CourseDetailPage({
       <PageFrame>
         <div>
           <Link href="/courses">
-            <Button variant="ghost" className="-ml-3 rounded-2xl">
-              <ArrowLeft className="mr-2 size-4" />
+            <Button variant="ghost" leadingIcon={ArrowLeft} className="-ml-3 rounded-2xl">
               Back to catalog
             </Button>
           </Link>

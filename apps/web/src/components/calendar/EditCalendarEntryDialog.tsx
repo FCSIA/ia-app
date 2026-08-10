@@ -213,11 +213,12 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
               <Button
                 type="button"
                 variant="tertiary"
+                leadingIcon={Trash}
                 onClick={handleDelete}
                 disabled={pending}
                 className="flex-1 rounded-2xl h-12 text-base font-semibold text-destructive hover:bg-destructive/10 border-destructive/30"
               >
-                <Trash size={18} className="mr-2" /> Delete
+                Delete
               </Button>
               <Button
                 type="submit"

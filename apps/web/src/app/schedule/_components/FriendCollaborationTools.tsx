@@ -189,12 +189,12 @@ export function FriendCollaborationTools() {
               <Button
                 variant="ghost"
                 size="sm"
+                trailingIcon={manageLinksOpen ? ChevronUp : ChevronDown}
                 className="w-full justify-between"
                 onClick={() => setManageLinksOpen((open) => !open)}
               >
                 {activeLinks.length}{" "}
                 {activeLinks.length === 1 ? "active link" : "active links"}
-                {manageLinksOpen ? <ChevronUp /> : <ChevronDown />}
               </Button>
               {manageLinksOpen ? (
                 <div className="mt-1 divide-y divide-border/40">

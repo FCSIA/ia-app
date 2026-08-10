@@ -390,8 +390,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                 className="min-h-24 resize-y"
               />
               <div className="flex justify-end">
-                <Button type="submit" disabled={!comment.trim() || commentPending}>
-                  <Send className="mr-2 size-4" />
+                <Button type="submit" leadingIcon={Send} disabled={!comment.trim() || commentPending}>
                   {commentPending ? 'Posting…' : 'Post comment'}
                 </Button>
               </div>

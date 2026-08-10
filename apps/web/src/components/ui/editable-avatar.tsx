@@ -112,11 +112,11 @@ export function EditableAvatar({
                 type="button"
                 size="sm"
                 variant="ghost"
+                leadingIcon={Trash2}
                 className="text-destructive hover:text-destructive"
                 disabled={disabled || loading}
                 onClick={onRemove}
               >
-                <Trash2 className="size-3.5" />
                 {removeLabel}
               </Button>
             ) : null}

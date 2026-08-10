@@ -34,8 +34,8 @@ export function SessionPanel({
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Sessions</h2>
         {canManage && (
-          <Button size="sm" onClick={onAddSession} variant="tertiary">
-            <Plus data-icon="inline-start" /> Add session
+          <Button size="sm" leadingIcon={Plus} onClick={onAddSession} variant="tertiary">
+            Add session
           </Button>
         )}
       </div>

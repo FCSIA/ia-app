@@ -152,6 +152,7 @@ export function SchoolDayBlockFormCard({
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button
           size="sm"
+          leadingIcon={submitIcon === 'plus' ? Plus : Save}
           disabled={isPending}
           onClick={() =>
             onSubmit({
@@ -164,18 +165,17 @@ export function SchoolDayBlockFormCard({
             })
           }
         >
-          {submitIcon === 'plus' ? <Plus className="mr-1.5 size-3.5" /> : <Save className="mr-1.5 size-3.5" />}
           {submitLabel}
         </Button>
         {onDelete ? (
           <Button
             variant="ghost"
             size="sm"
+            leadingIcon={Trash2}
             className="text-destructive hover:text-destructive"
             disabled={isDeleting}
             onClick={onDelete}
           >
-            <Trash2 className="mr-1.5 size-3.5" />
             Delete
           </Button>
         ) : null}

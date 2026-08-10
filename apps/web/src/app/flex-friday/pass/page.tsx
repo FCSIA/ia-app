@@ -148,8 +148,7 @@ function FlexFridayPassContent() {
         {/* Header */}
         <div className="mb-6 flex items-center gap-3">
           <Link href="/flex-friday">
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 pl-2">
-              <ArrowLeft size={14} />
+            <Button variant="ghost" size="sm" leadingIcon={ArrowLeft} className="h-8">
               Back
             </Button>
           </Link>

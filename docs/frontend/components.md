@@ -134,6 +134,15 @@ Use plain text for metadata such as dates, counts, and explanatory copy. If a
 label already has an icon or surrounding control that communicates its state,
 prefer the simpler text treatment instead of adding another badge.
 
+## Buttons
+
+For labeled Fluid `Button` actions, pass decorative icons through
+`leadingIcon` or `trailingIcon`. Those semantic slots own the icon size, stroke,
+gap, and edge padding for each button size. Keep an icon as button children only
+for `icon-sm`, `icon`, or `icon-lg` controls, or when the children are genuinely
+rich content rather than a labeled action. Do not restore per-call-site icon
+sizes or margin utilities to compensate for the shared button geometry.
+
 ## Chat Surfaces
 
 Use the local `MessageScroller` components for message timelines and threads.

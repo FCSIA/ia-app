@@ -316,8 +316,8 @@ export default function AnnouncementsPage() {
               {showArchived ? 'Active' : 'Archived'}
             </Button>
             {canPost ? (
-              <Button size="sm" onClick={() => setShowNew(true)} className="flex items-center gap-2">
-                <Plus size={16} /> New
+              <Button size="sm" leadingIcon={Plus} onClick={() => setShowNew(true)}>
+                New
               </Button>
             ) : null}
           </div>
@@ -698,6 +698,7 @@ export default function AnnouncementsPage() {
                           </span>
                           <Button
                             size="sm"
+                            leadingIcon={Check}
                             loading={approving}
                             disabled={isReviewPending}
                             onClick={() => {
@@ -714,12 +715,12 @@ export default function AnnouncementsPage() {
                                 .finally(() => setReviewPending(null));
                             }}
                           >
-                            <Check className="mr-1.5 size-4" />
                             Publish
                           </Button>
                           <Button
                             size="sm"
                             variant="tertiary"
+                            leadingIcon={X}
                             loading={rejecting}
                             disabled={isReviewPending}
                             onClick={() => {
@@ -736,7 +737,6 @@ export default function AnnouncementsPage() {
                                 .finally(() => setReviewPending(null));
                             }}
                           >
-                            <X className="mr-1.5 size-4" />
                             Send back
                           </Button>
                         </div>

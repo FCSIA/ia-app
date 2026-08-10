@@ -55,8 +55,8 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
           </div>
           {event.status === 'PENDING_APPROVAL' && (
             <div className="flex gap-2 flex-shrink-0">
-              <Button size="sm" onClick={() => onApprove(event._id)} className="h-8 flex items-center gap-1"><Check size={14} /> Approve</Button>
-              <Button size="sm" variant="primary" onClick={() => onReject(event._id)} className="h-8 flex items-center gap-1"><X size={14} /> Reject</Button>
+              <Button size="sm" leadingIcon={Check} onClick={() => onApprove(event._id)} className="h-8">Approve</Button>
+              <Button size="sm" variant="primary" leadingIcon={X} onClick={() => onReject(event._id)} className="h-8">Reject</Button>
             </div>
           )}
           {event.status === 'PUBLISHED' && (isAdmin || isAuthor) && (
@@ -220,8 +220,8 @@ export default function EventsPage() {
             <h1 className="text-2xl font-bold text-foreground">Events</h1>
           </div>
           {canCreate && (
-            <Button onClick={() => setShowNew(true)} className="flex items-center gap-2">
-              <Plus size={16} /> New Event
+            <Button onClick={() => setShowNew(true)} leadingIcon={Plus}>
+              New Event
             </Button>
           )}
         </div>

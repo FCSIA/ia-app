@@ -222,6 +222,7 @@ function ManagePeopleDialog({
                   </Button>
                   <Button
                     size="sm"
+                    leadingIcon={Send}
                     onClick={() =>
                       void sendInvite({ clubId, recipientUniqueId: selected.uniqueId }).then(() => {
                         setSelected(null);
@@ -230,7 +231,6 @@ function ManagePeopleDialog({
                       })
                     }
                   >
-                    <Send className="mr-1.5 size-4" />
                     Send
                   </Button>
                 </div>
@@ -282,10 +282,10 @@ function ManagePeopleDialog({
               />
               <Button
                 variant="tertiary"
+                leadingIcon={Upload}
                 disabled={!csvFile || csvPending}
                 onClick={() => void handleCsvUpload()}
               >
-                <Upload className="mr-2 size-4" />
                 {csvPending ? 'Uploading...' : 'Upload CSV'}
               </Button>
               {result ? (
