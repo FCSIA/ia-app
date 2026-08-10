@@ -341,19 +341,17 @@ export function DashboardLayout({
 
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="lg"
+                  leadingIcon={RotateCcw}
                   onClick={handleReset}
-                  className="h-9 gap-2 rounded-full px-4"
                 >
-                  <RotateCcw className="size-4" />
                   Reset
                 </Button>
                 <Button
                   onClick={handleSave}
-                  size="sm"
-                  className="h-9 gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground hover:bg-primary/90"
+                  size="lg"
+                  leadingIcon={Save}
                 >
-                  <Save className="size-4" />
                   Done
                 </Button>
               </div>

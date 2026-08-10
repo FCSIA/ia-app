@@ -141,7 +141,7 @@ export function FriendCollaborationTools() {
                 {typeof navigator !== "undefined" &&
                 typeof navigator.share === "function" ? (
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     className="flex-1"
                     leadingIcon={Share2}
                     onClick={() => void handleNativeShare()}
@@ -205,8 +205,7 @@ export function FriendCollaborationTools() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs font-medium">
-                          {link.mode === "REQUEST" ? "Approval" : "Instant"}
-                          {" · "}•{link.tokenHint}
+                          ...{link.tokenHint} ({link.mode === "REQUEST" ? "Approval" : "Instant"})
                         </p>
                         <p className="truncate text-[11px] text-muted-foreground">
                           {formatDistanceToNow(new Date(link.expiresAt), {
