@@ -1,18 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { ScheduleDayEditor } from "@/components/schedule/schedule-day-editor";
 import { ScheduleImportDialog } from "@/components/schedule/schedule-import-dialog";
 import { ResolvedDayPanel } from "@/components/schedule/resolved-day-panel";
-import {
-  WEEKDAYS,
-  getWeekdayForDate,
-} from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
+import { TabPanel } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
@@ -32,11 +27,7 @@ export function MySchedulePanel() {
     user,
   } = useScheduleWorkspace();
 
-  const todayWeekday = getWeekdayForDate(new Date());
-  const [selectedWeekday, setSelectedWeekday] = useState(
-    () => todayWeekday ?? "MONDAY",
-  );
-  const selectedDay = WEEKDAYS.find((day) => day.value === selectedWeekday);
+  const selectedWeekday = data?.resolvedDay.weekday;
 
   return (
     <TabPanel value="my" className="mt-5">
@@ -59,9 +50,9 @@ export function MySchedulePanel() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-semibold text-foreground">
-                    {selectedDay?.label ?? "School day"}
+                    {data?.resolvedDay.name ?? "School day"}
                   </h2>
-                  {selectedWeekday === todayWeekday ? (
+                  {selectedDateKey === new Date().toISOString().slice(0, 10) ? (
                     <Badge size="sm" variant="solid" color="blue">
                       Today
                     </Badge>
@@ -103,33 +94,13 @@ export function MySchedulePanel() {
             </div>
 
             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 overflow-x-auto pb-1 sm:pb-0">
-                <Tabs
-                  value={selectedWeekday}
-                  onValueChange={(value) => {
-                    if (WEEKDAYS.some((day) => day.value === value)) {
-                      setSelectedWeekday(value as typeof selectedWeekday);
-                    }
-                  }}
-                >
-                  <TabsList>
-                    {WEEKDAYS.map((day) => (
-                      <TabItem
-                        key={day.value}
-                        value={day.value}
-                        label={day.shortLabel}
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Editing the classes used by this calendar date’s canonical periods.
+              </p>
               <div className="flex items-center gap-2">
                 <ScheduleImportDialog
                   courses={courses}
-                  onApply={(rows) => {
-                    applyImportedSchedule(rows);
-                    setSelectedWeekday("MONDAY");
-                  }}
+                  onApply={applyImportedSchedule}
                 />
                 <Button
                   asChild
@@ -144,16 +115,23 @@ export function MySchedulePanel() {
           </header>
 
           <div className="p-3 sm:p-5">
-            <ScheduleDayEditor
-              weekday={selectedWeekday}
-              blocks={blocks}
-              entries={scheduleEntries}
-              courses={courses}
-              preferredGradeLevel={user?.gradeLevel ?? undefined}
-              onChange={updateScheduleEntry}
-              currentStatus={currentStatus}
-              lunchPeriod={lunchPeriod}
-            />
+            {selectedWeekday ? (
+              <ScheduleDayEditor
+                weekday={selectedWeekday}
+                blocks={blocks}
+                planBlocks={data?.resolvedDay.blocks}
+                entries={scheduleEntries}
+                courses={courses}
+                preferredGradeLevel={user?.gradeLevel ?? undefined}
+                onChange={updateScheduleEntry}
+                currentStatus={currentStatus}
+                lunchPeriod={lunchPeriod}
+              />
+            ) : (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                This date has no editable school schedule.
+              </p>
+            )}
           </div>
         </section>
       </div>

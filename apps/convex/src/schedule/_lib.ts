@@ -69,6 +69,7 @@ export const resolvedSchoolDayValidator = v.object({
   source: v.union(
     v.literal("REGULAR_TEMPLATE"),
     v.literal("DATE_OVERRIDE"),
+    v.literal("UNASSIGNED"),
     v.literal("LEGACY"),
   ),
   sourceId: v.union(

@@ -69,10 +69,20 @@ export type ScheduleLunchPeriod = Infer<typeof scheduleLunchPeriodValidator>;
 export const schoolDayTemplateKindValidator = v.union(
   v.literal("REGULAR"),
   v.literal("SPECIAL"),
+  v.literal("NO_SCHOOL"),
 );
 
 export type SchoolDayTemplateKind = Infer<
   typeof schoolDayTemplateKindValidator
+>;
+
+export const schoolDayDatePlanModeValidator = v.union(
+  v.literal("LINKED"),
+  v.literal("CUSTOM"),
+);
+
+export type SchoolDayDatePlanMode = Infer<
+  typeof schoolDayDatePlanModeValidator
 >;
 
 export const schoolDayBlockKindValidator = v.union(

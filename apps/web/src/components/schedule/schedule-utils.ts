@@ -176,26 +176,3 @@ export function getCurrentResolvedScheduleStatus(
     nextBlock,
   };
 }
-
-export function copyDayEntries(
-  entries: StudentScheduleDraftEntry[],
-  sourceDay: ScheduleWeekday,
-  targetDays: ScheduleWeekday[],
-) {
-  const sourceEntries = entries.filter((entry) => entry.weekday === sourceDay);
-  const targetDaySet = new Set<ScheduleWeekday>(targetDays);
-  const filtered = entries.filter((entry) => !targetDaySet.has(entry.weekday));
-
-  return [
-    ...filtered,
-    ...targetDays.flatMap((weekday) =>
-      sourceEntries.map((entry) => ({
-        weekday,
-        periodNumber: entry.periodNumber,
-        courseId: entry.courseId,
-        course: entry.course,
-        className: entry.className,
-      })),
-    ),
-  ];
-}

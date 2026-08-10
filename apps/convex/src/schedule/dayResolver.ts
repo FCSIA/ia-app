@@ -100,6 +100,26 @@ export function weekdayForDateKey(dateKey: string): ScheduleWeekday | null {
   return weekdays[date.getUTCDay()] ?? null;
 }
 
+export function academicDateDisposition(
+  dateKey: string,
+  startDateKey?: string,
+  endDateKey?: string,
+) {
+  const normalized = normalizeDateKey(dateKey);
+  if (
+    !startDateKey ||
+    !endDateKey ||
+    normalized < normalizeDateKey(startDateKey) ||
+    normalized > normalizeDateKey(endDateKey)
+  ) {
+    return "OUTSIDE_YEAR" as const;
+  }
+  const weekday = weekdayForDateKey(normalized);
+  if (!weekday) return "WEEKEND" as const;
+  if (weekday === "FRIDAY") return "UNASSIGNED_FRIDAY" as const;
+  return "DEFAULT_TEMPLATE" as const;
+}
+
 export function parseScheduleTime(value: string) {
   const match = TIME_PATTERN.exec(value);
   if (!match) throw new ConvexError(`Invalid time "${value}".`);
@@ -211,7 +231,9 @@ export function resolveSchoolDay<TEntry extends CanonicalScheduleEntry>(
   const lunchNumber = lunchPeriod ? lunchPeriodNumber(lunchPeriod) : null;
   const isSpecial = input.override != null;
   const sourceBlocks = input.override?.blocks ?? (weekday ? input.regularBlocks : []);
-  const blocks = normalizeDayBlocks(sourceBlocks, { allowEmpty: !weekday && !isSpecial });
+  const blocks = normalizeDayBlocks(sourceBlocks, {
+    allowEmpty: sourceBlocks.length === 0,
+  });
   const presentPeriods = new Set<number>();
 
   const resolvedBlocks: Array<ResolvedDayBlock<TEntry>> = blocks.map((block) => {

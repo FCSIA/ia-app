@@ -2,7 +2,6 @@
 
 import {
   CalendarRange,
-  Copy,
   Save,
   Settings2,
   Users,
@@ -25,7 +24,6 @@ export function ScheduleWorkspace() {
   const {
     canEditOwnSchedule,
     canManageBlocks,
-    copyMondayToWeek,
     handleSaveSchedule,
     isLoading,
     isPublic,
@@ -52,7 +50,7 @@ export function ScheduleWorkspace() {
                   <TabsList>
                     <TabItem
                       value="my"
-                      label="My week"
+                      label="My schedule"
                       icon={CalendarRange}
                     />
                     <TabItem
@@ -78,14 +76,6 @@ export function ScheduleWorkspace() {
                     checked={isPublic}
                     onCheckedChange={setIsPublic}
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leadingIcon={Copy}
-                    onClick={copyMondayToWeek}
-                  >
-                    Copy Monday
-                  </Button>
                   <Button
                     size="sm"
                     leadingIcon={Save}

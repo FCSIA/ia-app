@@ -5,10 +5,14 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
-import { schoolDayTemplateKindValidator } from "../validators";
+import {
+  schoolDayDatePlanModeValidator,
+  schoolDayTemplateKindValidator,
+} from "../validators";
 import { requireScheduleAdmin } from "./_lib";
 import {
   MAX_DAY_BLOCKS,
+  academicDateDisposition,
   normalizeDateKey,
   normalizeDayBlocks,
   weekdayForDateKey,
@@ -59,7 +63,9 @@ export const dateOverrideValidator = v.object({
   dateKey: v.string(),
   name: v.string(),
   sourceTemplateId: v.union(v.id("schoolDayTemplates"), v.null()),
-  blocks: v.array(dateBlockValidator),
+  mode: schoolDayDatePlanModeValidator,
+  kind: schoolDayTemplateKindValidator,
+  blocks: v.array(v.union(dateBlockValidator, templateBlockValidator)),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -67,8 +73,19 @@ export const dateOverrideValidator = v.object({
 const adminWorkspaceValidator = v.object({
   dateKey: v.string(),
   regularTemplateId: v.union(v.id("schoolDayTemplates"), v.null()),
+  academicYearStartDateKey: v.union(v.string(), v.null()),
+  academicYearEndDateKey: v.union(v.string(), v.null()),
+  setupRequired: v.boolean(),
   templates: v.array(dayTemplateValidator),
   override: v.union(dateOverrideValidator, v.null()),
+  monthAssignments: v.array(v.object({
+    id: v.id("schoolDayDateOverrides"),
+    dateKey: v.string(),
+    name: v.string(),
+    sourceTemplateId: v.union(v.id("schoolDayTemplates"), v.null()),
+    mode: schoolDayDatePlanModeValidator,
+    kind: schoolDayTemplateKindValidator,
+  })),
 });
 
 type DatabaseCtx = QueryCtx | MutationCtx;
@@ -168,19 +185,54 @@ async function serializeOverride(
   ctx: DatabaseCtx,
   override: Doc<"schoolDayDateOverrides">,
 ) {
-  const blocks = await getDateBlocks(ctx, override._id);
+  const mode = override.mode ?? "CUSTOM";
+  const sourceTemplate = mode === "LINKED" && override.sourceTemplateId
+    ? await ctx.db.get(override.sourceTemplateId)
+    : null;
+  const blocks = sourceTemplate
+    ? (await getTemplateBlocks(ctx, sourceTemplate._id)).map(serializeTemplateBlock)
+    : (await getDateBlocks(ctx, override._id)).map(serializeDateBlock);
   if (blocks.length > MAX_DAY_BLOCKS) {
     throw new ConvexError("Date override has too many blocks to edit safely.");
   }
   return {
     id: override._id,
     dateKey: override.dateKey,
-    name: override.name,
+    name: sourceTemplate?.name ?? override.name,
     sourceTemplateId: override.sourceTemplateId ?? null,
-    blocks: blocks.map(serializeDateBlock),
+    mode,
+    kind:
+      sourceTemplate?.kind ??
+      override.kind ??
+      (blocks.length === 0 ? "NO_SCHOOL" : "SPECIAL"),
+    blocks,
     createdAt: override.createdAt,
     updatedAt: override.updatedAt,
   };
+}
+
+function monthDateKeyBounds(dateKey: string) {
+  const [year, month] = dateKey.split("-").map(Number);
+  const startDateKey = `${year}-${String(month).padStart(2, "0")}-01`;
+  const end = new Date(Date.UTC(year, month, 0, 12));
+  return {
+    startDateKey,
+    endDateKey: end.toISOString().slice(0, 10),
+  };
+}
+
+function assertAcademicDate(
+  dateKey: string,
+  settings: Doc<"schoolScheduleSettings"> | null,
+) {
+  const start = settings?.academicYearStartDateKey;
+  const end = settings?.academicYearEndDateKey;
+  if (!start || !end) {
+    throw new ConvexError("Set up the academic year before assigning dates.");
+  }
+  if (dateKey < start || dateKey > end || !weekdayForDateKey(dateKey)) {
+    throw new ConvexError("Choose a weekday inside the configured academic year.");
+  }
 }
 
 async function replaceTemplateBlocks(
@@ -191,7 +243,7 @@ async function replaceTemplateBlocks(
 ) {
   const existing = await getTemplateBlocks(ctx, templateId);
   for (const block of existing) await ctx.db.delete(block._id);
-  for (const block of normalizeDayBlocks(blocks)) {
+  for (const block of normalizeDayBlocks(blocks, { allowEmpty: blocks.length === 0 })) {
     await ctx.db.insert("schoolDayTemplateBlocks", {
       templateId,
       position: block.position,
@@ -213,7 +265,7 @@ async function replaceDateBlocks(
 ) {
   const existing = await getDateBlocks(ctx, overrideId);
   for (const block of existing) await ctx.db.delete(block._id);
-  for (const block of normalizeDayBlocks(blocks)) {
+  for (const block of normalizeDayBlocks(blocks, { allowEmpty: blocks.length === 0 })) {
     await ctx.db.insert("schoolDayDateBlocks", {
       overrideId,
       position: block.position,
@@ -229,9 +281,35 @@ async function replaceDateBlocks(
 
 export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
   const dateKey = normalizeDateKey(rawDateKey);
+  const settings = await ctx.db
+    .query("schoolScheduleSettings")
+    .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+    .unique();
+  const start = settings?.academicYearStartDateKey;
+  const end = settings?.academicYearEndDateKey;
+  const disposition = academicDateDisposition(dateKey, start, end);
+  const weekday = weekdayForDateKey(dateKey);
+  if (disposition === "OUTSIDE_YEAR" || disposition === "WEEKEND") {
+    return {
+      dateKey,
+      source: "UNASSIGNED" as const,
+      sourceId: null,
+      sourceTemplateId: null,
+      name: !start || !end
+        ? "School calendar setup required"
+        : "Outside the academic year",
+      blocks: [],
+    };
+  }
+
   const override = await getOverrideByDate(ctx, dateKey);
   if (override) {
-    const blocks = await getDateBlocks(ctx, override._id);
+    const linkedTemplate = override.mode === "LINKED" && override.sourceTemplateId
+      ? await ctx.db.get(override.sourceTemplateId)
+      : null;
+    const blocks = linkedTemplate
+      ? await getTemplateBlocks(ctx, linkedTemplate._id)
+      : await getDateBlocks(ctx, override._id);
     if (blocks.length > MAX_DAY_BLOCKS) {
       throw new ConvexError("Date override has too many blocks.");
     }
@@ -240,7 +318,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
       source: "DATE_OVERRIDE" as const,
       sourceId: override._id,
       sourceTemplateId: override.sourceTemplateId ?? null,
-      name: override.name,
+      name: linkedTemplate?.name ?? override.name,
       blocks: blocks.map((block) => ({
         label: block.label,
         periodNumber: block.periodNumber ?? null,
@@ -250,10 +328,17 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
     };
   }
 
-  const settings = await ctx.db
-    .query("schoolScheduleSettings")
-    .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
-    .unique();
+  if (disposition === "UNASSIGNED_FRIDAY") {
+    return {
+      dateKey,
+      source: "UNASSIGNED" as const,
+      sourceId: null,
+      sourceTemplateId: null,
+      name: "Unassigned Friday",
+      blocks: [],
+    };
+  }
+
   const template = settings
     ? await ctx.db.get(settings.regularTemplateId)
     : null;
@@ -277,7 +362,6 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
     };
   }
 
-  const weekday = weekdayForDateKey(dateKey);
   const legacyBlocks = weekday
     ? await ctx.db
         .query("schoolDayBlocks")
@@ -309,22 +393,105 @@ export const getAdminWorkspace = query({
     const user = await getCurrentAppUser(ctx);
     requireScheduleAdmin(user);
     const dateKey = normalizeDateKey(args.dateKey);
-    const [templates, settings, override] = await Promise.all([
+    const { startDateKey, endDateKey } = monthDateKeyBounds(dateKey);
+    const [templates, settings, override, monthOverrides] = await Promise.all([
       ctx.db.query("schoolDayTemplates").withIndex("by_name").take(MAX_TEMPLATES),
       ctx.db
         .query("schoolScheduleSettings")
         .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
         .unique(),
       getOverrideByDate(ctx, dateKey),
+      ctx.db
+        .query("schoolDayDateOverrides")
+        .withIndex("by_dateKey", (q) =>
+          q.gte("dateKey", startDateKey).lte("dateKey", endDateKey),
+        )
+        .take(32),
     ]);
+    const templateById = new Map(templates.map((template) => [template._id, template]));
     return {
       dateKey,
       regularTemplateId: settings?.regularTemplateId ?? null,
+      academicYearStartDateKey: settings?.academicYearStartDateKey ?? null,
+      academicYearEndDateKey: settings?.academicYearEndDateKey ?? null,
+      setupRequired:
+        !settings?.academicYearStartDateKey ||
+        !settings.academicYearEndDateKey,
       templates: await Promise.all(
         templates.map((template) => serializeTemplate(ctx, template)),
       ),
       override: override ? await serializeOverride(ctx, override) : null,
+      monthAssignments: monthOverrides.map((assignment) => {
+        const mode = assignment.mode ?? "CUSTOM";
+        const source = assignment.sourceTemplateId
+          ? templateById.get(assignment.sourceTemplateId)
+          : null;
+        return {
+          id: assignment._id,
+          dateKey: assignment.dateKey,
+          name: mode === "LINKED" && source ? source.name : assignment.name,
+          sourceTemplateId: assignment.sourceTemplateId ?? null,
+          mode,
+          kind:
+            mode === "LINKED" && source
+              ? source.kind
+              : assignment.kind ?? "SPECIAL",
+        };
+      }),
     };
+  },
+});
+
+export const configureAcademicYear = mutation({
+  args: {
+    startDateKey: v.string(),
+    endDateKey: v.string(),
+    regularTemplateId: v.id("schoolDayTemplates"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    requireScheduleAdmin(user);
+    const startDateKey = normalizeDateKey(args.startDateKey);
+    const endDateKey = normalizeDateKey(args.endDateKey);
+    if (endDateKey <= startDateKey) {
+      throw new ConvexError("The academic year must end after it starts.");
+    }
+    const start = new Date(`${startDateKey}T12:00:00.000Z`);
+    const end = new Date(`${endDateKey}T12:00:00.000Z`);
+    if ((end.getTime() - start.getTime()) / 86_400_000 > 400) {
+      throw new ConvexError("An academic year cannot span more than 400 days.");
+    }
+    const template = await ctx.db.get(args.regularTemplateId);
+    if (!template || template.kind !== "REGULAR") {
+      throw new ConvexError("Choose a regular template as the required default.");
+    }
+    const existing = await ctx.db
+      .query("schoolScheduleSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+    const now = Date.now();
+    const values = {
+      regularTemplateId: template._id,
+      academicYearStartDateKey: startDateKey,
+      academicYearEndDateKey: endDateKey,
+      updatedById: user._id,
+      updatedAt: now,
+    };
+    const settingsId = existing?._id ??
+      (await ctx.db.insert("schoolScheduleSettings", {
+        key: SETTINGS_KEY,
+        ...values,
+      }));
+    if (existing) await ctx.db.patch(existing._id, values);
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "schoolScheduleSettings.academic_year_configured",
+      entityType: "schoolScheduleSettings",
+      entityId: settingsId,
+      meta: { startDateKey, endDateKey, regularTemplateId: template._id },
+    });
+    return { success: true };
   },
 });
 
@@ -341,7 +508,12 @@ export const saveTemplate = mutation({
     requireScheduleAdmin(user);
     const name = args.name.trim();
     if (!name) throw new ConvexError("Template name is required.");
-    const normalizedBlocks = normalizeDayBlocks(args.blocks);
+    const normalizedBlocks = normalizeDayBlocks(args.blocks, {
+      allowEmpty: args.kind === "NO_SCHOOL",
+    });
+    if (args.kind === "NO_SCHOOL" && normalizedBlocks.length > 0) {
+      throw new ConvexError("No-school templates cannot contain schedule blocks.");
+    }
     const sameName = await ctx.db
       .query("schoolDayTemplates")
       .withIndex("by_name", (q) => q.eq("name", name))
@@ -432,15 +604,13 @@ export const applyTemplateToDate = mutation({
     const user = await getCurrentAppUser(ctx);
     requireScheduleAdmin(user);
     const dateKey = normalizeDateKey(args.dateKey);
+    const settings = await ctx.db
+      .query("schoolScheduleSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+    assertAcademicDate(dateKey, settings);
     const template = await ctx.db.get(args.templateId);
     if (!template) throw new ConvexError("Template not found.");
-    const templateBlocks = await getTemplateBlocks(ctx, template._id);
-    const normalizedBlocks = normalizeDayBlocks(templateBlocks.map((block) => ({
-      label: block.label,
-      periodNumber: block.periodNumber ?? null,
-      startTime: block.startTime,
-      endTime: block.endTime,
-    })));
     const existing = await getOverrideByDate(ctx, dateKey);
     const now = Date.now();
     const name = args.name?.trim() || template.name;
@@ -449,6 +619,8 @@ export const applyTemplateToDate = mutation({
         dateKey,
         name,
         sourceTemplateId: template._id,
+        mode: "LINKED",
+        kind: template.kind,
         createdById: user._id,
         createdAt: now,
         updatedAt: now,
@@ -457,10 +629,12 @@ export const applyTemplateToDate = mutation({
       await ctx.db.patch(existing._id, {
         name,
         sourceTemplateId: template._id,
+        mode: "LINKED",
+        kind: template.kind,
         updatedAt: now,
       });
     }
-    await replaceDateBlocks(ctx, overrideId, normalizedBlocks, now);
+    await replaceDateBlocks(ctx, overrideId, [], now);
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "schoolDayDateOverride.applied_template",
@@ -487,9 +661,16 @@ export const saveDateOverride = mutation({
     const user = await getCurrentAppUser(ctx);
     requireScheduleAdmin(user);
     const dateKey = normalizeDateKey(args.dateKey);
+    const settings = await ctx.db
+      .query("schoolScheduleSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+    assertAcademicDate(dateKey, settings);
     const name = args.name.trim();
     if (!name) throw new ConvexError("Day-plan name is required.");
-    const normalizedBlocks = normalizeDayBlocks(args.blocks);
+    const normalizedBlocks = normalizeDayBlocks(args.blocks, {
+      allowEmpty: args.blocks.length === 0,
+    });
     const dateMatch = await getOverrideByDate(ctx, dateKey);
     assertDateOverrideIsUnique(dateMatch?._id ?? null, args.overrideId);
     if (args.sourceTemplateId) {
@@ -505,6 +686,8 @@ export const saveDateOverride = mutation({
         dateKey,
         name,
         sourceTemplateId: args.sourceTemplateId ?? undefined,
+        mode: "CUSTOM",
+        kind: normalizedBlocks.length === 0 ? "NO_SCHOOL" : "SPECIAL",
         updatedAt: now,
       });
     } else {
@@ -512,6 +695,8 @@ export const saveDateOverride = mutation({
         dateKey,
         name,
         sourceTemplateId: args.sourceTemplateId ?? undefined,
+        mode: "CUSTOM",
+        kind: normalizedBlocks.length === 0 ? "NO_SCHOOL" : "SPECIAL",
         createdById: user._id,
         createdAt: now,
         updatedAt: now,
@@ -530,6 +715,57 @@ export const saveDateOverride = mutation({
     const override = await ctx.db.get(overrideId);
     if (!override) throw new ConvexError("Date override not found.");
     return await serializeOverride(ctx, override);
+  },
+});
+
+export const unlinkDateTemplate = mutation({
+  args: { dateKey: v.string() },
+  returns: dateOverrideValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    requireScheduleAdmin(user);
+    const dateKey = normalizeDateKey(args.dateKey);
+    const settings = await ctx.db
+      .query("schoolScheduleSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+    assertAcademicDate(dateKey, settings);
+    const override = await getOverrideByDate(ctx, dateKey);
+    if (!override || override.mode !== "LINKED" || !override.sourceTemplateId) {
+      throw new ConvexError("This date is not linked to a template.");
+    }
+    const template = await ctx.db.get(override.sourceTemplateId);
+    if (!template) throw new ConvexError("Linked template not found.");
+    const templateBlocks = await getTemplateBlocks(ctx, template._id);
+    const now = Date.now();
+    await replaceDateBlocks(
+      ctx,
+      override._id,
+      templateBlocks.map((block) => ({
+        label: block.label,
+        periodNumber: block.periodNumber ?? null,
+        startTime: block.startTime,
+        endTime: block.endTime,
+      })),
+      now,
+    );
+    await ctx.db.patch(override._id, {
+      name: template.name,
+      sourceTemplateId: undefined,
+      mode: "CUSTOM",
+      kind: template.kind === "NO_SCHOOL" ? "NO_SCHOOL" : "SPECIAL",
+      updatedAt: now,
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "schoolDayDateOverride.unlinked_template",
+      entityType: "schoolDayDateOverride",
+      entityId: override._id,
+      meta: { dateKey, templateId: template._id },
+    });
+    const updated = await ctx.db.get(override._id);
+    if (!updated) throw new ConvexError("Date override not found.");
+    return await serializeOverride(ctx, updated);
   },
 });
 

@@ -39,6 +39,7 @@ import {
 import {
   ScheduleLunchPeriod,
   SchoolDayBlock,
+  ResolvedSchoolDay,
   ScheduleWeekday,
   StudentScheduleDraftEntry,
 } from "./types";
@@ -46,6 +47,7 @@ import {
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
+  planBlocks?: ResolvedSchoolDay["blocks"];
   entries: StudentScheduleDraftEntry[];
   courses: CourseSummary[];
   preferredGradeLevel?: number;
@@ -66,6 +68,7 @@ type ScheduleDayEditorProps = {
 export function ScheduleDayEditor({
   weekday,
   blocks,
+  planBlocks,
   entries,
   courses,
   preferredGradeLevel,
@@ -80,8 +83,16 @@ export function ScheduleDayEditor({
       ? currentStatus
       : getCurrentScheduleStatus({ entries }, blocks);
 
-  const dayBlocks = getBlocksForDay(blocks, weekday);
-  const periodNumbers = getPeriodNumbersForDay(blocks, weekday);
+  const dayBlocks = planBlocks ?? getBlocksForDay(blocks, weekday);
+  const periodNumbers = planBlocks
+    ? Array.from(
+        new Set(
+          planBlocks.flatMap((block) =>
+            block.periodNumber === null ? [] : [block.periodNumber],
+          ),
+        ),
+      )
+    : getPeriodNumbersForDay(blocks, weekday);
   const customBlocks = dayBlocks.filter((block) => block.periodNumber == null);
 
   const openManualEntry = (periodNumber: number) => {
@@ -106,11 +117,11 @@ export function ScheduleDayEditor({
           {customBlocks.map((block) => {
             const isCurrentCustom =
               activeStatus?.weekday === weekday &&
-              activeStatus?.currentBlock?.id === block.id;
+                activeStatus?.currentBlock?.id === ("id" in block ? block.id : undefined);
 
             return (
               <div
-                key={block.id}
+                key={"key" in block ? block.key : block.id}
                 className={cn(
                   "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                   isCurrentCustom

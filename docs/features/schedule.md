@@ -12,7 +12,7 @@ and special-day plans without rewriting student course choices.
 
 ## What It Does
 
-- Students build a 5-day schedule from official courses, with a manual class-name option when a class is not in the catalog.
+- Students manage classes from an actual school date instead of a Monday–Friday selector strip, with a manual class-name option when a class is not in the catalog.
 - Students can upload an Infinite Campus Schedule Term screenshot. Browser-local OCR proposes period/course matches for review, then applies the reviewed classes Monday through Thursday before the normal save step.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
@@ -25,8 +25,31 @@ and special-day plans without rewriting student course choices.
 - Students can organize accepted friends into private comparison groups, see
   exact shared-class subsets, and compare one friend's public schedule beside
   their own.
-- Admins create reusable regular or special templates, reorder canonical periods, change block times, and snapshot a template onto a specific date.
-- Resetting a date override returns it to the current regular template. Editing a template later does not retroactively change dates already copied from it.
+- Admins create reusable regular, special, and no-school templates, reorder canonical periods, and change block times.
+- Every in-range Monday–Thursday inherits the required default regular template unless an administrator assigns another template or creates a custom date plan.
+- Fridays remain explicitly unassigned until an administrator assigns a template. Resetting a Friday returns it to unassigned; resetting Monday–Thursday returns it to the default template.
+- Date assignments stay linked to their template, so later template edits update every linked date. `Unlink and customize` snapshots the current blocks onto that date and severs the link.
+- No-school templates are a first-class plan type with zero schedule blocks. They are not represented by fake periods or an audience label.
+
+## Academic Year Setup
+
+The schedule calendar is deployment data. A newly initialized production database requires the first `ADMIN` or `SUPER_ADMIN` who opens day-plan management to configure:
+
+- the academic-year first and last dates;
+- the required default regular template.
+
+The dates are intentionally not compiled into the application because they change every year. Until setup is complete, dates cannot be assigned and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
+
+Within the configured range, dates resolve as follows:
+
+| Date | No explicit assignment | Explicit assignment |
+| --- | --- | --- |
+| Monday–Thursday | Required default template | Linked template or unlinked custom plan |
+| Friday | Unassigned | Linked template or unlinked custom plan |
+| Saturday–Sunday | Not a school date | Assignments are rejected |
+| Outside the academic year | Not a school date | Assignments are rejected |
+
+The admin workspace keeps a full month calendar visible. Date cells identify inherited defaults, unassigned Fridays, linked/custom assignments, no-school days, weekends, and dates outside the configured year. Shared Fluid tooltips explain inheritance, linkage, and setup behavior without replacing visible labels.
 
 ## Source Files
 
@@ -60,7 +83,9 @@ and special-day plans without rewriting student course choices.
 - `api.schedule.dayPlans.getAdminWorkspace`
 - `api.schedule.dayPlans.saveTemplate`
 - `api.schedule.dayPlans.setRegularTemplate`
+- `api.schedule.dayPlans.configureAcademicYear`
 - `api.schedule.dayPlans.applyTemplateToDate`
+- `api.schedule.dayPlans.unlinkDateTemplate`
 - `api.schedule.dayPlans.saveDateOverride`
 - `api.schedule.dayPlans.resetDateOverride`
 - `api.schedule.dayPlans.deleteTemplate`
@@ -91,6 +116,14 @@ unbounded array on the schedule document. Special-day blocks reference those
 same canonical periods. Reordering Period 3 changes when a student's saved
 Period 3 course meets; it never copies or moves the course document.
 
+`schoolScheduleSettings` stores the academic-year boundaries and required
+regular template. A `LINKED` date override resolves blocks and its display name
+from `sourceTemplateId` at read time. A `CUSTOM` override owns
+`schoolDayDateBlocks`; unlinking performs the one explicit template-to-date
+snapshot. Legacy overrides without a mode continue to resolve as custom
+snapshots. Template and settings fields are widened as optional so existing
+deployments remain valid until administrators complete setup.
+
 `studentSchedules.lunchPeriod` is a single `PERIOD_4 | PERIOD_5` discriminant,
 not two booleans. It remains optional during the first deployment so legacy
 rows can be backfilled safely. Readers infer only unambiguous legacy schedules;
@@ -98,8 +131,9 @@ rows with classes in both lunch candidates remain visibly unresolved.
 
 ## Permissions
 
-Students manage their own schedule and friend relationships. Admin roles manage
-day templates and date overrides. Friend schedule visibility depends on accepted friendship and
+Students manage their own schedule and friend relationships. `ADMIN` and
+`SUPER_ADMIN` roles manage academic-year settings, day templates, and date
+assignments. Friend schedule visibility depends on accepted friendship and
 the owner's public/private setting. Comparison groups are owner-private: members
 do not gain access to one another, and every group read rechecks active-student,
 accepted-friendship, and current schedule-visibility state.

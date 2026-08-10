@@ -22,7 +22,6 @@ import type {
   StudentScheduleDraftEntry,
 } from "@/components/schedule/types";
 import {
-  copyDayEntries,
   findScheduleEntry,
   getCurrentScheduleStatus,
 } from "@/components/schedule/schedule-utils";
@@ -344,21 +343,6 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     );
   };
 
-  const copyMondayToWeek = () => {
-    if (!scheduleEntries.some((entry) => entry.weekday === 'MONDAY')) {
-      toast({
-        title: 'Add classes to Monday before copying',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setScheduleEntries((current) =>
-      copyDayEntries(current, 'MONDAY', ['TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']),
-    );
-    toast({ title: 'Copied Monday classes to Tuesday through Friday. Save to keep changes.' });
-  };
-
   const applyImportedSchedule = (rows: ImportedScheduleRow[]) => {
     const weekdays: ScheduleWeekday[] = [
       "MONDAY",
@@ -393,7 +377,6 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     blocks,
     canEditOwnSchedule,
     canManageBlocks,
-    copyMondayToWeek,
     courses,
     createBlock,
     creatingDay,

@@ -13,17 +13,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TabItem, Tabs, TabsList } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
-  WEEKDAYS,
   findScheduleEntry,
   formatScheduleTimeRange,
   getBlocksForDay,
   getPeriodNumbersForDay,
   getCurrentScheduleStatus,
+  getWeekdayForDate,
 } from "./schedule-utils";
-import { ScheduleFriend, SchoolDayBlock, ScheduleWeekday } from "./types";
+import { ScheduleFriend, SchoolDayBlock } from "./types";
+import { ScheduleDatePicker } from "./schedule-date-picker";
+
+function localDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 type FriendScheduleDialogProps = {
   friend: ScheduleFriend;
@@ -36,10 +40,9 @@ export function FriendScheduleDialog({
   blocks,
   trigger,
 }: FriendScheduleDialogProps) {
-  const [selectedWeekday, setSelectedWeekday] = useState<ScheduleWeekday>(
-    new Date().getDay() >= 1 && new Date().getDay() <= 5
-      ? WEEKDAYS[new Date().getDay() - 1].value
-      : "MONDAY",
+  const [selectedDateKey, setSelectedDateKey] = useState(localDateKey);
+  const selectedWeekday = getWeekdayForDate(
+    new Date(`${selectedDateKey}T12:00:00`),
   );
 
   const currentStatus = getCurrentScheduleStatus(friend.schedule, blocks);
@@ -49,8 +52,12 @@ export function FriendScheduleDialog({
       : friend.schedule?.lunchPeriod === "PERIOD_5"
         ? 5
         : null;
-  const dayBlocks = getBlocksForDay(blocks, selectedWeekday);
-  const periodNumbers = getPeriodNumbersForDay(blocks, selectedWeekday);
+  const dayBlocks = selectedWeekday
+    ? getBlocksForDay(blocks, selectedWeekday)
+    : [];
+  const periodNumbers = selectedWeekday
+    ? getPeriodNumbersForDay(blocks, selectedWeekday)
+    : [];
 
   return (
     <Dialog>
@@ -75,23 +82,14 @@ export function FriendScheduleDialog({
 
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-6 p-6">
-          {/* Weekday Selector */}
-          <Tabs
-            value={selectedWeekday}
-            onValueChange={(value) =>
-              setSelectedWeekday(value as ScheduleWeekday)
-            }
-          >
-            <TabsList>
-              {WEEKDAYS.map((day) => (
-                <TabItem
-                  key={day.value}
-                  value={day.value}
-                  label={day.shortLabel}
-                />
-              ))}
-            </TabsList>
-          </Tabs>
+          <ScheduleDatePicker
+            dateKey={selectedDateKey}
+            onDateChange={(nextDateKey) => {
+              if (getWeekdayForDate(new Date(`${nextDateKey}T12:00:00`))) {
+                setSelectedDateKey(nextDateKey);
+              }
+            }}
+          />
 
           {/* Schedule Display */}
           <div className="space-y-4">
@@ -110,7 +108,7 @@ export function FriendScheduleDialog({
                   ? null
                   : findScheduleEntry(
                       friend.schedule,
-                      selectedWeekday,
+                      selectedWeekday!,
                       periodNumber,
                     );
                 const matchingBlock = dayBlocks.find(

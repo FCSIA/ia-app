@@ -44,7 +44,8 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { WEEKDAYS } from '@/components/schedule/schedule-utils';
+import { getWeekdayForDate, WEEKDAYS } from '@/components/schedule/schedule-utils';
+import { ScheduleDatePicker } from '@/components/schedule/schedule-date-picker';
 import type { ScheduleWeekday } from '@/components/schedule/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -61,6 +62,10 @@ function entryFor(schedule: GroupSchedule, weekday: ScheduleWeekday, periodNumbe
   return schedule?.entries.find(
     (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
   );
+}
+
+function localDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 function sameClass(
   left: ReturnType<typeof entryFor>,
@@ -261,19 +266,21 @@ function GroupWorkspaceBody({
   data,
   selectedMember,
   weekday,
+  selectedDateKey,
   peopleById,
   pendingRemoveId,
   onSelectMember,
-  onWeekdayChange,
+  onDateKeyChange,
   onRemoveMember,
 }: {
   data: GroupData;
   selectedMember: GroupMember | null;
   weekday: ScheduleWeekday;
+  selectedDateKey: string;
   peopleById: Map<string, GroupPerson>;
   pendingRemoveId: string | null;
   onSelectMember: (userId: string) => void;
-  onWeekdayChange: (weekday: ScheduleWeekday) => void;
+  onDateKeyChange: (dateKey: string) => void;
   onRemoveMember: (friendId: Id<'users'>) => void;
 }) {
   return (
@@ -392,19 +399,14 @@ function GroupWorkspaceBody({
             <h2 className="text-sm font-semibold">Side-by-side</h2>
             <p className="text-xs text-muted-foreground">Your schedule and one friend.</p>
           </div>
-          <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-lg bg-surface-2 p-0.5 shadow-surface-1">
-            {WEEKDAYS.map((day) => (
-              <Button
-                key={day.value}
-                variant={weekday === day.value ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 min-w-9 px-2 text-[11px]"
-                onClick={() => onWeekdayChange(day.value)}
-              >
-                {day.shortLabel}
-              </Button>
-            ))}
-          </div>
+          <ScheduleDatePicker
+            dateKey={selectedDateKey}
+            onDateChange={(nextDateKey) => {
+              if (getWeekdayForDate(new Date(`${nextDateKey}T12:00:00`))) {
+                onDateKeyChange(nextDateKey);
+              }
+            }}
+          />
         </div>
 
         {selectedMember ? (
@@ -492,7 +494,8 @@ export function ScheduleGroupWorkspace({
   const router = useRouter();
   const { toast } = useToast();
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
-  const [weekday, setWeekday] = useState<ScheduleWeekday>('MONDAY');
+  const [selectedDateKey, setSelectedDateKey] = useState(localDateKey);
+  const weekday = getWeekdayForDate(new Date(`${selectedDateKey}T12:00:00`)) ?? 'MONDAY';
   const [optimisticAddedIds, setOptimisticAddedIds] = useState<Set<string>>(() => new Set());
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -599,10 +602,11 @@ export function ScheduleGroupWorkspace({
           data={data}
           selectedMember={selectedMember}
           weekday={weekday}
+          selectedDateKey={selectedDateKey}
           peopleById={peopleById}
           pendingRemoveId={pendingRemoveId}
           onSelectMember={setSelectedFriendId}
-          onWeekdayChange={setWeekday}
+          onDateKeyChange={setSelectedDateKey}
           onRemoveMember={(friendId) => void handleRemoveMember(friendId)}
         />
 

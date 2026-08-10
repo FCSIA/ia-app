@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { ScheduleWeekday } from "../validators";
 import {
   assertNoLunchCourseConflict,
+  academicDateDisposition,
   inferLegacyLunchPeriod,
   normalizeDateKey,
   normalizeDayBlocks,
@@ -64,6 +65,21 @@ describe("schedule lunch invariants", () => {
 });
 
 describe("day plan validation", () => {
+  test("inherits Monday through Thursday while leaving Fridays unassigned", () => {
+    expect(
+      academicDateDisposition("2026-08-10", "2026-08-03", "2027-05-28"),
+    ).toBe("DEFAULT_TEMPLATE");
+    expect(
+      academicDateDisposition("2026-08-14", "2026-08-03", "2027-05-28"),
+    ).toBe("UNASSIGNED_FRIDAY");
+    expect(
+      academicDateDisposition("2026-08-15", "2026-08-03", "2027-05-28"),
+    ).toBe("WEEKEND");
+    expect(
+      academicDateDisposition("2027-06-01", "2026-08-03", "2027-05-28"),
+    ).toBe("OUTSIDE_YEAR");
+  });
+
   test("rejects duplicate canonical periods and overlapping times", () => {
     expect(() =>
       normalizeDayBlocks([
@@ -162,5 +178,31 @@ describe("special-day resolution", () => {
     expect(result.blocks).toHaveLength(8);
     expect(result.blocks[4].kind).toBe("LUNCH");
     expect(result.blocks[4].entry).toBeNull();
+  });
+
+  test("allows a no-school plan to resolve with zero blocks", () => {
+    const result = resolveSchoolDay({
+      dateKey: "2026-11-02",
+      lunchPeriod: "PERIOD_5",
+      entries: mondayEntries,
+      regularBlocks: [],
+      override: { name: "IA PD Day", blocks: [] },
+    });
+    expect(result.isSpecial).toBe(true);
+    expect(result.name).toBe("IA PD Day");
+    expect(result.blocks).toEqual([]);
+  });
+
+  test("allows an unassigned Friday to resolve with zero blocks", () => {
+    const result = resolveSchoolDay({
+      dateKey: "2026-08-14",
+      lunchPeriod: "PERIOD_5",
+      entries: [],
+      regularBlocks: [],
+    });
+
+    expect(result.weekday).toBe("FRIDAY");
+    expect(result.isSpecial).toBe(false);
+    expect(result.blocks).toEqual([]);
   });
 });

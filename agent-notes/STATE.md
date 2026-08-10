@@ -218,6 +218,13 @@
   option fields use the exact current Fluid Radix Tabs and Select sources without
   call-site styling overrides. Applying a template is labeled and explained as a
   date-plan replacement instead of a clipboard-style clone.
+- Schedule day-plan management is calendar-first: configured academic-year
+  boundaries and a mandatory regular template drive Monday–Thursday
+  inheritance, Fridays remain unassigned until an admin acts, and linked date
+  assignments follow template edits until explicitly unlinked into custom
+  snapshots. No-school templates contain zero blocks. Initial production data
+  must be configured by an `ADMIN` or `SUPER_ADMIN`. Student, friend, and group
+  schedule navigation uses calendar dates instead of weekday selector strips.
 - Mobile schedule rows use readable semantic period badges and open the linked
   course detail from Home and My Week while preserving edit-mode selection.
 - Mobile announcement feed/detail views use flat editorial rows, restrained
