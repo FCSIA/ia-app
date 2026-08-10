@@ -141,7 +141,10 @@ export const saveUserImage = action({
     try {
       const response = await fetch(prepared.url);
       if (!response.ok) throw new ConvexError("Upload not found");
-      await assertSafeStoredFile(await response.blob(), (prepared.contentType ?? args.mimeType).toLowerCase());
+      assertSafeStoredFile(
+        await response.arrayBuffer(),
+        (prepared.contentType ?? args.mimeType).toLowerCase(),
+      );
     } catch (error) {
       await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, { uploadIntentId: args.uploadIntentId, storageId: args.storageId });
       throw error;

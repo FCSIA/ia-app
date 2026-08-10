@@ -86,9 +86,16 @@ function isValidUtf8Text(bytes: Uint8Array) {
   }
 }
 
-export async function assertSafeStoredFile(blob: Blob, declaredMime: string) {
+export function assertSafeStoredFile(
+  contents: ArrayBuffer,
+  declaredMime: string,
+) {
   const mime = normalizeStoredFileMime(declaredMime);
-  const bytes = new Uint8Array(await blob.slice(0, 4096).arrayBuffer());
+  const bytes = new Uint8Array(
+    contents,
+    0,
+    Math.min(contents.byteLength, 4096),
+  );
   if (hasActiveMarkup(bytes)) {
     throw new ConvexError("This file type is not allowed");
   }

@@ -26,7 +26,14 @@ async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"
   try {
     const response = await fetch(prepared.url);
     if (!response.ok) throw new ConvexError("Upload not found");
-    await assertSafeStoredFile(await response.blob(), (prepared.contentType ?? args.fallbackMimeType ?? "application/octet-stream").toLowerCase());
+    assertSafeStoredFile(
+      await response.arrayBuffer(),
+      (
+        prepared.contentType ??
+        args.fallbackMimeType ??
+        "application/octet-stream"
+      ).toLowerCase(),
+    );
     return prepared;
   } catch (error) {
     await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, { uploadIntentId: args.uploadIntentId, storageId: args.storageId });
