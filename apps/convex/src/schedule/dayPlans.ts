@@ -94,6 +94,13 @@ export function canManageDayPlans(roles: AppRole[]) {
   return roles.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
 }
 
+export function isCalendarSetupRequired(
+  academicYearStartDateKey?: string,
+  academicYearEndDateKey?: string,
+) {
+  return !academicYearStartDateKey || !academicYearEndDateKey;
+}
+
 export function assertDateOverrideIsUnique(
   existingId: string | null,
   requestedId: string | undefined,
@@ -287,6 +294,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
     .unique();
   const start = settings?.academicYearStartDateKey;
   const end = settings?.academicYearEndDateKey;
+  const calendarSetupRequired = isCalendarSetupRequired(start, end);
   const disposition = academicDateDisposition(dateKey, start, end);
   const weekday = weekdayForDateKey(dateKey);
   if (disposition === "OUTSIDE_YEAR" || disposition === "WEEKEND") {
@@ -295,7 +303,8 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
       source: "UNASSIGNED" as const,
       sourceId: null,
       sourceTemplateId: null,
-      name: !start || !end
+      calendarSetupRequired,
+      name: calendarSetupRequired
         ? "School calendar setup required"
         : "Outside the academic year",
       blocks: [],
@@ -318,6 +327,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
       source: "DATE_OVERRIDE" as const,
       sourceId: override._id,
       sourceTemplateId: override.sourceTemplateId ?? null,
+      calendarSetupRequired: false,
       name: linkedTemplate?.name ?? override.name,
       blocks: blocks.map((block) => ({
         label: block.label,
@@ -334,6 +344,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
       source: "UNASSIGNED" as const,
       sourceId: null,
       sourceTemplateId: null,
+      calendarSetupRequired: false,
       name: "Unassigned Friday",
       blocks: [],
     };
@@ -352,6 +363,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
       source: "REGULAR_TEMPLATE" as const,
       sourceId: template._id,
       sourceTemplateId: template._id,
+      calendarSetupRequired: false,
       name: template.name,
       blocks: blocks.map((block) => ({
         label: block.label,
@@ -376,6 +388,7 @@ export async function loadDayPlanSource(ctx: DatabaseCtx, rawDateKey: string) {
     source: "LEGACY" as const,
     sourceId: null,
     sourceTemplateId: null,
+    calendarSetupRequired: false,
     name: weekday ? "Regular schedule" : "No school schedule",
     blocks: legacyBlocks.map((block) => ({
       label: block.label,

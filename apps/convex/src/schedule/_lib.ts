@@ -62,6 +62,7 @@ export const resolvedSchoolDayBlockValidator = v.object({
 export const resolvedSchoolDayValidator = v.object({
   dateKey: v.string(),
   weekday: v.union(scheduleWeekdayValidator, v.null()),
+  calendarSetupRequired: v.boolean(),
   lunchPeriod: v.union(scheduleLunchPeriodValidator, v.null()),
   lunchNeedsResolution: v.boolean(),
   isSpecial: v.boolean(),

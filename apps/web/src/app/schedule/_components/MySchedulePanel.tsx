@@ -119,7 +119,11 @@ export function MySchedulePanel() {
               <ScheduleDayEditor
                 weekday={selectedWeekday}
                 blocks={blocks}
-                planBlocks={data?.resolvedDay.blocks}
+                planBlocks={
+                  data?.resolvedDay.calendarSetupRequired
+                    ? undefined
+                    : data?.resolvedDay.blocks
+                }
                 entries={scheduleEntries}
                 courses={courses}
                 preferredGradeLevel={user?.gradeLevel ?? undefined}

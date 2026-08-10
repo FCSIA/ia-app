@@ -40,6 +40,11 @@ The schedule calendar is deployment data. A newly initialized production databas
 
 The dates are intentionally not compiled into the application because they change every year. Until setup is complete, dates cannot be assigned and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
 
+Calendar setup does not block students from editing or saving their canonical
+Period 1–8 class choices. Until setup is complete, the editor falls back to the
+canonical period grid without school-day times; resolved timing and date-plan
+details remain unavailable until an administrator finishes setup.
+
 Within the configured range, dates resolve as follows:
 
 | Date | No explicit assignment | Explicit assignment |

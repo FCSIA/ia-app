@@ -11,6 +11,7 @@ import {
 import {
   assertDateOverrideIsUnique,
   canManageDayPlans,
+  isCalendarSetupRequired,
 } from "./dayPlans";
 
 type Entry = {
@@ -111,6 +112,13 @@ describe("day plan validation", () => {
     expect(canManageDayPlans(["SUPER_ADMIN"])).toBe(true);
     expect(canManageDayPlans(["STUDENT_ADMIN"])).toBe(false);
     expect(canManageDayPlans(["TEACHER"])).toBe(false);
+  });
+
+  test("requires both academic-year boundaries before leaving compatibility mode", () => {
+    expect(isCalendarSetupRequired(undefined, undefined)).toBe(true);
+    expect(isCalendarSetupRequired("2026-08-10", undefined)).toBe(true);
+    expect(isCalendarSetupRequired(undefined, "2027-06-18")).toBe(true);
+    expect(isCalendarSetupRequired("2026-08-10", "2027-06-18")).toBe(false);
   });
 });
 

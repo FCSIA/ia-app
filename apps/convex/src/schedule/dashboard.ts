@@ -120,6 +120,7 @@ export const get = query({
       ),
       resolvedDay: {
         ...resolved,
+        calendarSetupRequired: dayPlanSource.calendarSetupRequired,
         name: dayPlanSource.name,
         source: dayPlanSource.source,
         sourceId: dayPlanSource.sourceId,
