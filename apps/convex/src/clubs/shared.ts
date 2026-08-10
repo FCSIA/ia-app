@@ -1,10 +1,32 @@
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { canReadChannel, getViewerContext } from "./access";
 import { toClubUserRef } from "./serialize";
 import { boundedSharedMessagePageSize } from "./sharedPagination";
+import { appRoleValidator } from "../validators";
+
+const attachmentUserValidator = v.object({
+  _id: v.id("users"),
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  roles: v.array(appRoleValidator),
+  avatarUrl: v.union(v.string(), v.null()),
+});
+
+const channelAttachmentValidator = v.object({
+  _id: v.id("clubChannelMessageAttachments"),
+  fileName: v.string(),
+  fileUrl: v.string(),
+  mimeType: v.optional(v.string()),
+  size: v.optional(v.number()),
+  createdAt: v.string(),
+  messageId: v.id("clubChannelMessages"),
+  messagePreview: v.string(),
+  author: v.union(attachmentUserValidator, v.null()),
+});
 
 function emptyPage(cursor: string | null) {
   return {
@@ -20,6 +42,7 @@ export const listChannelAttachments = query({
     channelId: v.id("clubChannels"),
     paginationOpts: paginationOptsValidator,
   },
+  returns: paginationResultValidator(channelAttachmentValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyPage(args.paginationOpts.cursor);
@@ -64,7 +87,11 @@ export const listChannelAttachments = query({
         if (!attachments.length) return [];
         const author = await ctx.db.get(message.authorId);
         return attachments.map((attachment) => ({
-          ...attachment,
+          _id: attachment._id,
+          fileName: attachment.fileName,
+          fileUrl: attachment.fileUrl,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
           createdAt: new Date(attachment.createdAt).toISOString(),
           messageId: message._id,
           messagePreview: message.body.slice(0, 160),

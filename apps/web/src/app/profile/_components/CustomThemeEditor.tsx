@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import {
   CUSTOM_COLORS_STORAGE_KEY,
@@ -79,14 +79,14 @@ function CustomBackgroundPanel() {
   const user = useCurrentUser();
   const [uploading, setUploading] = useState(false);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
-  const saveUserImage = useMutation(api.users.me.saveUserImage);
+  const saveUserImage = useAction(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
 
   const preview = user?.customBackgroundUrl ?? null;
 
   async function uploadAndSave(file: File) {
     await uploadUserImage(
-      { generateUploadUrl: () => generateUploadUrl({}) },
+      { generateUploadUrl: () => generateUploadUrl({ purpose: "USER_IMAGE" }) },
       (args) => saveUserImage(args),
       'background',
       file,

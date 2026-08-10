@@ -1,9 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { getCurrentAppUser } from "../../lib/currentUser";
 import { calendarSourceValidator } from "../validators";
+import { calendarEntryValidator } from "./_lib";
 
 const MAX_CALENDAR_RANGE_MS = 92 * 24 * 60 * 60 * 1000;
+const calendarEntryOutputValidator = v.object({ _id: v.id("calendarEntries"), _creationTime: v.number(), ...calendarEntryValidator, createdAt: v.number() });
 
 export const list = query({
   args: {
@@ -11,8 +13,9 @@ export const list = query({
     endDate: v.number(),
     sources: v.optional(v.array(v.string())),
   },
+  returns: v.array(calendarEntryOutputValidator),
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getCurrentAppUser(ctx);
     if (args.endDate < args.startDate) {
       throw new Error("Calendar end date must be after start date");
     }
@@ -55,6 +58,7 @@ export const create = mutation({
     tags: v.optional(v.array(v.string())),
     source: v.optional(calendarSourceValidator),
   },
+  returns: v.id("calendarEntries"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     if (args.source && args.source !== "PERSONAL") {
@@ -85,6 +89,7 @@ export const create = mutation({
 
 export const remove = mutation({
   args: { entryId: v.id("calendarEntries") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const entry = await ctx.db.get(args.entryId);
@@ -95,6 +100,7 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(args.entryId);
+    return null;
   },
 });
 
@@ -107,6 +113,7 @@ export const update = mutation({
     startAt: v.number(),
     endAt: v.optional(v.number()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const entry = await ctx.db.get(args.entryId);
@@ -129,5 +136,6 @@ export const update = mutation({
       startAt: args.startAt,
       endAt: args.endAt,
     });
+    return null;
   },
 });

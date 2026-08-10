@@ -35,6 +35,14 @@ import {
   listUsersResultValidator,
   normalizeUniqueId,
   adminUserProfileValidator,
+  assertCanActOn,
+  assertCanResetPassword,
+  betterAuthRoleForAppRoles,
+  isPrivilegeReduction,
+  revokeBetterAuthSessions,
+  searchText,
+  setBetterAuthPassword,
+  syncBetterAuthRole,
   studentExportRowValidator,
   studentImportResultValidator,
   toAdminUserProfile,
@@ -285,7 +293,6 @@ export const requireStudentImportActor = internalQuery({
 export const importStudentRow = internalMutation({
   args: {
     row: studentImportRowValidator,
-    generatePasswords: v.boolean(),
   },
   returns: studentImportRowResultValidator,
   handler: async (ctx, args): Promise<StudentImportRowResult> => {
@@ -329,15 +336,7 @@ export const importStudentRow = internalMutation({
     }
 
     const email = row.email?.trim() || buildStudentEmail(uniqueId);
-    const temporaryPassword = args.generatePasswords
-      ? generateTemporaryPassword()
-      : uniqueId;
-
-    if (!args.generatePasswords && temporaryPassword.length < 12) {
-      return skip(
-        `Student ID '${uniqueId}' is too short (${uniqueId.length} chars) to be used as a password. Passwords must be at least 12 characters. Please check 'Generate Passwords'.`,
-      );
-    }
+    const temporaryPassword = generateTemporaryPassword();
 
     // Let failures escape so this student's entire transaction rolls back.
     await createLinkedUser(ctx, {
@@ -354,17 +353,13 @@ export const importStudentRow = internalMutation({
 
     return {
       kind: "created",
-      ...(args.generatePasswords
-        ? {
-            credential: {
-              firstName,
-              lastName,
-              uniqueId,
-              email,
-              temporaryPassword,
-            },
-          }
-        : {}),
+      credential: {
+        firstName,
+        lastName,
+        uniqueId,
+        email,
+        temporaryPassword,
+      },
     };
   },
 });
@@ -395,7 +390,6 @@ export const logStudentImportAudit = internalMutation({
 export const importStudents = action({
   args: {
     rows: v.array(studentImportRowValidator),
-    generatePasswords: v.optional(v.boolean()),
   },
   returns: studentImportResultValidator,
   handler: async (ctx, args): Promise<StudentImportResult> => {
@@ -411,7 +405,6 @@ export const importStudents = action({
       throw new ConvexError("Import at most 200 students at a time.");
     }
 
-    const generatePasswords = args.generatePasswords ?? false;
     const results: StudentImportResult = {
       created: 0,
       skipped: 0,
@@ -453,7 +446,6 @@ export const importStudents = action({
               internal.users.admin.importStudentRow,
               {
                 row: entry.row,
-                generatePasswords,
               },
             );
           } catch (error) {
@@ -487,7 +479,7 @@ export const importStudents = action({
         actorId,
         created: results.created,
         skipped: results.skipped,
-        generatedPasswords: generatePasswords,
+        generatedPasswords: true,
       });
     } catch (error) {
       console.error("Failed to record student import audit event", error);
@@ -535,6 +527,17 @@ export const activate = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
+
+    if (!target.authUserId) {
+      throw new ConvexError("User is not linked to an auth account.");
+    }
+
+    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+    await auth.api.unbanUser({
+      body: { userId: target.authUserId },
+      headers,
+    });
 
     await ctx.db.patch(target._id, {
       isActive: true,
@@ -573,13 +576,21 @@ export const deactivate = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
 
-    const targetIsPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (targetIsPrivileged && !actor.roles.includes("SUPER_ADMIN")) {
-      throw new ConvexError("Only super admins can deactivate admin accounts.");
+    if (!target.authUserId) {
+      throw new ConvexError("User is not linked to an auth account.");
     }
+
+    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+    await auth.api.banUser({
+      body: {
+        userId: target.authUserId,
+        banReason: "Account deactivated in Innovation Academy",
+      },
+      headers,
+    });
+    await revokeBetterAuthSessions(ctx, target.authUserId);
 
     await ctx.db.patch(target._id, {
       isActive: false,
@@ -634,10 +645,14 @@ export const deleteUsers = mutation({
 
     for (const target of targets) {
       if (!target) continue;
+      assertCanActOn(actor, target);
 
       if (target.authUserId) {
+        const maintenanceSecret = process.env.BETTER_AUTH_MAINTENANCE_SECRET;
+        if (!maintenanceSecret) throw new ConvexError("Auth maintenance is not configured.");
         await ctx.runMutation(components.betterAuth.dev.deleteUserData, {
           userId: target.authUserId,
+          maintenanceSecret,
         });
       }
       if (target.avatarStorageId) {
@@ -680,10 +695,24 @@ export const assignRoles = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
+    assertCanActOn(actor, target);
 
     const nextRoles = Array.from(new Set(args.roles));
     if (nextRoles.length === 0) {
       throw new ConvexError("User must have at least one role.");
+    }
+
+    if (
+      nextRoles.some((role) => ["ADMIN", "SUPER_ADMIN"].includes(role)) &&
+      !actor.roles.includes("SUPER_ADMIN")
+    ) {
+      throw new ConvexError("Only super admins can assign admin roles.");
+    }
+    if (
+      nextRoles.includes("SUPER_ADMIN") &&
+      !target.roles.includes("SUPER_ADMIN")
+    ) {
+      throw new ConvexError("Super-admin promotion requires an out-of-band process.");
     }
 
     const nextPrivileged = nextRoles.some((role) =>
@@ -723,6 +752,12 @@ export const assignRoles = mutation({
       updatedAt: Date.now(),
     });
 
+    const updatedRolesTarget = { ...target, roles: nextRoles as any };
+    await syncBetterAuthRole(ctx, updatedRolesTarget);
+    if (isPrivilegeReduction(target.roles, nextRoles)) {
+      await revokeBetterAuthSessions(ctx, target.authUserId);
+    }
+
     await logAuditEvent(ctx, {
       actorId: actor._id,
       action: "user.roles_assigned",
@@ -754,37 +789,15 @@ export const resetPassword = mutation({
     if (!target) {
       throw new ConvexError("User not found.");
     }
-
-    const targetIsPrivileged = target.roles.some((role) =>
-      ["ADMIN", "SUPER_ADMIN"].includes(role),
-    );
-    if (targetIsPrivileged && !actor.roles.includes("SUPER_ADMIN")) {
-      throw new ConvexError("Only super admins can reset admin passwords.");
-    }
-
-    if (
-      actor.roles.includes("SUPPORT_STAFF") &&
-      !target.roles.some((role) =>
-        ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
-      )
-    ) {
-      throw new ConvexError("Support staff can only reset student passwords.");
-    }
+    assertCanResetPassword(actor, target);
 
     if (!target.authUserId) {
       throw new ConvexError("User is not linked to an auth account.");
     }
 
     const temporaryPassword = generateTemporaryPassword();
-    const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-
-    await auth.api.setUserPassword({
-      body: {
-        userId: target.authUserId,
-        newPassword: temporaryPassword,
-      },
-      headers,
-    });
+    await setBetterAuthPassword(ctx, target.authUserId, temporaryPassword);
+    await revokeBetterAuthSessions(ctx, target.authUserId);
 
     await ctx.db.patch(target._id, {
       mustResetPassword: true,
@@ -799,5 +812,126 @@ export const resetPassword = mutation({
     });
 
     return { temporaryPassword };
+  },
+});
+
+export const reconcileBetterAuthRoles = internalMutation({
+  args: {
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({
+    repaired: v.number(),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({
+      numItems: 25,
+      cursor: args.cursor ?? null,
+    });
+
+    let repaired = 0;
+    for (const user of page.page) {
+      if (!user.authUserId) continue;
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "user",
+          where: [{ field: "_id", value: user.authUserId }],
+          update: { role: betterAuthRoleForAppRoles(user.roles) },
+        },
+      });
+      repaired += 1;
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.users.admin.reconcileBetterAuthRoles,
+        { cursor: page.continueCursor },
+      );
+    }
+
+    return {
+      repaired,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+export const rotateAllCredentialAccountsBatch = internalMutation({
+  args: {
+    acknowledgeBulkSignOut: v.literal(true),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({
+    credentials: v.array(
+      v.object({
+        userId: v.id("users"),
+        uniqueId: v.string(),
+        temporaryPassword: v.string(),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({
+      numItems: 10,
+      cursor: args.cursor ?? null,
+    });
+    const credentials = [];
+
+    for (const user of page.page) {
+      if (!user.authUserId) continue;
+      const credentialAccount = await ctx.runQuery(
+        components.betterAuth.adapter.findOne,
+        {
+          model: "account",
+          where: [
+            { field: "userId", value: user.authUserId },
+            { field: "providerId", value: "credential" },
+          ],
+        },
+      );
+      if (!credentialAccount) continue;
+
+      const temporaryPassword = generateTemporaryPassword();
+      await setBetterAuthPassword(ctx, user.authUserId, temporaryPassword);
+      await revokeBetterAuthSessions(ctx, user.authUserId);
+      await ctx.db.patch(user._id, {
+        mustResetPassword: true,
+        updatedAt: Date.now(),
+      });
+      await logAuditEvent(ctx, {
+        action: "user.legacy_credential_rotated",
+        entityType: "user",
+        entityId: user._id,
+      });
+      credentials.push({
+        userId: user._id,
+        uniqueId: user.uniqueId,
+        temporaryPassword,
+      });
+    }
+
+    return {
+      credentials,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+export const rebuildPrivateUserSearchIndex = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.object({ updated: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("users").paginate({ numItems: 100, cursor: args.cursor ?? null });
+    for (const user of page.page) {
+      await ctx.db.patch(user._id, { searchText: searchText({ uniqueId: user.uniqueId, firstName: user.firstName, lastName: user.lastName }), updatedAt: Date.now() });
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.users.admin.rebuildPrivateUserSearchIndex, { cursor: page.continueCursor });
+    return { updated: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });

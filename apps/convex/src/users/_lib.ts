@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { authComponent, createAuth } from "../auth";
+import { hashPassword } from "better-auth/crypto";
+import { createAuth } from "../auth";
+import { components } from "../_generated/api";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { type AppRole } from "../../lib/roles";
@@ -146,13 +148,11 @@ export function searchText(args: {
   uniqueId: string;
   firstName: string;
   lastName: string;
-  email?: string;
 }) {
   return [
     args.uniqueId,
     args.firstName,
     args.lastName,
-    args.email,
     fullName(args.firstName, args.lastName),
   ]
     .filter(Boolean)
@@ -189,13 +189,132 @@ export function generateTemporaryPassword(length = 12) {
 }
 
 export function betterAuthRoleForAppRoles(roles: string[]) {
-  if (roles.includes("ADMIN") || roles.includes("SUPER_ADMIN")) {
+  if (roles.includes("SUPER_ADMIN")) {
+    return "super_admin";
+  }
+  if (roles.includes("ADMIN")) {
     return "admin";
   }
   if (roles.includes("SUPPORT_STAFF")) {
     return "support_staff";
   }
   return "user";
+}
+
+export function assertInitialPasswordAllowed(
+  password: string,
+  uniqueId: string,
+) {
+  if (password.length < 12) {
+    throw new ConvexError("Password must be at least 12 characters.");
+  }
+  if (password.toUpperCase() === uniqueId.toUpperCase()) {
+    throw new ConvexError("Password cannot match the user's unique ID.");
+  }
+}
+
+export function privilegeTierForRoles(roles: readonly string[]) {
+  if (roles.includes("SUPER_ADMIN")) return 4;
+  if (roles.includes("ADMIN")) return 3;
+  if (roles.includes("SUPPORT_STAFF")) return 2;
+  if (roles.includes("STUDENT_ADMIN")) return 1;
+  return 0;
+}
+
+export function isPrivilegeReduction(
+  currentRoles: readonly string[],
+  nextRoles: readonly string[],
+) {
+  return (
+    privilegeTierForRoles(nextRoles) < privilegeTierForRoles(currentRoles) ||
+    currentRoles.some((role) => !nextRoles.includes(role))
+  );
+}
+
+export function assertCanActOn(
+  actor: Pick<Doc<"users">, "roles">,
+  target: Pick<Doc<"users">, "roles">,
+) {
+  if (privilegeTierForRoles(target.roles) >= privilegeTierForRoles(actor.roles)) {
+    throw new ConvexError(
+      "You cannot act on an account with equal or greater privileges.",
+    );
+  }
+}
+
+export function assertCanResetPassword(
+  actor: Pick<Doc<"users">, "roles">,
+  target: Pick<Doc<"users">, "roles">,
+) {
+  assertCanActOn(actor, target);
+  if (
+    actor.roles.includes("SUPPORT_STAFF") &&
+    !target.roles.some((role) =>
+      ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"].includes(role),
+    )
+  ) {
+    throw new ConvexError("Support staff can only reset student passwords.");
+  }
+}
+
+export async function syncBetterAuthRole(
+  ctx: MutationCtx,
+  target: Pick<Doc<"users">, "authUserId" | "roles">,
+) {
+  if (!target.authUserId) return;
+  await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: "user",
+      where: [{ field: "_id", value: target.authUserId }],
+      update: { role: betterAuthRoleForAppRoles(target.roles) },
+    },
+  });
+}
+
+export async function revokeBetterAuthSessions(
+  ctx: MutationCtx,
+  authUserId: string | undefined,
+) {
+  if (!authUserId) return;
+  await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+    input: {
+      model: "session",
+      where: [{ field: "userId", value: authUserId }],
+    },
+    paginationOpts: { cursor: null, numItems: 1000 },
+  });
+}
+
+export async function setBetterAuthPassword(
+  ctx: MutationCtx,
+  authUserId: string,
+  password: string,
+) {
+  const account = (await ctx.runQuery(
+    components.betterAuth.adapter.findOne,
+    {
+      model: "account",
+      where: [
+        { field: "userId", value: authUserId },
+        { field: "providerId", value: "credential" },
+      ],
+    },
+  )) as { _id: string } | null;
+
+  if (!account) {
+    throw new ConvexError("Credential account not found.");
+  }
+
+  await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+    input: {
+      model: "account",
+      where: [{ field: "_id", value: account._id }],
+      update: {
+        password: await hashPassword(password),
+        updatedAt: Date.now(),
+      },
+    },
+  });
 }
 
 export async function assertUniqueUserKeys(
@@ -226,6 +345,8 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
   const email = normalizeEmail(args.email ?? buildStudentEmail(uniqueId));
   const password = args.password ?? generateTemporaryPassword();
   const now = Date.now();
+
+  assertInitialPasswordAllowed(password, uniqueId);
 
   await assertUniqueUserKeys(ctx, uniqueId, email);
 
@@ -261,7 +382,6 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
       uniqueId,
       firstName: args.firstName,
       lastName: args.lastName,
-      email,
     }),
     createdAt: now,
     updatedAt: now,

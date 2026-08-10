@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useConvex, useMutation } from "convex/react";
+import { useAction, useConvex, useMutation } from "convex/react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -11,6 +11,7 @@ import {
   type PreparedAvatarImage,
 } from "@/lib/avatar-image";
 import { unregisterStoredNativePushToken } from "@/lib/push";
+import { clearOfflineCache } from "@/lib/offline-cache";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
@@ -22,7 +23,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 export default function ProfileScreen() {
   const user = useCurrentUser();
   const convex = useConvex();
-  const saveImage = useMutation(api.users.me.saveUserImage);
+  const saveImage = useAction(api.users.me.saveUserImage);
   const clearImage = useMutation(api.users.me.clearUserImage);
   const changePassword = useMutation(api.users.auth.changePassword);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
@@ -44,7 +45,9 @@ export default function ProfileScreen() {
       const asset = result.assets[0];
       setAvatarUploading(true);
       prepared = await prepareAvatarImage(asset.uri);
-      const uploadUrl = await generateUploadUrl({});
+      const { uploadUrl, uploadIntentId } = await generateUploadUrl({
+        purpose: "USER_IMAGE",
+      });
       const upload = await prepared.file.upload(uploadUrl, {
         httpMethod: "POST",
         headers: { "Content-Type": prepared.mimeType },
@@ -56,6 +59,7 @@ export default function ProfileScreen() {
       const { storageId } = JSON.parse(upload.body) as { storageId: Id<"_storage"> };
       await saveImage({
         kind: "avatar",
+        uploadIntentId,
         storageId,
         mimeType: prepared.mimeType,
         size: prepared.size,
@@ -79,6 +83,7 @@ export default function ProfileScreen() {
         onPress: async () => {
           await unregisterStoredNativePushToken(convex).catch(() => {});
           await authClient.signOut();
+          await clearOfflineCache();
           router.replace("/login");
         },
       },
@@ -86,7 +91,7 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
-    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 12 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,

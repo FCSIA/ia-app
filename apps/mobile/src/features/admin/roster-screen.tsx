@@ -18,7 +18,6 @@ import {
   Card,
   Empty,
   Section,
-  Switch,
   Txt,
   useToast,
 } from "@/components/ui";
@@ -49,7 +48,6 @@ export function RosterScreen() {
   const { color } = useTheme();
   const { showToast } = useToast();
   const [selectedCsv, setSelectedCsv] = useState<SelectedCsv | null>(null);
-  const [generatePasswords, setGeneratePasswords] = useState(true);
   const [lastImport, setLastImport] = useState<ImportResult | null>(null);
   const [pending, setPending] = useState<"pick" | "import" | "export" | "credentials" | null>(null);
 
@@ -91,13 +89,12 @@ export function RosterScreen() {
     const invalidCopy = invalidRows
       ? ` ${invalidRows} invalid ${invalidRows === 1 ? "row is" : "rows are"} excluded.`
       : "";
-    const passwordCopy = generatePasswords
-      ? " A separate credentials CSV will open in the share sheet. Share it only through an approved school channel."
-      : " Student IDs will be used as initial passwords, which is less secure.";
+    const sharingNotice =
+      " A separate credentials CSV will open in the share sheet. Share it only through an approved school channel.";
 
     Alert.alert(
       `Create ${rows.length} ${rows.length === 1 ? "account" : "accounts"}?`,
-      `This creates live student accounts.${invalidCopy} Existing student IDs are skipped and never overwritten.${passwordCopy}`,
+      `This creates live student accounts.${invalidCopy} Existing student IDs are skipped and never overwritten.${sharingNotice}`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Import", onPress: () => void performImport() },
@@ -111,13 +108,12 @@ export function RosterScreen() {
     try {
       const result = await importStudents({
         rows: selectedCsv.preview.rows,
-        generatePasswords,
       });
       setLastImport(result);
       setSelectedCsv(null);
 
       let credentialsShareFailed = false;
-      if (generatePasswords && result.generatedCredentials.length) {
+      if (result.generatedCredentials.length) {
         try {
           await shareCredentials(result.generatedCredentials);
         } catch {
@@ -214,29 +210,13 @@ export function RosterScreen() {
         )}
 
         <Card variant="flat" style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="label">Generate random passwords</Txt>
-              <Txt variant="caption" tone="muted">
-                Opens a separate credentials CSV after import.
-              </Txt>
-            </View>
-            <Switch
-              value={generatePasswords}
-              onValueChange={setGeneratePasswords}
-              disabled={pending === "import"}
-              label="Generate random temporary passwords"
-            />
-          </View>
-          {generatePasswords ? (
-            <Txt variant="caption" tone="destructive">
-              Temporary passwords are sensitive. Do not send the credentials file through personal email or chat.
-            </Txt>
-          ) : (
-            <Txt variant="caption" tone="destructive">
-              New accounts will use student IDs as initial passwords. This is less secure.
-            </Txt>
-          )}
+          <Txt variant="label">Random temporary passwords</Txt>
+          <Txt variant="caption" tone="muted">
+            A separate credentials CSV opens after import.
+          </Txt>
+          <Txt variant="caption" tone="destructive">
+            Temporary passwords are sensitive. Do not send the credentials file through personal email or chat.
+          </Txt>
         </Card>
 
         <Button

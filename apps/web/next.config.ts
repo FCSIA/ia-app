@@ -1,9 +1,46 @@
 import type { NextConfig } from 'next';
 
+function origin(value: string | undefined) {
+  if (!value) return null;
+  try { return new URL(value).origin; } catch { return null; }
+}
+
+const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
+const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
+const websocketUrl = convexUrl?.replace(/^http/, 'ws');
+const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "object-src 'none'",
+  `connect-src ${connectSources}`,
+  "img-src 'self' data: blob: https://*.convex.cloud https://*.convex.site",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join('; ');
+
+export const globalSecurityHeaders = [
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), microphone=()' },
+];
+
 const nextConfig: NextConfig = {
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {
     return [
+      {
+        source: '/(.*)',
+        headers: globalSecurityHeaders,
+      },
       {
         source: '/sw.js',
         headers: [

@@ -716,22 +716,6 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
       if (hasAnswer) handleMultiNext();
     };
 
-    if (!question) {
-      return (
-        <div
-          ref={ref}
-          className={cn(
-            "w-full max-w-[520px] p-5 bg-card border border-border",
-            shape.container,
-            className
-          )}
-          {...rest}
-        >
-          <p className="text-[13px] text-muted-foreground">No questions.</p>
-        </div>
-      );
-    }
-
     // ── Layout calculations for hover/focus indicators ───────────
     const activeRect =
       activeIndex !== null ? itemRects[activeIndex] : null;
@@ -802,6 +786,22 @@ const AskUserQuestions = forwardRef<HTMLDivElement, AskUserQuestionsProps>(
     // unselected row bridges or splits two selected runs. Selected backgrounds
     // use shape.bg, so corners animate around its radius.
     const blocks = useMergeSplitBlocks(selectedGroups, itemRects, shape.bgRadius);
+
+    if (!question) {
+      return (
+        <div
+          ref={ref}
+          className={cn(
+            "w-full max-w-[520px] p-5 bg-card border border-border",
+            shape.container,
+            className
+          )}
+          {...rest}
+        >
+          <p className="text-[13px] text-muted-foreground">No questions.</p>
+        </div>
+      );
+    }
 
     const showBack = total > 1 && safeIndex > 0;
     const showSkip = total > 1 && isSkippable;

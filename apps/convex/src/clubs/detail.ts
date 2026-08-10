@@ -1,9 +1,8 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
-import { getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
-  anonymousClubContext,
   canPostInChannel,
   canReadChannel,
   getChannelViewerContext,
@@ -11,22 +10,109 @@ import {
   isClubLeadershipRole,
 } from "./access";
 import {
+  clubSummaryValidator,
+  clubUserRefValidator,
+  clubViewerStateValidator,
   clubSummaryWithCounts,
   getVisibleChannels,
   toClubUserRef,
   toViewerState,
+  visibleClubChannelValidator,
+  workspaceClubChannelValidator,
 } from "./serialize";
+import {
+  clubJoinRequestStatusValidator,
+  clubMemberRoleValidator,
+} from "../validators";
+
+const clubMemberWithUserValidator = v.object({
+  userId: v.id("users"),
+  role: v.union(clubMemberRoleValidator, v.null()),
+  user: clubUserRefValidator,
+});
+const clubSponsorWithUserValidator = v.object({
+  userId: v.id("users"),
+  user: clubUserRefValidator,
+});
+const clubDetailValidator = v.union(
+  v.object({
+    ...clubSummaryValidator.fields,
+    members: v.array(clubMemberWithUserValidator),
+    leaders: v.array(clubMemberWithUserValidator),
+    sponsors: v.array(clubSponsorWithUserValidator),
+    channels: v.array(visibleClubChannelValidator),
+    tags: v.array(
+      v.object({
+        _id: v.id("clubTags"),
+        clubId: v.id("clubs"),
+        name: v.string(),
+        slug: v.string(),
+        createdById: v.id("users"),
+        createdAt: v.number(),
+        members: v.array(v.object({ user: clubUserRefValidator })),
+      }),
+    ),
+    directory: v.array(
+      v.object({
+        ...clubUserRefValidator.fields,
+        kind: v.union(v.literal("SPONSOR"), v.literal("MEMBER")),
+        clubRole: v.union(clubMemberRoleValidator, v.null()),
+        joinedAt: v.string(),
+      }),
+    ),
+    viewer: clubViewerStateValidator,
+    pendingJoinRequests: v.array(
+      v.object({
+        _id: v.id("clubJoinRequests"),
+        clubId: v.id("clubs"),
+        requesterId: v.id("users"),
+        status: clubJoinRequestStatusValidator,
+        createdAt: v.string(),
+        requester: clubUserRefValidator,
+      }),
+    ),
+    activeJoinCode: v.union(
+      v.object({
+        code: v.string(),
+        updatedAt: v.union(v.string(), v.null()),
+        expiresAt: v.string(),
+      }),
+      v.null(),
+    ),
+  }),
+  v.null(),
+);
+
+const workspaceNavigationValidator = v.union(
+  v.object({
+    club: v.object({
+      _id: v.id("clubs"),
+      name: v.string(),
+      logoUrl: v.union(v.string(), v.null()),
+    }),
+    viewer: v.object({ canManageChannels: v.boolean() }),
+    channels: v.array(workspaceClubChannelValidator),
+    myClubs: v.array(
+      v.object({
+        _id: v.id("clubs"),
+        name: v.string(),
+        logoUrl: v.union(v.string(), v.null()),
+        role: v.union(clubMemberRoleValidator, v.null()),
+      }),
+    ),
+  }),
+  v.null(),
+);
 
 export const get = query({
   args: { clubId: v.id("clubs") },
+  returns: clubDetailValidator,
   handler: async (ctx, args) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getCurrentAppUser(ctx);
     const club = await ctx.db.get(args.clubId);
     if (!club || !club.isActive) return null;
 
-    const context = user
-      ? await getViewerContext(ctx, args.clubId, user)
-      : anonymousClubContext(club);
+    const context = await getViewerContext(ctx, args.clubId, user);
 
     const [memberships, sponsorsRows, tags, pendingRequests] = await Promise.all([
       ctx.db
@@ -100,7 +186,12 @@ export const get = query({
           }),
         );
         return {
-          ...tag,
+          _id: tag._id,
+          clubId: tag.clubId,
+          name: tag.name,
+          slug: tag.slug,
+          createdById: tag.createdById,
+          createdAt: tag.createdAt,
           members: membersWithUsers.filter((m): m is NonNullable<typeof m> => !!m),
         };
       }),
@@ -111,7 +202,10 @@ export const get = query({
         const requester = await ctx.db.get(request.requesterId);
         if (!requester) return null;
         return {
-          ...request,
+          _id: request._id,
+          clubId: request.clubId,
+          requesterId: request.requesterId,
+          status: request.status,
           createdAt: new Date(request.createdAt).toISOString(),
           requester: toClubUserRef(requester),
         };
@@ -142,7 +236,7 @@ export const get = query({
       club,
       context.membership?.role ?? null,
     );
-    const channels = user && context.canAccessWorkspace
+    const channels = context.canAccessWorkspace
       ? await getVisibleChannels(ctx, args.clubId, context, user._id)
       : [];
 
@@ -159,12 +253,13 @@ export const get = query({
         (r): r is NonNullable<typeof r> => !!r,
       ),
       activeJoinCode:
-        context.canManageMembership && club.joinCode
+        context.canManageMembership && club.joinCode && club.joinCodeExpiresAt && club.joinCodeExpiresAt > Date.now()
           ? {
               code: club.joinCode,
               updatedAt: club.joinCodeUpdatedAt
                 ? new Date(club.joinCodeUpdatedAt).toISOString()
                 : null,
+              expiresAt: new Date(club.joinCodeExpiresAt).toISOString(),
             }
           : null,
     };
@@ -174,6 +269,7 @@ export const get = query({
 /** Small, stable payload for the club shell on every workspace route. */
 export const getWorkspaceNavigation = query({
   args: { clubId: v.id("clubs") },
+  returns: workspaceNavigationValidator,
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
@@ -209,7 +305,14 @@ export const getWorkspaceNavigation = query({
           const channelWithMemberships = { ...channel, memberships };
           if (!canReadChannel(channelWithMemberships, context, user._id)) return null;
           return {
-            ...channel,
+            _id: channel._id,
+            clubId: channel.clubId,
+            name: channel.name,
+            description: channel.description,
+            visibility: channel.visibility,
+            createdById: channel.createdById,
+            createdAt: channel.createdAt,
+            updatedAt: channel.updatedAt,
             memberships: memberships.map((membership) => ({ userId: membership.userId })),
             viewerCanPost: canPostInChannel(channelWithMemberships, context, user._id),
           };

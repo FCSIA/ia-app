@@ -44,7 +44,7 @@ export default function EventDetailScreen() {
     setIsReporting(true);
     try {
       await report({
-        contentType: "event",
+        contentType: "EVENT",
         contentId: item._id,
         reason: reason.trim(),
         reportedUserId: item.authorId,

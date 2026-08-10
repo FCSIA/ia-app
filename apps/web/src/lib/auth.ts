@@ -1,19 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export type AppUser = NonNullable<FunctionReturnType<typeof api.users.me.me>>;
+export type CachedDisplayUser = Pick<AppUser, '_id' | 'firstName' | 'lastName' | 'avatarUrl'>;
 
-export function getUser(): AppUser | null {
+const USER_CACHE_KEY = 'ia_user:v1';
+const LEGACY_USER_CACHE_KEY = 'ia_user';
+
+export function getUser(): CachedDisplayUser | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem('ia_user');
+  localStorage.removeItem(LEGACY_USER_CACHE_KEY);
+  const raw = localStorage.getItem(USER_CACHE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as AppUser;
+    return JSON.parse(raw) as CachedDisplayUser;
   } catch {
     return null;
   }
@@ -22,15 +27,26 @@ export function getUser(): AppUser | null {
 export function cacheUser(user: AppUser | null) {
   if (typeof window === 'undefined') return;
   if (user) {
-    localStorage.setItem('ia_user', JSON.stringify(user));
+    const display: CachedDisplayUser = {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+    };
+    localStorage.setItem(USER_CACHE_KEY, JSON.stringify(display));
+    localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   } else {
-    localStorage.removeItem('ia_user');
+    localStorage.removeItem(USER_CACHE_KEY);
+    localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   }
 }
 
 export function clearAuth() {
-  localStorage.removeItem('ia_user');
+  localStorage.removeItem(USER_CACHE_KEY);
+  localStorage.removeItem(LEGACY_USER_CACHE_KEY);
   localStorage.removeItem('ia_token');
+  if ('caches' in window) void caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
+  navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_AUTH_CACHES' });
 }
 
 export function hasRole(user: AppUser | null, ...roles: AppRole[]): boolean {
@@ -54,21 +70,13 @@ export function isSuperAdmin(user: AppUser | null): boolean {
 export function useCurrentUser(): AppUser | null {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
-  const [cachedUser, setCachedUser] = useState<AppUser | null>(null);
-
-  useEffect(() => {
-    setCachedUser(getUser());
-  }, []);
-
   useEffect(() => {
     if (user) {
       cacheUser(user);
-      setCachedUser(user);
     } else if (!isLoading && !isAuthenticated) {
       cacheUser(null);
-      setCachedUser(null);
     }
   }, [isAuthenticated, isLoading, user]);
 
-  return user ?? cachedUser;
+  return user ?? null;
 }

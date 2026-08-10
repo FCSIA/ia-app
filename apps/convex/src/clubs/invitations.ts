@@ -5,6 +5,29 @@ import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
 import { clubAudience, deliverMany, deliverNotification } from "../notifications/delivery";
+import { clubJoinRateLimiter, contentRateLimiter } from "../rateLimits";
+
+const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const JOIN_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function generateSecureJoinCode() {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => JOIN_CODE_ALPHABET[byte % JOIN_CODE_ALPHABET.length]).join("");
+}
+
+async function addClubMember(ctx: MutationCtx, clubId: Id<"clubs">, userId: Id<"users">) {
+  const existing = await ctx.db.query("clubMembers").withIndex("by_clubId_and_userId", (q) => q.eq("clubId", clubId).eq("userId", userId)).unique();
+  if (existing) return false;
+  const club = await ctx.db.get(clubId);
+  if (!club || !club.isActive) throw new Error("Club not found");
+  if (club.memberLimit != null) {
+    const members = await ctx.db.query("clubMembers").withIndex("by_clubId", (q) => q.eq("clubId", clubId)).take(club.memberLimit);
+    if (members.length >= club.memberLimit) throw new Error("Club member limit reached");
+  }
+  await ctx.db.insert("clubMembers", { clubId, userId, role: "MEMBER", joinedAt: Date.now() });
+  return true;
+}
 
 export const searchInviteCandidates = query({
   args: {
@@ -127,21 +150,7 @@ export const joinOpenClub = mutation({
       throw new Error("Club is not open to join");
     }
 
-    const existingMember = await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", args.clubId).eq("userId", user._id),
-      )
-      .first();
-
-    if (!existingMember) {
-      await ctx.db.insert("clubMembers", {
-        clubId: args.clubId,
-        userId: user._id,
-        role: "MEMBER",
-        joinedAt: Date.now(),
-      });
-      
+    if (await addClubMember(ctx, args.clubId, user._id)) {
       await ctx.db.insert("auditEvents", {
         action: "CLUB_JOINED",
         entityType: "Club",
@@ -157,6 +166,8 @@ export const requestToJoin = mutation({
   args: { clubId: v.id("clubs") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const rate = await contentRateLimiter.limit(ctx, "joinRequestsByUser", { key: user._id });
+    if (!rate.ok) throw new Error("Too many join requests. Try again later.");
     const club = await ctx.db.get(args.clubId);
 
     if (!club || !club.isActive) {
@@ -209,19 +220,13 @@ export const respondToJoinRequest = mutation({
       throw new Error("Join request not found or already processed");
     }
 
+    if (args.accept) {
+      await addClubMember(ctx, args.clubId, request.requesterId);
+    }
     await ctx.db.patch(args.requestId, {
       status: args.accept ? "APPROVED" : "DECLINED",
       updatedAt: Date.now(),
     });
-
-    if (args.accept) {
-      await ctx.db.insert("clubMembers", {
-        clubId: args.clubId,
-        userId: request.requesterId,
-        role: "MEMBER",
-        joinedAt: Date.now(),
-      });
-    }
     const club = await ctx.db.get(args.clubId);
     await deliverNotification(ctx, {
       userId: request.requesterId,
@@ -326,19 +331,13 @@ export const respondToInvite = mutation({
       throw new Error("Invite not found or already processed");
     }
 
+    if (args.accept) {
+      await addClubMember(ctx, invite.clubId, user._id);
+    }
     await ctx.db.patch(args.inviteId, {
       status: args.accept ? "ACCEPTED" : "DECLINED",
       updatedAt: Date.now(),
     });
-
-    if (args.accept) {
-      await ctx.db.insert("clubMembers", {
-        clubId: invite.clubId,
-        userId: user._id,
-        role: "MEMBER",
-        joinedAt: Date.now(),
-      });
-    }
   },
 });
 
@@ -352,13 +351,27 @@ export const generateJoinCode = mutation({
       throw new Error("Not authorized");
     }
 
-    // simplistic code gen for demo
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const code = generateSecureJoinCode();
+    const now = Date.now();
     await ctx.db.patch(args.clubId, {
       joinCode: code,
-      joinCodeUpdatedAt: Date.now(),
+      joinCodeUpdatedAt: now,
+      joinCodeExpiresAt: now + JOIN_CODE_TTL_MS,
     });
+    await ctx.db.insert("auditEvents", { actorId: user._id, action: "CLUB_JOIN_CODE_GENERATED", entityType: "Club", entityId: args.clubId, createdAt: now });
     return code;
+  },
+});
+
+export const revokeJoinCode = mutation({
+  args: { clubId: v.id("clubs") }, returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageMembership) throw new Error("Not authorized");
+    await ctx.db.patch(args.clubId, { joinCode: undefined, joinCodeUpdatedAt: Date.now(), joinCodeExpiresAt: undefined });
+    await ctx.db.insert("auditEvents", { actorId: user._id, action: "CLUB_JOIN_CODE_REVOKED", entityType: "Club", entityId: args.clubId, createdAt: Date.now() });
+    return null;
   },
 });
 
@@ -366,26 +379,14 @@ export const redeemJoinCode = mutation({
   args: { clubId: v.id("clubs"), code: v.string() },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const rate = await clubJoinRateLimiter.limit(ctx, "codeRedemptionsByUser", { key: user._id });
+    if (!rate.ok) throw new Error("Too many join-code attempts. Try again later.");
     const club = await ctx.db.get(args.clubId);
 
-    if (!club || !club.isActive || club.joinCode !== args.code) {
+    if (!club || !club.isActive || club.joinCode !== args.code.trim().toUpperCase() || !club.joinCodeExpiresAt || club.joinCodeExpiresAt <= Date.now()) {
       throw new Error("Invalid join code");
     }
-
-    const existingMember = await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId_and_userId", (q) =>
-        q.eq("clubId", args.clubId).eq("userId", user._id),
-      )
-      .first();
-
-    if (!existingMember) {
-      await ctx.db.insert("clubMembers", {
-        clubId: args.clubId,
-        userId: user._id,
-        role: "MEMBER",
-        joinedAt: Date.now(),
-      });
-    }
+    const inserted = await addClubMember(ctx, args.clubId, user._id);
+    if (inserted) await ctx.db.insert("auditEvents", { actorId: user._id, action: "CLUB_JOIN_CODE_REDEEMED", entityType: "Club", entityId: args.clubId, createdAt: Date.now() });
   },
 });

@@ -8,6 +8,9 @@ import { docs } from "../../lib/docs";
 import { activeAdmins, deliverMany } from "../notifications/delivery";
 import { canReadChannel, getViewerContext } from "../clubs/access";
 import { normalizeModerationReportReason } from "./reportValidation";
+import { contentRateLimiter } from "../rateLimits";
+
+const genericReportContentTypeValidator = v.union(v.literal("GENERAL"), v.literal("ANNOUNCEMENT"), v.literal("EVENT"));
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -67,13 +70,15 @@ async function createReport(
   ctx: MutationCtx,
   user: Doc<"users">,
   input: {
-    contentType: string;
+    contentType: "GENERAL" | "ANNOUNCEMENT" | "EVENT" | "CLUB_CHANNEL_MESSAGE";
     contentId: string;
     reason: string;
     reportedUserId?: Id<"users">;
     clubId?: Id<"clubs">;
   },
 ) {
+  const rate = await contentRateLimiter.limit(ctx, "reportsByUser", { key: user._id });
+  if (!rate.ok) throw new ConvexError("Too many reports. Try again later.");
   const reportId = await ctx.db.insert("moderationReports", {
     submitterId: user._id,
     contentType: input.contentType,
@@ -154,7 +159,7 @@ export const list = query({
 
 export const submit = mutation({
   args: {
-    contentType: v.string(),
+    contentType: genericReportContentTypeValidator,
     contentId: v.string(),
     reason: v.string(),
     reportedUserId: v.optional(v.id("users")),
@@ -163,6 +168,15 @@ export const submit = mutation({
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    if (Array.from(args.contentId).length < 1 || Array.from(args.contentId).length > 128) throw new ConvexError("Invalid report reference");
+    if (args.contentType === "EVENT") {
+      const id = ctx.db.normalizeId("events", args.contentId);
+      if (!id || !(await ctx.db.get(id))) throw new ConvexError("Event not found");
+    }
+    if (args.contentType === "ANNOUNCEMENT") {
+      const id = ctx.db.normalizeId("announcements", args.contentId);
+      if (!id || !(await ctx.db.get(id))) throw new ConvexError("Announcement not found");
+    }
     return await createReport(ctx, user, {
       ...args,
       reason: normalizeModerationReportReason(args.reason),

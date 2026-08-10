@@ -1,6 +1,10 @@
 import { v } from "convex/values";
-import { query, mutation } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { action, internalMutation, query, mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUserUnchecked,
+} from "../../lib/currentUser";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -9,6 +13,9 @@ import {
   MAX_USER_BACKGROUND_BYTES,
 } from "../uploads/limits";
 import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
+import { claimUploadIntent } from "../uploads/uploadIntents";
+import { assertSafeStoredFile } from "../uploads/fileSignatures";
+import { recordUploadUsage } from "../uploads/quota";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 
@@ -28,7 +35,7 @@ export const me = query({
   args: {},
   returns: v.union(userSelfProfileValidator, v.null()),
   handler: async (ctx) => {
-    const user = await getMaybeCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUserUnchecked(ctx);
     if (!user) return null;
     return toUserSelfProfile(user);
   },
@@ -54,9 +61,10 @@ export const updateDashboardLayout = mutation({
   },
 });
 
-export const saveUserImage = mutation({
+export const saveUserImageMutation = internalMutation({
   args: {
     kind: userImageKindValidator,
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     mimeType: v.string(),
     size: v.number(),
@@ -64,6 +72,12 @@ export const saveUserImage = mutation({
   returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "USER_IMAGE",
+    });
     const maxBytes =
       args.kind === "avatar" ? MAX_USER_AVATAR_BYTES : MAX_USER_BACKGROUND_BYTES;
     const metadata = await ctx.db.system.get("_storage", args.storageId);
@@ -74,13 +88,19 @@ export const saveUserImage = mutation({
 
     const mimeType = (metadata.contentType ?? args.mimeType).toLowerCase();
 
-    if (!mimeType.startsWith("image/")) {
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType)) {
       await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Only image uploads are allowed");
     }
     if (metadata.size > maxBytes) {
       await deleteStoredFile(ctx, args.storageId);
       throw new ConvexError("Image too large");
+    }
+    try {
+      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: metadata.size });
+    } catch (error) {
+      await deleteStoredFile(ctx, args.storageId);
+      throw error;
     }
 
     const url = await ctx.storage.getUrl(args.storageId);
@@ -110,6 +130,23 @@ export const saveUserImage = mutation({
       throw new ConvexError("User not found.");
     }
     return toUserSelfProfile(updated);
+  },
+});
+
+export const saveUserImage = action({
+  args: { kind: userImageKindValidator, uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), mimeType: v.string(), size: v.number() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args): Promise<ReturnType<typeof toUserSelfProfile>> => {
+    const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "USER_IMAGE" });
+    try {
+      const response = await fetch(prepared.url);
+      if (!response.ok) throw new ConvexError("Upload not found");
+      await assertSafeStoredFile(await response.blob(), (prepared.contentType ?? args.mimeType).toLowerCase());
+    } catch (error) {
+      await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, { uploadIntentId: args.uploadIntentId, storageId: args.storageId });
+      throw error;
+    }
+    return ctx.runMutation(internal.users.me.saveUserImageMutation, args);
   },
 });
 

@@ -1066,14 +1066,14 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       clearAuthData: FunctionReference<
         "mutation",
         "internal",
-        {},
+        { maintenanceSecret: string },
         Record<string, number>,
         Name
       >;
       deleteUserData: FunctionReference<
         "mutation",
         "internal",
-        { userId: string },
+        { maintenanceSecret: string; userId: string },
         { accounts: number; sessions: number; user: boolean },
         Name
       >;

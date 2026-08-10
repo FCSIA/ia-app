@@ -14,7 +14,33 @@ export async function getCurrentAppUser(ctx: Ctx): Promise<Doc<"users">> {
   return user;
 }
 
+export async function getCurrentAppUserForPasswordReset(
+  ctx: Ctx,
+): Promise<Doc<"users">> {
+  const user = await getMaybeCurrentAppUserUnchecked(ctx);
+  if (!user) {
+    throw new ConvexError("Unauthenticated");
+  }
+  return user;
+}
+
 export async function getMaybeCurrentAppUser(ctx: Ctx): Promise<Doc<"users"> | null> {
+  const user = await getMaybeCurrentAppUserUnchecked(ctx);
+  assertPasswordResetComplete(user);
+  return user;
+}
+
+export function assertPasswordResetComplete(
+  user: Pick<Doc<"users">, "mustResetPassword"> | null,
+) {
+  if (user?.mustResetPassword) {
+    throw new ConvexError("Password reset required");
+  }
+}
+
+export async function getMaybeCurrentAppUserUnchecked(
+  ctx: Ctx,
+): Promise<Doc<"users"> | null> {
   const authUser = await authComponent.safeGetAuthUser(ctx);
   if (!authUser) {
     return null;

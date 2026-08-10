@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { appRoleValidator } from "../validators";
 import { getChannelViewerContext } from "../clubs/access";
 
 const MAX_PEOPLE_RESULTS = 12;
@@ -15,7 +14,6 @@ const personResultValidator = v.object({
   firstName: v.string(),
   lastName: v.string(),
   avatarUrl: v.union(v.string(), v.null()),
-  roles: v.array(appRoleValidator),
 });
 
 const channelResultValidator = v.object({
@@ -91,14 +89,13 @@ export const palette = query({
     ]);
 
     const people = peopleRows
-      .filter((person) => person.isActive && person._id !== user._id)
+      .filter((person) => person.isActive && person._id !== user._id && (!user.isStudent || (person.isStudent && person.gradeLevel === user.gradeLevel)))
       .slice(0, MAX_PEOPLE_RESULTS)
       .map((person) => ({
         _id: person._id,
         firstName: person.firstName,
         lastName: person.lastName,
         avatarUrl: person.avatarUrl ?? null,
-        roles: person.roles,
       }));
 
     const channels: Array<{

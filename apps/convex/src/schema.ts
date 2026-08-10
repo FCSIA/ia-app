@@ -72,6 +72,8 @@ export const schema = defineSchema({
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_uniqueId", ["uniqueId"])
     .index("by_email", ["email"])
+    .index("by_avatarStorageId", ["avatarStorageId"])
+    .index("by_customBackgroundStorageId", ["customBackgroundStorageId"])
     .index("by_isActive", ["isActive"])
     .index("by_lastName_and_firstName", ["lastName", "firstName"])
     .index("by_isStudent_and_lastName_and_firstName", [
@@ -119,6 +121,13 @@ export const schema = defineSchema({
       "entityId",
       "createdAt",
     ]),
+
+  loginFailures: defineTable({
+    accountKey: v.string(),
+    failureCount: v.number(),
+    lockedUntil: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_accountKey", ["accountKey"]),
 
   notificationDeliveries: defineTable({
     userId: v.id("users"),
@@ -479,18 +488,23 @@ export const schema = defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
     bannerUrl: v.optional(v.string()),
+    bannerStorageId: v.optional(v.id("_storage")),
     accentColor: v.optional(v.string()),
     overview: v.optional(v.string()),
     joinPolicy: clubJoinPolicyValidator,
     memberLimit: v.optional(v.number()),
     joinCode: v.optional(v.string()),
     joinCodeUpdatedAt: v.optional(v.number()),
+    joinCodeExpiresAt: v.optional(v.number()),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_isActive", ["isActive"])
+    .index("by_logoStorageId", ["logoStorageId"])
+    .index("by_bannerStorageId", ["bannerStorageId"])
     .index("by_isActive_and_name", ["isActive", "name"]),
 
   clubMembers: defineTable({
@@ -694,7 +708,9 @@ export const schema = defineSchema({
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     createdAt: v.number(),
-  }).index("by_messageId_and_createdAt", ["messageId", "createdAt"]),
+  })
+    .index("by_messageId_and_createdAt", ["messageId", "createdAt"])
+    .index("by_storageId", ["storageId"]),
 
   clubChannelAttachmentUploads: defineTable({
     uploaderId: v.id("users"),
@@ -705,6 +721,30 @@ export const schema = defineSchema({
     createdAt: v.number(),
   })
     .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
+  uploadIntents: defineTable({
+    uploaderId: v.id("users"),
+    purpose: v.union(
+      v.literal("CHAT_ATTACHMENT"),
+      v.literal("CLUB_IMAGE"),
+      v.literal("USER_IMAGE"),
+    ),
+    storageId: v.optional(v.id("_storage")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    claimedAt: v.optional(v.number()),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
+  uploadUsage: defineTable({
+    uploaderId: v.id("users"),
+    uploadIntentId: v.id("uploadIntents"),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_uploadIntentId", ["uploadIntentId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
   clubChannelMessageReactions: defineTable({
@@ -941,6 +981,15 @@ export const schema = defineSchema({
     completedAt: v.optional(v.union(v.number(), v.null())),
     error: v.optional(v.union(v.string(), v.null())),
   }).index("by_key", ["key"]),
+
+  seedCredentials: defineTable({
+    runId: v.string(),
+    uniqueId: v.string(),
+    temporaryPassword: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_runId_and_createdAt", ["runId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
 });
 
 export default schema;

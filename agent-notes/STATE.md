@@ -2,14 +2,31 @@
 
 ## Active Focus
 
-- **Branch**: `main`
-- **Goal**: Keep the merged reconciliation work stable while the excluded draft
-  FERPA and login follow-ups remain under separate review.
+- **Branch**: `codex/security-audit-remediation`
+- **Goal**: Land the complete remediation for
+  `docs/reference/security-audit-2026-08-09.md` without touching production.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Security Audit Remediation (2026-08-09)
+
+- All critical, high, medium, and low findings in the dated security audit have
+  code remediations on `codex/security-audit-remediation`.
+- The work covers Better Auth route and role hardening, forced password reset,
+  private club/channel access, upload ownership and file-signature validation,
+  abuse throttles, response validators, client cache cleanup, dependency and CI
+  pinning, and destructive-operation maintenance authorization.
+- Full tests, lint, production build, frozen install, and the production
+  dependency audit pass. A built Next.js request against the isolated local
+  Convex deployment returns `200` with enforcing CSP, HSTS, frame, MIME,
+  referrer, and permissions-policy headers.
+- Production was not selected or mutated. After merge/deploy, an authorized
+  operator must run the documented role/search reconciliation and rotate any
+  remaining legacy imported credentials before declaring the live deployment
+  remediated.
 
 ### PR Reconciliation (2026-08-08)
 

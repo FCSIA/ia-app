@@ -1,16 +1,38 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, type MutationCtx } from "../_generated/server";
+import { action, internalMutation, mutation, type ActionCtx, type MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
+import { getClubContext } from "../clubs/access";
+import { assertSafeStoredFile } from "./fileSignatures";
+import { uploadRateLimiter } from "../rateLimits";
+import { recordUploadUsage } from "./quota";
 import {
   STAGED_CHAT_ATTACHMENT_TTL_MS,
   assertStagedChatAttachmentOwner,
   normalizeChatAttachmentFileName,
   validateChatAttachmentMetadata,
 } from "./chatAttachments";
+import {
+  claimUploadIntent,
+  UPLOAD_INTENT_TTL_MS,
+  uploadPurposeValidator,
+} from "./uploadIntents";
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
+
+async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE"; fallbackMimeType?: string }) {
+  const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, args);
+  try {
+    const response = await fetch(prepared.url);
+    if (!response.ok) throw new ConvexError("Upload not found");
+    await assertSafeStoredFile(await response.blob(), (prepared.contentType ?? args.fallbackMimeType ?? "application/octet-stream").toLowerCase());
+    return prepared;
+  } catch (error) {
+    await ctx.runMutation(internal.uploads.uploadIntents.discardRejectedUpload, { uploadIntentId: args.uploadIntentId, storageId: args.storageId });
+    throw error;
+  }
+}
 
 const MAX_CLUB_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_CLUB_IMAGE_TYPES = new Set([
@@ -57,16 +79,37 @@ async function getUploadedMetadata(ctx: MutationCtx, storageId: Id<"_storage">) 
 }
 
 export const generateUploadUrl = mutation({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    await getCurrentAppUser(ctx);
-    return await ctx.storage.generateUploadUrl();
+  args: { purpose: uploadPurposeValidator },
+  returns: v.object({
+    uploadUrl: v.string(),
+    uploadIntentId: v.id("uploadIntents"),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const rate = await uploadRateLimiter.limit(ctx, "urlsByUser", { key: user._id });
+    if (!rate.ok) throw new ConvexError("Too many upload requests. Try again later.");
+    const now = Date.now();
+    const uploadIntentId = await ctx.db.insert("uploadIntents", {
+      uploaderId: user._id,
+      purpose: args.purpose,
+      createdAt: now,
+      expiresAt: now + UPLOAD_INTENT_TTL_MS,
+    });
+    await ctx.scheduler.runAfter(
+      UPLOAD_INTENT_TTL_MS,
+      internal.uploads.uploadIntents.cleanupUploadIntent,
+      { uploadIntentId },
+    );
+    return {
+      uploadUrl: await ctx.storage.generateUploadUrl(),
+      uploadIntentId,
+    };
   },
 });
 
-export const finalizeChatAttachment = mutation({
+export const finalizeChatAttachmentMutation = internalMutation({
   args: {
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     fileName: v.string(),
   },
@@ -78,6 +121,12 @@ export const finalizeChatAttachment = mutation({
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "CHAT_ATTACHMENT",
+    });
     const existing = await ctx.db
       .query("clubChannelAttachmentUploads")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
@@ -98,6 +147,7 @@ export const finalizeChatAttachment = mutation({
       const metadata = await getUploadedMetadata(ctx, args.storageId);
       fileName = normalizeChatAttachmentFileName(args.fileName);
       validated = validateChatAttachmentMetadata(metadata);
+      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
       if (!(await ctx.storage.getUrl(args.storageId))) {
         throw new ConvexError("Upload failed");
       }
@@ -129,6 +179,15 @@ export const finalizeChatAttachment = mutation({
   },
 });
 
+export const finalizeChatAttachment = action({
+  args: { uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), fileName: v.string() },
+  returns: v.object({ attachmentUploadId: v.id("clubChannelAttachmentUploads"), fileName: v.string(), mimeType: v.string(), size: v.number() }),
+  handler: async (ctx, args): Promise<{ attachmentUploadId: Id<"clubChannelAttachmentUploads">; fileName: string; mimeType: string; size: number }> => {
+    await validateStoredUpload(ctx, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "CHAT_ATTACHMENT" });
+    return ctx.runMutation(internal.uploads.files.finalizeChatAttachmentMutation, args);
+  },
+});
+
 export const discardChatAttachment = mutation({
   args: {
     attachmentUploadId: v.id("clubChannelAttachmentUploads"),
@@ -145,8 +204,11 @@ export const discardChatAttachment = mutation({
   },
 });
 
-export const finalizeClubImage = mutation({
+export const finalizeClubImageMutation = internalMutation({
   args: {
+    clubId: v.id("clubs"),
+    kind: v.union(v.literal("logo"), v.literal("banner")),
+    uploadIntentId: v.id("uploadIntents"),
     storageId: v.id("_storage"),
     originalName: v.string(),
     mimeType: v.string(),
@@ -161,19 +223,22 @@ export const finalizeClubImage = mutation({
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const canUpload =
-      user.roles.includes("ADMIN") ||
-      user.roles.includes("SUPER_ADMIN") ||
-      user.roles.includes("TEACHER") ||
-      user.roles.includes("STUDENT_LEADER") ||
-      user.roles.includes("STUDENT_ADMIN");
-    if (!canUpload) throw new ConvexError("Unauthorized");
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageMembership) throw new ConvexError("Unauthorized");
+
+    await claimUploadIntent(ctx, {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      uploaderId: user._id,
+      purpose: "CLUB_IMAGE",
+    });
 
     const metadata = await getUploadedMetadata(ctx, args.storageId);
 
     let validated: ReturnType<typeof validateClubImageMetadata>;
     try {
       validated = validateClubImageMetadata(metadata, args.mimeType);
+      await recordUploadUsage(ctx, { uploaderId: user._id, uploadIntentId: args.uploadIntentId, size: validated.size });
     } catch (error) {
       await deleteRejectedUpload(ctx, args.storageId);
       throw error;
@@ -184,6 +249,13 @@ export const finalizeClubImage = mutation({
       await deleteRejectedUpload(ctx, args.storageId);
       throw new ConvexError("Upload failed");
     }
+    const club = await ctx.db.get(args.clubId);
+    if (!club) throw new ConvexError("Club not found");
+    const previousStorageId = args.kind === "logo" ? club.logoStorageId : club.bannerStorageId;
+    await ctx.db.patch(club._id, args.kind === "logo"
+      ? { logoUrl: url, logoStorageId: args.storageId, updatedAt: Date.now() }
+      : { bannerUrl: url, bannerStorageId: args.storageId, updatedAt: Date.now() });
+    if (previousStorageId && previousStorageId !== args.storageId) await deleteRejectedUpload(ctx, previousStorageId);
 
     return {
       url,
@@ -192,5 +264,32 @@ export const finalizeClubImage = mutation({
       mimeType: validated.mimeType,
       size: validated.size,
     };
+  },
+});
+
+export const finalizeClubImage = action({
+  args: { clubId: v.id("clubs"), kind: v.union(v.literal("logo"), v.literal("banner")), uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), originalName: v.string(), mimeType: v.string(), size: v.number() },
+  returns: v.object({ url: v.string(), filename: v.string(), originalName: v.string(), mimeType: v.string(), size: v.number() }),
+  handler: async (ctx, args): Promise<{ url: string; filename: string; originalName: string; mimeType: string; size: number }> => {
+    await validateStoredUpload(ctx, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "CLUB_IMAGE", fallbackMimeType: args.mimeType });
+    return ctx.runMutation(internal.uploads.files.finalizeClubImageMutation, args);
+  },
+});
+
+export const clearClubImage = mutation({
+  args: { clubId: v.id("clubs"), kind: v.union(v.literal("logo"), v.literal("banner")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageMembership) throw new ConvexError("Unauthorized");
+    const club = await ctx.db.get(args.clubId);
+    if (!club) throw new ConvexError("Club not found");
+    const storageId = args.kind === "logo" ? club.logoStorageId : club.bannerStorageId;
+    await ctx.db.patch(club._id, args.kind === "logo"
+      ? { logoUrl: undefined, logoStorageId: undefined, updatedAt: Date.now() }
+      : { bannerUrl: undefined, bannerStorageId: undefined, updatedAt: Date.now() });
+    if (storageId) await deleteRejectedUpload(ctx, storageId);
+    return null;
   },
 });

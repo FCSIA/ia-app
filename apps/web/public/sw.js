@@ -1,6 +1,6 @@
 // Basic service worker for PWA install support
-const CACHE_NAME = 'ia-school-v1';
-const STATIC_ASSETS = ['/', '/dashboard', '/manifest.json'];
+const CACHE_NAME = 'ia-school-v2';
+const STATIC_ASSETS = ['/manifest.json', '/icon-192.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -35,6 +35,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'CLEAR_AUTH_CACHES') {
+    event.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))));
+  }
 });
 
 self.addEventListener('push', (event) => {

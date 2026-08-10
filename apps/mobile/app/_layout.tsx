@@ -4,7 +4,7 @@ import "../global.css";
 import { useEffect } from "react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { LogBox, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,6 +17,7 @@ import { convex } from "@/lib/convex";
 import { statusBarStyleForBackground } from "@/lib/status-bar-style";
 import { ThemeProvider, useTheme } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui";
+import { useLiveCurrentUser } from "@/lib/auth";
 
 LogBox.ignoreLogs(["[RNScreens] SplitView is supported only for iOS"]);
 
@@ -46,6 +47,24 @@ function RootNavigator() {
   );
 }
 
+function PasswordResetGate() {
+  const user = useLiveCurrentUser();
+  const router = useRouter();
+  const segments = useSegments();
+  const onPasswordPage = segments[0] === "change-password";
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.mustResetPassword && !onPasswordPage) {
+      router.replace("/change-password" as never);
+    } else if (!user.mustResetPassword && onPasswordPage) {
+      router.replace("/dashboard" as never);
+    }
+  }, [onPasswordPage, router, user]);
+
+  return null;
+}
+
 export default function Layout() {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
@@ -64,6 +83,7 @@ export default function Layout() {
                 <ToastProvider>
                   <AppErrorBoundary>
                     <AppLifecycle />
+                    <PasswordResetGate />
                     <RootNavigator />
                   </AppErrorBoundary>
                 </ToastProvider>
