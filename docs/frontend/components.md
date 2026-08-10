@@ -138,10 +138,11 @@ prefer the simpler text treatment instead of adding another badge.
 
 For labeled Fluid `Button` actions, pass decorative icons through
 `leadingIcon` or `trailingIcon`. Those semantic slots own the icon size, stroke,
-gap, and edge padding for each button size. Keep an icon as button children only
-for `icon-sm`, `icon`, or `icon-lg` controls, or when the children are genuinely
-rich content rather than a labeled action. Do not restore per-call-site icon
-sizes or margin utilities to compensate for the shared button geometry.
+and gap for each button size, while the button size supplies equal outer padding
+on both edges. Keep an icon as button children only for `icon-sm`, `icon`, or
+`icon-lg` controls, or when the children are genuinely rich content rather than
+a labeled action. Do not restore per-call-site icon sizes or margin utilities to
+compensate for the shared button geometry.
 
 ## Chat Surfaces
 
