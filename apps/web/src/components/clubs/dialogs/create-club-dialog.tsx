@@ -18,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,8 +44,8 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
       : 'skip',
   );
 
-  const sponsorOptions = useMemo((): SelectablePerson[] => {
-    const options: SelectablePerson[] = [];
+  const sponsorOptions = useMemo(() => {
+    const options = [];
 
     for (const user of staffPage?.page ?? []) {
       const option = {
@@ -79,7 +78,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <FieldGroup className="gap-5">
+        <FieldGroup>
           <Field>
             <FieldLabel htmlFor="club-name">Name</FieldLabel>
             <Input
@@ -102,50 +101,54 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
           </Field>
 
           <Field>
-            <FieldLabel>Sponsors</FieldLabel>
-            <FieldDescription>Choose one or more faculty members to sponsor this club.</FieldDescription>
-            <PeoplePicker
-              people={sponsorOptions}
-              selectedIds={sponsorIds}
-              onChange={setSponsorIds}
-              placeholder="Select faculty sponsors"
-            />
+            <FieldLabel htmlFor="club-sponsor">Sponsor</FieldLabel>
+            <Select
+              value={sponsorIds[0] ?? ''}
+              onValueChange={(value) => setSponsorIds([value])}
+            >
+              <SelectTrigger id="club-sponsor" placeholder="Select faculty sponsor" />
+              <SelectContent>
+                <SelectGroup>
+                  {sponsorOptions.map((person, index) => (
+                    <SelectItem key={person._id} index={index} value={person._id}>
+                      {fullName(person)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
-              <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
-                <SelectTrigger id="join-policy" placeholder="Choose policy" />
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem index={0} value="OPEN">
-                      Open join
-                    </SelectItem>
-                    <SelectItem index={1} value="REQUEST">
-                      Request approval
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+          <Field>
+            <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
+            <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
+              <SelectTrigger id="join-policy" placeholder="Choose policy" />
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem index={0} value="OPEN">
+                    Open join
+                  </SelectItem>
+                  <SelectItem index={1} value="REQUEST">
+                    Request approval
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
 
-            <Field className="sm:col-span-2">
-              <FieldLabel>Member limit</FieldLabel>
-              <FieldDescription>New joins and approvals stop at this limit.</FieldDescription>
-              <Slider
-                value={memberLimit}
-                onChange={setMemberLimit}
-                min={10}
-                max={200}
-                step={10}
-                label="Members"
-                formatValue={(value) => `${value} members`}
-                showSteps
-                valuePosition="top"
-              />
-            </Field>
-          </div>
+          <Field>
+            <FieldLabel>Member limit</FieldLabel>
+            <FieldDescription>New joins and approvals stop at this limit.</FieldDescription>
+            <Slider
+              value={memberLimit}
+              onChange={(value) => setMemberLimit(value as number)}
+              min={10}
+              max={200}
+              step={10}
+              label="Members"
+              formatValue={(value) => `${value} members`}
+            />
+          </Field>
         </FieldGroup>
 
         <DialogFooter>
