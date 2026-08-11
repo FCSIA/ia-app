@@ -57,24 +57,27 @@ const DialogClose = DialogPrimitive.Close;
 interface DialogContentProps
   extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: "sm" | "lg";
-<<<<<<< HEAD
   /** Portal target. When set, the overlay and panel render inside this element
    *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
    *  with a `position: relative; overflow: hidden` container — and usually
    *  `<Dialog modal={false}>` — to scope a dialog to a bounded region, e.g. a
    *  docs preview. Defaults to the document body / full-viewport behaviour. */
   container?: HTMLElement | null;
-}
-
-const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, size = "sm", container, ...props }, ref) => {
-=======
   mobilePosition?: "center" | "top";
 }
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, size = "sm", mobilePosition = "center", ...props }, ref) => {
->>>>>>> a781749 (refactor: improve mobile layout responsiveness, update notification styles, and refine dialog positioning)
+  (
+    {
+      className,
+      children,
+      size = "sm",
+      container,
+      mobilePosition = "center",
+      ...props
+    },
+    ref,
+  ) => {
     const XIcon = useIcon("x");
     const open = useContext(DialogOpenContext);
     const shape = useShape();
@@ -124,18 +127,12 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
         <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
           <motion.div
             className={cn(
-<<<<<<< HEAD
               container ? "absolute" : "fixed",
-              "left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
-              surfaceClasses(dialogLevel),
-=======
-              "fixed z-50",
+              "z-50",
               isMobileTop
-                ? "left-0 top-0 w-full sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 rounded-none sm:rounded-xl"
+                ? "left-0 top-0 w-full rounded-none sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
                 : "left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2",
-              "bg-card border border-border/60",
-              "shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
->>>>>>> a781749 (refactor: improve mobile layout responsiveness, update notification styles, and refine dialog positioning)
+              surfaceClasses(dialogLevel),
               "p-6 focus:outline-none",
               size === "sm" && "sm:max-w-[400px]",
               size === "lg" && "sm:max-w-[540px]",
