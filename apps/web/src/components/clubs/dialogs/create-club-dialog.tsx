@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
+import { Info } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -13,11 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip } from '@/components/ui/tooltip';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -139,8 +141,19 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
           </div>
 
           <Field>
-            <FieldLabel>Member limit</FieldLabel>
-            <FieldDescription>New joins and approvals stop at this limit.</FieldDescription>
+            <FieldTitle>
+              Member limit
+              <Tooltip content="New joins and approvals stop at this limit.">
+                <Button
+                  aria-label="About the member limit"
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Info />
+                </Button>
+              </Tooltip>
+            </FieldTitle>
             <Slider
               size="compact"
               value={memberLimit}
@@ -148,8 +161,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
               min={10}
               max={200}
               step={10}
-              label="Members"
-              formatValue={(value) => `${value} members`}
+              label="Member limit"
             />
           </Field>
         </FieldGroup>

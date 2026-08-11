@@ -805,9 +805,9 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
             }}
             transition={spring.fast}
             style={{
-              backgroundColor: thumbColor ?? "white",
+              backgroundColor: thumbColor ?? "hsl(var(--background))",
               boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-              border: thumbBorderColor ? `1px solid ${thumbBorderColor}` : undefined,
+              border: `1px solid ${thumbBorderColor ?? "hsl(var(--foreground) / 0.35)"}`,
             }}
           />
           {/* Focus ring */}
@@ -977,7 +977,7 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
 
             {/* Track background */}
             <motion.div
-              className={cn("absolute border border-border overflow-hidden rounded-full", trackClassName)}
+              className={cn("absolute border border-border bg-muted overflow-hidden rounded-full", trackClassName)}
               initial={false}
               animate={{
                 height: TRACK_BG_HEIGHT,
@@ -987,14 +987,13 @@ const CompactSlider = forwardRef<HTMLDivElement, SliderEngineProps>(
               style={{
                 left: TRACK_INSET,
                 right: TRACK_INSET,
-                backgroundColor: "transparent",
                 ...trackStyle,
               }}
             >
               {/* Filled range */}
               {!hideFill && (
               <motion.div
-                className={cn("absolute h-full bg-selected/50 dark:bg-accent/40", fillClassName)}
+                className={cn("absolute h-full bg-foreground/20", fillClassName)}
                 style={{
                   left: fillLeft,
                   width: fillWidth,
