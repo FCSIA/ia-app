@@ -80,22 +80,31 @@ const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
 export function applyCustomColors(colors: CustomColors) {
   if (typeof document === 'undefined') return;
 
-  const slots: Array<{ key: CustomColorKey; vars: string[]; fg?: string }> = [
-    { key: 'background', vars: ['--background'], fg: '--foreground' },
+  const slots: Array<{
+    key: CustomColorKey;
+    vars: string[];
+    foregroundVars?: string[];
+  }> = [
+    { key: 'background', vars: ['--background'], foregroundVars: ['--foreground'] },
     {
       key: 'primary',
       vars: ['--primary', '--ring', '--sidebar-primary', '--sidebar-ring'],
-      fg: '--primary-foreground',
+      foregroundVars: ['--primary-foreground'],
     },
     {
       key: 'secondary',
       vars: ['--secondary', '--muted', '--card', '--popover'],
-      fg: '--secondary-foreground',
+      foregroundVars: [
+        '--secondary-foreground',
+        '--muted-foreground',
+        '--card-foreground',
+        '--popover-foreground',
+      ],
     },
     {
       key: 'accent',
       vars: ['--accent', '--border', '--input'],
-      fg: '--accent-foreground',
+      foregroundVars: ['--accent-foreground'],
     },
   ];
 
@@ -106,13 +115,20 @@ export function applyCustomColors(colors: CustomColors) {
     const hsl = hexToHslParts(hex);
     if (!hsl) continue;
     for (const v of slot.vars) declarations.push(`${v}: ${hsl};`);
-    if (slot.fg) {
+    if (slot.foregroundVars) {
       // Allow an explicit foreground override (used for the 'background' slot).
       if (slot.key === 'background' && colors.foreground) {
         const fgHsl = hexToHslParts(colors.foreground);
-        if (fgHsl) declarations.push(`${slot.fg}: ${fgHsl};`);
+        if (fgHsl) {
+          for (const variable of slot.foregroundVars) {
+            declarations.push(`${variable}: ${fgHsl};`);
+          }
+        }
       } else {
-        declarations.push(`${slot.fg}: ${readableForegroundParts(hex)};`);
+        const foreground = readableForegroundParts(hex);
+        for (const variable of slot.foregroundVars) {
+          declarations.push(`${variable}: ${foreground};`);
+        }
       }
     }
   }

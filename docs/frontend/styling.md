@@ -112,6 +112,11 @@ The current visual direction is warm, clean, and operational:
 - restrained motion and shadows,
 - responsive layouts that avoid clipping and horizontal overflow.
 
+Custom palette colors update their paired foreground tokens together. In
+particular, the Secondary color owns card, popover, and muted surfaces, so its
+automatic contrast is applied to each matching foreground token rather than
+only to secondary controls.
+
 ## Toasts
 
 The app currently renders both the existing `react-hot-toast` path and the
