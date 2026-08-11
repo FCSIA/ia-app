@@ -124,7 +124,7 @@ export function AppShell({
   return (
     <Fragment>
       <div
-        className="app-root flex min-h-screen w-full bg-background"
+        className="app-root flex min-h-[100dvh] w-full bg-background"
         {...swipeHandlers}
       >
         {/* z-40 keeps hover labels above the adjacent workspace sidebar. */}
@@ -135,7 +135,7 @@ export function AppShell({
           onOpenChange={setMobileOpen}
         />
 
-        <div className="app-main-surface flex min-w-0 flex-1 flex-col bg-card">
+        <div className="app-main-surface flex min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]">
           <AppShellHeader
             headerSlot={headerSlot}
             channelSearch={channelSearch}

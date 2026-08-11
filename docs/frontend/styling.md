@@ -27,6 +27,10 @@ The main theme lives in `apps/web/src/app/globals.css`.
 Use utility classes for local layout and spacing. Keep global CSS for tokens,
 base styles, and reusable app-wide utilities.
 
+The standalone web shell opts into `viewport-fit=cover` and applies iOS
+safe-area insets at its shared header and main surface. Do not add page-level
+notch or home-indicator padding; that would double the shell-owned inset.
+
 ## Common Utilities
 
 | Class | Meaning |
