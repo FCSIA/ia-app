@@ -16,10 +16,11 @@ import {
   FilterToggleItem,
 } from '@/components/ui/filter-toggle-group';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 type QuickFilterOption = {
@@ -44,6 +45,8 @@ type FeatureFilterBarProps = {
   advanced?: ReactNode;
   advancedOpen?: boolean;
   onAdvancedOpenChange?: (open: boolean) => void;
+  advancedTitle?: string;
+  advancedDescription?: string;
   className?: string;
 };
 
@@ -59,9 +62,12 @@ export function FeatureFilterBar({
   advanced,
   advancedOpen,
   onAdvancedOpenChange,
+  advancedTitle = 'Filters',
+  advancedDescription,
   className,
 }: FeatureFilterBarProps) {
-  const hasActive = activeCount > 0 || activeChips.length > 0 || !!search.trim();
+  const hasActive =
+    activeCount > 0 || activeChips.length > 0 || !!search.trim();
   const activeChipSet = new Set(activeChips);
 
   return (
@@ -75,23 +81,58 @@ export function FeatureFilterBar({
         />
         <div className="flex shrink-0 items-center gap-2">
           {advanced ? (
-            <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
-              <CollapsibleTrigger asChild>
-                <Button variant="tertiary" size="sm" leadingIcon={SlidersHorizontal}>
+            <Popover open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  leadingIcon={SlidersHorizontal}
+                  active={advancedOpen}
+                >
                   Filters
                   {activeCount > 0 ? (
-                    <Badge variant="solid" color="blue" className="ml-1.5 rounded-full px-1.5">
+                    <Badge variant="solid" color="blue" size="sm">
                       {activeCount}
                     </Badge>
                   ) : null}
                 </Button>
-              </CollapsibleTrigger>
-            </Collapsible>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-[min(34rem,calc(100vw-2rem))] p-0"
+              >
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {advancedTitle}
+                    </p>
+                    {advancedDescription ? (
+                      <p className="text-xs text-muted-foreground">
+                        {advancedDescription}
+                      </p>
+                    ) : null}
+                  </div>
+                  {activeCount > 0 && onClear ? (
+                    <Button variant="ghost" size="sm" onClick={onClear}>
+                      Reset
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="border-t border-border/70 p-4">{advanced}</div>
+              </PopoverContent>
+            </Popover>
           ) : null}
           {hasActive && onClear ? (
-            <Button variant="ghost" size="sm" leadingIcon={X} onClick={onClear}>
-              Clear
-            </Button>
+            <Tooltip content="Clear search and filters">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onClear}
+                aria-label="Clear search and filters"
+              >
+                <X />
+              </Button>
+            </Tooltip>
           ) : null}
         </div>
       </SearchToolbarRow>
@@ -111,7 +152,9 @@ export function FeatureFilterBar({
         >
           {chips.map((chip) => (
             <FilterToggleItem key={chip.value} value={chip.value}>
-              {chip.icon ? <FilterToggleIcon>{chip.icon}</FilterToggleIcon> : null}
+              {chip.icon ? (
+                <FilterToggleIcon>{chip.icon}</FilterToggleIcon>
+              ) : null}
               <span className="truncate">{chip.label}</span>
               {chip.count != null ? (
                 <FilterToggleCount>{chip.count}</FilterToggleCount>
@@ -119,16 +162,6 @@ export function FeatureFilterBar({
             </FilterToggleItem>
           ))}
         </FilterToggleGroup>
-      ) : null}
-
-      {advanced ? (
-        <Collapsible open={advancedOpen} onOpenChange={onAdvancedOpenChange}>
-          <CollapsibleContent className="pt-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
-            <div className="rounded-xl bg-muted/25 p-3">
-              {advanced}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
       ) : null}
     </SearchToolbar>
   );
