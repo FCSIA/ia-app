@@ -81,9 +81,11 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
   return (
     <Card className="border-amber-500/20 bg-amber-500/5 shadow-sm overflow-hidden">
       <CardHeader className="pb-3 border-b border-border/10 bg-background/50 backdrop-blur-sm px-5 py-4">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400">
-          <UserPlus className="size-4" />
-          Pending join requests ({club.pendingJoinRequests.length})
+        <CardTitle className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+          <span className="flex items-center gap-2">
+            <UserPlus className="size-4 shrink-0" />
+            <span>Pending join requests ({club.pendingJoinRequests.length})</span>
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 p-5">
