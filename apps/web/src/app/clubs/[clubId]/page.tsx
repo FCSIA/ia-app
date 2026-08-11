@@ -101,7 +101,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
             </div>
             <div className="flex shrink-0 gap-1">
               <Button
-                size="icon-sm"
+                size="icon-compact"
                 variant="tertiary"
                 aria-label={`Decline ${fullName(request.requester)}'s request`}
                 title="Decline request"
@@ -114,7 +114,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
                 }
               ><Minus /></Button>
               <Button
-                size="icon-sm"
+                size="icon-compact"
                 disabled={isFull}
                 aria-label={`Approve ${fullName(request.requester)}'s request`}
                 title="Approve request"
@@ -426,14 +426,16 @@ export default function ClubOverviewPage() {
               <h2 className="text-base font-semibold">Announcements</h2>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              {canPost ? (
+              {deferredSearch &&
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {filteredAnnouncements.length} of {announcements.length}
+                </span>
+              }
+              {canPost &&
                 <Button size="sm" leadingIcon={Megaphone} onClick={() => setAnnounceOpen(true)}>
                   {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
                 </Button>
-              ) : null}
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {deferredSearch ? `${filteredAnnouncements.length} of ${announcements.length}` : `${announcements.length} total`}
-              </span>
+              }
               <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="w-full sm:w-60" />
             </div>
           </div>
