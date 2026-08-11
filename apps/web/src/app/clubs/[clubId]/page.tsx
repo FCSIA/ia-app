@@ -45,7 +45,7 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
           <Users className="size-4 shrink-0 text-primary" />
-          <span className="truncate">Members</span>
+          <span className="truncate">Capacity</span>
         </span>
         <span className="shrink-0 tabular-nums text-muted-foreground">{memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}</span>
       </div>
@@ -77,7 +77,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
   if (!club.pendingJoinRequests?.length) return null;
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-2 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Pending requests ({club.pendingJoinRequests.length})
       </h3>
@@ -90,11 +90,11 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
         {club.pendingJoinRequests.map((request) => (
           <div
             key={request._id}
-            className="flex flex-col gap-2 border-t border-border/70 py-3"
+            className="flex flex-col gap-2 py-1"
           >
             <div className="min-w-0">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-medium text-foreground truncate">{fullName(request.requester)}</p>
+                <p className="truncate text-sm font-medium text-foreground">{fullName(request.requester)}</p>
                 <p className="text-xs text-muted-foreground">
                   Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
                 </p>
@@ -146,7 +146,7 @@ function RoleRoster({ club }: { club: ClubDetail }) {
     .filter((group) => group.members.length > 0);
 
   return groups.map(({ role, members }) => (
-    <section key={role._id} className="space-y-2">
+    <section key={role._id} className="space-y-2 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {role.name}
       </h3>
@@ -387,15 +387,15 @@ export default function ClubOverviewPage() {
   );
 
   const rightPane = (
-    <div className="space-y-5 p-4">
-      <section className="space-y-2">
+    <div className="divide-y divide-border">
+      <section className="space-y-2 p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</h3>
         <MemberLimitMeter club={club} />
       </section>
 
       {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
 
-      <section className="space-y-2">
+      <section className="space-y-2 p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
         <div className="space-y-1.5">
           {club.sponsors.map((sponsor) => (
