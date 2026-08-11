@@ -37,6 +37,12 @@ const moderationReportStatusValidator = v.union(
   v.literal("DISMISSED"),
 );
 
+const reportListArgs = {
+  status: v.optional(moderationReportStatusValidator),
+  clubId: v.optional(v.id("clubs")),
+  isEscalated: v.optional(v.boolean()),
+};
+
 async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) {
   const submitter = await ctx.db.get(report.submitterId);
   const reportedUser = report.reportedUserId
@@ -91,11 +97,16 @@ async function createReport(
     createdAt: Date.now(),
   });
 
-  await deliverMany(ctx, (await activeAdmins(ctx)).map((admin) => admin._id), {
+  const isFeedback = input.contentType === "GENERAL";
+  const recipients = (await activeAdmins(ctx)).filter((admin) =>
+    isFeedback ? admin.roles.includes("SUPER_ADMIN") : true,
+  );
+
+  await deliverMany(ctx, recipients.map((admin) => admin._id), {
     category: "CONTENT_MODERATED",
-    title: "Moderation report submitted",
-    body: `${user.firstName} ${user.lastName} submitted a moderation report.`,
-    href: "/admin?tab=moderation",
+    title: isFeedback ? "Feedback submitted" : "Moderation report submitted",
+    body: `${user.firstName} ${user.lastName} submitted ${isFeedback ? "feedback" : "a moderation report"}.`,
+    href: isFeedback ? "/admin?tab=feedback" : "/admin?tab=moderation",
     subject: { kind: "moderationReport", reportId },
   });
 
@@ -110,12 +121,47 @@ async function createReport(
   return reportId;
 }
 
-export const list = query({
+async function loadReports(
+  ctx: QueryCtx,
   args: {
-    status: v.optional(moderationReportStatusValidator),
-    clubId: v.optional(v.id("clubs")),
-    isEscalated: v.optional(v.boolean()),
+    status?: Doc<"moderationReports">["status"];
+    clubId?: Id<"clubs">;
+    isEscalated?: boolean;
   },
+) {
+  let reports: Doc<"moderationReports">[];
+  if (args.status) {
+    reports = await ctx.db
+      .query("moderationReports")
+      .withIndex("by_status_and_createdAt", (q) => q.eq("status", args.status!))
+      .order("desc")
+      .take(200);
+  } else if (args.clubId) {
+    reports = await ctx.db
+      .query("moderationReports")
+      .withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", args.clubId!))
+      .order("desc")
+      .take(200);
+  } else {
+    reports = await ctx.db
+      .query("moderationReports")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .take(200);
+  }
+
+  if (args.clubId && args.status) {
+    reports = reports.filter((report) => report.clubId === args.clubId);
+  }
+  if (args.isEscalated !== undefined) {
+    reports = reports.filter((report) => report.isEscalated === args.isEscalated);
+  }
+
+  return reports;
+}
+
+export const list = query({
+  args: reportListArgs,
   returns: v.array(reportValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
@@ -123,37 +169,30 @@ export const list = query({
       return [];
     }
 
-    let reports: Doc<"moderationReports">[];
-    if (args.status) {
-      const status: Doc<"moderationReports">["status"] = args.status;
-      reports = await ctx.db
-        .query("moderationReports")
-        .withIndex("by_status_and_createdAt", (q) => q.eq("status", status))
-        .order("desc")
-        .take(200);
-    } else if (args.clubId) {
-      const clubId = args.clubId;
-      reports = await ctx.db
-        .query("moderationReports")
-        .withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", clubId))
-        .order("desc")
-        .take(200);
-    } else {
-      reports = await ctx.db
-        .query("moderationReports")
-        .withIndex("by_createdAt")
-        .order("desc")
-        .take(200);
+    const reports = await loadReports(ctx, args);
+    return Promise.all(
+      reports
+        .filter((report) => report.contentType !== "GENERAL")
+        .map((report) => serializeReport(ctx, report)),
+    );
+  },
+});
+
+export const listFeedback = query({
+  args: {},
+  returns: v.array(reportValidator),
+  handler: async (ctx) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !requireAnyRoleSafe(user, ["SUPER_ADMIN"])) {
+      return [];
     }
 
-    if (args.clubId && args.status) {
-      reports = reports.filter((r) => r.clubId === args.clubId);
-    }
-    if (args.isEscalated !== undefined) {
-      reports = reports.filter((r) => r.isEscalated === args.isEscalated);
-    }
-
-    return Promise.all(reports.map((r) => serializeReport(ctx, r)));
+    const reports = await loadReports(ctx, {});
+    return Promise.all(
+      reports
+        .filter((report) => report.contentType === "GENERAL")
+        .map((report) => serializeReport(ctx, report)),
+    );
   },
 });
 
@@ -233,10 +272,16 @@ export const update = mutation({
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    requireAnyRole(user, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"]);
 
     const report = await ctx.db.get(args.reportId);
     if (!report) throw new ConvexError("Report not found");
+
+    requireAnyRole(
+      user,
+      report.contentType === "GENERAL"
+        ? ["SUPER_ADMIN"]
+        : ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"],
+    );
 
     await ctx.db.patch(args.reportId, {
       status: args.status,

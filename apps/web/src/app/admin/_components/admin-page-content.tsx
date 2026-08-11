@@ -7,6 +7,7 @@ import { AdminPageLayout } from './admin-page-layout';
 import { AdminShell } from './admin-shell';
 import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
 import { AuditTabPanel } from './panels/audit-tab-panel';
+import { FeedbackTabPanel } from './panels/feedback-tab-panel';
 import { ModerationTabPanel } from './panels/moderation-tab-panel';
 import { ScheduleTabPanel } from './panels/schedule-tab-panel';
 import { UsersTabPanel } from './panels/users-tab-panel';
@@ -51,6 +52,12 @@ export function AdminPageContent() {
         <AdminScrollTabPanel value="moderation">
           {activeTab === 'moderation' ? <ModerationTabPanel /> : null}
         </AdminScrollTabPanel>
+
+        {isSuperAdmin ? (
+          <AdminScrollTabPanel value="feedback">
+            {activeTab === 'feedback' ? <FeedbackTabPanel /> : null}
+          </AdminScrollTabPanel>
+        ) : null}
 
         {canManageWrapped ? (
           <AdminScrollTabPanel value="wrapped">

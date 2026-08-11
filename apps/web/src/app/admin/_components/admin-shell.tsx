@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { CalendarDays, FileText, MessageSquareWarning, Sparkles, Users } from 'lucide-react';
+import { CalendarDays, FileText, MessageSquareText, MessageSquareWarning, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
@@ -44,6 +44,9 @@ export function AdminShell({
               icon={MessageSquareWarning}
               label={pendingReports > 0 ? `Reports (${pendingReports})` : 'Reports'}
             />
+            {isSuperAdmin ? (
+              <TabItem value="feedback" icon={MessageSquareText} label="Feedback" />
+            ) : null}
             {canManageWrapped ? (
               <TabItem value="wrapped" icon={Sparkles} label="Wrapped" />
             ) : null}
