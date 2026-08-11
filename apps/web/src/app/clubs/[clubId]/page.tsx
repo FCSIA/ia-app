@@ -23,6 +23,7 @@ import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/component
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { SearchInput } from '@/components/ui/search';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +43,7 @@ function MemberLimitMeter({ club, compact = false }: { club: ClubDetail; compact
   const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
 
   return (
-    <div className={compact ? 'space-y-1.5' : 'rounded-lg border border-border/70 bg-muted/20 p-3'}>
+    <div className={compact ? 'space-y-1.5' : 'border-y border-border/60 py-3'}>
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
           <Users className="size-4 shrink-0 text-primary" />
@@ -52,9 +53,12 @@ function MemberLimitMeter({ club, compact = false }: { club: ClubDetail; compact
       </div>
       {memberLimit != null ? (
         <div className="space-y-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${percent ?? 0}%` }} />
-          </div>
+          <Progress
+            value={percent ?? 0}
+            aria-label={`${memberCount} of ${memberLimit} member spots filled`}
+            className="h-1 bg-muted"
+            indicatorClassName={isFull ? 'bg-destructive' : 'bg-primary'}
+          />
           <p className={`text-xs leading-4 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
             {isFull ? 'Full. New members can join when a spot opens.' : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
           </p>
@@ -159,8 +163,8 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
 
   return (
     <div className="space-y-3">
-      <Button type="button" variant="tertiary" leadingIcon={KeyRound} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
-        Use join code
+      <Button type="button" variant="tertiary" leadingIcon={KeyRound} active={redeemOpen} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
+        Join code
       </Button>
       {redeemOpen ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:flex-row">
@@ -193,11 +197,11 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const logoUrl = club.logoUrl;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 py-4">
-      <Card className="overflow-hidden border-primary/10 bg-card/95">
+    <div className="mx-auto w-full max-w-4xl space-y-8 py-5 sm:py-8">
+      <section className="space-y-5">
         {(bannerUrl || club.accentColor) && (
           <div
-            className="h-28 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
+            className="h-24 w-full rounded-lg bg-gradient-to-br from-primary/30 via-primary/10 to-muted sm:h-32"
             style={
               bannerUrl
                 ? {
@@ -213,30 +217,30 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             }
           />
         )}
-        <CardContent className={`space-y-4 p-4 sm:p-5 ${bannerUrl || club.accentColor ? '-mt-8' : ''}`}>
+        <div className={`space-y-5 ${bannerUrl || club.accentColor ? '-mt-12 px-4 sm:-mt-16 sm:px-6' : ''}`}>
           {logoUrl && (
-            <div className="size-16 overflow-hidden rounded-xl border-4 border-background bg-muted">
+            <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
             </div>
           )}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{club.name}</h1>
-              <div className="flex items-center gap-2 pt-1">
-                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{club.name}</h1>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Open' : 'Approval'}</Badge>
                 {club.memberLimit != null ? (
                   <Badge variant="solid" color={isFull ? 'red' : 'amber'}>
-                    {isFull ? 'Full' : 'Limited spots'}
+                    {isFull ? 'Full' : 'Limited'}
                   </Badge>
                 ) : null}
                 {club.viewer.hasPendingJoinRequest ? <Badge variant="solid">Request pending</Badge> : null}
               </div>
             </div>
-            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
+            <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
           </div>
           <MemberLimitMeter club={club} />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {club.joinPolicy === 'OPEN' ? (
               <Button leadingIcon={UserPlus} onClick={() => void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))} disabled={isFull}>
                 {isFull ? 'Club is full' : 'Join club'}
@@ -252,22 +256,21 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             )}
             <RedeemJoinCodePanel club={club} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="overflow-hidden border-border/50 shadow-none">
-          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+      <div className="grid gap-7 border-t border-border/60 pt-5 md:grid-cols-2 md:gap-0 md:divide-x md:divide-border/60">
+        <section className="min-w-0 md:pr-7">
+          <div className="mb-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="size-4 text-primary" />
               Student leaders
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3">
+            </h2>
+          </div>
             {club.leaders.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {club.leaders.map((leader) => (
-                  <div key={leader.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
+                  <div key={leader.userId} className="flex items-center gap-2.5 py-1.5">
                     <ClubAvatar person={leader.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
@@ -281,25 +284,21 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
-                <p className="text-sm text-muted-foreground">No club leaders listed yet.</p>
-              </div>
+              <p className="py-3 text-sm text-muted-foreground">No club leaders listed yet.</p>
             )}
-          </CardContent>
-        </Card>
+        </section>
 
-        <Card className="overflow-hidden border-border/50 shadow-none">
-          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+        <section className="min-w-0 md:pl-7">
+          <div className="mb-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
               <KeyRound className="size-4 text-primary" />
               Sponsors
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3">
+            </h2>
+          </div>
             {club.sponsors.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {club.sponsors.map((sponsor) => (
-                  <div key={sponsor.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
+                  <div key={sponsor.userId} className="flex items-center gap-2.5 py-1.5">
                     <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
@@ -308,12 +307,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
-                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
-              </div>
+              <p className="py-3 text-sm text-muted-foreground">No sponsors assigned yet.</p>
             )}
-          </CardContent>
-        </Card>
+        </section>
       </div>
     </div>
   );
