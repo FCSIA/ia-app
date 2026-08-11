@@ -31,6 +31,7 @@ export const memberValidator = v.object({
   userId: v.id("users"),
   role: v.optional(clubMemberRoleValidator),
   customRoleId: v.optional(v.id("clubRoles")),
+  roleId: v.optional(v.id("clubRoles")),
   joinedAt: v.number(),
 });
 

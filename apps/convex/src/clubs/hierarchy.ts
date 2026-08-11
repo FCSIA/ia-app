@@ -72,7 +72,7 @@ async function requireHierarchyManager(
   user: Doc<"users">,
 ) {
   const context = await getClubContext(ctx, clubId, user);
-  if (!context.canManageMembership) {
+  if (!context.permissions.manageClubStructure) {
     throw new ConvexError("Not authorized to manage this club structure");
   }
   return context;
@@ -146,7 +146,7 @@ export const list = query({
     );
 
     return {
-      canManage: context.canManageMembership,
+      canManage: context.permissions.manageClubStructure,
       units: units.map((unit) => {
         const viewerMembership = viewerMembershipByUnit.get(unit._id);
         return {
@@ -156,8 +156,8 @@ export const list = query({
           kind: unit.kind ?? null,
           description: unit.description ?? null,
           joinPolicy: unit.joinPolicy,
-          joinCode: context.canManageMembership ? unit.joinCode ?? null : null,
-          joinCodeUpdatedAt: context.canManageMembership
+          joinCode: context.permissions.manageClubStructure ? unit.joinCode ?? null : null,
+          joinCodeUpdatedAt: context.permissions.manageClubStructure
             ? unit.joinCodeUpdatedAt ?? null
             : null,
           position: unit.position,

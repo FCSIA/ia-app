@@ -42,12 +42,22 @@ on the Convex `users` table.
 | ----------------- | ----------- | ------- | ------- | ----- | ----------- |
 | View all clubs    | Yes         | Yes     | Yes     | Yes   | Yes         |
 | Create club       | No          | No      | No      | Yes   | Yes         |
-| Invite members    | Leader only | No      | Yes     | Yes   | Yes         |
-| Remove members    | No          | No      | Yes     | Yes   | Yes         |
-| Promote to leader | No          | No      | Yes     | Yes   | Yes         |
+| Invite members    | Club role   | Club role | Yes   | Yes   | Yes         |
+| Remove members    | Club role   | Club role | Yes   | Yes   | Yes         |
+| Assign roles      | Club role   | Club role | Yes   | Yes   | Yes         |
+| Manage roles      | Club role   | Club role | Yes   | Yes   | Yes         |
 
-Club sponsors, club leaders, admins, and super admins can configure a club's
-nested structure and assign existing club members within it. A unit-local
+`Club role` means the member's club-owned role explicitly enables that
+permission. `Member` and `Leader` are renameable default role records, not
+backend authority levels. Role permissions independently cover announcement
+drafts, events, channel creation/editing/deletion, polls, message moderation,
+private/read-only channels, invitations, join requests/codes, member removal,
+role assignment/management, tags, club settings, and club structure. Sponsors
+and admins receive the full club permission set independently of role names.
+
+Members with the structure-management permission, sponsors, admins, and super
+admins can configure a club's nested structure and assign existing club members
+within it. A unit-local
 `LEADER` assignment and title describe responsibility inside that unit; they do
 not grant club-wide management permissions.
 

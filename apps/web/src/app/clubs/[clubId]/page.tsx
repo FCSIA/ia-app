@@ -16,7 +16,7 @@ import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
 import { ClubStructureActions } from '@/components/clubs/dialogs/hierarchy-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
-import { formatClubRole, fullName, hasClubLeadershipRole } from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,11 +39,11 @@ function getMemberLimitState(club: ClubDetail) {
   return { memberCount, memberLimit, remaining, isFull, percent };
 }
 
-function MemberLimitMeter({ club, compact = false }: { club: ClubDetail; compact?: boolean }) {
+function MemberLimitMeter({ club }: { club: ClubDetail }) {
   const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
 
   return (
-    <div className={compact ? 'space-y-1.5' : 'border-y border-border/60 py-3'}>
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
           <Users className="size-4 shrink-0 text-primary" />
@@ -266,7 +266,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
           <div className="mb-3">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="size-4 text-primary" />
-              Student leaders
+              Role holders
             </h2>
           </div>
             {club.leaders.length > 0 ? (
@@ -277,16 +277,14 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
                       <p className="truncate text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
-                        {leader.customRoleId
-                          ? club.roles.find((role) => role._id === leader.customRoleId)?.name ?? 'Leader'
-                          : formatClubRole(leader.role) || 'Leader'}
+                        {club.roles.find((role) => role._id === leader.roleId)?.name ?? 'Role'}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="py-3 text-sm text-muted-foreground">No club leaders listed yet.</p>
+              <p className="py-3 text-sm text-muted-foreground">No elevated roles listed yet.</p>
             )}
         </section>
 
@@ -378,13 +376,11 @@ export default function ClubOverviewPage() {
   }
 
   const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?._id);
-  const myMembership = club.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isSuperAdmin = !!user && hasRole(user, 'SUPER_ADMIN');
-  const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
-  const canPost = isSponsor || hasClubLeadershipRole(myMembership?.role) || isAdmin;
+  const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
-  const canInvite = canPost || isStaff;
+  const canInvite = club.viewer.permissions.inviteMembers;
   const { isFull, memberLimit } = getMemberLimitState(club);
 
   const title = (
@@ -393,7 +389,7 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const actions = club.viewer.canManageMembership ? <ClubStructureActions club={club} canDelete={isSuperAdmin} /> : null;
+  const actions = club.viewer.permissions.manageClubStructure ? <ClubStructureActions club={club} canDelete={isSuperAdmin} /> : null;
 
   const rightPane = (
     <div className="space-y-5 p-4">
@@ -412,7 +408,7 @@ export default function ClubOverviewPage() {
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Student leaders</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role holders</h3>
         <div className="space-y-1.5">
           {club.leaders.length > 0 ? (
             club.leaders.map((leader) => (
@@ -421,15 +417,13 @@ export default function ClubOverviewPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{fullName(leader.user)}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {leader.customRoleId
-                      ? club.roles.find((role) => role._id === leader.customRoleId)?.name ?? 'Leader'
-                      : formatClubRole(leader.role) || 'Leader'}
+                    {club.roles.find((role) => role._id === leader.roleId)?.name ?? 'Role'}
                   </p>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-xs text-muted-foreground">No leaders assigned yet.</p>
+            <p className="text-xs text-muted-foreground">No elevated roles assigned yet.</p>
           )}
         </div>
       </section>
@@ -459,8 +453,8 @@ export default function ClubOverviewPage() {
   return (
     <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <ClubHero club={club} canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)} />
-        {canInvite || canPost || club.viewer.canManageMembership ? (
+        <ClubHero club={club} canEdit={club.viewer.permissions.manageClubSettings} />
+        {canInvite || canPost ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
             <span className="mr-auto text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manage</span>
             {canInvite ? (
@@ -475,8 +469,8 @@ export default function ClubOverviewPage() {
             ) : null}
           </div>
         ) : null}
-        <MemberLimitMeter club={club} compact />
-        {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
+        <MemberLimitMeter club={club} />
+        {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
 
         <section className="space-y-2">
           <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">

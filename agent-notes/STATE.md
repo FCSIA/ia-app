@@ -55,8 +55,12 @@
 
 ### Hardening Completed
 
-- Club access now distinguishes ordinary members from `LEADER`/`SPONSOR`
-  management roles and uses indexed membership/sponsor lookups.
+- Club membership now points to club-owned role records with granular
+  permissions. New clubs seed renameable `Member` and `Leader` roles; those
+  names have no intrinsic backend authority. Existing enum rows remain a
+  migration fallback until a club initializes its role records. Role powers
+  cover announcements, events, channels, moderation, membership, codes, tags,
+  structure, settings, and role administration.
 - Clubs now support manager-configured arbitrary internal trees through generic
   units rather than fixed subclub/group levels. Units have free-form type
   labels, direct member/leader assignments with local titles, per-unit join
@@ -73,11 +77,12 @@
   while they anchor replies, and removes attachments/storage plus related
   reactions, mentions, and poll votes in bounded scheduled batches.
 - General events require an event-manager role; club events require admin,
-  sponsor, or club leader authority.
+  sponsor, or the club role's event-creation permission.
 - Calendar creation no longer lets regular users create non-personal calendar
   sources.
-- Announcement comments require announcement read access; announcement approval
-  is limited to global approvers or the relevant club sponsor.
+- Announcement comments require announcement read access; club announcement
+  drafts require the role permission, while approval remains limited to global
+  approvers or the relevant club sponsor.
 - Flex Friday attendance and assignment paths validate active student targets,
   workshop/session conflicts, existing registration/assignment state, and
   capacity.

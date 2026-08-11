@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { Plus, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Settings, SlidersHorizontal } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useClubId } from '@/app/clubs/club-route';
@@ -27,41 +28,6 @@ type RoleEditor =
   | { mode: 'rename'; roleId: Id<'clubRoles'>; name: string }
   | null;
 
-function RoleOption({
-  value,
-  label,
-  index,
-  onEdit,
-}: {
-  value: string;
-  label: string;
-  index: number;
-  onEdit?: () => void;
-}) {
-  return (
-    <div className="relative">
-      <RadioItem
-        index={index}
-        value={value}
-        label={label}
-        className={onEdit ? 'w-full pr-10' : 'w-full'}
-      />
-      {onEdit ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="absolute right-1 top-0 z-30"
-          aria-label={`Rename ${label}`}
-          onClick={onEdit}
-        >
-          <Settings className="size-3.5" />
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
 export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
   const clubId = useClubId();
   const { toast } = useToast();
@@ -69,18 +35,29 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
   const setMemberRole = useMutation(api.clubs.management.setMemberRole);
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
+  const initializeRoles = useMutation(api.clubs.management.initializeRoles);
   const [open, setOpen] = useState(false);
   const [pendingValue, setPendingValue] = useState<string | null>(null);
   const [editor, setEditor] = useState<RoleEditor>(null);
   const [roleName, setRoleName] = useState('');
   const [savingRole, setSavingRole] = useState(false);
 
-  const currentValue = person.customRoleId ?? (person.clubRole === 'LEADER' ? 'LEADER' : 'MEMBER');
+  const currentValue = person.roleId ?? roles.find((role) => role.isDefault)?._id ?? '';
   const value = pendingValue ?? currentValue;
 
   useEffect(() => {
     setPendingValue(null);
-  }, [person.clubRole, person.customRoleId]);
+  }, [person.roleId]);
+
+  useEffect(() => {
+    if (!open || roles.length > 0) return;
+    void initializeRoles({ clubId }).catch((error) => {
+      toast({
+        title: error instanceof Error ? error.message : 'Could not load roles',
+        variant: 'destructive',
+      });
+    });
+  }, [clubId, initializeRoles, open, roles.length, toast]);
 
   const assign = async (nextValue: string) => {
     setPendingValue(nextValue);
@@ -88,10 +65,7 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
       await setMemberRole({
         clubId,
         memberId: person._id,
-        role: nextValue === 'MEMBER' ? 'MEMBER' : 'LEADER',
-        customRoleId: nextValue === 'MEMBER' || nextValue === 'LEADER'
-          ? undefined
-          : nextValue as Id<'clubRoles'>,
+        roleId: nextValue as Id<'clubRoles'>,
       });
     } catch (error) {
       setPendingValue(null);
@@ -148,19 +122,39 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
           className="w-[min(20rem,calc(100vw-2rem))] p-2"
           aria-label={`Club role for ${fullName(person)}`}
         >
-          <RadioGroup value={value} onValueChange={(nextValue) => void assign(nextValue)} className="w-full gap-0.5">
-            <RoleOption value="MEMBER" label="Regular Member" index={0} />
-            <RoleOption value="LEADER" label="Leader" index={1} />
-            {roles.map((role, index) => (
-              <RoleOption
-                key={role._id}
-                value={role._id}
-                label={role.name}
-                index={index + 2}
-                onEdit={() => openEditor({ mode: 'rename', roleId: role._id, name: role.name })}
-              />
-            ))}
-          </RadioGroup>
+          <div className="px-2 pb-2 pt-1">
+            <p className="text-sm font-semibold text-foreground">Choose role</p>
+            <p className="truncate text-xs text-muted-foreground">{fullName(person)}</p>
+          </div>
+          <div className="relative">
+            <RadioGroup value={value} onValueChange={(nextValue) => void assign(nextValue)} className="w-full gap-0.5">
+              {roles.map((role, index) => (
+                <RadioItem
+                  key={role._id}
+                  value={role._id}
+                  label={role.name}
+                  index={index}
+                  className="w-full pr-10"
+                />
+              ))}
+            </RadioGroup>
+            <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
+              {roles.map((role) => (
+                <div key={role._id} className="flex h-8 items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="pointer-events-auto size-7"
+                    aria-label={`Rename ${role.name}`}
+                    onClick={() => openEditor({ mode: 'rename', roleId: role._id, name: role.name })}
+                  >
+                    <Settings className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
           <Separator className="my-2" />
           <Button
             type="button"
@@ -172,6 +166,16 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
           >
             Add role
           </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            leadingIcon={SlidersHorizontal}
+            onClick={() => setOpen(false)}
+          >
+            <Link href={`/clubs/${clubId}/settings`}>Manage permissions</Link>
+          </Button>
         </PopoverContent>
       </Popover>
 
@@ -180,7 +184,9 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
           <DialogHeader>
             <DialogTitle>{editor?.mode === 'rename' ? 'Rename role' : 'New role'}</DialogTitle>
             <DialogDescription>
-              Custom roles have the same club-management permissions as Leader.
+              {editor?.mode === 'rename'
+                ? 'This name appears everywhere the role is shown.'
+                : 'New roles start without permissions. Configure them in Club settings.'}
             </DialogDescription>
           </DialogHeader>
           <Input

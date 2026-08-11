@@ -7,8 +7,9 @@ import {
   canReadChannel,
   getChannelViewerContext,
   getViewerContext,
-  isClubLeadershipRole,
 } from "./access";
+import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
+import { clubRolePermissionsValidator } from "../validators";
 import {
   clubSummaryValidator,
   clubUserRefValidator,
@@ -29,6 +30,7 @@ const clubMemberWithUserValidator = v.object({
   userId: v.id("users"),
   role: v.union(clubMemberRoleValidator, v.null()),
   customRoleId: v.union(v.id("clubRoles"), v.null()),
+  roleId: v.union(v.id("clubRoles"), v.null()),
   user: clubUserRefValidator,
 });
 const clubSponsorWithUserValidator = v.object({
@@ -41,7 +43,13 @@ const clubDetailValidator = v.union(
     members: v.array(clubMemberWithUserValidator),
     leaders: v.array(clubMemberWithUserValidator),
     sponsors: v.array(clubSponsorWithUserValidator),
-    roles: v.array(v.object({ _id: v.id("clubRoles"), name: v.string() })),
+    roles: v.array(v.object({
+      _id: v.id("clubRoles"),
+      name: v.string(),
+      permissions: clubRolePermissionsValidator,
+      isDefault: v.boolean(),
+      position: v.number(),
+    })),
     channels: v.array(visibleClubChannelValidator),
     tags: v.array(
       v.object({
@@ -61,6 +69,8 @@ const clubDetailValidator = v.union(
         clubRole: v.union(clubMemberRoleValidator, v.null()),
         customRoleId: v.union(v.id("clubRoles"), v.null()),
         customRoleName: v.union(v.string(), v.null()),
+        roleId: v.union(v.id("clubRoles"), v.null()),
+        roleName: v.union(v.string(), v.null()),
         joinedAt: v.string(),
       }),
     ),
@@ -94,7 +104,12 @@ const workspaceNavigationValidator = v.union(
       name: v.string(),
       logoUrl: v.union(v.string(), v.null()),
     }),
-    viewer: v.object({ canManageChannels: v.boolean() }),
+    viewer: v.object({
+      canCreateChannels: v.boolean(),
+      canEditChannels: v.boolean(),
+      canDeleteChannels: v.boolean(),
+      canManageRoles: v.boolean(),
+    }),
     channels: v.array(workspaceClubChannelValidator),
     myClubs: v.array(
       v.object({
@@ -143,8 +158,8 @@ export const get = query({
         : Promise.resolve([]),
       ctx.db
         .query("clubRoles")
-        .withIndex("by_clubId_and_name", (q) => q.eq("clubId", args.clubId))
-        .collect(),
+        .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
+        .take(100),
     ]);
 
     // Deduplicate memberships by userId to prevent duplicate entries
@@ -164,6 +179,7 @@ export const get = query({
           userId: m.userId,
           role: m.role ?? null,
           customRoleId: m.customRoleId ?? null,
+          roleId: m.roleId ?? null,
           user: toClubUserRef(memberUser),
         };
       }),
@@ -180,9 +196,17 @@ export const get = query({
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
-    // Sponsors are privileged for access control, but the public “Student
-    // leaders” list must only contain members explicitly assigned LEADER.
-    const leaders = hydratedMembers.filter((m) => m.role === "LEADER");
+    const defaultRole = customRoles.find((role) => role.isDefault);
+    const legacyLeaderRole = customRoles.find((role) => role.position === 1);
+    const roleForMember = (member: (typeof hydratedMembers)[number]) => {
+      const id = member.roleId ?? member.customRoleId ??
+        (member.role === "LEADER" || member.role === "SPONSOR" ? legacyLeaderRole?._id : defaultRole?._id);
+      return id ? customRoles.find((role) => role._id === id) ?? null : null;
+    };
+    const leaders = hydratedMembers.filter((member) => {
+      const role = roleForMember(member);
+      return role ? Object.values(role.permissions ?? NO_CLUB_PERMISSIONS).some(Boolean) : member.role === "LEADER";
+    });
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
     const serializedTags = await Promise.all(
@@ -231,20 +255,27 @@ export const get = query({
         clubRole: "SPONSOR" as const,
         customRoleId: null,
         customRoleName: null,
+        roleId: null,
+        roleName: "Sponsor",
         joinedAt: new Date(0).toISOString(),
       })),
       ...hydratedMembers
         .filter((m) => !sponsorUserIds.has(m.userId))
-        .map((m) => ({
-          ...m.user,
-          kind: "MEMBER" as const,
-          clubRole: isClubLeadershipRole(m.role) ? m.role : null,
-          customRoleId: m.customRoleId ?? null,
-          customRoleName: m.customRoleId ? customRoleNames.get(m.customRoleId) ?? null : null,
-          joinedAt: new Date(
-            uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
-          ).toISOString(),
-        })),
+        .map((m) => {
+          const role = roleForMember(m);
+          return {
+            ...m.user,
+            kind: "MEMBER" as const,
+            clubRole: m.role === "LEADER" ? "LEADER" as const : null,
+            customRoleId: m.customRoleId ?? null,
+            customRoleName: m.customRoleId ? customRoleNames.get(m.customRoleId) ?? null : null,
+            roleId: role?._id ?? null,
+            roleName: role?.name ?? (m.role === "LEADER" ? "Leader" : "Member"),
+            joinedAt: new Date(
+              uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
+            ).toISOString(),
+          };
+        }),
     ];
 
     const summary = await clubSummaryWithCounts(
@@ -261,7 +292,15 @@ export const get = query({
       members: context.canAccessWorkspace ? hydratedMembers : [],
       leaders,
       sponsors: hydratedSponsors,
-      roles: customRoles.map((role) => ({ _id: role._id, name: role.name })),
+      roles: customRoles
+        .filter((role) => role.position !== undefined)
+        .map((role) => ({
+          _id: role._id,
+          name: role.name,
+          permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
+          isDefault: role.isDefault ?? false,
+          position: role.position ?? 0,
+        })),
       channels,
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],
@@ -270,7 +309,7 @@ export const get = query({
         (r): r is NonNullable<typeof r> => !!r,
       ),
       activeJoinCode:
-        context.canManageMembership && club.joinCode && club.joinCodeExpiresAt && club.joinCodeExpiresAt > Date.now()
+        context.permissions.manageJoinCodes && club.joinCode && club.joinCodeExpiresAt && club.joinCodeExpiresAt > Date.now()
           ? {
               code: club.joinCode,
               updatedAt: club.joinCodeUpdatedAt
@@ -304,7 +343,7 @@ export const getWorkspaceNavigation = query({
         channelRows.map(async (channel) => {
           let memberships: Doc<"clubChannelMemberships">[] = [];
           if (channel.visibility === "PRIVATE") {
-            if (context.canManageChannels) {
+            if (context.canSeePrivateChannels) {
               memberships = await ctx.db
                 .query("clubChannelMemberships")
                 .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
@@ -363,7 +402,12 @@ export const getWorkspaceNavigation = query({
 
     return {
       club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null },
-      viewer: { canManageChannels: context.canManageChannels },
+      viewer: {
+        canCreateChannels: context.permissions.createChannels,
+        canEditChannels: context.permissions.editChannels,
+        canDeleteChannels: context.permissions.deleteChannels,
+        canManageRoles: context.permissions.manageRoles,
+      },
       channels,
       myClubs,
     };

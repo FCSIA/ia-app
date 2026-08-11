@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
 import { canPostInChannel, canReadChannel } from "./access";
-import { clubChannelVisibilityValidator } from "../validators";
+import { clubChannelVisibilityValidator, clubRolePermissionsValidator } from "../validators";
 
 export const clubUserRefValidator = v.object({
   _id: v.id("users"),
@@ -23,6 +23,7 @@ export const clubViewerStateValidator = v.object({
   canManageChannels: v.boolean(),
   canManageMembership: v.boolean(),
   canApproveJoinRequests: v.boolean(),
+  permissions: clubRolePermissionsValidator,
   hasPendingJoinRequest: v.boolean(),
 });
 
@@ -98,6 +99,7 @@ export function toViewerState(context: ClubContext) {
     canManageChannels: context.canManageChannels,
     canManageMembership: context.canManageMembership,
     canApproveJoinRequests: context.canApproveJoinRequests,
+    permissions: context.permissions,
     hasPendingJoinRequest: context.hasPendingJoinRequest,
   };
 }

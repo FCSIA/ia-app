@@ -12,15 +12,15 @@ describe("mobile channel context members", () => {
         sponsors: [{ userId: "sponsor" }],
         clubMembers: [
           { userId: "member" },
-          { userId: "leader", role: "LEADER" },
-          { userId: "sponsor", role: "MEMBER" },
+          { userId: "leader" },
+          { userId: "sponsor" },
         ],
         channelMembers: [],
       }),
     ).toEqual([
-      { userId: "sponsor", role: "SPONSOR" },
-      { userId: "member", role: "MEMBER" },
-      { userId: "leader", role: "LEADER" },
+      { userId: "sponsor" },
+      { userId: "member" },
+      { userId: "leader" },
     ]);
   });
 
@@ -30,14 +30,14 @@ describe("mobile channel context members", () => {
         visibility: "PRIVATE",
         sponsors: [{ userId: "sponsor" }],
         clubMembers: [
-          { userId: "private-leader", role: "LEADER" },
+          { userId: "private-leader" },
           { userId: "outside-member" },
         ],
         channelMembers: [{ userId: "private-leader" }],
       }),
     ).toEqual([
-      { userId: "sponsor", role: "SPONSOR" },
-      { userId: "private-leader", role: "LEADER" },
+      { userId: "sponsor" },
+      { userId: "private-leader" },
     ]);
   });
 
