@@ -188,6 +188,22 @@ export default function ClubSettingsPage() {
     <ClubWorkspace title={title}>
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
+          {club && (canManageStructure || canDeleteClub) ? (
+            <section className={canManageRoles ? 'pb-6' : undefined}>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">Club administration</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Organize the club or permanently remove it.
+                </p>
+              </div>
+              <ClubStructureActions
+                club={club}
+                canManageStructure={canManageStructure}
+                canDelete={canDeleteClub}
+              />
+            </section>
+          ) : null}
+
           {canManageRoles ? (
             <>
           <div className="flex flex-col gap-3 border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between">
@@ -257,21 +273,6 @@ export default function ClubSettingsPage() {
             </>
           ) : null}
 
-          {club && (canManageStructure || canDeleteClub) ? (
-            <section className={canManageRoles ? 'pt-6' : undefined}>
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">Club administration</h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Organize the club or permanently remove it.
-                </p>
-              </div>
-              <ClubStructureActions
-                club={club}
-                canManageStructure={canManageStructure}
-                canDelete={canDeleteClub}
-              />
-            </section>
-          ) : null}
         </div>
       </div>
 
