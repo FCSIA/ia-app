@@ -1469,7 +1469,7 @@ export default function ClubChannelPage({
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="absolute inset-x-0 bottom-0 z-10 border-t bg-card p-2">
+      <div className="absolute inset-x-0 bottom-0 z-10 border-t bg-card/85 p-2 backdrop-blur-xl">
         <div className="pointer-events-auto mx-auto max-w-4xl">
           {canPost ? (
             <div className="flex flex-col gap-1.5">

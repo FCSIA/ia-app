@@ -192,14 +192,14 @@ export default function NotificationsPage() {
                                 type="button"
                                 onClick={() => openNotification(n)}
                                 className={cn(
-                                  'group flex w-full items-start gap-3 p-3 text-left transition-colors',
+                                  'group flex w-full items-start gap-2.5 p-2.5 text-left transition-colors',
                                   'hover:bg-hover focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#6B97FF]',
                                   !n.isRead && 'bg-surface-4',
                                 )}
                               >
                                 <span
                                   className={cn(
-                                    'mt-1.5 flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors',
+                                    'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors',
                                     n.isRead
                                       ? 'border-border bg-muted/25 text-muted-foreground'
                                       : 'border-primary/20 bg-primary/10 text-primary',
@@ -224,14 +224,14 @@ export default function NotificationsPage() {
                                   </span>
                                   <span
                                     className={cn(
-                                      'block text-sm font-medium leading-5',
+                                      'block text-[13px] font-medium leading-5',
                                       n.isRead ? 'text-muted-foreground' : 'text-foreground',
                                     )}
                                   >
                                     {n.title}
                                   </span>
                                   {n.body ? (
-                                    <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">
+                                    <span className="mt-0.5 block line-clamp-2 text-[11px] leading-[18px] text-muted-foreground">
                                       {n.body}
                                     </span>
                                   ) : null}

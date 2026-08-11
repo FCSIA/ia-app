@@ -57,6 +57,7 @@ const DialogClose = DialogPrimitive.Close;
 interface DialogContentProps
   extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: "sm" | "lg";
+<<<<<<< HEAD
   /** Portal target. When set, the overlay and panel render inside this element
    *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
    *  with a `position: relative; overflow: hidden` container — and usually
@@ -67,6 +68,13 @@ interface DialogContentProps
 
 const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, size = "sm", container, ...props }, ref) => {
+=======
+  mobilePosition?: "center" | "top";
+}
+
+const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
+  ({ className, children, size = "sm", mobilePosition = "center", ...props }, ref) => {
+>>>>>>> a781749 (refactor: improve mobile layout responsiveness, update notification styles, and refine dialog positioning)
     const XIcon = useIcon("x");
     const open = useContext(DialogOpenContext);
     const shape = useShape();
@@ -95,6 +103,11 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
 
     if (!mounted) return null;
 
+    // Responsive positioning logic
+    // We remove the framer-motion x/y transforms and use tailwind classes for position
+    // so we can use sm: variants for desktop/mobile differences.
+    const isMobileTop = mobilePosition === "top";
+
     return (
       <DialogPrimitive.Portal forceMount container={container ?? undefined}>
         <DialogPrimitive.Overlay asChild forceMount>
@@ -111,21 +124,29 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
         <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
           <motion.div
             className={cn(
+<<<<<<< HEAD
               container ? "absolute" : "fixed",
               "left-1/2 top-1/2 z-50 w-[calc(100%-2rem)]",
               surfaceClasses(dialogLevel),
+=======
+              "fixed z-50",
+              isMobileTop
+                ? "left-0 top-0 w-full sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 rounded-none sm:rounded-xl"
+                : "left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2",
+              "bg-card border border-border/60",
+              "shadow-[0_4px_12px_rgba(0,0,0,0.02)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+>>>>>>> a781749 (refactor: improve mobile layout responsiveness, update notification styles, and refine dialog positioning)
               "p-6 focus:outline-none",
-              size === "sm" && "max-w-[400px]",
-              size === "lg" && "max-w-[540px]",
-              shape.container,
+              size === "sm" && "sm:max-w-[400px]",
+              size === "lg" && "sm:max-w-[540px]",
+              !isMobileTop && shape.container,
+              isMobileTop && "sm:" + shape.container, // apply shape roundedness only on desktop for top mobile position
               className
             )}
-            initial={{ opacity: 0, scale: 0.97, x: "-50%", y: "-50%" }}
+            initial={{ opacity: 0, scale: 0.97 }}
             animate={{
               opacity: open ? 1 : 0,
               scale: open ? 1 : 0.97,
-              x: "-50%",
-              y: "-50%",
             }}
             transition={open ? spring.slow : spring.slow.exit}
             onAnimationComplete={handleExitComplete}
