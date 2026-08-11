@@ -123,7 +123,7 @@ export function ClubStructureActions({
 
   return (
     <>
-      <div className="divide-y divide-border/70 border-y border-border/70">
+      <div>
         {canManageStructure ? (
           <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">

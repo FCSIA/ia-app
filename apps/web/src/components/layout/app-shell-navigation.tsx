@@ -9,7 +9,7 @@ import {
   Megaphone,
   Settings,
   Shield,
-  Sparkles,
+  Presentation,
   Star,
   Ticket,
   UsersRound,
@@ -37,7 +37,7 @@ const primaryNav: NavItem[] = [
   { href: "/schedule", label: "Schedule", icon: ClipboardList },
   { href: "/events", label: "Events", icon: Ticket },
   { href: "/calendar", label: "Calendar", icon: CalendarRange },
-  { href: "/flex-friday", label: "Flex Friday", icon: Sparkles },
+  { href: "/flex-friday", label: "Flex Friday", icon: Presentation },
   { href: "/wrapped", label: "Wrapped", icon: Star },
 ];
 

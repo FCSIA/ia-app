@@ -189,12 +189,9 @@ export default function ClubSettingsPage() {
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
           {club && (canManageStructure || canDeleteClub) ? (
-            <section className={canManageRoles ? 'pb-6' : undefined}>
+            <section className={canManageRoles ? 'pb-20' : undefined}>
               <div className="mb-4">
                 <h2 className="text-xl font-semibold tracking-tight text-foreground">Club administration</h2>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Organize the club or permanently remove it.
-                </p>
               </div>
               <ClubStructureActions
                 club={club}
@@ -209,9 +206,6 @@ export default function ClubSettingsPage() {
           <div className="flex flex-col gap-3 border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">Roles</h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Roles are labels with permissions. Member and Leader are starting roles and can be renamed or reconfigured like any other.
-              </p>
             </div>
             <Button size="sm" leadingIcon={Plus} onClick={() => openEditor({ mode: 'create' })}>
               New role

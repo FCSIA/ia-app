@@ -9,7 +9,7 @@ import {
   Check,
   QrCode,
   Send,
-  Sparkles,
+  RectangleEllipsis,
   Upload,
   UserMinus,
   UserPlus,
@@ -145,7 +145,7 @@ function ManagePeopleDialog({
         <Tabs defaultValue="qr" className="w-full">
           <TabsList>
             <TabItem value="qr" label="QR" icon={QrCode} />
-            <TabItem value="code" label="Code" icon={Sparkles} />
+            <TabItem value="code" label="Code" icon={RectangleEllipsis} />
             <TabItem value="single" label="Single" icon={UserPlus} />
             <TabItem value="bulk" label="Bulk" icon={Upload} />
           </TabsList>
