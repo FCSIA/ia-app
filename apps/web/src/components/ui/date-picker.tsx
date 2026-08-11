@@ -67,7 +67,6 @@ export function DatePicker({
             selected={selectedDate}
             onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
             disabled={disabledDays}
-            navLayout="around"
             startMonth={navigationStartMonth}
             endMonth={navigationEndMonth}
             initialFocus

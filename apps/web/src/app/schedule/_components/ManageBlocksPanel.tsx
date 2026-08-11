@@ -368,10 +368,10 @@ function AdminCalendarDayButton({
     <Tooltip content={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
       <CalendarDayButton {...props} aria-label={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
         {props.children}
-        {state.kind === "outside" || state.kind === "weekend" ? null : (
+        {state.kind === "outside" || state.kind === "weekend" || state.kind === "default" ? null : (
           <span
             aria-hidden="true"
-            className="size-1 rounded-full"
+            className="absolute bottom-1.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full"
             style={{
               backgroundColor:
                 state.kind === "assigned"
@@ -550,7 +550,6 @@ function DatePlanWorkspace({
               month={displayMonth}
               onSelect={(date) => date && onDateKeyChange(dateKeyFromDate(date))}
               onMonthChange={setDisplayMonth}
-              navLayout="around"
               startMonth={workspace.academicYearStartDateKey ? dateFromKey(workspace.academicYearStartDateKey) : undefined}
               endMonth={workspace.academicYearEndDateKey ? dateFromKey(workspace.academicYearEndDateKey) : undefined}
               className="w-full"
