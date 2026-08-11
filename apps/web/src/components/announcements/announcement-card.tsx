@@ -95,13 +95,13 @@ export function AnnouncementCard({
               ) : null}
               {announcement.isPinned ? (
                 <Badge variant="solid" color="amber" size="sm">
-                  <Pin className="size-3" />
+                  <Pin />
                   Pinned
                 </Badge>
               ) : null}
               {announcement.isBookmarked ? (
                 <Badge variant="solid" color="blue" size="sm">
-                  <BookmarkCheck className="size-3" />
+                  <BookmarkCheck />
                   Saved
                 </Badge>
               ) : null}

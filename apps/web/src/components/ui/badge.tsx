@@ -45,11 +45,12 @@ const badgeVariants = cva(
       variant: "solid",
       size: "md",
     },
-  }
+  },
 );
 
 interface BadgeProps
-  extends Omit<HTMLAttributes<HTMLSpanElement>, "color">,
+  extends
+    Omit<HTMLAttributes<HTMLSpanElement>, "color">,
     VariantProps<typeof badgeVariants> {
   color?: BadgeColor;
 }
@@ -65,7 +66,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       style,
       ...props
     },
-    ref
+    ref,
   ) => {
     const shape = useShape();
     const colorValue = badgeColors[color];
@@ -101,12 +102,15 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
           />
         )}
         {/* text-box needs a block container — the badge root is a flex
-            container, so the label gets its own span. Height is fixed (h-*),
-            so trimming only recenters the letterforms. */}
-        <span className="[text-box:trim-both_cap_alphabetic]">{children}</span>
+            container, so the label gets its own span. Keep that slot an
+            inline flex row: callers can safely pair an icon with a label
+            without the SVG being laid out above the text. */}
+        <span className="inline-flex items-center gap-[inherit] [text-box:trim-both_cap_alphabetic] [&>svg]:size-[0.9em] [&>svg]:shrink-0">
+          {children}
+        </span>
       </span>
     );
-  }
+  },
 );
 
 Badge.displayName = "Badge";
