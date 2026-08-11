@@ -38,7 +38,7 @@ The schedule calendar is deployment data. A newly initialized production databas
 - the academic-year first and last dates;
 - the required default regular template.
 
-The dates are intentionally not compiled into the application because they change every year. Until setup is complete, dates cannot be assigned and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
+The dates are intentionally not compiled into the application because they change every year. Until setup is complete, day-plan management renders only the required setup flow; the calendar, date inspector, and normal template tabs are not shown. Dates cannot be assigned, and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
 
 Calendar setup does not block students from editing or saving their canonical
 Period 1–8 class choices. Until setup is complete, the editor falls back to the
@@ -54,7 +54,7 @@ Within the configured range, dates resolve as follows:
 | Saturday–Sunday | Not a school date | Assignments are rejected |
 | Outside the academic year | Not a school date | Assignments are rejected |
 
-The admin workspace keeps a full month calendar visible. Date cells identify inherited defaults, unassigned Fridays, linked/custom assignments, no-school days, weekends, and dates outside the configured year. Shared Fluid tooltips explain inheritance, linkage, and setup behavior without replacing visible labels.
+After setup, the admin workspace keeps a full month calendar visible. Compact status dots and a visible legend identify inherited defaults, unassigned Fridays, linked/custom assignments, and no-school days without putting status sentences inside day cells. Shared Fluid tooltips provide the exact date state and explain inheritance and linkage.
 
 ## Source Files
 

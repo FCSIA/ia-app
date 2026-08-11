@@ -19,7 +19,7 @@ import {
   Unlink2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeColors } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import {
@@ -384,19 +384,19 @@ function calendarDayState(workspace: AdminWorkspace, date: Date) {
     !!workspace.academicYearEndDateKey &&
     dateKey >= workspace.academicYearStartDateKey &&
     dateKey <= workspace.academicYearEndDateKey;
-  if (!inYear) return { label: "Outside year", detail: "Outside the configured academic year" };
-  if (weekday === 0 || weekday === 6) return { label: "Weekend", detail: "Weekend" };
+  if (!inYear) return { kind: "outside" as const, detail: "Outside the configured academic year" };
+  if (weekday === 0 || weekday === 6) return { kind: "weekend" as const, detail: "Weekend" };
   if (assignment) {
     return {
-      label: assignment.kind === "NO_SCHOOL" ? "No school" : assignment.name,
+      kind: assignment.kind === "NO_SCHOOL" ? "no-school" as const : "assigned" as const,
       detail: `${assignment.name} · ${assignment.mode === "LINKED" ? "linked template" : "custom plan"}`,
     };
   }
-  if (weekday === 5) return { label: "Unassigned", detail: "Friday is unassigned" };
+  if (weekday === 5) return { kind: "unassigned" as const, detail: "Friday is unassigned" };
   const regular = workspace.templates.find(
     (template) => template.id === workspace.regularTemplateId,
   );
-  return { label: "Default", detail: regular?.name ?? "Default template" };
+  return { kind: "default" as const, detail: regular?.name ?? "Default template" };
 }
 
 function AdminCalendarDayButton({
@@ -406,11 +406,126 @@ function AdminCalendarDayButton({
   const state = calendarDayState(workspace, props.day.date);
   return (
     <Tooltip content={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
-      <CalendarDayButton {...props}>
-        {props.day.date.getDate()}
-        <span className="max-w-full truncate">{state.label}</span>
+      <CalendarDayButton {...props} aria-label={`${dateKeyFromDate(props.day.date)} · ${state.detail}`}>
+        {props.children}
+        {state.kind === "outside" || state.kind === "weekend" ? null : (
+          <span
+            aria-hidden="true"
+            className="size-1 rounded-full"
+            style={{
+              backgroundColor:
+                state.kind === "assigned"
+                  ? badgeColors.blue
+                  : state.kind === "unassigned"
+                    ? badgeColors.orange
+                    : state.kind === "no-school"
+                      ? badgeColors.red
+                      : "var(--muted-foreground)",
+            }}
+          />
+        )}
       </CalendarDayButton>
     </Tooltip>
+  );
+}
+
+function AcademicYearSetup({
+  regularTemplate,
+  academicStart,
+  onAcademicStartChange,
+  academicEnd,
+  onAcademicEndChange,
+  pending,
+  onConfigureAcademicYear,
+  onManageTemplates,
+}: {
+  regularTemplate: DayTemplate | null;
+  academicStart: string;
+  onAcademicStartChange: (dateKey: string) => void;
+  academicEnd: string;
+  onAcademicEndChange: (dateKey: string) => void;
+  pending: string | null;
+  onConfigureAcademicYear: () => void;
+  onManageTemplates: () => void;
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 py-6 sm:py-10">
+      <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+        <header className="flex items-start gap-4 bg-surface-3 px-5 py-5 sm:px-7 sm:py-6">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-background shadow-surface-1">
+            <School aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule setup</p>
+            <h2 className="mt-1 text-xl font-semibold text-foreground">Set up the academic year</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              The calendar stays hidden until its boundaries and required default schedule are ready.
+            </p>
+          </div>
+        </header>
+
+        <div className="flex flex-col gap-5 p-5 sm:p-7">
+          {!regularTemplate ? (
+            <Alert>
+              <LayoutTemplate />
+              <AlertTitle>A regular template is required</AlertTitle>
+              <AlertDescription>
+                Create or choose the schedule that every Monday–Thursday should inherit before opening the calendar.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <FieldGroup className="gap-5">
+            <Field>
+              <FieldLabel>Required default schedule</FieldLabel>
+              <div className="flex flex-wrap items-center gap-2">
+                {regularTemplate ? (
+                  <Badge variant="dot" color="blue">{regularTemplate.name}</Badge>
+                ) : (
+                  <span className="text-sm text-muted-foreground">Not configured</span>
+                )}
+                <Button type="button" variant="tertiary" size="sm" leadingIcon={LayoutTemplate} onClick={onManageTemplates}>
+                  {regularTemplate ? "Edit default template" : "Create default template"}
+                </Button>
+              </div>
+              <FieldDescription>
+                This template automatically applies to every in-range Monday–Thursday unless a date is assigned differently.
+              </FieldDescription>
+            </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="setup-academic-year-start">First school day</FieldLabel>
+                <Input id="setup-academic-year-start" type="date" value={academicStart} onChange={(event) => onAcademicStartChange(event.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="setup-academic-year-end">Last school day</FieldLabel>
+                <Input id="setup-academic-year-end" type="date" value={academicEnd} onChange={(event) => onAcademicEndChange(event.target.value)} />
+              </Field>
+            </div>
+
+            <FieldDescription>
+              Fridays begin unassigned. Weekends and dates outside this range are not school dates.
+            </FieldDescription>
+
+            <Button
+              type="button"
+              className="self-start"
+              leadingIcon={Save}
+              disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null}
+              loading={pending === "configure-year"}
+              onClick={onConfigureAcademicYear}
+            >
+              Save and open calendar
+            </Button>
+          </FieldGroup>
+        </div>
+      </section>
+
+      <p className="text-center text-xs leading-relaxed text-muted-foreground">
+        Only administrators can complete this one-time deployment setup. The dates can be updated later.
+      </p>
+    </div>
   );
 }
 
@@ -472,16 +587,6 @@ function DatePlanWorkspace({
 
   return (
     <div className="flex flex-col gap-5 pt-5">
-      {workspace.setupRequired ? (
-        <Alert>
-          <School />
-          <AlertTitle>Academic year setup required</AlertTitle>
-          <AlertDescription>
-            The first administrator must set the school-year boundaries and required default template before dates can be assigned.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(21rem,0.82fr)_minmax(0,1.7fr)] xl:items-start">
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
           <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
@@ -513,6 +618,12 @@ function DatePlanWorkspace({
                 DayButton: (props) => <AdminCalendarDayButton workspace={workspace} {...props} />,
               }}
             />
+            <div className="flex flex-wrap gap-2 border-t border-border/50 px-4 py-3">
+              <Badge variant="dot" size="sm">Default</Badge>
+              <Badge variant="dot" size="sm" color="blue">Assigned</Badge>
+              <Badge variant="dot" size="sm" color="orange">Unassigned Friday</Badge>
+              <Badge variant="dot" size="sm" color="red">No school</Badge>
+            </div>
           </section>
 
           <section className="rounded-xl bg-surface-2 p-4 shadow-surface-1">
@@ -677,6 +788,7 @@ function TemplateWorkspace({
   onSaveTemplate,
   onSetRegular,
   onDeleteTemplate,
+  regularOnly = false,
 }: {
   workspace: AdminWorkspace;
   selectedTemplateId: string;
@@ -694,7 +806,12 @@ function TemplateWorkspace({
   onSaveTemplate: () => void;
   onSetRegular: () => void;
   onDeleteTemplate: () => void;
+  regularOnly?: boolean;
 }) {
+  const visibleTemplates = regularOnly
+    ? workspace.templates.filter((template) => template.kind === "REGULAR")
+    : workspace.templates;
+
   return (
     <div className="space-y-5 pt-5">
       <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3 shadow-surface-1 sm:flex-row sm:items-end sm:justify-between">
@@ -707,7 +824,7 @@ function TemplateWorkspace({
             <SelectTrigger placeholder="Choose template" />
             <SelectContent>
               <SelectGroup>
-                {workspace.templates.map((template, index) => (
+                {visibleTemplates.map((template, index) => (
                   <SelectItem
                     key={template.id}
                     index={index}
@@ -718,7 +835,7 @@ function TemplateWorkspace({
                 ))}
                 {isNewTemplate ? (
                   <SelectItem
-                    index={workspace.templates.length}
+                    index={visibleTemplates.length}
                     value="__new__"
                   >
                     New template
@@ -752,27 +869,31 @@ function TemplateWorkspace({
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Type</Label>
-          <Select
-            value={templateKind}
-            onValueChange={(value) =>
-              onTemplateKindChange(value as TemplateKind)
-            }
-          >
-            <SelectTrigger />
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem index={0} value="REGULAR">
-                  Regular
-                </SelectItem>
-                <SelectItem index={1} value="SPECIAL">
-                  Special
-                </SelectItem>
-                <SelectItem index={2} value="NO_SCHOOL">
-                  No school
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          {regularOnly ? (
+            <Input value="Regular" disabled />
+          ) : (
+            <Select
+              value={templateKind}
+              onValueChange={(value) =>
+                onTemplateKindChange(value as TemplateKind)
+              }
+            >
+              <SelectTrigger />
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem index={0} value="REGULAR">
+                    Regular
+                  </SelectItem>
+                  <SelectItem index={1} value="SPECIAL">
+                    Special
+                  </SelectItem>
+                  <SelectItem index={2} value="NO_SCHOOL">
+                    No school
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -801,7 +922,7 @@ function TemplateWorkspace({
         >
           Save template
         </Button>
-        {!isNewTemplate && activeTemplate?.kind === "REGULAR" ? (
+        {!regularOnly && !isNewTemplate && activeTemplate?.kind === "REGULAR" ? (
           <Button
             type="button"
             variant="tertiary"
@@ -815,7 +936,7 @@ function TemplateWorkspace({
             Make regular
           </Button>
         ) : null}
-        {!isNewTemplate && activeTemplate ? (
+        {!regularOnly && !isNewTemplate && activeTemplate ? (
           <Button
             type="button"
             variant="ghost"
@@ -840,6 +961,7 @@ export function ManageBlocksPanel() {
   const { isAuthenticated } = useConvexAuth();
   const { toast } = useToast();
   const [mode, setMode] = useState<"dates" | "templates">("dates");
+  const [setupView, setSetupView] = useState<"year" | "template">("year");
   const [dateKey, setDateKey] = useState(schoolDateKey);
   const workspace = useQuery(
     api.schedule.dayPlans.getAdminWorkspace,
@@ -887,6 +1009,14 @@ export function ManageBlocksPanel() {
         (template) => template.id === workspace.regularTemplateId,
       ) ?? null,
     [workspace],
+  );
+  const setupRegularTemplate = useMemo(
+    () =>
+      (activeTemplate?.kind === "REGULAR" ? activeTemplate : null) ??
+      regularTemplate ??
+      workspace?.templates.find((template) => template.kind === "REGULAR") ??
+      null,
+    [activeTemplate, regularTemplate, workspace?.templates],
   );
 
   useEffect(() => {
@@ -946,6 +1076,103 @@ export function ManageBlocksPanel() {
   };
 
   const selectedApplyTemplate = activeTemplate ?? regularTemplate;
+
+  if (workspace === undefined) {
+    return <div className="h-48 animate-pulse rounded-xl bg-muted/30" />;
+  }
+
+  if (workspace.setupRequired) {
+    if (setupView === "template") {
+      return (
+        <div className="space-y-4">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setSetupView("year")}>
+            Back to academic year setup
+          </Button>
+          <TemplateWorkspace
+            workspace={workspace}
+            selectedTemplateId={selectedTemplateId}
+            isNewTemplate={isNewTemplate}
+            regularOnly
+            onTemplateSelect={(templateId) => {
+              if (templateId === "__new__") return;
+              setIsNewTemplate(false);
+              setSelectedTemplateId(templateId);
+            }}
+            onNewTemplate={() => {
+              setIsNewTemplate(true);
+              setTemplateName("Default school day");
+              setTemplateKind("REGULAR");
+              setTemplateBlocks([{ label: "Period 1", periodNumber: 1, startTime: "08:00", endTime: "08:45" }]);
+            }}
+            templateName={templateName}
+            onTemplateNameChange={setTemplateName}
+            templateKind="REGULAR"
+            onTemplateKindChange={() => undefined}
+            templateBlocks={templateBlocks}
+            onTemplateBlocksChange={setTemplateBlocks}
+            pending={pending}
+            activeTemplate={activeTemplate}
+            onSaveTemplate={() =>
+              void run(
+                "save-setup-template",
+                async () => {
+                  const saved = await saveTemplate({
+                    templateId: isNewTemplate ? undefined : activeTemplate?.id,
+                    name: templateName,
+                    kind: "REGULAR",
+                    blocks: templateBlocks,
+                  });
+                  await setRegularTemplate({ templateId: saved.id });
+                  setSelectedTemplateId(saved.id);
+                  setIsNewTemplate(false);
+                  setSetupView("year");
+                },
+                "Default template saved",
+              )
+            }
+            onSetRegular={() => undefined}
+            onDeleteTemplate={() => undefined}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <AcademicYearSetup
+        regularTemplate={setupRegularTemplate}
+        academicStart={academicStart}
+        onAcademicStartChange={setAcademicStart}
+        academicEnd={academicEnd}
+        onAcademicEndChange={setAcademicEnd}
+        pending={pending}
+        onManageTemplates={() => {
+          setSetupView("template");
+          if (setupRegularTemplate) {
+            setIsNewTemplate(false);
+            setSelectedTemplateId(setupRegularTemplate.id);
+            return;
+          }
+          setIsNewTemplate(true);
+          setTemplateName("Default school day");
+          setTemplateKind("REGULAR");
+          setTemplateBlocks([{ label: "Period 1", periodNumber: 1, startTime: "08:00", endTime: "08:45" }]);
+        }}
+        onConfigureAcademicYear={() => {
+          if (!setupRegularTemplate) return;
+          void run(
+            "configure-year",
+            () =>
+              configureAcademicYear({
+                startDateKey: academicStart,
+                endDateKey: academicEnd,
+                regularTemplateId: setupRegularTemplate.id,
+              }),
+            "Academic year saved",
+          );
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
