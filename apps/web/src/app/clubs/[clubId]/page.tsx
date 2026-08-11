@@ -6,15 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import {
-  KeyRound,
-  Megaphone,
-  MessageSquareText,
-  Search,
-  Sparkles,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { KeyRound, Megaphone, MessageSquareText, Search, Sparkles, UserPlus, Users } from 'lucide-react';
 import { useClubId } from '../club-route';
 import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
@@ -27,7 +19,7 @@ import { ClubHero } from '@/components/clubs/club-hero';
 import { formatClubRole, fullName, hasClubLeadershipRole } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -46,13 +38,7 @@ function getMemberLimitState(club: ClubDetail) {
   return { memberCount, memberLimit, remaining, isFull, percent };
 }
 
-function MemberLimitMeter({
-  club,
-  compact = false,
-}: {
-  club: ClubDetail;
-  compact?: boolean;
-}) {
+function MemberLimitMeter({ club, compact = false }: { club: ClubDetail; compact?: boolean }) {
   const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
 
   return (
@@ -62,22 +48,15 @@ function MemberLimitMeter({
           <Users className="size-4 shrink-0 text-primary" />
           <span className="truncate">Members</span>
         </span>
-        <span className="shrink-0 tabular-nums text-muted-foreground">
-          {memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}
-        </span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">{memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}</span>
       </div>
       {memberLimit != null ? (
         <div className="space-y-1.5">
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
-              style={{ width: `${percent ?? 0}%` }}
-            />
+            <div className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${percent ?? 0}%` }} />
           </div>
           <p className={`text-xs leading-4 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
-            {isFull
-              ? 'Full. New members can join when a spot opens.'
-              : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
+            {isFull ? 'Full. New members can join when a spot opens.' : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
           </p>
         </div>
       ) : (
@@ -87,11 +66,7 @@ function MemberLimitMeter({
   );
 }
 
-function RequestsPanel({
-  club,
-}: {
-  club: ClubDetail;
-}) {
+function RequestsPanel({ club }: { club: ClubDetail }) {
   const clubId = useClubId();
   const { toast } = useToast();
   const { isFull } = getMemberLimitState(club);
@@ -120,13 +95,17 @@ function RequestsPanel({
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-semibold text-sm">
-                {request.requester.firstName?.[0]}{request.requester.lastName?.[0]}
+                {request.requester.firstName?.[0]}
+                {request.requester.lastName?.[0]}
               </div>
               <div className="min-w-0 space-y-0.5">
                 <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
                   <span>
-                    requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                    requested{' '}
+                    {formatDistanceToNow(new Date(request.createdAt), {
+                      addSuffix: true,
+                    })}
                   </span>
                 </div>
               </div>
@@ -180,27 +159,18 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
 
   return (
     <div className="space-y-3">
-      <Button
-        type="button"
-        variant="tertiary"
-        leadingIcon={KeyRound}
-        disabled={isFull}
-        onClick={() => setRedeemOpen((current) => !current)}
-      >
+      <Button type="button" variant="tertiary" leadingIcon={KeyRound} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
         Use join code
       </Button>
       {redeemOpen ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:flex-row">
-          <Input
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase())}
-            placeholder="Enter join code"
-          />
+          <Input value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Enter join code" />
           <Button
             onClick={() =>
-              void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() =>
-                toast({ title: 'Joined club with code' }),
-              )
+              void redeemJoinCode({
+                clubId,
+                code: code.trim().toUpperCase(),
+              }).then(() => toast({ title: 'Joined club with code' }))
             }
             disabled={isFull || !code.trim()}
           >
@@ -230,9 +200,15 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             className="h-28 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
             style={
               bannerUrl
-                ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                ? {
+                    backgroundImage: `url(${bannerUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                  }
                 : club.accentColor
-                  ? { background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)` }
+                  ? {
+                      background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)`,
+                    }
                   : undefined
             }
           />
@@ -254,33 +230,21 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     {isFull ? 'Full' : 'Limited spots'}
                   </Badge>
                 ) : null}
-                {club.viewer.hasPendingJoinRequest ? (
-                  <Badge variant="solid">Request pending</Badge>
-                ) : null}
+                {club.viewer.hasPendingJoinRequest ? <Badge variant="solid">Request pending</Badge> : null}
               </div>
             </div>
-            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">
-              {club.overview || club.description || 'No club description yet.'}
-            </p>
+            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
           </div>
           <MemberLimitMeter club={club} />
           <div className="flex flex-wrap gap-2">
             {club.joinPolicy === 'OPEN' ? (
-              <Button
-                leadingIcon={UserPlus}
-                onClick={() =>
-                  void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))
-                }
-                disabled={isFull}
-              >
+              <Button leadingIcon={UserPlus} onClick={() => void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))} disabled={isFull}>
                 {isFull ? 'Club is full' : 'Join club'}
               </Button>
             ) : (
               <Button
                 leadingIcon={UserPlus}
-                onClick={() =>
-                  void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))
-                }
+                onClick={() => void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))}
                 disabled={isFull || club.viewer.hasPendingJoinRequest}
               >
                 {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
@@ -371,15 +335,8 @@ export default function ClubOverviewPage() {
 
   useEffect(() => {
     const code = searchParams?.get('joinCode');
-    if (
-      code &&
-      club &&
-      !club.viewer.canAccessWorkspace &&
-      !getMemberLimitState(club).isFull
-    ) {
-      void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() =>
-        toast({ title: 'Joined club with code' }),
-      );
+    if (code && club && !club.viewer.canAccessWorkspace && !getMemberLimitState(club).isFull) {
+      void redeemJoinCode({ clubId, code: code.trim().toUpperCase() }).then(() => toast({ title: 'Joined club with code' }));
     }
   }, [club, clubId, redeemJoinCode, searchParams, toast]);
 
@@ -388,10 +345,7 @@ export default function ClubOverviewPage() {
     const unitCode = searchParams?.get('unitCode');
     if (!unitId || !unitCode) return;
     const redemptionKey = `${unitId}:${unitCode}`;
-    if (
-      !club?.viewer.canAccessWorkspace ||
-      redeemedUnitJoinRef.current === redemptionKey
-    ) {
+    if (!club?.viewer.canAccessWorkspace || redeemedUnitJoinRef.current === redemptionKey) {
       return;
     }
 
@@ -407,19 +361,10 @@ export default function ClubOverviewPage() {
       });
   }, [club?.viewer.canAccessWorkspace, clubId, joinUnit, searchParams, toast]);
 
-  const announcements =
-    useQuery(
-      api.announcements.feed.list,
-      club?.viewer.canAccessWorkspace
-        ? { clubId: clubId as Id<'clubs'> }
-        : 'skip',
-    ) ?? [];
+  const announcements = useQuery(api.announcements.feed.list, club?.viewer.canAccessWorkspace ? { clubId: clubId as Id<'clubs'> } : 'skip') ?? [];
 
   const filteredAnnouncements = useMemo(() => {
-    return filterBySearchQuery(announcements, deferredSearch, (announcement) => [
-      announcement.title,
-      announcement.body,
-    ]);
+    return filterBySearchQuery(announcements, deferredSearch, (announcement) => [announcement.title, announcement.body]);
   }, [announcements, deferredSearch]);
 
   if (!club) return null;
@@ -448,16 +393,12 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const actions = club.viewer.canManageMembership ? (
-    <ClubStructureActions club={club} canDelete={isSuperAdmin} />
-  ) : null;
+  const actions = club.viewer.canManageMembership ? <ClubStructureActions club={club} canDelete={isSuperAdmin} /> : null;
 
   const rightPane = (
     <div className="space-y-5 p-4">
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Sponsors
-        </h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
         <div className="space-y-1.5">
           {club.sponsors.map((sponsor) => (
             <div key={sponsor.userId} className="flex items-center gap-2.5">
@@ -471,9 +412,7 @@ export default function ClubOverviewPage() {
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Student leaders
-        </h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Student leaders</h3>
         <div className="space-y-1.5">
           {club.leaders.length > 0 ? (
             club.leaders.map((leader) => (
@@ -492,16 +431,12 @@ export default function ClubOverviewPage() {
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Stats
-        </h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stats</h3>
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Members</dt>
             <dd className="font-medium">
-              {memberLimit == null
-                ? (club._count?.members ?? club.members.length)
-                : `${club._count?.members ?? club.members.length}/${memberLimit}`}
+              {memberLimit == null ? (club._count?.members ?? club.members.length) : `${club._count?.members ?? club.members.length}/${memberLimit}`}
             </dd>
           </div>
           <div className="flex justify-between">
@@ -520,23 +455,12 @@ export default function ClubOverviewPage() {
   return (
     <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <ClubHero
-          club={club}
-          canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)}
-        />
-        {(canInvite || canPost || club.viewer.canManageMembership) ? (
+        <ClubHero club={club} canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)} />
+        {canInvite || canPost || club.viewer.canManageMembership ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
-            <span className="mr-auto text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Manage
-            </span>
+            <span className="mr-auto text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manage</span>
             {canInvite ? (
-              <Button
-                size="sm"
-                variant="tertiary"
-                leadingIcon={UserPlus}
-                disabled={isFull}
-                onClick={() => setInviteOpen(true)}
-              >
+              <Button size="sm" variant="tertiary" leadingIcon={UserPlus} disabled={isFull} onClick={() => setInviteOpen(true)}>
                 {isFull ? 'Club is full' : 'Invite member'}
               </Button>
             ) : null}
@@ -558,22 +482,14 @@ export default function ClubOverviewPage() {
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {deferredSearch
-                  ? `${filteredAnnouncements.length} of ${announcements.length}`
-                  : `${announcements.length} total`}
+                {deferredSearch ? `${filteredAnnouncements.length} of ${announcements.length}` : `${announcements.length} total`}
               </span>
-              <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search announcements"
-                size="sm"
-                className="w-full sm:w-60"
-              />
+              <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="w-full sm:w-60" />
             </div>
           </div>
 
           {filteredAnnouncements.length > 0 ? (
-            <div className="grid gap-2">
+            <CardGroup proximityHover={false}>
               {filteredAnnouncements.map((announcement) => (
                 <AnnouncementCard
                   key={announcement._id}
@@ -585,23 +501,16 @@ export default function ClubOverviewPage() {
                     isAdminGeneral: (announcement as any).isAdminGeneral ?? false,
                   }}
                   compact
-                  className="rounded-lg shadow-none hover:translate-y-0"
                 />
               ))}
-            </div>
+            </CardGroup>
           ) : (
             <Empty className="rounded-lg border bg-muted/20">
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {deferredSearch ? <Search /> : <MessageSquareText />}
-                </EmptyMedia>
+                <EmptyMedia variant="icon">{deferredSearch ? <Search /> : <MessageSquareText />}</EmptyMedia>
                 <EmptyTitle>{deferredSearch ? 'No matches found' : 'No announcements yet'}</EmptyTitle>
                 <EmptyDescription>
-                  {deferredSearch
-                    ? 'Try a different search term.'
-                    : canPost
-                      ? 'Post the first update.'
-                      : 'Check back later.'}
+                  {deferredSearch ? 'Try a different search term.' : canPost ? 'Post the first update.' : 'Check back later.'}
                 </EmptyDescription>
               </EmptyHeader>
               {deferredSearch && (
@@ -615,12 +524,7 @@ export default function ClubOverviewPage() {
       </div>
 
       <InviteDialog clubId={clubId} open={inviteOpen} onOpenChange={setInviteOpen} />
-      <AnnouncementDialog
-        clubId={clubId}
-        open={announceOpen}
-        onOpenChange={setAnnounceOpen}
-        directPost={canPostDirectAnnouncement}
-      />
+      <AnnouncementDialog clubId={clubId} open={announceOpen} onOpenChange={setAnnounceOpen} directPost={canPostDirectAnnouncement} />
     </ClubWorkspace>
   );
 }

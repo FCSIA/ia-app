@@ -3,21 +3,14 @@
 import { use, useEffect, useRef, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import {
-  Archive,
-  ArrowLeft,
-  Clock3,
-  Flag,
-  MessageSquare,
-  Send,
-} from 'lucide-react';
+import { Archive, ArrowLeft, Clock3, Flag, MessageSquare, Send } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { AppShell } from '@/components/layout/AppShell';
 import {
   ANNOUNCEMENT_BADGE_TEXT_CLASS,
-  ANNOUNCEMENT_TAG_COLORS,
+  ANNOUNCEMENT_TAG_BADGE_COLORS,
   ANNOUNCEMENT_TAG_LABELS,
   type AnnouncementCardRecord,
 } from '@/components/announcements/announcement-card';
@@ -78,17 +71,21 @@ function formatStatus(status: string) {
   return status.replace(/_/g, ' ');
 }
 
-function formatName(person?: {
-  firstName?: string | null;
-  lastName?: string | null;
-} | null) {
+function formatName(
+  person?: {
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null,
+) {
   return [person?.firstName, person?.lastName].filter(Boolean).join(' ') || 'Unknown author';
 }
 
-function getInitials(person?: {
-  firstName?: string | null;
-  lastName?: string | null;
-} | null) {
+function getInitials(
+  person?: {
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null,
+) {
   const initials = [person?.firstName?.[0], person?.lastName?.[0]].filter(Boolean).join('');
   return initials || '?';
 }
@@ -146,9 +143,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     announcementId: id as Id<'announcements'>,
   });
   const isLoading = detail === undefined;
-  const announcement: AnnouncementDetail | null = detail
-    ? { ...detail.announcement, comments: detail.comments }
-    : null;
+  const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;
   const shouldMarkRead = announcement !== null && !announcement.isRead;
 
   const markRead = useMutation(api.announcements.engagement.markRead);
@@ -182,9 +177,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               <Archive className="size-5" />
             </div>
             <h2 className="mt-4 text-lg font-semibold text-foreground">Announcement not found</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              The post may have been removed or you may not have access to it anymore.
-            </p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">The post may have been removed or you may not have access to it anymore.</p>
             <Button asChild className="mt-6">
               <Link href="/announcements">Back to announcements</Link>
             </Button>
@@ -198,8 +191,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const audienceLabel = formatAudience(announcement);
   const commentCount = announcement.comments?.length ?? 0;
   const canDeleteComment = (commentAuthorId: string) =>
-    commentAuthorId === user?._id ||
-    !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
+    commentAuthorId === user?._id || !!user?.roles?.some((role: string) => ['ADMIN', 'SUPER_ADMIN'].includes(role));
 
   return (
     <AppShell>
@@ -224,7 +216,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
+        <Card>
           <CardHeader className="gap-5 bg-muted/20 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (
@@ -232,13 +224,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                   Admin
                 </Badge>
               ) : null}
-              <Badge
-                className={cn(
-                  ANNOUNCEMENT_BADGE_TEXT_CLASS,
-                  ANNOUNCEMENT_TAG_COLORS[announcement.targetType] ||
-                    'bg-muted text-muted-foreground',
-                )}
-              >
+              <Badge size="sm" color={ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray'}>
                 {ANNOUNCEMENT_TAG_LABELS[announcement.targetType] || announcement.targetType}
               </Badge>
               <Badge variant="solid" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
@@ -252,15 +238,15 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             </div>
 
             <div className="space-y-3">
-              <CardTitle className="text-2xl leading-tight tracking-tight text-foreground sm:text-3xl">
-                {announcement.title}
-              </CardTitle>
+              <CardTitle className="text-2xl leading-tight tracking-tight text-foreground sm:text-3xl">{announcement.title}</CardTitle>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <span>Posted by {authorName}</span>
-                <span>{formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}</span>
-                {announcement.expiresAt ? (
-                  <span>Expires {format(new Date(announcement.expiresAt), 'MMM d')}</span>
-                ) : null}
+                <span>
+                  {formatDistanceToNow(new Date(announcement.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+                {announcement.expiresAt ? <span>Expires {format(new Date(announcement.expiresAt), 'MMM d')}</span> : null}
                 {announcement.allowComments ? <span>{commentCount} comments</span> : null}
               </div>
             </div>
@@ -281,9 +267,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               </p>
             ) : null}
 
-            <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">
-              {announcement.body}
-            </div>
+            <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">{announcement.body}</div>
           </CardContent>
         </Card>
 
@@ -292,9 +276,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Discussion</h2>
-                <p className="text-sm text-muted-foreground">
-                  Questions and follow-up only.
-                </p>
+                <p className="text-sm text-muted-foreground">Questions and follow-up only.</p>
               </div>
               <Badge variant="solid">
                 {commentCount} comment{commentCount === 1 ? '' : 's'}
@@ -313,12 +295,8 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">
-                              {formatName(entry.author)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(entry.createdAt), 'EEE, MMM d · h:mm a')}
-                            </p>
+                            <p className="truncate text-sm font-medium text-foreground">{formatName(entry.author)}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(entry.createdAt), 'EEE, MMM d · h:mm a')}</p>
                           </div>
 
                           {canDeleteComment(entry.authorId) ? (
@@ -330,7 +308,9 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                               disabled={deleteCommentPending === entry._id}
                               onClick={() => {
                                 setDeleteCommentPending(entry._id);
-                                void removeComment({ commentId: entry._id as Id<'comments'> })
+                                void removeComment({
+                                  commentId: entry._id as Id<'comments'>,
+                                })
                                   .catch(() =>
                                     toast({
                                       title: 'Failed to delete comment',
@@ -345,9 +325,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                           ) : null}
                         </div>
 
-                        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/85">
-                          {entry.body}
-                        </p>
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/85">{entry.body}</p>
                       </div>
                     </div>
                   </div>
@@ -440,10 +418,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                 <Button type="button" variant="ghost" onClick={() => setShowReport(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!reportReason.trim() || reportPending}
-                >
+                <Button type="submit" disabled={!reportReason.trim() || reportPending}>
                   {reportPending ? 'Submitting…' : 'Submit report'}
                 </Button>
               </DialogFooter>

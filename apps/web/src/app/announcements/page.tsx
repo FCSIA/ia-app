@@ -7,37 +7,23 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Archive,
-  Bookmark,
-  Check,
-  Inbox,
-  Mail,
-  Pin,
-  Plus,
-  X,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Archive, Check, Inbox, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import {
-  FilterToggleGroup,
-  FilterToggleItem,
-} from '@/components/ui/filter-toggle-group';
-import { FeatureFilterBar } from '@/components/filters/feature-filter-bar';
-import {
-  ANNOUNCEMENT_TAG_LABELS,
-  AnnouncementCard,
-} from '@/components/announcements/announcement-card';
+import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
+import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
+import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -66,19 +52,11 @@ export default function AnnouncementsPage() {
   const deferredSearch = useDeferredValue(search);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
-  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>(
-    'all',
-  );
-  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'pinned'>(
-    'all',
-  );
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'pinned'>('all');
   const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
-  const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>(
-    [],
-  );
-  const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>(
-    [],
-  );
+  const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
+  const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [form, setForm] = useState({
     title: '',
@@ -97,9 +75,7 @@ export default function AnnouncementsPage() {
     const next = { ...form, ...partial };
 
     const hasGrades = next.targetGrades.length > 0;
-    const hasPathways =
-      next.targetMajorPathways.length > 0 ||
-      next.targetMinorPathways.length > 0;
+    const hasPathways = next.targetMajorPathways.length > 0 || next.targetMinorPathways.length > 0;
 
     let targetType = 'SCHOOL_WIDE';
     const activeDimensions = [hasGrades, hasPathways].filter(Boolean).length;
@@ -117,8 +93,7 @@ export default function AnnouncementsPage() {
 
   const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canApproveAnnouncements =
-    !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+  const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
   const data = useQuery(api.announcements.feed.list, {
     archived: showArchived,
@@ -127,12 +102,8 @@ export default function AnnouncementsPage() {
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
   const archiveAnnouncement = useMutation(api.announcements.engagement.archive);
-  const bookmarkAnnouncement = useMutation(
-    api.announcements.engagement.bookmark,
-  );
-  const unbookmarkAnnouncement = useMutation(
-    api.announcements.engagement.unbookmark,
-  );
+  const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
+  const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
   const approveAnnouncement = useMutation(api.announcements.feed.approve);
   const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
@@ -156,9 +127,7 @@ export default function AnnouncementsPage() {
       }
     });
 
-    return Array.from(clubsById.values()).sort((left, right) =>
-      left.name.localeCompare(right.name),
-    );
+    return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
   }, [data]);
 
   const filtered = useMemo(() => {
@@ -171,39 +140,20 @@ export default function AnnouncementsPage() {
       if (readFilter === 'read' && !announcement.isRead) return false;
       if (savedFilter === 'saved' && !announcement.isBookmarked) return false;
       if (savedFilter === 'pinned' && !announcement.isPinned) return false;
-      if (
-        selectedGrades.length > 0 &&
-        !selectedGrades.some(
-          (grade) =>
-            announcement.targetGrade === grade ||
-            announcement.targetGrades?.includes?.(grade),
-        )
-      ) {
+      if (selectedGrades.length > 0 && !selectedGrades.some((grade) => announcement.targetGrade === grade || announcement.targetGrades?.includes?.(grade))) {
         return false;
       }
       if (
         selectedMajorPathways.length > 0 &&
-        !selectedMajorPathways.some(
-          (pathway) =>
-            announcement.targetPathway === pathway ||
-            announcement.targetMajorPathways?.includes?.(pathway),
-        )
+        !selectedMajorPathways.some((pathway) => announcement.targetPathway === pathway || announcement.targetMajorPathways?.includes?.(pathway))
       ) {
         return false;
       }
-      if (
-        selectedMinorPathways.length > 0 &&
-        !selectedMinorPathways.some((pathway) =>
-          announcement.targetMinorPathways?.includes?.(pathway),
-        )
-      ) {
+      if (selectedMinorPathways.length > 0 && !selectedMinorPathways.some((pathway) => announcement.targetMinorPathways?.includes?.(pathway))) {
         return false;
       }
 
-      if (
-        selectedClubIds.length > 0 &&
-        !selectedClubIds.includes(announcement.clubId ?? '')
-      ) {
+      if (selectedClubIds.length > 0 && !selectedClubIds.includes(announcement.clubId ?? '')) {
         return false;
       }
 
@@ -215,21 +165,7 @@ export default function AnnouncementsPage() {
         announcement.club?.name,
       ]);
     });
-  }, [
-    activeTag,
-    data,
-    deferredSearch,
-    readFilter,
-    savedFilter,
-    selectedClubIds,
-    selectedGrades,
-    selectedMajorPathways,
-    selectedMinorPathways,
-  ]);
-
-  const handleTagClick = (tag: string) => {
-    setActiveTag((current) => (current === tag ? null : tag));
-  };
+  }, [activeTag, data, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
 
   const [createPending, setCreatePending] = useState(false);
   const [reviewPending, setReviewPending] = useState<{
@@ -245,22 +181,14 @@ export default function AnnouncementsPage() {
     void createAnnouncement({
       title: form.title,
       body: form.body,
-      targetType: form.targetType as
-        'SCHOOL_WIDE' | 'GRADE' | 'PATHWAY' | 'CLUB' | 'INTERSECTION',
+      targetType: form.targetType as 'SCHOOL_WIDE' | 'GRADE' | 'PATHWAY' | 'CLUB' | 'INTERSECTION',
       allowComments: form.allowComments,
       isAdminGeneral: form.isAdminGeneral,
       promoted: form.promoted,
       expiresAt: form.expiresAt ? Date.parse(form.expiresAt) : undefined,
-      targetGrades:
-        form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
-      targetMajorPathways:
-        form.targetType === 'PATHWAY' || isIntersection
-          ? form.targetMajorPathways
-          : [],
-      targetMinorPathways:
-        form.targetType === 'PATHWAY' || isIntersection
-          ? form.targetMinorPathways
-          : [],
+      targetGrades: form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
+      targetMajorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMajorPathways : [],
+      targetMinorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMinorPathways : [],
     })
       .then(() => {
         setShowNew(false);
@@ -298,8 +226,12 @@ export default function AnnouncementsPage() {
     selectedMinorPathways.length > 0;
 
   const clearFilters = () => {
-    setActiveTag(null);
     setSearch('');
+    resetFacetFilters();
+  };
+
+  const resetFacetFilters = () => {
+    setActiveTag(null);
     setSelectedClubIds([]);
     setReadFilter('all');
     setSavedFilter('all');
@@ -324,10 +256,7 @@ export default function AnnouncementsPage() {
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
           <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Tabs
-              value={showArchived ? 'archived' : 'active'}
-              onValueChange={(value) => setShowArchived(value === 'archived')}
-            >
+            <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
               <TabsList aria-label="Announcement view">
                 <TabItem value="active" label="Active" icon={Inbox} />
                 <TabItem value="archived" label="Archived" icon={Archive} />
@@ -348,185 +277,150 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
-        <FeatureFilterBar
-          className="mb-5"
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search announcements..."
-          activeCount={activeFilterCount}
-          onClear={clearFilters}
-          advancedOpen={filtersOpen}
-          onAdvancedOpenChange={setFiltersOpen}
-          advancedTitle="Filter announcements"
-          advancedDescription="Combine audience and activity filters."
-          chips={[
-            { value: 'unread', label: 'Unread', icon: <Mail /> },
-            { value: 'saved', label: 'Saved', icon: <Bookmark /> },
-            { value: 'pinned', label: 'Pinned', icon: <Pin /> },
-          ]}
-          activeChips={[
-            ...(readFilter === 'unread' ? ['unread'] : []),
-            ...(savedFilter === 'saved' ? ['saved'] : []),
-            ...(savedFilter === 'pinned' ? ['pinned'] : []),
-          ]}
-          onChipToggle={(value) => {
-            if (value === 'unread') {
-              setReadFilter((current) =>
-                current === 'unread' ? 'all' : 'unread',
-              );
-            } else if (value === 'saved' || value === 'pinned') {
-              setSavedFilter((current) => (current === value ? 'all' : value));
-            }
-          }}
-          advanced={
-            <ScrollArea className="max-h-[min(34rem,70vh)] pr-3">
-              <div className="flex flex-col gap-5">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <FieldSet className="gap-0">
-                    <FieldLegend variant="label">Read state</FieldLegend>
-                    <ToggleGroup
-                      type="single"
-                      value={readFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === 'all' ||
-                          value === 'unread' ||
-                          value === 'read'
-                        ) {
-                          setReadFilter(value);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem value="all">Any</ToggleGroupItem>
-                      <ToggleGroupItem value="unread">Unread</ToggleGroupItem>
-                      <ToggleGroupItem value="read">Read</ToggleGroupItem>
-                    </ToggleGroup>
-                  </FieldSet>
-                  <FieldSet className="gap-0">
-                    <FieldLegend variant="label">Saved state</FieldLegend>
-                    <ToggleGroup
-                      type="single"
-                      value={savedFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === 'all' ||
-                          value === 'saved' ||
-                          value === 'pinned'
-                        ) {
-                          setSavedFilter(value);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                    >
-                      <ToggleGroupItem value="all">Any</ToggleGroupItem>
-                      <ToggleGroupItem value="saved">Saved</ToggleGroupItem>
-                      <ToggleGroupItem value="pinned">Pinned</ToggleGroupItem>
-                    </ToggleGroup>
-                  </FieldSet>
-                </div>
+        <div className="mb-5 flex items-center gap-2">
+          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" />
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="tertiary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
+                Filters
+                {activeFilterCount > 0 ? (
+                  <Badge size="sm" color="blue">
+                    {activeFilterCount}
+                  </Badge>
+                ) : null}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="max-h-[min(38rem,var(--radix-popover-content-available-height))] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto p-3"
+              aria-labelledby="announcement-filters-title"
+            >
+              <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 id="announcement-filters-title" className="text-sm font-semibold text-foreground">
+                  Filters
+                </h3>
+                {activeFilterCount > 0 ? (
+                  <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
+                    Reset
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <FieldSet className="gap-0">
+                  <FieldLegend variant="label">Read state</FieldLegend>
+                  <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} className="w-full">
+                    {['all', 'unread', 'read'].map((value, index) => (
+                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} />
+                    ))}
+                  </RadioGroup>
+                </FieldSet>
+
+                <FieldSet className="gap-0">
+                  <FieldLegend variant="label">Saved state</FieldLegend>
+                  <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} className="w-full">
+                    {['all', 'saved', 'pinned'].map((value, index) => (
+                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} />
+                    ))}
+                  </RadioGroup>
+                </FieldSet>
 
                 {availableTags.length > 0 ? (
                   <FieldSet className="gap-0">
                     <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <ToggleGroup
-                      type="single"
-                      value={activeTag ?? 'all'}
-                      onValueChange={(value) =>
-                        setActiveTag(value && value !== 'all' ? value : null)
-                      }
-                      variant="outline"
-                      size="sm"
-                      className="flex-wrap justify-start"
-                    >
-                      <ToggleGroupItem value="all">Any</ToggleGroupItem>
-                      {availableTags.map((tag) => (
-                        <ToggleGroupItem key={tag} value={tag}>
-                          {ANNOUNCEMENT_SCOPE_LABELS[tag] ||
-                            tag.replace(/_/g, ' ')}
-                        </ToggleGroupItem>
+                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} className="w-full">
+                      {['all', ...availableTags].map((tag, index) => (
+                        <RadioItem
+                          key={tag}
+                          index={index}
+                          value={tag}
+                          label={tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')}
+                        />
                       ))}
-                    </ToggleGroup>
+                    </RadioGroup>
                   </FieldSet>
                 ) : null}
 
                 <FieldSet className="gap-0">
                   <FieldLegend variant="label">Grade</FieldLegend>
-                  <FilterToggleGroup
-                    aria-label="Grade"
-                    value={selectedGrades.map(String)}
-                    onValueChange={(values) =>
-                      setSelectedGrades(values.map(Number))
-                    }
+                  <CheckboxGroup
+                    checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (selectedGrades.includes(grade) ? [index] : [])))}
+                    className="w-full"
                   >
-                    {GRADE_OPTIONS.map((grade) => (
-                      <FilterToggleItem key={grade} value={String(grade)}>
-                        {grade}
-                      </FilterToggleItem>
+                    {GRADE_OPTIONS.map((grade, index) => (
+                      <CheckboxItem
+                        key={grade}
+                        index={index}
+                        label={`Grade ${grade}`}
+                        checked={selectedGrades.includes(grade)}
+                        onToggle={() =>
+                          setSelectedGrades((current) => (current.includes(grade) ? current.filter((value) => value !== grade) : [...current, grade]))
+                        }
+                      />
                     ))}
-                  </FilterToggleGroup>
+                  </CheckboxGroup>
                 </FieldSet>
 
-                <FieldSet className="gap-0">
-                  <FieldLegend variant="label">Major pathway</FieldLegend>
-                  <FilterToggleGroup
-                    aria-label="Major pathway"
-                    value={selectedMajorPathways}
-                    onValueChange={setSelectedMajorPathways}
-                  >
-                    {PATHWAY_OPTIONS.map((pathway) => (
-                      <FilterToggleItem
-                        key={pathway.value}
-                        value={pathway.value}
-                      >
-                        {pathway.label}
-                      </FilterToggleItem>
-                    ))}
-                  </FilterToggleGroup>
-                </FieldSet>
-
-                <FieldSet className="gap-0">
-                  <FieldLegend variant="label">Minor pathway</FieldLegend>
-                  <FilterToggleGroup
-                    aria-label="Minor pathway"
-                    value={selectedMinorPathways}
-                    onValueChange={setSelectedMinorPathways}
-                  >
-                    {PATHWAY_OPTIONS.map((pathway) => (
-                      <FilterToggleItem
-                        key={pathway.value}
-                        value={pathway.value}
-                      >
-                        {pathway.label}
-                      </FilterToggleItem>
-                    ))}
-                  </FilterToggleGroup>
-                </FieldSet>
+                {[
+                  {
+                    label: 'Major pathway',
+                    selected: selectedMajorPathways,
+                    setSelected: setSelectedMajorPathways,
+                  },
+                  {
+                    label: 'Minor pathway',
+                    selected: selectedMinorPathways,
+                    setSelected: setSelectedMinorPathways,
+                  },
+                ].map(({ label, selected, setSelected }) => (
+                  <FieldSet key={label} className="gap-0">
+                    <FieldLegend variant="label">{label}</FieldLegend>
+                    <CheckboxGroup
+                      checkedIndices={new Set(PATHWAY_OPTIONS.flatMap((pathway, index) => (selected.includes(pathway.value) ? [index] : [])))}
+                      className="w-full"
+                    >
+                      {PATHWAY_OPTIONS.map((pathway, index) => (
+                        <CheckboxItem
+                          key={pathway.value}
+                          index={index}
+                          label={pathway.label}
+                          checked={selected.includes(pathway.value)}
+                          onToggle={() =>
+                            setSelected((current) =>
+                              current.includes(pathway.value) ? current.filter((value) => value !== pathway.value) : [...current, pathway.value],
+                            )
+                          }
+                        />
+                      ))}
+                    </CheckboxGroup>
+                  </FieldSet>
+                ))}
 
                 {availableClubs.length > 0 ? (
                   <FieldSet className="gap-0">
                     <FieldLegend variant="label">Club</FieldLegend>
-                    <FilterToggleGroup
-                      aria-label="Club"
-                      value={selectedClubIds}
-                      onValueChange={setSelectedClubIds}
+                    <CheckboxGroup
+                      checkedIndices={new Set(availableClubs.flatMap((club, index) => (selectedClubIds.includes(club.id) ? [index] : [])))}
+                      className="w-full"
                     >
-                      {availableClubs.map((club) => (
-                        <FilterToggleItem key={club.id} value={club.id}>
-                          {club.name}
-                        </FilterToggleItem>
+                      {availableClubs.map((club, index) => (
+                        <CheckboxItem
+                          key={club.id}
+                          index={index}
+                          label={club.name}
+                          checked={selectedClubIds.includes(club.id)}
+                          onToggle={() =>
+                            setSelectedClubIds((current) => (current.includes(club.id) ? current.filter((value) => value !== club.id) : [...current, club.id]))
+                          }
+                        />
                       ))}
-                    </FilterToggleGroup>
+                    </CheckboxGroup>
                   </FieldSet>
                 ) : null}
               </div>
-            </ScrollArea>
-          }
-        />
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {showNew && canPost ? (
           <Card className="mb-6">
@@ -535,33 +429,20 @@ export default function AnnouncementsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  placeholder="Title"
-                  value={form.title}
-                  onChange={(event) =>
-                    setForm({ ...form, title: event.target.value })
-                  }
-                  required
-                />
+                <Input placeholder="Title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
                 <Textarea
                   className="min-h-[120px] resize-y"
                   placeholder="Write your announcement..."
                   value={form.body}
-                  onChange={(event) =>
-                    setForm({ ...form, body: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, body: event.target.value })}
                   required
                 />
                 <div className="space-y-4">
-                  <Label className="text-sm font-semibold">
-                    Audience Targeting
-                  </Label>
+                  <Label className="text-sm font-semibold">Audience Targeting</Label>
 
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">
-                        Grades
-                      </Label>
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">Grades</Label>
                       <div className="flex gap-1.5">
                         {GRADE_OPTIONS.map((grade) => {
                           const active = form.targetGrades.includes(grade);
@@ -571,14 +452,9 @@ export default function AnnouncementsPage() {
                               type="button"
                               variant={active ? 'primary' : 'secondary'}
                               size="sm"
-                              className={cn(
-                                'h-8 w-10 p-0 rounded-lg transition-all',
-                                active && 'ring-2 ring-primary ring-offset-2',
-                              )}
+                              className={cn('h-8 w-10 p-0 rounded-lg transition-all', active && 'ring-2 ring-primary ring-offset-2')}
                               onClick={() => {
-                                const next = active
-                                  ? form.targetGrades.filter((g) => g !== grade)
-                                  : [...form.targetGrades, grade];
+                                const next = active ? form.targetGrades.filter((g) => g !== grade) : [...form.targetGrades, grade];
                                 updateTargeting({ targetGrades: next });
                               }}
                             >
@@ -590,30 +466,19 @@ export default function AnnouncementsPage() {
                     </div>
 
                     <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">
-                        Pathways
-                      </Label>
+                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">Pathways</Label>
                       <div className="flex flex-wrap gap-1.5">
                         {PATHWAY_OPTIONS.map((p) => {
-                          const active = form.targetMajorPathways.includes(
-                            p.value,
-                          );
+                          const active = form.targetMajorPathways.includes(p.value);
                           return (
                             <Button
                               key={p.value}
                               type="button"
                               variant={active ? 'primary' : 'secondary'}
                               size="sm"
-                              className={cn(
-                                'h-8 rounded-lg transition-all',
-                                active && 'ring-2 ring-primary ring-offset-2',
-                              )}
+                              className={cn('h-8 rounded-lg transition-all', active && 'ring-2 ring-primary ring-offset-2')}
                               onClick={() => {
-                                const next = active
-                                  ? form.targetMajorPathways.filter(
-                                      (v) => v !== p.value,
-                                    )
-                                  : [...form.targetMajorPathways, p.value];
+                                const next = active ? form.targetMajorPathways.filter((v) => v !== p.value) : [...form.targetMajorPathways, p.value];
                                 updateTargeting({ targetMajorPathways: next });
                               }}
                             >
@@ -647,14 +512,8 @@ export default function AnnouncementsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    Expires (optional)
-                  </label>
-                  <DateTimePicker
-                    value={form.expiresAt}
-                    onChange={(expiresAt) => setForm({ ...form, expiresAt })}
-                    allowClear
-                  />
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expires (optional)</label>
+                  <DateTimePicker value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
                 </div>
                 <div className="flex items-center gap-6 pt-2">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
@@ -693,9 +552,7 @@ export default function AnnouncementsPage() {
                         type="checkbox"
                         className="h-4 w-4 rounded border-input accent-accent-500"
                         checked={form.promoted}
-                        onChange={(event) =>
-                          setForm({ ...form, promoted: event.target.checked })
-                        }
+                        onChange={(event) => setForm({ ...form, promoted: event.target.checked })}
                       />
                       Pin for one month
                     </label>
@@ -705,12 +562,7 @@ export default function AnnouncementsPage() {
                   <Button type="submit" loading={createPending}>
                     Post Announcement
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    disabled={createPending}
-                    onClick={() => setShowNew(false)}
-                  >
+                  <Button type="button" variant="ghost" disabled={createPending} onClick={() => setShowNew(false)}>
                     Cancel
                   </Button>
                 </div>
@@ -720,29 +572,16 @@ export default function AnnouncementsPage() {
         ) : null}
 
         {isLoading ? (
-          <div className="py-12 text-center text-muted-foreground">
-            Loading…
-          </div>
+          <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : !data?.length ? (
           <Card className="border-dashed py-16 text-center">
-            <CardContent className="pt-6">
-              {showArchived
-                ? 'No archived announcements'
-                : 'No announcements yet'}
-            </CardContent>
+            <CardContent className="pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
           </Card>
         ) : filtered.length === 0 ? (
           <Card className="border-dashed py-16 text-center">
             <CardContent className="pt-6">
-              <p className="text-muted-foreground">
-                No announcements match your filters.
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2"
-                onClick={clearFilters}
-              >
+              <p className="text-muted-foreground">No announcements match your filters.</p>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
                 Clear filters
               </Button>
             </CardContent>
@@ -755,16 +594,13 @@ export default function AnnouncementsPage() {
                 {data.length === 1 ? '' : 's'}
               </p>
             ) : null}
-            <div className="space-y-4">
+            <CardGroup proximityHover={false}>
               {(filtered as any[]).map((announcement) => {
-                const canArchiveAnnouncement =
-                  canArchiveAny || announcement.author?._id === user?._id;
+                const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
                 const isReviewPending = reviewPending?.id === announcement._id;
-                const approving =
-                  isReviewPending && reviewPending?.action === 'approve';
-                const rejecting =
-                  isReviewPending && reviewPending?.action === 'reject';
+                const approving = isReviewPending && reviewPending?.action === 'approve';
+                const rejecting = isReviewPending && reviewPending?.action === 'reject';
                 return (
                   <AnnouncementCard
                     key={announcement._id}
@@ -777,34 +613,21 @@ export default function AnnouncementsPage() {
                         .then(() => toast({ title: 'Archived' }))
                         .catch((error: unknown) =>
                           toast({
-                            title:
-                              error instanceof Error
-                                ? error.message
-                                : 'Failed to archive',
+                            title: error instanceof Error ? error.message : 'Failed to archive',
                             variant: 'destructive',
                           }),
                         );
                     }}
                     onBookmarkToggle={(entry) => {
-                      const toggle = entry.isBookmarked
-                        ? unbookmarkAnnouncement
-                        : bookmarkAnnouncement;
+                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
                       void toggle({
                         announcementId: entry._id as Id<'announcements'>,
                       }).catch(() => undefined);
                     }}
-                    onTagClick={handleTagClick}
-                    onClubClick={(clubId: string) => {
-                      setActiveTag('CLUB');
-                      setSelectedClubIds([clubId]);
-                    }}
                     footer={
-                      announcement.status === 'PENDING_APPROVAL' &&
-                      canApproveAnnouncements ? (
+                      announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
-                          <span className="text-xs text-muted-foreground">
-                            Sponsor review required
-                          </span>
+                          <span className="text-xs text-muted-foreground">Sponsor review required</span>
                           <Button
                             size="sm"
                             leadingIcon={Check}
@@ -816,15 +639,10 @@ export default function AnnouncementsPage() {
                                 action: 'approve',
                               });
                               void approveAnnouncement({ announcementId })
-                                .then(() =>
-                                  toast({ title: 'Announcement published' }),
-                                )
+                                .then(() => toast({ title: 'Announcement published' }))
                                 .catch((error: unknown) =>
                                   toast({
-                                    title:
-                                      error instanceof Error
-                                        ? error.message
-                                        : 'Failed to publish',
+                                    title: error instanceof Error ? error.message : 'Failed to publish',
                                     variant: 'destructive',
                                   }),
                                 )
@@ -845,15 +663,10 @@ export default function AnnouncementsPage() {
                                 action: 'reject',
                               });
                               void rejectAnnouncement({ announcementId })
-                                .then(() =>
-                                  toast({ title: 'Announcement sent back' }),
-                                )
+                                .then(() => toast({ title: 'Announcement sent back' }))
                                 .catch((error: unknown) =>
                                   toast({
-                                    title:
-                                      error instanceof Error
-                                        ? error.message
-                                        : 'Failed to reject',
+                                    title: error instanceof Error ? error.message : 'Failed to reject',
                                     variant: 'destructive',
                                   }),
                                 )
@@ -868,7 +681,7 @@ export default function AnnouncementsPage() {
                   />
                 );
               })}
-            </div>
+            </CardGroup>
           </div>
         )}
       </div>
