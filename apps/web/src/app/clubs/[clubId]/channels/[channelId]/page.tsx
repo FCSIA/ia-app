@@ -144,6 +144,7 @@ const REACTION_LABELS = Object.fromEntries(
 ) as Record<string, string>;
 
 type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
+type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
 function isChannelReaction(value: string): value is ChannelReaction {
   return QUICK_REACTIONS.some((reaction) => reaction.value === value);
@@ -381,6 +382,7 @@ function MessageAuthorPreview({
   compact,
   currentUserId,
   canSendFriendRequest,
+  friendshipStatus,
   friendRequestPendingId,
   onSendFriendRequest,
 }: {
@@ -388,6 +390,7 @@ function MessageAuthorPreview({
   compact: boolean;
   currentUserId?: string;
   canSendFriendRequest: boolean;
+  friendshipStatus?: FriendshipStatus;
   friendRequestPendingId?: string | null;
   onSendFriendRequest: (userId: string) => void;
 }) {
@@ -396,7 +399,11 @@ function MessageAuthorPreview({
   const isStudentProfile = hasStudentScheduleRole(author.roles);
   const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
   const isPending = friendRequestPendingId === author._id;
-  const canOfferFriendRequest = canSendFriendRequest && !isCurrentUser && isStudentProfile;
+  const canOfferFriendRequest =
+    canSendFriendRequest &&
+    !isCurrentUser &&
+    isStudentProfile &&
+    friendshipStatus === 'NONE';
 
   return (
     <HoverCard openDelay={150} closeDelay={100}>
@@ -519,6 +526,7 @@ function MessageRow({
   onShowHistory,
   onReport,
   canSendFriendRequest,
+  friendshipStatus,
   onSendFriendRequest,
   isEditing,
   isReactionPending,
@@ -543,6 +551,7 @@ function MessageRow({
   onShowHistory?: (messageId: string) => void;
   onReport?: (messageId: string) => void;
   canSendFriendRequest: boolean;
+  friendshipStatus?: FriendshipStatus;
   onSendFriendRequest: (userId: string) => void;
   isEditing: boolean;
   isReactionPending: boolean;
@@ -585,6 +594,7 @@ function MessageRow({
           compact={compact}
           currentUserId={currentUserId}
           canSendFriendRequest={canSendFriendRequest}
+          friendshipStatus={friendshipStatus}
           friendRequestPendingId={friendRequestPendingId}
           onSendFriendRequest={onSendFriendRequest}
         />
@@ -1142,6 +1152,26 @@ export default function ClubChannelPage({
     () => [...messages, ...threadReplies],
     [messages, threadReplies],
   );
+  const friendshipTargetIds = useMemo(
+    () =>
+      [...new Set(
+        flattenedMessages
+          .filter((message) => hasStudentScheduleRole(message.author.roles))
+          .map((message) => message.author._id)
+          .filter((userId) => userId !== user?._id),
+      )].slice(0, 100),
+    [flattenedMessages, user?._id],
+  );
+  const friendshipStatuses = useQuery(
+    api.schedule.friends.getStatuses,
+    hasStudentScheduleRole(user?.roles) && friendshipTargetIds.length > 0
+      ? { userIds: friendshipTargetIds }
+      : 'skip',
+  );
+  const friendshipStatusByUserId = useMemo(
+    () => new Map(friendshipStatuses?.map(({ userId, status }) => [userId, status])),
+    [friendshipStatuses],
+  );
   const messagesById = useMemo(
     () => new Map(flattenedMessages.map((message) => [message._id, message])),
     [flattenedMessages],
@@ -1245,6 +1275,7 @@ export default function ClubChannelPage({
           }
           onReport={(messageId) => setReportingMessageId(messageId as Id<'clubChannelMessages'>)}
           canSendFriendRequest={hasStudentScheduleRole(user?.roles)}
+          friendshipStatus={friendshipStatusByUserId.get(message.author._id)}
           onSendFriendRequest={(friendId) => void handleSendFriendRequest(friendId)}
           isEditing={isEditing}
           isReactionPending={false}

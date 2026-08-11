@@ -3,6 +3,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   getFriendshipBetween,
+  getScheduleFriendshipStatus,
   getStudentTarget,
   deliverNotification,
   isStudentUser,
@@ -12,9 +13,20 @@ import {
   studentVisibility,
   scheduleSearchResultValidator,
   type ScheduleSearchResult,
-  type ScheduleSearchFriendshipStatus,
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
+
+const scheduleFriendshipStateValidator = v.object({
+  userId: v.id("users"),
+  status: v.union(
+    v.literal("NONE"),
+    v.literal("REQUEST_SENT"),
+    v.literal("REQUEST_RECEIVED"),
+    v.literal("FRIENDS"),
+  ),
+});
+
+const MAX_FRIENDSHIP_STATE_TARGETS = 100;
 
 export const search = query({
   args: {
@@ -41,14 +53,7 @@ export const search = query({
       if (candidate._id === user._id || !candidate.isActive) continue;
       const friendship = await getFriendshipBetween(ctx, user._id, candidate._id);
       const schedule = await serializeScheduleForUser(ctx, candidate._id);
-      const friendshipStatus: ScheduleSearchFriendshipStatus =
-        friendship?.status === "ACCEPTED"
-          ? "FRIENDS"
-          : friendship?.status === "PENDING" && friendship.requesterId === user._id
-            ? "REQUEST_SENT"
-            : friendship?.status === "PENDING" && friendship.addresseeId === user._id
-              ? "REQUEST_RECEIVED"
-              : "NONE";
+      const friendshipStatus = getScheduleFriendshipStatus(friendship, user._id);
 
       results.push({
         ...serializeUser(candidate),
@@ -58,6 +63,30 @@ export const search = query({
       if (results.length >= limit) break;
     }
     return results;
+  },
+});
+
+/** Bounded relationship state for people already visible in another surface, such as chat. */
+export const getStatuses = query({
+  args: { userIds: v.array(v.id("users")) },
+  returns: v.array(scheduleFriendshipStateValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user || !isStudentUser(user)) return [];
+
+    const userIds = [...new Set(args.userIds)]
+      .filter((userId) => userId !== user._id)
+      .slice(0, MAX_FRIENDSHIP_STATE_TARGETS);
+
+    return await Promise.all(
+      userIds.map(async (userId) => ({
+        userId,
+        status: getScheduleFriendshipStatus(
+          await getFriendshipBetween(ctx, user._id, userId),
+          user._id,
+        ),
+      })),
+    );
   },
 });
 

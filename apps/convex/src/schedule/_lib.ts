@@ -291,6 +291,17 @@ export async function getFriendshipBetween(
     .unique();
 }
 
+export function getScheduleFriendshipStatus(
+  friendship:
+    | Pick<Doc<"studentScheduleFriends">, "requesterId" | "addresseeId" | "status">
+    | null,
+  viewerId: Id<"users">,
+): ScheduleSearchFriendshipStatus {
+  if (!friendship) return "NONE";
+  if (friendship.status === "ACCEPTED") return "FRIENDS";
+  return friendship.requesterId === viewerId ? "REQUEST_SENT" : "REQUEST_RECEIVED";
+}
+
 export function normalizeScheduleEntries(entries: ScheduleEntryInput[]) {
   const seen = new Set<string>();
   return entries.map((entry) => {
