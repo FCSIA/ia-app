@@ -272,7 +272,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         </Card>
 
         {announcement.allowComments ? (
-          <section className="space-y-5">
+          <section id="comments" className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Discussion</h2>

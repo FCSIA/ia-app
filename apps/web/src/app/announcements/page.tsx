@@ -292,7 +292,7 @@ export default function AnnouncementsPage() {
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="max-h-[min(38rem,var(--radix-popover-content-available-height))] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto p-3"
+              className="max-h-[min(38rem,var(--radix-popover-content-available-height))] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-3"
               aria-labelledby="announcement-filters-title"
             >
               <div className="mb-2 flex items-baseline justify-between gap-3">
@@ -306,8 +306,8 @@ export default function AnnouncementsPage() {
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-3">
-                <FieldSet className="gap-0">
+              <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Read state</FieldLegend>
                   <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} className="w-full">
                     {['all', 'unread', 'read'].map((value, index) => (
@@ -316,7 +316,7 @@ export default function AnnouncementsPage() {
                   </RadioGroup>
                 </FieldSet>
 
-                <FieldSet className="gap-0">
+                <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Saved state</FieldLegend>
                   <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} className="w-full">
                     {['all', 'saved', 'pinned'].map((value, index) => (
@@ -326,7 +326,7 @@ export default function AnnouncementsPage() {
                 </FieldSet>
 
                 {availableTags.length > 0 ? (
-                  <FieldSet className="gap-0">
+                  <FieldSet className="min-w-0 gap-0">
                     <FieldLegend variant="label">Audience scope</FieldLegend>
                     <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} className="w-full">
                       {['all', ...availableTags].map((tag, index) => (
@@ -341,7 +341,7 @@ export default function AnnouncementsPage() {
                   </FieldSet>
                 ) : null}
 
-                <FieldSet className="gap-0">
+                <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Grade</FieldLegend>
                   <CheckboxGroup
                     checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (selectedGrades.includes(grade) ? [index] : [])))}
@@ -373,7 +373,7 @@ export default function AnnouncementsPage() {
                     setSelected: setSelectedMinorPathways,
                   },
                 ].map(({ label, selected, setSelected }) => (
-                  <FieldSet key={label} className="gap-0">
+                  <FieldSet key={label} className="min-w-0 gap-0">
                     <FieldLegend variant="label">{label}</FieldLegend>
                     <CheckboxGroup
                       checkedIndices={new Set(PATHWAY_OPTIONS.flatMap((pathway, index) => (selected.includes(pathway.value) ? [index] : [])))}
@@ -397,7 +397,7 @@ export default function AnnouncementsPage() {
                 ))}
 
                 {availableClubs.length > 0 ? (
-                  <FieldSet className="gap-0">
+                  <FieldSet className="min-w-0 gap-0 md:col-span-2">
                     <FieldLegend variant="label">Club</FieldLegend>
                     <CheckboxGroup
                       checkedIndices={new Set(availableClubs.flatMap((club, index) => (selectedClubIds.includes(club.id) ? [index] : [])))}

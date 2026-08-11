@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
@@ -81,18 +82,12 @@ export function AnnouncementCard({
       index={index}
       href={`/announcements/${announcement._id}`}
       label={`Open announcement: ${announcement.title}`}
-      selected={!announcement.isRead}
-      className={cn('relative', className)}
+      className={cn('relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
     >
       <CardContent>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {!announcement.isRead ? (
-                <Badge variant="dot" color="blue" size="sm">
-                  Unread
-                </Badge>
-              ) : null}
               {announcement.isAdminGeneral ? (
                 <Badge variant="solid" color="red" size="sm">
                   Push notification
@@ -163,10 +158,11 @@ export function AnnouncementCard({
 
           <div className="relative z-30 flex shrink-0 flex-col items-center gap-0.5">
             {announcement.allowComments ? (
-              <Badge color="gray" size="sm">
-                <MessageCircle className="size-3" aria-hidden="true" />
-                {announcement._count?.comments || 0}
-              </Badge>
+              <Tooltip content="Open comments">
+                <Button asChild variant="ghost" size="sm" leadingIcon={MessageCircle} aria-label={`Open ${announcement._count?.comments || 0} comments`}>
+                  <Link href={`/announcements/${announcement._id}#comments`}>{announcement._count?.comments || 0}</Link>
+                </Button>
+              </Tooltip>
             ) : null}
             <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
               <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
