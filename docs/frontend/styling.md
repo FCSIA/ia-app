@@ -112,6 +112,9 @@ The current visual direction is warm, clean, and operational:
 - restrained motion and shadows,
 - responsive layouts that avoid clipping and horizontal overflow.
 
+New web and mobile installs start in dark mode. A theme explicitly selected by
+the user remains persisted locally and is never overwritten by the default.
+
 Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
 automatic contrast is applied to each matching foreground token rather than

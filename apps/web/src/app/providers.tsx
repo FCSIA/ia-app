@@ -222,7 +222,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme="dark"
         enableSystem
         themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'custom']}
       >

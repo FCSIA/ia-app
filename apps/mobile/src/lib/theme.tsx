@@ -17,7 +17,7 @@ const THEME_STORAGE_KEY = "ia_theme";
 const CUSTOM_THEME_STORAGE_KEY = "ia_custom_theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [name, setName] = useState<ThemeName>("light");
+  const [name, setName] = useState<ThemeName>("dark");
   const [customTokens, setCustomTokensState] = useState<ThemeTokens>(themes.custom);
   const tokens = name === "custom" ? customTokens : themes[name];
 
