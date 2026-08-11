@@ -13,10 +13,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { SliderComfortable } from '@/components/ui/slider';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { PeoplePicker, SelectablePerson } from '@/components/clubs/people-picker';
 import { fullName, isSponsorEligible } from '@/components/clubs/types';
@@ -71,7 +71,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>Create club</DialogTitle>
           <DialogDescription>
@@ -79,19 +79,19 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="club-name">Name</Label>
+        <FieldGroup className="gap-5">
+          <Field>
+            <FieldLabel htmlFor="club-name">Name</FieldLabel>
             <Input
               id="club-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Robotics Club"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="club-description">Description</Label>
+          <Field>
+            <FieldLabel htmlFor="club-description">Description</FieldLabel>
             <Textarea
               id="club-description"
               value={description}
@@ -99,53 +99,54 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
               rows={3}
               placeholder="What does this club do?"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label>Sponsors</Label>
+          <Field>
+            <FieldLabel>Sponsors</FieldLabel>
+            <FieldDescription>Choose one or more faculty members to sponsor this club.</FieldDescription>
             <PeoplePicker
               people={sponsorOptions}
               selectedIds={sponsorIds}
               onChange={setSponsorIds}
               placeholder="Select faculty sponsors"
             />
-          </div>
+          </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="join-policy">Join policy</Label>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
               <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
                 <SelectTrigger id="join-policy" placeholder="Choose policy" />
                 <SelectContent>
-                  <SelectItem index={0} value="OPEN">
-                    Open join
-                  </SelectItem>
-                  <SelectItem index={0} value="REQUEST">
-                    Request approval
-                  </SelectItem>
+                  <SelectGroup>
+                    <SelectItem index={0} value="OPEN">
+                      Open join
+                    </SelectItem>
+                    <SelectItem index={1} value="REQUEST">
+                      Request approval
+                    </SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div className="space-y-2 rounded-2xl border border-border/70 bg-muted/20 p-3 sm:col-span-2">
-              <div>
-                <Label>Member limit</Label>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  New joins and approvals stop once this club reaches the selected limit.
-                </p>
-              </div>
-              <SliderComfortable
+            <Field className="sm:col-span-2">
+              <FieldLabel>Member limit</FieldLabel>
+              <FieldDescription>New joins and approvals stop at this limit.</FieldDescription>
+              <Slider
                 value={memberLimit}
                 onChange={setMemberLimit}
                 min={10}
                 max={200}
                 step={10}
-                label="Limit"
+                label="Members"
                 formatValue={(value) => `${value} members`}
+                showSteps
+                valuePosition="top"
               />
-            </div>
+            </Field>
           </div>
-        </div>
+        </FieldGroup>
 
         <DialogFooter>
           <Button variant="tertiary" onClick={() => onOpenChange(false)}>
