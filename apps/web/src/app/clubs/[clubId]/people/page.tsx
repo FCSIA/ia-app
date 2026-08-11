@@ -354,7 +354,7 @@ export default function ClubPeoplePage() {
     return {
       all: directory.length,
       sponsors: directory.filter(p => p.kind === 'SPONSOR').length,
-      leaders: directory.filter(p => !!p.clubRole).length,
+      leaders: directory.filter(p => p.clubRole === 'LEADER').length,
       members: directory.filter(p => p.kind === 'MEMBER' && !p.clubRole).length,
     };
   }, [directory]);
@@ -368,7 +368,7 @@ export default function ClubPeoplePage() {
     ]);
 
     if (visibleFilter === 'sponsors') result = result.filter(p => p.kind === 'SPONSOR');
-    else if (visibleFilter === 'leaders') result = result.filter(p => !!p.clubRole);
+    else if (visibleFilter === 'leaders') result = result.filter(p => p.clubRole === 'LEADER');
     else if (visibleFilter === 'members') result = result.filter(p => p.kind === 'MEMBER' && !p.clubRole);
 
     return result;

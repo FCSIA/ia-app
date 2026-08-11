@@ -180,7 +180,9 @@ export const get = query({
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
-    const leaders = hydratedMembers.filter((m) => isClubLeadershipRole(m.role));
+    // Sponsors are privileged for access control, but the public “Student
+    // leaders” list must only contain members explicitly assigned LEADER.
+    const leaders = hydratedMembers.filter((m) => m.role === "LEADER");
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
     const serializedTags = await Promise.all(
