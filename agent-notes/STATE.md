@@ -88,6 +88,10 @@
 
 ### Frontend and Routing
 
+- Web sign-out now transitions through a query-free `/logout` route before
+  revoking the session, and protected route content stays unmounted while
+  Convex authentication is loading or absent. This prevents live page queries
+  from throwing during logout or session loss.
 - The web club directory centers `Your clubs`, uses the group-user icon, and no
   longer exposes the retired `/clubs/[clubId]/tags` route.
 - Students can review browser-local OCR matches from an Infinite Campus Term

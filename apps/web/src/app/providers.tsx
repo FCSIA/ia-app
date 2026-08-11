@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
 import { useConvexAuth, useQuery } from 'convex/react';
+import { usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, useTheme } from 'next-themes';
 import { authClient } from '@/lib/auth-client';
@@ -184,6 +185,22 @@ function CustomThemeBootstrap() {
   return null;
 }
 
+function AuthenticatedRouteBoundary({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const isPublicAuthRoute = pathname === '/login' || pathname === '/logout';
+
+  useEffect(() => {
+    if (!isPublicAuthRoute && !isLoading && !isAuthenticated) {
+      window.location.replace('/login');
+    }
+  }, [isAuthenticated, isLoading, isPublicAuthRoute]);
+
+  if (isPublicAuthRoute) return children;
+  if (isLoading || !isAuthenticated) return null;
+  return children;
+}
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
@@ -195,7 +212,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         <CustomThemeBootstrap />
         <Suspense fallback={null}>
-          <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+          <AuthenticatedRouteBoundary>
+            <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+          </AuthenticatedRouteBoundary>
         </Suspense>
         <Toaster position="top-right" />
       </ThemeProvider>

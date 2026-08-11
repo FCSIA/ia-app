@@ -49,6 +49,10 @@ export function clearAuth() {
   navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_AUTH_CACHES' });
 }
 
+export function startLogout() {
+  window.location.replace('/logout');
+}
+
 export function hasRole(user: AppUser | null, ...roles: AppRole[]): boolean {
   if (!user?.roles) return false;
   return roles.some((r) => user.roles.includes(r));

@@ -19,6 +19,11 @@ Login page
   -> useCurrentUser() reads api.users.me.me
 ```
 
+Protected route content stays unmounted while Convex authentication is loading
+or absent. Sign-out first navigates to the query-free `/logout` route, then
+revokes the session and clears browser caches. This ordering prevents live
+authenticated queries from rerunning without credentials during logout.
+
 The old `ia_token` localStorage key is not the auth mechanism for new code.
 `ia_user` remains as a temporary cached public user for synchronous UI reads.
 
@@ -30,6 +35,7 @@ The old `ia_token` localStorage key is not the auth mechanism for new code.
 | `apps/web/src/lib/convex.ts` | `ConvexReactClient` |
 | `apps/web/src/app/api/auth/[...all]/route.ts` | Next auth route proxy |
 | `apps/web/src/app/providers.tsx` | Convex and theme providers |
+| `apps/web/src/app/logout/page.tsx` | Query-free sign-out transition |
 | `apps/web/src/lib/auth.ts` | `useCurrentUser`, role helpers, compatibility cache |
 
 ## Login

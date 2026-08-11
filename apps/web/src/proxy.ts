@@ -43,7 +43,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuth && mustResetPassword && pathname !== '/change-password') {
+  if (
+    isAuth &&
+    mustResetPassword &&
+    pathname !== '/change-password' &&
+    pathname !== '/logout'
+  ) {
     return NextResponse.redirect(new URL('/change-password', request.url));
   }
 

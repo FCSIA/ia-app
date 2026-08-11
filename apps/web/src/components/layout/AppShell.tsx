@@ -11,10 +11,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { api } from "~/apps/convex/src/_generated/api";
-import { clearAuth, hasRole, useCurrentUser } from "@/lib/auth";
-import { authClient } from "@/lib/auth-client";
+import { hasRole, startLogout, useCurrentUser } from "@/lib/auth";
 import { computeWrappedAvailability } from "@/lib/wrapped";
-import { useToast } from "@/hooks/use-toast";
 import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
 import {
   AppShellDesktopNavigation,
@@ -53,7 +51,6 @@ export function AppShell({
   const [commandHint, setCommandHint] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<SearchScope>("everything");
-  const { toast } = useToast();
   const navigationLoading = useNavigationLoadingOptional();
   const safePathname = pathname ?? "/dashboard";
   const openMobileNavigation = useCallback(() => {
@@ -91,13 +88,8 @@ export function AppShell({
 
   const unreadData = useQuery(api.notifications.inbox.unreadCount);
 
-  const handleLogout = async () => {
-    try {
-      await authClient.signOut();
-    } catch {}
-    clearAuth();
-    router.replace("/login");
-    toast({ title: "Logged out" });
+  const handleLogout = () => {
+    startLogout();
   };
 
   const showAdmin = Boolean(

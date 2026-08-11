@@ -2,12 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
-import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { AppShell } from '@/components/layout/AppShell';
 import { useToast } from '@/hooks/use-toast';
-import { clearAuth, hasRole, useCurrentUser } from '@/lib/auth';
-import { authClient } from '@/lib/auth-client';
+import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { PROFILE_NOTIFICATION_CATEGORIES } from './_constants';
@@ -33,7 +31,6 @@ type PreferenceState = {
 
 export default function ProfilePage() {
   const user = useCurrentUser();
-  const router = useRouter();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -114,16 +111,9 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleSignOut() {
+  function handleSignOut() {
     setSigningOut(true);
-    try {
-      await authClient.signOut();
-    } catch {
-      // Continue clearing local state so a stale session cannot keep the user in the app.
-    }
-    clearAuth();
-    router.replace('/login');
-    toast({ title: 'Logged out' });
+    startLogout();
   }
 
   function handlePreferenceToggle({
