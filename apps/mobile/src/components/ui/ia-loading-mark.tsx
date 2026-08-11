@@ -1,12 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Animated, Image, StyleSheet, View } from "react-native";
 import { radii, spacing } from "@/lib/tokens";
+import { useTheme } from "@/lib/theme";
+import { iaOrbitForTheme } from "@/components/ui/ia-orbit";
 
 export function IaLoadingMark({
   size = "md",
 }: {
   size?: "sm" | "md" | "lg";
 }) {
+  const { name } = useTheme();
   const pulse = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0.85)).current;
 
@@ -64,7 +67,7 @@ export function IaLoadingMark({
         ]}
       >
         <Image
-          source={require("../../../assets/logo.png")}
+          source={iaOrbitForTheme(name)}
           style={{
             width: cardDimensions.logoWidth,
             height: cardDimensions.logoHeight,

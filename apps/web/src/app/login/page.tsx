@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LoadingFact } from '@/components/ui/loading-fact';
+import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,9 +56,8 @@ export default function LoginPage() {
           <CardHeader className="space-y-3 pb-6">
             <div className="mb-1 flex flex-col items-center gap-2 self-center">
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">
-                <Image
-                  src="/icons/logo.png"
-                  alt="Innovation Academy phoenix"
+                <IaOrbitMark
+                  alt="IA Orbit"
                   width={56}
                   height={56}
                   priority

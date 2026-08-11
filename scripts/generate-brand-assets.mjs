@@ -8,24 +8,26 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Icon Composer is the canonical source for the Apple app icon. Export its
 // iOS Default rendition at 1024pt/1x, then use that lossless PNG for surfaces
 // that cannot consume a layered .icon file (web, Android, and React Native).
-const sourcePath = path.join(root, "icon-composer/IA Orbit-flattened.png");
+const defaultSourcePath = path.join(root, "icon-composer/IA Orbit-flattened.png");
+const darkSourcePath = path.join(root, "icon-composer/IA Orbit-dark.png");
 const iconComposerPath = path.join(root, "icon-composer/IA Orbit.icon");
 const checkOnly = process.argv.includes("--check");
 
-const source = await readFile(sourcePath);
+const defaultSource = await readFile(defaultSourcePath);
+const darkSource = await readFile(darkSourcePath);
 const iconComposerFiles = [
   "icon.json",
   path.join("Assets", "Untitled design.png"),
 ];
 
-async function squareIcon(size) {
+async function squareIcon(source, size) {
   return await sharp(source)
     .resize(size, size, { fit: "fill" })
     .png()
     .toBuffer();
 }
 
-async function favicon() {
+async function favicon(source) {
   const pngs = await Promise.all(
     [16, 32].map((size) => sharp(source).resize(size, size, { fit: "fill" }).png().toBuffer()),
   );
@@ -56,7 +58,7 @@ async function favicon() {
 }
 
 async function monochromeMask(size) {
-  return await sharp(source)
+  return await sharp(defaultSource)
     .resize(size, size, { fit: "fill" })
     .removeAlpha()
     .grayscale()
@@ -81,23 +83,27 @@ async function transparentPhoenix(size, color) {
 }
 
 const outputs = [
-  ["apps/web/public/favicon.ico", await favicon()],
-  ["apps/web/public/icons/logo.png", await squareIcon(1024)],
-  ["apps/web/public/icons/icon-192.png", await squareIcon(192)],
-  ["apps/web/public/icons/icon-512.png", await squareIcon(512)],
-  ["apps/mobile/assets/logo.png", await squareIcon(512)],
-  ["apps/mobile/assets/icon.png", await squareIcon(1024)],
+  ["apps/web/public/favicon.ico", await favicon(defaultSource)],
+  ["apps/web/public/favicon-dark.ico", await favicon(darkSource)],
+  ["apps/web/public/icons/ia-orbit-default.png", await squareIcon(defaultSource, 1024)],
+  ["apps/web/public/icons/ia-orbit-dark.png", await squareIcon(darkSource, 1024)],
+  ["apps/web/public/icons/ia-orbit-default-192.png", await squareIcon(defaultSource, 192)],
+  ["apps/web/public/icons/ia-orbit-default-512.png", await squareIcon(defaultSource, 512)],
+  ["apps/web/public/icons/ia-orbit-dark-192.png", await squareIcon(darkSource, 192)],
+  ["apps/web/public/icons/ia-orbit-dark-512.png", await squareIcon(darkSource, 512)],
+  ["apps/mobile/assets/ia-orbit-default.png", await squareIcon(defaultSource, 1024)],
+  ["apps/mobile/assets/ia-orbit-dark.png", await squareIcon(darkSource, 1024)],
   [
-    "apps/mobile/assets/adaptive-icon.png",
-    await squareIcon(1024),
+    "apps/mobile/assets/ia-orbit-adaptive.png",
+    await squareIcon(defaultSource, 1024),
   ],
   [
-    "apps/mobile/assets/notification-icon.png",
+    "apps/mobile/assets/ia-orbit-notification.png",
     await transparentPhoenix(96, { r: 255, g: 255, b: 255 }),
   ],
   [
-    "apps/mobile/assets/splash.png",
-    await squareIcon(512),
+    "apps/mobile/assets/ia-orbit-splash.png",
+    await squareIcon(defaultSource, 512),
   ],
   ...await Promise.all(iconComposerFiles.map(async (relativePath) => [
     path.join("apps/mobile/assets/ia-orbit.icon", relativePath),
@@ -132,5 +138,5 @@ if (stale.length > 0) {
 console.log(
   checkOnly
     ? `Verified ${outputs.length} generated brand assets.`
-    : `Generated ${outputs.length} brand assets from ${path.relative(root, sourcePath)}.`,
+    : `Generated ${outputs.length} brand assets from Icon Composer exports.`,
 );

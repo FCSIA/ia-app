@@ -1,9 +1,9 @@
 'use client';
 
-import Image from 'next/image';
 import { Lightbulb } from 'lucide-react';
 import type { LoadingFact as LoadingFactValue } from '@ia/fun-facts';
 import { cn } from '@/lib/utils';
+import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 
 export function LoadingFact({
   fact,
@@ -24,8 +24,7 @@ export function LoadingFact({
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
         {fact.visual === 'phoenix' ? (
-          <Image
-            src="/icons/logo.png"
+          <IaOrbitMark
             alt=""
             width={28}
             height={28}

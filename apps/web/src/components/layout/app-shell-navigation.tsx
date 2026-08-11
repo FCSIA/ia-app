@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -275,10 +276,10 @@ function AppLogo({ className }: { className: string }) {
         className,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/icons/logo.png"
-        alt="Innovation Academy phoenix"
+      <IaOrbitMark
+        alt="IA Orbit"
+        width={64}
+        height={64}
         className="size-full object-cover"
       />
     </Link>

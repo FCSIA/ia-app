@@ -12,7 +12,7 @@ const universalLinkHost =
 const notificationsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
   "expo-notifications",
   {
-    icon: "./assets/notification-icon.png",
+    icon: "./assets/ia-orbit-notification.png",
     color: "#f95b01",
     defaultChannel: "default",
   },
@@ -36,7 +36,7 @@ const config: ExpoConfig = {
   scheme: process.env.EXPO_PUBLIC_APP_SCHEME ?? "ia-app",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/icon.png",
+  icon: "./assets/ia-orbit-default.png",
   userInterfaceStyle: "automatic",
   privacy: "unlisted",
   owner: expoOwner,
@@ -44,7 +44,7 @@ const config: ExpoConfig = {
     "Native Innovation Academy app for school announcements, clubs, schedules, events, Flex Friday, and notifications.",
   primaryColor: "#f95b01",
   splash: {
-    image: "./assets/splash.png",
+    image: "./assets/ia-orbit-splash.png",
     resizeMode: "contain",
     backgroundColor: "#ffffff",
   },
@@ -75,7 +75,7 @@ const config: ExpoConfig = {
     package: process.env.ANDROID_PACKAGE ?? "org.fcsia.app",
     versionCode: Number(process.env.ANDROID_VERSION_CODE ?? 1),
     adaptiveIcon: {
-      foregroundImage: "./assets/adaptive-icon.png",
+      foregroundImage: "./assets/ia-orbit-adaptive.png",
       backgroundColor: "#f95b01",
     },
     permissions: ["POST_NOTIFICATIONS", "READ_MEDIA_IMAGES", "CAMERA"],

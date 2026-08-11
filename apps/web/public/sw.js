@@ -1,6 +1,6 @@
 // Basic service worker for PWA install support
-const CACHE_NAME = 'ia-school-v2';
-const STATIC_ASSETS = ['/manifest.json', '/icon-192.png'];
+const CACHE_NAME = 'ia-school-v3';
+const STATIC_ASSETS = ['/manifest.json', '/icons/ia-orbit-default-192.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -54,8 +54,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'IA notification';
   const options = {
     body: payload.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icons/ia-orbit-default-192.png',
+    badge: '/icons/ia-orbit-default-192.png',
     data: {
       url: payload.url || '/notifications',
     },

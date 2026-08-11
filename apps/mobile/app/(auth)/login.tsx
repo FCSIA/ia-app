@@ -7,9 +7,10 @@ import { Button, LoadingFact, TextField, Txt } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { iaOrbitForTheme } from "@/components/ui/ia-orbit";
 
 export default function LoginScreen() {
-  const { color } = useTheme();
+  const { color, name } = useTheme();
   const [uniqueId, setUniqueId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,8 +63,8 @@ export default function LoginScreen() {
                 }}
               >
                 <Image
-                  source={require("../../assets/logo.png")}
-                  accessibilityLabel="Innovation Academy phoenix"
+                  source={iaOrbitForTheme(name)}
+                  accessibilityLabel="IA Orbit"
                   style={{ width: 48, height: 48, borderRadius: radii.md }}
                   resizeMode="contain"
                 />

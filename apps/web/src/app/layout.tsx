@@ -11,12 +11,17 @@ export const metadata: Metadata = {
   description: 'School communication and operations platform',
   manifest: '/manifest.json',
   icons: {
-    shortcut: '/favicon.ico',
-    icon: [
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    shortcut: [
+      { url: '/favicon.ico', media: '(prefers-color-scheme: light)' },
+      { url: '/favicon-dark.ico', media: '(prefers-color-scheme: dark)' },
     ],
-    apple: '/icons/icon-512.png',
+    icon: [
+      { url: '/icons/ia-orbit-default-192.png', sizes: '192x192', type: 'image/png', media: '(prefers-color-scheme: light)' },
+      { url: '/icons/ia-orbit-default-512.png', sizes: '512x512', type: 'image/png', media: '(prefers-color-scheme: light)' },
+      { url: '/icons/ia-orbit-dark-192.png', sizes: '192x192', type: 'image/png', media: '(prefers-color-scheme: dark)' },
+      { url: '/icons/ia-orbit-dark-512.png', sizes: '512x512', type: 'image/png', media: '(prefers-color-scheme: dark)' },
+    ],
+    apple: '/icons/ia-orbit-default-512.png',
   },
   appleWebApp: {
     capable: true,

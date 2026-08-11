@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import Image from "next/image";
+import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { toQR } from "toqr";
 
 const QUIET_ZONE = 4;
@@ -82,8 +82,7 @@ export function FriendLinkQr({ value }: { value: string }) {
         ))}
       </svg>
       <span className="absolute left-1/2 top-1/2 flex size-[19%] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[24%] bg-white p-1">
-        <Image
-          src="/icons/logo.png"
+        <IaOrbitMark
           alt=""
           width={48}
           height={48}

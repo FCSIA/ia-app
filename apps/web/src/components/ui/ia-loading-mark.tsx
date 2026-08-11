@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
 
 const sizeClasses = {
   sm: 'size-16',
@@ -25,9 +25,8 @@ export function IaLoadingMark({
   animated = false,
 }: IaLoadingMarkProps) {
   const content = (
-    <Image
-      src="/icons/logo.png"
-      alt="Innovation Academy phoenix"
+    <IaOrbitMark
+      alt="IA Orbit"
       width={128}
       height={128}
       priority

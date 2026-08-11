@@ -4,9 +4,10 @@ import { Lightbulb } from "lucide-react-native";
 import { Txt } from "@/components/ui/typography";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
+import { iaOrbitForTheme } from "@/components/ui/ia-orbit";
 
 export function LoadingFact({ fact }: { fact: LoadingFactValue }) {
-  const { color } = useTheme();
+  const { color, name } = useTheme();
 
   return (
     <View
@@ -37,7 +38,7 @@ export function LoadingFact({ fact }: { fact: LoadingFactValue }) {
       >
         {fact.visual === "phoenix" ? (
           <Image
-            source={require("../../../assets/logo.png")}
+            source={iaOrbitForTheme(name)}
             accessibilityIgnoresInvertColors
             style={{ width: 28, height: 28, borderRadius: 14 }}
             resizeMode="contain"
