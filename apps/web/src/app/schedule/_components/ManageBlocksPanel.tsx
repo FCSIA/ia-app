@@ -371,7 +371,7 @@ function AdminCalendarDayButton({
         {state.kind === "outside" || state.kind === "weekend" || state.kind === "default" ? null : (
           <span
             aria-hidden="true"
-            className="absolute bottom-1.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full"
+            className="h-1.5 w-5 rounded-full"
             style={{
               backgroundColor:
                 state.kind === "assigned"
@@ -553,7 +553,6 @@ function DatePlanWorkspace({
               startMonth={workspace.academicYearStartDateKey ? dateFromKey(workspace.academicYearStartDateKey) : undefined}
               endMonth={workspace.academicYearEndDateKey ? dateFromKey(workspace.academicYearEndDateKey) : undefined}
               className="w-full"
-              classNames={{ root: "w-full", months: "w-full", month: "w-full", month_grid: "w-full" }}
               components={{ DayButton: CalendarDay }}
             />
           </section>

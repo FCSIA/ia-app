@@ -76,6 +76,20 @@ by a vertical panel stack, and verify actual panel and handle bounding boxes.
 For stable initial sizing, give the group and panels stable IDs and pass a
 matching `defaultLayout` map.
 
+## Concrete failure: calendar navigation and day metadata
+
+The shadcn DayPicker adapter depends on `months` remaining positioned relative
+so its absolute navigation stays anchored to the month caption. Replacing the
+adapter's `classNames.months` value from a page removes that positioning and
+can place the previous/next buttons against an outer card or viewport. Use the
+adapter's existing width contract; do not replace its structural class names.
+
+The local Fluid `Button` also wraps button content, while upstream shadcn's
+calendar expects direct day-button children. `CalendarDayButton` therefore owns
+an explicit vertical content slot for the date numeral and optional metadata.
+Status content must remain in that slot's normal flow so it cannot overlap the
+date.
+
 ## Counterexample: actual compounded spacing
 
 Not every oversized primitive is a contract mismatch. The chat mention menu
