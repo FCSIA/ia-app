@@ -31,6 +31,7 @@ import type * as clubs_channelPagination from "../clubs/channelPagination.js";
 import type * as clubs_channelReactions from "../clubs/channelReactions.js";
 import type * as clubs_channelValidation from "../clubs/channelValidation.js";
 import type * as clubs_channels from "../clubs/channels.js";
+import type * as clubs_clubDeletion from "../clubs/clubDeletion.js";
 import type * as clubs_detail from "../clubs/detail.js";
 import type * as clubs_hierarchy from "../clubs/hierarchy.js";
 import type * as clubs_hierarchyRules from "../clubs/hierarchyRules.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   "clubs/channelReactions": typeof clubs_channelReactions;
   "clubs/channelValidation": typeof clubs_channelValidation;
   "clubs/channels": typeof clubs_channels;
+  "clubs/clubDeletion": typeof clubs_clubDeletion;
   "clubs/detail": typeof clubs_detail;
   "clubs/hierarchy": typeof clubs_hierarchy;
   "clubs/hierarchyRules": typeof clubs_hierarchyRules;

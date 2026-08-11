@@ -1,9 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Crown,
   Ellipsis,
@@ -90,10 +101,30 @@ function mutationError(error: unknown) {
 
 export function ClubStructureActions({
   club,
+  canDelete = false,
 }: {
   club: ClubDetail;
+  canDelete?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmationName, setConfirmationName] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const deleteClub = useMutation(api.clubs.management.deletePermanently);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const permanentlyDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteClub({ clubId: club._id, confirmationName });
+      toast({ title: `${club.name} is being deleted` });
+      router.replace('/clubs');
+    } catch (error) {
+      toast({ title: mutationError(error), variant: 'destructive' });
+      setDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -117,9 +148,63 @@ export function ClubStructureActions({
             label="Manage club structure"
             onSelect={() => setOpen(true)}
           />
+          {canDelete ? (
+            <MenuItem
+              index={1}
+              icon={Trash2}
+              label="Delete club"
+              onSelect={() => setDeleteOpen(true)}
+            />
+          ) : null}
         </DropdownContent>
       </DropdownMenu>
       <HierarchyDialog club={club} open={open} onOpenChange={setOpen} />
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(nextOpen) => {
+          setDeleteOpen(nextOpen);
+          if (!nextOpen && !deleting) setConfirmationName('');
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {club.name}?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                  This permanently removes the club, its memberships, structure,
+                  channels, messages, files, announcements, and events. This action
+                  cannot be undone.
+                </p>
+                <Field className="gap-2">
+                  <FieldLabel htmlFor="delete-club-name">
+                    Enter <span className="font-semibold">{club.name}</span> to confirm
+                  </FieldLabel>
+                  <Input
+                    id="delete-club-name"
+                    autoComplete="off"
+                    value={confirmationName}
+                    onChange={(event) => setConfirmationName(event.target.value)}
+                  />
+                </Field>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting || confirmationName !== club.name}
+              onClick={(event) => {
+                event.preventDefault();
+                void permanentlyDelete();
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Delete club'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

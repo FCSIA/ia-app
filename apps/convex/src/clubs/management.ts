@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
@@ -10,6 +11,10 @@ const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"]
 
 export function canCreateClub(roles: readonly AppRole[]) {
   return roles.some((role) => (CLUB_CREATION_ROLES as readonly AppRole[]).includes(role));
+}
+
+export function canPermanentlyDeleteClub(roles: readonly AppRole[]) {
+  return roles.includes("SUPER_ADMIN");
 }
 
 export const getAll = query({
@@ -187,6 +192,41 @@ export const deactivate = mutation({
       entityType: "Club",
       entityId: args.clubId,
     });
+    return null;
+  },
+});
+
+export const deletePermanently = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    confirmationName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const user = await getCurrentAppUser(ctx);
+    if (!canPermanentlyDeleteClub(user.roles)) {
+      throw new ConvexError("Only superadmins can permanently delete clubs");
+    }
+
+    const club = await ctx.db.get(args.clubId);
+    if (!club) throw new ConvexError("Club not found");
+    if (args.confirmationName !== club.name) {
+      throw new ConvexError("Enter the club name exactly to confirm deletion");
+    }
+
+    await ctx.db.patch(club._id, { isActive: false, updatedAt: Date.now() });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_DELETION_STARTED",
+      entityType: "Club",
+      entityId: club._id,
+      meta: { name: club.name },
+    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.clubs.clubDeletion.cleanupDeletedClub,
+      { clubId: club._id, actorId: user._id, clubName: club.name },
+    );
     return null;
   },
 });

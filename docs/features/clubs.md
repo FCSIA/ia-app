@@ -50,6 +50,7 @@ specific unit code after the app confirms the viewer is already a club member.
 - `api.clubs.management.create`
 - `api.clubs.management.update`
 - `api.clubs.management.deactivate`
+- `api.clubs.management.deletePermanently` (`SUPER_ADMIN` only; exact-name confirmation)
 - `api.clubs.management.setMemberRole`
 - `api.clubs.management.removeMember`
 - `api.clubs.management.getMyClubs`
@@ -136,6 +137,13 @@ membership. The web and mobile club directories omit personal club groups for
 super admins, and the web workspace shows the current club without a
 membership-based club picker. Membership-only notification controls and the
 dashboard's My Clubs widget are also unavailable to that role.
+
+Only `SUPER_ADMIN` users can permanently delete a club. The web action lives in
+the club overview's existing three-dots menu and requires the club name to be
+entered exactly. Deletion immediately deactivates the club, records the actor,
+and starts bounded background cleanup for club-owned memberships, hierarchy,
+channels and chat storage, tags, announcements, and events. Audit and moderation
+history are retained.
 
 Deleting a channel message immediately removes its body, rich content, poll,
 pin, attachments, and reactions from reads. A deleted root remains as a
