@@ -8,7 +8,6 @@ import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
   Check,
-  Ellipsis,
   QrCode,
   Send,
   Sparkles,
@@ -17,7 +16,6 @@ import {
   UserPlus,
   Users,
   ShieldCheck,
-  Settings,
   X,
 } from 'lucide-react';
 import { useClubId } from '../../club-route';
@@ -54,15 +52,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownContent,
-  DropdownMenu,
-  DropdownTrigger,
-} from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
 import { Label } from '@/components/ui/label';
-import { MenuItem } from '@/components/ui/menu-item';
 import { SearchInput } from '@/components/ui/search';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
@@ -333,7 +325,6 @@ export default function ClubPeoplePage() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [manageOpen, setManageOpen] = useState(false);
-  const [roleTarget, setRoleTarget] = useState<ClubDirectoryEntry | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClubDirectoryEntry | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
@@ -530,7 +521,6 @@ export default function ClubPeoplePage() {
                       person={person}
                       isCurrentUser={person._id === user?._id}
                       canManage={canManage && person.kind === 'MEMBER'}
-                      onSetRole={setRoleTarget}
                       onRemove={setRemoveTarget}
                     />
                   ))}
@@ -559,7 +549,6 @@ export default function ClubPeoplePage() {
       {club ? (
         <ManagePeopleDialog club={club} open={manageOpen} onOpenChange={setManageOpen} />
       ) : null}
-      <SetRoleDialog person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
       <AlertDialog
         open={removeTarget !== null}
         onOpenChange={(open) => {
@@ -598,13 +587,11 @@ function PersonRow({
   person,
   isCurrentUser,
   canManage,
-  onSetRole,
   onRemove,
 }: {
   person: ClubDirectoryEntry;
   isCurrentUser: boolean;
   canManage: boolean;
-  onSetRole: (person: ClubDirectoryEntry) => void;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
   const showManage = canManage && person.kind === 'MEMBER' && !isCurrentUser;
@@ -624,41 +611,25 @@ function PersonRow({
           ) : person.clubRole ? (
             <Badge variant="solid" className="gap-1 px-1.5 py-0 h-5 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <Crown className="size-3 text-amber-500" />
-              {formatClubRole(person.clubRole)}
+              {person.customRoleName ?? formatClubRole(person.clubRole)}
             </Badge>
           ) : null}
           {isCurrentUser ? <Badge variant="solid" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
       </div>
       {showManage ? (
-        <DropdownMenu>
-          <DropdownTrigger
-            render={
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label={`Manage ${fullName(person)}`}
-              >
-                <Ellipsis className="size-4" />
-              </Button>
-            }
-          />
-          <DropdownContent align="end" className="w-48">
-            <MenuItem
-              index={0}
-              icon={Settings}
-              label="Change role"
-              onSelect={() => onSetRole(person)}
-            />
-            <MenuItem
-              index={1}
-              icon={UserMinus}
-              label="Remove from club"
-              onSelect={() => onRemove(person)}
-            />
-          </DropdownContent>
-        </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-1">
+          <SetRoleDialog person={person} />
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Remove ${fullName(person)} from club`}
+            onClick={() => onRemove(person)}
+          >
+            <UserMinus className="size-4" />
+          </Button>
+        </div>
       ) : null}
     </div>
   );

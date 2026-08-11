@@ -272,7 +272,9 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
                       <p className="truncate text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
-                        {formatClubRole(leader.role) || 'Leader'}
+                        {leader.customRoleId
+                          ? club.roles.find((role) => role._id === leader.customRoleId)?.name ?? 'Leader'
+                          : formatClubRole(leader.role) || 'Leader'}
                       </p>
                     </div>
                   </div>
@@ -420,7 +422,11 @@ export default function ClubOverviewPage() {
                 <ClubAvatar person={leader.user} className="size-8" fallbackClassName="text-[10px]" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{fullName(leader.user)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{formatClubRole(leader.role) || 'Leader'}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {leader.customRoleId
+                      ? club.roles.find((role) => role._id === leader.customRoleId)?.name ?? 'Leader'
+                      : formatClubRole(leader.role) || 'Leader'}
+                  </p>
                 </div>
               </div>
             ))

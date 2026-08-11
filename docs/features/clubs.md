@@ -20,6 +20,9 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 - Collects files and images previously shared in each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
+- Lets club managers create reusable custom leadership titles, assign them to
+  members, and rename them later. Custom titles carry the existing Leader
+  permissions; they do not introduce a separate permission matrix.
 - Lets club managers model an arbitrary internal tree of programs, teams,
   houses, rooms, subsystems, committees, or other locally named units.
 - Assigns club members to any number of units as members or leaders, with an
@@ -52,6 +55,9 @@ specific unit code after the app confirms the viewer is already a club member.
 - `api.clubs.management.deactivate`
 - `api.clubs.management.deletePermanently` (`SUPER_ADMIN` only; exact-name confirmation)
 - `api.clubs.management.setMemberRole`
+- `api.clubs.management.listRoles`
+- `api.clubs.management.createRole`
+- `api.clubs.management.renameRole`
 - `api.clubs.management.removeMember`
 - `api.clubs.management.getMyClubs`
 - `api.clubs.management.listMyInvites`

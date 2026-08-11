@@ -18,7 +18,7 @@ import { ClubAvatar } from './club-avatar';
 import { ClubDirectoryEntry, ClubUserRef, formatClubRole, fullName } from './types';
 
 export type SelectablePerson = ClubUserRef &
-  Partial<Pick<ClubDirectoryEntry, 'kind' | 'clubRole'>>;
+  Partial<Pick<ClubDirectoryEntry, 'kind' | 'clubRole' | 'customRoleName'>>;
 
 type PeoplePickerProps = {
   people: SelectablePerson[];
@@ -116,7 +116,7 @@ export function PeoplePicker({
                       <ClubAvatar person={person} className="size-8" fallbackClassName="text-[10px]" />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{fullName(person)}</span>
-                        {person.clubRole ? <span className="block truncate text-xs text-muted-foreground">{formatClubRole(person.clubRole)}</span> : null}
+                        {person.clubRole ? <span className="block truncate text-xs text-muted-foreground">{person.customRoleName ?? formatClubRole(person.clubRole)}</span> : null}
                       </div>
                       <Check className={cn('text-foreground transition-opacity', isSelected ? 'opacity-100' : 'opacity-0')} />
                     </CommandItem>

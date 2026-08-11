@@ -28,6 +28,7 @@ import {
 const clubMemberWithUserValidator = v.object({
   userId: v.id("users"),
   role: v.union(clubMemberRoleValidator, v.null()),
+  customRoleId: v.union(v.id("clubRoles"), v.null()),
   user: clubUserRefValidator,
 });
 const clubSponsorWithUserValidator = v.object({
@@ -40,6 +41,7 @@ const clubDetailValidator = v.union(
     members: v.array(clubMemberWithUserValidator),
     leaders: v.array(clubMemberWithUserValidator),
     sponsors: v.array(clubSponsorWithUserValidator),
+    roles: v.array(v.object({ _id: v.id("clubRoles"), name: v.string() })),
     channels: v.array(visibleClubChannelValidator),
     tags: v.array(
       v.object({
@@ -57,6 +59,8 @@ const clubDetailValidator = v.union(
         ...clubUserRefValidator.fields,
         kind: v.union(v.literal("SPONSOR"), v.literal("MEMBER")),
         clubRole: v.union(clubMemberRoleValidator, v.null()),
+        customRoleId: v.union(v.id("clubRoles"), v.null()),
+        customRoleName: v.union(v.string(), v.null()),
         joinedAt: v.string(),
       }),
     ),
@@ -114,7 +118,7 @@ export const get = query({
 
     const context = await getViewerContext(ctx, args.clubId, user);
 
-    const [memberships, sponsorsRows, tags, pendingRequests] = await Promise.all([
+    const [memberships, sponsorsRows, tags, pendingRequests, customRoles] = await Promise.all([
       ctx.db
         .query("clubMembers")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
@@ -137,6 +141,10 @@ export const get = query({
             )
             .collect()
         : Promise.resolve([]),
+      ctx.db
+        .query("clubRoles")
+        .withIndex("by_clubId_and_name", (q) => q.eq("clubId", args.clubId))
+        .collect(),
     ]);
 
     // Deduplicate memberships by userId to prevent duplicate entries
@@ -155,6 +163,7 @@ export const get = query({
         return {
           userId: m.userId,
           role: m.role ?? null,
+          customRoleId: m.customRoleId ?? null,
           user: toClubUserRef(memberUser),
         };
       }),
@@ -170,6 +179,7 @@ export const get = query({
 
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
+    const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
     const leaders = hydratedMembers.filter((m) => isClubLeadershipRole(m.role));
     const sponsorUserIds = new Set(uniqueSponsors.map((s) => s.userId));
 
@@ -217,6 +227,8 @@ export const get = query({
         ...s.user,
         kind: "SPONSOR" as const,
         clubRole: "SPONSOR" as const,
+        customRoleId: null,
+        customRoleName: null,
         joinedAt: new Date(0).toISOString(),
       })),
       ...hydratedMembers
@@ -225,6 +237,8 @@ export const get = query({
           ...m.user,
           kind: "MEMBER" as const,
           clubRole: isClubLeadershipRole(m.role) ? m.role : null,
+          customRoleId: m.customRoleId ?? null,
+          customRoleName: m.customRoleId ? customRoleNames.get(m.customRoleId) ?? null : null,
           joinedAt: new Date(
             uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
           ).toISOString(),
@@ -245,6 +259,7 @@ export const get = query({
       members: context.canAccessWorkspace ? hydratedMembers : [],
       leaders,
       sponsors: hydratedSponsors,
+      roles: customRoles.map((role) => ({ _id: role._id, name: role.name })),
       channels,
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],
