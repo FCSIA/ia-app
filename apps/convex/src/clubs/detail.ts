@@ -109,6 +109,7 @@ const workspaceNavigationValidator = v.union(
       canEditChannels: v.boolean(),
       canDeleteChannels: v.boolean(),
       canManageRoles: v.boolean(),
+      canManageClubStructure: v.boolean(),
     }),
     channels: v.array(workspaceClubChannelValidator),
     myClubs: v.array(
@@ -407,6 +408,7 @@ export const getWorkspaceNavigation = query({
         canEditChannels: context.permissions.editChannels,
         canDeleteChannels: context.permissions.deleteChannels,
         canManageRoles: context.permissions.manageRoles,
+        canManageClubStructure: context.permissions.manageClubStructure,
       },
       channels,
       myClubs,

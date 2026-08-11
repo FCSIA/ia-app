@@ -207,7 +207,7 @@ export function ClubWorkspace({
       icon: Users2,
       match: (p) => p.startsWith(`/clubs/${clubId}/people`),
     },
-    ...(navigation?.viewer.canManageRoles
+    ...(navigation?.viewer.canManageRoles || navigation?.viewer.canManageClubStructure
       ? [{
           href: `/clubs/${clubId}/settings`,
           label: "Settings",

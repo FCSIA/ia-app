@@ -13,7 +13,6 @@ import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
 import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
-import { ClubStructureActions } from '@/components/clubs/dialogs/hierarchy-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
 import { fullName } from '@/components/clubs/types';
@@ -377,7 +376,6 @@ export default function ClubOverviewPage() {
 
   const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const isSuperAdmin = !!user && hasRole(user, 'SUPER_ADMIN');
   const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
   const canInvite = club.viewer.permissions.inviteMembers;
@@ -388,8 +386,6 @@ export default function ClubOverviewPage() {
       <h1 className="truncate text-base font-semibold text-foreground">Overview</h1>
     </div>
   );
-
-  const actions = club.viewer.permissions.manageClubStructure ? <ClubStructureActions club={club} canDelete={isSuperAdmin} /> : null;
 
   const rightPane = (
     <div className="space-y-5 p-4">
@@ -451,7 +447,7 @@ export default function ClubOverviewPage() {
   );
 
   return (
-    <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
+    <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
         <ClubHero club={club} canEdit={club.viewer.permissions.manageClubSettings} />
         {canInvite || canPost ? (

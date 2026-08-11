@@ -7,6 +7,8 @@ import { Pencil, Plus, ShieldCheck } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useClubId } from '../../club-route';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
+import { ClubStructureActions } from '@/components/clubs/dialogs/hierarchy-dialog';
+import type { ClubDetail } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { isSuperAdmin, useCurrentUser } from '@/lib/auth';
 
 type ClubRole = FunctionReturnType<typeof api.clubs.management.listRoles>[number];
 type RolePermissions = ClubRole['permissions'];
@@ -81,8 +84,10 @@ type Editor = { mode: 'create' } | { mode: 'rename'; role: ClubRole } | null;
 export default function ClubSettingsPage() {
   const clubId = useClubId();
   const { toast } = useToast();
+  const user = useCurrentUser();
   const roles = useQuery(api.clubs.management.listRoles, { clubId }) ?? [];
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
+  const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
@@ -92,9 +97,12 @@ export default function ClubSettingsPage() {
   const [roleName, setRoleName] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [savingPermission, setSavingPermission] = useState<PermissionKey | null>(null);
+  const canManageRoles = navigation?.viewer.canManageRoles ?? false;
+  const canManageStructure = navigation?.viewer.canManageClubStructure ?? false;
+  const canDeleteClub = isSuperAdmin(user);
 
   useEffect(() => {
-    if (roles.length === 0 && navigation?.viewer.canManageRoles) {
+    if (roles.length === 0 && canManageRoles) {
       void initializeRoles({ clubId }).catch((error) => {
         toast({
           title: error instanceof Error ? error.message : 'Could not initialize roles',
@@ -102,7 +110,7 @@ export default function ClubSettingsPage() {
         });
       });
     }
-  }, [clubId, initializeRoles, navigation?.viewer.canManageRoles, roles.length, toast]);
+  }, [canManageRoles, clubId, initializeRoles, roles.length, toast]);
 
   useEffect(() => {
     if (!roles.length) return;
@@ -160,17 +168,17 @@ export default function ClubSettingsPage() {
   const title = (
     <div className="min-w-0">
       <h1 className="truncate text-base font-semibold text-foreground">Club settings</h1>
-      <p className="truncate text-xs text-muted-foreground">Roles and permissions</p>
+      <p className="truncate text-xs text-muted-foreground">Roles and administration</p>
     </div>
   );
 
-  if (navigation !== undefined && !navigation?.viewer.canManageRoles) {
+  if (navigation !== undefined && !canManageRoles && !canManageStructure && !canDeleteClub) {
     return (
       <ClubWorkspace title={title}>
         <div className="mx-auto max-w-3xl px-4 py-12 text-center">
           <ShieldCheck className="mx-auto size-6 text-muted-foreground" />
-          <h2 className="mt-3 text-base font-semibold">Role settings are restricted</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Your role cannot manage club permissions.</p>
+          <h2 className="mt-3 text-base font-semibold">Club settings are restricted</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Your role cannot manage this club.</p>
         </div>
       </ClubWorkspace>
     );
@@ -180,6 +188,8 @@ export default function ClubSettingsPage() {
     <ClubWorkspace title={title}>
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
+          {canManageRoles ? (
+            <>
           <div className="flex flex-col gap-3 border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">Roles</h2>
@@ -244,6 +254,24 @@ export default function ClubSettingsPage() {
           ) : (
             <div className="py-12 text-center text-sm text-muted-foreground">Loading club roles…</div>
           )}
+            </>
+          ) : null}
+
+          {club && (canManageStructure || canDeleteClub) ? (
+            <section className={canManageRoles ? 'pt-6' : undefined}>
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold tracking-tight text-foreground">Club administration</h2>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Organize the club or permanently remove it.
+                </p>
+              </div>
+              <ClubStructureActions
+                club={club}
+                canManageStructure={canManageStructure}
+                canDelete={canDeleteClub}
+              />
+            </section>
+          ) : null}
         </div>
       </div>
 
