@@ -16,6 +16,8 @@ type DatePickerProps = {
   disabled?: boolean;
   disabledDays?: Matcher | Matcher[];
   allowClear?: boolean;
+  startMonth?: Date;
+  endMonth?: Date;
 };
 
 function parseDateValue(value?: string | null) {
@@ -32,8 +34,13 @@ export function DatePicker({
   disabled = false,
   disabledDays,
   allowClear = false,
+  startMonth,
+  endMonth,
 }: DatePickerProps) {
   const selectedDate = parseDateValue(value);
+  const anchorYear = (selectedDate ?? new Date()).getFullYear();
+  const navigationStartMonth = startMonth ?? new Date(anchorYear - 1, 0, 1);
+  const navigationEndMonth = endMonth ?? new Date(anchorYear + 2, 11, 1);
 
   return (
     <div className="flex items-center gap-2">
@@ -60,7 +67,9 @@ export function DatePicker({
             selected={selectedDate}
             onSelect={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
             disabled={disabledDays}
-            captionLayout="dropdown"
+            navLayout="around"
+            startMonth={navigationStartMonth}
+            endMonth={navigationEndMonth}
             initialFocus
           />
         </PopoverContent>

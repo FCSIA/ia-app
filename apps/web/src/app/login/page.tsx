@@ -103,9 +103,6 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                 />
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  On your first sign-in, use the temporary password provided by an administrator.
-                </p>
               </div>
 
               <Button type="submit" size="lg" loading={loading} className="w-full">

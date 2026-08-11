@@ -38,7 +38,7 @@ The schedule calendar is deployment data. A newly initialized production databas
 - the academic-year first and last dates;
 - the required default regular template.
 
-The dates are intentionally not compiled into the application because they change every year. Until setup is complete, day-plan management renders only the required setup flow; the calendar, date inspector, and normal template tabs are not shown. Dates cannot be assigned, and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
+The dates are intentionally not compiled into the application because they change every year. Until setup is complete, day-plan management renders only a compact setup form built from the shared date-picker, button, badge, and tooltip primitives; the calendar, date inspector, and normal template tabs are not shown. The picker permits future-year navigation so an academic year can cross a calendar-year boundary. Dates cannot be assigned, and student day resolution reports that school-calendar setup is required. Administrators can update the boundaries later. The backend accepts at most a 400-day span.
 
 Calendar setup does not block students from editing or saving their canonical
 Period 1–8 class choices. Until setup is complete, the editor falls back to the

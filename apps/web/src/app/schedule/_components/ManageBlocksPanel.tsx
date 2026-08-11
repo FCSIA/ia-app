@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
+import { usePathname, useSearchParams } from "next/navigation";
 import { DayButton } from "react-day-picker";
 import {
+  ArrowLeft,
   CalendarPlus,
   CalendarDays,
   GripVertical,
@@ -18,10 +20,10 @@ import {
   Trash2,
   Unlink2,
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge, badgeColors } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Empty,
   EmptyContent,
@@ -30,7 +32,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,6 +43,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Sortable,
   SortableItem,
@@ -85,11 +88,8 @@ function dateKeyFromDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function firstWeekdayInMonth(date: Date) {
-  const next = new Date(date.getFullYear(), date.getMonth(), 1, 12);
-  if (next.getDay() === 0) next.setDate(2);
-  if (next.getDay() === 6) next.setDate(3);
-  return next;
+function isDateKey(value: string | null): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && dateKeyFromDate(dateFromKey(value)) === value;
 }
 
 function toPlanBlocks(
@@ -131,54 +131,28 @@ function planBlockValue(block: PlanBlock) {
   return `${block.periodNumber ?? "custom"}:${block.label}:${block.startTime}:${block.endTime}`;
 }
 
-function PlanPreview({ blocks }: { blocks: PlanBlock[] }) {
+function ReadOnlyPlanBlockTable({ blocks }: { blocks: PlanBlock[] }) {
   return (
-    <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Student preview
-        </p>
-        <span className="text-[11px] text-muted-foreground">
-          Canonical mapping
-        </span>
-      </div>
-      <div className="overflow-hidden rounded-xl bg-surface-3 shadow-surface-1">
-        {blocks.length > 0 ? (
-          <div className="divide-y divide-border/40">
-            {blocks.map((block) => (
-              <div
-                key={`${block.startTime}-${block.endTime}-${block.periodNumber ?? "custom"}`}
-                className="grid grid-cols-[4.5rem_1fr] gap-3 px-3 py-2.5"
-              >
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {formatScheduleTime(block.startTime)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {block.label}
-                  </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {block.periodNumber === null
-                      ? "Shared custom block"
-                      : block.periodNumber === 4 || block.periodNumber === 5
-                        ? `Student's Period ${block.periodNumber} class, or Lunch when assigned`
-                        : `Student's existing Period ${block.periodNumber} class`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-            Add a block to preview the day.
-          </p>
-        )}
-      </div>
-      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Reordering changes when a canonical period meets. It never copies or
-        moves a student&apos;s saved course.
-      </p>
-    </aside>
+    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Block</TableHead>
+            <TableHead className="w-28">Time</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {blocks.map((block, index) => (
+            <TableRow key={planBlockValue(block)} index={index}>
+              <TableCell className="font-medium text-foreground">{block.label}</TableCell>
+              <TableCell className="whitespace-nowrap tabular-nums">
+                {formatScheduleTime(block.startTime)} – {formatScheduleTime(block.endTime)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -191,6 +165,8 @@ function PlanBlockEditor({
   onChange: (blocks: PlanBlock[]) => void;
   readOnly?: boolean;
 }) {
+  if (readOnly) return <ReadOnlyPlanBlockTable blocks={blocks} />;
+
   const update = (index: number, patch: Partial<PlanBlock>) => {
     onChange(
       blocks.map((block, blockIndex) =>
@@ -222,27 +198,22 @@ function PlanBlockEditor({
             <SortableItem
               key={planBlockValue(block)}
               value={planBlockValue(block)}
-              disabled={readOnly}
               className="group bg-surface-2 data-[dragging=true]:relative data-[dragging=true]:z-20 data-[dragging=true]:rounded-lg data-[dragging=true]:shadow-surface-3"
             >
               <div className="grid gap-2 px-3 py-3 md:grid-cols-[2.25rem_minmax(8rem,1fr)_minmax(12rem,0.9fr)_2.25rem] md:items-center">
                 <div className="flex items-center max-md:order-4">
-                  {!readOnly ? (
-                    <SortableItemHandle
-                      render={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Drag ${block.label} to reorder`}
-                        />
-                      }
-                    >
-                      <GripVertical />
-                    </SortableItemHandle>
-                  ) : (
-                    <GripVertical aria-hidden="true" />
-                  )}
+                  <SortableItemHandle
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Drag ${block.label} to reorder`}
+                      />
+                    }
+                  >
+                    <GripVertical />
+                  </SortableItemHandle>
                 </div>
 
                 <div className="grid min-w-0 gap-2 sm:grid-cols-[auto_minmax(0,1fr)]">
@@ -252,7 +223,6 @@ function PlanBlockEditor({
                         ? "CUSTOM"
                         : String(block.periodNumber)
                     }
-                    disabled={readOnly}
                     onValueChange={(value) => {
                       if (value === "CUSTOM") {
                         update(index, {
@@ -289,7 +259,6 @@ function PlanBlockEditor({
                   <Input
                     aria-label={`Label for block ${index + 1}`}
                     value={block.label}
-                    disabled={readOnly}
                     onChange={(event) =>
                       update(index, { label: event.target.value })
                     }
@@ -302,7 +271,6 @@ function PlanBlockEditor({
                     type="time"
                     aria-label={`${block.label} start time`}
                     value={block.startTime}
-                    disabled={readOnly}
                     onChange={(event) =>
                       update(index, { startTime: event.target.value })
                     }
@@ -313,7 +281,6 @@ function PlanBlockEditor({
                     type="time"
                     aria-label={`${block.label} end time`}
                     value={block.endTime}
-                    disabled={readOnly}
                     onChange={(event) =>
                       update(index, { endTime: event.target.value })
                     }
@@ -321,8 +288,7 @@ function PlanBlockEditor({
                   />
                 </div>
 
-                {!readOnly ? (
-                  <Button
+                <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
@@ -336,16 +302,12 @@ function PlanBlockEditor({
                   >
                     <Trash2 />
                   </Button>
-                ) : (
-                  <span />
-                )}
               </div>
             </SortableItem>
           ))}
         </Sortable>
 
-        {!readOnly ? (
-          <Button
+        <Button
             type="button"
             variant="ghost"
             size="sm"
@@ -366,9 +328,7 @@ function PlanBlockEditor({
           >
             Add block
           </Button>
-        ) : null}
       </div>
-      <PlanPreview blocks={blocks} />
     </div>
   );
 }
@@ -448,90 +408,70 @@ function AcademicYearSetup({
   onConfigureAcademicYear: () => void;
   onManageTemplates: () => void;
 }) {
+  const setupAnchorYear = Number.parseInt(
+    (academicStart || academicEnd || schoolDateKey()).slice(0, 4),
+    10,
+  );
+  const setupStartMonth = new Date(setupAnchorYear - 1, 0, 1, 12);
+  const setupEndMonth = new Date(setupAnchorYear + 2, 11, 1, 12);
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 py-6 sm:py-10">
-      <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
-        <header className="flex items-start gap-4 bg-surface-3 px-5 py-5 sm:px-7 sm:py-6">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-background shadow-surface-1">
-            <School aria-hidden="true" />
+    <section aria-labelledby="school-year-setup-title" className="flex w-full max-w-2xl flex-col gap-4 py-2 sm:py-4">
+      <header className="flex items-center gap-2">
+        <School aria-hidden="true" className="size-4 text-muted-foreground" />
+        <h2 id="school-year-setup-title" className="text-base font-semibold text-foreground">Set up school year</h2>
+        <Tooltip content="Monday–Thursday use the default day. Fridays stay unassigned until an administrator schedules them.">
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="How school-year scheduling works">
+            <Info />
+          </Button>
+        </Tooltip>
+      </header>
+
+      <FieldGroup className="gap-4">
+        <Field orientation="responsive">
+          <FieldTitle>Default day</FieldTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="dot" color={regularTemplate ? "blue" : "orange"}>
+              {regularTemplate?.name ?? "Required"}
+            </Badge>
+            <Tooltip content={regularTemplate ? "Edit default template" : "Create default template"}>
+              <Button type="button" variant="tertiary" size="icon-sm" aria-label={regularTemplate ? "Edit default template" : "Create default template"} onClick={onManageTemplates}>
+                <LayoutTemplate />
+              </Button>
+            </Tooltip>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Schedule setup</p>
-            <h2 className="mt-1 text-xl font-semibold text-foreground">Set up the academic year</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              The calendar stays hidden until its boundaries and required default schedule are ready.
-            </p>
-          </div>
-        </header>
+        </Field>
 
-        <div className="flex flex-col gap-5 p-5 sm:p-7">
-          {!regularTemplate ? (
-            <Alert>
-              <LayoutTemplate />
-              <AlertTitle>A regular template is required</AlertTitle>
-              <AlertDescription>
-                Create or choose the schedule that every Monday–Thursday should inherit before opening the calendar.
-              </AlertDescription>
-            </Alert>
-          ) : null}
+        <FieldGroup className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel>Starts</FieldLabel>
+            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+          </Field>
+          <Field>
+            <FieldLabel>Ends</FieldLabel>
+            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" startMonth={setupStartMonth} endMonth={setupEndMonth} />
+          </Field>
+        </FieldGroup>
 
-          <FieldGroup className="gap-5">
-            <Field>
-              <FieldLabel>Required default schedule</FieldLabel>
-              <div className="flex flex-wrap items-center gap-2">
-                {regularTemplate ? (
-                  <Badge variant="dot" color="blue">{regularTemplate.name}</Badge>
-                ) : (
-                  <span className="text-sm text-muted-foreground">Not configured</span>
-                )}
-                <Button type="button" variant="tertiary" size="sm" leadingIcon={LayoutTemplate} onClick={onManageTemplates}>
-                  {regularTemplate ? "Edit default template" : "Create default template"}
-                </Button>
-              </div>
-              <FieldDescription>
-                This template automatically applies to every in-range Monday–Thursday unless a date is assigned differently.
-              </FieldDescription>
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="setup-academic-year-start">First school day</FieldLabel>
-                <Input id="setup-academic-year-start" type="date" value={academicStart} onChange={(event) => onAcademicStartChange(event.target.value)} />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="setup-academic-year-end">Last school day</FieldLabel>
-                <Input id="setup-academic-year-end" type="date" value={academicEnd} onChange={(event) => onAcademicEndChange(event.target.value)} />
-              </Field>
-            </div>
-
-            <FieldDescription>
-              Fridays begin unassigned. Weekends and dates outside this range are not school dates.
-            </FieldDescription>
-
-            <Button
-              type="button"
-              className="self-start"
-              leadingIcon={Save}
-              disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null}
-              loading={pending === "configure-year"}
-              onClick={onConfigureAcademicYear}
-            >
-              Save and open calendar
-            </Button>
-          </FieldGroup>
-        </div>
-      </section>
-
-      <p className="text-center text-xs leading-relaxed text-muted-foreground">
-        Only administrators can complete this one-time deployment setup. The dates can be updated later.
-      </p>
-    </div>
+        <Button
+          type="button"
+          className="self-start"
+          leadingIcon={CalendarDays}
+          disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null}
+          loading={pending === "configure-year"}
+          onClick={onConfigureAcademicYear}
+        >
+          Open calendar
+        </Button>
+      </FieldGroup>
+    </section>
   );
 }
 
 function DatePlanWorkspace({
   workspace,
   dateKey,
+  isDateLoading,
   onDateKeyChange,
   selectedTemplateId,
   onTemplateSelect,
@@ -542,11 +482,6 @@ function DatePlanWorkspace({
   dateBlocks,
   onDateBlocksChange,
   regularTemplate,
-  academicStart,
-  onAcademicStartChange,
-  academicEnd,
-  onAcademicEndChange,
-  onConfigureAcademicYear,
   onApplyTemplate,
   onSaveDate,
   onResetDate,
@@ -554,6 +489,7 @@ function DatePlanWorkspace({
 }: {
   workspace: AdminWorkspace;
   dateKey: string;
+  isDateLoading: boolean;
   onDateKeyChange: (dateKey: string) => void;
   selectedTemplateId: string;
   onTemplateSelect: (templateId: string) => void;
@@ -564,17 +500,13 @@ function DatePlanWorkspace({
   dateBlocks: PlanBlock[];
   onDateBlocksChange: (blocks: PlanBlock[]) => void;
   regularTemplate: DayTemplate | null;
-  academicStart: string;
-  onAcademicStartChange: (dateKey: string) => void;
-  academicEnd: string;
-  onAcademicEndChange: (dateKey: string) => void;
-  onConfigureAcademicYear: () => void;
   onApplyTemplate: () => void;
   onSaveDate: () => void;
   onResetDate: () => void;
   onUnlinkTemplate: () => void;
 }) {
   const selectedDate = dateFromKey(dateKey);
+  const [displayMonth, setDisplayMonth] = useState(selectedDate);
   const weekday = selectedDate.getDay();
   const isWeekday = weekday >= 1 && weekday <= 5;
   const isInAcademicYear =
@@ -583,17 +515,28 @@ function DatePlanWorkspace({
     dateKey >= workspace.academicYearStartDateKey &&
     dateKey <= workspace.academicYearEndDateKey;
   const canAssign = isWeekday && isInAcademicYear && !workspace.setupRequired;
-  const selectedState = calendarDayState(workspace, selectedDate);
+  const currentOverride = isDateLoading ? null : workspace.override;
+  const canAssignFriday = canAssign && weekday === 5 && !currentOverride;
+  const CalendarDay = useCallback(
+    (props: ComponentProps<typeof DayButton>) => (
+      <AdminCalendarDayButton workspace={workspace} {...props} />
+    ),
+    [workspace],
+  );
+
+  useEffect(() => {
+    setDisplayMonth(selectedDate);
+  }, [dateKey]);
 
   return (
     <div className="flex flex-col gap-5 pt-5">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(21rem,0.82fr)_minmax(0,1.7fr)] xl:items-start">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.7fr)] xl:items-start">
         <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
           <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
             <header className="flex items-center justify-between gap-3 bg-surface-3 px-4 py-3">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">School calendar</h3>
-                <p className="text-xs text-muted-foreground">Select a date to inspect or assign it.</p>
+                <p className="text-xs text-muted-foreground">Select a school date.</p>
               </div>
               <Tooltip content="Monday–Thursday inherit the default template. Fridays remain unassigned until an administrator assigns one.">
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="How schedule inheritance works">
@@ -604,51 +547,16 @@ function DatePlanWorkspace({
             <Calendar
               mode="single"
               selected={selectedDate}
-              month={selectedDate}
+              month={displayMonth}
               onSelect={(date) => date && onDateKeyChange(dateKeyFromDate(date))}
-              onMonthChange={(date) =>
-                onDateKeyChange(dateKeyFromDate(firstWeekdayInMonth(date)))
-              }
-              captionLayout="dropdown"
+              onMonthChange={setDisplayMonth}
+              navLayout="around"
               startMonth={workspace.academicYearStartDateKey ? dateFromKey(workspace.academicYearStartDateKey) : undefined}
               endMonth={workspace.academicYearEndDateKey ? dateFromKey(workspace.academicYearEndDateKey) : undefined}
-              className="w-full [--cell-size:clamp(2.75rem,5.5vw,3.75rem)]"
+              className="w-full"
               classNames={{ root: "w-full", months: "w-full", month: "w-full", month_grid: "w-full" }}
-              components={{
-                DayButton: (props) => <AdminCalendarDayButton workspace={workspace} {...props} />,
-              }}
+              components={{ DayButton: CalendarDay }}
             />
-            <div className="flex flex-wrap gap-2 border-t border-border/50 px-4 py-3">
-              <Badge variant="dot" size="sm">Default</Badge>
-              <Badge variant="dot" size="sm" color="blue">Assigned</Badge>
-              <Badge variant="dot" size="sm" color="orange">Unassigned Friday</Badge>
-              <Badge variant="dot" size="sm" color="red">No school</Badge>
-            </div>
-          </section>
-
-          <section className="rounded-xl bg-surface-2 p-4 shadow-surface-1">
-            <div className="mb-4 flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-foreground">Academic year</h3>
-              <Tooltip content="These dates are deployment data, not code. Administrators set them again when a new production database is initialized.">
-                <Button type="button" variant="ghost" size="icon-sm" aria-label="About academic year setup"><Info /></Button>
-              </Tooltip>
-            </div>
-            <FieldGroup className="gap-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="academic-year-start">First day</FieldLabel>
-                  <Input id="academic-year-start" type="date" value={academicStart} onChange={(event) => onAcademicStartChange(event.target.value)} />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="academic-year-end">Last day</FieldLabel>
-                  <Input id="academic-year-end" type="date" value={academicEnd} onChange={(event) => onAcademicEndChange(event.target.value)} />
-                </Field>
-              </div>
-              <FieldDescription>The default template is mandatory and applies to every in-range Monday–Thursday without an assignment.</FieldDescription>
-              <Button type="button" size="sm" leadingIcon={Save} disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null} onClick={onConfigureAcademicYear}>
-                Save academic year
-              </Button>
-            </FieldGroup>
           </section>
         </aside>
 
@@ -657,11 +565,15 @@ function DatePlanWorkspace({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">{dateKey}</p>
-                <h2 className="text-lg font-semibold text-foreground">{selectedState.detail}</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                </h2>
               </div>
-              {workspace.override?.mode === "LINKED" ? (
-                <Badge size="sm" color="blue"><Link2 />Linked template</Badge>
-              ) : workspace.override ? (
+              {currentOverride?.mode === "LINKED" ? (
+                <Tooltip content="This date stays linked to its template. Template edits automatically update this day.">
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Linked template"><Link2 /></Button>
+                </Tooltip>
+              ) : currentOverride ? (
                 <Badge size="sm" color="orange">Custom plan</Badge>
               ) : weekday === 5 && canAssign ? (
                 <Badge size="sm" color="orange">Unassigned Friday</Badge>
@@ -672,12 +584,10 @@ function DatePlanWorkspace({
               )}
             </div>
 
-            {canAssign ? (
-              <div className="flex flex-wrap items-end gap-2">
-                <Field className="max-w-xs gap-1.5">
-                  <FieldLabel>Assign template</FieldLabel>
-                  <Select value={selectedTemplateId} onValueChange={onTemplateSelect}>
-                    <SelectTrigger placeholder="Choose template" />
+            {canAssignFriday ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={selectedTemplateId} onValueChange={onTemplateSelect}>
+                  <SelectTrigger icon={CalendarPlus} placeholder="Choose a template" />
                     <SelectContent>
                       <SelectGroup>
                         {workspace.templates.map((template, index) => (
@@ -687,20 +597,20 @@ function DatePlanWorkspace({
                         ))}
                       </SelectGroup>
                     </SelectContent>
-                  </Select>
-                </Field>
-                <Button type="button" variant="tertiary" size="sm" leadingIcon={CalendarPlus} disabled={!selectedApplyTemplate || pending !== null} loading={pending === "apply-date"} onClick={onApplyTemplate}>
-                  Assign template
-                </Button>
-                <Tooltip content="Assignments stay linked: future edits to the template automatically update this date.">
-                  <Button type="button" variant="ghost" size="icon-sm" aria-label="About linked assignments"><Info /></Button>
+                </Select>
+                <Tooltip content="Link this Friday to the selected template. Future template edits will update this date.">
+                  <Button type="button" variant="tertiary" size="lg" aria-label="Assign selected template" disabled={!selectedApplyTemplate || pending !== null} loading={pending === "apply-date"} onClick={onApplyTemplate}>
+                    <CalendarPlus />
+                  </Button>
                 </Tooltip>
               </div>
             ) : null}
           </header>
 
           <div className="flex flex-col gap-4 p-4 sm:p-5">
-            {!canAssign ? (
+            {isDateLoading ? (
+              <div className="h-48 animate-pulse rounded-lg bg-muted/30" aria-label="Loading selected date" />
+            ) : !canAssign ? (
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><CalendarDays /></EmptyMedia>
@@ -708,9 +618,9 @@ function DatePlanWorkspace({
                   <EmptyDescription>Select a weekday inside the configured academic year.</EmptyDescription>
                 </EmptyHeader>
               </Empty>
-            ) : workspace.override?.mode === "LINKED" ? (
+            ) : currentOverride?.mode === "LINKED" ? (
               <>
-                {workspace.override.kind === "NO_SCHOOL" ? (
+                {currentOverride.kind === "NO_SCHOOL" ? (
                   <Empty>
                     <EmptyHeader>
                       <EmptyMedia variant="icon"><School /></EmptyMedia>
@@ -730,7 +640,7 @@ function DatePlanWorkspace({
                   </Button>
                 </div>
               </>
-            ) : workspace.override ? (
+            ) : currentOverride ? (
               <>
                 <Field className="max-w-md gap-1.5">
                   <FieldLabel htmlFor="date-plan-name">Day label</FieldLabel>
@@ -957,16 +867,74 @@ function TemplateWorkspace({
   );
 }
 
+function SchoolConfigWorkspace({
+  regularTemplate,
+  academicStart,
+  onAcademicStartChange,
+  academicEnd,
+  onAcademicEndChange,
+  pending,
+  onSave,
+}: {
+  regularTemplate: DayTemplate | null;
+  academicStart: string;
+  onAcademicStartChange: (dateKey: string) => void;
+  academicEnd: string;
+  onAcademicEndChange: (dateKey: string) => void;
+  pending: string | null;
+  onSave: () => void;
+}) {
+  return (
+    <section className="w-full max-w-2xl pt-5" aria-labelledby="school-config-title">
+      <div className="flex flex-col gap-4 rounded-xl bg-surface-2 p-4 shadow-surface-1">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 id="school-config-title" className="text-base font-semibold text-foreground">School year</h2>
+            <p className="text-xs text-muted-foreground">Set the dates used by the schedule calendar.</p>
+          </div>
+          <Tooltip content="Monday–Thursday inherit this mandatory default template. Fridays remain unassigned until you link one.">
+            <Badge variant="dot" color={regularTemplate ? "blue" : "orange"}>{regularTemplate?.name ?? "Default required"}</Badge>
+          </Tooltip>
+        </div>
+        <FieldGroup className="grid gap-3 sm:grid-cols-2">
+          <Field>
+            <FieldLabel>First day</FieldLabel>
+            <DatePicker value={academicStart} onChange={onAcademicStartChange} placeholder="Start date" />
+          </Field>
+          <Field>
+            <FieldLabel>Last day</FieldLabel>
+            <DatePicker value={academicEnd} onChange={onAcademicEndChange} placeholder="End date" />
+          </Field>
+        </FieldGroup>
+        <Button type="button" className="self-start" leadingIcon={Save} disabled={!regularTemplate || !academicStart || !academicEnd || pending !== null} loading={pending === "configure-year"} onClick={onSave}>
+          Save school year
+        </Button>
+      </div>
+    </section>
+  );
+}
+
 export function ManageBlocksPanel() {
   const { isAuthenticated } = useConvexAuth();
   const { toast } = useToast();
-  const [mode, setMode] = useState<"dates" | "templates">("dates");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"dates" | "templates" | "config">("dates");
   const [setupView, setSetupView] = useState<"year" | "template">("year");
-  const [dateKey, setDateKey] = useState(schoolDateKey);
-  const workspace = useQuery(
+  const urlDateKey = searchParams?.get("date") ?? null;
+  const [dateKey, setDateKey] = useState(() =>
+    isDateKey(urlDateKey) ? urlDateKey : schoolDateKey(),
+  );
+  const queriedWorkspace = useQuery(
     api.schedule.dayPlans.getAdminWorkspace,
     isAuthenticated ? { dateKey } : "skip",
   );
+  const lastWorkspaceRef = useRef(queriedWorkspace);
+  useEffect(() => {
+    if (queriedWorkspace !== undefined) lastWorkspaceRef.current = queriedWorkspace;
+  }, [queriedWorkspace]);
+  const workspace = queriedWorkspace ?? lastWorkspaceRef.current;
+  const isDateLoading = queriedWorkspace === undefined && workspace !== undefined;
   const saveTemplate = useMutation(api.schedule.dayPlans.saveTemplate);
   const setRegularTemplate = useMutation(
     api.schedule.dayPlans.setRegularTemplate,
@@ -986,6 +954,7 @@ export function ManageBlocksPanel() {
 
   const [pending, setPending] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [assignedTemplateId, setAssignedTemplateId] = useState("");
   const [isNewTemplate, setIsNewTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateKind, setTemplateKind] = useState<TemplateKind>("SPECIAL");
@@ -1002,6 +971,10 @@ export function ManageBlocksPanel() {
         (template) => template.id === selectedTemplateId,
       ) ?? null,
     [selectedTemplateId, workspace?.templates],
+  );
+  const selectedDateTemplate = useMemo(
+    () => workspace?.templates.find((template) => template.id === assignedTemplateId) ?? null,
+    [assignedTemplateId, workspace?.templates],
   );
   const regularTemplate = useMemo(
     () =>
@@ -1075,7 +1048,21 @@ export function ManageBlocksPanel() {
     }
   };
 
-  const selectedApplyTemplate = activeTemplate ?? regularTemplate;
+  const setActiveDateKey = useCallback(
+    (nextDateKey: string) => {
+      if (!isDateKey(nextDateKey) || nextDateKey === dateKey) return;
+      setAssignedTemplateId("");
+      setDateKey(nextDateKey);
+      const params = new URLSearchParams(searchParams?.toString());
+      params.set("date", nextDateKey);
+      window.history.replaceState(null, "", `${pathname}?${params.toString()}`);
+    },
+    [dateKey, pathname, searchParams],
+  );
+
+  useEffect(() => {
+    if (isDateKey(urlDateKey) && urlDateKey !== dateKey) setDateKey(urlDateKey);
+  }, [dateKey, urlDateKey]);
 
   if (workspace === undefined) {
     return <div className="h-48 animate-pulse rounded-xl bg-muted/30" />;
@@ -1085,9 +1072,11 @@ export function ManageBlocksPanel() {
     if (setupView === "template") {
       return (
         <div className="space-y-4">
-          <Button type="button" variant="ghost" size="sm" onClick={() => setSetupView("year")}>
-            Back to academic year setup
-          </Button>
+          <Tooltip content="Back to school-year setup">
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Back to school-year setup" onClick={() => setSetupView("year")}>
+              <ArrowLeft />
+            </Button>
+          </Tooltip>
           <TemplateWorkspace
             workspace={workspace}
             selectedTemplateId={selectedTemplateId}
@@ -1178,11 +1167,12 @@ export function ManageBlocksPanel() {
     <div className="space-y-5">
       <Tabs
         value={mode}
-        onValueChange={(value) => setMode(value as "dates" | "templates")}
+        onValueChange={(value) => setMode(value as "dates" | "templates" | "config")}
       >
         <TabsList>
           <TabItem value="dates" label="Calendar dates" icon={CalendarDays} />
           <TabItem value="templates" label="Templates" icon={LayoutTemplate} />
+          <TabItem value="config" label="School config" icon={School} />
         </TabsList>
 
         {workspace === undefined ? (
@@ -1193,44 +1183,27 @@ export function ManageBlocksPanel() {
               <DatePlanWorkspace
                 workspace={workspace}
                 dateKey={dateKey}
-                onDateKeyChange={setDateKey}
-                selectedTemplateId={selectedTemplateId}
+                isDateLoading={isDateLoading}
+                onDateKeyChange={setActiveDateKey}
+                selectedTemplateId={assignedTemplateId}
                 onTemplateSelect={(templateId) => {
-                  setSelectedTemplateId(templateId);
-                  setIsNewTemplate(false);
+                  setAssignedTemplateId(templateId);
                 }}
-                selectedApplyTemplate={selectedApplyTemplate}
+                selectedApplyTemplate={selectedDateTemplate}
                 pending={pending}
                 dateName={dateName}
                 onDateNameChange={setDateName}
                 dateBlocks={dateBlocks}
                 onDateBlocksChange={setDateBlocks}
                 regularTemplate={regularTemplate}
-                academicStart={academicStart}
-                onAcademicStartChange={setAcademicStart}
-                academicEnd={academicEnd}
-                onAcademicEndChange={setAcademicEnd}
-                onConfigureAcademicYear={() => {
-                  if (!regularTemplate) return;
-                  void run(
-                    "configure-year",
-                    () =>
-                      configureAcademicYear({
-                        startDateKey: academicStart,
-                        endDateKey: academicEnd,
-                        regularTemplateId: regularTemplate.id,
-                      }),
-                    "Academic year saved",
-                  );
-                }}
                 onApplyTemplate={() => {
-                  if (!selectedApplyTemplate) return;
+                  if (!selectedDateTemplate) return;
                   void run(
                     "apply-date",
                     () =>
                       applyTemplate({
                         dateKey,
-                        templateId: selectedApplyTemplate.id,
+                        templateId: selectedDateTemplate.id,
                       }),
                     "Template linked to date",
                   );
@@ -1335,6 +1308,24 @@ export function ManageBlocksPanel() {
                       setSelectedTemplateId("");
                     },
                     "Template deleted",
+                  );
+                }}
+              />
+            </TabPanel>
+            <TabPanel value="config">
+              <SchoolConfigWorkspace
+                regularTemplate={regularTemplate}
+                academicStart={academicStart}
+                onAcademicStartChange={setAcademicStart}
+                academicEnd={academicEnd}
+                onAcademicEndChange={setAcademicEnd}
+                pending={pending}
+                onSave={() => {
+                  if (!regularTemplate) return;
+                  void run(
+                    "configure-year",
+                    () => configureAcademicYear({ startDateKey: academicStart, endDateKey: academicEnd, regularTemplateId: regularTemplate.id }),
+                    "Academic year saved",
                   );
                 }}
               />
