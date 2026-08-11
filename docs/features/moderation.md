@@ -39,7 +39,9 @@ reports.
 - `moderationReports`
 
 Reports store submitter, content type/id, optional club, optional reported user,
-reason, status, escalation flag, review note, and timestamps.
+reason, status, escalation flag, review note, and timestamps. General feedback
+can include up to three validated PNG, JPEG, GIF, or WebP image attachments;
+only super admins can retrieve their previews.
 
 ## Permissions
 

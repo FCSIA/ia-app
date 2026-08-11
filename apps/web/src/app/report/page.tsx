@@ -1,23 +1,73 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquareText } from 'lucide-react';
-import { useMutation } from 'convex/react';
+import { useEffect, useRef, useState } from 'react';
+import { MessageSquareText, X } from 'lucide-react';
+import { useAction, useMutation } from 'convex/react';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
+import { uploadFileToConvex } from '@/lib/convex-upload';
 import { api } from '~/apps/convex/src/_generated/api';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
+const MAX_FEEDBACK_IMAGES = 3;
+const MAX_FEEDBACK_IMAGE_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+
+type SelectedImage = {
+  file: File;
+  previewUrl: string;
+};
 
 export default function ReportPage() {
   const [message, setMessage] = useState('');
+  const [images, setImages] = useState<SelectedImage[]>([]);
+  const imageUrls = useRef(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitReport = useMutation(api.moderation.reports.submit);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const finalizeFeedbackImage = useAction(api.uploads.files.finalizeFeedbackImage);
   const { toast } = useToast();
   const trimmedMessage = message.trim();
+
+  useEffect(
+    () => () => {
+      imageUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
+
+  function addImage(file: File) {
+    if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+      toast({ title: 'Choose a PNG, JPEG, GIF, or WebP image', variant: 'destructive' });
+      return;
+    }
+    if (file.size > MAX_FEEDBACK_IMAGE_BYTES) {
+      toast({ title: 'Each image must be 5 MB or smaller', variant: 'destructive' });
+      return;
+    }
+    if (images.length >= MAX_FEEDBACK_IMAGES) {
+      toast({ title: 'You can attach up to 3 images', variant: 'destructive' });
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    imageUrls.current.add(previewUrl);
+    setImages((current) => [...current, { file, previewUrl }]);
+  }
+
+  function removeImage(index: number) {
+    setImages((current) => {
+      const image = current[index];
+      if (image) {
+        URL.revokeObjectURL(image.previewUrl);
+        imageUrls.current.delete(image.previewUrl);
+      }
+      return current.filter((_, currentIndex) => currentIndex !== index);
+    });
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,12 +75,30 @@ export default function ReportPage() {
 
     setIsSubmitting(true);
     try {
+      const imageUploadIds = await Promise.all(
+        images.map(async ({ file }) => {
+          const { storageId, uploadIntentId } = await uploadFileToConvex(
+            { generateUploadUrl: () => generateUploadUrl({ purpose: 'FEEDBACK_IMAGE' }) },
+            file,
+          );
+          const finalized = await finalizeFeedbackImage({ storageId, uploadIntentId });
+          return finalized.imageUploadId;
+        }),
+      );
       await submitReport({
         contentType: 'GENERAL',
         contentId: 'report-page',
         reason: trimmedMessage,
+        imageUploadIds,
       });
       setMessage('');
+      setImages((current) => {
+        current.forEach((image) => {
+          URL.revokeObjectURL(image.previewUrl);
+          imageUrls.current.delete(image.previewUrl);
+        });
+        return [];
+      });
       toast({ title: 'Feedback sent', description: 'School staff will review it.' });
     } catch (error) {
       toast({
@@ -67,6 +135,35 @@ export default function ReportPage() {
               maxLength={MAX_FEEDBACK_CHARACTERS}
               rows={7}
             />
+            <div className="space-y-2">
+              {images.length > 0 ? (
+                <div className="flex flex-wrap gap-2" aria-label="Attached images">
+                  {images.map((image, index) => (
+                    <div key={image.previewUrl} className="relative size-20 overflow-hidden rounded-md border bg-muted">
+                      <img src={image.previewUrl} alt={`Selected image ${index + 1}`} className="size-full object-cover" />
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="secondary"
+                        aria-label={`Remove selected image ${index + 1}`}
+                        className="absolute right-1 top-1"
+                        disabled={isSubmitting}
+                        onClick={() => removeImage(index)}
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <FileInput
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                label="Attach image"
+                disabled={images.length >= MAX_FEEDBACK_IMAGES || isSubmitting}
+                onFileSelect={addImage}
+              />
+              <p className="text-xs text-muted-foreground">Up to 3 images, 5 MB each. PNG, JPEG, GIF, or WebP.</p>
+            </div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
                 {message.length}/{MAX_FEEDBACK_CHARACTERS}

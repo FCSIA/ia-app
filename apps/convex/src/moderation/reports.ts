@@ -9,6 +9,7 @@ import { activeAdmins, deliverMany } from "../notifications/delivery";
 import { canReadChannel, getViewerContext } from "../clubs/access";
 import { normalizeModerationReportReason } from "./reportValidation";
 import { contentRateLimiter } from "../rateLimits";
+import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
 
 const genericReportContentTypeValidator = v.union(v.literal("GENERAL"), v.literal("ANNOUNCEMENT"), v.literal("EVENT"));
 
@@ -28,6 +29,15 @@ const reportValidator = docs.moderationReports.extend({
       name: v.string(),
     }),
     v.null(),
+  ),
+  images: v.array(
+    v.object({
+      _id: v.id("feedbackReportImages"),
+      storageId: v.id("_storage"),
+      mimeType: v.string(),
+      size: v.number(),
+      url: v.string(),
+    }),
   ),
 });
 
@@ -49,6 +59,10 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
     ? await ctx.db.get(report.reportedUserId)
     : null;
   const club = report.clubId ? await ctx.db.get(report.clubId) : null;
+  const images = await ctx.db
+    .query("feedbackReportImages")
+    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+    .collect();
 
   return {
     ...report,
@@ -69,6 +83,15 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
         }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
+    images: await Promise.all(
+      images.map(async (image) => ({
+        _id: image._id,
+        storageId: image.storageId,
+        mimeType: image.mimeType,
+        size: image.size,
+        url: (await ctx.storage.getUrl(image.storageId)) ?? "",
+      })),
+    ),
   };
 }
 
@@ -81,6 +104,7 @@ async function createReport(
     reason: string;
     reportedUserId?: Id<"users">;
     clubId?: Id<"clubs">;
+    imageUploadIds?: Id<"feedbackImageUploads">[];
   },
 ) {
   const rate = await contentRateLimiter.limit(ctx, "reportsByUser", { key: user._id });
@@ -96,6 +120,13 @@ async function createReport(
     isEscalated: false,
     createdAt: Date.now(),
   });
+  if (input.imageUploadIds) {
+    await consumeStagedFeedbackImages(ctx, {
+      imageUploadIds: input.imageUploadIds,
+      uploaderId: user._id,
+      reportId,
+    });
+  }
 
   const isFeedback = input.contentType === "GENERAL";
   const recipients = (await activeAdmins(ctx)).filter((admin) =>
@@ -203,11 +234,15 @@ export const submit = mutation({
     reason: v.string(),
     reportedUserId: v.optional(v.id("users")),
     clubId: v.optional(v.id("clubs")),
+    imageUploadIds: v.optional(v.array(v.id("feedbackImageUploads"))),
   },
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     if (Array.from(args.contentId).length < 1 || Array.from(args.contentId).length > 128) throw new ConvexError("Invalid report reference");
+    if (args.imageUploadIds && args.contentType !== "GENERAL") {
+      throw new ConvexError("Images can only be attached to feedback");
+    }
     if (args.contentType === "EVENT") {
       const id = ctx.db.normalizeId("events", args.contentId);
       if (!id || !(await ctx.db.get(id))) throw new ConvexError("Event not found");

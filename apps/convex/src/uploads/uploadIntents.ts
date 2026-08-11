@@ -9,12 +9,14 @@ export const uploadPurposeValidator = v.union(
   v.literal("CHAT_ATTACHMENT"),
   v.literal("CLUB_IMAGE"),
   v.literal("USER_IMAGE"),
+  v.literal("FEEDBACK_IMAGE"),
 );
 
 export type UploadPurpose =
   | "CHAT_ATTACHMENT"
   | "CLUB_IMAGE"
-  | "USER_IMAGE";
+  | "USER_IMAGE"
+  | "FEEDBACK_IMAGE";
 
 type UploadIntentClaimInput = {
   intent: {

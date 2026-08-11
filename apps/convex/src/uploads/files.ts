@@ -18,10 +18,14 @@ import {
   UPLOAD_INTENT_TTL_MS,
   uploadPurposeValidator,
 } from "./uploadIntents";
+import {
+  STAGED_FEEDBACK_IMAGE_TTL_MS,
+  validateFeedbackImageMetadata,
+} from "./feedbackImages";
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
 
-async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE"; fallbackMimeType?: string }) {
+async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE"; fallbackMimeType?: string }) {
   const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, args);
   try {
     const response = await fetch(prepared.url);
@@ -192,6 +196,59 @@ export const finalizeChatAttachment = action({
   handler: async (ctx, args): Promise<{ attachmentUploadId: Id<"clubChannelAttachmentUploads">; fileName: string; mimeType: string; size: number }> => {
     await validateStoredUpload(ctx, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "CHAT_ATTACHMENT" });
     return ctx.runMutation(internal.uploads.files.finalizeChatAttachmentMutation, args);
+  },
+});
+
+export const finalizeFeedbackImageMutation = internalMutation({
+  args: {
+    uploadIntentId: v.id("uploadIntents"),
+    storageId: v.id("_storage"),
+  },
+  returns: v.object({ imageUploadId: v.id("feedbackImageUploads") }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await claimUploadIntent(ctx, {
+      ...args,
+      uploaderId: user._id,
+      purpose: "FEEDBACK_IMAGE",
+    });
+    try {
+      const metadata = await getUploadedMetadata(ctx, args.storageId);
+      const validated = validateFeedbackImageMetadata(metadata);
+      await recordUploadUsage(ctx, {
+        uploaderId: user._id,
+        uploadIntentId: args.uploadIntentId,
+        size: validated.size,
+      });
+      const imageUploadId = await ctx.db.insert("feedbackImageUploads", {
+        uploaderId: user._id,
+        storageId: args.storageId,
+        mimeType: validated.mimeType,
+        size: validated.size,
+        createdAt: Date.now(),
+      });
+      await ctx.scheduler.runAfter(
+        STAGED_FEEDBACK_IMAGE_TTL_MS,
+        internal.uploads.feedbackImages.cleanupStagedFeedbackImage,
+        { imageUploadId },
+      );
+      return { imageUploadId };
+    } catch (error) {
+      await deleteRejectedUpload(ctx, args.storageId);
+      throw error;
+    }
+  },
+});
+
+export const finalizeFeedbackImage = action({
+  args: {
+    uploadIntentId: v.id("uploadIntents"),
+    storageId: v.id("_storage"),
+  },
+  returns: v.object({ imageUploadId: v.id("feedbackImageUploads") }),
+  handler: async (ctx, args): Promise<{ imageUploadId: Id<"feedbackImageUploads"> }> => {
+    await validateStoredUpload(ctx, { ...args, purpose: "FEEDBACK_IMAGE" });
+    return ctx.runMutation(internal.uploads.files.finalizeFeedbackImageMutation, args);
   },
 });
 

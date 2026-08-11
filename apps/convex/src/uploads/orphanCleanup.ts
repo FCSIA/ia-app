@@ -19,6 +19,8 @@ export const sweep = internalMutation({
         ctx.db.query("clubs").withIndex("by_bannerStorageId", (q) => q.eq("bannerStorageId", file._id)).first(),
         ctx.db.query("clubChannelMessageAttachments").withIndex("by_storageId", (q) => q.eq("storageId", file._id)).first(),
         ctx.db.query("clubChannelAttachmentUploads").withIndex("by_storageId", (q) => q.eq("storageId", file._id)).first(),
+        ctx.db.query("feedbackImageUploads").withIndex("by_storageId", (q) => q.eq("storageId", file._id)).first(),
+        ctx.db.query("feedbackReportImages").withIndex("by_storageId", (q) => q.eq("storageId", file._id)).first(),
         ctx.db.query("uploadIntents").withIndex("by_storageId", (q) => q.eq("storageId", file._id)).first(),
       ]);
       if (owners.every((owner) => owner === null)) await ctx.storage.delete(file._id);

@@ -90,6 +90,7 @@ import type * as search_global from "../search/global.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
 import type * as uploads_chatAttachments from "../uploads/chatAttachments.js";
+import type * as uploads_feedbackImages from "../uploads/feedbackImages.js";
 import type * as uploads_fileSignatures from "../uploads/fileSignatures.js";
 import type * as uploads_files from "../uploads/files.js";
 import type * as uploads_limits from "../uploads/limits.js";
@@ -193,6 +194,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   stats: typeof stats;
   "uploads/chatAttachments": typeof uploads_chatAttachments;
+  "uploads/feedbackImages": typeof uploads_feedbackImages;
   "uploads/fileSignatures": typeof uploads_fileSignatures;
   "uploads/files": typeof uploads_files;
   "uploads/limits": typeof uploads_limits;

@@ -8,6 +8,7 @@ import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
   submitter: { firstName: string; lastName: string } | null;
+  images: Array<{ _id: Id<'feedbackReportImages'>; url: string }>;
 };
 type FeedbackStatus = FeedbackReport['status'];
 
@@ -66,6 +67,25 @@ export function FeedbackTab({
                   <p className="mt-1 text-xs text-muted-foreground">
                     By {report.submitter?.firstName} {report.submitter?.lastName}
                   </p>
+                  {report.images.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {report.images.map((image, index) => (
+                        <a
+                          key={image._id}
+                          href={image.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block size-20 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <img
+                            src={image.url}
+                            alt={`Feedback attachment ${index + 1}`}
+                            className="size-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 {report.status === 'PENDING' ? (
                   <div className="flex shrink-0 gap-2">
