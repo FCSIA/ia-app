@@ -38,7 +38,7 @@ export const search = query({
 
     const results: ScheduleSearchResult[] = [];
     for (const candidate of candidates) {
-      if (candidate._id === user._id || !candidate.isActive || candidate.gradeLevel !== user.gradeLevel) continue;
+      if (candidate._id === user._id || !candidate.isActive) continue;
       const friendship = await getFriendshipBetween(ctx, user._id, candidate._id);
       const schedule = await serializeScheduleForUser(ctx, candidate._id);
       const friendshipStatus: ScheduleSearchFriendshipStatus =
