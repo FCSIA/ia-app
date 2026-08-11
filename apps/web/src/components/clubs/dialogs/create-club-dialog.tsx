@@ -100,46 +100,49 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
             />
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="club-sponsor">Sponsor</FieldLabel>
-            <Select
-              value={sponsorIds[0] ?? ''}
-              onValueChange={(value) => setSponsorIds([value])}
-            >
-              <SelectTrigger id="club-sponsor" placeholder="Select faculty sponsor" />
-              <SelectContent>
-                <SelectGroup>
-                  {sponsorOptions.map((person, index) => (
-                    <SelectItem key={person._id} index={index} value={person._id}>
-                      {fullName(person)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="club-sponsor">Sponsor</FieldLabel>
+              <Select
+                value={sponsorIds[0] ?? ''}
+                onValueChange={(value) => setSponsorIds([value])}
+              >
+                <SelectTrigger id="club-sponsor" placeholder="Select faculty sponsor" />
+                <SelectContent>
+                  <SelectGroup>
+                    {sponsorOptions.map((person, index) => (
+                      <SelectItem key={person._id} index={index} value={person._id}>
+                        {fullName(person)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <Field>
-            <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
-            <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
-              <SelectTrigger id="join-policy" placeholder="Choose policy" />
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem index={0} value="OPEN">
-                    Open join
-                  </SelectItem>
-                  <SelectItem index={1} value="REQUEST">
-                    Request approval
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+            <Field>
+              <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
+              <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
+                <SelectTrigger id="join-policy" placeholder="Choose policy" />
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem index={0} value="OPEN">
+                      Open join
+                    </SelectItem>
+                    <SelectItem index={1} value="REQUEST">
+                      Request approval
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
 
           <Field>
             <FieldLabel>Member limit</FieldLabel>
             <FieldDescription>New joins and approvals stop at this limit.</FieldDescription>
             <Slider
+              size="compact"
               value={memberLimit}
               onChange={(value) => setMemberLimit(value as number)}
               min={10}
