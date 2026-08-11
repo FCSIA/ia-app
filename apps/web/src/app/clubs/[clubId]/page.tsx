@@ -6,7 +6,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { KeyRound, Megaphone, MessageSquareText, Search, UserPlus, Users } from 'lucide-react';
+import { Check, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
 import { useClubId } from '../club-route';
 import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
@@ -89,22 +89,22 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
           </div>
         ) : null}
         {club.pendingJoinRequests.map((request) => (
-          <div
-            key={request._id}
-            className="flex flex-col gap-2 py-1"
-          >
-            <div className="min-w-0">
-              <div className="min-w-0 space-y-0.5">
+          <div key={request._id} className="flex items-center gap-2 py-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
                 <p className="truncate text-sm font-medium text-foreground">{fullName(request.requester)}</p>
-                <p className="text-xs text-muted-foreground">
-                  Requested {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
-                </p>
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Clock3 className="size-3" />
+                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                </span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-1">
               <Button
-                size="sm"
+                size="icon-sm"
                 variant="tertiary"
+                aria-label={`Decline ${fullName(request.requester)}'s request`}
+                title="Decline request"
                 onClick={() =>
                   void respondToJoinRequest({
                     clubId,
@@ -112,12 +112,12 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
                     accept: false,
                   }).then(() => toast({ title: 'Join request updated' }))
                 }
-              >
-                Decline
-              </Button>
+              ><Minus /></Button>
               <Button
-                size="sm"
+                size="icon-sm"
                 disabled={isFull}
+                aria-label={`Approve ${fullName(request.requester)}'s request`}
+                title="Approve request"
                 onClick={() =>
                   void respondToJoinRequest({
                     clubId,
@@ -125,9 +125,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
                     accept: true,
                   }).then(() => toast({ title: 'Join request updated' }))
                 }
-              >
-                Approve
-              </Button>
+              ><Check /></Button>
             </div>
           </div>
         ))}
