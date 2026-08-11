@@ -8,6 +8,7 @@ import type { FunctionReturnType } from 'convex/server';
 import {
   Crown,
   Check,
+  Ellipsis,
   QrCode,
   Send,
   Sparkles,
@@ -29,6 +30,16 @@ import { formatClubRole, fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -43,9 +54,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownContent,
+  DropdownMenu,
+  DropdownTrigger,
+} from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
 import { Label } from '@/components/ui/label';
+import { MenuItem } from '@/components/ui/menu-item';
 import { SearchInput } from '@/components/ui/search';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
@@ -317,6 +334,8 @@ export default function ClubPeoplePage() {
   const deferredSearch = useDeferredValue(search);
   const [manageOpen, setManageOpen] = useState(false);
   const [roleTarget, setRoleTarget] = useState<ClubDirectoryEntry | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<ClubDirectoryEntry | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
 
   const [filter, setFilter] = useState(() =>
@@ -376,6 +395,23 @@ export default function ClubPeoplePage() {
       });
     } finally {
       setRequestInFlight(null);
+    }
+  }
+
+  async function confirmRemoveMember() {
+    if (!removeTarget) return;
+    setIsRemoving(true);
+    try {
+      await removeMember({ clubId, memberId: removeTarget._id });
+      toast({ title: `${fullName(removeTarget)} removed` });
+      setRemoveTarget(null);
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Unable to remove member',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRemoving(false);
     }
   }
 
@@ -495,11 +531,7 @@ export default function ClubPeoplePage() {
                       isCurrentUser={person._id === user?._id}
                       canManage={canManage && person.kind === 'MEMBER'}
                       onSetRole={setRoleTarget}
-                      onRemove={(memberId) =>
-                        void removeMember({ clubId, memberId: memberId as Id<'users'> }).then(() =>
-                          toast({ title: 'Member removed' }),
-                        )
-                      }
+                      onRemove={setRemoveTarget}
                     />
                   ))}
                 </div>
@@ -528,6 +560,36 @@ export default function ClubPeoplePage() {
         <ManagePeopleDialog club={club} open={manageOpen} onOpenChange={setManageOpen} />
       ) : null}
       <SetRoleDialog person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !isRemoving) setRemoveTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove {removeTarget ? fullName(removeTarget) : 'member'} from {club?.name ?? 'this club'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They will lose access to this club and its channels. You can invite them again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Keep member</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isRemoving}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmRemoveMember();
+              }}
+            >
+              {isRemoving ? 'Removing…' : 'Remove from club'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClubWorkspace>
   );
 }
@@ -543,7 +605,7 @@ function PersonRow({
   isCurrentUser: boolean;
   canManage: boolean;
   onSetRole: (person: ClubDirectoryEntry) => void;
-  onRemove: (memberId: string) => void;
+  onRemove: (person: ClubDirectoryEntry) => void;
 }) {
   const showManage = canManage && person.kind === 'MEMBER' && !isCurrentUser;
   const isSponsor = person.kind === 'SPONSOR';
@@ -569,20 +631,34 @@ function PersonRow({
         </div>
       </div>
       {showManage ? (
-        <div className="flex gap-2 opacity-100 sm:opacity-0 focus-within:opacity-100 group-hover:opacity-100 transition-opacity">
-          <Button size="sm" variant="secondary" className="h-8 gap-1.5" onClick={() => onSetRole(person)}>
-            <Settings className="size-3.5" />
-            <span className="hidden sm:inline">Role</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
-            onClick={() => onRemove(person._id)}
-          >
-            <UserMinus className="size-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownTrigger
+            render={
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={`Manage ${fullName(person)}`}
+              >
+                <Ellipsis className="size-4" />
+              </Button>
+            }
+          />
+          <DropdownContent align="end" className="w-48">
+            <MenuItem
+              index={0}
+              icon={Settings}
+              label="Change role"
+              onSelect={() => onSetRole(person)}
+            />
+            <MenuItem
+              index={1}
+              icon={UserMinus}
+              label="Remove from club"
+              onSelect={() => onRemove(person)}
+            />
+          </DropdownContent>
+        </DropdownMenu>
       ) : null}
     </div>
   );
