@@ -21,7 +21,8 @@ export const getAll = query({
   args: {},
   returns: v.array(clubSummaryValidator),
   handler: async (ctx) => {
-    await getCurrentAppUser(ctx);
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
     const clubs = await ctx.db
       .query("clubs")
       .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))
