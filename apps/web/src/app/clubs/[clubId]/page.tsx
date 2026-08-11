@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { SearchInput } from '@/components/ui/search';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -387,30 +388,32 @@ export default function ClubOverviewPage() {
   );
 
   const rightPane = (
-    <div className="divide-y divide-border">
-      <section className="space-y-2 p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</h3>
-        <MemberLimitMeter club={club} />
-      </section>
+    <ScrollArea className="size-full">
+      <div className="divide-y divide-border">
+        <section className="space-y-2 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</h3>
+          <MemberLimitMeter club={club} />
+        </section>
 
-      {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
+        {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
 
-      <section className="space-y-2 p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
-        <div className="space-y-1.5">
-          {club.sponsors.map((sponsor) => (
-            <div key={sponsor.userId} className="flex items-center gap-2.5">
-              <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
+        <section className="space-y-2 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
+          <div className="space-y-1.5">
+            {club.sponsors.map((sponsor) => (
+              <div key={sponsor.userId} className="flex items-center gap-2.5">
+                <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      <RoleRoster club={club} />
-    </div>
+        <RoleRoster club={club} />
+      </div>
+    </ScrollArea>
   );
 
   return (
