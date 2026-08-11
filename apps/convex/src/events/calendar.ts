@@ -1,6 +1,9 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser } from "../../lib/currentUser";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+} from "../../lib/currentUser";
 import { calendarSourceValidator } from "../validators";
 import { calendarEntryValidator } from "./_lib";
 
@@ -15,13 +18,15 @@ export const list = query({
   },
   returns: v.array(calendarEntryOutputValidator),
   handler: async (ctx, args) => {
-    const user = await getCurrentAppUser(ctx);
     if (args.endDate < args.startDate) {
       throw new Error("Calendar end date must be after start date");
     }
     if (args.endDate - args.startDate > MAX_CALENDAR_RANGE_MS) {
       throw new Error("Calendar range cannot exceed 92 days");
     }
+
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
 
     const entries = await ctx.db
       .query("calendarEntries")
