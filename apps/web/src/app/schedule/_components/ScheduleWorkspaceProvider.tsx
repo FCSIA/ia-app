@@ -32,6 +32,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { ScheduleDraftState, ScheduleTabState } from "../_types";
 import {
   buildScheduleRecord,
+  moveClassesToFormerLunchPeriod,
   replaceScheduleEntry,
   resolveScheduleTab,
   type ScheduleClassSelection,
@@ -176,7 +177,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     const conflict = scheduleEntries.find(
       (entry) => entry.periodNumber === targetPeriod,
     );
-    if (conflict) {
+    if (!lunchPeriod && conflict) {
       toast({
         title: `Period ${targetPeriod} still has a class`,
         description:
@@ -188,6 +189,13 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     setScheduleDraft((current) => ({
       ...current,
       lunchPeriod: nextLunchPeriod,
+      entries: current.lunchPeriod
+        ? moveClassesToFormerLunchPeriod(
+            current.entries,
+            current.lunchPeriod,
+            nextLunchPeriod,
+          )
+        : current.entries,
     }));
     return true;
   };
