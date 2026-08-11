@@ -8,6 +8,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { StudentImportResult } from '../_lib/types';
 import { AdminMetric, AdminPanel } from './admin-ui';
 
+const studentCsvExample = `first_name,last_name,student_id,email,grade_level,major_pathway,minor_pathway
+Alex,Smith,STU001,alex.smith@example.com,10,IT,`;
+
 export function AdminScheduleTab({
   studentCsvInputKey,
   onStudentCsvFileChange,
@@ -42,6 +45,16 @@ export function AdminScheduleTab({
           </div>
           <p className="text-xs text-muted-foreground">
             Accepted pathway labels: <span className="text-foreground">IT</span>, <span className="text-foreground">Health Science</span>, <span className="text-foreground">Engineering</span>.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium text-foreground">Example CSV</p>
+          <pre className="overflow-x-auto rounded-lg bg-muted/30 p-3 font-mono text-xs leading-5 text-foreground">
+            <code>{studentCsvExample}</code>
+          </pre>
+          <p className="text-xs text-muted-foreground">
+            Use the first line as your header row. Email, grade, major, and minor are optional.
           </p>
         </div>
 
