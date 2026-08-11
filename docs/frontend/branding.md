@@ -6,9 +6,11 @@ tags: [frontend, branding, assets]
 
 [Home](../index.md)
 
-The IA app uses one product mark: the white Innovation Academy phoenix on the
-orange app-icon field. The canonical raster source is
-`apps/web/public/icons/logo.png`.
+The IA app uses one product mark: **IA Orbit**, the Innovation Academy phoenix
+in the authored Liquid Glass app icon. Its canonical source is
+`icon-composer/IA Orbit.icon`. Apple platforms consume that layered source;
+`icon-composer/IA Orbit-flattened.png` is the 1024pt iOS Default export used as
+the canonical raster source for every other platform.
 
 Use that mark for the web shell, login, loading states, PWA icons, QR centers,
 and mobile app surfaces. Do not create a separate `IA` letter tile or recolor
@@ -20,14 +22,15 @@ school name is needed; it is not the app icon.
 
 ## Generated Files
 
-Run this after changing the canonical source:
+After changing `IA Orbit.icon`, export the iOS Default appearance at 1024pt/1x
+from Icon Composer as `icon-composer/IA Orbit-flattened.png`, then run:
 
 ```bash
 pnpm brand:generate
 pnpm brand:check
 ```
 
-The generator owns the exact-size web icons, mobile icon and in-app mark,
-Android adaptive foreground, monochrome notification icon, splash mark, and the
-iOS Icon Composer phoenix layer. `pnpm brand:check` fails when any generated
-asset drifts from the source.
+The generator owns the exact-size web icons, browser favicon fallback, mobile
+icon and in-app mark, Android adaptive foreground, monochrome notification
+icon, splash mark, and the Expo-local copy of the iOS Icon Composer source.
+`pnpm brand:check` fails when any generated asset drifts from the source.

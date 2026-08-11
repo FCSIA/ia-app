@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   description: 'School communication and operations platform',
   manifest: '/manifest.json',
   icons: {
+    shortcut: '/favicon.ico',
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
