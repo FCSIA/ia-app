@@ -72,7 +72,7 @@ export function MySchedulePanel() {
                     if (value === "PERIOD_4" || value === "PERIOD_5")
                       setLunchPeriod(value);
                   }}
-                  className="w-auto flex-row gap-0.5"
+                  orientation="horizontal"
                   aria-label="Lunch period"
                 >
                   <RadioItem
