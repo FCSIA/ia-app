@@ -127,6 +127,27 @@ describe("special-day resolution", () => {
     entry("MONDAY", period),
   );
 
+  test("uses a saved canonical period choice on every school day", () => {
+    const result = resolveSchoolDay({
+      dateKey: "2026-11-03",
+      lunchPeriod: "PERIOD_5",
+      entries: mondayEntries,
+      regularBlocks,
+    });
+
+    expect(result.weekday).toBe("TUESDAY");
+    expect(result.blocks.map((block) => block.entry?.className)).toEqual([
+      "Class 1",
+      "Class 2",
+      "Class 3",
+      "Class 4",
+      undefined,
+      "Class 6",
+      "Class 7",
+      "Class 8",
+    ]);
+  });
+
   test("maps split-day periods to the existing weekday course choices", () => {
     const firstHalf = resolveSchoolDay({
       dateKey: "2026-11-02",

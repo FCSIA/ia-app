@@ -168,6 +168,13 @@ export type ScheduleSearchResult = Infer<typeof scheduleSearchResultValidator>;
 
 const STUDENT_ROLES: AppRole[] = ["STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN"];
 const ADMIN_ROLES: AppRole[] = ["ADMIN", "SUPER_ADMIN"];
+const SCHEDULE_WEEKDAYS: ScheduleEntryInput["weekday"][] = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+];
 
 export function isStudentUser(user: Doc<"users">) {
   return user.roles.some((role) => STUDENT_ROLES.includes(role));
@@ -304,7 +311,7 @@ export function getScheduleFriendshipStatus(
 
 export function normalizeScheduleEntries(entries: ScheduleEntryInput[]) {
   const seen = new Set<string>();
-  return entries.map((entry) => {
+  const normalizedEntries = entries.map((entry) => {
     if (entry.periodNumber < 1 || entry.periodNumber > 8) {
       throw new ConvexError("Schedule periods must be between 1 and 8.");
     }
@@ -316,6 +323,20 @@ export function normalizeScheduleEntries(entries: ScheduleEntryInput[]) {
     seen.add(key);
     return entry;
   });
+
+  return Array.from({ length: 8 }, (_, index) => index + 1).flatMap(
+    (periodNumber) => {
+      const canonicalEntry = SCHEDULE_WEEKDAYS.map((weekday) =>
+        normalizedEntries.find(
+          (entry) =>
+            entry.weekday === weekday && entry.periodNumber === periodNumber,
+        ),
+      ).find((entry) => entry !== undefined);
+      return canonicalEntry
+        ? SCHEDULE_WEEKDAYS.map((weekday) => ({ ...canonicalEntry, weekday }))
+        : [];
+    },
+  );
 }
 
 export async function listBlocksForWeekday(

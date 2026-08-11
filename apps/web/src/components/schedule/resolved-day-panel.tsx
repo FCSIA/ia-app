@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScheduleDatePicker } from "./schedule-date-picker";
-import { formatScheduleTimeRange } from "./schedule-utils";
+import { findScheduleEntry, formatScheduleTimeRange } from "./schedule-utils";
 import type {
   ResolvedSchoolDay,
   ScheduleLunchPeriod,
@@ -98,10 +98,10 @@ export function ResolvedDayPanel({
             const isLunch = block.periodNumber === lunchNumber;
             const entry =
               day.weekday && block.periodNumber !== null && !isLunch
-                ? (entries.find(
-                    (candidate) =>
-                      candidate.weekday === day.weekday &&
-                      candidate.periodNumber === block.periodNumber,
+                ? (findScheduleEntry(
+                    { entries },
+                    day.weekday,
+                    block.periodNumber,
                   ) ?? null)
                 : null;
             const title = isLunch

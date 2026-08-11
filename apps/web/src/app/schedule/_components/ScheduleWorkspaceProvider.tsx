@@ -344,23 +344,15 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   };
 
   const applyImportedSchedule = (rows: ImportedScheduleRow[]) => {
-    const weekdays: ScheduleWeekday[] = [
-      "MONDAY",
-      "TUESDAY",
-      "WEDNESDAY",
-      "THURSDAY",
-    ];
-    setScheduleEntries((current) => {
-      let next = current.filter((entry) => !weekdays.includes(entry.weekday));
-      for (const weekday of weekdays) {
-        for (const row of rows) {
-          next = replaceScheduleEntry(
-            next,
-            weekday,
-            row.periodNumber,
-            row.course ?? { className: row.className },
-          );
-        }
+    setScheduleEntries(() => {
+      let next: StudentScheduleDraftEntry[] = [];
+      for (const row of rows) {
+        next = replaceScheduleEntry(
+          next,
+          "MONDAY",
+          row.periodNumber,
+          row.course ?? { className: row.className },
+        );
       }
       return next;
     });

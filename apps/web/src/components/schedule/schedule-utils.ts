@@ -98,8 +98,10 @@ export function findScheduleEntry(
   weekday: ScheduleWeekday,
   periodNumber: number,
 ) {
-  return schedule?.entries.find(
-    (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
+  return (
+    schedule?.entries.find(
+      (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
+    ) ?? schedule?.entries.find((entry) => entry.periodNumber === periodNumber)
   );
 }
 

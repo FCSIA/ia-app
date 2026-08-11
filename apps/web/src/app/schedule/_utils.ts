@@ -3,6 +3,7 @@ import type {
   ScheduleLunchPeriod,
   StudentScheduleDraftEntry,
 } from '@/components/schedule/types';
+import { WEEKDAYS } from '@/components/schedule/schedule-utils';
 import type { ScheduleTab } from './_types';
 
 export type ScheduleClassSelection = CourseSummary | { className: string };
@@ -37,39 +38,36 @@ export function resolveScheduleTab(
 
 export function replaceScheduleEntry(
   entries: StudentScheduleDraftEntry[],
-  weekday: StudentScheduleDraftEntry['weekday'],
+  _weekday: StudentScheduleDraftEntry['weekday'],
   periodNumber: number,
   course: ScheduleClassSelection | null,
 ) {
-  const existingIndex = entries.findIndex(
-    (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
+  const entriesWithoutPeriod = entries.filter(
+    (entry) => entry.periodNumber !== periodNumber,
   );
 
   if (!course) {
-    return entries.filter(
-      (entry) => !(entry.weekday === weekday && entry.periodNumber === periodNumber),
-    );
+    return entriesWithoutPeriod;
   }
 
-  const nextEntry = 'id' in course
-    ? {
-        weekday,
-        periodNumber,
-        courseId: course.id,
-        course,
-        className: course.title,
-      }
-    : {
-        weekday,
-        periodNumber,
-        courseId: null,
-        course: null,
-        className: course.className.trim(),
-      };
-
-  if (existingIndex === -1) return [...entries, nextEntry];
-
-  const next = [...entries];
-  next[existingIndex] = { ...next[existingIndex], ...nextEntry };
-  return next;
+  return [
+    ...entriesWithoutPeriod,
+    ...WEEKDAYS.map(({ value: weekday }) =>
+      'id' in course
+        ? {
+            weekday,
+            periodNumber,
+            courseId: course.id,
+            course,
+            className: course.title,
+          }
+        : {
+            weekday,
+            periodNumber,
+            courseId: null,
+            course: null,
+            className: course.className.trim(),
+          },
+    ),
+  ];
 }

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
+  findScheduleEntry,
   formatScheduleTimeRange,
   getBlocksForDay,
   getCurrentScheduleStatus,
@@ -96,10 +97,7 @@ export function ScheduleDayEditor({
   const customBlocks = dayBlocks.filter((block) => block.periodNumber == null);
 
   const openManualEntry = (periodNumber: number) => {
-    const existing = entries.find(
-      (entry) =>
-        entry.weekday === weekday && entry.periodNumber === periodNumber,
-    );
+    const existing = findScheduleEntry({ entries }, weekday, periodNumber);
     setManualClassName(existing?.courseId ? "" : (existing?.className ?? ""));
     setManualPeriod(periodNumber);
   };
@@ -166,11 +164,7 @@ export function ScheduleDayEditor({
           </TableHeader>
           <TableBody>
             {periodNumbers.map((periodNumber, rowIndex) => {
-              const entry = entries.find(
-                (item) =>
-                  item.weekday === weekday &&
-                  item.periodNumber === periodNumber,
-              );
+              const entry = findScheduleEntry({ entries }, weekday, periodNumber);
               const matchingBlock = dayBlocks.find(
                 (block) => block.periodNumber === periodNumber,
               );

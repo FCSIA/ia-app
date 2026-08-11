@@ -13,7 +13,7 @@ and special-day plans without rewriting student course choices.
 ## What It Does
 
 - Students manage classes from an actual school date instead of a Monday–Friday selector strip, with a manual class-name option when a class is not in the catalog.
-- Students can upload an Infinite Campus Schedule Term screenshot. Browser-local OCR proposes period/course matches for review, then applies the reviewed classes Monday through Thursday before the normal save step.
+- Students can upload an Infinite Campus Schedule Term screenshot. Browser-local OCR proposes period/course matches for review, then applies the reviewed canonical periods to every school weekday before the normal save step.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
 - Students choose public/private schedule visibility.
@@ -117,9 +117,11 @@ After setup, the admin workspace keeps a full month calendar visible. Compact st
 - `courses`
 
 Schedule entries are child documents keyed by weekday and period instead of an
-unbounded array on the schedule document. Special-day blocks reference those
-same canonical periods. Reordering Period 3 changes when a student's saved
-Period 3 course meets; it never copies or moves the course document.
+unbounded array on the schedule document. A student's class choice for a
+canonical period is mirrored across every school weekday, so special-day blocks
+reference the same class regardless of the date selected. Reordering Period 3
+changes when a student's saved Period 3 course meets; it never copies or moves
+the course document.
 
 `schoolScheduleSettings` stores the academic-year boundaries and required
 regular template. A `LINKED` date override resolves blocks and its display name

@@ -246,7 +246,11 @@ export function resolveSchoolDay<TEntry extends CanonicalScheduleEntry>(
             (candidate) =>
               candidate.weekday === weekday &&
               candidate.periodNumber === periodNumber,
-          ) ?? null
+          ) ??
+          input.entries.find(
+            (candidate) => candidate.periodNumber === periodNumber,
+          ) ??
+          null
         : null;
     const kind = periodNumber === null ? "CUSTOM" : isLunch ? "LUNCH" : "PERIOD";
     return {
