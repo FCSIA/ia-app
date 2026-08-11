@@ -77,7 +77,13 @@ export function AnnouncementCard({
   const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
 
   return (
-    <Card index={index} href={`/announcements/${announcement._id}`} label={`Open announcement: ${announcement.title}`} className={cn('relative', className)}>
+    <Card
+      index={index}
+      href={`/announcements/${announcement._id}`}
+      label={`Open announcement: ${announcement.title}`}
+      selected={!announcement.isRead}
+      className={cn('relative', className)}
+    >
       <CardContent>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -155,13 +161,16 @@ export function AnnouncementCard({
             </p>
           </div>
 
-          <div className="relative z-30 flex shrink-0 flex-col items-end gap-1">
+          <div className="relative z-30 flex shrink-0 flex-col items-center gap-0.5">
             {announcement.allowComments ? (
               <Badge color="gray" size="sm">
-                <MessageCircle /> {announcement._count?.comments || 0}
+                <MessageCircle className="size-3" aria-hidden="true" />
+                {announcement._count?.comments || 0}
               </Badge>
             ) : null}
-            <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} />
+            <Tooltip content={announcement.isRead ? 'Mark unread' : 'Mark read'}>
+              <AnnouncementReadToggle announcementId={announcement._id} isRead={announcement.isRead} iconOnly variant="ghost" />
+            </Tooltip>
             {onBookmarkToggle ? (
               <Tooltip content={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}>
                 <Button

@@ -2,14 +2,17 @@
 
 import { useState } from 'react';
 import { useMutation } from 'convex/react';
+import { Mail, MailOpen } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
+import type { ButtonProps } from '@/components/ui/button';
 
 type AnnouncementReadToggleProps = {
   announcementId: string;
   isRead: boolean;
-  size?: 'sm' | 'md';
+  iconOnly?: boolean;
+  size?: ButtonProps['size'];
   variant?: 'tertiary' | 'ghost' | 'secondary';
   className?: string;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
@@ -18,7 +21,8 @@ type AnnouncementReadToggleProps = {
 export function AnnouncementReadToggle({
   announcementId,
   isRead,
-  size = 'sm',
+  iconOnly = false,
+  size,
   variant = 'tertiary',
   className,
   onClick,
@@ -26,14 +30,17 @@ export function AnnouncementReadToggle({
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
   const [pending, setPending] = useState(false);
+  const label = isRead ? 'Mark unread' : 'Mark read';
+  const ReadStateIcon = isRead ? Mail : MailOpen;
 
   return (
     <Button
       type="button"
-      size={size}
+      size={size ?? (iconOnly ? 'icon-sm' : 'sm')}
       variant={variant}
       className={className}
-      disabled={pending}
+      loading={pending}
+      aria-label={iconOnly ? label : undefined}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
@@ -44,7 +51,7 @@ export function AnnouncementReadToggle({
           .finally(() => setPending(false));
       }}
     >
-      {pending ? 'Saving…' : isRead ? 'Mark unread' : 'Mark read'}
+      {iconOnly ? <ReadStateIcon /> : label}
     </Button>
   );
 }

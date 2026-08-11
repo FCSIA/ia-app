@@ -489,7 +489,7 @@ export default function ClubOverviewPage() {
           </div>
 
           {filteredAnnouncements.length > 0 ? (
-            <CardGroup proximityHover={false}>
+            <CardGroup>
               {filteredAnnouncements.map((announcement) => (
                 <AnnouncementCard
                   key={announcement._id}
