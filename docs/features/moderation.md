@@ -15,7 +15,8 @@ reports.
 - Lets users report content such as announcements, comments, events, or club
   messages.
 - Lets admins, support staff, and teachers review reports.
-- Tracks review status and notes.
+- Tracks review status and notes. Dismissed general feedback is retained in the
+  super-admin feedback archive rather than appearing in the active queue.
 
 ## Source Files
 
@@ -23,6 +24,8 @@ reports.
 - General report page: `apps/web/src/app/report/page.tsx`
 - Admin UI: `apps/web/src/app/admin/_components/moderation-tab.tsx`
 - Admin hook: `apps/web/src/app/admin/_hooks/use-admin-moderation.ts`
+- Feedback UI: `apps/web/src/app/admin/_components/feedback-tab.tsx`
+- Feedback hook: `apps/web/src/app/admin/_hooks/use-admin-feedback.ts`
 
 ## Convex Surface
 
@@ -51,7 +54,9 @@ state. Keyword management is admin-only.
 
 ## Side Effects
 
-Keyword and report changes write audit events.
+Keyword and report changes write audit events. A resolved general-feedback item
+notifies its submitter; dismissed feedback remains available only in the
+super-admin archive.
 
 ## Known Limits
 
