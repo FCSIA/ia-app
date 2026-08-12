@@ -35,28 +35,35 @@ reports.
 - `api.moderation.reports.list`
 - `api.moderation.reports.submit`
 - `api.moderation.reports.update`
+- `api.moderation.reports.listMyFeedback`
+- `api.moderation.reports.addFeedbackResponse`
 
 ## Data Model
 
 - `moderationKeywordRules`
 - `moderationReports`
+- `feedbackReportResponses`
 
 Reports store submitter, content type/id, optional club, optional reported user,
 reason, status, escalation flag, review note, and timestamps. General feedback
 can include up to three validated PNG, JPEG, GIF, or WebP image attachments;
-only super admins can retrieve their previews.
+only super admins can retrieve their previews. Staff responses are separate,
+append-only records linked to general feedback and limited to 25 per item.
 
 ## Permissions
 
-Authenticated users can submit reports. Teachers and elevated roles can list
-reports. Admin, super admin, and support staff roles can update report review
-state. Keyword management is admin-only.
+Authenticated users can submit reports and read only their own general-feedback
+history. Teachers and elevated roles can list reports. Admin, super admin, and
+support staff roles can update report review state. Only super admins can add
+staff responses to general feedback; submitters have no reply mutation or
+composer. Keyword management is admin-only.
 
 ## Side Effects
 
 Keyword and report changes write audit events. A resolved general-feedback item
 notifies its submitter; dismissed feedback remains available only in the
-super-admin archive.
+super-admin archive. Each staff response notifies the original submitter and
+links them to the read-only feedback history.
 
 ## Known Limits
 

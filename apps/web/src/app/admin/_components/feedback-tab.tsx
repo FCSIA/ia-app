@@ -7,11 +7,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
   submitter: { firstName: string; lastName: string } | null;
   images: Array<{ _id: Id<'feedbackReportImages'>; url: string }>;
+  responses: Array<{
+    _id: Id<'feedbackReportResponses'>;
+    body: string;
+    createdAt: number;
+    author: { firstName: string; lastName: string };
+  }>;
 };
 type FeedbackStatus = FeedbackReport['status'];
 
@@ -20,18 +27,25 @@ type FeedbackMutation = {
   isPending: boolean;
 };
 
+type FeedbackResponseMutation = (args: {
+  reportId: Id<'moderationReports'>;
+  body: string;
+}) => Promise<void>;
+
 export function FeedbackTab({
   feedbackSearch,
   onFeedbackSearchChange,
   deferredFeedbackSearch,
   filteredReports,
   reportMutation,
+  responseMutation,
 }: {
   feedbackSearch: string;
   onFeedbackSearchChange: (value: string) => void;
   deferredFeedbackSearch: string;
   filteredReports: FeedbackReport[];
   reportMutation: FeedbackMutation;
+  responseMutation: FeedbackResponseMutation;
 }) {
   const [view, setView] = useState<'active' | 'archive'>('active');
   const activeReports = filteredReports.filter((report) => report.status !== 'DISMISSED');
@@ -63,6 +77,7 @@ export function FeedbackTab({
             emptyMessage={deferredFeedbackSearch ? 'No active feedback matches your search.' : 'No active feedback submitted.'}
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
+            responseMutation={responseMutation}
           />
         </TabPanel>
         <TabPanel value="archive" className="mt-3">
@@ -71,6 +86,7 @@ export function FeedbackTab({
             emptyMessage={deferredFeedbackSearch ? 'No archived feedback matches your search.' : 'No archived feedback.'}
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
+            responseMutation={responseMutation}
           />
         </TabPanel>
       </Tabs>
@@ -83,11 +99,13 @@ function FeedbackList({
   emptyMessage,
   clearSearch,
   reportMutation,
+  responseMutation,
 }: {
   reports: FeedbackReport[];
   emptyMessage: string;
   clearSearch?: () => void;
   reportMutation: FeedbackMutation;
+  responseMutation: FeedbackResponseMutation;
 }) {
   if (reports.length === 0) {
     return (
@@ -135,6 +153,7 @@ function FeedbackList({
                   ))}
                 </div>
               ) : null}
+              <FeedbackResponses report={report} responseMutation={responseMutation} />
             </div>
             {report.status === 'PENDING' ? (
               <div className="flex shrink-0 gap-2">
@@ -158,6 +177,61 @@ function FeedbackList({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function FeedbackResponses({
+  report,
+  responseMutation,
+}: {
+  report: FeedbackReport;
+  responseMutation: FeedbackResponseMutation;
+}) {
+  const [body, setBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const trimmedBody = body.trim();
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!trimmedBody || isSending) return;
+
+    setIsSending(true);
+    try {
+      await responseMutation({ reportId: report._id, body: trimmedBody });
+      setBody('');
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+      {report.responses.map((response) => (
+        <div key={response._id} className="rounded-md bg-muted/50 px-3 py-2 text-sm">
+          <p className="text-xs font-medium text-muted-foreground">
+            {response.author.firstName} {response.author.lastName}
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
+        </div>
+      ))}
+      <form className="space-y-2" onSubmit={handleSubmit}>
+        <Textarea
+          aria-label={`Respond to feedback from ${report.submitter?.firstName ?? 'submitter'}`}
+          placeholder="Write a response for the submitter..."
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          maxLength={1_000}
+          rows={3}
+          disabled={isSending}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">The submitter can read this response but cannot reply.</p>
+          <Button type="submit" size="sm" loading={isSending} disabled={!trimmedBody}>
+            Send response
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

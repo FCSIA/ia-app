@@ -13,6 +13,7 @@ export function FeedbackTabPanel() {
       deferredFeedbackSearch={feedback.deferredFeedbackSearch}
       filteredReports={feedback.filteredReports}
       reportMutation={feedback.reportMutation}
+      responseMutation={feedback.responseMutation}
     />
   );
 }

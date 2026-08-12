@@ -529,6 +529,8 @@ export const schema = defineSchema({
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
     .index("by_clubId", ["clubId"])
     .index("by_clubId_and_role", ["clubId", "role"])
+    .index("by_clubId_and_roleId", ["clubId", "roleId"])
+    .index("by_clubId_and_customRoleId", ["clubId", "customRoleId"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
     .index("by_userId_and_clubId", ["userId", "clubId"]),
 
@@ -995,7 +997,12 @@ export const schema = defineSchema({
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"])
     .index("by_status_and_createdAt", ["status", "createdAt"])
-    .index("by_clubId_and_createdAt", ["clubId", "createdAt"]),
+    .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
+    .index("by_submitterId_and_contentType_and_createdAt", [
+      "submitterId",
+      "contentType",
+      "createdAt",
+    ]),
 
   feedbackReportImages: defineTable({
     reportId: v.id("moderationReports"),
@@ -1006,6 +1013,13 @@ export const schema = defineSchema({
   })
     .index("by_reportId_and_createdAt", ["reportId", "createdAt"])
     .index("by_storageId", ["storageId"]),
+
+  feedbackReportResponses: defineTable({
+    reportId: v.id("moderationReports"),
+    authorId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_reportId_and_createdAt", ["reportId", "createdAt"]),
 
   wrappedSnapshots: defineTable({
     userId: v.id("users"),

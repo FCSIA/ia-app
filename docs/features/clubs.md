@@ -61,6 +61,7 @@ code after the app confirms the viewer is already a club member.
 - `api.clubs.management.listRoles`
 - `api.clubs.management.createRole`
 - `api.clubs.management.renameRole`
+- `api.clubs.management.removeRole` (reassigns affected members to the default role)
 - `api.clubs.management.setRolePermission`
 - `api.clubs.management.setRolePermissionGroup`
 - `api.clubs.management.setRoleDirectoryVisibility`

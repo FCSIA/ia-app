@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { internalMutation, mutation, query } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
@@ -13,6 +15,7 @@ import {
 import {
   NO_CLUB_PERMISSIONS,
   createInitialClubRoles,
+  getDefaultClubRole,
 } from "./rolePermissions";
 
 const CLUB_CREATION_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER"] as const satisfies readonly AppRole[];
@@ -296,6 +299,48 @@ const clubRoleValidator = v.object({
   position: v.number(),
 });
 
+const ROLE_CASCADE_BATCH_SIZE = 450;
+
+async function reassignRoleMembers(
+  ctx: MutationCtx,
+  clubId: Id<"clubs">,
+  roleId: Id<"clubRoles">,
+  defaultRoleId: Id<"clubRoles">,
+) {
+  const [roleMembers, legacyRoleMembers] = await Promise.all([
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId_and_roleId", (q) =>
+        q.eq("clubId", clubId).eq("roleId", roleId),
+      )
+      .take(ROLE_CASCADE_BATCH_SIZE),
+    ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId_and_customRoleId", (q) =>
+        q.eq("clubId", clubId).eq("customRoleId", roleId),
+      )
+      .take(ROLE_CASCADE_BATCH_SIZE),
+  ]);
+
+  const members = new Map(
+    [...roleMembers, ...legacyRoleMembers].map((member) => [member._id, member]),
+  );
+  for (const member of members.values()) {
+    await ctx.db.patch(member._id, {
+      roleId: defaultRoleId,
+      role: undefined,
+      customRoleId: undefined,
+    });
+  }
+
+  return {
+    changed: members.size,
+    hasMore:
+      roleMembers.length === ROLE_CASCADE_BATCH_SIZE ||
+      legacyRoleMembers.length === ROLE_CASCADE_BATCH_SIZE,
+  };
+}
+
 function normalizedRoleName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
@@ -426,6 +471,77 @@ export const renameRole = mutation({
       entityId: args.clubId,
       meta: { roleId: role._id, name },
     });
+    return null;
+  },
+});
+
+export const removeRole = mutation({
+  args: { clubId: v.id("clubs"), roleId: v.id("clubRoles") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageRoles) {
+      throw new ConvexError("You do not have permission to manage club roles");
+    }
+
+    const role = await ctx.db.get(args.roleId);
+    if (!role || role.clubId !== args.clubId) {
+      throw new ConvexError("Club role not found");
+    }
+    if (role.isDefault) {
+      throw new ConvexError("The default club role cannot be removed");
+    }
+
+    const defaultRole = await getDefaultClubRole(ctx, args.clubId);
+    if (!defaultRole || defaultRole._id === role._id) {
+      throw new ConvexError("This club does not have a fallback role");
+    }
+
+    const cascade = await reassignRoleMembers(
+      ctx,
+      args.clubId,
+      args.roleId,
+      defaultRole._id,
+    );
+    await ctx.db.delete(role._id);
+
+    if (cascade.hasMore) {
+      await ctx.scheduler.runAfter(0, internal.clubs.management.finishRoleRemoval, {
+        clubId: args.clubId,
+        roleId: args.roleId,
+        defaultRoleId: defaultRole._id,
+      });
+    }
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_ROLE_REMOVED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { roleId: role._id, reassignedImmediately: cascade.changed },
+    });
+    return null;
+  },
+});
+
+export const finishRoleRemoval = internalMutation({
+  args: {
+    clubId: v.id("clubs"),
+    roleId: v.id("clubRoles"),
+    defaultRoleId: v.id("clubRoles"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const cascade = await reassignRoleMembers(
+      ctx,
+      args.clubId,
+      args.roleId,
+      args.defaultRoleId,
+    );
+    if (cascade.hasMore) {
+      await ctx.scheduler.runAfter(0, internal.clubs.management.finishRoleRemoval, args);
+    }
     return null;
   },
 });

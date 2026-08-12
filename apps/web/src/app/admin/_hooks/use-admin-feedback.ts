@@ -14,6 +14,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
   const reports =
     useQuery(api.moderation.reports.listFeedback, activeTab === 'feedback' ? {} : 'skip') ?? [];
   const updateReport = useMutation(api.moderation.reports.update);
+  const addFeedbackResponse = useMutation(api.moderation.reports.addFeedbackResponse);
 
   const filteredReports = useMemo(() => {
     const query = deferredFeedbackSearch.trim().toLowerCase();
@@ -24,6 +25,7 @@ export function useAdminFeedback(activeTab: AdminTabId) {
         report.submitter?.firstName,
         report.submitter?.lastName,
         report.status,
+        ...report.responses.map((response) => response.body),
       ]
         .filter(Boolean)
         .join(' ')
@@ -58,11 +60,25 @@ export function useAdminFeedback(activeTab: AdminTabId) {
     isPending: false,
   };
 
+  async function responseMutation({ reportId, body }: { reportId: Id<'moderationReports'>; body: string }) {
+    try {
+      await addFeedbackResponse({ reportId, body });
+      toast({ title: 'Response sent' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to send response',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  }
+
   return {
     feedbackSearch,
     setFeedbackSearch,
     deferredFeedbackSearch,
     filteredReports,
     reportMutation,
+    responseMutation,
   };
 }

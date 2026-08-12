@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquareText, X } from 'lucide-react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
+import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export default function ReportPage() {
   const submitReport = useMutation(api.moderation.reports.submit);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeFeedbackImage = useAction(api.uploads.files.finalizeFeedbackImage);
+  const myFeedback = useQuery(api.moderation.reports.listMyFeedback) ?? [];
   const { toast } = useToast();
   const trimmedMessage = message.trim();
 
@@ -173,6 +175,35 @@ export default function ReportPage() {
               </Button>
             </div>
           </form>
+        </Panel>
+
+        <Panel title="Your feedback">
+          {myFeedback.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Your submitted feedback and staff responses will appear here.</p>
+          ) : (
+            <div className="divide-y rounded-lg border">
+              {myFeedback.map((feedback) => (
+                <article key={feedback._id} className="p-3">
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{feedback.reason}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {feedback.status.toLowerCase()} · {formatDistanceToNow(new Date(feedback.createdAt), { addSuffix: true })}
+                  </p>
+                  {feedback.reviewNote ? (
+                    <div className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm text-foreground">
+                      {feedback.reviewNote}
+                    </div>
+                  ) : null}
+                  {feedback.responses.map((response) => (
+                    <div key={response._id} className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm">
+                      <p className="text-xs font-medium text-muted-foreground">School staff</p>
+                      <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
+                    </div>
+                  ))}
+                </article>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">Staff responses are one-way; submit a new feedback item for anything else.</p>
         </Panel>
       </PageFrame>
     </AppShell>

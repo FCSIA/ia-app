@@ -12,11 +12,20 @@ import {
 } from "../notifications/delivery";
 import { getViewerContext } from "../clubs/access";
 import { getChannelAccess } from "../clubs/channelAccess";
-import { normalizeModerationReportReason } from "./reportValidation";
+import {
+  normalizeFeedbackResponse,
+  normalizeModerationReportReason,
+} from "./reportValidation";
 import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
 
 const genericReportContentTypeValidator = v.union(v.literal("GENERAL"), v.literal("ANNOUNCEMENT"), v.literal("EVENT"));
+const MAX_FEEDBACK_RESPONSES_PER_REPORT = 25;
+const moderationReportStatusValidator = v.union(
+  v.literal("PENDING"),
+  v.literal("RESOLVED"),
+  v.literal("DISMISSED"),
+);
 
 const userRefValidator = v.object({
   _id: v.id("users"),
@@ -44,13 +53,30 @@ const reportValidator = docs.moderationReports.extend({
       url: v.string(),
     }),
   ),
+  responses: v.array(
+    docs.feedbackReportResponses.extend({
+      author: v.object({
+        firstName: v.string(),
+        lastName: v.string(),
+      }),
+    }),
+  ),
 });
 
-const moderationReportStatusValidator = v.union(
-  v.literal("PENDING"),
-  v.literal("RESOLVED"),
-  v.literal("DISMISSED"),
-);
+const myFeedbackValidator = v.object({
+  _id: v.id("moderationReports"),
+  reason: v.string(),
+  status: moderationReportStatusValidator,
+  reviewNote: v.optional(v.string()),
+  createdAt: v.number(),
+  responses: v.array(
+    v.object({
+      _id: v.id("feedbackReportResponses"),
+      body: v.string(),
+      createdAt: v.number(),
+    }),
+  ),
+});
 
 const reportListArgs = {
   status: v.optional(moderationReportStatusValidator),
@@ -67,7 +93,11 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
   const images = await ctx.db
     .query("feedbackReportImages")
     .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
-    .collect();
+    .take(3);
+  const responses = await ctx.db
+    .query("feedbackReportResponses")
+    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+    .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
 
   return {
     ...report,
@@ -97,7 +127,29 @@ async function serializeReport(ctx: QueryCtx, report: Doc<"moderationReports">) 
         url: (await ctx.storage.getUrl(image.storageId)) ?? "",
       })),
     ),
+    responses: await Promise.all(
+      responses.map(async (response) => {
+        const author = await ctx.db.get(response.authorId);
+        return {
+          ...response,
+          author: {
+            firstName: author?.firstName ?? "School",
+            lastName: author?.lastName ?? "staff",
+          },
+        };
+      }),
+    ),
   };
+}
+
+async function listFeedbackResponsesForSubmitter(
+  ctx: QueryCtx,
+  reportId: Id<"moderationReports">,
+) {
+  return await ctx.db
+    .query("feedbackReportResponses")
+    .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", reportId))
+    .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
 }
 
 async function createReport(
@@ -232,6 +284,40 @@ export const listFeedback = query({
   },
 });
 
+export const listMyFeedback = query({
+  args: {},
+  returns: v.array(myFeedbackValidator),
+  handler: async (ctx) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+
+    const reports = await ctx.db
+      .query("moderationReports")
+      .withIndex("by_submitterId_and_contentType_and_createdAt", (q) =>
+        q.eq("submitterId", user._id).eq("contentType", "GENERAL"),
+      )
+      .order("desc")
+      .take(100);
+
+    return await Promise.all(
+      reports.map(async (report) => ({
+        _id: report._id,
+        reason: report.reason,
+        status: report.status,
+        reviewNote: report.reviewNote,
+        createdAt: report.createdAt,
+        responses: (await listFeedbackResponsesForSubmitter(ctx, report._id)).map(
+          (response) => ({
+            _id: response._id,
+            body: response.body,
+            createdAt: response.createdAt,
+          }),
+        ),
+      })),
+    );
+  },
+});
+
 export const submit = mutation({
   args: {
     contentType: genericReportContentTypeValidator,
@@ -327,7 +413,7 @@ export const update = mutation({
         category: "CONTENT_MODERATED",
         title: "Your feedback was resolved",
         body: args.reviewNote || "School staff reviewed your feedback.",
-        href: "/notifications",
+        href: "/report",
         subject: { kind: "moderationReport", reportId: report._id },
       });
     }
@@ -341,5 +427,56 @@ export const update = mutation({
     });
 
     return { success: true };
+  },
+});
+
+export const addFeedbackResponse = mutation({
+  args: {
+    reportId: v.id("moderationReports"),
+    body: v.string(),
+  },
+  returns: v.id("feedbackReportResponses"),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    requireAnyRole(user, ["SUPER_ADMIN"]);
+
+    const report = await ctx.db.get(args.reportId);
+    if (!report || report.contentType !== "GENERAL") {
+      throw new ConvexError("Feedback not found");
+    }
+
+    const body = normalizeFeedbackResponse(args.body);
+    const existingResponses = await ctx.db
+      .query("feedbackReportResponses")
+      .withIndex("by_reportId_and_createdAt", (q) => q.eq("reportId", report._id))
+      .take(MAX_FEEDBACK_RESPONSES_PER_REPORT);
+    if (existingResponses.length >= MAX_FEEDBACK_RESPONSES_PER_REPORT) {
+      throw new ConvexError("This feedback already has the maximum number of staff responses");
+    }
+    const responseId = await ctx.db.insert("feedbackReportResponses", {
+      reportId: report._id,
+      authorId: user._id,
+      body,
+      createdAt: Date.now(),
+    });
+
+    await deliverNotification(ctx, {
+      userId: report.submitterId,
+      category: "CONTENT_MODERATED",
+      title: "School staff replied to your feedback",
+      body,
+      href: "/report",
+      subject: { kind: "moderationReport", reportId: report._id },
+    });
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "FEEDBACK_RESPONSE_ADDED",
+      entityType: "Report",
+      entityId: report._id,
+      meta: { responseId },
+    });
+
+    return responseId;
   },
 });

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
-import { ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
+import { ChevronRight, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useClubId } from "../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
@@ -18,6 +18,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -196,6 +206,7 @@ export default function ClubSettingsPage() {
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
+  const removeRole = useMutation(api.clubs.management.removeRole);
   const setRolePermission = useMutation(
     api.clubs.management.setRolePermission,
   ).withOptimisticUpdate((localStore, args) => {
@@ -286,6 +297,8 @@ export default function ClubSettingsPage() {
   const [editor, setEditor] = useState<Editor>(null);
   const [roleName, setRoleName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [removeRoleOpen, setRemoveRoleOpen] = useState(false);
+  const [removingRole, setRemovingRole] = useState(false);
   const [savingPermissionGroup, setSavingPermissionGroup] = useState<
     string | null
   >(null);
@@ -415,6 +428,24 @@ export default function ClubSettingsPage() {
     }
   };
 
+  const deleteSelectedRole = async () => {
+    if (!selectedRole) return;
+    setRemovingRole(true);
+    try {
+      await removeRole({ clubId, roleId: selectedRole._id });
+      setRemoveRoleOpen(false);
+      setSelectedRoleId("");
+      toast({ title: `${selectedRole.name} removed` });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : "Could not remove role",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingRole(false);
+    }
+  };
+
   if (
     navigation !== undefined &&
     !canManageRoles &&
@@ -528,16 +559,28 @@ export default function ClubSettingsPage() {
                             permissions enabled
                           </p>
                         </div>
-                        <Button
-                          variant="tertiary"
-                          size="sm"
-                          leadingIcon={Pencil}
-                          onClick={() =>
-                            openEditor({ mode: "rename", role: selectedRole })
-                          }
-                        >
-                          Rename
-                        </Button>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Button
+                            variant="tertiary"
+                            size="sm"
+                            leadingIcon={Pencil}
+                            onClick={() =>
+                              openEditor({ mode: "rename", role: selectedRole })
+                            }
+                          >
+                            Rename
+                          </Button>
+                          {!selectedRole.isDefault ? (
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              leadingIcon={Trash2}
+                              onClick={() => setRemoveRoleOpen(true)}
+                            >
+                              Remove
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between gap-4 border-y border-border/70 py-3">
@@ -676,6 +719,31 @@ export default function ClubSettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={removeRoleOpen} onOpenChange={setRemoveRoleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {selectedRole?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the role. Everyone assigned to it will
+              be moved to the default club role, and its permissions will no
+              longer apply.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removingRole}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={removingRole}
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteSelectedRole();
+              }}
+            >
+              {removingRole ? "Removing…" : "Remove role"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClubWorkspace>
   );
 }
