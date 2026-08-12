@@ -6,18 +6,15 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import type { FunctionReturnType } from 'convex/server';
 import {
-  Crown,
   Check,
-  Ellipsis,
   QrCode,
   Send,
-  Sparkles,
+  RectangleEllipsis,
   Upload,
   UserMinus,
   UserPlus,
   Users,
   ShieldCheck,
-  Settings,
   X,
 } from 'lucide-react';
 import { useClubId } from '../../club-route';
@@ -26,7 +23,7 @@ import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { SetRoleDialog } from '@/components/clubs/dialogs/set-role-dialog';
-import { formatClubRole, fullName } from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,21 +51,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownContent,
-  DropdownMenu,
-  DropdownTrigger,
-} from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
 import { Label } from '@/components/ui/label';
-import { MenuItem } from '@/components/ui/menu-item';
 import { SearchInput } from '@/components/ui/search';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { api } from '~/apps/convex/src/_generated/api';
 import { parseInviteCsv } from '@/lib/parse-invite-csv';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
@@ -154,7 +145,7 @@ function ManagePeopleDialog({
         <Tabs defaultValue="qr" className="w-full">
           <TabsList>
             <TabItem value="qr" label="QR" icon={QrCode} />
-            <TabItem value="code" label="Code" icon={Sparkles} />
+            <TabItem value="code" label="Code" icon={RectangleEllipsis} />
             <TabItem value="single" label="Single" icon={UserPlus} />
             <TabItem value="bulk" label="Bulk" icon={Upload} />
           </TabsList>
@@ -333,7 +324,6 @@ export default function ClubPeoplePage() {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const [manageOpen, setManageOpen] = useState(false);
-  const [roleTarget, setRoleTarget] = useState<ClubDirectoryEntry | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ClubDirectoryEntry | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
@@ -349,36 +339,52 @@ export default function ClubPeoplePage() {
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const removeMember = useMutation(api.clubs.management.removeMember);
   const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
+  const initializeRoles = useMutation(api.clubs.management.initializeRoles);
 
-  const canManage = !!club?.viewer.canManageMembership;
-  const canApproveRequests = !!club?.viewer.canApproveJoinRequests;
-  const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
-  const canInvite = canManage || isStaff;
+  const canAssignRoles = !!club?.viewer.permissions.assignRoles;
+  const canRemoveMembers = !!club?.viewer.permissions.removeMembers;
+  const canApproveRequests = !!club?.viewer.permissions.manageJoinRequests;
+  const canInvite = !!club?.viewer.permissions.inviteMembers;
 
-  const directory = club?.directory ?? [];
+  useEffect(() => {
+    if (canAssignRoles && club?.roles.length === 0) {
+      void initializeRoles({ clubId }).catch((error) => {
+        toast({
+          title: error instanceof Error ? error.message : 'Could not initialize roles',
+          variant: 'destructive',
+        });
+      });
+    }
+  }, [canAssignRoles, club?.roles.length, clubId, initializeRoles, toast]);
+
+  const directory = club?.directory;
   const pendingJoinRequests = club?.pendingJoinRequests ?? [];
   const visibleFilter = filter === 'requests' && !canApproveRequests ? 'all' : filter;
 
   const stats = useMemo(() => {
+    const people = directory ?? [];
     return {
-      all: directory.length,
-      sponsors: directory.filter(p => p.kind === 'SPONSOR').length,
-      leaders: directory.filter(p => !!p.clubRole).length,
-      members: directory.filter(p => p.kind === 'MEMBER' && !p.clubRole).length,
+      all: people.length,
+      sponsors: people.filter(p => p.kind === 'SPONSOR').length,
+      roleCounts: new Map(club?.roles.map((role) => [
+        role._id,
+        people.filter((person) => person.roleId === role._id).length,
+      ])),
     };
-  }, [directory]);
+  }, [club?.roles, directory]);
 
   const filtered = useMemo(() => {
-    let result = filterBySearchQuery(directory, deferredSearch, (person) => [
+    let result = filterBySearchQuery(directory ?? [], deferredSearch, (person) => [
       fullName(person),
       person.uniqueId,
       person.kind,
-      person.clubRole,
+      person.roleName,
     ]);
 
     if (visibleFilter === 'sponsors') result = result.filter(p => p.kind === 'SPONSOR');
-    else if (visibleFilter === 'leaders') result = result.filter(p => !!p.clubRole);
-    else if (visibleFilter === 'members') result = result.filter(p => p.kind === 'MEMBER' && !p.clubRole);
+    else if (visibleFilter.startsWith('role:')) {
+      result = result.filter((person) => person.roleId === visibleFilter.slice(5));
+    }
 
     return result;
   }, [deferredSearch, directory, visibleFilter]);
@@ -433,9 +439,14 @@ export default function ClubPeoplePage() {
               <div className="min-w-0 overflow-x-auto pb-1">
                 <TabsList>
                   <TabItem value="all" label={`All ${stats.all}`} />
-                  <TabItem value="leaders" label={`Leaders ${stats.leaders}`} />
+                  {club?.roles.map((role) => (
+                    <TabItem
+                      key={role._id}
+                      value={`role:${role._id}`}
+                      label={`${role.name} ${stats.roleCounts.get(role._id) ?? 0}`}
+                    />
+                  ))}
                   <TabItem value="sponsors" label={`Sponsors ${stats.sponsors}`} />
-                  <TabItem value="members" label={`Members ${stats.members}`} />
                   {canApproveRequests ? (
                     <TabItem
                       value="requests"
@@ -529,8 +540,8 @@ export default function ClubPeoplePage() {
                       key={person._id}
                       person={person}
                       isCurrentUser={person._id === user?._id}
-                      canManage={canManage && person.kind === 'MEMBER'}
-                      onSetRole={setRoleTarget}
+                      canAssignRole={canAssignRoles && person.kind === 'MEMBER'}
+                      canRemove={canRemoveMembers && person.kind === 'MEMBER'}
                       onRemove={setRemoveTarget}
                     />
                   ))}
@@ -559,7 +570,6 @@ export default function ClubPeoplePage() {
       {club ? (
         <ManagePeopleDialog club={club} open={manageOpen} onOpenChange={setManageOpen} />
       ) : null}
-      <SetRoleDialog person={roleTarget} onOpenChange={(open) => !open && setRoleTarget(null)} />
       <AlertDialog
         open={removeTarget !== null}
         onOpenChange={(open) => {
@@ -597,17 +607,17 @@ export default function ClubPeoplePage() {
 function PersonRow({
   person,
   isCurrentUser,
-  canManage,
-  onSetRole,
+  canAssignRole,
+  canRemove,
   onRemove,
 }: {
   person: ClubDirectoryEntry;
   isCurrentUser: boolean;
-  canManage: boolean;
-  onSetRole: (person: ClubDirectoryEntry) => void;
+  canAssignRole: boolean;
+  canRemove: boolean;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
-  const showManage = canManage && person.kind === 'MEMBER' && !isCurrentUser;
+  const showManage = (canAssignRole || canRemove) && person.kind === 'MEMBER' && !isCurrentUser;
   const isSponsor = person.kind === 'SPONSOR';
 
   return (
@@ -621,44 +631,27 @@ function PersonRow({
                <ShieldCheck className="size-3" />
                Sponsor
             </Badge>
-          ) : person.clubRole ? (
-            <Badge variant="solid" className="gap-1 px-1.5 py-0 h-5 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Crown className="size-3 text-amber-500" />
-              {formatClubRole(person.clubRole)}
+          ) : person.roleName ? (
+            <Badge variant="solid" className="px-1.5 py-0 h-5 border-border/70 bg-muted/60 text-muted-foreground">
+              {person.roleName}
             </Badge>
           ) : null}
           {isCurrentUser ? <Badge variant="solid" className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground">You</Badge> : null}
         </div>
       </div>
       {showManage ? (
-        <DropdownMenu>
-          <DropdownTrigger
-            render={
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label={`Manage ${fullName(person)}`}
-              >
-                <Ellipsis className="size-4" />
-              </Button>
-            }
-          />
-          <DropdownContent align="end" className="w-48">
-            <MenuItem
-              index={0}
-              icon={Settings}
-              label="Change role"
-              onSelect={() => onSetRole(person)}
-            />
-            <MenuItem
-              index={1}
-              icon={UserMinus}
-              label="Remove from club"
-              onSelect={() => onRemove(person)}
-            />
-          </DropdownContent>
-        </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-1">
+          {canAssignRole ? <SetRoleDialog person={person} /> : null}
+          {canRemove ? <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Remove ${fullName(person)} from club`}
+            onClick={() => onRemove(person)}
+          >
+            <UserMinus className="size-4" />
+          </Button> : null}
+        </div>
       ) : null}
     </div>
   );

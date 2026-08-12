@@ -8,7 +8,7 @@ import {
   History,
   Megaphone,
   ShieldCheck,
-  Sparkles,
+  Presentation,
   Star,
   Users,
   type LucideIcon,
@@ -71,7 +71,7 @@ function AdminWorkspace() {
             title: "Flex Friday",
             detail: "Dates, sessions, workshops, and attendance",
             href: "/flex-friday",
-            icon: Sparkles,
+            icon: Presentation,
           },
         ]
       : []),

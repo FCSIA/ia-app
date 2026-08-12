@@ -34,44 +34,6 @@ const configuredTrustedOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter((origin): origin is string => Boolean(origin));
 
-const configuredSiteHostname = (() => {
-  try {
-    return new URL(siteUrl).hostname;
-  } catch {
-    return "localhost";
-  }
-})();
-
-function hostFromEnvUrl(value?: string) {
-  if (!value) return null;
-  try {
-    return new URL(value).hostname;
-  } catch {
-    return null;
-  }
-}
-
-const configuredAuthHostnames = Array.from(
-  new Set(
-    [
-      configuredSiteHostname,
-      hostFromEnvUrl(process.env.CONVEX_SITE_URL),
-      hostFromEnvUrl(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
-      process.env.MOBILE_CONVEX_HOST,
-      "localhost",
-      "127.0.0.1",
-      "10.0.2.2",
-      "ia-app-alpha.vercel.app",
-    ].filter((host): host is string => Boolean(host)),
-  ),
-);
-
-const authBaseURL: BetterAuthOptions["baseURL"] = {
-  allowedHosts: configuredAuthHostnames,
-  fallback: siteUrl,
-  protocol: "auto",
-};
-
 function isTrustedVercelPreviewOrigin(origin: string) {
   try {
     const { hostname, protocol } = new URL(origin);
@@ -131,7 +93,10 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
     secret: process.env.BETTER_AUTH_SECRET,
-    baseURL: authBaseURL,
+    // Auth requests are proxied through the configured public web origin.
+    // A static base URL avoids dynamic-host resolution rejecting the original
+    // Vercel host after the request is forwarded to the Convex Site endpoint.
+    baseURL: siteUrl,
     basePath: "/api/auth",
     trustedOrigins,
     database: authComponent.adapter(ctx),

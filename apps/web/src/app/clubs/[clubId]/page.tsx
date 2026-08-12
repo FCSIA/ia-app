@@ -6,24 +6,24 @@ import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { KeyRound, Megaphone, MessageSquareText, Search, Sparkles, UserPlus, Users } from 'lucide-react';
+import { Check, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
 import { useClubId } from '../club-route';
 import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
-import { InviteDialog } from '@/components/clubs/dialogs/invite-dialog';
-import { ClubStructureActions } from '@/components/clubs/dialogs/hierarchy-dialog';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
-import { formatClubRole, fullName, hasClubLeadershipRole } from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardGroup } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { SearchInput } from '@/components/ui/search';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
@@ -38,23 +38,26 @@ function getMemberLimitState(club: ClubDetail) {
   return { memberCount, memberLimit, remaining, isFull, percent };
 }
 
-function MemberLimitMeter({ club, compact = false }: { club: ClubDetail; compact?: boolean }) {
+function MemberLimitMeter({ club }: { club: ClubDetail }) {
   const { memberCount, memberLimit, remaining, isFull, percent } = getMemberLimitState(club);
 
   return (
-    <div className={compact ? 'space-y-1.5' : 'rounded-lg border border-border/70 bg-muted/20 p-3'}>
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="inline-flex min-w-0 items-center gap-2 font-medium text-foreground">
           <Users className="size-4 shrink-0 text-primary" />
-          <span className="truncate">Members</span>
+          <span className="truncate">Capacity</span>
         </span>
         <span className="shrink-0 tabular-nums text-muted-foreground">{memberLimit == null ? `${memberCount} joined` : `${memberCount}/${memberLimit}`}</span>
       </div>
       {memberLimit != null ? (
         <div className="space-y-1.5">
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`} style={{ width: `${percent ?? 0}%` }} />
-          </div>
+          <Progress
+            value={percent ?? 0}
+            aria-label={`${memberCount} of ${memberLimit} member spots filled`}
+            className="h-1 bg-muted"
+            indicatorClassName={isFull ? 'bg-destructive' : 'bg-primary'}
+          />
           <p className={`text-xs leading-4 ${isFull ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
             {isFull ? 'Full. New members can join when a spot opens.' : `${remaining} ${remaining === 1 ? 'spot' : 'spots'} open.`}
           </p>
@@ -75,46 +78,33 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
   if (!club.pendingJoinRequests?.length) return null;
 
   return (
-    <Card className="border-amber-500/20 bg-amber-500/5 shadow-sm overflow-hidden">
-      <CardHeader className="pb-3 border-b border-border/10 bg-background/50 backdrop-blur-sm px-5 py-4">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400">
-          <UserPlus className="size-4" />
-          Pending join requests ({club.pendingJoinRequests.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 p-5">
+    <section className="space-y-2 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Pending requests ({club.pendingJoinRequests.length})
+      </h3>
+      <div className="space-y-2">
         {isFull ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="border-l-2 border-destructive/60 bg-destructive/5 px-3 py-2 text-xs text-destructive">
             This club is full. Pending requests can be declined, but approvals are disabled until a member spot opens.
           </div>
         ) : null}
         {club.pendingJoinRequests.map((request) => (
-          <div
-            key={request._id}
-            className="flex flex-col gap-4 rounded-xl border border-border/50 bg-background/80 p-4 sm:flex-row sm:items-center sm:justify-between shadow-sm transition-all hover:border-amber-500/30"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-semibold text-sm">
-                {request.requester.firstName?.[0]}
-                {request.requester.lastName?.[0]}
-              </div>
-              <div className="min-w-0 space-y-0.5">
-                <p className="font-semibold text-foreground truncate">{fullName(request.requester)}</p>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-                  <span>
-                    requested{' '}
-                    {formatDistanceToNow(new Date(request.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </div>
+          <div key={request._id} className="flex items-center gap-2 py-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate text-sm font-medium text-foreground">{fullName(request.requester)}</p>
+                <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <Clock3 className="size-3" />
+                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                </span>
               </div>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex shrink-0 gap-1">
               <Button
-                size="sm"
+                size="icon-compact"
                 variant="tertiary"
-                className="flex-1 sm:flex-none border-border/50"
+                aria-label={`Decline ${fullName(request.requester)}'s request`}
+                title="Decline request"
                 onClick={() =>
                   void respondToJoinRequest({
                     clubId,
@@ -122,13 +112,12 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
                     accept: false,
                   }).then(() => toast({ title: 'Join request updated' }))
                 }
-              >
-                Decline
-              </Button>
+              ><Minus /></Button>
               <Button
-                size="sm"
-                className="flex-1 sm:flex-none bg-amber-600 hover:bg-amber-700 text-white"
+                size="icon-compact"
                 disabled={isFull}
+                aria-label={`Approve ${fullName(request.requester)}'s request`}
+                title="Approve request"
                 onClick={() =>
                   void respondToJoinRequest({
                     clubId,
@@ -136,15 +125,44 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
                     accept: true,
                   }).then(() => toast({ title: 'Join request updated' }))
                 }
-              >
-                Approve
-              </Button>
+              ><Check /></Button>
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
+}
+
+function RoleRoster({ club }: { club: ClubDetail }) {
+  const membersByRole = new Map<string, typeof club.directory>();
+  for (const person of club.directory) {
+    if (person.kind !== 'MEMBER' || !person.roleId) continue;
+    const members = membersByRole.get(person.roleId) ?? [];
+    members.push(person);
+    membersByRole.set(person.roleId, members);
+  }
+
+  const groups = club.roles.flatMap((role) => {
+    const members = membersByRole.get(role._id);
+    return members?.length ? [{ role, members }] : [];
+  });
+
+  return groups.map(({ role, members }) => (
+    <section key={role._id} className="space-y-2 p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {role.name}
+      </h3>
+      <div className="space-y-1.5">
+        {members.map((member) => (
+          <div key={member._id} className="flex items-center gap-2.5">
+            <ClubAvatar person={member} className="size-8" fallbackClassName="text-[10px]" />
+            <p className="min-w-0 truncate text-sm font-medium">{fullName(member)}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  ));
 }
 
 function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
@@ -159,8 +177,8 @@ function RedeemJoinCodePanel({ club }: { club: ClubDetail }) {
 
   return (
     <div className="space-y-3">
-      <Button type="button" variant="tertiary" leadingIcon={KeyRound} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
-        Use join code
+      <Button type="button" variant="tertiary" leadingIcon={KeyRound} active={redeemOpen} disabled={isFull} onClick={() => setRedeemOpen((current) => !current)}>
+        Join code
       </Button>
       {redeemOpen ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/80 p-4 sm:flex-row">
@@ -193,11 +211,11 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const logoUrl = club.logoUrl;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 py-4">
-      <Card className="overflow-hidden border-primary/10 bg-card/95">
+    <div className="mx-auto w-full max-w-4xl space-y-8 py-5 sm:py-8">
+      <section className="space-y-5">
         {(bannerUrl || club.accentColor) && (
           <div
-            className="h-28 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted"
+            className="h-24 w-full rounded-lg bg-gradient-to-br from-primary/30 via-primary/10 to-muted sm:h-32"
             style={
               bannerUrl
                 ? {
@@ -213,30 +231,30 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             }
           />
         )}
-        <CardContent className={`space-y-4 p-4 sm:p-5 ${bannerUrl || club.accentColor ? '-mt-8' : ''}`}>
+        <div className={`space-y-5 ${bannerUrl || club.accentColor ? '-mt-12 px-4 sm:-mt-16 sm:px-6' : ''}`}>
           {logoUrl && (
-            <div className="size-16 overflow-hidden rounded-xl border-4 border-background bg-muted">
+            <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={logoUrl} alt={club.name} className="size-full object-cover" />
             </div>
           )}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{club.name}</h1>
-              <div className="flex items-center gap-2 pt-1">
-                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Public join' : 'Request approval'}</Badge>
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{club.name}</h1>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Open' : 'Approval'}</Badge>
                 {club.memberLimit != null ? (
                   <Badge variant="solid" color={isFull ? 'red' : 'amber'}>
-                    {isFull ? 'Full' : 'Limited spots'}
+                    {isFull ? 'Full' : 'Limited'}
                   </Badge>
                 ) : null}
                 {club.viewer.hasPendingJoinRequest ? <Badge variant="solid">Request pending</Badge> : null}
               </div>
             </div>
-            <p className="max-w-3xl text-sm leading-5 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
+            <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">{club.overview || club.description || 'No club description yet.'}</p>
           </div>
           <MemberLimitMeter club={club} />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {club.joinPolicy === 'OPEN' ? (
               <Button leadingIcon={UserPlus} onClick={() => void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))} disabled={isFull}>
                 {isFull ? 'Club is full' : 'Join club'}
@@ -252,52 +270,21 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             )}
             <RedeemJoinCodePanel club={club} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="overflow-hidden border-border/50 shadow-none">
-          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              Student leaders
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3">
-            {club.leaders.length > 0 ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {club.leaders.map((leader) => (
-                  <div key={leader.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
-                    <ClubAvatar person={leader.user} className="size-9" fallbackClassName="text-xs" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{fullName(leader.user)}</p>
-                      <p className="truncate text-[11px] font-medium text-muted-foreground tracking-wide uppercase mt-0.5">
-                        {formatClubRole(leader.role) || 'Leader'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
-                <p className="text-sm text-muted-foreground">No club leaders listed yet.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-border/50 shadow-none">
-          <CardHeader className="border-b border-border/50 bg-muted/30 px-4 py-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+      <div className="space-y-6 border-t border-border/60 pt-5">
+        <section className="min-w-0">
+          <div className="mb-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
               <KeyRound className="size-4 text-primary" />
               Sponsors
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3">
+            </h2>
+          </div>
             {club.sponsors.length > 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 {club.sponsors.map((sponsor) => (
-                  <div key={sponsor.userId} className="flex items-center gap-2.5 rounded-md p-2 transition-colors hover:bg-hover">
+                  <div key={sponsor.userId} className="flex items-center gap-2.5 py-1.5">
                     <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
@@ -306,12 +293,27 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 ))}
               </div>
             ) : (
-              <div className="px-4 py-8 text-center bg-muted/10 rounded-xl border border-dashed border-border/50">
-                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
-              </div>
+              <p className="py-3 text-sm text-muted-foreground">No sponsors assigned yet.</p>
             )}
-          </CardContent>
-        </Card>
+        </section>
+
+        {club.roles.map((role) => {
+          const members = club.leaders.filter((leader) => leader.roleId === role._id);
+          if (members.length === 0) return null;
+          return (
+            <section key={role._id} className="min-w-0">
+              <h2 className="mb-3 text-sm font-semibold">{role.name}</h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {members.map((member) => (
+                  <div key={member.userId} className="flex items-center gap-2.5 py-1.5">
+                    <ClubAvatar person={member.user} className="size-9" fallbackClassName="text-xs" />
+                    <p className="min-w-0 truncate text-sm font-semibold text-foreground">{fullName(member.user)}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );
@@ -322,7 +324,6 @@ export default function ClubOverviewPage() {
   const searchParams = useSearchParams();
   const user = useCurrentUser();
   const { toast } = useToast();
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
   const redeemedUnitJoinRef = useRef<string | null>(null);
 
@@ -378,14 +379,9 @@ export default function ClubOverviewPage() {
   }
 
   const isSponsor = club.sponsors?.some((sponsor) => sponsor.userId === user?._id);
-  const myMembership = club.members?.find((member) => member.userId === user?._id);
   const isAdmin = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const isSuperAdmin = !!user && hasRole(user, 'SUPER_ADMIN');
-  const isStaff = !!user && hasRole(user, 'TEACHER', 'SUPPORT_STAFF', 'ADMIN', 'SUPER_ADMIN');
-  const canPost = isSponsor || hasClubLeadershipRole(myMembership?.role) || isAdmin;
+  const canPost = club.viewer.permissions.createAnnouncementDrafts;
   const canPostDirectAnnouncement = isSponsor || isAdmin;
-  const canInvite = canPost || isStaff;
-  const { isFull, memberLimit } = getMemberLimitState(club);
 
   const title = (
     <div className="min-w-0">
@@ -393,86 +389,39 @@ export default function ClubOverviewPage() {
     </div>
   );
 
-  const actions = club.viewer.canManageMembership ? <ClubStructureActions club={club} canDelete={isSuperAdmin} /> : null;
-
   const rightPane = (
-    <div className="space-y-5 p-4">
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
-        <div className="space-y-1.5">
-          {club.sponsors.map((sponsor) => (
-            <div key={sponsor.userId} className="flex items-center gap-2.5">
-              <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+    <ScrollArea className="size-full">
+      <div className="divide-y divide-border">
+        <section className="space-y-2 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</h3>
+          <MemberLimitMeter club={club} />
+        </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Student leaders</h3>
-        <div className="space-y-1.5">
-          {club.leaders.length > 0 ? (
-            club.leaders.map((leader) => (
-              <div key={leader.userId} className="flex items-center gap-2.5">
-                <ClubAvatar person={leader.user} className="size-8" fallbackClassName="text-[10px]" />
+        {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
+
+        <section className="space-y-2 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
+          <div className="space-y-1.5">
+            {club.sponsors.map((sponsor) => (
+              <div key={sponsor.userId} className="flex items-center gap-2.5">
+                <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{fullName(leader.user)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{formatClubRole(leader.role) || 'Leader'}</p>
+                  <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-xs text-muted-foreground">No leaders assigned yet.</p>
-          )}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
 
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Stats</h3>
-        <dl className="space-y-1.5 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Members</dt>
-            <dd className="font-medium">
-              {memberLimit == null ? (club._count?.members ?? club.members.length) : `${club._count?.members ?? club.members.length}/${memberLimit}`}
-            </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Channels</dt>
-            <dd className="font-medium">{club.channels?.length ?? 0}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-muted-foreground">Tags</dt>
-            <dd className="font-medium">{club.tags?.length ?? 0}</dd>
-          </div>
-        </dl>
-      </section>
-    </div>
+        <RoleRoster club={club} />
+      </div>
+    </ScrollArea>
   );
 
   return (
-    <ClubWorkspace title={title} actions={actions} rightPane={rightPane}>
+    <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <ClubHero club={club} canEdit={!!(club.viewer.canManageMembership || isSponsor || isAdmin)} />
-        {canInvite || canPost || club.viewer.canManageMembership ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2">
-            <span className="mr-auto text-xs font-semibold uppercase tracking-wide text-muted-foreground">Manage</span>
-            {canInvite ? (
-              <Button size="sm" variant="tertiary" leadingIcon={UserPlus} disabled={isFull} onClick={() => setInviteOpen(true)}>
-                {isFull ? 'Club is full' : 'Invite member'}
-              </Button>
-            ) : null}
-            {canPost ? (
-              <Button size="sm" leadingIcon={Megaphone} onClick={() => setAnnounceOpen(true)}>
-                {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-        <MemberLimitMeter club={club} compact />
-        {club.viewer.canApproveJoinRequests ? <RequestsPanel club={club} /> : null}
+        <ClubHero club={club} canEdit={club.viewer.permissions.manageClubSettings} />
 
         <section className="space-y-2">
           <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
@@ -481,9 +430,16 @@ export default function ClubOverviewPage() {
               <h2 className="text-base font-semibold">Announcements</h2>
             </div>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {deferredSearch ? `${filteredAnnouncements.length} of ${announcements.length}` : `${announcements.length} total`}
-              </span>
+              {deferredSearch &&
+                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {filteredAnnouncements.length} of {announcements.length}
+                </span>
+              }
+              {canPost &&
+                <Button size="sm" leadingIcon={Megaphone} onClick={() => setAnnounceOpen(true)}>
+                  {canPostDirectAnnouncement ? 'Post announcement' : 'Propose announcement'}
+                </Button>
+              }
               <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="w-full sm:w-60" />
             </div>
           </div>
@@ -523,7 +479,6 @@ export default function ClubOverviewPage() {
         </section>
       </div>
 
-      <InviteDialog clubId={clubId} open={inviteOpen} onOpenChange={setInviteOpen} />
       <AnnouncementDialog clubId={clubId} open={announceOpen} onOpenChange={setAnnounceOpen} directPost={canPostDirectAnnouncement} />
     </ClubWorkspace>
   );

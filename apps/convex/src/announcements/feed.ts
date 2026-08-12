@@ -13,6 +13,7 @@ import {
   isElevatedReader,
 } from "./_lib";
 import { serializeAnnouncement, serializeComment } from "./serialize";
+import { getClubContext } from "../clubs/access";
 
 function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: number) {
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
@@ -159,11 +160,16 @@ export const create = mutation({
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const canPost =
+    const canPostGlobally =
       user.roles.includes("ADMIN") ||
       user.roles.includes("SUPER_ADMIN") ||
       user.roles.includes("TEACHER");
-    if (!canPost) throw new ConvexError("Insufficient permissions");
+    const clubContext = args.clubId && !canPostGlobally
+      ? await getClubContext(ctx, args.clubId, user)
+      : null;
+    if (!canPostGlobally && !clubContext?.permissions.createAnnouncementDrafts) {
+      throw new ConvexError("You do not have permission to create announcement drafts");
+    }
 
     const isAdmin =
       user.roles.includes("ADMIN") || user.roles.includes("SUPER_ADMIN");

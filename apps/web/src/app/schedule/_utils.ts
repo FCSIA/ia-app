@@ -71,3 +71,25 @@ export function replaceScheduleEntry(
     ),
   ];
 }
+
+/**
+ * A lunch slot has no schedule entry. Moving lunch between Periods 4 and 5
+ * therefore moves each affected weekday's class into the former lunch slot.
+ */
+export function moveClassesToFormerLunchPeriod(
+  entries: StudentScheduleDraftEntry[],
+  currentLunchPeriod: ScheduleLunchPeriod,
+  nextLunchPeriod: ScheduleLunchPeriod,
+) {
+  if (currentLunchPeriod === nextLunchPeriod) return entries;
+
+  const formerLunchPeriodNumber =
+    currentLunchPeriod === 'PERIOD_4' ? 4 : 5;
+  const nextLunchPeriodNumber = nextLunchPeriod === 'PERIOD_4' ? 4 : 5;
+
+  return entries.map((entry) =>
+    entry.periodNumber === nextLunchPeriodNumber
+      ? { ...entry, periodNumber: formerLunchPeriodNumber }
+      : entry,
+  );
+}

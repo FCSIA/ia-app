@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Crown,
-  Ellipsis,
   GitBranch,
   Plus,
   QrCode,
@@ -44,15 +43,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownContent,
-  DropdownMenu,
-  DropdownTrigger,
-} from '@/components/ui/dropdown';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
-import { MenuItem } from '@/components/ui/menu-item';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -101,9 +94,11 @@ function mutationError(error: unknown) {
 
 export function ClubStructureActions({
   club,
+  canManageStructure = true,
   canDelete = false,
 }: {
   club: ClubDetail;
+  canManageStructure?: boolean;
   canDelete?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -128,36 +123,47 @@ export function ClubStructureActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownTrigger
-          render={
+      <div>
+        {canManageStructure ? (
+          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Club structure</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Organize teams, committees, local leaders, and join policies.
+              </p>
+            </div>
             <Button
               type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label="More club actions"
+              size="sm"
+              variant="tertiary"
+              leadingIcon={GitBranch}
+              onClick={() => setOpen(true)}
             >
-              <Ellipsis className="size-4" />
+              Manage structure
             </Button>
-          }
-        />
-        <DropdownContent align="end" className="w-56">
-          <MenuItem
-            index={0}
-            icon={GitBranch}
-            label="Manage club structure"
-            onSelect={() => setOpen(true)}
-          />
-          {canDelete ? (
-            <MenuItem
-              index={1}
-              icon={Trash2}
-              label="Delete club"
-              onSelect={() => setDeleteOpen(true)}
-            />
-          ) : null}
-        </DropdownContent>
-      </DropdownMenu>
+          </div>
+        ) : null}
+        {canDelete ? (
+          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Delete club</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Permanently remove the club and all of its content.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="tertiary"
+              leadingIcon={Trash2}
+              className="text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete club
+            </Button>
+          </div>
+        ) : null}
+      </div>
       <HierarchyDialog club={club} open={open} onOpenChange={setOpen} />
       <AlertDialog
         open={deleteOpen}

@@ -1,12 +1,21 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { ClubRolePermissions } from "../validators";
+import {
+  LEADER_CLUB_PERMISSIONS,
+  NO_CLUB_PERMISSIONS,
+  getMembershipRole,
+  permissionsForRole,
+} from "./rolePermissions";
 
 type ClubDbCtx = QueryCtx | MutationCtx;
 
 export interface ClubContext {
   club: Doc<"clubs">;
   membership: Doc<"clubMembers"> | null;
+  role: Doc<"clubRoles"> | null;
+  permissions: ClubRolePermissions;
   isMember: boolean;
   hasClubRole: boolean;
   isSponsor: boolean;
@@ -23,6 +32,8 @@ export function anonymousClubContext(club: Doc<"clubs">): ClubContext {
   return {
     club,
     membership: null,
+    role: null,
+    permissions: NO_CLUB_PERMISSIONS,
     isMember: false,
     hasClubRole: false,
     isSponsor: false,
@@ -48,11 +59,6 @@ export function isStaff(roles: string[]) {
     roles.includes("ADMIN") ||
     roles.includes("SUPER_ADMIN")
   );
-}
-
-/** Ordinary `MEMBER` rows are not club leadership roles. */
-export function isClubLeadershipRole(role: string | null | undefined) {
-  return role === "LEADER" || role === "SPONSOR";
 }
 
 export async function getViewerContext(
@@ -84,10 +90,12 @@ export async function getViewerContext(
       .first(),
   ]);
 
+  const role = await getMembershipRole(ctx, membership);
   return buildClubContext({
     club,
     user,
     membership,
+    role,
     sponsor,
     hasPendingJoinRequest: !!pendingJoinRequest,
   });
@@ -113,10 +121,12 @@ export async function getChannelViewerContext(
       .first(),
   ]);
 
+  const role = await getMembershipRole(ctx, membership);
   return buildClubContext({
     club,
     user,
     membership,
+    role,
     sponsor,
     hasPendingJoinRequest: false,
   });
@@ -126,28 +136,41 @@ function buildClubContext({
   club,
   user,
   membership,
+  role,
   sponsor,
   hasPendingJoinRequest,
 }: {
   club: Doc<"clubs">;
   user: Doc<"users">;
   membership: Doc<"clubMembers"> | null;
+  role: Doc<"clubRoles"> | null;
   sponsor: Doc<"clubSponsors"> | null;
   hasPendingJoinRequest: boolean;
 }): ClubContext {
   const userIsAdmin = isAdmin(user.roles as string[]);
   const isMember = !!membership;
-  const hasClubRole = isClubLeadershipRole(membership?.role);
   const isSponsor = !!sponsor;
+  // Legacy enum rows are supported only until the role backfill assigns a
+  // concrete club role. New authorization is always permission-driven.
+  const permissions = userIsAdmin || isSponsor
+    ? LEADER_CLUB_PERMISSIONS
+    : role
+      ? permissionsForRole(role)
+      : membership?.role === "LEADER" || membership?.role === "SPONSOR"
+        ? LEADER_CLUB_PERMISSIONS
+        : NO_CLUB_PERMISSIONS;
+  const hasClubRole = Object.values(permissions).some(Boolean);
   const canAccessWorkspace = isMember || isSponsor || userIsAdmin;
-  const canManageChannels = isSponsor || hasClubRole || userIsAdmin;
-  const canManageMembership = canManageChannels;
-  const canApproveJoinRequests = isSponsor || userIsAdmin;
-  const canSeePrivateChannels = isSponsor || userIsAdmin;
+  const canManageChannels = permissions.createChannels || permissions.editChannels || permissions.deleteChannels;
+  const canManageMembership = permissions.inviteMembers || permissions.removeMembers || permissions.assignRoles;
+  const canApproveJoinRequests = permissions.manageJoinRequests;
+  const canSeePrivateChannels = permissions.viewPrivateChannels;
 
   return {
     club,
     membership,
+    role,
+    permissions,
     isMember,
     hasClubRole,
     isSponsor,
@@ -193,7 +216,7 @@ export function canPostInChannel(
   userId: Id<"users">
 ) {
   if (channel.visibility === "MEMBER_READONLY") {
-    return context.hasClubRole || context.isSponsor || context.isAdmin;
+    return context.permissions.postToReadOnlyChannels;
   }
   return canReadChannel(channel, context, userId);
 }

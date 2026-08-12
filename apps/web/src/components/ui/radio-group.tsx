@@ -45,10 +45,23 @@ interface RadioGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "onSelect
   selectedIndex?: number;
   value?: string;
   onValueChange?: (value: string) => void;
+  /** Align layout, keyboard semantics, and proximity hover for radio rows. */
+  orientation?: "horizontal" | "vertical";
 }
 
 const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ children, selectedIndex, value, onValueChange, className, ...props }, ref) => {
+  (
+    {
+      children,
+      selectedIndex,
+      value,
+      onValueChange,
+      orientation = "vertical",
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const childValues = Children.toArray(children)
       .filter(isValidElement)
@@ -61,7 +74,9 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
       handlers,
       registerItem,
       measureItems,
-    } = useProximityHover(containerRef);
+    } = useProximityHover(containerRef, {
+      axis: orientation === "horizontal" ? "x" : "y",
+    });
 
     useEffect(() => {
       measureItems();
@@ -139,12 +154,16 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
             items[items.length - 1]?.click();
           }
         }}
+        {...props}
         role="radiogroup"
+        aria-orientation={orientation}
         className={cn(
-          "relative flex flex-col w-72 max-w-full select-none",
+          "relative flex max-w-full select-none",
+          orientation === "horizontal"
+            ? "w-auto flex-row gap-0.5"
+            : "w-72 flex-col",
           className
         )}
-        {...props}
       >
         {/* Selected background */}
         {selectedRect && (
