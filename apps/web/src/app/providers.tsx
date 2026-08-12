@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, useTheme } from 'next-themes';
 import { authClient } from '@/lib/auth-client';
 import { convex } from '@/lib/convex';
+import { customThemeEnabled } from '@/lib/theme-features';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 import { api } from '~/apps/convex/src/_generated/api';
 
@@ -159,14 +160,14 @@ export function applyCustomColors(colors: CustomColors) {
  * and palette from localStorage by setting CSS variables on <html>.
  */
 function CustomThemeBootstrap() {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { isAuthenticated } = useConvexAuth();
   const user = useQuery(api.users.me.me, isAuthenticated ? {} : 'skip');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (theme === 'custom' && user?.customBackgroundUrl) {
+    if (customThemeEnabled && theme === 'custom' && user?.customBackgroundUrl) {
       document.documentElement.style.setProperty(
         '--custom-bg-image',
         `url("${user.customBackgroundUrl}")`,
@@ -178,6 +179,12 @@ function CustomThemeBootstrap() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    if (!customThemeEnabled) {
+      applyCustomColors({});
+      if (theme === 'custom') setTheme('dark');
+      return;
+    }
 
     const applyColors = () => {
       try {
@@ -196,7 +203,7 @@ function CustomThemeBootstrap() {
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  }, [setTheme, theme]);
 
   return null;
 }
@@ -224,7 +231,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         attribute="class"
         defaultTheme="dark"
         enableSystem
-        themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'custom']}
+        themes={
+          customThemeEnabled
+            ? ['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'custom']
+            : ['light', 'dark', 'system', 'high-contrast', 'bubblegum']
+        }
       >
         <CustomThemeBootstrap />
         <Suspense fallback={null}>

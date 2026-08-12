@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
+import { customThemeEnabled } from '@/lib/theme-features';
 import { cn } from '@/lib/utils';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
@@ -458,7 +459,7 @@ const APPEARANCE_OPTIONS = [
   { id: 'system', label: 'System' },
   { id: 'high-contrast', label: 'Contrast' },
   { id: 'bubblegum', label: 'Bubblegum' },
-  { id: 'custom', label: 'Custom' },
+  ...(customThemeEnabled ? [{ id: 'custom', label: 'Custom' }] : []),
 ] as const;
 
 export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
@@ -484,7 +485,7 @@ export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
         ))}
       </RadioGroup>
 
-      {theme === 'custom' ? <CustomThemeEditor /> : null}
+      {customThemeEnabled && theme === 'custom' ? <CustomThemeEditor /> : null}
     </SettingsCard>
   );
 }
