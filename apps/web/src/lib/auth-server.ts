@@ -18,50 +18,17 @@ if (!convexSiteUrl) {
   throw new Error('NEXT_PUBLIC_CONVEX_SITE_URL or CONVEX_SITE_URL is required.');
 }
 
-const authSiteOrigin = convexSiteUrl;
-
-const convexAuth = convexBetterAuthNextJs({
-  convexUrl,
-  convexSiteUrl,
-});
-
-export const { getToken, isAuthenticated, fetchAuthQuery, fetchAuthMutation } = convexAuth;
-
-async function forwardAuthRequest(request: Request) {
-  const requestUrl = new URL(request.url);
-  const authSiteUrl = new URL(authSiteOrigin);
-  const headers = new Headers(request.headers);
-
-  headers.delete('transfer-encoding');
-  headers.delete('content-length');
-  headers.delete('connection');
-  headers.set('accept-encoding', 'application/json');
-  headers.set('host', authSiteUrl.host);
-
-  // Convex routes the request using this header before the Better Auth component
-  // can restore the original public host. Keep it pointed at the Convex Site
-  // endpoint and pass the browser origin only in the component's dedicated
-  // restoration headers.
-  headers.set('x-forwarded-host', authSiteUrl.host);
-  headers.set('x-forwarded-proto', authSiteUrl.protocol.replace(/:$/, ''));
-  headers.set('x-better-auth-forwarded-host', requestUrl.host);
-  headers.set('x-better-auth-forwarded-proto', requestUrl.protocol.replace(/:$/, ''));
-
-  const init: RequestInit = {
-    headers,
-    method: request.method,
-    redirect: 'manual',
-  };
-
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    const body = await request.arrayBuffer();
-    if (body.byteLength > 0) init.body = body;
-  }
-
-  return fetch(`${authSiteOrigin}${requestUrl.pathname}${requestUrl.search}`, init);
-}
-
-export const handler = {
-  GET: forwardAuthRequest,
-  POST: forwardAuthRequest,
-};
+// Use the handler shipped with @convex-dev/better-auth. It forwards the
+// browser's own host on `x-forwarded-host` and mirrors it onto the
+// `x-better-auth-forwarded-*` headers, which the Convex component restores
+// before invoking Better Auth (see create-client.ts, "restores preserved
+// forwarded host headers before calling auth.handler").
+//
+// Do not hand-roll this proxy: pointing `x-forwarded-host` at the Convex Site
+// host instead of the browser host is what broke production login, because
+// Better Auth then resolves the wrong public origin for session cookies.
+export const { handler, getToken, isAuthenticated, fetchAuthQuery, fetchAuthMutation } =
+  convexBetterAuthNextJs({
+    convexUrl,
+    convexSiteUrl,
+  });

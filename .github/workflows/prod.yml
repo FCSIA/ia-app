@@ -43,6 +43,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Contributor Validation only runs on pull requests, so a commit pushed
+      # straight to main can reach production untested — that is how the
+      # 2026-08-12 login outage shipped. Gate the deploy on the same suite.
+      - name: Test
+        run: pnpm test
+
       - name: Deploy Convex
         run: pnpm --filter cvx exec convex deploy --typecheck enable
         env:
