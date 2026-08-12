@@ -13,6 +13,7 @@ import {
   PanelLeft,
   Plus,
   Pencil,
+  Settings,
   Trash2,
   Users2,
 } from "lucide-react";
@@ -179,7 +180,9 @@ export function ClubWorkspace({
   const club = navigation?.club;
   const channels = navigation?.channels ?? [];
   const myClubs = navigation?.myClubs ?? [];
-  const canManageChannels = navigation?.viewer.canManageChannels ?? false;
+  const canCreateChannels = navigation?.viewer.canCreateChannels ?? false;
+  const canEditChannels = navigation?.viewer.canEditChannels ?? false;
+  const canDeleteChannels = navigation?.viewer.canDeleteChannels ?? false;
   const showClubPicker = !isSuperAdmin(user);
 
   const activeChannelId = pathname.match(
@@ -204,6 +207,14 @@ export function ClubWorkspace({
       icon: Users2,
       match: (p) => p.startsWith(`/clubs/${clubId}/people`),
     },
+    ...(navigation?.viewer.canManageRoles || navigation?.viewer.canManageClubStructure
+      ? [{
+          href: `/clubs/${clubId}/settings`,
+          label: "Settings",
+          icon: Settings,
+          match: (p: string) => p.startsWith(`/clubs/${clubId}/settings`),
+        }]
+      : []),
   ];
 
   const headerSlot = (
@@ -253,7 +264,9 @@ export function ClubWorkspace({
             pathname={pathname}
             channels={channels}
             activeChannelId={activeChannelId}
-            canManageChannels={canManageChannels}
+            canCreateChannels={canCreateChannels}
+            canEditChannels={canEditChannels}
+            canDeleteChannels={canDeleteChannels}
             onDeleteChannel={(channel) => {
               if (confirm(`Delete #${channel.name}?`)) {
                 void deleteChannel({ channelId: channel._id }).then(() =>
@@ -280,7 +293,9 @@ export function ClubWorkspace({
               pathname={pathname}
               channels={channels}
               activeChannelId={activeChannelId}
-              canManageChannels={canManageChannels}
+              canCreateChannels={canCreateChannels}
+              canEditChannels={canEditChannels}
+              canDeleteChannels={canDeleteChannels}
               onNavigate={() => setMobileNavigationOpen(false)}
               onDeleteChannel={(channel) => {
                 if (confirm(`Delete #${channel.name}?`)) {
@@ -406,7 +421,9 @@ function ClubNavigationPanel({
   pathname,
   channels,
   activeChannelId,
-  canManageChannels,
+  canCreateChannels,
+  canEditChannels,
+  canDeleteChannels,
   onNavigate,
   onDeleteChannel,
 }: {
@@ -419,7 +436,9 @@ function ClubNavigationPanel({
   pathname: string;
   channels: ClubNavigationChannel[];
   activeChannelId?: string;
-  canManageChannels: boolean;
+  canCreateChannels: boolean;
+  canEditChannels: boolean;
+  canDeleteChannels: boolean;
   onNavigate?: () => void;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
@@ -522,7 +541,7 @@ function ClubNavigationPanel({
                   Channels
                 </h2>
               </div>
-              {canManageChannels ? <CreateChannelTrigger clubId={clubId} /> : null}
+              {canCreateChannels ? <CreateChannelTrigger clubId={clubId} /> : null}
             </div>
 
             {channels.length > 0 ? (
@@ -550,9 +569,15 @@ function ClubNavigationPanel({
                         )}
                       />
                       <span className="min-w-0 flex-1 truncate">{channel.name}</span>
-                      {canManageChannels ? (
+                      {canEditChannels || canDeleteChannels ? (
                         <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                          <ChannelActionsTrigger clubId={clubId} channel={channel} onDeleteChannel={onDeleteChannel} />
+                          <ChannelActionsTrigger
+                            clubId={clubId}
+                            channel={channel}
+                            canEdit={canEditChannels}
+                            canDelete={canDeleteChannels}
+                            onDeleteChannel={onDeleteChannel}
+                          />
                         </CardAction>
                       ) : null}
                     </Card>
@@ -601,16 +626,20 @@ function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {
 function ChannelActionsTrigger({
   clubId,
   channel,
+  canEdit,
+  canDelete,
   onDeleteChannel
 }: {
   clubId: Id<"clubs">;
   channel: ClubNavigationChannel;
+  canEdit: boolean;
+  canDelete: boolean;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button
+      {canEdit ? <Button
         type="button"
         variant="ghost"
         size="icon-sm"
@@ -623,8 +652,8 @@ function ChannelActionsTrigger({
         aria-label="Edit channel"
       >
         <Pencil />
-      </Button>
-      <Button
+      </Button> : null}
+      {canDelete ? <Button
         type="button"
         variant="ghost"
         size="icon-sm"
@@ -637,13 +666,13 @@ function ChannelActionsTrigger({
         aria-label={`Delete ${channel.name}`}
       >
         <Trash2 />
-      </Button>
-      <ChannelDialog
+      </Button> : null}
+      {canEdit ? <ChannelDialog
         clubId={clubId}
         channel={channel}
         open={open}
         onOpenChange={setOpen}
-      />
+      /> : null}
     </>
   );
 }

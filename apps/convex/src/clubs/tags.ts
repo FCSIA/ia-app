@@ -49,7 +49,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageMembership) {
+    if (!context.permissions.manageMemberTags) {
       throw new ConvexError("Not authorized to manage tags");
     }
 

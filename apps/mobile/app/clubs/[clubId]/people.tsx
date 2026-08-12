@@ -176,7 +176,9 @@ export default function ClubPeopleScreen() {
               <View>
                 {(data.directory ?? []).map((person: any, index: number) => {
                   const name = [person.firstName, person.lastName].filter(Boolean).join(" ") || "Member";
-                  const role = person.kind === "SPONSOR" ? "Sponsor" : person.clubRole === "LEADER" ? "Leader" : "Member";
+                  const role = person.kind === "SPONSOR" ? "Sponsor" : person.roleName ?? (person.clubRole === "LEADER" ? "Leader" : "Member");
+                  const memberRoleId = data.roles?.find((clubRole: any) => clubRole.isDefault)?._id;
+                  const leaderRoleId = data.roles?.find((clubRole: any) => clubRole.position === 1)?._id;
                   const canManagePerson = data.viewer?.canManageMembership && person.kind === "MEMBER";
                   const isManaging = managingId === person._id;
 
@@ -221,9 +223,10 @@ export default function ClubPeopleScreen() {
                               title="Member"
                               size="sm"
                               style={{ flex: 1 }}
-                              variant={person.clubRole === "LEADER" ? "secondary" : "primary"}
+                              variant={person.roleId === memberRoleId ? "primary" : "secondary"}
+                              disabled={!memberRoleId}
                               onPress={() =>
-                                setMemberRole({ clubId: clubId as any, memberId: person._id, role: "MEMBER" }).catch((error) =>
+                                setMemberRole({ clubId: clubId as any, memberId: person._id, roleId: memberRoleId }).catch((error) =>
                                   Alert.alert("Role not updated", error instanceof Error ? error.message : "Try again."),
                                 )
                               }
@@ -232,9 +235,10 @@ export default function ClubPeopleScreen() {
                               title="Leader"
                               size="sm"
                               style={{ flex: 1 }}
-                              variant={person.clubRole === "LEADER" ? "primary" : "secondary"}
+                              variant={person.roleId === leaderRoleId ? "primary" : "secondary"}
+                              disabled={!leaderRoleId}
                               onPress={() =>
-                                setMemberRole({ clubId: clubId as any, memberId: person._id, role: "LEADER" }).catch((error) =>
+                                setMemberRole({ clubId: clubId as any, memberId: person._id, roleId: leaderRoleId }).catch((error) =>
                                   Alert.alert("Role not updated", error instanceof Error ? error.message : "Try again."),
                                 )
                               }

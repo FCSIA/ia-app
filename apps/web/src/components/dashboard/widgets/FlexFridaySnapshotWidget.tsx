@@ -2,7 +2,7 @@
 
 import { useQuery } from 'convex/react';
 import { format } from 'date-fns';
-import { Sparkles, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
+import { Presentation, MapPin, AlertCircle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Panel } from '@/components/layout/page-frame';
@@ -40,7 +40,7 @@ export function FlexFridaySnapshotWidget() {
             <Badge variant="solid" className="rounded-full">
               General
             </Badge>
-            <Sparkles className="size-4 text-muted-foreground" />
+            <Presentation className="size-4 text-muted-foreground" />
           </div>
 
           <h3 className="mt-4 text-lg font-semibold tracking-tight text-foreground line-clamp-2">

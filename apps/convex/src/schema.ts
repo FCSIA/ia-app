@@ -14,6 +14,7 @@ import {
   scheduleWeekdayValidator,
   schoolDayTemplateKindValidator,
   clubMemberRoleValidator,
+  clubRolePermissionsValidator,
   inviteStatusValidator,
   clubChannelVisibilityValidator,
   clubChannelPollOptionValidator,
@@ -516,6 +517,10 @@ export const schema = defineSchema({
     clubId: v.id("clubs"),
     userId: v.id("users"),
     role: v.optional(clubMemberRoleValidator),
+    // Custom club titles retain the established LEADER capability. The title
+    // itself lives separately so renaming it updates every assignment.
+    customRoleId: v.optional(v.id("clubRoles")),
+    roleId: v.optional(v.id("clubRoles")),
     joinedAt: v.number(),
   })
     .index("by_userId_and_joinedAt", ["userId", "joinedAt"])
@@ -523,6 +528,20 @@ export const schema = defineSchema({
     .index("by_clubId_and_role", ["clubId", "role"])
     .index("by_clubId_and_userId", ["clubId", "userId"])
     .index("by_userId_and_clubId", ["userId", "clubId"]),
+
+  clubRoles: defineTable({
+    clubId: v.id("clubs"),
+    name: v.string(),
+    permissions: v.optional(clubRolePermissionsValidator),
+    isDefault: v.optional(v.boolean()),
+    position: v.optional(v.number()),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clubId_and_name", ["clubId", "name"])
+    .index("by_clubId_and_position", ["clubId", "position"])
+    .index("by_clubId_and_isDefault", ["clubId", "isDefault"]),
 
   clubUnits: defineTable({
     clubId: v.id("clubs"),

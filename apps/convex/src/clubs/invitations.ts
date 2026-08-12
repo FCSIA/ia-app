@@ -6,6 +6,7 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, getViewerContext } from "./access";
 import { clubAudience, deliverMany, deliverNotification } from "../notifications/delivery";
 import { clubJoinRateLimiter, contentRateLimiter } from "../rateLimits";
+import { getDefaultClubRole } from "./rolePermissions";
 
 const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const JOIN_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -25,7 +26,13 @@ async function addClubMember(ctx: MutationCtx, clubId: Id<"clubs">, userId: Id<"
     const members = await ctx.db.query("clubMembers").withIndex("by_clubId", (q) => q.eq("clubId", clubId)).take(club.memberLimit);
     if (members.length >= club.memberLimit) throw new Error("Club member limit reached");
   }
-  await ctx.db.insert("clubMembers", { clubId, userId, role: "MEMBER", joinedAt: Date.now() });
+  const defaultRole = await getDefaultClubRole(ctx, clubId);
+  await ctx.db.insert("clubMembers", {
+    clubId,
+    userId,
+    roleId: defaultRole?._id,
+    joinedAt: Date.now(),
+  });
   return true;
 }
 
@@ -47,7 +54,7 @@ export const searchInviteCandidates = query({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.hasClubRole && !context.isSponsor && !context.isAdmin) {
+    if (!context.permissions.inviteMembers) {
       return [];
     }
 
@@ -211,8 +218,8 @@ export const respondToJoinRequest = mutation({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.canApproveJoinRequests) {
-      throw new Error("Only club sponsors or admins can approve join requests");
+    if (!context.permissions.manageJoinRequests) {
+      throw new Error("You do not have permission to manage join requests");
     }
 
     const request = await ctx.db.get(args.requestId);
@@ -252,8 +259,8 @@ export const sendInvite = mutation({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.hasClubRole && !context.isSponsor && !context.isAdmin) {
-      throw new Error("Not authorized to invite");
+    if (!context.permissions.inviteMembers) {
+      throw new Error("You do not have permission to invite members");
     }
 
     await inviteRecipientByUniqueId(ctx, args.clubId, user._id, args.recipientUniqueId);
@@ -274,8 +281,8 @@ export const bulkInvite = mutation({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.hasClubRole && !context.isSponsor && !context.isAdmin) {
-      throw new Error("Not authorized to invite");
+    if (!context.permissions.inviteMembers) {
+      throw new Error("You do not have permission to invite members");
     }
 
     if (args.uniqueIds.length === 0) {
@@ -347,8 +354,8 @@ export const generateJoinCode = mutation({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.canManageMembership) {
-      throw new Error("Not authorized");
+    if (!context.permissions.manageJoinCodes) {
+      throw new Error("You do not have permission to manage join codes");
     }
 
     const code = generateSecureJoinCode();
@@ -368,7 +375,7 @@ export const revokeJoinCode = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageMembership) throw new Error("Not authorized");
+    if (!context.permissions.manageJoinCodes) throw new Error("You do not have permission to manage join codes");
     await ctx.db.patch(args.clubId, { joinCode: undefined, joinCodeUpdatedAt: Date.now(), joinCodeExpiresAt: undefined });
     await ctx.db.insert("auditEvents", { actorId: user._id, action: "CLUB_JOIN_CODE_REVOKED", entityType: "Club", entityId: args.clubId, createdAt: Date.now() });
     return null;

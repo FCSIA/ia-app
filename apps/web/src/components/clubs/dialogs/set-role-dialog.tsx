@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery } from 'convex/react';
+import Link from 'next/link';
+import { Plus, Settings, SlidersHorizontal } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useClubId } from '@/app/clubs/club-route';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,89 +16,202 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 import { fullName, type ClubDirectoryEntry } from '@/components/clubs/types';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Shield } from 'lucide-react';
 
-type Props = {
-  person: ClubDirectoryEntry | null;
-  onOpenChange: (open: boolean) => void;
-};
+type RoleEditor =
+  | { mode: 'create' }
+  | { mode: 'rename'; roleId: Id<'clubRoles'>; name: string }
+  | null;
 
-const OPTIONS = [
-  { value: 'NONE', label: 'Regular Member', detail: 'No administrative permissions' },
-  { value: 'LEADER', label: 'Leader', detail: 'Can invite members, manage channels, and post announcements' },
-];
+export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
+  return <SetRoleDialogContent key={person._id} person={person} />;
+}
 
-export function SetRoleDialog({ person, onOpenChange }: Props) {
+function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
   const clubId = useClubId();
   const { toast } = useToast();
-  const [role, setRole] = useState<string>('NONE');
-  const personId = person?._id ?? null;
-  const [previousPersonId, setPreviousPersonId] = useState<string | null>(personId);
+  const roles = useQuery(api.clubs.management.listRoles, { clubId }) ?? [];
   const setMemberRole = useMutation(api.clubs.management.setMemberRole);
+  const createRole = useMutation(api.clubs.management.createRole);
+  const renameRole = useMutation(api.clubs.management.renameRole);
+  const initializeRoles = useMutation(api.clubs.management.initializeRoles);
+  const [open, setOpen] = useState(false);
+  const [pendingValue, setPendingValue] = useState<string | null>(null);
+  const [editor, setEditor] = useState<RoleEditor>(null);
+  const [roleName, setRoleName] = useState('');
+  const [savingRole, setSavingRole] = useState(false);
 
-  if (previousPersonId !== personId) {
-    setPreviousPersonId(personId);
-    if (person) {
-      const current = person.clubRole?.toUpperCase() || 'NONE';
-      setRole(current === 'LEADER' ? 'LEADER' : 'NONE');
+  const currentValue = person.roleId ?? roles.find((role) => role.isDefault)?._id ?? '';
+  const value = pendingValue ?? currentValue;
+
+  useEffect(() => {
+    if (!open || roles.length > 0) return;
+    void initializeRoles({ clubId }).catch((error) => {
+      toast({
+        title: error instanceof Error ? error.message : 'Could not load roles',
+        variant: 'destructive',
+      });
+    });
+  }, [clubId, initializeRoles, open, roles.length, toast]);
+
+  const assign = async (nextValue: string) => {
+    setPendingValue(nextValue);
+    try {
+      await setMemberRole({
+        clubId,
+        memberId: person._id,
+        roleId: nextValue as Id<'clubRoles'>,
+      });
+    } catch (error) {
+      setPendingValue(null);
+      toast({
+        title: error instanceof Error ? error.message : 'Could not update role',
+        variant: 'destructive',
+      });
     }
-  }
+  };
+
+  const openEditor = (nextEditor: Exclude<RoleEditor, null>) => {
+    setOpen(false);
+    setEditor(nextEditor);
+    setRoleName(nextEditor.mode === 'rename' ? nextEditor.name : '');
+  };
+
+  const saveRole = async () => {
+    const name = roleName.trim();
+    if (!name || !editor) return;
+    setSavingRole(true);
+    try {
+      if (editor.mode === 'create') {
+        const role = await createRole({ clubId, name });
+        await assign(role._id);
+      } else {
+        await renameRole({ clubId, roleId: editor.roleId, name });
+      }
+      setEditor(null);
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Could not save role',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingRole(false);
+    }
+  };
 
   return (
-    <Dialog open={!!person} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Set club role</DialogTitle>
-          <DialogDescription>{person ? fullName(person) : ''}</DialogDescription>
-        </DialogHeader>
-
-        <Alert className="bg-primary/5 border-primary/20">
-          <Shield className="size-4 text-primary" />
-          <AlertTitle className="text-sm font-semibold text-primary">Leader Permissions</AlertTitle>
-          <AlertDescription className="text-xs text-primary/80">
-            Leaders can invite members, manage channels, and post announcements.
-          </AlertDescription>
-        </Alert>
-
-        <RadioGroup value={role} onValueChange={setRole} className="w-full">
-          {OPTIONS.map((option, index) => (
-            <RadioItem
-              key={option.value}
-              index={index}
-              value={option.value}
-              label={option.label}
-            />
-          ))}
-        </RadioGroup>
-        <p className="text-xs text-muted-foreground">
-          {OPTIONS.find((option) => option.value === role)?.detail}
-        </p>
-
-        <DialogFooter>
-          <Button variant="tertiary" onClick={() => onOpenChange(false)}>
-            Cancel
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Change ${fullName(person)}'s club role`}
+          >
+            <Settings className="size-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-[min(20rem,calc(100vw-2rem))] p-2"
+          aria-label={`Club role for ${fullName(person)}`}
+        >
+          <div className="px-2 pb-2 pt-1">
+            <p className="text-sm font-semibold text-foreground">Choose role</p>
+            <p className="truncate text-xs text-muted-foreground">{fullName(person)}</p>
+          </div>
+          <div className="relative">
+            <RadioGroup value={value} onValueChange={(nextValue) => void assign(nextValue)} className="w-full gap-0.5">
+              {roles.map((role, index) => (
+                <RadioItem
+                  key={role._id}
+                  value={role._id}
+                  label={role.name}
+                  index={index}
+                  className="w-full pr-10"
+                />
+              ))}
+            </RadioGroup>
+            <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
+              {roles.map((role) => (
+                <div key={role._id} className="flex h-8 items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="pointer-events-auto size-7"
+                    aria-label={`Rename ${role.name}`}
+                    onClick={() => openEditor({ mode: 'rename', roleId: role._id, name: role.name })}
+                  >
+                    <Settings className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Separator className="my-2" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            leadingIcon={Plus}
+            onClick={() => openEditor({ mode: 'create' })}
+          >
+            Add role
           </Button>
           <Button
-            onClick={() => {
-              if (!person) return;
-              void setMemberRole({
-                clubId,
-                memberId: person._id,
-                role: role === 'LEADER' ? 'LEADER' : 'MEMBER',
-              }).then(() => {
-                toast({ title: 'Role updated' });
-                onOpenChange(false);
-              });
-            }}
+            asChild
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            leadingIcon={SlidersHorizontal}
+            onClick={() => setOpen(false)}
           >
-            Save
+            <Link href={`/clubs/${clubId}/settings`}>Manage permissions</Link>
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </PopoverContent>
+      </Popover>
+
+      <Dialog open={editor !== null} onOpenChange={(nextOpen) => !nextOpen && setEditor(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editor?.mode === 'rename' ? 'Rename role' : 'New role'}</DialogTitle>
+            <DialogDescription>
+              {editor?.mode === 'rename'
+                ? 'This name appears everywhere the role is shown.'
+                : 'New roles start without permissions. Configure them in Club settings.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={roleName}
+            maxLength={64}
+            placeholder="Role name"
+            onChange={(event) => setRoleName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void saveRole();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="tertiary" onClick={() => setEditor(null)} disabled={savingRole}>
+              Cancel
+            </Button>
+            <Button onClick={() => void saveRole()} loading={savingRole} disabled={!roleName.trim()}>
+              {editor?.mode === 'rename' ? 'Save' : 'Add role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

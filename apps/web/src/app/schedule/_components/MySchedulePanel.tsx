@@ -7,8 +7,8 @@ import { ScheduleImportDialog } from "@/components/schedule/schedule-import-dial
 import { ResolvedDayPanel } from "@/components/schedule/resolved-day-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { TabPanel } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
 export function MySchedulePanel() {
@@ -66,30 +66,26 @@ export function MySchedulePanel() {
                 <span className="text-xs font-medium text-muted-foreground">
                   Lunch
                 </span>
-                <ToggleGroup
-                  type="single"
+                <RadioGroup
                   value={lunchPeriod ?? ""}
                   onValueChange={(value) => {
                     if (value === "PERIOD_4" || value === "PERIOD_5")
                       setLunchPeriod(value);
                   }}
-                  className="rounded-lg bg-muted p-0.5"
-                  size="sm"
+                  orientation="horizontal"
                   aria-label="Lunch period"
                 >
-                  <ToggleGroupItem
+                  <RadioItem
                     value="PERIOD_4"
-                    className="h-7 min-w-0 px-2.5 text-xs shadow-none"
-                  >
-                    Period 4
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
+                    label="Period 4"
+                    index={0}
+                  />
+                  <RadioItem
                     value="PERIOD_5"
-                    className="h-7 min-w-0 px-2.5 text-xs shadow-none"
-                  >
-                    Period 5
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                    label="Period 5"
+                    index={1}
+                  />
+                </RadioGroup>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializeEventDetail, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
+import { getClubContext } from "../clubs/access";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
 
@@ -87,26 +88,15 @@ export const create = mutation({
     }
 
     let isSponsor = false;
-    let hasClubRole = false;
-    if (args.clubId) {
+    let canCreateClubEvent = false;
+    if (args.clubId && !canCreateGeneral) {
       const clubId = args.clubId;
-      const sponsors = await ctx.db
-        .query("clubSponsors")
-        .withIndex("by_clubId_and_userId", (q) =>
-          q.eq("clubId", clubId).eq("userId", user._id),
-        )
-        .first();
-      const members = await ctx.db
-        .query("clubMembers")
-        .withIndex("by_clubId_and_userId", (q) =>
-          q.eq("clubId", clubId).eq("userId", user._id),
-        )
-        .first();
-      isSponsor = !!sponsors;
-      hasClubRole = members?.role === "LEADER" || members?.role === "SPONSOR";
+      const context = await getClubContext(ctx, clubId, user);
+      isSponsor = context.isSponsor;
+      canCreateClubEvent = context.permissions.createEvents;
     }
 
-    const canCreate = canCreateGeneral || isSponsor || hasClubRole;
+    const canCreate = canCreateGeneral || canCreateClubEvent;
     if (!canCreate) {
       throw new ConvexError("Insufficient permissions to create this event");
     }

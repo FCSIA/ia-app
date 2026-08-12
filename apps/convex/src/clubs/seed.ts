@@ -7,6 +7,7 @@ import {
   type SeedClubCategory,
   type SeedClubDefinition,
 } from "../../seed-data/clubs";
+import { createInitialClubRoles } from "./rolePermissions";
 
 class SeedRandom {
   private seed: number;
@@ -263,6 +264,9 @@ export const run = internalMutation({
       const oldRequests = await ctx.db.query("clubJoinRequests").take(5000);
       for (const r of oldRequests) await ctx.db.delete(r._id);
 
+      const oldRoles = await ctx.db.query("clubRoles").take(5000);
+      for (const role of oldRoles) await ctx.db.delete(role._id);
+
       const oldClubs = await ctx.db.query("clubs").take(5000);
       for (const c of oldClubs) await ctx.db.delete(c._id);
     }
@@ -275,9 +279,13 @@ export const run = internalMutation({
     const sponsorUsers = allUsers.filter((u) => u.roles.includes("SPONSOR"));
 
     const userByUniqueId = new Map(allUsers.map((u) => [u.uniqueId, u]));
+    const roleActor = allUsers[0];
+    if (!roleActor) throw new Error("Seed users before seeding clubs");
 
     // Seed clubs
     const clubIdByName = new Map<string, any>();
+    const defaultRoleIdByClub = new Map<string, Id<"clubRoles">>();
+    const leaderRoleIdByClub = new Map<string, Id<"clubRoles">>();
     for (const clubDef of CLUB_DEFINITIONS) {
       const clubId = await ctx.db.insert("clubs", {
         name: clubDef.name,
@@ -296,6 +304,9 @@ export const run = internalMutation({
         updatedAt: now,
       });
       clubIdByName.set(clubDef.name, clubId);
+      const [memberRole, leaderRole] = await createInitialClubRoles(ctx, clubId, roleActor._id);
+      defaultRoleIdByClub.set(clubDef.name, memberRole._id);
+      leaderRoleIdByClub.set(clubDef.name, leaderRole._id);
     }
 
     // Build user memberships
@@ -443,7 +454,9 @@ export const run = internalMutation({
         await ctx.db.insert("clubMembers", {
           clubId,
           userId: member._id,
-          role: isLeader ? "LEADER" : "MEMBER",
+          roleId: isLeader
+            ? leaderRoleIdByClub.get(club.name)!
+            : defaultRoleIdByClub.get(club.name)!,
           joinedAt: now,
         });
         membersSeeded++;
@@ -475,7 +488,7 @@ export const run = internalMutation({
           await ctx.db.insert("clubMembers", {
             clubId,
             userId: user._id,
-            role: "SPONSOR",
+            roleId: defaultRoleIdByClub.get(club.name)!,
             joinedAt: now,
           });
           sponsorsSeeded++;

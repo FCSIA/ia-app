@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { ClubContext } from "./access";
-import { canPostInChannel, canReadChannel, isClubLeadershipRole } from "./access";
+import { canPostInChannel, canReadChannel } from "./access";
 import { toChannelViewerState } from "./serialize";
+import { LEADER_CLUB_PERMISSIONS, NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
 const clubId = "club" as Id<"clubs">;
 const userId = "user" as Id<"users">;
@@ -12,6 +13,8 @@ function clubContext(overrides: Partial<ClubContext>): ClubContext {
   return {
     club: { _id: clubId } as Doc<"clubs">,
     membership: null,
+    role: null,
+    permissions: NO_CLUB_PERMISSIONS,
     isMember: true,
     hasClubRole: false,
     isSponsor: false,
@@ -46,13 +49,6 @@ function channel(
 }
 
 describe("club channel access", () => {
-  test("only leader and sponsor membership roles confer club leadership", () => {
-    expect(isClubLeadershipRole("MEMBER")).toBe(false);
-    expect(isClubLeadershipRole(undefined)).toBe(false);
-    expect(isClubLeadershipRole("LEADER")).toBe(true);
-    expect(isClubLeadershipRole("SPONSOR")).toBe(true);
-  });
-
   test("private channels require explicit membership or private-channel visibility", () => {
     const privateChannel = channel("PRIVATE", [{ userId }]);
 
@@ -67,19 +63,19 @@ describe("club channel access", () => {
     ).toBe(true);
   });
 
-  test("member-readonly channels only allow role holders, sponsors, or admins to post", () => {
+  test("member-readonly channels honor the assigned role permission", () => {
     const readonlyChannel = channel("MEMBER_READONLY", []);
 
     expect(canReadChannel(readonlyChannel, clubContext({}), userId)).toBe(true);
     expect(canPostInChannel(readonlyChannel, clubContext({}), userId)).toBe(false);
     expect(
-      canPostInChannel(readonlyChannel, clubContext({ hasClubRole: true }), userId),
+      canPostInChannel(readonlyChannel, clubContext({ permissions: LEADER_CLUB_PERMISSIONS }), userId),
     ).toBe(true);
     expect(
-      canPostInChannel(readonlyChannel, clubContext({ isSponsor: true }), userId),
+      canPostInChannel(readonlyChannel, clubContext({ permissions: LEADER_CLUB_PERMISSIONS }), userId),
     ).toBe(true);
     expect(
-      canPostInChannel(readonlyChannel, clubContext({ isAdmin: true }), userId),
+      canPostInChannel(readonlyChannel, clubContext({ permissions: LEADER_CLUB_PERMISSIONS }), userId),
     ).toBe(true);
   });
 

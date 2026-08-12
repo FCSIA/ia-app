@@ -527,7 +527,8 @@ function MessageRow({
   isDeletePending,
   friendRequestPendingId,
   highlighted,
-  canModerate,
+  canPinMessages,
+  canModerateMessages,
   currentUserId,
   compact = false,
 }: {
@@ -551,7 +552,8 @@ function MessageRow({
   isDeletePending: boolean;
   friendRequestPendingId?: string | null;
   highlighted: boolean;
-  canModerate: boolean;
+  canPinMessages: boolean;
+  canModerateMessages: boolean;
   currentUserId?: string;
   compact?: boolean;
 }) {
@@ -796,7 +798,7 @@ function MessageRow({
                           Report
                         </DropdownMenuItem>
                       ) : null}
-                      {canModerate && !compact ? (
+                      {canPinMessages && !compact ? (
                         <DropdownMenuItem
                           className="rounded-xl"
                           disabled={isPinPending}
@@ -806,10 +808,10 @@ function MessageRow({
                           {message.isPinned ? 'Unpin' : 'Pin'}
                         </DropdownMenuItem>
                       ) : null}
-                      {(isAuthor || canModerate) && (!isAuthor || (canModerate && !compact)) ? (
+                      {(isAuthor || canModerateMessages) && (!isAuthor || ((canPinMessages || canModerateMessages) && !compact)) ? (
                         <DropdownMenuSeparator />
                       ) : null}
-                      {(isAuthor || canModerate) ? (
+                      {(isAuthor || canModerateMessages) ? (
                         <DropdownMenuItem
                           disabled={isDeletePending}
                           className="rounded-xl text-destructive focus:text-destructive"
@@ -916,7 +918,7 @@ function MessageRow({
               Report
             </ContextMenuItem>
           )}
-          {canModerate && !compact ? (
+          {canPinMessages && !compact ? (
             <ContextMenuItem
               disabled={isPinPending}
               onSelect={() => onTogglePin(message._id, !message.isPinned)}
@@ -926,8 +928,8 @@ function MessageRow({
             </ContextMenuItem>
           ) : null}
         </ContextMenuGroup>
-        {isAuthor || canModerate ? <ContextMenuSeparator /> : null}
-        {isAuthor || canModerate ? (
+        {isAuthor || canModerateMessages ? <ContextMenuSeparator /> : null}
+        {isAuthor || canModerateMessages ? (
           <ContextMenuGroup>
             <ContextMenuItem
               disabled={isDeletePending}
@@ -1106,6 +1108,8 @@ export default function ClubChannelPage({
   };
 
   const channel = conversationContext?.channel;
+  const canPinMessages = conversationContext?.canPinMessages ?? false;
+  const canModerateMessages = conversationContext?.canModerateMessages ?? false;
 
   const suggestionEntries = useMemo<ChannelMentionSuggestion[]>(() => {
     const canUseAll = !!mentionContext?.canMentionEveryone;
@@ -1253,7 +1257,8 @@ export default function ClubChannelPage({
           isDeletePending={false}
           friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
-          canModerate={canModerateChannel}
+          canPinMessages={canPinMessages}
+          canModerateMessages={canModerateMessages}
           compact={compact}
         />
         {isEditing && (
@@ -1307,7 +1312,6 @@ export default function ClubChannelPage({
   }
 
   const canPost = channel.viewerCanPost ?? true;
-  const canModerateChannel = conversationContext.canManageChannels;
   const pinnedMessages = messages.filter((message) => message.isPinned);
 
   const title: ReactNode = (
@@ -1368,7 +1372,7 @@ export default function ClubChannelPage({
             suggestionEntries={suggestionEntries}
             placeholder="Reply in thread…"
             submitLabel="Reply"
-            canCreatePoll={canModerateChannel}
+            canCreatePoll={conversationContext.canCreatePolls}
             onMentionIntent={() => setMentionContextRequested(true)}
           />
         ) : selectedThread.isDeleted ? (
@@ -1509,7 +1513,7 @@ export default function ClubChannelPage({
                 suggestionEntries={suggestionEntries}
                 placeholder={`Message #${channel.name}`}
                 submitLabel="Send"
-                canCreatePoll={canModerateChannel}
+                canCreatePoll={conversationContext.canCreatePolls}
                 onMentionIntent={() => setMentionContextRequested(true)}
               />
             </div>

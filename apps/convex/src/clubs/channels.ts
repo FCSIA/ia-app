@@ -181,7 +181,7 @@ async function resolveChannelMentionPlan(
     authorId: Id<"users">;
   },
 ): Promise<MentionPlan> {
-  assertCanMentionEveryone(input.tokens, input.context.canManageChannels);
+  assertCanMentionEveryone(input.tokens, input.context.permissions.mentionEveryone);
   const audienceIds = new Set(input.channelAudienceIds);
 
   if (input.channel.visibility === "PRIVATE") {
@@ -222,23 +222,32 @@ async function resolveChannelMentionPlan(
     }
 
     if (normalizedToken === "leaders") {
-      const [leaders, roleSponsors] = await Promise.all([
+      const [members, roles, sponsors] = await Promise.all([
         ctx.db
           .query("clubMembers")
-          .withIndex("by_clubId_and_role", (q) =>
-            q.eq("clubId", input.channel.clubId).eq("role", "LEADER"),
-          )
+          .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
           .take(MAX_MENTION_GROUP_ROWS),
         ctx.db
-          .query("clubMembers")
-          .withIndex("by_clubId_and_role", (q) =>
-            q.eq("clubId", input.channel.clubId).eq("role", "SPONSOR"),
-          )
+          .query("clubRoles")
+          .withIndex("by_clubId_and_position", (q) => q.eq("clubId", input.channel.clubId))
+          .take(100),
+        ctx.db
+          .query("clubSponsors")
+          .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
           .take(MAX_MENTION_GROUP_ROWS),
       ]);
+      const elevatedRoleIds = new Set(
+        roles
+          .filter((role) => Object.values(role.permissions ?? {}).some(Boolean))
+          .map((role) => role._id),
+      );
+      const roleHolders = members.filter((member) => {
+        const roleId = member.roleId ?? member.customRoleId;
+        return roleId ? elevatedRoleIds.has(roleId) : member.role === "LEADER";
+      });
       rows.push({ kind: "BUILT_IN_TAG", token: normalizedToken });
       addRecipients(
-        [...leaders, ...roleSponsors].map((member) => member.userId),
+        [...roleHolders, ...sponsors].map((member) => member.userId),
         "GROUP",
       );
       continue;
@@ -365,8 +374,8 @@ export const create = mutation({
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
 
-    if (!context.canManageChannels) {
-      throw new ConvexError("Only club role holders, sponsors, or admins can create channels");
+    if (!context.permissions.createChannels) {
+      throw new ConvexError("You do not have permission to create channels");
     }
 
     const channelId = await ctx.db.insert("clubChannels", {
@@ -446,8 +455,8 @@ export const postMessage = mutation({
     const attachmentUploadIds = args.attachments ?? [];
     assertStagedChatAttachmentIds(attachmentUploadIds);
     const poll = normalizeChannelPoll(args.pollQuestion, args.pollOptions);
-    if (poll && !context.canManageChannels) {
-      throw new ConvexError("Only club role holders, sponsors, or admins can create polls");
+    if (poll && !context.permissions.createPolls) {
+      throw new ConvexError("You do not have permission to create polls");
     }
     if (!trimmedBody && attachmentUploadIds.length === 0 && !poll) {
       throw new ConvexError("Message cannot be empty");
@@ -984,7 +993,6 @@ const channelContextMemberValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
-  role: v.union(v.literal("MEMBER"), v.literal("LEADER"), v.literal("SPONSOR")),
 });
 
 const channelConversationContextValidator = v.union(
@@ -1000,7 +1008,9 @@ const channelConversationContextValidator = v.union(
       ),
       viewerCanPost: v.boolean(),
     }),
-    canManageChannels: v.boolean(),
+    canCreatePolls: v.boolean(),
+    canPinMessages: v.boolean(),
+    canModerateMessages: v.boolean(),
   }),
   v.null(),
 );
@@ -1030,7 +1040,9 @@ export const getConversationContext = query({
           user._id,
         ),
       },
-      canManageChannels: context.canManageChannels,
+      canCreatePolls: context.permissions.createPolls,
+      canPinMessages: context.permissions.pinMessages,
+      canModerateMessages: context.permissions.moderateMessages,
     };
   },
 });
@@ -1097,14 +1109,13 @@ export const getMentionContext = query({
             uniqueId: member.uniqueId,
             firstName: member.firstName,
             lastName: member.lastName,
-            role: candidate.role,
           };
         }),
       )
     ).filter((member): member is NonNullable<typeof member> => !!member);
 
     return {
-      canMentionEveryone: context.canManageChannels,
+      canMentionEveryone: context.permissions.mentionEveryone,
       members,
       tags: tags.map((tag) => ({ slug: tag.slug, name: tag.name })),
     };
@@ -1310,7 +1321,7 @@ export const update = mutation({
     const channel = await ctx.db.get(args.channelId);
     if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.canManageChannels) throw new ConvexError("Not authorized");
+    if (!context.permissions.editChannels) throw new ConvexError("You do not have permission to edit channels");
 
     if (channel.visibility === "PRIVATE" && args.visibility && args.visibility !== "PRIVATE") {
       const explicitMember = await ctx.db.query("clubChannelMemberships")
@@ -1337,7 +1348,7 @@ export const remove = mutation({
     const channel = await ctx.db.get(args.channelId);
     if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.canManageChannels) throw new ConvexError("Not authorized");
+    if (!context.permissions.deleteChannels) throw new ConvexError("You do not have permission to delete channels");
     await ctx.db.delete(args.channelId);
     await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedChannel, { channelId: args.channelId });
     return null;
@@ -1381,7 +1392,7 @@ export const deleteMessage = mutation({
       user,
       args.messageId,
     );
-    if (message.authorId !== user._id && !context.canManageChannels) {
+    if (message.authorId !== user._id && !context.permissions.moderateMessages) {
       throw new ConvexError("Not authorized");
     }
     if (message.deletedAt) {
@@ -1512,7 +1523,7 @@ export const setPinned = mutation({
     const user = await getCurrentAppUser(ctx);
     const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
-    if (!context.canManageChannels && message.authorId !== user._id) {
+    if (!context.permissions.pinMessages && message.authorId !== user._id) {
       throw new ConvexError("Not authorized");
     }
     await ctx.db.patch(args.messageId, {
