@@ -507,6 +507,7 @@ export const schema = defineSchema({
     joinCodeUpdatedAt: v.optional(v.number()),
     joinCodeExpiresAt: v.optional(v.number()),
     isActive: v.boolean(),
+    autoCreateUnitChannels: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

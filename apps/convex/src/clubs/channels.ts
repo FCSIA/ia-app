@@ -440,6 +440,57 @@ export const create = mutation({
   },
 });
 
+export const setAutoCreateUnitChannels = mutation({
+  args: { clubId: v.id("clubs"), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageChannels) throw new ConvexError("You do not have permission to manage channels");
+    await ctx.db.patch(args.clubId, { autoCreateUnitChannels: args.enabled, updatedAt: Date.now() });
+    await logAuditEvent(ctx, { actorId: user._id, action: "club.unit_channel_defaults_updated", entityType: "club", entityId: args.clubId, meta: { enabled: args.enabled } });
+    return null;
+  },
+});
+
+export const createMissingUnitChannels = mutation({
+  args: { clubId: v.id("clubs") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.canManageChannels) throw new ConvexError("You do not have permission to manage channels");
+    const [units, channels] = await Promise.all([
+      ctx.db.query("clubUnits").withIndex("by_clubId_and_isActive_and_position", (q) => q.eq("clubId", args.clubId).eq("isActive", true)).take(250),
+      ctx.db.query("clubChannels").withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId)).take(500),
+    ]);
+    const covered = new Set(channels.map((channel) => channel.ownerUnitId).filter((id): id is Id<"clubUnits"> => !!id));
+    const now = Date.now();
+    let created = 0;
+    for (const unit of units) {
+      if (covered.has(unit._id)) continue;
+      await ctx.db.insert("clubChannels", {
+        clubId: args.clubId,
+        ownerUnitId: unit._id,
+        audienceKind: "UNIT_MEMBERS",
+        audienceUnitId: unit._id,
+        includeDescendants: true,
+        includeAncestorLeaders: true,
+        postingPolicy: "AUDIENCE",
+        name: unit.name,
+        description: unit.description,
+        visibility: "PRIVATE",
+        createdById: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      created += 1;
+    }
+    if (created) await logAuditEvent(ctx, { actorId: user._id, action: "club.unit_channels_created", entityType: "club", entityId: args.clubId, meta: { created } });
+    return created;
+  },
+});
+
 export const postMessage = mutation({
   args: {
     channelId: v.id("clubChannels"),

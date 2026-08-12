@@ -222,6 +222,24 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    const club = await ctx.db.get(args.clubId);
+    if (club?.autoCreateUnitChannels) {
+      await ctx.db.insert("clubChannels", {
+        clubId: args.clubId,
+        ownerUnitId: unitId,
+        audienceKind: "UNIT_MEMBERS",
+        audienceUnitId: unitId,
+        includeDescendants: true,
+        includeAncestorLeaders: true,
+        postingPolicy: "AUDIENCE",
+        name,
+        description: undefined,
+        visibility: "PRIVATE",
+        createdById: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
 
     await logAuditEvent(ctx, {
       actorId: user._id,

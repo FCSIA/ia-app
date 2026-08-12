@@ -128,6 +128,10 @@ only audience. The backend resolves unit ancestry at every channel read/write
 boundary; it does not copy unit membership into channel rows. Join codes are
 scoped to one unit and can only be redeemed by an existing club member.
 
+Channel managers can enable a club-level default that creates a unit-aware,
+private channel whenever a new unit is added. Existing units can be backfilled
+through Channel settings; units that already own a channel are left unchanged.
+
 The club workspace shell uses a narrow navigation query rather than subscribing
 every club route to the full member, tag, request, and message-count payload.
 Channel pages fetch only their header and permission context at first; the
