@@ -29,7 +29,7 @@ import {
   DropdownMenu,
   DropdownTrigger,
 } from "@/components/ui/dropdown";
-import { Card, CardAction, CardGroup } from "@/components/ui/card";
+import { Card, CardGroup } from "@/components/ui/card";
 import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -661,9 +661,10 @@ function ChannelRow({
   const active = channel._id === activeChannelId;
   const rowClassName = density === "mobile" ? "min-h-9" : "min-h-8";
   return <Card href={`/clubs/${clubId}/channels/${channel._id}`} onClick={() => onNavigate?.()} label={`Open #${channel.name}`} selected={active} className={cn("group gap-1.5 rounded-md px-2 text-sm font-medium", rowClassName, active ? "text-foreground" : "text-muted-foreground")}>
-    {onToggle ? <CardAction className="flex shrink-0"><Button type="button" variant="ghost" size="icon-sm" aria-label={`${expanded ? "Collapse" : "Expand"} nested channels in ${channel.name}`} aria-expanded={expanded} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onToggle(); }} className="size-6 text-muted-foreground hover:text-foreground"><ChevronRight className={cn("size-3.5 transition-transform motion-reduce:transition-none", expanded && "rotate-90")} /></Button></CardAction> : <ClubChannelVisibilityIcon visibility={channel.visibility} className={cn("size-4 shrink-0", active ? "text-foreground/70" : "text-muted-foreground")} />}
+    {onToggle ? <div className="relative z-30 flex shrink-0"><Button type="button" variant="ghost" size="icon-sm" aria-label={`${expanded ? "Collapse" : "Expand"} nested channels in ${channel.name}`} aria-expanded={expanded} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onToggle(); }} className="size-6 text-muted-foreground hover:text-foreground"><ChevronRight className={cn("size-3.5 transition-transform motion-reduce:transition-none", expanded && "rotate-90")} /></Button></div> : null}
+    <ClubChannelVisibilityIcon visibility={channel.visibility} className={cn("size-4 shrink-0", active ? "text-foreground/70" : "text-muted-foreground")} />
     <span className="min-w-0 flex-1 truncate">{channel.name}</span>
-    {canEditChannels || canDeleteChannels ? <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"><ChannelActionsTrigger clubId={clubId} channel={channel} canEdit={canEditChannels} canDelete={canDeleteChannels} onDeleteChannel={onDeleteChannel} /></CardAction> : null}
+    {canEditChannels || canDeleteChannels ? <div className="relative z-30 flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"><ChannelActionsTrigger clubId={clubId} channel={channel} canEdit={canEditChannels} canDelete={canDeleteChannels} onDeleteChannel={onDeleteChannel} /></div> : null}
   </Card>;
 }
 
@@ -677,7 +678,9 @@ function UnitChannelTree({
   if (!directChannels.length && !children.length) return null;
   const expanded = openUnitIds.includes(unit._id);
   return <div className="space-y-0.5">
-    {directChannels.map((channel, index) => <ChannelRow key={channel._id} channel={channel} clubId={clubId} activeChannelId={activeChannelId} density={density} onNavigate={onNavigate} canEditChannels={canEditChannels} canDeleteChannels={canDeleteChannels} onDeleteChannel={onDeleteChannel} expanded={expanded} onToggle={index === 0 && children.length ? () => onToggle(unit._id) : undefined} />)}
+    {directChannels.length ? <CardGroup orientation="inline" separated className="gap-0.5">
+      {directChannels.map((channel, index) => <ChannelRow key={channel._id} channel={channel} clubId={clubId} activeChannelId={activeChannelId} density={density} onNavigate={onNavigate} canEditChannels={canEditChannels} canDeleteChannels={canDeleteChannels} onDeleteChannel={onDeleteChannel} expanded={expanded} onToggle={index === 0 && children.length ? () => onToggle(unit._id) : undefined} />)}
+    </CardGroup> : null}
     <AnimatePresence initial={false}>
       {(!directChannels.length || expanded) && children.length ? <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34, opacity: { duration: 0.12 } }} className="overflow-hidden motion-reduce:transition-none"><div className={directChannels.length ? "ml-3 border-l border-border/60 pl-1.5" : ""}>{children.map((child) => <UnitChannelTree key={child._id} unit={child} units={units} channels={channels} clubId={clubId} activeChannelId={activeChannelId} density={density} onNavigate={onNavigate} canEditChannels={canEditChannels} canDeleteChannels={canDeleteChannels} onDeleteChannel={onDeleteChannel} openUnitIds={openUnitIds} onToggle={onToggle} />)}</div></motion.div> : null}
     </AnimatePresence>
