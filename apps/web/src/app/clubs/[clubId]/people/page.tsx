@@ -357,23 +357,24 @@ export default function ClubPeoplePage() {
     }
   }, [canAssignRoles, club?.roles.length, clubId, initializeRoles, toast]);
 
-  const directory = useMemo(() => club?.directory ?? [], [club?.directory]);
+  const directory = club?.directory;
   const pendingJoinRequests = club?.pendingJoinRequests ?? [];
   const visibleFilter = filter === 'requests' && !canApproveRequests ? 'all' : filter;
 
   const stats = useMemo(() => {
+    const people = directory ?? [];
     return {
-      all: directory.length,
-      sponsors: directory.filter(p => p.kind === 'SPONSOR').length,
+      all: people.length,
+      sponsors: people.filter(p => p.kind === 'SPONSOR').length,
       roleCounts: new Map(club?.roles.map((role) => [
         role._id,
-        directory.filter((person) => person.roleId === role._id).length,
+        people.filter((person) => person.roleId === role._id).length,
       ])),
     };
   }, [club?.roles, directory]);
 
   const filtered = useMemo(() => {
-    let result = filterBySearchQuery(directory, deferredSearch, (person) => [
+    let result = filterBySearchQuery(directory ?? [], deferredSearch, (person) => [
       fullName(person),
       person.uniqueId,
       person.kind,

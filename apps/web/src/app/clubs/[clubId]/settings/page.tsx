@@ -92,8 +92,7 @@ export default function ClubSettingsPage() {
   const clubId = useClubId();
   const { toast } = useToast();
   const user = useCurrentUser();
-  const queriedRoles = useQuery(api.clubs.management.listRoles, { clubId });
-  const roles = useMemo(() => queriedRoles ?? [], [queriedRoles]);
+  const roles = useQuery(api.clubs.management.listRoles, { clubId });
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
@@ -110,7 +109,7 @@ export default function ClubSettingsPage() {
   const canDeleteClub = isSuperAdmin(user);
 
   useEffect(() => {
-    if (roles.length === 0 && canManageRoles) {
+    if (roles?.length === 0 && canManageRoles) {
       void initializeRoles({ clubId }).catch((error) => {
         toast({
           title: error instanceof Error ? error.message : 'Could not initialize roles',
@@ -118,19 +117,16 @@ export default function ClubSettingsPage() {
         });
       });
     }
-  }, [canManageRoles, clubId, initializeRoles, roles.length, toast]);
+  }, [canManageRoles, clubId, initializeRoles, roles?.length, toast]);
 
   useEffect(() => {
-    if (!roles.length) return;
+    if (!roles?.length) return;
     if (!roles.some((role) => role._id === selectedRoleId)) {
       setSelectedRoleId(roles[0]._id);
     }
   }, [roles, selectedRoleId]);
 
-  const selectedRole = useMemo(
-    () => roles.find((role) => role._id === selectedRoleId) ?? roles[0],
-    [roles, selectedRoleId],
-  );
+  const selectedRole = roles?.find((role) => role._id === selectedRoleId) ?? roles?.[0];
 
   const openEditor = (next: Exclude<Editor, null>) => {
     setEditor(next);
@@ -213,7 +209,7 @@ export default function ClubSettingsPage() {
             </Button>
           </div>
 
-          {roles.length > 0 && selectedRole ? (
+          {roles && roles.length > 0 && selectedRole ? (
             <>
               <div className="min-w-0 overflow-x-auto pb-1">
                 <Tabs value={selectedRole._id} onValueChange={setSelectedRoleId}>
