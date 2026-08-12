@@ -135,14 +135,18 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
 }
 
 function RoleRoster({ club }: { club: ClubDetail }) {
-  const groups = club.roles
-    .map((role) => ({
-      role,
-      members: club.directory.filter(
-        (person) => person.kind === 'MEMBER' && person.roleId === role._id,
-      ),
-    }))
-    .filter((group) => group.members.length > 0);
+  const membersByRole = new Map<string, typeof club.directory>();
+  for (const person of club.directory) {
+    if (person.kind !== 'MEMBER' || !person.roleId) continue;
+    const members = membersByRole.get(person.roleId) ?? [];
+    members.push(person);
+    membersByRole.set(person.roleId, members);
+  }
+
+  const groups = club.roles.flatMap((role) => {
+    const members = membersByRole.get(role._id);
+    return members?.length ? [{ role, members }] : [];
+  });
 
   return groups.map(({ role, members }) => (
     <section key={role._id} className="space-y-2 p-4">

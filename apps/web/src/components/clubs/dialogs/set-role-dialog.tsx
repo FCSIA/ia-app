@@ -29,6 +29,10 @@ type RoleEditor =
   | null;
 
 export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
+  return <SetRoleDialogContent key={person._id} person={person} />;
+}
+
+function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
   const clubId = useClubId();
   const { toast } = useToast();
   const roles = useQuery(api.clubs.management.listRoles, { clubId }) ?? [];
@@ -44,10 +48,6 @@ export function SetRoleDialog({ person }: { person: ClubDirectoryEntry }) {
 
   const currentValue = person.roleId ?? roles.find((role) => role.isDefault)?._id ?? '';
   const value = pendingValue ?? currentValue;
-
-  useEffect(() => {
-    setPendingValue(null);
-  }, [person.roleId]);
 
   useEffect(() => {
     if (!open || roles.length > 0) return;

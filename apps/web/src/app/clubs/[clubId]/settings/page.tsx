@@ -81,11 +81,19 @@ const permissionGroups: Array<{
 
 type Editor = { mode: 'create' } | { mode: 'rename'; role: ClubRole } | null;
 
+const settingsTitle = (
+  <div className="min-w-0">
+    <h1 className="truncate text-base font-semibold text-foreground">Club settings</h1>
+    <p className="truncate text-xs text-muted-foreground">Roles and administration</p>
+  </div>
+);
+
 export default function ClubSettingsPage() {
   const clubId = useClubId();
   const { toast } = useToast();
   const user = useCurrentUser();
-  const roles = useQuery(api.clubs.management.listRoles, { clubId }) ?? [];
+  const queriedRoles = useQuery(api.clubs.management.listRoles, { clubId });
+  const roles = useMemo(() => queriedRoles ?? [], [queriedRoles]);
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, { clubId });
   const club = useQuery(api.clubs.detail.get, { clubId }) as ClubDetail | undefined;
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
@@ -165,16 +173,9 @@ export default function ClubSettingsPage() {
     }
   };
 
-  const title = (
-    <div className="min-w-0">
-      <h1 className="truncate text-base font-semibold text-foreground">Club settings</h1>
-      <p className="truncate text-xs text-muted-foreground">Roles and administration</p>
-    </div>
-  );
-
   if (navigation !== undefined && !canManageRoles && !canManageStructure && !canDeleteClub) {
     return (
-      <ClubWorkspace title={title}>
+      <ClubWorkspace title={settingsTitle}>
         <div className="mx-auto max-w-3xl px-4 py-12 text-center">
           <ShieldCheck className="mx-auto size-6 text-muted-foreground" />
           <h2 className="mt-3 text-base font-semibold">Club settings are restricted</h2>
@@ -185,7 +186,7 @@ export default function ClubSettingsPage() {
   }
 
   return (
-    <ClubWorkspace title={title}>
+    <ClubWorkspace title={settingsTitle}>
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-5">
           {club && (canManageStructure || canDeleteClub) ? (

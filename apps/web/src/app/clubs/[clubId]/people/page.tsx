@@ -357,7 +357,7 @@ export default function ClubPeoplePage() {
     }
   }, [canAssignRoles, club?.roles.length, clubId, initializeRoles, toast]);
 
-  const directory = club?.directory ?? [];
+  const directory = useMemo(() => club?.directory ?? [], [club?.directory]);
   const pendingJoinRequests = club?.pendingJoinRequests ?? [];
   const visibleFilter = filter === 'requests' && !canApproveRequests ? 'all' : filter;
 
