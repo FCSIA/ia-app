@@ -5,7 +5,11 @@ import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRoleSafe } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { docs } from "../../lib/docs";
-import { activeAdmins, deliverMany } from "../notifications/delivery";
+import {
+  activeAdmins,
+  deliverMany,
+  deliverNotification,
+} from "../notifications/delivery";
 import { getViewerContext } from "../clubs/access";
 import { getChannelAccess } from "../clubs/channelAccess";
 import { normalizeModerationReportReason } from "./reportValidation";
@@ -312,6 +316,21 @@ export const update = mutation({
       reviewNote: args.reviewNote,
       reviewedAt: Date.now(),
     });
+
+    if (
+      report.contentType === "GENERAL" &&
+      report.status !== "RESOLVED" &&
+      args.status === "RESOLVED"
+    ) {
+      await deliverNotification(ctx, {
+        userId: report.submitterId,
+        category: "CONTENT_MODERATED",
+        title: "Your feedback was resolved",
+        body: args.reviewNote || "School staff reviewed your feedback.",
+        href: "/notifications",
+        subject: { kind: "moderationReport", reportId: report._id },
+      });
+    }
 
     await logAuditEvent(ctx, {
       actorId: user._id,
