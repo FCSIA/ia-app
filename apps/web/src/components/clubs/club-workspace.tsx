@@ -363,6 +363,9 @@ export function ClubWorkspace({
       headerSlot={headerSlot}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
+      pageTransitionKey={
+        activeChannelId ? `club-channel-workspace-${clubId}` : undefined
+      }
       channelSearch={channelSearch}
       onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >

@@ -9,10 +9,11 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 type PageTransitionProps = {
   children: ReactNode;
   className?: string;
+  transitionKey?: string;
 };
 
 /** Subtle enter animation for route content — used in AppShell main and login template. */
-export function PageTransition({ children, className }: PageTransitionProps) {
+export function PageTransition({ children, className, transitionKey }: PageTransitionProps) {
   const pathname = usePathname() ?? '/';
   const reduceMotion = useReducedMotion();
   const isWrapped = pathname === '/wrapped' || pathname.startsWith('/wrapped/');
@@ -20,7 +21,7 @@ export function PageTransition({ children, className }: PageTransitionProps) {
 
   return (
     <motion.div
-      key={pathname}
+      key={transitionKey ?? pathname}
       className={className}
       initial={{ opacity: 0, y: useVerticalShift ? 6 : 0 }}
       animate={{ opacity: 1, y: 0 }}

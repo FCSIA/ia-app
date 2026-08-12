@@ -35,6 +35,7 @@ export function AppShell({
   headerSlot,
   mainClassName,
   pageTransitionClassName,
+  pageTransitionKey,
   channelSearch,
   onMobileSwipeRight,
 }: {
@@ -42,6 +43,8 @@ export function AppShell({
   headerSlot?: ReactNode;
   mainClassName?: string;
   pageTransitionClassName?: string;
+  /** Keeps a persistent workspace mounted across URL changes within one view. */
+  pageTransitionKey?: string;
   channelSearch?: ChannelSearchControl;
   onMobileSwipeRight?: () => void;
 }) {
@@ -158,7 +161,10 @@ export function AppShell({
               mainClassName ?? "flex-1 px-4 pb-8 pt-6 md:px-6 md:pt-8 lg:px-8"
             }
           >
-            <PageTransition className={pageTransitionClassName}>
+            <PageTransition
+              className={pageTransitionClassName}
+              transitionKey={pageTransitionKey}
+            >
               {children}
             </PageTransition>
           </main>
