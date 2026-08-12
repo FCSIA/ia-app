@@ -18,8 +18,9 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 - Lets signed-in users find people and every club channel they can read from the
   global command palette.
 - Collects files and images previously shared in each readable channel.
-- Supports direct invites, bulk CSV invites, open joins, join requests, and join
-  codes.
+- Supports direct member adds by sponsors, admins, and club roles with the
+  membership-invite permission, plus invites, bulk CSV invites, open joins,
+  join requests, and join codes.
 - Lets club managers create reusable roles, assign them to members, rename
   them, and configure their permissions. Roles can be opted into as a People
   directory group; ungrouped roles remain visible on member rows without
@@ -36,6 +37,7 @@ On web, hierarchy administration lives at
 sponsors, club leaders, and admins; ordinary members do not see the management
 action. Unit QR links return to the club overview and redeem the specific unit
 code after the app confirms the viewer is already a club member.
+
 - Supports public, private, and member-read-only channels.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
@@ -70,6 +72,7 @@ code after the app confirms the viewer is already a club member.
 - `api.clubs.invitations.requestToJoin`
 - `api.clubs.invitations.respondToJoinRequest`
 - `api.clubs.invitations.sendInvite`
+- `api.clubs.invitations.addMemberDirectly`
 - `api.clubs.invitations.bulkInvite`
 - `api.clubs.invitations.respondToInvite`
 - `api.clubs.invitations.generateJoinCode`

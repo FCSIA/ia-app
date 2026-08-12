@@ -12,12 +12,20 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 export default function ClubPeopleScreen() {
   const { clubId } = useLocalSearchParams<{ clubId: string }>();
-  const club = useQuery(api.clubs.detail.get, clubId ? { clubId: clubId as any } : "skip");
+  const club = useQuery(
+    api.clubs.detail.get,
+    clubId ? { clubId: clubId as any } : "skip",
+  );
   const sendInvite = useMutation(api.clubs.invitations.sendInvite);
+  const addMemberDirectly = useMutation(
+    api.clubs.invitations.addMemberDirectly,
+  );
   const generateJoinCode = useMutation(api.clubs.invitations.generateJoinCode);
   const setMemberRole = useMutation(api.clubs.management.setMemberRole);
   const removeMember = useMutation(api.clubs.management.removeMember);
-  const respondToJoinRequest = useMutation(api.clubs.invitations.respondToJoinRequest);
+  const respondToJoinRequest = useMutation(
+    api.clubs.invitations.respondToJoinRequest,
+  );
   const [inviteId, setInviteId] = useState("");
   const [managingId, setManagingId] = useState<string | null>(null);
   const { color } = useTheme();
@@ -26,16 +34,34 @@ export default function ClubPeopleScreen() {
     <Screen title="People">
       <DataBoundary data={club} emptyTitle="Club unavailable">
         {(data: any) => (
-          <View style={{ width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.xl }}>
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 720,
+              alignSelf: "center",
+              gap: spacing.xl,
+            }}
+          >
             <Txt variant="label" tone="muted">
-              {data.name} · {data.directory?.length ?? 0} {(data.directory?.length ?? 0) === 1 ? "person" : "people"}
+              {data.name} · {data.directory?.length ?? 0}{" "}
+              {(data.directory?.length ?? 0) === 1 ? "person" : "people"}
             </Txt>
 
-            {data.viewer?.canManageMembership ? (
+            {data.viewer?.permissions?.inviteMembers ? (
               <View style={{ gap: spacing.md }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                  <UserPlus size={19} color={color("foreground")} strokeWidth={1.9} />
-                  <Txt variant="section">Invite member</Txt>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: spacing.sm,
+                  }}
+                >
+                  <UserPlus
+                    size={19}
+                    color={color("foreground")}
+                    strokeWidth={1.9}
+                  />
+                  <Txt variant="section">Add a student</Txt>
                 </View>
                 <TextField
                   value={inviteId}
@@ -45,18 +71,55 @@ export default function ClubPeopleScreen() {
                   autoCapitalize="characters"
                   returnKeyType="send"
                 />
-                <Button
-                  title="Send invite"
-                  disabled={!inviteId.trim()}
-                  onPress={() =>
-                    sendInvite({ clubId: clubId as any, recipientUniqueId: inviteId.trim() })
-                      .then(() => {
-                        setInviteId("");
-                        Alert.alert("Invite sent");
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  <Button
+                    title="Add directly"
+                    style={{ flex: 1 }}
+                    disabled={!inviteId.trim()}
+                    onPress={() =>
+                      addMemberDirectly({
+                        clubId: clubId as any,
+                        recipientUniqueId: inviteId.trim(),
                       })
-                      .catch((error) => Alert.alert("Invite failed", error instanceof Error ? error.message : "Try again."))
-                  }
-                />
+                        .then(() => {
+                          setInviteId("");
+                          Alert.alert("Student added to club");
+                        })
+                        .catch((error) =>
+                          Alert.alert(
+                            "Could not add student",
+                            error instanceof Error
+                              ? error.message
+                              : "Try again.",
+                          ),
+                        )
+                    }
+                  />
+                  <Button
+                    title="Invite"
+                    variant="secondary"
+                    style={{ flex: 1 }}
+                    disabled={!inviteId.trim()}
+                    onPress={() =>
+                      sendInvite({
+                        clubId: clubId as any,
+                        recipientUniqueId: inviteId.trim(),
+                      })
+                        .then(() => {
+                          setInviteId("");
+                          Alert.alert("Invite sent");
+                        })
+                        .catch((error) =>
+                          Alert.alert(
+                            "Invite failed",
+                            error instanceof Error
+                              ? error.message
+                              : "Try again.",
+                          ),
+                        )
+                    }
+                  />
+                </View>
 
                 <View
                   style={{
@@ -78,7 +141,11 @@ export default function ClubPeopleScreen() {
                       backgroundColor: color("secondary"),
                     }}
                   >
-                    <Ticket size={19} color={color("foreground")} strokeWidth={1.9} />
+                    <Ticket
+                      size={19}
+                      color={color("foreground")}
+                      strokeWidth={1.9}
+                    />
                   </View>
                   <View style={{ flex: 1, gap: spacing.xs }}>
                     <Txt variant="caption" tone="muted">
@@ -99,14 +166,22 @@ export default function ClubPeopleScreen() {
                     onPress={() =>
                       generateJoinCode({ clubId: clubId as any })
                         .then((code) => Alert.alert("Join code", String(code)))
-                        .catch((error) => Alert.alert("Join code failed", error instanceof Error ? error.message : "Try again."))
+                        .catch((error) =>
+                          Alert.alert(
+                            "Join code failed",
+                            error instanceof Error
+                              ? error.message
+                              : "Try again.",
+                          ),
+                        )
                     }
                   />
                 </View>
               </View>
             ) : null}
 
-            {data.viewer?.canApproveJoinRequests && data.pendingJoinRequests?.length ? (
+            {data.viewer?.canApproveJoinRequests &&
+            data.pendingJoinRequests?.length ? (
               <View
                 style={{
                   gap: spacing.sm,
@@ -115,27 +190,50 @@ export default function ClubPeopleScreen() {
                   padding: spacing.md,
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "baseline",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <Txt variant="section">Join requests</Txt>
                   <Txt variant="caption" tone="muted">
                     {data.pendingJoinRequests.length}
                   </Txt>
                 </View>
                 {data.pendingJoinRequests.map((request: any, index: number) => {
-                  const requesterName = [request.requester?.firstName, request.requester?.lastName].filter(Boolean).join(" ") || "Community member";
+                  const requesterName =
+                    [request.requester?.firstName, request.requester?.lastName]
+                      .filter(Boolean)
+                      .join(" ") || "Community member";
                   return (
                     <View
                       key={request._id}
                       style={{
                         gap: spacing.sm,
                         paddingTop: spacing.sm,
-                        paddingBottom: index === data.pendingJoinRequests.length - 1 ? 0 : spacing.md,
-                        borderBottomWidth: index === data.pendingJoinRequests.length - 1 ? 0 : 1,
+                        paddingBottom:
+                          index === data.pendingJoinRequests.length - 1
+                            ? 0
+                            : spacing.md,
+                        borderBottomWidth:
+                          index === data.pendingJoinRequests.length - 1 ? 0 : 1,
                         borderBottomColor: color("border"),
                       }}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-                        <Avatar uri={request.requester?.avatarUrl} name={requesterName} size={36} />
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: spacing.sm,
+                        }}
+                      >
+                        <Avatar
+                          uri={request.requester?.avatarUrl}
+                          name={requesterName}
+                          size={36}
+                        />
                         <View style={{ flex: 1 }}>
                           <Txt style={{ fontWeight: "700" }} numberOfLines={1}>
                             {requesterName}
@@ -148,8 +246,17 @@ export default function ClubPeopleScreen() {
                           size="sm"
                           style={{ flex: 1 }}
                           onPress={() =>
-                            respondToJoinRequest({ clubId: clubId as any, requestId: request._id, accept: true }).catch(
-                              (error) => Alert.alert("Could not approve", error instanceof Error ? error.message : "Try again."),
+                            respondToJoinRequest({
+                              clubId: clubId as any,
+                              requestId: request._id,
+                              accept: true,
+                            }).catch((error) =>
+                              Alert.alert(
+                                "Could not approve",
+                                error instanceof Error
+                                  ? error.message
+                                  : "Try again.",
+                              ),
                             )
                           }
                         />
@@ -159,8 +266,17 @@ export default function ClubPeopleScreen() {
                           variant="ghost"
                           style={{ flex: 1 }}
                           onPress={() =>
-                            respondToJoinRequest({ clubId: clubId as any, requestId: request._id, accept: false }).catch(
-                              (error) => Alert.alert("Could not decline", error instanceof Error ? error.message : "Try again."),
+                            respondToJoinRequest({
+                              clubId: clubId as any,
+                              requestId: request._id,
+                              accept: false,
+                            }).catch((error) =>
+                              Alert.alert(
+                                "Could not decline",
+                                error instanceof Error
+                                  ? error.message
+                                  : "Try again.",
+                              ),
                             )
                           }
                         />
@@ -175,11 +291,24 @@ export default function ClubPeopleScreen() {
               <Txt variant="section">Directory</Txt>
               <View>
                 {(data.directory ?? []).map((person: any, index: number) => {
-                  const name = [person.firstName, person.lastName].filter(Boolean).join(" ") || "Member";
-                  const role = person.kind === "SPONSOR" ? "Sponsor" : person.roleName ?? (person.clubRole === "LEADER" ? "Leader" : "Member");
-                  const memberRoleId = data.roles?.find((clubRole: any) => clubRole.isDefault)?._id;
-                  const leaderRoleId = data.roles?.find((clubRole: any) => clubRole.position === 1)?._id;
-                  const canManagePerson = data.viewer?.canManageMembership && person.kind === "MEMBER";
+                  const name =
+                    [person.firstName, person.lastName]
+                      .filter(Boolean)
+                      .join(" ") || "Member";
+                  const role =
+                    person.kind === "SPONSOR"
+                      ? "Sponsor"
+                      : (person.roleName ??
+                        (person.clubRole === "LEADER" ? "Leader" : "Member"));
+                  const memberRoleId = data.roles?.find(
+                    (clubRole: any) => clubRole.isDefault,
+                  )?._id;
+                  const leaderRoleId = data.roles?.find(
+                    (clubRole: any) => clubRole.position === 1,
+                  )?._id;
+                  const canManagePerson =
+                    data.viewer?.canManageMembership &&
+                    person.kind === "MEMBER";
                   const isManaging = managingId === person._id;
 
                   return (
@@ -188,11 +317,19 @@ export default function ClubPeopleScreen() {
                       style={{
                         gap: spacing.sm,
                         paddingVertical: spacing.md,
-                        borderBottomWidth: index === data.directory.length - 1 ? 0 : 1,
+                        borderBottomWidth:
+                          index === data.directory.length - 1 ? 0 : 1,
                         borderBottomColor: color("border"),
                       }}
                     >
-                      <View style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                      <View
+                        style={{
+                          minHeight: 48,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: spacing.md,
+                        }}
+                      >
                         <Avatar uri={person.avatarUrl} name={name} size={42} />
                         <View style={{ flex: 1, gap: spacing.xs }}>
                           <Txt style={{ fontWeight: "700" }} numberOfLines={1}>
@@ -208,7 +345,9 @@ export default function ClubPeopleScreen() {
                             label={`${isManaging ? "Close controls for" : "Manage"} ${name}`}
                             size="sm"
                             variant="ghost"
-                            onPress={() => setManagingId(isManaging ? null : person._id)}
+                            onPress={() =>
+                              setManagingId(isManaging ? null : person._id)
+                            }
                           />
                         ) : null}
                       </View>
@@ -218,16 +357,31 @@ export default function ClubPeopleScreen() {
                           <Txt variant="caption" tone="muted">
                             Club role
                           </Txt>
-                          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                          <View
+                            style={{ flexDirection: "row", gap: spacing.sm }}
+                          >
                             <Button
                               title="Member"
                               size="sm"
                               style={{ flex: 1 }}
-                              variant={person.roleId === memberRoleId ? "primary" : "secondary"}
+                              variant={
+                                person.roleId === memberRoleId
+                                  ? "primary"
+                                  : "secondary"
+                              }
                               disabled={!memberRoleId}
                               onPress={() =>
-                                setMemberRole({ clubId: clubId as any, memberId: person._id, roleId: memberRoleId }).catch((error) =>
-                                  Alert.alert("Role not updated", error instanceof Error ? error.message : "Try again."),
+                                setMemberRole({
+                                  clubId: clubId as any,
+                                  memberId: person._id,
+                                  roleId: memberRoleId,
+                                }).catch((error) =>
+                                  Alert.alert(
+                                    "Role not updated",
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Try again.",
+                                  ),
                                 )
                               }
                             />
@@ -235,11 +389,24 @@ export default function ClubPeopleScreen() {
                               title="Leader"
                               size="sm"
                               style={{ flex: 1 }}
-                              variant={person.roleId === leaderRoleId ? "primary" : "secondary"}
+                              variant={
+                                person.roleId === leaderRoleId
+                                  ? "primary"
+                                  : "secondary"
+                              }
                               disabled={!leaderRoleId}
                               onPress={() =>
-                                setMemberRole({ clubId: clubId as any, memberId: person._id, roleId: leaderRoleId }).catch((error) =>
-                                  Alert.alert("Role not updated", error instanceof Error ? error.message : "Try again."),
+                                setMemberRole({
+                                  clubId: clubId as any,
+                                  memberId: person._id,
+                                  roleId: leaderRoleId,
+                                }).catch((error) =>
+                                  Alert.alert(
+                                    "Role not updated",
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Try again.",
+                                  ),
                                 )
                               }
                             />
@@ -249,19 +416,31 @@ export default function ClubPeopleScreen() {
                               size="sm"
                               variant="destructive"
                               onPress={() =>
-                                Alert.alert("Remove member?", `${name} will lose access to this club.`, [
-                                  { text: "Keep member", style: "cancel" },
-                                  {
-                                    text: "Remove",
-                                    style: "destructive",
-                                    onPress: () =>
-                                      removeMember({ clubId: clubId as any, memberId: person._id })
-                                        .then(() => setManagingId(null))
-                                        .catch((error) =>
-                                          Alert.alert("Member not removed", error instanceof Error ? error.message : "Try again."),
-                                        ),
-                                  },
-                                ])
+                                Alert.alert(
+                                  "Remove member?",
+                                  `${name} will lose access to this club.`,
+                                  [
+                                    { text: "Keep member", style: "cancel" },
+                                    {
+                                      text: "Remove",
+                                      style: "destructive",
+                                      onPress: () =>
+                                        removeMember({
+                                          clubId: clubId as any,
+                                          memberId: person._id,
+                                        })
+                                          .then(() => setManagingId(null))
+                                          .catch((error) =>
+                                            Alert.alert(
+                                              "Member not removed",
+                                              error instanceof Error
+                                                ? error.message
+                                                : "Try again.",
+                                            ),
+                                          ),
+                                    },
+                                  ],
+                                )
                               }
                             />
                           </View>
@@ -271,7 +450,9 @@ export default function ClubPeopleScreen() {
                   );
                 })}
               </View>
-              {!data.directory?.length ? <Txt tone="muted">No members yet.</Txt> : null}
+              {!data.directory?.length ? (
+                <Txt tone="muted">No members yet.</Txt>
+              ) : null}
             </View>
           </View>
         )}

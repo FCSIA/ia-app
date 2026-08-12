@@ -38,14 +38,14 @@ on the Convex `users` table.
 
 ### Clubs
 
-| Permission        | STUDENT     | TEACHER | SPONSOR | ADMIN | SUPER_ADMIN |
-| ----------------- | ----------- | ------- | ------- | ----- | ----------- |
-| View all clubs    | Yes         | Yes     | Yes     | Yes   | Yes         |
-| Create club       | No          | No      | No      | Yes   | Yes         |
-| Invite members    | Club role   | Club role | Yes   | Yes   | Yes         |
-| Remove members    | Club role   | Club role | Yes   | Yes   | Yes         |
-| Assign roles      | Club role   | Club role | Yes   | Yes   | Yes         |
-| Manage roles      | Club role   | Club role | Yes   | Yes   | Yes         |
+| Permission            | STUDENT   | TEACHER   | SPONSOR | ADMIN | SUPER_ADMIN |
+| --------------------- | --------- | --------- | ------- | ----- | ----------- |
+| View all clubs        | Yes       | Yes       | Yes     | Yes   | Yes         |
+| Create club           | No        | No        | No      | Yes   | Yes         |
+| Invite or add members | Club role | Club role | Yes     | Yes   | Yes         |
+| Remove members        | Club role | Club role | Yes     | Yes   | Yes         |
+| Assign roles          | Club role | Club role | Yes     | Yes   | Yes         |
+| Manage roles          | Club role | Club role | Yes     | Yes   | Yes         |
 
 `Club role` means the member's club-owned role explicitly enables that
 permission. `Member` and `Leader` are renameable default role records, not
