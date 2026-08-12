@@ -53,7 +53,6 @@ export function FriendSchedulesPanel() {
               <h2 className="text-sm font-semibold text-foreground">
                 Find classmates
               </h2>
-              <p className="text-xs text-muted-foreground">Search by name.</p>
             </div>
             <InputControl>
               <InputControlAddon>
@@ -221,10 +220,6 @@ export function FriendSchedulesPanel() {
                 <h2 className="text-base font-semibold text-foreground">
                   Friend schedules
                 </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  See what friends are doing now, then open a full comparison
-                  when needed.
-                </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {data?.friends.length ? (

@@ -27,6 +27,7 @@ export function ScheduleWorkspace() {
     handleSaveSchedule,
     isLoading,
     isPublic,
+    isScheduleDirty,
     pendingAction,
     selectedTab,
     setActiveTab,
@@ -76,14 +77,16 @@ export function ScheduleWorkspace() {
                     checked={isPublic}
                     onCheckedChange={setIsPublic}
                   />
-                  <Button
-                    size="sm"
-                    leadingIcon={Save}
-                    loading={pendingAction === "save-schedule"}
-                    onClick={handleSaveSchedule}
-                  >
-                    Save schedule
-                  </Button>
+                  {isScheduleDirty ? (
+                    <Button
+                      size="sm"
+                      leadingIcon={Save}
+                      loading={pendingAction === "save-schedule"}
+                      onClick={handleSaveSchedule}
+                    >
+                      Save schedule
+                    </Button>
+                  ) : null}
                   </div>
                 ) : null}
               </div>

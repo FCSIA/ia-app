@@ -149,7 +149,7 @@ export function ScheduleDayEditor({
       )}
 
       {/* Period slots */}
-      <div className="overflow-hidden rounded-xl border border-border/50 bg-background/45">
+      <div className="overflow-x-auto">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className="bg-muted/45 text-[11px] uppercase tracking-wider">

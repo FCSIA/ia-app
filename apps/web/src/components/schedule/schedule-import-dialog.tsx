@@ -116,29 +116,21 @@ export function ScheduleImportDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" leadingIcon={ScanLine}>
-          Import IC
+        <Button variant="ghost" size="sm" leadingIcon={ImageUp}>
+          Import from Picture
         </Button>
       </DialogTrigger>
       <DialogContent size="lg" className="max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import from Infinite Campus</DialogTitle>
+          <DialogTitle>Import schedule</DialogTitle>
           <DialogDescription>
-            In Infinite Campus, open Schedule, switch to Term view, and upload a clear screenshot.
+            Upload a clear picture displaying a list of your classes. It stays on this device.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
-          <Alert>
-            <ImageUp />
-            <AlertTitle>Your screenshot stays on this device</AlertTitle>
-            <AlertDescription>
-              OCR runs in your browser. The first scan downloads the English recognition files and may take a moment.
-            </AlertDescription>
-          </Alert>
-
           <Field>
-            <FieldLabel htmlFor="ic-schedule-image">Schedule screenshot</FieldLabel>
+            <FieldLabel htmlFor="ic-schedule-image">Picture</FieldLabel>
             <Input
               id="ic-schedule-image"
               type="file"
@@ -151,7 +143,7 @@ export function ScheduleImportDialog({
               }}
             />
             <FieldDescription>
-              Include the period labels and full course names. Crop out grades and other details you do not need.
+              Include period labels and course names.
             </FieldDescription>
           </Field>
 
@@ -176,10 +168,7 @@ export function ScheduleImportDialog({
 
           {rows.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-foreground">Review matches</h3>
-                <p className="text-xs text-muted-foreground">Applied Monday–Thursday</p>
-              </div>
+              <h3 className="text-sm font-semibold text-foreground">Review classes</h3>
               <div className="overflow-hidden rounded-lg border border-border/70">
                 <Table>
                   <TableHeader>
@@ -271,7 +260,7 @@ export function ScheduleImportDialog({
             </Button>
           ) : (
             <Button type="button" leadingIcon={ScanLine} onClick={() => void scan()} disabled={!file || scanning}>
-              Scan screenshot
+              Scan picture
             </Button>
           )}
         </DialogFooter>

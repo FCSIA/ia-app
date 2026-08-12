@@ -32,6 +32,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import type { ScheduleDraftState, ScheduleTabState } from "../_types";
 import {
   buildScheduleRecord,
+  isScheduleDraftDirty,
   moveClassesToFormerLunchPeriod,
   replaceScheduleEntry,
   resolveScheduleTab,
@@ -87,6 +88,9 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     isPublic: false,
     lunchPeriod: "PERIOD_5",
   });
+  const [lastSavedSchedule, setLastSavedSchedule] = useState<
+    Pick<ScheduleDraftState, "entries" | "isPublic" | "lunchPeriod"> | undefined
+  >();
   const [creatingDay, setCreatingDay] = useState<ScheduleWeekday | null>(null);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -112,6 +116,13 @@ function useScheduleWorkspaceValue(initialSearch: string) {
       isAuthenticated ? { limit: 200 } : "skip",
     ) ?? EMPTY_COURSES;
   const sourceSchedule = data?.mySchedule;
+  const sourceScheduleRef = useRef(sourceSchedule);
+  useEffect(() => {
+    if (sourceScheduleRef.current !== sourceSchedule) {
+      sourceScheduleRef.current = sourceSchedule;
+      setLastSavedSchedule(undefined);
+    }
+  }, [sourceSchedule]);
 
   let scheduleEntries = scheduleDraft.entries;
   let isPublic = scheduleDraft.isPublic;
@@ -232,15 +243,16 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   const updateBlock = useMutation(api.schedule.blocks.updateBlock);
   const deleteBlock = useMutation(api.schedule.blocks.deleteBlock);
 
-  const runScheduleAction = async (
+  const runScheduleAction = async <T,>(
     key: string,
-    action: () => Promise<unknown>,
+    action: () => Promise<T>,
     successTitle: string,
   ) => {
     try {
       setPendingAction(key);
-      await action();
+      const result = await action();
       toast({ title: successTitle });
+      return result;
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : "Request failed",
@@ -261,23 +273,31 @@ function useScheduleWorkspaceValue(initialSearch: string) {
       });
       return;
     }
-    void runScheduleAction(
-      "save-schedule",
-      () =>
-        saveSchedule({
-          isPublic,
-          lunchPeriod,
-          entries: scheduleEntries.map(
-            ({ weekday, periodNumber, courseId, className }) => ({
-              weekday,
-              periodNumber,
-              courseId,
-              className,
-            }),
-          ),
-        }),
-      "Schedule saved",
-    );
+    void (async () => {
+      const savedSchedule = await runScheduleAction(
+        "save-schedule",
+        () =>
+          saveSchedule({
+            isPublic,
+            lunchPeriod,
+            entries: scheduleEntries.map(
+              ({ weekday, periodNumber, courseId, className }) => ({
+                weekday,
+                periodNumber,
+                courseId,
+                className,
+              }),
+            ),
+          }),
+        "Schedule saved",
+      );
+      if (!savedSchedule) return;
+      setLastSavedSchedule({
+        entries: savedSchedule.entries,
+        isPublic: savedSchedule.isPublic,
+        lunchPeriod: savedSchedule.lunchPeriod,
+      });
+    })();
   };
 
   const handleBulkSaveAdminBlocks = () => {
@@ -323,6 +343,16 @@ function useScheduleWorkspaceValue(initialSearch: string) {
   const draftSchedule = useMemo(
     () => buildScheduleRecord(scheduleEntries, isPublic, lunchPeriod),
     [isPublic, lunchPeriod, scheduleEntries],
+  );
+  const isScheduleDirty = useMemo(
+    () =>
+      isScheduleDraftDirty({
+        source: lastSavedSchedule ?? sourceSchedule,
+        entries: scheduleEntries,
+        isPublic,
+        lunchPeriod,
+      }),
+    [isPublic, lastSavedSchedule, lunchPeriod, scheduleEntries, sourceSchedule],
   );
   const currentStatus = useMemo(
     () =>
@@ -390,6 +420,7 @@ function useScheduleWorkspaceValue(initialSearch: string) {
     isLoading:
       queriedData === undefined && previousDataRef.current === undefined,
     isPublic,
+    isScheduleDirty,
     lunchPeriod,
     isSearching,
     nextEntry,

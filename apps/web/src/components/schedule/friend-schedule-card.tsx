@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { UserMinus } from "lucide-react";
+import { Lock, UserMinus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { fullName, getCurrentScheduleStatus } from "./schedule-utils";
 import { FriendScheduleDialog } from "./friend-schedule-dialog";
@@ -42,6 +43,45 @@ export function FriendScheduleCard({
       : current.currentBlock?.label || "No live block";
 
   const isPublic = friend.visibility === "PUBLIC" && !!friend.schedule;
+  const isPrivate = friend.visibility === "PRIVATE";
+
+  if (isPrivate) {
+    return (
+      <article
+        className={cn(
+          "flex min-w-0 items-center justify-between gap-3 rounded-xl bg-surface-2 px-4 py-3 shadow-surface-1 sm:px-5",
+          emphasized && "ring-1 ring-primary/60",
+        )}
+      >
+        <p className="truncate text-sm font-semibold text-foreground">
+          {fullName(friend.user)}
+        </p>
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip content="Private">
+            <span
+              role="img"
+              aria-label="Private"
+              className="inline-flex size-7 items-center justify-center text-muted-foreground"
+            >
+              <Lock aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+            </span>
+          </Tooltip>
+          <Tooltip content="Remove friend">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
+              loading={isRemoving}
+              aria-label={`Remove ${fullName(friend.user)}`}
+              onClick={onRemove}
+            >
+              <UserMinus />
+            </Button>
+          </Tooltip>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article

@@ -4,6 +4,9 @@ import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Elevated } from "@/lib/elevated";
+import { SurfaceProvider } from "@/lib/surface-context";
 import { cn } from "@/lib/utils";
 import { ScheduleDatePicker } from "./schedule-date-picker";
 import { findScheduleEntry, formatScheduleTimeRange } from "./schedule-utils";
@@ -38,36 +41,41 @@ export function ResolvedDayPanel({
     lunchPeriod === "PERIOD_4" ? 4 : lunchPeriod === "PERIOD_5" ? 5 : null;
 
   return (
-    <section className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
-      <div className="flex flex-col gap-3 bg-surface-3 px-4 py-4">
+    <Elevated offset={1} className="overflow-hidden rounded-xl">
+      <SurfaceProvider value={3}>
+        <div className="flex flex-col gap-3 bg-surface-3 px-4 py-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           School day
         </p>
 
         <div className="flex min-w-0 items-center gap-1.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Previous day"
-            onClick={() => onDateChange(shiftDateKey(selectedDateKey, -1))}
-          >
-            <ChevronLeft />
-          </Button>
+          <Tooltip content="Previous day">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Previous day"
+              onClick={() => onDateChange(shiftDateKey(selectedDateKey, -1))}
+            >
+              <ChevronLeft />
+            </Button>
+          </Tooltip>
           <ScheduleDatePicker
             dateKey={selectedDateKey}
             onDateChange={onDateChange}
             className="flex-1"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Next day"
-            onClick={() => onDateChange(shiftDateKey(selectedDateKey, 1))}
-          >
-            <ChevronRight />
-          </Button>
+          <Tooltip content="Next day">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Next day"
+              onClick={() => onDateChange(shiftDateKey(selectedDateKey, 1))}
+            >
+              <ChevronRight />
+            </Button>
+          </Tooltip>
         </div>
         {day.isSpecial ? (
           <div className="flex items-center gap-2 px-9">
@@ -79,7 +87,8 @@ export function ResolvedDayPanel({
             </span>
           </div>
         ) : null}
-      </div>
+        </div>
+      </SurfaceProvider>
 
       {lunchPeriod === null ? (
         <Alert className="rounded-none border-x-0">
@@ -152,6 +161,6 @@ export function ResolvedDayPanel({
           {day.omittedPeriods.map((period) => `Period ${period}`).join(", ")}
         </p>
       ) : null}
-    </section>
+    </Elevated>
   );
 }

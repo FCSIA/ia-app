@@ -1,12 +1,12 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { Check, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
+import { Check, ChevronDown, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
 import { useClubId } from '../club-route';
 import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
@@ -18,6 +18,7 @@ import { fullName } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
 import { Button } from '@/components/ui/button';
 import { CardGroup } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -69,6 +70,40 @@ function MemberLimitMeter({ club }: { club: ClubDetail }) {
   );
 }
 
+function OverviewSidebarSection({
+  title,
+  children,
+}: {
+  title: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Collapsible defaultOpen className="group">
+      <section>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center justify-between gap-3 px-4 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {title}
+            </span>
+            <ChevronDown
+              className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
+              aria-hidden
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent
+          className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"
+        >
+          <div className="px-4 pb-4">{children}</div>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
+  );
+}
+
 function RequestsPanel({ club }: { club: ClubDetail }) {
   const clubId = useClubId();
   const { toast } = useToast();
@@ -78,11 +113,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
   if (!club.pendingJoinRequests?.length) return null;
 
   return (
-    <section className="space-y-2 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Pending requests ({club.pendingJoinRequests.length})
-      </h3>
-      <div className="space-y-2">
+    <div className="space-y-2">
         {isFull ? (
           <div className="border-l-2 border-destructive/60 bg-destructive/5 px-3 py-2 text-xs text-destructive">
             This club is full. Pending requests can be declined, but approvals are disabled until a member spot opens.
@@ -129,8 +160,7 @@ function RequestsPanel({ club }: { club: ClubDetail }) {
             </div>
           </div>
         ))}
-      </div>
-    </section>
+    </div>
   );
 }
 
@@ -149,10 +179,7 @@ function RoleRoster({ club }: { club: ClubDetail }) {
   });
 
   return groups.map(({ role, members }) => (
-    <section key={role._id} className="space-y-2 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {role.name}
-      </h3>
+    <OverviewSidebarSection key={role._id} title={role.name}>
       <div className="space-y-1.5">
         {members.map((member) => (
           <div key={member._id} className="flex items-center gap-2.5">
@@ -161,7 +188,7 @@ function RoleRoster({ club }: { club: ClubDetail }) {
           </div>
         ))}
       </div>
-    </section>
+    </OverviewSidebarSection>
   ));
 }
 
@@ -392,15 +419,17 @@ export default function ClubOverviewPage() {
   const rightPane = (
     <ScrollArea className="size-full">
       <div className="divide-y divide-border">
-        <section className="space-y-2 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Members</h3>
+        <OverviewSidebarSection title="Members">
           <MemberLimitMeter club={club} />
-        </section>
+        </OverviewSidebarSection>
 
-        {club.viewer.permissions.manageJoinRequests ? <RequestsPanel club={club} /> : null}
+        {club.viewer.permissions.manageJoinRequests && club.pendingJoinRequests.length > 0 ? (
+          <OverviewSidebarSection title={`Pending requests (${club.pendingJoinRequests.length})`}>
+            <RequestsPanel club={club} />
+          </OverviewSidebarSection>
+        ) : null}
 
-        <section className="space-y-2 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sponsors</h3>
+        <OverviewSidebarSection title="Sponsors">
           <div className="space-y-1.5">
             {club.sponsors.map((sponsor) => (
               <div key={sponsor.userId} className="flex items-center gap-2.5">
@@ -411,7 +440,7 @@ export default function ClubOverviewPage() {
               </div>
             ))}
           </div>
-        </section>
+        </OverviewSidebarSection>
 
         <RoleRoster club={club} />
       </div>

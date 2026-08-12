@@ -93,3 +93,55 @@ export function moveClassesToFormerLunchPeriod(
       : entry,
   );
 }
+
+type ScheduleSnapshot = {
+  entries: StudentScheduleDraftEntry[];
+  isPublic: boolean;
+  lunchPeriod: ScheduleLunchPeriod | null;
+};
+
+function entryKey(entry: StudentScheduleDraftEntry) {
+  return [
+    entry.weekday,
+    entry.periodNumber,
+    entry.courseId ?? '',
+    entry.className.trim(),
+  ].join('\u0000');
+}
+
+/**
+ * A schedule is a set of canonical period assignments, so entry order is not
+ * meaningful. Compare its persisted fields rather than object identity: the
+ * dashboard query recreates entry objects as it refreshes.
+ */
+export function isScheduleDraftDirty({
+  source,
+  entries,
+  isPublic,
+  lunchPeriod,
+}: {
+  source: ScheduleSnapshot | null | undefined;
+  entries: StudentScheduleDraftEntry[];
+  isPublic: boolean;
+  lunchPeriod: ScheduleLunchPeriod | null;
+}) {
+  // A new student begins with the same empty/private/Period 5 state as the
+  // editor. Do not prompt them to save until they make a deliberate change.
+  if (!source) {
+    return (
+      entries.length > 0 || isPublic || lunchPeriod !== 'PERIOD_5'
+    );
+  }
+
+  if (
+    source.isPublic !== isPublic ||
+    source.lunchPeriod !== lunchPeriod ||
+    source.entries.length !== entries.length
+  ) {
+    return true;
+  }
+
+  const savedKeys = source.entries.map(entryKey).sort();
+  const draftKeys = entries.map(entryKey).sort();
+  return savedKeys.some((key, index) => key !== draftKeys[index]);
+}

@@ -1,12 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Utensils } from "lucide-react";
+import { useState } from "react";
 import { ScheduleDayEditor } from "@/components/schedule/schedule-day-editor";
 import { ScheduleImportDialog } from "@/components/schedule/schedule-import-dialog";
 import { ResolvedDayPanel } from "@/components/schedule/resolved-day-panel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
@@ -28,6 +33,7 @@ export function MySchedulePanel() {
   } = useScheduleWorkspace();
 
   const selectedWeekday = data?.resolvedDay.weekday;
+  const [lunchOpen, setLunchOpen] = useState(false);
 
   return (
     <TabPanel value="my" className="mt-5">
@@ -44,73 +50,64 @@ export function MySchedulePanel() {
           </div>
         ) : null}
 
-        <section className="min-w-0 overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
-          <header className="flex flex-col gap-4 bg-surface-3 px-4 py-4 sm:px-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-semibold text-foreground">
-                    {data?.resolvedDay.name ?? "School day"}
-                  </h2>
-                  {selectedDateKey === new Date().toISOString().slice(0, 10) ? (
-                    <Badge size="sm" variant="solid" color="blue">
-                      Today
-                    </Badge>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Choose the class assigned to each canonical period.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Lunch
-                </span>
-                <RadioGroup
-                  value={lunchPeriod ?? ""}
-                  onValueChange={(value) => {
-                    if (value === "PERIOD_4" || value === "PERIOD_5")
-                      setLunchPeriod(value);
-                  }}
-                  orientation="horizontal"
-                  aria-label="Lunch period"
-                >
-                  <RadioItem
-                    value="PERIOD_4"
-                    label="Period 4"
-                    index={0}
-                  />
-                  <RadioItem
-                    value="PERIOD_5"
-                    label="Period 5"
-                    index={1}
-                  />
-                </RadioGroup>
-              </div>
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                Editing the classes used by this calendar date’s canonical periods.
-              </p>
-              <div className="flex items-center gap-2">
-                <ScheduleImportDialog
-                  courses={courses}
-                  onApply={applyImportedSchedule}
-                />
-                <Button
-                  asChild
-                  variant="secondary"
-                  size="sm"
-                  leadingIcon={BookOpen}
-                >
-                  <Link href="/courses">Course catalog</Link>
-                </Button>
-              </div>
+        <section className="min-w-0">
+          <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3">
+            <h2 className="text-base font-semibold text-foreground">Classes</h2>
+            <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+              <Popover open={lunchOpen} onOpenChange={setLunchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leadingIcon={Utensils}
+                    active={lunchOpen}
+                  >
+                    Edit Lunch
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-44 p-1.5">
+                  <RadioGroup
+                    value={lunchPeriod ?? ""}
+                    onValueChange={(value) => {
+                      if (value === "PERIOD_4" || value === "PERIOD_5") {
+                        setLunchPeriod(value);
+                        setLunchOpen(false);
+                      }
+                    }}
+                    className="w-full"
+                    aria-label="Lunch period"
+                  >
+                    <RadioItem
+                      value="PERIOD_4"
+                      label="Period 4"
+                      index={0}
+                      className="w-full"
+                    />
+                    <RadioItem
+                      value="PERIOD_5"
+                      label="Period 5"
+                      index={1}
+                      className="w-full"
+                    />
+                  </RadioGroup>
+                </PopoverContent>
+              </Popover>
+              <ScheduleImportDialog
+                courses={courses}
+                onApply={applyImportedSchedule}
+              />
+              <Button
+                asChild
+                variant="secondary"
+                size="sm"
+                leadingIcon={BookOpen}
+              >
+                <Link href="/courses">Course catalog</Link>
+              </Button>
             </div>
           </header>
 
-          <div className="p-3 sm:p-5">
+          <div className="pt-3">
             {selectedWeekday ? (
               <ScheduleDayEditor
                 weekday={selectedWeekday}
