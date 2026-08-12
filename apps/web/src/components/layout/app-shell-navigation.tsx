@@ -218,7 +218,7 @@ function AppShellMobileNavigation({
           </SheetDescription>
         </VisuallyHidden>
         <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+          <div className="flex h-[calc(4rem+env(safe-area-inset-top))] items-center gap-3 border-b border-sidebar-border px-4 pt-[env(safe-area-inset-top)]">
             <AppLogo className="size-10" />
           </div>
           <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
