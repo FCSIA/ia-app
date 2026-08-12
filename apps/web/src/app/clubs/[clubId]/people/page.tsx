@@ -439,7 +439,7 @@ export default function ClubPeoplePage() {
               <div className="min-w-0 overflow-x-auto pb-1">
                 <TabsList>
                   <TabItem value="all" label={`All ${stats.all}`} />
-                  {club?.roles.map((role) => (
+                  {club?.roles.filter((role) => role.showInDirectory).map((role) => (
                     <TabItem
                       key={role._id}
                       value={`role:${role._id}`}

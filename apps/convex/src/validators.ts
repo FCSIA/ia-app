@@ -142,6 +142,31 @@ export const clubMemberRoleValidator = v.union(
 
 export type ClubMemberRole = Infer<typeof clubMemberRoleValidator>;
 
+export const clubRolePermissionValidator = v.union(
+  v.literal("createAnnouncementDrafts"),
+  v.literal("createChannels"),
+  v.literal("editChannels"),
+  v.literal("deleteChannels"),
+  v.literal("createPolls"),
+  v.literal("pinMessages"),
+  v.literal("moderateMessages"),
+  v.literal("mentionEveryone"),
+  v.literal("postToReadOnlyChannels"),
+  v.literal("viewPrivateChannels"),
+  v.literal("inviteMembers"),
+  v.literal("manageJoinRequests"),
+  v.literal("removeMembers"),
+  v.literal("assignRoles"),
+  v.literal("manageRoles"),
+  v.literal("manageMemberTags"),
+  v.literal("manageClubSettings"),
+  v.literal("manageClubStructure"),
+  v.literal("manageJoinCodes"),
+  v.literal("createEvents"),
+);
+
+export type ClubRolePermission = Infer<typeof clubRolePermissionValidator>;
+
 export const clubRolePermissionsValidator = v.object({
   createAnnouncementDrafts: v.boolean(),
   createChannels: v.boolean(),

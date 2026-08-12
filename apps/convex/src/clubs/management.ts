@@ -6,7 +6,10 @@ import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
 import type { AppRole } from "../../lib/roles";
-import { clubRolePermissionsValidator } from "../validators";
+import {
+  clubRolePermissionValidator,
+  clubRolePermissionsValidator,
+} from "../validators";
 import {
   NO_CLUB_PERMISSIONS,
   createInitialClubRoles,
@@ -289,6 +292,7 @@ const clubRoleValidator = v.object({
   name: v.string(),
   permissions: clubRolePermissionsValidator,
   isDefault: v.boolean(),
+  showInDirectory: v.boolean(),
   position: v.number(),
 });
 
@@ -329,6 +333,7 @@ export const listRoles = query({
         name: role.name,
         permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
         isDefault: role.isDefault ?? false,
+        showInDirectory: role.showInDirectory ?? false,
         position: role.position ?? 0,
       }));
   },
@@ -372,6 +377,7 @@ export const createRole = mutation({
       name,
       permissions: NO_CLUB_PERMISSIONS,
       isDefault: false,
+      showInDirectory: false,
       position: roles.reduce((position, role) => Math.max(position, (role.position ?? -1) + 1), 0),
       createdById: user._id,
       createdAt: now,
@@ -391,6 +397,7 @@ export const createRole = mutation({
       name: role.name,
       permissions: role.permissions ?? NO_CLUB_PERMISSIONS,
       isDefault: role.isDefault ?? false,
+      showInDirectory: role.showInDirectory ?? false,
       position: role.position ?? 0,
     };
   },
@@ -423,6 +430,45 @@ export const renameRole = mutation({
   },
 });
 
+export const setRolePermission = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    roleId: v.id("clubRoles"),
+    permission: clubRolePermissionValidator,
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageRoles) {
+      throw new ConvexError("You do not have permission to manage club roles");
+    }
+    const role = await ctx.db.get(args.roleId);
+    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    await ctx.db.patch(role._id, {
+      permissions: {
+        ...(role.permissions ?? NO_CLUB_PERMISSIONS),
+        [args.permission]: args.enabled,
+      },
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_ROLE_PERMISSIONS_UPDATED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { roleId: role._id },
+    });
+    return null;
+  },
+});
+
+/**
+ * Kept for clients from the previous web release. New code uses the field and
+ * group mutations above so concurrent switch changes cannot send stale role
+ * snapshots back to the server.
+ */
 export const updateRolePermissions = mutation({
   args: {
     clubId: v.id("clubs"),
@@ -445,6 +491,65 @@ export const updateRolePermissions = mutation({
       entityType: "Club",
       entityId: args.clubId,
       meta: { roleId: role._id },
+    });
+    return null;
+  },
+});
+
+export const setRolePermissionGroup = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    roleId: v.id("clubRoles"),
+    permissions: v.array(clubRolePermissionValidator),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageRoles) {
+      throw new ConvexError("You do not have permission to manage club roles");
+    }
+    const role = await ctx.db.get(args.roleId);
+    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    await ctx.db.patch(role._id, {
+      permissions: {
+        ...(role.permissions ?? NO_CLUB_PERMISSIONS),
+        ...Object.fromEntries(
+          args.permissions.map((permission) => [permission, args.enabled]),
+        ),
+      },
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_ROLE_PERMISSIONS_UPDATED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { roleId: role._id, permissions: args.permissions },
+    });
+    return null;
+  },
+});
+
+export const setRoleDirectoryVisibility = mutation({
+  args: { clubId: v.id("clubs"), roleId: v.id("clubRoles"), showInDirectory: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageRoles) {
+      throw new ConvexError("You do not have permission to manage club roles");
+    }
+    const role = await ctx.db.get(args.roleId);
+    if (!role || role.clubId !== args.clubId) throw new ConvexError("Club role not found");
+    await ctx.db.patch(role._id, { showInDirectory: args.showInDirectory, updatedAt: Date.now() });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_ROLE_DIRECTORY_VISIBILITY_UPDATED",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { roleId: role._id, showInDirectory: args.showInDirectory },
     });
     return null;
   },

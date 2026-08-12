@@ -534,6 +534,7 @@ export const schema = defineSchema({
     name: v.string(),
     permissions: v.optional(clubRolePermissionsValidator),
     isDefault: v.optional(v.boolean()),
+    showInDirectory: v.optional(v.boolean()),
     position: v.optional(v.number()),
     createdById: v.id("users"),
     createdAt: v.number(),

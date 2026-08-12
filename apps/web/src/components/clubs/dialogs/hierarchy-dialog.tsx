@@ -37,13 +37,9 @@ import { PeoplePicker } from '@/components/clubs/people-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Field, FieldLabel } from '@/components/ui/field';
+  Field,
+  FieldLabel,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -101,7 +97,6 @@ export function ClubStructureActions({
   canManageStructure?: boolean;
   canDelete?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmationName, setConfirmationName] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -137,7 +132,7 @@ export function ClubStructureActions({
               size="sm"
               variant="tertiary"
               leadingIcon={GitBranch}
-              onClick={() => setOpen(true)}
+              onClick={() => router.push(`/clubs/${club._id}/settings/structure`)}
             >
               Manage structure
             </Button>
@@ -164,7 +159,6 @@ export function ClubStructureActions({
           </div>
         ) : null}
       </div>
-      <HierarchyDialog club={club} open={open} onOpenChange={setOpen} />
       <AlertDialog
         open={deleteOpen}
         onOpenChange={(nextOpen) => {
@@ -215,19 +209,8 @@ export function ClubStructureActions({
   );
 }
 
-function HierarchyDialog({
-  club,
-  open,
-  onOpenChange,
-}: {
-  club: ClubDetail;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const hierarchy = useQuery(
-    api.clubs.hierarchy.list,
-    open ? { clubId: club._id } : 'skip',
-  ) as ClubHierarchy | undefined;
+export function ClubStructureEditor({ club }: { club: ClubDetail }) {
+  const hierarchy = useQuery(api.clubs.hierarchy.list, { clubId: club._id }) as ClubHierarchy | undefined;
   const [selectedId, setSelectedId] = useState<Id<'clubUnits'> | null>(null);
   const [createParentId, setCreateParentId] = useState<Id<'clubUnits'> | null | undefined>();
   const flatUnits = useMemo(() => flattenUnits(hierarchy?.units ?? []), [hierarchy?.units]);
@@ -241,20 +224,9 @@ function HierarchyDialog({
   const selectedUnit = hierarchy?.units.find((unit) => unit._id === selectedId) ?? null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        size="lg"
-        className="flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col overflow-hidden p-0"
-      >
-        <DialogHeader className="border-b px-5 pb-4 pt-5">
-          <DialogTitle>Club structure</DialogTitle>
-          <DialogDescription>
-            Build any mix of programs, teams, houses, rooms, subsystems, or other groups.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col border-b bg-muted/25 md:border-b-0 md:border-r">
+    <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col p-3 sm:p-5">
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border/70 bg-card lg:grid-cols-[21rem_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col border-b bg-muted/25 lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between gap-2 border-b px-3 py-2.5">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{club.name}</p>
@@ -272,7 +244,7 @@ function HierarchyDialog({
                 <Plus className="size-4" />
               </Button>
             </div>
-            <ScrollArea className="max-h-52 flex-1 md:max-h-none">
+            <ScrollArea className="max-h-56 flex-1 lg:max-h-none">
               <div className="space-y-0.5 p-2">
                 {flatUnits.map(({ unit, depth }) => (
                   <Button
@@ -312,7 +284,7 @@ function HierarchyDialog({
           </aside>
 
           <ScrollArea className="min-h-0">
-            <div className="p-4 sm:p-5">
+            <div className="mx-auto w-full max-w-3xl p-4 sm:p-7">
               {createParentId !== undefined ? (
                 <CreateUnitForm
                   clubId={club._id}
@@ -345,9 +317,8 @@ function HierarchyDialog({
               )}
             </div>
           </ScrollArea>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
 

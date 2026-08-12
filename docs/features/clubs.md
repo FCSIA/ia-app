@@ -20,9 +20,10 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 - Collects files and images previously shared in each readable channel.
 - Supports direct invites, bulk CSV invites, open joins, join requests, and join
   codes.
-- Lets club managers create reusable custom leadership titles, assign them to
-  members, and rename them later. Custom titles carry the existing Leader
-  permissions; they do not introduce a separate permission matrix.
+- Lets club managers create reusable roles, assign them to members, rename
+  them, and configure their permissions. Roles can be opted into as a People
+  directory group; ungrouped roles remain visible on member rows without
+  adding another People filter tab.
 - Lets club managers model an arbitrary internal tree of programs, teams,
   houses, rooms, subsystems, committees, or other locally named units.
 - Assigns club members to any number of units as members or leaders, with an
@@ -30,11 +31,11 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 - Supports manager assignment, open self-join, and revocable code/QR self-join
   at each unit.
 
-On web, hierarchy administration is intentionally tucked into the three-dots
-menu in the top-right of `/clubs/[clubId]`. It opens a two-pane tree editor for
-club sponsors, club leaders, and admins; ordinary members do not see the
-management action. Unit QR links return to the club overview and redeem the
-specific unit code after the app confirms the viewer is already a club member.
+On web, hierarchy administration lives at
+`/clubs/[clubId]/settings/structure`, a dedicated two-pane workspace for club
+sponsors, club leaders, and admins; ordinary members do not see the management
+action. Unit QR links return to the club overview and redeem the specific unit
+code after the app confirms the viewer is already a club member.
 - Supports public, private, and member-read-only channels.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
@@ -58,6 +59,9 @@ specific unit code after the app confirms the viewer is already a club member.
 - `api.clubs.management.listRoles`
 - `api.clubs.management.createRole`
 - `api.clubs.management.renameRole`
+- `api.clubs.management.setRolePermission`
+- `api.clubs.management.setRolePermissionGroup`
+- `api.clubs.management.setRoleDirectoryVisibility`
 - `api.clubs.management.removeMember`
 - `api.clubs.management.getMyClubs`
 - `api.clubs.management.listMyInvites`

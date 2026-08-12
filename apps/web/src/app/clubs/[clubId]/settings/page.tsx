@@ -98,12 +98,55 @@ export default function ClubSettingsPage() {
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
   const createRole = useMutation(api.clubs.management.createRole);
   const renameRole = useMutation(api.clubs.management.renameRole);
-  const updateRolePermissions = useMutation(api.clubs.management.updateRolePermissions);
+  const setRolePermission = useMutation(api.clubs.management.setRolePermission)
+    .withOptimisticUpdate((localStore, args) => {
+      const roles = localStore.getQuery(api.clubs.management.listRoles, { clubId: args.clubId });
+      if (roles === undefined) return;
+      localStore.setQuery(api.clubs.management.listRoles, { clubId: args.clubId }, roles.map((role) =>
+        role._id === args.roleId
+          ? { ...role, permissions: { ...role.permissions, [args.permission]: args.enabled } }
+          : role,
+      ));
+    });
+  const setRolePermissionGroup = useMutation(api.clubs.management.setRolePermissionGroup)
+    .withOptimisticUpdate((localStore, args) => {
+      const roles = localStore.getQuery(api.clubs.management.listRoles, { clubId: args.clubId });
+      if (roles === undefined) return;
+      localStore.setQuery(api.clubs.management.listRoles, { clubId: args.clubId }, roles.map((role) =>
+        role._id === args.roleId
+          ? {
+              ...role,
+              permissions: {
+                ...role.permissions,
+                ...Object.fromEntries(args.permissions.map((permission) => [permission, args.enabled])),
+              },
+            }
+          : role,
+      ));
+    });
+  const setRoleDirectoryVisibility = useMutation(api.clubs.management.setRoleDirectoryVisibility)
+    .withOptimisticUpdate((localStore, args) => {
+      const roles = localStore.getQuery(api.clubs.management.listRoles, { clubId: args.clubId });
+      if (roles !== undefined) {
+        localStore.setQuery(api.clubs.management.listRoles, { clubId: args.clubId }, roles.map((role) =>
+          role._id === args.roleId ? { ...role, showInDirectory: args.showInDirectory } : role,
+        ));
+      }
+      const detail = localStore.getQuery(api.clubs.detail.get, { clubId: args.clubId });
+      if (detail) {
+        localStore.setQuery(api.clubs.detail.get, { clubId: args.clubId }, {
+          ...detail,
+          roles: detail.roles.map((role) =>
+            role._id === args.roleId ? { ...role, showInDirectory: args.showInDirectory } : role,
+          ),
+        });
+      }
+    });
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
   const [editor, setEditor] = useState<Editor>(null);
   const [roleName, setRoleName] = useState('');
   const [savingName, setSavingName] = useState(false);
-  const [savingPermission, setSavingPermission] = useState<PermissionKey | null>(null);
+  const [savingPermissionGroup, setSavingPermissionGroup] = useState<string | null>(null);
   const canManageRoles = navigation?.viewer.canManageRoles ?? false;
   const canManageStructure = navigation?.viewer.canManageClubStructure ?? false;
   const canDeleteClub = isSuperAdmin(user);
@@ -155,17 +198,42 @@ export default function ClubSettingsPage() {
 
   const setPermission = async (key: PermissionKey, checked: boolean) => {
     if (!selectedRole) return;
-    setSavingPermission(key);
     try {
-      await updateRolePermissions({
+      await setRolePermission({
         clubId,
         roleId: selectedRole._id,
-        permissions: { ...selectedRole.permissions, [key]: checked },
+        permission: key,
+        enabled: checked,
       });
     } catch (error) {
       toast({ title: error instanceof Error ? error.message : 'Could not update permission', variant: 'destructive' });
+    }
+  };
+
+  const setPermissionGroup = async (group: (typeof permissionGroups)[number]) => {
+    if (!selectedRole) return;
+    const enabled = !group.items.every((item) => selectedRole.permissions[item.key]);
+    setSavingPermissionGroup(group.title);
+    try {
+      await setRolePermissionGroup({
+        clubId,
+        roleId: selectedRole._id,
+        permissions: group.items.map((item) => item.key),
+        enabled,
+      });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Could not update permissions', variant: 'destructive' });
     } finally {
-      setSavingPermission(null);
+      setSavingPermissionGroup(null);
+    }
+  };
+
+  const setDirectoryVisibility = async (showInDirectory: boolean) => {
+    if (!selectedRole) return;
+    try {
+      await setRoleDirectoryVisibility({ clubId, roleId: selectedRole._id, showInDirectory });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Could not update People group', variant: 'destructive' });
     }
   };
 
@@ -231,12 +299,39 @@ export default function ClubSettingsPage() {
                 </Button>
               </div>
 
-              <div className="divide-y divide-border/70 border-y border-border/70">
+              <div className="flex items-center justify-between gap-4 border-y border-border/70 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">People group</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Show {selectedRole.name} as a filter in People. Hidden roles still appear on member profiles.
+                  </p>
+                </div>
+                <Switch
+                  aria-label={`Show ${selectedRole.name} as a People group`}
+                  checked={selectedRole.showInDirectory}
+                  onCheckedChange={(checked) => void setDirectoryVisibility(checked)}
+                />
+              </div>
+
+              <div className="divide-y divide-border/70">
                 {permissionGroups.map((group) => (
                   <section key={group.title} className="grid gap-4 py-5 md:grid-cols-[13rem_1fr] md:gap-8">
-                    <div>
+                    <div className="flex items-start justify-between gap-3 md:block">
+                      <div>
                       <h4 className="text-sm font-semibold text-foreground">{group.title}</h4>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{group.description}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 md:mt-2"
+                        disabled={savingPermissionGroup !== null}
+                        loading={savingPermissionGroup === group.title}
+                        onClick={() => void setPermissionGroup(group)}
+                      >
+                        {group.items.every((item) => selectedRole.permissions[item.key]) ? 'Turn off all' : 'Turn on all'}
+                      </Button>
                     </div>
                     <div className="divide-y divide-border/60">
                       {group.items.map((item) => (
@@ -248,7 +343,6 @@ export default function ClubSettingsPage() {
                           <Switch
                             aria-label={item.label}
                             checked={selectedRole.permissions[item.key]}
-                            disabled={savingPermission !== null}
                             onCheckedChange={(checked) => void setPermission(item.key, checked)}
                           />
                         </div>
