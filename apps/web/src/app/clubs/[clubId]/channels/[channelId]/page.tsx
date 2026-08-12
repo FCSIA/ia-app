@@ -1429,7 +1429,7 @@ export default function ClubChannelPage({
         title: 'Thread',
         onClose: () => setSelectedThreadId(null),
       }}
-      contentClassName="relative flex flex-col bg-card"
+      contentClassName="relative flex h-full min-h-0 flex-col bg-card"
       scrollOwner="content"
       channelSearch={{
         channelName: channel.name,
@@ -1453,7 +1453,7 @@ export default function ClubChannelPage({
           </div>
         </div>
 
-        <MessageScroller className="flex-1">
+        <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
             <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-2 pb-24">
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (

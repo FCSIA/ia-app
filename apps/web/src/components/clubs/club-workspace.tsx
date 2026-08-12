@@ -283,7 +283,7 @@ export function ClubWorkspace({
   );
 
   const workspaceContent = (
-    <div className="flex min-h-0 min-w-0 flex-1">
+    <div className="flex h-full min-h-0 min-w-0 flex-1">
       {rightPane && resizableRightPane && isResizablePaneViewport ? (
         <ResizablePanelGroup
           id="club-channel-thread-layout"
@@ -426,7 +426,7 @@ export function ClubWorkspace({
               "club-navigation-panel": 20,
               "club-workspace-main-panel": 80,
             }}
-            className="min-w-0"
+            className="h-full min-h-0 min-w-0"
           >
             <ResizablePanel
               id="club-navigation-panel"
