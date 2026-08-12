@@ -159,6 +159,7 @@ export function ClubWorkspace({
   const clubId = useClubId();
   const user = useCurrentUser();
   const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
+  const [isResizableNavigationViewport, setIsResizableNavigationViewport] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
 
   useEffect(() => {
@@ -171,6 +172,15 @@ export function ClubWorkspace({
     mediaQuery.addEventListener("change", syncViewport);
     return () => mediaQuery.removeEventListener("change", syncViewport);
   }, [resizableRightPane]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const syncViewport = () => setIsResizableNavigationViewport(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => mediaQuery.removeEventListener("change", syncViewport);
+  }, []);
 
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
@@ -246,6 +256,108 @@ export function ClubWorkspace({
     </div>
   );
 
+  const desktopNavigation = (
+    <ClubNavigationPanel
+      density="desktop"
+      clubId={clubId}
+      viewerId={user?._id ?? null}
+      club={club}
+      myClubs={myClubs}
+      showClubPicker={showClubPicker}
+      nav={nav}
+      pathname={pathname}
+      channels={channels}
+      units={navigation?.units ?? []}
+      activeChannelId={activeChannelId}
+      canCreateChannels={canCreateChannels}
+      canEditChannels={canEditChannels}
+      canDeleteChannels={canDeleteChannels}
+      onDeleteChannel={(channel) => {
+        if (confirm(`Delete #${channel.name}?`)) {
+          void deleteChannel({ channelId: channel._id }).then(() =>
+            toast({ title: "Channel deleted" }),
+          );
+        }
+      }}
+    />
+  );
+
+  const workspaceContent = (
+    <div className="flex min-h-0 min-w-0 flex-1">
+      {rightPane && resizableRightPane && isResizablePaneViewport ? (
+        <ResizablePanelGroup
+          id="club-channel-thread-layout"
+          orientation="horizontal"
+          defaultLayout={{
+            "club-channel-main-panel": 68,
+            "club-channel-thread-panel": 32,
+          }}
+          className="min-w-0"
+        >
+          <ResizablePanel
+            id="club-channel-main-panel"
+            defaultSize="68%"
+            minSize="55%"
+            style={{ overflow: "hidden" }}
+          >
+            {scrollOwner === "content" ? (
+              <div
+                className={cn(
+                  "h-full min-h-0 min-w-0 overflow-hidden",
+                  contentClassName,
+                )}
+              >
+                {children}
+              </div>
+            ) : (
+              <ScrollArea
+                className="h-full min-h-0 min-w-0"
+                viewportClassName={contentClassName}
+              >
+                {children}
+              </ScrollArea>
+            )}
+          </ResizablePanel>
+          <ResizableHandle id="club-channel-thread-handle" withHandle />
+          <ResizablePanel
+            id="club-channel-thread-panel"
+            defaultSize="32%"
+            minSize="18rem"
+            maxSize="45%"
+            style={{ overflow: "hidden" }}
+          >
+            <aside className="h-full min-h-0 overflow-hidden">{rightPane}</aside>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        <>
+          {scrollOwner === "content" ? (
+            <div
+              className={cn(
+                "min-h-0 min-w-0 flex-1 overflow-hidden",
+                contentClassName,
+              )}
+            >
+              {children}
+            </div>
+          ) : (
+            <ScrollArea
+              className="min-h-0 min-w-0 flex-1"
+              viewportClassName={contentClassName}
+            >
+              {children}
+            </ScrollArea>
+          )}
+          {rightPane ? (
+            <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
+              {rightPane}
+            </aside>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+
   return (
     <AppShell
       headerSlot={headerSlot}
@@ -255,32 +367,6 @@ export function ClubWorkspace({
       onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
-          <ClubNavigationPanel
-            density="desktop"
-            clubId={clubId}
-            viewerId={user?._id ?? null}
-            club={club}
-            myClubs={myClubs}
-            showClubPicker={showClubPicker}
-            nav={nav}
-            pathname={pathname}
-            channels={channels}
-            units={navigation?.units ?? []}
-            activeChannelId={activeChannelId}
-            canCreateChannels={canCreateChannels}
-            canEditChannels={canEditChannels}
-            canDeleteChannels={canDeleteChannels}
-            onDeleteChannel={(channel) => {
-              if (confirm(`Delete #${channel.name}?`)) {
-                void deleteChannel({ channelId: channel._id }).then(() =>
-                  toast({ title: "Channel deleted" }),
-                );
-              }
-            }}
-          />
-        </aside>
-
         <Sheet open={mobileNavigationOpen} onOpenChange={setMobileNavigationOpen}>
           <SheetContent side="left" className="w-72 border-r bg-card p-0">
             <SheetTitle className="sr-only">Club navigation</SheetTitle>
@@ -332,79 +418,43 @@ export function ClubWorkspace({
           </SheetContent>
         </Sheet>
 
-        <div className="flex min-h-0 min-w-0 flex-1">
-          {rightPane && resizableRightPane && isResizablePaneViewport ? (
-            <ResizablePanelGroup
-              id="club-channel-thread-layout"
-              orientation="horizontal"
-              defaultLayout={{
-                "club-channel-main-panel": 68,
-                "club-channel-thread-panel": 32,
-              }}
-              className="min-w-0"
+        {isResizableNavigationViewport ? (
+          <ResizablePanelGroup
+            id="club-workspace-layout"
+            orientation="horizontal"
+            defaultLayout={{
+              "club-navigation-panel": 20,
+              "club-workspace-main-panel": 80,
+            }}
+            className="min-w-0"
+          >
+            <ResizablePanel
+              id="club-navigation-panel"
+              defaultSize="20%"
+              minSize="13rem"
+              maxSize="32%"
+              style={{ overflow: "hidden" }}
             >
-              <ResizablePanel
-                id="club-channel-main-panel"
-                defaultSize="68%"
-                minSize="55%"
-                style={{ overflow: "hidden" }}
-              >
-                {scrollOwner === "content" ? (
-                  <div
-                    className={cn(
-                      "h-full min-h-0 min-w-0 overflow-hidden",
-                      contentClassName,
-                    )}
-                  >
-                    {children}
-                  </div>
-                ) : (
-                  <ScrollArea
-                    className="h-full min-h-0 min-w-0"
-                    viewportClassName={contentClassName}
-                  >
-                    {children}
-                  </ScrollArea>
-                )}
-              </ResizablePanel>
-              <ResizableHandle id="club-channel-thread-handle" withHandle />
-              <ResizablePanel
-                id="club-channel-thread-panel"
-                defaultSize="32%"
-                minSize="18rem"
-                maxSize="45%"
-                style={{ overflow: "hidden" }}
-              >
-                <aside className="h-full min-h-0 overflow-hidden">{rightPane}</aside>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          ) : (
-            <>
-              {scrollOwner === "content" ? (
-                <div
-                  className={cn(
-                    "min-h-0 min-w-0 flex-1 overflow-hidden",
-                    contentClassName,
-                  )}
-                >
-                  {children}
-                </div>
-              ) : (
-                <ScrollArea
-                  className="min-h-0 min-w-0 flex-1"
-                  viewportClassName={contentClassName}
-                >
-                  {children}
-                </ScrollArea>
-              )}
-              {rightPane ? (
-                <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
-                  {rightPane}
-                </aside>
-              ) : null}
-            </>
-          )}
-        </div>
+              <aside className="h-full min-h-0 bg-muted/45">{desktopNavigation}</aside>
+            </ResizablePanel>
+            <ResizableHandle id="club-navigation-handle" withHandle />
+            <ResizablePanel
+              id="club-workspace-main-panel"
+              defaultSize="80%"
+              minSize="0"
+              style={{ overflow: "hidden" }}
+            >
+              {workspaceContent}
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <>
+            <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
+              {desktopNavigation}
+            </aside>
+            {workspaceContent}
+          </>
+        )}
       </div>
     </AppShell>
   );
@@ -668,8 +718,8 @@ function ChannelRow({
     : "hidden group-hover:block group-focus-within:block";
   return <Card href={`/clubs/${clubId}/channels/${channel._id}`} onClick={() => onNavigate?.()} label={`Open #${channel.name}`} selected={active} className={cn("group gap-1.5 rounded-md px-2 text-sm font-medium", rowClassName, active ? "text-foreground" : "text-muted-foreground")}>
     {onToggle ? <div className="relative z-30 flex shrink-0"><Button type="button" variant="ghost" size="icon-sm" aria-label={`${expanded ? "Collapse" : "Expand"} nested channels in ${channel.name}`} aria-expanded={expanded} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onToggle(); }} className="size-6 text-muted-foreground hover:text-foreground"><ChevronRight className={cn("size-3.5 transition-transform motion-reduce:transition-none", expanded && "rotate-90")} /></Button></div> : null}
-    <ClubChannelVisibilityIcon visibility={channel.visibility} className={cn("size-4 shrink-0", visibilityClassName, active ? "text-foreground/70" : "text-muted-foreground")} />
     <span className="min-w-0 flex-1 break-words whitespace-normal group-hover:truncate group-focus-within:truncate">{channel.name}</span>
+    <ClubChannelVisibilityIcon visibility={channel.visibility} className={cn("size-4 shrink-0", visibilityClassName, active ? "text-foreground/70" : "text-muted-foreground")} />
     {canEditChannels || canDeleteChannels ? <div className={cn("relative z-30 shrink-0 items-center gap-0.5", secondaryControlClassName)}><ChannelActionsTrigger clubId={clubId} channel={channel} canEdit={canEditChannels} canDelete={canDeleteChannels} onDeleteChannel={onDeleteChannel} /></div> : null}
   </Card>;
 }
