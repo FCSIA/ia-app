@@ -34,6 +34,52 @@ const configuredTrustedOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter((origin): origin is string => Boolean(origin));
 
+const configuredSiteHostname = (() => {
+  try {
+    return new URL(siteUrl).hostname;
+  } catch {
+    return "localhost";
+  }
+})();
+
+function hostFromEnvUrl(value?: string) {
+  if (!value) return null;
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return null;
+  }
+}
+
+export const configuredAuthHostnames = Array.from(
+  new Set(
+    [
+      configuredSiteHostname,
+      hostFromEnvUrl(process.env.CONVEX_SITE_URL),
+      hostFromEnvUrl(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
+      process.env.MOBILE_CONVEX_HOST,
+      "localhost",
+      "127.0.0.1",
+      "10.0.2.2",
+      "ia-app-alpha.vercel.app",
+    ].filter((host): host is string => Boolean(host)),
+  ),
+);
+
+// Auth requests reach Convex through the web app's /api/auth proxy, so the
+// public host the browser used only survives in the forwarded headers that the
+// Convex Better Auth component restores onto `x-forwarded-host`.
+//
+// This MUST stay a dynamic config. Better Auth short-circuits on a static
+// string (`getBaseURL`: `if (url) return withPath(url, path)`), which ignores
+// the forwarded host and pins every deployment — prod, Vercel previews,
+// localhost and the Expo clients — to one hardcoded origin.
+export const authBaseURL: BetterAuthOptions["baseURL"] = {
+  allowedHosts: configuredAuthHostnames,
+  fallback: siteUrl,
+  protocol: "auto",
+};
+
 function isTrustedVercelPreviewOrigin(origin: string) {
   try {
     const { hostname, protocol } = new URL(origin);
@@ -93,10 +139,7 @@ export const authComponent = createClient<DataModel, typeof authSchema>(
 export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
   ({
     secret: process.env.BETTER_AUTH_SECRET,
-    // Auth requests are proxied through the configured public web origin.
-    // A static base URL avoids dynamic-host resolution rejecting the original
-    // Vercel host after the request is forwarded to the Convex Site endpoint.
-    baseURL: siteUrl,
+    baseURL: authBaseURL,
     basePath: "/api/auth",
     trustedOrigins,
     database: authComponent.adapter(ctx),
