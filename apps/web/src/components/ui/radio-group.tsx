@@ -419,8 +419,8 @@ const RadioItem = forwardRef<HTMLDivElement, RadioItemProps>(
             className={cn(
               "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               isSelected || isActive
-                ? "text-foreground"
-                : "text-muted-foreground"
+                ? "border-foreground"
+                : "border-muted-foreground"
             )}
             style={{
               fontVariationSettings: isSelected
