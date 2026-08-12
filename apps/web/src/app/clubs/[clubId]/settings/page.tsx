@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { Pencil, Plus, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useClubId } from "../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
@@ -290,6 +291,7 @@ export default function ClubSettingsPage() {
   >(null);
   const canManageRoles = navigation?.viewer.canManageRoles ?? false;
   const canManageStructure = navigation?.viewer.canManageClubStructure ?? false;
+  const canManageChannels = navigation?.viewer.canManageChannels ?? false;
   const canDeleteClub = isSuperAdmin(user);
 
   useEffect(() => {
@@ -417,6 +419,7 @@ export default function ClubSettingsPage() {
     navigation !== undefined &&
     !canManageRoles &&
     !canManageStructure &&
+    !canManageChannels &&
     !canDeleteClub
   ) {
     return (
@@ -457,6 +460,19 @@ export default function ClubSettingsPage() {
                 </CardContent>
               </Card>
             </Elevated>
+          ) : null}
+
+          {canManageChannels ? (
+            <Link
+              href={`/clubs/${clubId}/settings/channels`}
+              className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover"
+            >
+              <div>
+                <p className="text-sm font-semibold text-foreground">Channels</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Organize audiences, posting rights, and House/Room placement.</p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
           ) : null}
 
           {canManageRoles ? (

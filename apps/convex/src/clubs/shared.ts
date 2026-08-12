@@ -2,7 +2,8 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
-import { canReadChannel, getViewerContext } from "./access";
+import { getViewerContext } from "./access";
+import { getChannelAccess } from "./channelAccess";
 import { toClubUserRef } from "./serialize";
 import { boundedSharedMessagePageSize } from "./sharedPagination";
 import { appRoleValidator } from "../validators";
@@ -59,7 +60,7 @@ export const listChannelAttachments = query({
         q.eq("channelId", channel._id).eq("userId", user._id),
       )
       .first();
-    if (!canReadChannel({ ...channel, memberships: membership ? [membership] : [] }, context, user._id)) {
+    if (!(await getChannelAccess(ctx, channel, context, user._id)).canView) {
       return emptyPage(args.paginationOpts.cursor);
     }
 

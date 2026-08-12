@@ -2,12 +2,8 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
-import {
-  canPostInChannel,
-  canReadChannel,
-  getChannelViewerContext,
-  getViewerContext,
-} from "./access";
+import { getChannelViewerContext, getViewerContext } from "./access";
+import { getChannelAccess } from "./channelAccess";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 import { clubRolePermissionsValidator } from "../validators";
 import {
@@ -109,10 +105,18 @@ const workspaceNavigationValidator = v.union(
       canCreateChannels: v.boolean(),
       canEditChannels: v.boolean(),
       canDeleteChannels: v.boolean(),
+      canManageChannels: v.boolean(),
       canManageRoles: v.boolean(),
       canManageClubStructure: v.boolean(),
     }),
     channels: v.array(workspaceClubChannelValidator),
+    units: v.array(v.object({
+      _id: v.id("clubUnits"),
+      parentUnitId: v.union(v.id("clubUnits"), v.null()),
+      name: v.string(),
+      kind: v.union(v.string(), v.null()),
+      position: v.number(),
+    })),
     myClubs: v.array(
       v.object({
         _id: v.id("clubs"),
@@ -362,10 +366,17 @@ export const getWorkspaceNavigation = query({
             }
           }
           const channelWithMemberships = { ...channel, memberships };
-          if (!canReadChannel(channelWithMemberships, context, user._id)) return null;
+          const access = await getChannelAccess(ctx, channel, context, user._id);
+          if (!access.canView) return null;
           return {
             _id: channel._id,
             clubId: channel.clubId,
+            ownerUnitId: channel.ownerUnitId,
+            audienceKind: channel.audienceKind,
+            audienceUnitId: channel.audienceUnitId,
+            includeDescendants: channel.includeDescendants,
+            includeAncestorLeaders: channel.includeAncestorLeaders,
+            postingPolicy: channel.postingPolicy,
             name: channel.name,
             description: channel.description,
             visibility: channel.visibility,
@@ -373,13 +384,13 @@ export const getWorkspaceNavigation = query({
             createdAt: channel.createdAt,
             updatedAt: channel.updatedAt,
             memberships: memberships.map((membership) => ({ userId: membership.userId })),
-            viewerCanPost: canPostInChannel(channelWithMemberships, context, user._id),
+            viewerCanPost: access.canPost,
           };
         }),
       )
     ).filter((channel): channel is NonNullable<typeof channel> => !!channel);
 
-    const [memberRows, sponsorRows] = await Promise.all([
+    const [memberRows, sponsorRows, unitRows] = await Promise.all([
       ctx.db
         .query("clubMembers")
         .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
@@ -388,6 +399,9 @@ export const getWorkspaceNavigation = query({
         .query("clubSponsors")
         .withIndex("by_userId_and_clubId", (q) => q.eq("userId", user._id))
         .collect(),
+      ctx.db.query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) => q.eq("clubId", club._id).eq("isActive", true))
+        .take(250),
     ]);
     const clubRoles = new Map([
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
@@ -409,10 +423,18 @@ export const getWorkspaceNavigation = query({
         canCreateChannels: context.permissions.createChannels,
         canEditChannels: context.permissions.editChannels,
         canDeleteChannels: context.permissions.deleteChannels,
+        canManageChannels: context.canManageChannels,
         canManageRoles: context.permissions.manageRoles,
         canManageClubStructure: context.permissions.manageClubStructure,
       },
       channels,
+      units: unitRows.map((unit) => ({
+        _id: unit._id,
+        parentUnitId: unit.parentUnitId ?? null,
+        name: unit.name,
+        kind: unit.kind ?? null,
+        position: unit.position,
+      })),
       myClubs,
     };
   },

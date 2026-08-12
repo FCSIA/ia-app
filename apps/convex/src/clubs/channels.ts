@@ -14,13 +14,12 @@ import {
   getClubContext,
   getChannelViewerContext,
   getViewerContext,
-  canReadChannel,
-  canPostInChannel,
   type ClubContext,
 } from "./access";
+import { getChannelAccess, getChannelAudienceUserIds } from "./channelAccess";
 import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import type { Doc, Id } from "../_generated/dataModel";
-import { channelAudience, deliverMany, deliverNotification } from "../notifications/delivery";
+import { deliverMany, deliverNotification } from "../notifications/delivery";
 import {
   MAX_CHANNEL_MESSAGE_WINDOW,
   MAX_THREAD_REPLIES,
@@ -327,11 +326,12 @@ async function assertMessageAccess(
 
   const context = await getClubContext(ctx, channel.clubId, user);
   const memberships = await getChannelMemberships(ctx, channel._id);
-  if (!canReadChannel({ ...channel, memberships }, context, user._id)) {
+  const access = await getChannelAccess(ctx, channel, context, user._id);
+  if (!access.canView) {
     throw new ConvexError("Not authorized");
   }
 
-  return { message, channel, context, memberships };
+  return { message, channel, context, memberships, access };
 }
 
 export const list = query({
@@ -352,9 +352,8 @@ export const list = query({
 
     const filtered = [];
     for (const channel of channels) {
-      const memberships = await getChannelMemberships(ctx, channel._id);
-
-      if (canReadChannel({ ...channel, memberships }, context, user._id)) {
+      const access = await getChannelAccess(ctx, channel, context, user._id);
+      if (access.canView) {
         filtered.push(channel);
       }
     }
@@ -369,6 +368,13 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     visibility: v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("MEMBER_READONLY")),
+    ownerUnitId: v.optional(v.id("clubUnits")),
+    audienceKind: v.optional(v.union(v.literal("CLUB"), v.literal("UNIT_MEMBERS"), v.literal("UNIT_LEADERS"), v.literal("CUSTOM"))),
+    audienceUnitId: v.optional(v.id("clubUnits")),
+    includeDescendants: v.optional(v.boolean()),
+    includeAncestorLeaders: v.optional(v.boolean()),
+    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("UNIT_LEADERS"), v.literal("CLUB_MANAGERS"))),
+    memberIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -378,8 +384,33 @@ export const create = mutation({
       throw new ConvexError("You do not have permission to create channels");
     }
 
+    const audienceKind = args.audienceKind ?? (args.visibility === "PRIVATE" ? "CUSTOM" : "CLUB");
+    const postingPolicy = args.postingPolicy ?? (args.visibility === "MEMBER_READONLY" ? "CLUB_MANAGERS" : "AUDIENCE");
+    if ((audienceKind === "UNIT_MEMBERS" || audienceKind === "UNIT_LEADERS") && !args.audienceUnitId) {
+      throw new ConvexError("Choose a unit for this channel audience");
+    }
+    for (const unitId of [args.ownerUnitId, args.audienceUnitId]) {
+      if (!unitId) continue;
+      const unit = await ctx.db.get(unitId);
+      if (!unit || unit.clubId !== args.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
+    }
+    const memberIds = [...new Set(args.memberIds ?? [])];
+    if (audienceKind === "CUSTOM") {
+      for (const memberId of memberIds) {
+        const membership = await ctx.db.query("clubMembers")
+          .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId).eq("userId", memberId))
+          .unique();
+        if (!membership) throw new ConvexError("Channel members must belong to the club");
+      }
+    }
     const channelId = await ctx.db.insert("clubChannels", {
       clubId: args.clubId,
+      ownerUnitId: args.ownerUnitId,
+      audienceKind,
+      audienceUnitId: args.audienceUnitId,
+      includeDescendants: args.includeDescendants ?? false,
+      includeAncestorLeaders: args.includeAncestorLeaders ?? false,
+      postingPolicy,
       name: args.name,
       description: args.description,
       visibility: args.visibility,
@@ -388,12 +419,14 @@ export const create = mutation({
       updatedAt: Date.now(),
     });
 
-    if (args.visibility === "PRIVATE") {
-      await ctx.db.insert("clubChannelMemberships", {
-        channelId,
-        userId: user._id,
-        createdAt: Date.now(),
-      });
+    if (audienceKind === "CUSTOM") {
+      for (const memberId of new Set([...memberIds, user._id])) {
+        await ctx.db.insert("clubChannelMemberships", {
+          channelId,
+          userId: memberId,
+          createdAt: Date.now(),
+        });
+      }
     }
 
     await ctx.db.insert("auditEvents", {
@@ -439,8 +472,8 @@ export const postMessage = mutation({
 
     const context = await getClubContext(ctx, channel.clubId, user);
     const memberships = await getChannelMemberships(ctx, channel._id);
-
-    if (!canPostInChannel({ ...channel, memberships }, context, user._id)) {
+    const access = await getChannelAccess(ctx, channel, context, user._id);
+    if (!access.canPost) {
       throw new ConvexError("Cannot post in this channel");
     }
 
@@ -497,7 +530,7 @@ export const postMessage = mutation({
         channel,
         context,
         tokens: mentionTokens,
-        channelAudienceIds: await channelAudience(ctx, channel),
+        channelAudienceIds: await getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_RECIPIENTS),
         authorId: user._id,
       })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
@@ -586,7 +619,7 @@ export const deliverPostedMessageNotifications = internalMutation({
       messageId: message._id,
     };
     const preview = message.body || "New channel message.";
-    const audienceIds = await channelAudience(ctx, channel);
+    const audienceIds = await getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_RECIPIENTS);
 
     await deliverMany(
       ctx,
@@ -985,8 +1018,9 @@ async function getReadableChannel(
     )
     .unique();
   const memberships = viewerMembership ? [viewerMembership] : [];
-  if (!canReadChannel({ ...channel, memberships }, context, user._id)) return null;
-  return { channel, context, memberships };
+  const access = await getChannelAccess(ctx, channel, context, user._id);
+  if (!access.canView) return null;
+  return { channel, context, memberships, access };
 }
 
 const channelContextMemberValidator = v.object({
@@ -1027,18 +1061,14 @@ export const getConversationContext = query({
     const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
     if (!readable) return null;
 
-    const { channel, context, memberships } = readable;
+    const { channel, context, access } = readable;
     return {
       clubName: context.club.name,
       channel: {
         name: channel.name,
         description: channel.description ?? null,
         visibility: channel.visibility,
-        viewerCanPost: canPostInChannel(
-          { ...channel, memberships },
-          context,
-          user._id,
-        ),
+        viewerCanPost: access.canPost,
       },
       canCreatePolls: context.permissions.createPolls,
       canPinMessages: context.permissions.pinMessages,
@@ -1314,6 +1344,13 @@ export const update = mutation({
     visibility: v.optional(
       v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("MEMBER_READONLY")),
     ),
+    ownerUnitId: v.optional(v.id("clubUnits")),
+    audienceKind: v.optional(v.union(v.literal("CLUB"), v.literal("UNIT_MEMBERS"), v.literal("UNIT_LEADERS"), v.literal("CUSTOM"))),
+    audienceUnitId: v.optional(v.id("clubUnits")),
+    includeDescendants: v.optional(v.boolean()),
+    includeAncestorLeaders: v.optional(v.boolean()),
+    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("UNIT_LEADERS"), v.literal("CLUB_MANAGERS"))),
+    memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -1331,8 +1368,40 @@ export const update = mutation({
       }
     }
 
-    const { channelId, ...updates } = args;
-    await ctx.db.patch(channelId, { ...updates, updatedAt: Date.now() });
+    const audienceKind = args.audienceKind ?? channel.audienceKind;
+    const audienceUnitId = args.audienceUnitId ?? channel.audienceUnitId;
+    if ((audienceKind === "UNIT_MEMBERS" || audienceKind === "UNIT_LEADERS") && !audienceUnitId) {
+      throw new ConvexError("Choose a unit for this channel audience");
+    }
+    for (const unitId of [args.ownerUnitId === undefined ? channel.ownerUnitId : args.ownerUnitId, audienceUnitId]) {
+      if (!unitId) continue;
+      const unit = await ctx.db.get(unitId);
+      if (!unit || unit.clubId !== channel.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
+    }
+    if (args.memberIds !== undefined) {
+      const memberIds = [...new Set(args.memberIds)];
+      for (const memberId of memberIds) {
+        const membership = await ctx.db.query("clubMembers")
+          .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", channel.clubId).eq("userId", memberId))
+          .unique();
+        if (!membership) throw new ConvexError("Channel members must belong to the club");
+      }
+      const existing = await getChannelMemberships(ctx, channel._id);
+      const wanted = new Set([...memberIds, user._id]);
+      for (const row of existing) if (!wanted.has(row.userId)) await ctx.db.delete(row._id);
+      for (const memberId of wanted) {
+        if (!existing.some((row) => row.userId === memberId)) {
+          await ctx.db.insert("clubChannelMemberships", { channelId: channel._id, userId: memberId, createdAt: Date.now() });
+        }
+      }
+    }
+    const { channelId, memberIds: _memberIds, ownerUnitId, audienceUnitId: _audienceUnitId, ...updates } = args;
+    await ctx.db.patch(channelId, {
+      ...updates,
+      ...(ownerUnitId === undefined ? {} : { ownerUnitId }),
+      ...(args.audienceUnitId === undefined ? {} : { audienceUnitId }),
+      updatedAt: Date.now(),
+    });
     if (args.visibility && args.visibility !== channel.visibility) {
       await logAuditEvent(ctx, { actorId: user._id, action: "club.channel_visibility_changed", entityType: "clubChannel", entityId: channel._id, meta: { from: channel.visibility, to: args.visibility, clubId: channel.clubId } });
     }

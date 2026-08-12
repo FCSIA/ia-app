@@ -17,6 +17,8 @@ import {
   clubRolePermissionsValidator,
   inviteStatusValidator,
   clubChannelVisibilityValidator,
+  clubChannelAudienceKindValidator,
+  clubChannelPostingPolicyValidator,
   clubChannelPollOptionValidator,
   clubJoinPolicyValidator,
   clubUnitJoinPolicyValidator,
@@ -639,13 +641,23 @@ export const schema = defineSchema({
 
   clubChannels: defineTable({
     clubId: v.id("clubs"),
+    // Optional while existing channels are widened into policy-backed rows.
+    // `ownerUnitId` controls navigation placement; audience controls access.
+    ownerUnitId: v.optional(v.id("clubUnits")),
+    audienceKind: v.optional(clubChannelAudienceKindValidator),
+    audienceUnitId: v.optional(v.id("clubUnits")),
+    includeDescendants: v.optional(v.boolean()),
+    includeAncestorLeaders: v.optional(v.boolean()),
+    postingPolicy: v.optional(clubChannelPostingPolicyValidator),
     name: v.string(),
     description: v.optional(v.string()),
     visibility: clubChannelVisibilityValidator,
     createdById: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_clubId_and_visibility", ["clubId", "visibility"]),
+  })
+    .index("by_clubId_and_visibility", ["clubId", "visibility"])
+    .index("by_clubId_and_ownerUnitId", ["clubId", "ownerUnitId"]),
 
   clubChannelMemberships: defineTable({
     channelId: v.id("clubChannels"),

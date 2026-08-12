@@ -210,6 +210,28 @@ export type ClubChannelVisibility = Infer<
   typeof clubChannelVisibilityValidator
 >;
 
+/**
+ * A channel's audience is intentionally narrower than a general ACL. It can
+ * address the whole club, a unit (optionally including its descendants), the
+ * leaders of a unit, or an explicitly selected group of people.
+ */
+export const clubChannelAudienceKindValidator = v.union(
+  v.literal("CLUB"),
+  v.literal("UNIT_MEMBERS"),
+  v.literal("UNIT_LEADERS"),
+  v.literal("CUSTOM"),
+);
+
+export type ClubChannelAudienceKind = Infer<typeof clubChannelAudienceKindValidator>;
+
+export const clubChannelPostingPolicyValidator = v.union(
+  v.literal("AUDIENCE"),
+  v.literal("UNIT_LEADERS"),
+  v.literal("CLUB_MANAGERS"),
+);
+
+export type ClubChannelPostingPolicy = Infer<typeof clubChannelPostingPolicyValidator>;
+
 export const clubJoinPolicyValidator = v.union(
   v.literal("OPEN"),
   v.literal("REQUEST"),

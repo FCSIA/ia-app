@@ -28,6 +28,7 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown";
 import { Card, CardAction, CardGroup } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -263,6 +264,7 @@ export function ClubWorkspace({
             nav={nav}
             pathname={pathname}
             channels={channels}
+            units={navigation?.units ?? []}
             activeChannelId={activeChannelId}
             canCreateChannels={canCreateChannels}
             canEditChannels={canEditChannels}
@@ -292,6 +294,7 @@ export function ClubWorkspace({
               nav={nav}
               pathname={pathname}
               channels={channels}
+              units={navigation?.units ?? []}
               activeChannelId={activeChannelId}
               canCreateChannels={canCreateChannels}
               canEditChannels={canEditChannels}
@@ -420,6 +423,7 @@ function ClubNavigationPanel({
   nav,
   pathname,
   channels,
+  units,
   activeChannelId,
   canCreateChannels,
   canEditChannels,
@@ -435,6 +439,7 @@ function ClubNavigationPanel({
   nav: NavigationItem[];
   pathname: string;
   channels: ClubNavigationChannel[];
+  units: ClubWorkspaceNavigation["units"];
   activeChannelId?: string;
   canCreateChannels: boolean;
   canEditChannels: boolean;
@@ -443,7 +448,6 @@ function ClubNavigationPanel({
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
   const rowClassName = density === "mobile" ? "min-h-11" : "min-h-8";
-  const channelRowClassName = density === "mobile" ? "min-h-9" : "min-h-8";
   const activeClubIndex = myClubs.findIndex((entry) => entry._id === clubId);
 
   return (
@@ -545,45 +549,36 @@ function ClubNavigationPanel({
             </div>
 
             {channels.length > 0 ? (
-              <CardGroup orientation="inline" separated className="gap-0.5">
-                {channels.map((channel) => {
-                  const active = channel._id === activeChannelId;
-                  return (
-                    <Card
-                      key={channel._id}
-                      href={`/clubs/${clubId}/channels/${channel._id}`}
-                      onClick={() => onNavigate?.()}
-                      label={`Open #${channel.name}`}
-                      selected={active}
-                      className={cn(
-                        "group gap-1.5 rounded-md px-2 text-sm font-medium",
-                        channelRowClassName,
-                        active ? "text-foreground" : "text-muted-foreground",
-                      )}
-                    >
-                      <ClubChannelVisibilityIcon
-                        visibility={channel.visibility}
-                        className={cn(
-                          "size-4 shrink-0",
-                          active ? "text-foreground/70" : "text-muted-foreground",
-                        )}
+              <ChannelRows
+                clubId={clubId}
+                channels={channels.filter((channel) => !channel.ownerUnitId)}
+                activeChannelId={activeChannelId}
+                density={density}
+                onNavigate={onNavigate}
+                canEditChannels={canEditChannels}
+                canDeleteChannels={canDeleteChannels}
+                onDeleteChannel={onDeleteChannel}
+              >
+                {units.length > 0 ? (
+                  <Accordion type="multiple" defaultValue={units.filter((unit) => channelHasActiveUnit(channelMap(channels), unit._id, activeChannelId)).map((unit) => unit._id)} className="w-full gap-0.5 pt-1">
+                    {units.filter((unit) => !unit.parentUnitId).map((unit) => (
+                      <UnitChannelSection
+                        key={unit._id}
+                        unit={unit}
+                        units={units}
+                        channels={channels}
+                        clubId={clubId}
+                        activeChannelId={activeChannelId}
+                        density={density}
+                        onNavigate={onNavigate}
+                        canEditChannels={canEditChannels}
+                        canDeleteChannels={canDeleteChannels}
+                        onDeleteChannel={onDeleteChannel}
                       />
-                      <span className="min-w-0 flex-1 truncate">{channel.name}</span>
-                      {canEditChannels || canDeleteChannels ? (
-                        <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-                          <ChannelActionsTrigger
-                            clubId={clubId}
-                            channel={channel}
-                            canEdit={canEditChannels}
-                            canDelete={canDeleteChannels}
-                            onDeleteChannel={onDeleteChannel}
-                          />
-                        </CardAction>
-                      ) : null}
-                    </Card>
-                  );
-                })}
-              </CardGroup>
+                    ))}
+                  </Accordion>
+                ) : null}
+              </ChannelRows>
             ) : (
               <div className="px-2 py-3 text-xs text-muted-foreground">
                 No channels yet.
@@ -603,6 +598,73 @@ function ClubNavigationPanel({
       </Link>
     </div>
   );
+}
+
+function channelHasActiveUnit(
+  channels: ClubNavigationChannel[],
+  unitId: string,
+  activeChannelId?: string,
+) {
+  return channels.some((channel) => channel._id === activeChannelId && channel.ownerUnitId === unitId);
+}
+
+function channelMap(channels: ClubNavigationChannel[]) {
+  return channels;
+}
+
+type ChannelRowsProps = {
+  clubId: Id<"clubs">;
+  channels: ClubNavigationChannel[];
+  activeChannelId?: string;
+  density: "desktop" | "mobile";
+  onNavigate?: () => void;
+  canEditChannels: boolean;
+  canDeleteChannels: boolean;
+  onDeleteChannel: (channel: ClubNavigationChannel) => void;
+  children?: ReactNode;
+};
+
+function ChannelRows({
+  clubId, channels, activeChannelId, density, onNavigate, canEditChannels, canDeleteChannels, onDeleteChannel, children,
+}: ChannelRowsProps) {
+  const channelRowClassName = density === "mobile" ? "min-h-9" : "min-h-8";
+  return (
+    <>
+      {channels.length > 0 ? <CardGroup orientation="inline" separated className="gap-0.5">
+        {channels.map((channel) => {
+          const active = channel._id === activeChannelId;
+          return <Card key={channel._id} href={`/clubs/${clubId}/channels/${channel._id}`} onClick={() => onNavigate?.()} label={`Open #${channel.name}`} selected={active} className={cn("group gap-1.5 rounded-md px-2 text-sm font-medium", channelRowClassName, active ? "text-foreground" : "text-muted-foreground")}>
+            <ClubChannelVisibilityIcon visibility={channel.visibility} className={cn("size-4 shrink-0", active ? "text-foreground/70" : "text-muted-foreground")} />
+            <span className="min-w-0 flex-1 truncate">{channel.name}</span>
+            {canEditChannels || canDeleteChannels ? <CardAction className="flex shrink-0 items-center gap-0.5 translate-y-1 translate-x-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+              <ChannelActionsTrigger clubId={clubId} channel={channel} canEdit={canEditChannels} canDelete={canDeleteChannels} onDeleteChannel={onDeleteChannel} />
+            </CardAction> : null}
+          </Card>;
+        })}
+      </CardGroup> : null}
+      {children}
+    </>
+  );
+}
+
+function UnitChannelSection({
+  unit, units, channels, clubId, activeChannelId, density, onNavigate, canEditChannels, canDeleteChannels, onDeleteChannel,
+}: {
+  unit: ClubWorkspaceNavigation["units"][number]; units: ClubWorkspaceNavigation["units"]; channels: ClubNavigationChannel[]; clubId: Id<"clubs">; activeChannelId?: string; density: "desktop" | "mobile"; onNavigate?: () => void; canEditChannels: boolean; canDeleteChannels: boolean; onDeleteChannel: (channel: ClubNavigationChannel) => void;
+}) {
+  const directChannels = channels.filter((channel) => channel.ownerUnitId === unit._id);
+  const children = units.filter((candidate) => candidate.parentUnitId === unit._id);
+  if (!directChannels.length && !children.length) return null;
+  return <AccordionItem value={unit._id} className="border-0">
+    <AccordionTrigger className="w-full rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{unit.name}</AccordionTrigger>
+    <AccordionContent>
+      <ChannelRows clubId={clubId} channels={directChannels} activeChannelId={activeChannelId} density={density} onNavigate={onNavigate} canEditChannels={canEditChannels} canDeleteChannels={canDeleteChannels} onDeleteChannel={onDeleteChannel}>
+        {children.length ? <Accordion type="multiple" defaultValue={children.filter((child) => channelHasActiveUnit(channels, child._id, activeChannelId)).map((child) => child._id)} className="w-full gap-0.5">
+          {children.map((child) => <UnitChannelSection key={child._id} unit={child} units={units} channels={channels} clubId={clubId} activeChannelId={activeChannelId} density={density} onNavigate={onNavigate} canEditChannels={canEditChannels} canDeleteChannels={canDeleteChannels} onDeleteChannel={onDeleteChannel} />)}
+        </Accordion> : null}
+      </ChannelRows>
+    </AccordionContent>
+  </AccordionItem>;
 }
 
 function CreateChannelTrigger({ clubId }: { clubId: Id<"clubs"> }) {

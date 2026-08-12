@@ -6,7 +6,8 @@ import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole, requireAnyRo
 import { logAuditEvent } from "../audit/_lib";
 import { docs } from "../../lib/docs";
 import { activeAdmins, deliverMany } from "../notifications/delivery";
-import { canReadChannel, getViewerContext } from "../clubs/access";
+import { getViewerContext } from "../clubs/access";
+import { getChannelAccess } from "../clubs/channelAccess";
 import { normalizeModerationReportReason } from "./reportValidation";
 import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
@@ -272,19 +273,7 @@ export const submitClubChannelMessage = mutation({
     const channel = await ctx.db.get(message.channelId);
     if (!channel) throw new ConvexError("Message not found");
     const context = await getViewerContext(ctx, channel.clubId, user);
-    const membership = await ctx.db
-      .query("clubChannelMemberships")
-      .withIndex("by_channelId_and_userId", (q) =>
-        q.eq("channelId", channel._id).eq("userId", user._id),
-      )
-      .first();
-    if (
-      !canReadChannel(
-        { ...channel, memberships: membership ? [membership] : [] },
-        context,
-        user._id,
-      )
-    ) {
+    if (!(await getChannelAccess(ctx, channel, context, user._id)).canView) {
       throw new ConvexError("Not authorized");
     }
 

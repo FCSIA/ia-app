@@ -120,10 +120,13 @@ organizational context while explicit assignments remain auditable.
 
 Existing club sponsors, club leaders, and admins can manage the full tree.
 Unit leadership does not grant club-wide administration. Units do not create a
-second announcement, channel, notification, or club-role system; those remain
-owned by the containing club unless a future product slice deliberately adds a
-unit scope. Join codes are scoped to one unit and can only be redeemed by an
-existing club member.
+second announcement or club-role system. Channels remain club-owned, but may
+use a unit-aware audience: club-wide, a unit and its descendants, unit leaders,
+or explicitly selected members. Sidebar placement is independent from audience,
+so a club-wide channel can appear under a House without making the House its
+only audience. The backend resolves unit ancestry at every channel read/write
+boundary; it does not copy unit membership into channel rows. Join codes are
+scoped to one unit and can only be redeemed by an existing club member.
 
 The club workspace shell uses a narrow navigation query rather than subscribing
 every club route to the full member, tag, request, and message-count payload.

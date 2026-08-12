@@ -2,8 +2,13 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { canPostInChannel, canReadChannel } from "./access";
-import { clubChannelVisibilityValidator, clubRolePermissionsValidator } from "../validators";
+import { getChannelAccess } from "./channelAccess";
+import {
+  clubChannelAudienceKindValidator,
+  clubChannelPostingPolicyValidator,
+  clubChannelVisibilityValidator,
+  clubRolePermissionsValidator,
+} from "../validators";
 
 export const clubUserRefValidator = v.object({
   _id: v.id("users"),
@@ -31,6 +36,12 @@ export const visibleClubChannelValidator = v.object({
   _id: v.id("clubChannels"),
   _creationTime: v.number(),
   clubId: v.id("clubs"),
+  ownerUnitId: v.optional(v.id("clubUnits")),
+  audienceKind: v.optional(clubChannelAudienceKindValidator),
+  audienceUnitId: v.optional(v.id("clubUnits")),
+  includeDescendants: v.optional(v.boolean()),
+  includeAncestorLeaders: v.optional(v.boolean()),
+  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
   name: v.string(),
   description: v.optional(v.string()),
   visibility: clubChannelVisibilityValidator,
@@ -46,6 +57,12 @@ export const visibleClubChannelValidator = v.object({
 export const workspaceClubChannelValidator = v.object({
   _id: v.id("clubChannels"),
   clubId: v.id("clubs"),
+  ownerUnitId: v.optional(v.id("clubUnits")),
+  audienceKind: v.optional(clubChannelAudienceKindValidator),
+  audienceUnitId: v.optional(v.id("clubUnits")),
+  includeDescendants: v.optional(v.boolean()),
+  includeAncestorLeaders: v.optional(v.boolean()),
+  postingPolicy: v.optional(clubChannelPostingPolicyValidator),
   name: v.string(),
   description: v.optional(v.string()),
   visibility: clubChannelVisibilityValidator,
@@ -104,16 +121,18 @@ export function toViewerState(context: ClubContext) {
   };
 }
 
-export function toChannelViewerState(
+export async function toChannelViewerState(
+  ctx: QueryCtx,
   channel: Doc<"clubChannels"> & {
     memberships: Doc<"clubChannelMemberships">[];
   },
   context: ClubContext,
   userId: Id<"users">,
 ) {
+  const access = await getChannelAccess(ctx, channel, context, userId);
   return {
-    viewerCanRead: canReadChannel(channel, context, userId),
-    viewerCanPost: canPostInChannel(channel, context, userId),
+    viewerCanRead: access.canView,
+    viewerCanPost: access.canPost,
   };
 }
 
@@ -171,7 +190,7 @@ export async function getVisibleChannels(
       .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
       .collect();
     const channelDoc = { ...channel, memberships };
-    const viewer = toChannelViewerState(channelDoc, context, userId);
+    const viewer = await toChannelViewerState(ctx, channelDoc, context, userId);
     if (!viewer.viewerCanRead) continue;
 
     const messages = await ctx.db
@@ -185,6 +204,12 @@ export async function getVisibleChannels(
       _id: channel._id,
       _creationTime: channel._creationTime,
       clubId: channel.clubId,
+      ownerUnitId: channel.ownerUnitId,
+      audienceKind: channel.audienceKind,
+      audienceUnitId: channel.audienceUnitId,
+      includeDescendants: channel.includeDescendants,
+      includeAncestorLeaders: channel.includeAncestorLeaders,
+      postingPolicy: channel.postingPolicy,
       name: channel.name,
       description: channel.description,
       visibility: channel.visibility,
