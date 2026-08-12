@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -78,12 +79,41 @@ export async function logAuditEvent(
     meta?: unknown;
   },
 ) {
+  // Better Auth keeps the original administrator on an impersonated session.
+  // Preserve that provenance on every application audit event while retaining
+  // the effective user as `actorId`, which reflects the permissions used.
+  let meta = input.meta;
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity?.sessionId) {
+    const session = (await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "session",
+      where: [{ field: "_id", value: identity.sessionId as string }],
+    })) as { impersonatedBy?: string | null } | null;
+    if (session?.impersonatedBy) {
+      const impersonator = await ctx.db
+        .query("users")
+        .withIndex("by_authUserId", (q) =>
+          q.eq("authUserId", session.impersonatedBy!),
+        )
+        .unique();
+      if (impersonator) {
+        meta = {
+          ...(isRecord(input.meta) ? input.meta : { originalMeta: input.meta }),
+          impersonatedByUserId: impersonator._id,
+        };
+      }
+    }
+  }
   await ctx.db.insert("auditEvents", {
     actorId: input.actorId,
     action: input.action,
     entityType: input.entityType,
     entityId: input.entityId,
-    meta: input.meta,
+    meta,
     createdAt: Date.now(),
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

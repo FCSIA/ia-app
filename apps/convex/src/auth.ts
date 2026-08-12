@@ -2,7 +2,7 @@ import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { expo } from "@better-auth/expo";
 import { admin, username } from "better-auth/plugins";
-import { adminAc, defaultAc, userAc } from "better-auth/plugins/admin/access";
+import { defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -109,6 +109,11 @@ const appAdminAc = defaultAc.newRole({
   session: ["list", "revoke"],
 });
 
+const superAdminAc = defaultAc.newRole({
+  user: ["create", "list", "get", "ban", "set-password", "impersonate"],
+  session: ["list", "revoke"],
+});
+
 export const disabledAdminHttpPaths = [
   "/is-username-available",
   "/admin/set-role",
@@ -118,8 +123,6 @@ export const disabledAdminHttpPaths = [
   "/admin/list-user-sessions",
   "/admin/ban-user",
   "/admin/unban-user",
-  "/admin/impersonate-user",
-  "/admin/stop-impersonating",
   "/admin/remove-user",
   "/admin/set-user-password",
   "/admin/get-user",
@@ -170,10 +173,14 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       }),
       admin({
         defaultRole: "user",
+        // Impersonation deliberately remains a tightly-scoped super-admin
+        // capability. `superAdminAc` does not include `impersonate-admins`,
+        // so an administrator can never assume another privileged account.
+        impersonationSessionDuration: 15 * 60,
         adminRoles: ["admin", "super_admin"],
         roles: {
           admin: appAdminAc,
-          super_admin: adminAc,
+          super_admin: superAdminAc,
           support_staff: supportStaffAc,
           user: userAc,
         },

@@ -26,6 +26,7 @@ import {
 import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigation-swipe";
 import { useNavigationLoadingOptional } from "@/components/layout/navigation-loading-provider";
 import { PageTransition } from "@/components/layout/page-transition";
+import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -168,6 +169,7 @@ export function AppShell({
         open={commandOpen}
         onOpenChange={setCommandOpen}
       />
+      <ImpersonationBanner />
     </Fragment>
   );
 }

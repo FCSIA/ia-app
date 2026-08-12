@@ -24,6 +24,7 @@ import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
+import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
 
 const ROLE_BADGE_LIMIT = 2;
 const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
@@ -364,7 +365,7 @@ function UserTableSection({
           <col className="w-[72px]" />
           <col />
           <col className="w-[92px]" />
-          <col className="w-[144px]" />
+          <col className="w-[176px]" />
         </colgroup>
         <TableHeader className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
           <TableRow>
@@ -416,7 +417,7 @@ function UserTableSection({
                   </Badge>
                 </TableCell>
                 <TableCell className={`${d.cell} overflow-hidden`}>
-                  <div className="grid grid-cols-[2rem_2rem_2rem] items-center justify-end gap-1">
+                  <div className="grid grid-cols-[2rem_2rem_2rem_2rem] items-center justify-end gap-1">
                     <UserPermissionsPopover
                       user={user}
                       isSuperAdmin={isSuperAdmin}
@@ -428,6 +429,14 @@ function UserTableSection({
                         user={user}
                         disabled={isResetPasswordPending}
                         onResetPassword={onResetPassword}
+                      />
+                    ) : (
+                      <span aria-hidden className="size-8" />
+                    )}
+                    {isSuperAdmin && user._id !== currentUserId && !getUserRoles(user).some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN') ? (
+                      <ImpersonateUserAction
+                        userId={user._id}
+                        name={`${user.firstName} ${user.lastName}`}
                       />
                     ) : (
                       <span aria-hidden className="size-8" />

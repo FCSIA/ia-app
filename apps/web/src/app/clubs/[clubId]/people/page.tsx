@@ -59,7 +59,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { api } from '~/apps/convex/src/_generated/api';
 import { parseInviteCsv } from '@/lib/parse-invite-csv';
-import { useCurrentUser } from '@/lib/auth';
+import { hasRole, useCurrentUser } from '@/lib/auth';
+import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
 
@@ -542,6 +543,11 @@ export default function ClubPeoplePage() {
                       isCurrentUser={person._id === user?._id}
                       canAssignRole={canAssignRoles && person.kind === 'MEMBER'}
                       canRemove={canRemoveMembers && person.kind === 'MEMBER'}
+                      canImpersonate={Boolean(
+                        user &&
+                        hasRole(user, 'SUPER_ADMIN') &&
+                        !person.roles.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN'),
+                      )}
                       onRemove={setRemoveTarget}
                     />
                   ))}
@@ -609,15 +615,17 @@ function PersonRow({
   isCurrentUser,
   canAssignRole,
   canRemove,
+  canImpersonate,
   onRemove,
 }: {
   person: ClubDirectoryEntry;
   isCurrentUser: boolean;
   canAssignRole: boolean;
   canRemove: boolean;
+  canImpersonate: boolean;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
-  const showManage = (canAssignRole || canRemove) && person.kind === 'MEMBER' && !isCurrentUser;
+  const showManage = (canAssignRole || canRemove || canImpersonate) && person.kind === 'MEMBER' && !isCurrentUser;
   const isSponsor = person.kind === 'SPONSOR';
 
   return (
@@ -642,6 +650,9 @@ function PersonRow({
       {showManage ? (
         <div className="flex shrink-0 items-center gap-1">
           {canAssignRole ? <SetRoleDialog person={person} /> : null}
+          {canImpersonate ? (
+            <ImpersonateUserAction userId={person._id} name={fullName(person)} />
+          ) : null}
           {canRemove ? <Button
             type="button"
             size="icon-sm"
