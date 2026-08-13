@@ -41,8 +41,12 @@ export function useAdminWrapped(activeTab: AdminTabId, canManageWrapped: boolean
       })
         .then((result) => {
           toast({
-            title: refreshWrappedResultTitle(result.generated, result.skipped),
-            description: `${result.requested} eligible students checked for ${schoolYearLabel(result.schoolYear)}.`,
+            title: result.queued
+              ? 'Wrapped snapshot run queued'
+              : refreshWrappedResultTitle(result.generated, result.skipped),
+            description: result.queued
+              ? `Every eligible student will be processed in the background for ${schoolYearLabel(result.schoolYear)}.`
+              : `${result.requested} eligible students checked for ${schoolYearLabel(result.schoolYear)}.`,
           });
         })
         .catch((err: Error) => {
