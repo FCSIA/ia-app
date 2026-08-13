@@ -8,6 +8,7 @@ import {
   MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
   MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
   normalizeBoundedText,
+  normalizeAnnouncementEmbedUrls,
   normalizeOptionalBoundedText,
 } from "./contentValidation";
 import {
@@ -22,6 +23,7 @@ import {
 } from "./_lib";
 import { serializeAnnouncement, serializeComment } from "./serialize";
 import { getClubContext } from "../clubs/access";
+import { consumeStagedAnnouncementImages } from "../uploads/announcementImages";
 
 function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: number) {
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
@@ -164,6 +166,8 @@ export const create = mutation({
     isAdminGeneral: v.boolean(),
     expiresAt: v.optional(v.number()),
     promoted: v.optional(v.boolean()),
+    imageUploadIds: v.optional(v.array(v.id("announcementImageUploads"))),
+    embedUrls: v.optional(v.array(v.string())),
   },
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
@@ -178,6 +182,7 @@ export const create = mutation({
       "Announcement body",
       MAX_ANNOUNCEMENT_BODY_CHARACTERS,
     );
+    const embedUrls = normalizeAnnouncementEmbedUrls(args.embedUrls);
     const canPostGlobally = canPostGlobalAnnouncements(user.roles);
     const clubContext = args.clubId && !canPostGlobally
       ? await getClubContext(ctx, args.clubId, user)
@@ -225,6 +230,7 @@ export const create = mutation({
       isAdminGeneral: args.isAdminGeneral,
       expiresAt: args.expiresAt,
       promotedUntil,
+      embedUrls,
       submittedById: status === "PENDING_APPROVAL" ? user._id : undefined,
       approvedById: status === "ACTIVE" ? user._id : undefined,
       approvedAt: status === "ACTIVE" ? now : undefined,
@@ -232,12 +238,18 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    await consumeStagedAnnouncementImages(ctx, {
+      imageUploadIds: args.imageUploadIds ?? [],
+      uploaderId: user._id,
+      announcementId: annId,
+    });
+
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "ANNOUNCEMENT_CREATED",
       entityType: "Announcement",
       entityId: annId,
-      meta: { title },
+      meta: { title, imageCount: args.imageUploadIds?.length ?? 0, embedCount: embedUrls.length },
     });
 
     if (status === "ACTIVE") {

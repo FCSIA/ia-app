@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
+import { uploadFileToConvex } from '@/lib/convex-upload';
 
 type Props = {
   clubId: string;
@@ -32,11 +34,23 @@ export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = fa
   const [body, setBody] = useState('');
   const [allowComments, setAllowComments] = useState(false);
   const [pending, setPending] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
+  const [embedUrls, setEmbedUrls] = useState<string[]>([]);
   const createAnnouncement = useMutation(api.announcements.feed.create);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const finalizeAnnouncementImage = useAction(api.uploads.files.finalizeAnnouncementImage);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setPending(true);
-    void createAnnouncement({
+    try {
+      const imageUploadIds = await Promise.all(images.map(async (file) => {
+        const { storageId, uploadIntentId } = await uploadFileToConvex(
+          { generateUploadUrl: () => generateUploadUrl({ purpose: 'ANNOUNCEMENT_IMAGE' }) },
+          file,
+        );
+        return (await finalizeAnnouncementImage({ storageId, uploadIntentId })).imageUploadId;
+      }));
+      await createAnnouncement({
       title: title.trim(),
       body: body.trim(),
       allowComments,
@@ -46,21 +60,24 @@ export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = fa
       targetMajorPathways: [],
       targetMinorPathways: [],
       isAdminGeneral: false,
-    })
-      .then(() => {
+      imageUploadIds,
+      embedUrls,
+      });
         toast({ title: directPost ? 'Announcement posted' : 'Announcement submitted' });
         setTitle('');
         setBody('');
         setAllowComments(false);
+        setImages([]);
+        setEmbedUrls([]);
         onOpenChange(false);
-      })
-      .catch((error: unknown) => {
+    } catch (error) {
         toast({
           title: error instanceof Error ? error.message : 'Failed to post announcement',
           variant: 'destructive',
         });
-      })
-      .finally(() => setPending(false));
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -85,6 +102,15 @@ export function AnnouncementDialog({ clubId, open, onOpenChange, directPost = fa
               placeholder="Meeting recap, sponsor note, schedule change"
             />
           </div>
+
+          <AnnouncementMediaInput
+            images={images}
+            embedUrls={embedUrls}
+            disabled={pending}
+            onImagesChange={setImages}
+            onEmbedUrlsChange={setEmbedUrls}
+            onError={(title) => toast({ title, variant: 'destructive' })}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="ann-body">Body</Label>

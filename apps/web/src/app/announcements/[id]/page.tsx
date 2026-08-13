@@ -16,6 +16,7 @@ import {
 } from '@/components/announcements/announcement-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AnnouncementMedia } from '@/components/announcements/announcement-media';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +25,13 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 type AnnouncementDetail = AnnouncementCardRecord & {
+  embedUrls?: string[];
+  images?: Array<{
+    _id: string;
+    url: string;
+    mimeType: string;
+    size: number;
+  }>;
   targetGrade?: number | null;
   targetPathway?: string | null;
   readAt?: number | null;
@@ -270,6 +278,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             ) : null}
 
             <div className="whitespace-pre-wrap text-[15px] leading-7 text-foreground/90">{announcement.body}</div>
+            <AnnouncementMedia images={announcement.images} embedUrls={announcement.embedUrls} />
           </CardContent>
         </Card>
 
