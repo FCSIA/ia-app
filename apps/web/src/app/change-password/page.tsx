@@ -11,7 +11,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export default function ForcedPasswordChangePage() {
@@ -64,9 +64,8 @@ export default function ForcedPasswordChangePage() {
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="current-password">Temporary password</FieldLabel>
-            <Input
+            <PasswordInput
               id="current-password"
-              type="password"
               autoComplete="current-password"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
@@ -75,9 +74,8 @@ export default function ForcedPasswordChangePage() {
           </Field>
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="new-password">New password</FieldLabel>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
               autoComplete="new-password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
@@ -89,9 +87,8 @@ export default function ForcedPasswordChangePage() {
           </Field>
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
