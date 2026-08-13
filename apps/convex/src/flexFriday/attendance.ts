@@ -3,12 +3,10 @@ import { mutation, query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexAttendanceStatusValidator } from "../validators";
+import { canManageFlexAttendance } from "./permissions";
 
 function canMarkAttendance(user: { roles: string[] }, workshopTeacherId?: string, actorId?: string) {
-  const isGlobalAttendanceManager =
-    user.roles.includes("ADMIN") ||
-    user.roles.includes("SUPER_ADMIN") ||
-    user.roles.includes("SUPPORT_STAFF");
+  const isGlobalAttendanceManager = canManageFlexAttendance(user.roles);
   const isWorkshopTeacher = workshopTeacherId && actorId && workshopTeacherId === actorId;
   return isGlobalAttendanceManager || isWorkshopTeacher;
 }

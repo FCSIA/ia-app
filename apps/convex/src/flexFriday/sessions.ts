@@ -2,14 +2,10 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { flexSessionTypeValidator } from "../validators";
-
-function canManageSessions(user: { roles: string[] }) {
-  return (
-    user.roles.includes("TEACHER") ||
-    user.roles.includes("ADMIN") ||
-    user.roles.includes("SUPER_ADMIN")
-  );
-}
+import {
+  canCreateFlexSession,
+  canManageExistingFlexSessions,
+} from "./permissions";
 
 export const listByFriday = query({
   args: { flexFridayId: v.id("flexFridays") },
@@ -34,7 +30,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageSessions(user)) throw new Error("Unauthorized");
+    if (!canCreateFlexSession(user.roles)) throw new Error("Unauthorized");
 
     const friday = await ctx.db.get(args.flexFridayId);
     if (!friday) throw new Error("Flex Friday not found");
@@ -73,7 +69,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageSessions(user)) throw new Error("Unauthorized");
+    if (!canManageExistingFlexSessions(user.roles)) throw new Error("Unauthorized");
 
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");
@@ -103,7 +99,7 @@ export const remove = mutation({
   args: { sessionId: v.id("flexSessions") },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    if (!canManageSessions(user)) throw new Error("Unauthorized");
+    if (!canManageExistingFlexSessions(user.roles)) throw new Error("Unauthorized");
 
     const session = await ctx.db.get(args.sessionId);
     if (!session) throw new Error("Session not found");

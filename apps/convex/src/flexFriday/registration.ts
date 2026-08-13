@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import { canAssignFlexStudents } from "./permissions";
 
 function isStudent(user: { roles: string[] }) {
   return (
@@ -241,11 +242,7 @@ export const assign = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
 
-    if (
-      !user.roles.includes("TEACHER") &&
-      !user.roles.includes("ADMIN") &&
-      !user.roles.includes("SUPER_ADMIN")
-    ) {
+    if (!canAssignFlexStudents(user.roles)) {
       throw new ConvexError("Unauthorized to assign students");
     }
 

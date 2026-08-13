@@ -4,6 +4,7 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { flexFridayValidator } from "./_lib";
 import { flexSessionTypeValidator } from "../validators";
 import { deliverMany, flexFridayAudience } from "../notifications/delivery";
+import { canCreateFlexFriday } from "./permissions";
 
 function parseFridayDate(date: string | number): number {
   if (typeof date === "number") return date;
@@ -55,7 +56,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
 
-    if (!user.roles.includes("ADMIN") && !user.roles.includes("SUPER_ADMIN")) {
+    if (!canCreateFlexFriday(user.roles)) {
       throw new Error("Unauthorized");
     }
 
