@@ -17,6 +17,7 @@ import {
   commentWithAuthorValidator,
   getAccessibleClubIds,
   getViewerAudience,
+  canPostGlobalAnnouncements,
   isElevatedReader,
 } from "./_lib";
 import { serializeAnnouncement, serializeComment } from "./serialize";
@@ -177,10 +178,7 @@ export const create = mutation({
       "Announcement body",
       MAX_ANNOUNCEMENT_BODY_CHARACTERS,
     );
-    const canPostGlobally =
-      user.roles.includes("ADMIN") ||
-      user.roles.includes("SUPER_ADMIN") ||
-      user.roles.includes("TEACHER");
+    const canPostGlobally = canPostGlobalAnnouncements(user.roles);
     const clubContext = args.clubId && !canPostGlobally
       ? await getClubContext(ctx, args.clubId, user)
       : null;

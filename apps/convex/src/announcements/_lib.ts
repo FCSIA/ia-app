@@ -45,6 +45,12 @@ export function isElevatedReader(roles: string[]) {
   );
 }
 
+export function canPostGlobalAnnouncements(roles: readonly string[]) {
+  return roles.some((role) =>
+    ["ADMIN", "SUPER_ADMIN", "TEACHER", "STUDENT_ADMIN"].includes(role),
+  );
+}
+
 export function isGlobalAnnouncementApprover(roles: string[]) {
   return (
     roles.includes("ADMIN") ||
