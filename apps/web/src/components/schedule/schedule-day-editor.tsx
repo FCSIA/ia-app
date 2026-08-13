@@ -45,6 +45,8 @@ import {
   StudentScheduleDraftEntry,
 } from "./types";
 
+const MAX_SCHEDULE_CLASS_NAME_CHARACTERS = 160;
+
 type ScheduleDayEditorProps = {
   weekday: ScheduleWeekday;
   blocks: SchoolDayBlock[];
@@ -299,13 +301,14 @@ export function ScheduleDayEditor({
                 <Input
                   id="manual-class-name"
                   autoFocus
+                  maxLength={MAX_SCHEDULE_CLASS_NAME_CHARACTERS}
                   value={manualClassName}
                   onChange={(event) => setManualClassName(event.target.value)}
                   placeholder="e.g. Work-based learning"
                   required
                 />
                 <FieldDescription>
-                  This will not create a new catalog course.
+                  This will not create a new catalog course. Up to {MAX_SCHEDULE_CLASS_NAME_CHARACTERS} characters.
                 </FieldDescription>
               </Field>
               <div className="flex justify-end gap-2">

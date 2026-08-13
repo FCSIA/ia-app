@@ -70,6 +70,9 @@ type ChannelMessageComposerProps = {
 
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS = 12_000;
+const MAX_CHANNEL_POLL_QUESTION_CHARACTERS = 240;
+const MAX_CHANNEL_POLL_OPTION_CHARACTERS = 120;
 
 type ComposerMark = 'bold' | 'italic' | 'underline';
 
@@ -276,6 +279,7 @@ export function ChannelMessageComposer({
               </div>
               <Input
                 value={pollQuestion}
+                maxLength={MAX_CHANNEL_POLL_QUESTION_CHARACTERS}
                 onChange={(event) => setPollQuestion(event.target.value)}
                 placeholder="Poll question"
                 className="bg-background"
@@ -285,6 +289,7 @@ export function ChannelMessageComposer({
                   <Input
                     key={index}
                     value={option}
+                    maxLength={MAX_CHANNEL_POLL_OPTION_CHARACTERS}
                     onChange={(event) =>
                       setPollOptions((current) =>
                         current.map((entry, entryIndex) =>
@@ -321,6 +326,7 @@ export function ChannelMessageComposer({
               <InputControlTextarea
                 aria-label="Markdown message source"
                 value={markdownSource}
+                maxLength={MAX_CHANNEL_MESSAGE_MARKDOWN_CHARACTERS}
                 onChange={(event) => setMarkdownSource(event.target.value)}
                 onKeyDown={handleMarkdownSourceKeyDown}
                 placeholder={placeholder}

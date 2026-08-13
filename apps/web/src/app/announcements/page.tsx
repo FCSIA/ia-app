@@ -32,6 +32,8 @@ const PATHWAY_OPTIONS = [
 ];
 
 const GRADE_OPTIONS = [9, 10, 11, 12];
+const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
+const MAX_ANNOUNCEMENT_BODY_CHARACTERS = 10_000;
 
 const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
   ...ANNOUNCEMENT_TAG_LABELS,
@@ -429,10 +431,11 @@ export default function AnnouncementsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Input placeholder="Title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
+                <Input placeholder="Title" maxLength={MAX_ANNOUNCEMENT_TITLE_CHARACTERS} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
                 <Textarea
                   className="min-h-[120px] resize-y"
                   placeholder="Write your announcement..."
+                  maxLength={MAX_ANNOUNCEMENT_BODY_CHARACTERS}
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   required

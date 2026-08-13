@@ -4,6 +4,13 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { logAuditEvent } from "../audit/_lib";
 import { announcementAudience, deliverMany } from "../notifications/delivery";
 import {
+  MAX_ANNOUNCEMENT_BODY_CHARACTERS,
+  MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
+  MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
+  normalizeBoundedText,
+  normalizeOptionalBoundedText,
+} from "./contentValidation";
+import {
   announcementListItemValidator,
   assertCanApproveAnnouncement,
   canViewAnnouncement,
@@ -160,6 +167,16 @@ export const create = mutation({
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
+    const title = normalizeBoundedText(
+      args.title,
+      "Announcement title",
+      MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
+    );
+    const body = normalizeBoundedText(
+      args.body,
+      "Announcement body",
+      MAX_ANNOUNCEMENT_BODY_CHARACTERS,
+    );
     const canPostGlobally =
       user.roles.includes("ADMIN") ||
       user.roles.includes("SUPER_ADMIN") ||
@@ -196,8 +213,8 @@ export const create = mutation({
 
     const annId = await ctx.db.insert("announcements", {
       authorId: user._id,
-      title: args.title.trim(),
-      body: args.body.trim(),
+      title,
+      body,
       targetType: args.targetType,
       targetGrade: args.targetGrade,
       targetGrades: args.targetGrades,
@@ -222,7 +239,7 @@ export const create = mutation({
       action: "ANNOUNCEMENT_CREATED",
       entityType: "Announcement",
       entityId: annId,
-      meta: { title: args.title },
+      meta: { title },
     });
 
     if (status === "ACTIVE") {
@@ -299,10 +316,15 @@ export const reject = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    const note = normalizeOptionalBoundedText(
+      args.note,
+      "Rejection note",
+      MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
+    );
 
     await ctx.db.patch(args.announcementId, {
       status: "REJECTED",
-      rejectionNote: args.note,
+      rejectionNote: note,
       updatedAt: Date.now(),
     });
 

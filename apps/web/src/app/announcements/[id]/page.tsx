@@ -48,6 +48,8 @@ function formatPathway(pathway?: string | null) {
   return pathway.replace(/_/g, ' ');
 }
 
+const MAX_ANNOUNCEMENT_COMMENT_CHARACTERS = 2_000;
+
 function formatAudience(announcement: AnnouncementDetail) {
   if (announcement.targetType === 'GRADE' && announcement.targetGrade) {
     return `Grade ${announcement.targetGrade}`;
@@ -364,6 +366,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
                 placeholder="Add a comment"
+                maxLength={MAX_ANNOUNCEMENT_COMMENT_CHARACTERS}
                 rows={3}
                 className="min-h-24 resize-y"
               />

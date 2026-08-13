@@ -11,6 +11,7 @@ import {
   scheduleEntryInputValidator,
   studentScheduleRecordValidator,
   normalizeScheduleEntries,
+  normalizeScheduleClassName,
   requireStudentUser,
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
@@ -163,9 +164,7 @@ export const save = mutation({
 
     const coursesById = new Map<Id<"courses">, Doc<"courses">>();
     for (const entry of entries) {
-      if (!entry.className.trim()) {
-        throw new ConvexError("Class names cannot be empty.");
-      }
+      normalizeScheduleClassName(entry.className);
       if (!entry.courseId) continue;
       const course = await ctx.db.get(entry.courseId);
       if (!course) throw new ConvexError("One or more selected courses were not found.");
@@ -184,7 +183,7 @@ export const save = mutation({
       ...entry,
       className: entry.courseId
         ? coursesById.get(entry.courseId)!.title
-        : entry.className.trim(),
+        : normalizeScheduleClassName(entry.className),
     }));
     const previousSnapshot: MaterialScheduleSnapshot | null = existing
       ? {
