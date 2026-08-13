@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import {
   internalMutation,
@@ -1261,6 +1261,55 @@ export const getMessagePage = query({
     return {
       ...result,
       page: page.filter((message): message is NonNullable<typeof message> => !!message),
+    };
+  },
+});
+
+export const listReactionUsers = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    messageId: v.id("clubChannelMessages"),
+    emoji: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: paginationResultValidator(clubUserRefValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message || message.channelId !== readable.channel._id || message.deletedAt) {
+      return emptyMessagePage(args.paginationOpts.cursor);
+    }
+
+    const reaction = normalizeClubChannelReaction(args.emoji);
+    if (!reaction) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const reactions = await ctx.db
+      .query("clubChannelMessageReactions")
+      .withIndex("by_messageId_and_emoji_and_userId", (q) =>
+        q.eq("messageId", message._id).eq("emoji", reaction),
+      )
+      .paginate({
+        ...args.paginationOpts,
+        numItems: boundedChannelMessagePageSize(args.paginationOpts.numItems),
+      });
+
+    const reactors = await Promise.all(
+      reactions.page.map(async (row) => {
+        if (normalizeClubChannelReaction(row.emoji) !== reaction) return null;
+        const reactor = await ctx.db.get(row.userId);
+        return reactor ? toClubUserRef(reactor) : null;
+      }),
+    );
+
+    return {
+      ...reactions,
+      page: reactors.filter((reactor): reactor is NonNullable<typeof reactor> => reactor !== null),
     };
   },
 });
