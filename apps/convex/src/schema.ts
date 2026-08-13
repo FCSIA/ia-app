@@ -61,6 +61,7 @@ export const schema = defineSchema({
     isTeacherStaff: v.boolean(),
     isStudentAdmin: v.boolean(),
     isOtherRole: v.boolean(),
+    canReviewFeedback: v.optional(v.boolean()),
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),

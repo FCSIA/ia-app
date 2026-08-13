@@ -39,6 +39,7 @@ export function FeedbackTab({
   filteredReports,
   reportMutation,
   responseMutation,
+  canUpdateFeedback = true,
 }: {
   feedbackSearch: string;
   onFeedbackSearchChange: (value: string) => void;
@@ -46,6 +47,7 @@ export function FeedbackTab({
   filteredReports: FeedbackReport[];
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
+  canUpdateFeedback?: boolean;
 }) {
   const [view, setView] = useState<'active' | 'archive'>('active');
   const activeReports = filteredReports.filter((report) => report.status !== 'DISMISSED');
@@ -78,6 +80,7 @@ export function FeedbackTab({
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
+            canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
         <TabPanel value="archive" className="mt-3">
@@ -87,6 +90,7 @@ export function FeedbackTab({
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
+            canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
       </Tabs>
@@ -100,12 +104,14 @@ function FeedbackList({
   clearSearch,
   reportMutation,
   responseMutation,
+  canUpdateFeedback,
 }: {
   reports: FeedbackReport[];
   emptyMessage: string;
   clearSearch?: () => void;
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
+  canUpdateFeedback: boolean;
 }) {
   if (reports.length === 0) {
     return (
@@ -153,9 +159,11 @@ function FeedbackList({
                   ))}
                 </div>
               ) : null}
-              <FeedbackResponses report={report} responseMutation={responseMutation} />
+              {canUpdateFeedback ? (
+                <FeedbackResponses report={report} responseMutation={responseMutation} />
+              ) : null}
             </div>
-            {report.status === 'PENDING' ? (
+            {canUpdateFeedback && report.status === 'PENDING' ? (
               <div className="flex shrink-0 gap-2">
                 <Button
                   size="sm"

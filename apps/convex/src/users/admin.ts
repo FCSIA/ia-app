@@ -43,6 +43,7 @@ import {
   searchText,
   setBetterAuthPassword,
   syncBetterAuthRole,
+  isStudentUser,
   studentExportRowValidator,
   studentImportResultValidator,
   toAdminUserProfile,
@@ -511,6 +512,38 @@ export const exportStudents = query({
       major: student.major ?? null,
       minor: student.minor ?? null,
     }));
+  },
+});
+
+export const setFeedbackReviewer = mutation({
+  args: {
+    userId: v.id("users"),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    const target = await ctx.db.get(args.userId);
+    if (!target) throw new ConvexError("User not found.");
+    if (!isStudentUser(target)) {
+      throw new ConvexError("Feedback review access is reserved for student developers.");
+    }
+
+    await ctx.db.patch(target._id, {
+      canReviewFeedback: args.enabled,
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_FEEDBACK_REVIEW_ACCESS_UPDATED",
+      entityType: "User",
+      entityId: target._id,
+      meta: { enabled: args.enabled },
+    });
+
+    return null;
   },
 });
 

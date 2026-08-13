@@ -25,6 +25,7 @@ const userProfileFields = {
 export const userSelfProfileValidator = v.object({
   ...userProfileFields,
   mustResetPassword: docs.users.fields.mustResetPassword,
+  canReviewFeedback: docs.users.fields.canReviewFeedback,
   dashboardLayout: docs.users.fields.dashboardLayout,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
 });
@@ -44,6 +45,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     email: user.email,
     isActive: user.isActive,
     mustResetPassword: user.mustResetPassword,
+    canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,

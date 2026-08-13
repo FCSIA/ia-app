@@ -97,7 +97,7 @@ export function AppShell({
   };
 
   const showAdmin = Boolean(
-    user && hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"),
+    user && (hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF") || user.canReviewFeedback),
   );
   const showSchedule = Boolean(
     user && hasRole(user, "STUDENT", "ADMIN", "SUPER_ADMIN"),

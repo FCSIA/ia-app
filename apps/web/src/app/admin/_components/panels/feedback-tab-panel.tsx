@@ -3,7 +3,7 @@
 import { FeedbackTab } from '../feedback-tab';
 import { useAdminFeedback } from '../../_hooks/use-admin-feedback';
 
-export function FeedbackTabPanel() {
+export function FeedbackTabPanel({ canUpdateFeedback = true }: { canUpdateFeedback?: boolean }) {
   const feedback = useAdminFeedback('feedback');
 
   return (
@@ -14,6 +14,7 @@ export function FeedbackTabPanel() {
       filteredReports={feedback.filteredReports}
       reportMutation={feedback.reportMutation}
       responseMutation={feedback.responseMutation}
+      canUpdateFeedback={canUpdateFeedback}
     />
   );
 }

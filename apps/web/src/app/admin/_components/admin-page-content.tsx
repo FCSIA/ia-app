@@ -19,16 +19,26 @@ export function AdminPageContent() {
   const user = useCurrentUser();
   const router = useRouter();
   const isSuperAdmin = hasRole(user, 'SUPER_ADMIN');
+  const canReviewFeedback = isSuperAdmin || user?.canReviewFeedback === true;
   const canManageWrapped = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
+  const hasAdministrativeAccess = hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
   const { activeTab, setActiveTab } = useAdminTab(isSuperAdmin, canManageWrapped);
   const pendingReports = useAdminModerationPending();
 
   useEffect(() => {
-    if (user && !hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF')) {
+    if (user && !hasAdministrativeAccess && !canReviewFeedback) {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [canReviewFeedback, hasAdministrativeAccess, user, router]);
+
+  if (!hasAdministrativeAccess && canReviewFeedback) {
+    return (
+      <AdminPageLayout>
+        <FeedbackTabPanel canUpdateFeedback={false} />
+      </AdminPageLayout>
+    );
+  }
 
   return (
     <AdminPageLayout>
@@ -53,7 +63,7 @@ export function AdminPageContent() {
           {activeTab === 'moderation' ? <ModerationTabPanel /> : null}
         </AdminScrollTabPanel>
 
-        {isSuperAdmin ? (
+        {canReviewFeedback ? (
           <AdminScrollTabPanel value="feedback">
             {activeTab === 'feedback' ? <FeedbackTabPanel /> : null}
           </AdminScrollTabPanel>
