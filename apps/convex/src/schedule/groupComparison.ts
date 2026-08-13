@@ -1,15 +1,8 @@
 import type { ScheduleWeekday } from "../validators";
 
-const WEEKDAY_ORDER: Record<ScheduleWeekday, number> = {
-  MONDAY: 0,
-  TUESDAY: 1,
-  WEDNESDAY: 2,
-  THURSDAY: 3,
-  FRIDAY: 4,
-};
-
 export type GroupComparisonEntry<TCourseId extends string = string> = {
-  weekday: ScheduleWeekday;
+  /** Legacy copies may identify the weekday, but comparisons are period-based. */
+  weekday?: ScheduleWeekday;
   periodNumber: number;
   courseId: TCourseId | null;
   className: string;
@@ -28,7 +21,6 @@ export type SharedClassCluster<
   TCourseId extends string = string,
 > = {
   key: string;
-  weekday: ScheduleWeekday;
   periodNumber: number;
   className: string;
   courseId: TCourseId | null;
@@ -42,8 +34,8 @@ export function normalizeManualClassName(value: string) {
 }
 
 /**
- * Group identity intentionally stays on canonical personal assignments. Dated
- * bell/template resolution must not change this weekday + period identity.
+ * Group identity stays on canonical personal assignments. Dated bell/template
+ * resolution and legacy weekday copies must not change this period identity.
  */
 export function scheduleComparisonKey<TCourseId extends string>(
   entry: GroupComparisonEntry<TCourseId>,
@@ -51,7 +43,7 @@ export function scheduleComparisonKey<TCourseId extends string>(
   const classIdentity = entry.courseId
     ? `course:${entry.courseId}`
     : `manual:${normalizeManualClassName(entry.className)}`;
-  return `${entry.weekday}:${entry.periodNumber}:${classIdentity}`;
+  return `${entry.periodNumber}:${classIdentity}`;
 }
 
 export function clusterSharedClasses<
@@ -81,7 +73,6 @@ export function clusterSharedClasses<
       }
       clusters.set(key, {
         key,
-        weekday: entry.weekday,
         periodNumber: entry.periodNumber,
         className: entry.className.trim(),
         courseId: entry.courseId,
@@ -104,8 +95,7 @@ export function clusterSharedClasses<
     })
     .sort(
       (left, right) =>
-        WEEKDAY_ORDER[left.weekday] - WEEKDAY_ORDER[right.weekday] ||
-        left.periodNumber - right.periodNumber ||
+      left.periodNumber - right.periodNumber ||
         left.className.localeCompare(right.className),
     );
 }

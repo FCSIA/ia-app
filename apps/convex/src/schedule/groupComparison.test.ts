@@ -2,28 +2,28 @@ import { describe, expect, test } from "vitest";
 import { clusterSharedClasses } from "./groupComparison";
 
 describe("schedule group common-class clustering", () => {
-  test("keeps disjoint attendee subsets explicit", () => {
+  test("matches canonical period assignments even when they were saved on different weekdays", () => {
     const clusters = clusterSharedClasses([
       {
         userId: "owner",
         entries: [
           { weekday: "MONDAY", periodNumber: 1, courseId: "math", className: "Math" },
-          { weekday: "TUESDAY", periodNumber: 2, courseId: "science", className: "Science" },
-          { weekday: "WEDNESDAY", periodNumber: 3, courseId: "english", className: "English" },
+          { weekday: "MONDAY", periodNumber: 2, courseId: "science", className: "Science" },
+          { weekday: "MONDAY", periodNumber: 3, courseId: "english", className: "English" },
         ],
       },
       {
         userId: "friend-a",
         entries: [
           { weekday: "MONDAY", periodNumber: 1, courseId: "math", className: "Math" },
-          { weekday: "WEDNESDAY", periodNumber: 3, courseId: "english", className: "English" },
+          { weekday: "THURSDAY", periodNumber: 3, courseId: "english", className: "English" },
         ],
       },
       {
         userId: "friend-b",
         entries: [
-          { weekday: "TUESDAY", periodNumber: 2, courseId: "science", className: "Science" },
-          { weekday: "WEDNESDAY", periodNumber: 3, courseId: "english", className: "English" },
+          { weekday: "FRIDAY", periodNumber: 2, courseId: "science", className: "Science" },
+          { weekday: "FRIDAY", periodNumber: 3, courseId: "english", className: "English" },
         ],
       },
     ]);
@@ -65,7 +65,7 @@ describe("schedule group common-class clustering", () => {
     });
   });
 
-  test("normalizes manual class names but never merges different slots", () => {
+  test("normalizes manual class names while keeping different periods separate", () => {
     const clusters = clusterSharedClasses([
       {
         userId: "owner",
@@ -82,7 +82,7 @@ describe("schedule group common-class clustering", () => {
       {
         userId: "friend-b",
         entries: [
-          { weekday: "FRIDAY", periodNumber: 4, courseId: null, className: "Robotics Lab" },
+          { weekday: "FRIDAY", periodNumber: 5, courseId: null, className: "Robotics Lab" },
         ],
       },
     ]);

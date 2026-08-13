@@ -44,13 +44,6 @@ const groupMemberValidator = v.object({
 
 const sharedClassClusterValidator = v.object({
   key: v.string(),
-  weekday: v.union(
-    v.literal("MONDAY"),
-    v.literal("TUESDAY"),
-    v.literal("WEDNESDAY"),
-    v.literal("THURSDAY"),
-    v.literal("FRIDAY"),
-  ),
   periodNumber: v.number(),
   className: v.string(),
   courseId: v.union(v.id("courses"), v.null()),
