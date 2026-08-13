@@ -178,3 +178,40 @@ export function getCurrentResolvedScheduleStatus(
     nextBlock,
   };
 }
+
+export function getCurrentScheduleStatusForResolvedDay(
+  schedule: ScheduleEntryContainer | null,
+  day: ResolvedSchoolDay | null | undefined,
+  now: Date = new Date(),
+) {
+  if (!day?.weekday) {
+    return {
+      weekday: null,
+      currentBlock: null,
+      currentEntry: null,
+      nextBlock: null,
+    };
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentBlock =
+    day.blocks.find(
+      (block) =>
+        currentMinutes >= parseTimeToMinutes(block.startTime) &&
+        currentMinutes < parseTimeToMinutes(block.endTime),
+    ) ?? null;
+  const nextBlock =
+    day.blocks.find(
+      (block) => currentMinutes < parseTimeToMinutes(block.startTime),
+    ) ?? null;
+
+  return {
+    weekday: day.weekday,
+    currentBlock,
+    currentEntry:
+      currentBlock?.periodNumber != null
+        ? findScheduleEntry(schedule, day.weekday, currentBlock.periodNumber)
+        : null,
+    nextBlock,
+  };
+}

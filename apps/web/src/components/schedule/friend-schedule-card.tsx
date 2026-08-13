@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { fullName, getCurrentScheduleStatus } from "./schedule-utils";
+import { fullName, getCurrentScheduleStatusForResolvedDay } from "./schedule-utils";
 import { FriendScheduleDialog } from "./friend-schedule-dialog";
-import { ScheduleFriend, SchoolDayBlock } from "./types";
+import { ResolvedSchoolDay, ScheduleFriend, SchoolDayBlock } from "./types";
 
 type FriendScheduleCardProps = {
   friend: ScheduleFriend;
   blocks: SchoolDayBlock[];
+  day: ResolvedSchoolDay;
   onRemove: () => void;
   isRemoving?: boolean;
   emphasized?: boolean;
@@ -21,11 +22,12 @@ type FriendScheduleCardProps = {
 export function FriendScheduleCard({
   friend,
   blocks,
+  day,
   onRemove,
   isRemoving,
   emphasized = false,
 }: FriendScheduleCardProps) {
-  const current = getCurrentScheduleStatus(friend.schedule, blocks);
+  const current = getCurrentScheduleStatusForResolvedDay(friend.schedule, day);
   const lunchNumber =
     friend.schedule?.lunchPeriod === "PERIOD_4"
       ? 4
