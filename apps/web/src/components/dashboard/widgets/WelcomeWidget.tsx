@@ -7,9 +7,11 @@ import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
 import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
+import { formatSchoolTime, readUse24HourTime } from "@/lib/time-format";
 
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
+  const [use24HourTime, setUse24HourTime] = useState(false);
   const user = useCurrentUser();
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
@@ -17,6 +19,17 @@ export function WelcomeWidget() {
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const updateTimeFormat = () => setUse24HourTime(readUse24HourTime());
+    updateTimeFormat();
+    window.addEventListener("storage", updateTimeFormat);
+    window.addEventListener("ia:time-format-change", updateTimeFormat);
+    return () => {
+      window.removeEventListener("storage", updateTimeFormat);
+      window.removeEventListener("ia:time-format-change", updateTimeFormat);
+    };
   }, []);
 
   const scheduleData = useQuery(
@@ -70,9 +83,9 @@ export function WelcomeWidget() {
               ) : null}
               <span>
                 {!currentClass && nextBlock
-                  ? `Next: ${nextBlock.displayLabel} at ${nextBlock.startTime}`
+                  ? `Next: ${nextBlock.displayLabel} at ${formatSchoolTime(nextBlock.startTime, use24HourTime)}`
                   : currentBlock
-                    ? `${currentBlock.startTime}–${currentBlock.endTime}`
+                    ? `${formatSchoolTime(currentBlock.startTime, use24HourTime)}–${formatSchoolTime(currentBlock.endTime, use24HourTime)}`
                     : "No more blocks today"}
               </span>
             </div>

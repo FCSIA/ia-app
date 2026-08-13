@@ -1,6 +1,6 @@
 'use client';
 
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Bell,
   Lock,
@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { readUse24HourTime, saveUse24HourTime } from '@/lib/time-format';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { customThemeEnabled } from '@/lib/theme-features';
@@ -463,6 +464,12 @@ const APPEARANCE_OPTIONS = [
 ] as const;
 
 export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
+  const [use24HourTime, setUse24HourTime] = useState(false);
+
+  useEffect(() => {
+    setUse24HourTime(readUse24HourTime());
+  }, []);
+
   return (
     <SettingsCard
       icon={Palette}
@@ -486,6 +493,22 @@ export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
       </RadioGroup>
 
       {customThemeEnabled && theme === 'custom' ? <CustomThemeEditor /> : null}
+
+      <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Use 24-hour time</p>
+          <p className="text-xs text-muted-foreground">Show times like 13:45 instead of 1:45 PM.</p>
+        </div>
+        <Switch
+          checked={use24HourTime}
+          onCheckedChange={(next) => {
+            setUse24HourTime(next);
+            saveUse24HourTime(next);
+            window.dispatchEvent(new Event('ia:time-format-change'));
+          }}
+          aria-label="Use 24-hour time"
+        />
+      </div>
     </SettingsCard>
   );
 }
