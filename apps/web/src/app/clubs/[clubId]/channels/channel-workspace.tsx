@@ -590,6 +590,7 @@ function ReactionButton({
 }
 
 function MessageRow({
+  clubId,
   message,
   replyTarget,
   onStartReply,
@@ -616,6 +617,7 @@ function MessageRow({
   currentUserId,
   compact = false,
 }: {
+  clubId: Id<'clubs'>;
   message: ClubChannelMessage;
   replyTarget?: ClubChannelMessage;
   onStartReply: (messageId: string) => void;
@@ -1318,6 +1320,7 @@ export function ChannelWorkspace() {
     return (
       <div>
         <MessageRow
+          clubId={clubId}
           message={message}
           replyTarget={
             message.replyToMessageId
