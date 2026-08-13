@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
+import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import {
   format,
   startOfMonth,
@@ -140,6 +141,60 @@ function EventInteraction({ onOpen, children }: { onOpen: () => void, children: 
         onDoubleClick: (e: any) => { e.stopPropagation(); onOpen(); }
       })}
     </>
+  );
+}
+
+function CalendarInviteStrip() {
+  const { toast } = useToast();
+  const invites = useQuery(api.events.calendar.listPendingInvites) ?? [];
+  const respondToInvite = useMutation(api.events.calendar.respondToInvite);
+  const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
+
+  if (invites.length === 0) return null;
+
+  const respond = async (inviteId: Id<'calendarInvites'>, accept: boolean) => {
+    setPendingInviteId(inviteId);
+    try {
+      await respondToInvite({ inviteId, accept });
+      toast({ title: accept ? 'Added to your calendar' : 'Invite declined' });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Could not respond to invite',
+        variant: 'destructive',
+      });
+    } finally {
+      setPendingInviteId(null);
+    }
+  };
+
+  return (
+    <div className="flex shrink-0 gap-3 overflow-x-auto border-b border-border bg-muted/20 px-4 py-3 md:px-6">
+      {invites.map((invite) => (
+        <div key={invite._id} className="flex min-w-[280px] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{invite.entry.title}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {format(new Date(invite.entry.startAt), 'MMM d, h:mm a')} · {invite.sender.firstName} {invite.sender.lastName}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            disabled={pendingInviteId === invite._id}
+            onClick={() => void respond(invite._id, true)}
+          >
+            Accept
+          </Button>
+          <Button
+            variant="tertiary"
+            size="sm"
+            disabled={pendingInviteId === invite._id}
+            onClick={() => void respond(invite._id, false)}
+          >
+            Decline
+          </Button>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -589,6 +644,8 @@ export default function CalendarPage() {
             />
           </div>
         </div>
+
+        <CalendarInviteStrip />
 
         {/* View Content */}
         {view === 'month' && renderMonthView()}

@@ -895,6 +895,22 @@ export const schema = defineSchema({
     .index("by_flexFridayId", ["flexFridayId"])
     .index("by_startAt", ["startAt"]),
 
+  calendarInvites: defineTable({
+    calendarEntryId: v.id("calendarEntries"),
+    senderId: v.id("users"),
+    recipientId: v.id("users"),
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("ACCEPTED"),
+      v.literal("DECLINED"),
+    ),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_calendarEntryId", ["calendarEntryId"])
+    .index("by_calendarEntryId_and_recipientId", ["calendarEntryId", "recipientId"])
+    .index("by_recipientId_and_status_and_createdAt", ["recipientId", "status", "createdAt"]),
+
   flexFridays: defineTable({
     date: v.number(),
     type: flexFridayTypeValidator,

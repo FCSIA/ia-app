@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -17,7 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Edit3, Clock, MapPin, AlignLeft, Trash } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Edit3, Clock, MapPin, AlignLeft, Trash, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { Id } from '~/apps/convex/src/_generated/dataModel';
 
@@ -31,6 +32,8 @@ interface EditCalendarEntryDialogProps {
     endAt?: number;
     source: string;
     createdById?: string;
+    inviteId?: Id<'calendarInvites'>;
+    sharedBy?: { firstName: string; lastName: string };
   };
   trigger?: (onOpen: () => void) => React.ReactNode;
 }
@@ -49,8 +52,11 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
 
   const updateEntry = useMutation(api.events.calendar.update);
   const removeEntry = useMutation(api.events.calendar.remove);
+  const inviteFriends = useMutation(api.events.calendar.inviteFriends);
+  const friends = useQuery(api.events.calendar.listEligibleFriends, open ? {} : 'skip');
   const [pending, setPending] = useState(false);
-  const isPersonal = entry.source === 'PERSONAL';
+  const [selectedFriendIds, setSelectedFriendIds] = useState<Id<'users'>[]>([]);
+  const isOwnedPersonal = entry.source === 'PERSONAL' && !entry.inviteId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +101,23 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
     }
   };
 
+  const handleInviteFriends = async () => {
+    if (selectedFriendIds.length === 0) return;
+    setPending(true);
+    try {
+      const result = await inviteFriends({ entryId: entry._id, friendIds: selectedFriendIds });
+      setSelectedFriendIds([]);
+      toast({ title: result.invited === 1 ? 'Invite sent' : `${result.invited} invites sent` });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to send invites',
+        variant: 'destructive',
+      });
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -108,6 +131,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
             date: format(new Date(entry.startAt), 'yyyy-MM-dd'),
             time: format(new Date(entry.startAt), 'HH:mm'),
           });
+          setSelectedFriendIds([]);
         }
       }}
     >
@@ -122,10 +146,14 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <Edit3 className="text-primary" size={20} />
-            {isPersonal ? 'Edit Personal Reminder' : 'View Event'}
+            {isOwnedPersonal ? 'Edit Personal Reminder' : 'View Event'}
           </DialogTitle>
           <DialogDescription>
-            {isPersonal ? 'Update your private reminder details.' : 'Shared calendar event.'}
+            {isOwnedPersonal
+              ? 'Update your reminder details or invite accepted friends.'
+              : entry.sharedBy
+                ? `Shared with you by ${entry.sharedBy.firstName} ${entry.sharedBy.lastName}.`
+                : 'Shared calendar event.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 py-4">
@@ -140,7 +168,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                readOnly={!isPersonal}
+                readOnly={!isOwnedPersonal}
                 required
               />
               <AlignLeft className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -154,7 +182,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
               </Label>
               <DatePicker
                 value={form.date}
-                onChange={(date) => isPersonal && setForm({ ...form, date })}
+                onChange={(date) => isOwnedPersonal && setForm({ ...form, date })}
                 buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
               />
             </div>
@@ -169,7 +197,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
                   value={form.time}
                   onChange={(e) => setForm({ ...form, time: e.target.value })}
                   className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                  readOnly={!isPersonal}
+                  readOnly={!isOwnedPersonal}
                   required
                 />
                 <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -188,7 +216,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
                 className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
-                readOnly={!isPersonal}
+                readOnly={!isOwnedPersonal}
               />
               <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             </div>
@@ -204,11 +232,57 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="rounded-2xl min-h-[90px] border-foreground/5 bg-foreground/[0.02] resize-none"
-              readOnly={!isPersonal}
+              readOnly={!isOwnedPersonal}
             />
           </div>
 
-          {isPersonal && (
+          {isOwnedPersonal && (
+            <div className="space-y-2 rounded-2xl border border-border bg-muted/30 p-3">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <UserPlus className="size-4 text-primary" />
+                Invite friends
+              </div>
+              {friends === undefined ? (
+                <p className="text-sm text-muted-foreground">Loading friends...</p>
+              ) : friends.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Add accepted friends from Schedules to share this reminder.</p>
+              ) : (
+                <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
+                  {friends.map((friend) => {
+                    const checked = selectedFriendIds.includes(friend._id);
+                    return (
+                      <label key={friend._id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(nextChecked) =>
+                            setSelectedFriendIds((current) =>
+                              nextChecked
+                                ? [...current, friend._id]
+                                : current.filter((id) => id !== friend._id),
+                            )
+                          }
+                        />
+                        {friend.firstName} {friend.lastName}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedFriendIds.length > 0 && (
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  size="sm"
+                  onClick={handleInviteFriends}
+                  disabled={pending}
+                >
+                  Send invite{selectedFriendIds.length === 1 ? '' : 's'}
+                </Button>
+              )}
+            </div>
+          )}
+
+          {isOwnedPersonal && (
             <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
               <Button
                 type="button"
