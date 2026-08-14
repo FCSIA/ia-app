@@ -9,6 +9,7 @@ Closes #
 <!-- List commands you actually ran and their results. -->
 
 - [ ] `pnpm brand:check`
+- [ ] `pnpm devlog:check`
 - [ ] `pnpm lint`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
