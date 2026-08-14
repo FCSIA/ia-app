@@ -4,7 +4,6 @@ import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { AnimatePresence, motion } from "framer-motion";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   ChevronDown,
@@ -379,9 +378,6 @@ export function ClubWorkspace({
       headerSlot={headerSlot}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
-      pageTransitionKey={
-        activeChannelId ? `club-channel-workspace-${clubId}` : undefined
-      }
       channelSearch={channelSearch}
       onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >
@@ -951,48 +947,33 @@ function UnitChannelTree({
           ))}
         </CardGroup>
       ) : null}
-      <AnimatePresence initial={false}>
-        {(!directChannels.length || expanded) && children.length ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 420,
-              damping: 34,
-              opacity: { duration: 0.12 },
-            }}
-            className="overflow-hidden motion-reduce:transition-none"
-          >
-            <div
-              className={
-                directChannels.length
-                  ? "ml-3 border-l border-border/60 pl-1.5"
-                  : ""
-              }
-            >
-              {children.map((child) => (
-                <UnitChannelTree
-                  key={child._id}
-                  unit={child}
-                  units={units}
-                  channels={channels}
-                  clubId={clubId}
-                  activeChannelId={activeChannelId}
-                  density={density}
-                  onNavigate={onNavigate}
-                  canEditChannels={canEditChannels}
-                  canDeleteChannels={canDeleteChannels}
-                  onDeleteChannel={onDeleteChannel}
-                  openUnitIds={openUnitIds}
-                  onToggle={onToggle}
-                />
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {(!directChannels.length || expanded) && children.length ? (
+        <div
+          className={
+            directChannels.length
+              ? "ml-3 border-l border-border/60 pl-1.5"
+              : ""
+          }
+        >
+          {children.map((child) => (
+            <UnitChannelTree
+              key={child._id}
+              unit={child}
+              units={units}
+              channels={channels}
+              clubId={clubId}
+              activeChannelId={activeChannelId}
+              density={density}
+              onNavigate={onNavigate}
+              canEditChannels={canEditChannels}
+              canDeleteChannels={canDeleteChannels}
+              onDeleteChannel={onDeleteChannel}
+              openUnitIds={openUnitIds}
+              onToggle={onToggle}
+            />
+          ))}
+          </div>
+      ) : null}
     </div>
   );
 }
