@@ -43,6 +43,17 @@ export const schema = defineSchema({
     users: v.number(),
     students: v.number(),
     staff: v.number(),
+    teachers: v.optional(v.number()),
+    studentAdmins: v.optional(v.number()),
+    other: v.optional(v.number()),
+    roleGroupCountsReady: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  courseCatalogMetadata: defineTable({
+    key: v.string(),
+    departments: v.array(v.string()),
+    courseCount: v.number(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 

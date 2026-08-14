@@ -7,6 +7,7 @@ import { Timer, CheckCircle2 } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { Panel } from "@/components/layout/page-frame";
 import { Progress } from "@/components/ui/progress";
+import { schoolDateKey } from "@/lib/school-date";
 
 export function DayProgressWidget() {
   const [now, setNow] = useState(new Date());
@@ -16,13 +17,14 @@ export function DayProgressWidget() {
     return () => clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(api.schedule.dashboard.get, {});
+  const dateKey = schoolDateKey(now);
+  const resolvedDay = useQuery(api.schedule.dashboard.getDay, { dateKey });
 
   const progress = useMemo(() => {
-    if (!scheduleData?.resolvedDay.blocks.length) return null;
+    if (!resolvedDay?.blocks.length) return null;
 
-    const blocks = scheduleData.resolvedDay.blocks;
-    const todayStr = scheduleData.resolvedDay.dateKey;
+    const blocks = resolvedDay.blocks;
+    const todayStr = resolvedDay.dateKey;
 
     let dayStart: Date | null = null;
     let dayEnd: Date | null = null;
@@ -61,7 +63,7 @@ export function DayProgressWidget() {
     const remaining = totalMinutes - elapsedMinutes;
 
     return { percent, status: "In progress", remaining };
-  }, [scheduleData?.resolvedDay, now]);
+  }, [resolvedDay, now]);
 
   if (!progress) {
     return (

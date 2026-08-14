@@ -8,7 +8,13 @@ import {
   includes,
   matchesDateRange,
   toAuditEvent,
+  toAuditEvents,
 } from "./_lib";
+
+const auditFilterOptionsValidator = v.object({
+  actions: v.array(v.string()),
+  entityTypes: v.array(v.string()),
+});
 
 export const list = query({
   args: {
@@ -40,7 +46,7 @@ export const list = query({
       .order("desc")
       .take(limit);
 
-    const hydrated = await Promise.all(rows.map((row) => toAuditEvent(ctx, row)));
+    const hydrated = await toAuditEvents(ctx, rows);
 
     return hydrated.filter((event) => {
       if (args.action && event.action !== args.action) return false;
@@ -79,6 +85,28 @@ export const list = query({
   },
 });
 
+export const listFilterOptions = query({
+  args: {},
+  returns: auditFilterOptionsValidator,
+  handler: async (ctx) => {
+    const viewer = await getMaybeCurrentAppUser(ctx);
+    if (!viewer || !requireAnyRoleSafe(viewer, ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF"])) {
+      return { actions: [], entityTypes: [] };
+    }
+
+    // Deliberately avoids actor hydration and event metadata serialization.
+    const rows = await ctx.db
+      .query("auditEvents")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .take(500);
+    return {
+      actions: Array.from(new Set(rows.map((row) => row.action))).sort(),
+      entityTypes: Array.from(new Set(rows.map((row) => row.entityType))).sort(),
+    };
+  },
+});
+
 export const listPage = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -112,7 +140,7 @@ export const listPage = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    const hydrated = await Promise.all(result.page.map((row) => toAuditEvent(ctx, row)));
+    const hydrated = await toAuditEvents(ctx, result.page);
 
     return {
       ...result,

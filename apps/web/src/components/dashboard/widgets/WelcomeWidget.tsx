@@ -8,6 +8,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
 import { formatSchoolTime } from "@/lib/time-format";
+import { schoolDateKey } from "@/lib/school-date";
 
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
@@ -21,14 +22,15 @@ export function WelcomeWidget() {
     return () => window.clearInterval(interval);
   }, []);
 
-  const scheduleData = useQuery(
-    api.schedule.dashboard.get,
-    isStudent ? {} : "skip",
+  const dateKey = schoolDateKey(now);
+  const resolvedDay = useQuery(
+    api.schedule.dashboard.getDay,
+    isStudent ? { dateKey } : "skip",
   );
 
   const currentStatus = useMemo(
-    () => getCurrentResolvedScheduleStatus(scheduleData?.resolvedDay, now),
-    [now, scheduleData?.resolvedDay],
+    () => getCurrentResolvedScheduleStatus(resolvedDay, now),
+    [now, resolvedDay],
   );
 
   const firstName = user?.firstName ?? "";

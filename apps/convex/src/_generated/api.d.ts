@@ -47,6 +47,7 @@ import type * as clubs_sharedPagination from "../clubs/sharedPagination.js";
 import type * as clubs_tags from "../clubs/tags.js";
 import type * as courses__lib from "../courses/_lib.js";
 import type * as courses_catalog from "../courses/catalog.js";
+import type * as courses_metadata from "../courses/metadata.js";
 import type * as courses_seed from "../courses/seed.js";
 import type * as crons from "../crons.js";
 import type * as events__lib from "../events/_lib.js";
@@ -159,6 +160,7 @@ declare const fullApi: ApiFromModules<{
   "clubs/tags": typeof clubs_tags;
   "courses/_lib": typeof courses__lib;
   "courses/catalog": typeof courses_catalog;
+  "courses/metadata": typeof courses_metadata;
   "courses/seed": typeof courses_seed;
   crons: typeof crons;
   "events/_lib": typeof events__lib;

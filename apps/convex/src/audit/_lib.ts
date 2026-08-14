@@ -32,24 +32,41 @@ export const auditPageValidator = v.object({
 });
 
 export async function toAuditEvent(ctx: QueryCtx, event: Doc<"auditEvents">) {
-  const actor = event.actorId ? await ctx.db.get(event.actorId) : null;
+  const [serialized] = await toAuditEvents(ctx, [event]);
+  return serialized!;
+}
 
-  return {
-    id: event._id,
-    action: event.action,
-    entityType: event.entityType,
-    entityId: event.entityId ?? null,
-    createdAt: new Date(event.createdAt).toISOString(),
-    meta: event.meta ?? null,
-    actor: actor
-      ? {
-          id: actor._id,
-          firstName: actor.firstName,
-          lastName: actor.lastName,
-          uniqueId: actor.uniqueId,
-        }
-      : null,
-  };
+export async function toAuditEvents(
+  ctx: QueryCtx,
+  events: Doc<"auditEvents">[],
+) {
+  const actorIds = Array.from(
+    new Set(events.flatMap((event) => (event.actorId ? [event.actorId] : []))),
+  );
+  const actorEntries = await Promise.all(
+    actorIds.map(async (actorId) => [actorId, await ctx.db.get(actorId)] as const),
+  );
+  const actors = new Map(actorEntries);
+
+  return events.map((event) => {
+    const actor = event.actorId ? actors.get(event.actorId) : null;
+    return {
+      id: event._id,
+      action: event.action,
+      entityType: event.entityType,
+      entityId: event.entityId ?? null,
+      createdAt: new Date(event.createdAt).toISOString(),
+      meta: event.meta ?? null,
+      actor: actor
+        ? {
+            id: actor._id,
+            firstName: actor.firstName,
+            lastName: actor.lastName,
+            uniqueId: actor.uniqueId,
+          }
+        : null,
+    };
+  });
 }
 
 export function includes(value: string | null | undefined, needle: string) {

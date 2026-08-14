@@ -314,14 +314,18 @@ export const get = query({
         }),
     ];
 
+    const visibleChannels = context.canAccessWorkspace
+      ? await getVisibleChannels(ctx, args.clubId, context, user._id)
+      : null;
     const summary = await clubSummaryWithCounts(
       ctx,
       club,
       context.membership?.role ?? null,
+      {
+        members: memberships.length,
+        ...(visibleChannels ? { channels: visibleChannels.totalCount } : {}),
+      },
     );
-    const channels = context.canAccessWorkspace
-      ? await getVisibleChannels(ctx, args.clubId, context, user._id)
-      : [];
 
     return {
       ...summary,
@@ -338,7 +342,7 @@ export const get = query({
           showInDirectory: role.showInDirectory ?? false,
           position: role.position ?? 0,
         })),
-      channels,
+      channels: visibleChannels?.channels ?? [],
       tags: context.canAccessWorkspace ? serializedTags : [],
       directory: context.canAccessWorkspace ? directory : [],
       viewer: toViewerState(context),

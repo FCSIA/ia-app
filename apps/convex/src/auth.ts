@@ -131,6 +131,15 @@ export const disabledAdminHttpPaths = [
   "/admin/impersonate-user",
 ] as const;
 
+// The cache is signed by Better Auth and only used by its HTTP session
+// endpoint. Convex functions still call `safeGetAuthUser`, so revoking a
+// session immediately prevents access to application data.
+export const sessionCookieCache = {
+  enabled: true,
+  maxAge: 60,
+  strategy: "compact",
+} as const;
+
 export const authComponent = createClient<DataModel, typeof authSchema>(
   components.betterAuth,
   {
@@ -148,6 +157,9 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
     trustedOrigins,
     database: authComponent.adapter(ctx),
     disabledPaths: [...disabledAdminHttpPaths],
+    session: {
+      cookieCache: sessionCookieCache,
+    },
     emailAndPassword: {
       enabled: true,
       disableSignUp: true,

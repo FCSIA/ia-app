@@ -13,6 +13,38 @@ import {
   toCourseDetail,
   toCourseSummary,
 } from "./_lib";
+import {
+  COURSE_CATALOG_METADATA_KEY,
+  courseCatalogMetadataValidator,
+} from "./metadata";
+
+export const listDepartments = query({
+  args: {},
+  returns: courseCatalogMetadataValidator,
+  handler: async (ctx) => {
+    await getCurrentAppUser(ctx);
+    const metadata = await ctx.db
+      .query("courseCatalogMetadata")
+      .withIndex("by_key", (q) => q.eq("key", COURSE_CATALOG_METADATA_KEY))
+      .unique();
+    if (metadata) {
+      return {
+        departments: metadata.departments,
+        courseCount: metadata.courseCount,
+        updatedAt: metadata.updatedAt,
+      };
+    }
+
+    // Existing deployments stay correct until `internal.courses.metadata.refresh`
+    // has populated the singleton metadata document.
+    const courses = await ctx.db.query("courses").withIndex("by_title").take(1_000);
+    return {
+      departments: Array.from(new Set(courses.map((course) => course.department))).sort(),
+      courseCount: courses.length,
+      updatedAt: 0,
+    };
+  },
+});
 
 export const list = query({
   args: {

@@ -27,13 +27,20 @@ course browsing pages.
 
 - `api.courses.catalog.list`
 - `api.courses.catalog.listPage`
+- `api.courses.catalog.listDepartments`
 - `api.courses.catalog.get`
 - `internal.courses.seed.run`
+- `internal.courses.metadata.refresh`
 
 ## Data Model
 
 `courses` stores title, slug, department, course numbers, pathway, term,
 eligibility grades, prerequisites text, and source metadata.
+
+`courseCatalogMetadata` is a singleton that serves department filters without
+reading every course. The course seed refreshes it automatically. For an
+existing deployment, run `internal.courses.metadata.refresh` once after the
+schema is deployed.
 
 ## Search
 

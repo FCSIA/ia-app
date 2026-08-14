@@ -134,6 +134,43 @@ export const get = query({
   },
 });
 
+/**
+ * The dashboard only needs the resolved school day. Keep the schedule editor's
+ * friends, requests, and raw block payload out of that hot subscription.
+ */
+export const getDay = query({
+  args: { dateKey: v.string() },
+  returns: scheduleDashboardValidator.fields.resolvedDay,
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    const dateKey = normalizeDateKey(args.dateKey);
+    const mySchedule = user && isStudentUser(user)
+      ? await serializeScheduleForUser(ctx, user._id)
+      : null;
+    const dayPlanSource = await loadDayPlanSource(ctx, dateKey);
+    const resolved = resolveSchoolDay({
+      dateKey,
+      lunchPeriod: mySchedule?.lunchPeriod ?? null,
+      entries: mySchedule?.entries ?? [],
+      regularBlocks:
+        dayPlanSource.source === "DATE_OVERRIDE" ? [] : dayPlanSource.blocks,
+      override:
+        dayPlanSource.source === "DATE_OVERRIDE"
+          ? { name: dayPlanSource.name, blocks: dayPlanSource.blocks }
+          : null,
+    });
+
+    return {
+      ...resolved,
+      calendarSetupRequired: dayPlanSource.calendarSetupRequired,
+      name: dayPlanSource.name,
+      source: dayPlanSource.source,
+      sourceId: dayPlanSource.sourceId,
+      sourceTemplateId: dayPlanSource.sourceTemplateId,
+    };
+  },
+});
+
 export const save = mutation({
   args: {
     isPublic: v.boolean(),

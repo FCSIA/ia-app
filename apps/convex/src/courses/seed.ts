@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { COURSE_SEEDS } from "../../seed-data/courses";
 import { courseSeedResultValidator, courseSeedToDocument } from "./_lib";
+import { refreshCourseCatalogMetadata } from "./metadata";
 
 export const run = internalMutation({
   args: {
@@ -41,6 +42,8 @@ export const run = internalMutation({
         inserted += 1;
       }
     }
+
+    await refreshCourseCatalogMetadata(ctx);
 
     return { inserted, updated, deleted };
   },
