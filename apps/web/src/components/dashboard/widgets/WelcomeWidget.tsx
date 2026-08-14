@@ -7,29 +7,18 @@ import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
 import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
-import { formatSchoolTime, readUse24HourTime } from "@/lib/time-format";
+import { formatSchoolTime } from "@/lib/time-format";
 
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
-  const [use24HourTime, setUse24HourTime] = useState(false);
   const user = useCurrentUser();
+  const use24HourTime = user?.use24HourTime ?? false;
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const updateTimeFormat = () => setUse24HourTime(readUse24HourTime());
-    updateTimeFormat();
-    window.addEventListener("storage", updateTimeFormat);
-    window.addEventListener("ia:time-format-change", updateTimeFormat);
-    return () => {
-      window.removeEventListener("storage", updateTimeFormat);
-      window.removeEventListener("ia:time-format-change", updateTimeFormat);
-    };
   }, []);
 
   const scheduleData = useQuery(
@@ -69,9 +58,17 @@ export function WelcomeWidget() {
 
         {isStudent ? (
           <div className="min-w-0 sm:text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-              Now
-            </p>
+            <div className="flex items-baseline gap-2 sm:justify-end">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                Now
+              </p>
+              <time
+                dateTime={now.toISOString()}
+                className="text-sm font-semibold tabular-nums text-foreground"
+              >
+                {formatSchoolTime(format(now, "HH:mm"), use24HourTime)}
+              </time>
+            </div>
             <h2 className="truncate text-base font-semibold text-foreground">
               {currentClass ?? "No active class"}
             </h2>

@@ -37,10 +37,12 @@ export default function ProfilePage() {
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
   const [changingPassword, setChangingPassword] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [savingTimeFormat, setSavingTimeFormat] = useState(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>('account');
   const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
 
   const changePassword = useMutation(api.users.auth.changePassword);
+  const updateTimeFormat = useMutation(api.users.me.updateTimeFormat);
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
   const prefs = useQuery(api.notifications.preferences.list);
   const moderationAlerts = (useQuery(api.notifications.inbox.list, { unreadOnly: true }) ?? [])
@@ -116,6 +118,21 @@ export default function ProfilePage() {
     startLogout();
   }
 
+  async function handleTimeFormatChange(use24HourTime: boolean) {
+    if (savingTimeFormat) return;
+    setSavingTimeFormat(true);
+    try {
+      await updateTimeFormat({ use24HourTime });
+    } catch (error: unknown) {
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to update time format',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTimeFormat(false);
+    }
+  }
+
   function handlePreferenceToggle({
     category,
     enabled,
@@ -171,7 +188,13 @@ export default function ProfilePage() {
             />
           ) : null}
           {visibleSection === 'appearance' && mounted ? (
-            <AppearanceCard theme={theme} setTheme={setTheme} />
+            <AppearanceCard
+              theme={theme}
+              setTheme={setTheme}
+              use24HourTime={user?.use24HourTime ?? false}
+              savingTimeFormat={savingTimeFormat}
+              onUse24HourTimeChange={(value) => void handleTimeFormatChange(value)}
+            />
           ) : null}
           {visibleSection === 'moderation' && canSeeModeration ? (
             <ModerationAlertsCard alerts={moderationAlerts} />

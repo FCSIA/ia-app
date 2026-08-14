@@ -65,6 +65,7 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
+    use24HourTime: v.optional(v.boolean()),
     avatarUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),

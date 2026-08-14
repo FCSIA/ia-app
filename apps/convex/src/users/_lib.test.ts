@@ -7,6 +7,7 @@ import {
   generateTemporaryPassword,
   isPrivilegeReduction,
   revokeBetterAuthSessions,
+  toUserSelfProfile,
 } from "./_lib";
 
 describe("generateTemporaryPassword", () => {
@@ -118,5 +119,19 @@ describe("session revocation", () => {
         paginationOpts: { cursor: null, numItems: 1000 },
       },
     ]);
+  });
+});
+
+describe("user time format preference", () => {
+  test("defaults legacy user records to 12-hour time", () => {
+    const profile = toUserSelfProfile({} as never);
+
+    expect(profile.use24HourTime).toBe(false);
+  });
+
+  test("returns a saved 24-hour preference", () => {
+    const profile = toUserSelfProfile({ use24HourTime: true } as never);
+
+    expect(profile.use24HourTime).toBe(true);
   });
 });

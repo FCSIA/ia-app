@@ -27,6 +27,7 @@ export const userSelfProfileValidator = v.object({
   mustResetPassword: docs.users.fields.mustResetPassword,
   canReviewFeedback: docs.users.fields.canReviewFeedback,
   dashboardLayout: docs.users.fields.dashboardLayout,
+  use24HourTime: docs.users.fields.use24HourTime,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
 });
 
@@ -47,6 +48,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     mustResetPassword: user.mustResetPassword,
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
+    use24HourTime: user.use24HourTime ?? false,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
   };
@@ -380,6 +382,7 @@ export async function createLinkedUser(ctx: MutationCtx, args: CreateLinkedUserA
     isActive: true,
     mustResetPassword: args.mustResetPassword ?? true,
     dashboardLayout: [],
+    use24HourTime: false,
     searchText: searchText({
       uniqueId,
       firstName: args.firstName,

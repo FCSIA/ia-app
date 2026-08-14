@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Bell,
   Lock,
@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { readUse24HourTime, saveUse24HourTime } from '@/lib/time-format';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { customThemeEnabled } from '@/lib/theme-features';
@@ -449,6 +448,9 @@ export function NotificationPreferencesCard({
 type AppearanceCardProps = {
   theme: string | undefined;
   setTheme: (theme: string) => void;
+  use24HourTime: boolean;
+  savingTimeFormat: boolean;
+  onUse24HourTimeChange: (use24HourTime: boolean) => void;
 };
 
 const APPEARANCE_OPTIONS = [
@@ -460,13 +462,13 @@ const APPEARANCE_OPTIONS = [
   ...(customThemeEnabled ? [{ id: 'custom', label: 'Custom' }] : []),
 ] as const;
 
-export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
-  const [use24HourTime, setUse24HourTime] = useState(false);
-
-  useEffect(() => {
-    setUse24HourTime(readUse24HourTime());
-  }, []);
-
+export function AppearanceCard({
+  theme,
+  setTheme,
+  use24HourTime,
+  savingTimeFormat,
+  onUse24HourTimeChange,
+}: AppearanceCardProps) {
   return (
     <SettingsCard
       icon={Palette}
@@ -498,11 +500,8 @@ export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
         </div>
         <Switch
           checked={use24HourTime}
-          onCheckedChange={(next) => {
-            setUse24HourTime(next);
-            saveUse24HourTime(next);
-            window.dispatchEvent(new Event('ia:time-format-change'));
-          }}
+          disabled={savingTimeFormat}
+          onCheckedChange={onUse24HourTimeChange}
           aria-label="Use 24-hour time"
         />
       </div>

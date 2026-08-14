@@ -61,6 +61,26 @@ export const updateDashboardLayout = mutation({
   },
 });
 
+export const updateTimeFormat = mutation({
+  args: {
+    use24HourTime: v.boolean(),
+  },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(user._id, {
+      use24HourTime: args.use24HourTime,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(user._id);
+    if (!updated) {
+      throw new ConvexError("User not found.");
+    }
+    return toUserSelfProfile(updated);
+  },
+});
+
 export const saveUserImageMutation = internalMutation({
   args: {
     kind: userImageKindValidator,
