@@ -46,6 +46,11 @@ jobs:
       - name: Verify generated brand assets
         run: pnpm brand:check
 
+      # The changelog and the in-app devlog are generated from
+      # packages/devlog/data/releases.json. Catch hand edits to either output.
+      - name: Verify release log
+        run: pnpm devlog:check
+
       - name: Lint
         run: pnpm lint
 

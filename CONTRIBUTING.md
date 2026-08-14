@@ -53,6 +53,7 @@ gate before requesting review:
 
 ```bash
 pnpm brand:check
+pnpm devlog:check
 pnpm lint
 pnpm test
 pnpm build
@@ -61,6 +62,22 @@ pnpm build
 For Convex schema or function signature changes, also run the codegen and
 typecheck steps from `AGENTS.md` against your isolated local deployment. Add
 negative authorization tests when access rules change.
+
+## Release notes
+
+Students read a devlog in the app, and it is built from your commit subjects.
+If a commit changes something a student would notice, add a `Devlog:` trailer
+with the sentence they should read:
+
+```
+clubs: add unit-aware channel policies
+
+Devlog: Clubs can give each unit its own channels and decide who sees them.
+```
+
+Never edit `CHANGELOG.md` or `packages/devlog/src/releases.generated.ts` by
+hand; both are generated, and `pnpm devlog:check` fails if they drift. See
+[versioning and the devlog](docs/reference/versioning.md).
 
 ## Pull requests
 

@@ -17,10 +17,23 @@ tags: [commands, development]
 | `pnpm build`            | Build all workspaces                                      |
 | `pnpm test`             | Run test suites                                           |
 
+## Release log
+
+| Command                | What it does                                                  |
+| ---------------------- | ------------------------------------------------------------- |
+| `pnpm devlog:check`    | Verify `CHANGELOG.md` and the in-app devlog match the source   |
+| `pnpm devlog:preview`  | Show the release the current commits would produce             |
+| `pnpm devlog:generate` | Regenerate both outputs after editing `releases.json` by hand  |
+| `pnpm devlog:cut`      | Cut the next version locally (`--minor`, `--patch`, `--set=`)  |
+
+See [versioning and the devlog](versioning.md) for the version scheme and how
+commit subjects become changelog entries.
+
 ## Deploy
 
-Pushes to `main` deploy the web app to Vercel production via
-[`.github/workflows/vercel-production.yml`](../../.github/workflows/vercel-production.yml).
+[`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys
+production on manual dispatch. It tests, cuts the next release, deploys Convex
+and Vercel, then pushes the release commit and tag.
 
 Production URL: `https://ia-app-alpha.vercel.app`
 

@@ -1,5 +1,10 @@
 # Deploy the Convex backend and web app to production when main changes or on demand.
 #
+# Every production deploy is a release: the workflow cuts the next version from
+# the commits since the previous release, regenerates CHANGELOG.md and the
+# in-app devlog data, deploys, and only then pushes the release commit and tag.
+# A failed deploy therefore leaves no phantom release behind.
+#
 # Required repo secret:
 #   CONVEX_DEPLOY_KEY — production deploy key with the `deployment:deploy` permission
 #   VERCEL_TOKEN — create at https://vercel.com/account/tokens
@@ -7,14 +12,33 @@
 # Required repo variables (set via Settings → Secrets and variables → Actions):
 #   VERCEL_ORG_ID      team_GHUf4kXop7vin9pdXDbiK5wq
 #   VERCEL_PROJECT_ID  prj_uoyozTzyLHPCOZbDNxEbMM9oWyni
+#
+# Pushing the release commit needs `main` to accept a push from
+# github-actions[bot]. If main is protected, allow the bot to bypass the
+# restriction, or run `pnpm devlog:cut` locally and merge it before deploying.
 
 name: Production Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        type: choice
+        default: auto
+        options: [auto, patch, minor, major]
+      title:
+        description: "Release headline shown in the app (optional)"
+        type: string
+        default: ""
+      summary:
+        description: "One or two sentences for students (optional)"
+        type: string
+        default: ""
 
 permissions:
-  contents: read
+  # The release commit and tag are pushed back to main.
+  contents: write
 
 concurrency:
   group: vercel-production
@@ -29,7 +53,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          persist-credentials: false
+          # `devlog cut` reads every commit since the previous release tag.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
         with:
@@ -49,12 +74,49 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Cut release
+        id: release
+        env:
+          BUMP: ${{ inputs.bump }}
+          TITLE: ${{ inputs.title }}
+          SUMMARY: ${{ inputs.summary }}
+        run: |
+          set -euo pipefail
+          args=(--allow-empty)
+          if [ "$BUMP" != "auto" ]; then args+=("--$BUMP"); fi
+          if [ -n "$TITLE" ]; then args+=("--title=$TITLE"); fi
+          if [ -n "$SUMMARY" ]; then args+=("--summary=$SUMMARY"); fi
+          node scripts/devlog.mjs cut "${args[@]}"
+          version=$(node -p "JSON.parse(require('node:fs').readFileSync('packages/devlog/data/releases.json','utf8')).releases[0].version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Committed before the deploy so the build, the tag, and the commit the
+      # app reports as its build all describe the same tree.
+      - name: Record release commit
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md packages/devlog/data/releases.json packages/devlog/src/releases.generated.ts
+          git commit -m "release: v${{ steps.release.outputs.version }}"
+          git tag "v${{ steps.release.outputs.version }}"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Deploy Convex
         run: pnpm --filter cvx exec convex deploy --typecheck enable
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Deploy to Vercel
-        run: pnpm exec vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN"
+        # `--archive=tgz` uploads a tarball, so Vercel's git metadata is absent.
+        # Pass the build stamp explicitly instead.
+        run: |
+          pnpm exec vercel deploy --prod --yes --archive=tgz \
+            --build-env NEXT_PUBLIC_APP_COMMIT="${{ steps.commit.outputs.sha }}" \
+            --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Publish release commit and tag
+        run: git push origin HEAD:main --follow-tags
