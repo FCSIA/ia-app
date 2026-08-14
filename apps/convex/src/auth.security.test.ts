@@ -9,8 +9,6 @@ const sensitiveAdminPaths = [
   "/admin/list-user-sessions",
   "/admin/ban-user",
   "/admin/unban-user",
-  "/admin/impersonate-user",
-  "/admin/stop-impersonating",
   "/admin/remove-user",
   "/admin/set-user-password",
   "/admin/get-user",
