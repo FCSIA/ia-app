@@ -514,7 +514,83 @@ function PollCard({
   );
 }
 
+function ReactionButton({
+  clubId,
+  channelId,
+  messageId,
+  reaction,
+  onToggleReaction,
+  isReactionPending,
+}: {
+  clubId: Id<'clubs'>;
+  channelId: Id<'clubChannels'>;
+  messageId: string;
+  reaction: ClubChannelMessage['reactions'][number];
+  onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
+  isReactionPending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const { results: reactors, status, loadMore } = usePaginatedQuery(
+    api.clubs.channels.listReactionUsers,
+    open
+      ? {
+          clubId,
+          channelId,
+          messageId: messageId as Id<'clubChannelMessages'>,
+          emoji: reaction.emoji,
+        }
+      : 'skip',
+    { initialNumItems: 25 },
+  );
+
+  return (
+    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <Button
+          variant="tertiary"
+          size="sm"
+          className={cn(
+            'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
+            reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+          )}
+          disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+          onClick={() => {
+            if (isChannelReaction(reaction.emoji)) {
+              onToggleReaction(messageId, reaction.emoji);
+            }
+          }}
+        >
+          <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
+          {reaction.count}
+        </Button>
+      </HoverCardTrigger>
+      <HoverCardContent side="top" align="start" collisionPadding={12} className="w-64 rounded-lg p-3">
+        <p className="text-sm font-semibold text-foreground">Reactions</p>
+        <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
+          {status === 'LoadingFirstPage' ? (
+            <p className="text-sm text-muted-foreground">Loading people…</p>
+          ) : reactors.length > 0 ? (
+            reactors.map((reactor) => (
+              <p key={reactor._id} className="truncate text-sm text-foreground">
+                {fullName(reactor)}
+              </p>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No reactions yet.</p>
+          )}
+        </div>
+        {status === 'CanLoadMore' ? (
+          <Button type="button" size="sm" variant="ghost" className="mt-2 w-full" onClick={() => loadMore(50)}>
+            Show more
+          </Button>
+        ) : null}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
+
 function MessageRow({
+  clubId,
   message,
   replyTarget,
   onStartReply,
@@ -541,6 +617,7 @@ function MessageRow({
   currentUserId,
   compact = false,
 }: {
+  clubId: Id<'clubs'>;
   message: ClubChannelMessage;
   replyTarget?: ClubChannelMessage;
   onStartReply: (messageId: string) => void;
@@ -674,24 +751,15 @@ function MessageRow({
             {hasReactions ? (
               <div className="mt-1.5 flex flex-wrap items-center gap-1">
                 {message.reactions.map((reaction) => (
-                  <Button
+                  <ReactionButton
                     key={`${message._id}-${reaction.emoji}`}
-                    variant="tertiary"
-                    size="sm"
-                    className={cn(
-                      'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
-                      reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-                    )}
-                    disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
-                    onClick={() => {
-                      if (isChannelReaction(reaction.emoji)) {
-                        onToggleReaction(message._id, reaction.emoji);
-                      }
-                    }}
-                  >
-                    <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
-                    {reaction.count}
-                  </Button>
+                    clubId={clubId}
+                    channelId={message.channelId}
+                    messageId={message._id}
+                    reaction={reaction}
+                    onToggleReaction={onToggleReaction}
+                    isReactionPending={isReactionPending}
+                  />
                 ))}
               </div>
             ) : null}
@@ -1252,6 +1320,7 @@ export function ChannelWorkspace() {
     return (
       <div>
         <MessageRow
+          clubId={clubId}
           message={message}
           replyTarget={
             message.replyToMessageId

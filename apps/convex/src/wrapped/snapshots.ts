@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { mutation, query } from "../_generated/server";
+import { internalMutation, mutation, query } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
   WRAPPED_SCHEMA_VERSION,
@@ -104,6 +105,12 @@ function isStudentRole(roles: string[]) {
 
 function isAdmin(roles: string[]) {
   return roles.includes("ADMIN") || roles.includes("SUPER_ADMIN");
+}
+
+const SNAPSHOT_BATCH_SIZE = 10;
+
+function currentSchoolYearStart(now: Date): number {
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 }
 
 async function buildSummaryForUser(
@@ -497,6 +504,7 @@ export const generateSnapshots = mutation({
     requested: v.number(),
     generated: v.number(),
     skipped: v.number(),
+    queued: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -504,48 +512,104 @@ export const generateSnapshots = mutation({
       throw new ConvexError("Admin access required");
     }
 
-    const allStudents = await ctx.db
-      .query("users")
-      .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
-        q.eq("isStudent", true),
-      )
-      .take(5000);
-    let candidates = allStudents.filter(
-      (u) => u.isActive && isStudentRole(u.roles),
-    );
-    if (args.userIds?.length) {
-      const allowed = new Set(args.userIds);
-      candidates = candidates.filter((u) => allowed.has(u._id));
-    }
-
-    let skipped = 0;
-    if (!args.refresh) {
-      const existing = await ctx.db
-        .query("wrappedSnapshots")
-        .withIndex("by_schoolYearStart", (q) =>
-          q.eq("schoolYearStart", args.schoolYear),
-        )
-        .take(5000);
-      const existingIds = new Set(
-        existing
-          .filter((s) => s.schemaVersion === WRAPPED_SCHEMA_VERSION)
-          .map((s) => s.userId),
-      );
-      skipped = candidates.filter((u) => existingIds.has(u._id)).length;
-      candidates = candidates.filter((u) => !existingIds.has(u._id));
-    }
-
-    for (const student of candidates.slice(0, 40)) {
-      const summary = await buildSummaryForUser(ctx, student._id, args.schoolYear);
-      await storeSnapshot(ctx, student._id, summary);
-    }
+    await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
+      schoolYear: args.schoolYear,
+      refresh: args.refresh ?? false,
+      userIds: args.userIds,
+    });
 
     return {
       schoolYear: args.schoolYear,
       schemaVersion: WRAPPED_SCHEMA_VERSION,
-      requested: allStudents.length,
-      generated: Math.min(candidates.length, 40),
-      skipped,
+      requested: args.userIds?.length ?? 0,
+      generated: 0,
+      skipped: 0,
+      queued: true,
     };
+  },
+});
+
+/**
+ * Builds a bounded set of snapshots, then schedules the next batch. This is
+ * intentionally internal: an admin can start a run, but only the backend
+ * advances it, so the record is created for every eligible student instead of
+ * stopping at an arbitrary first page.
+ */
+export const runSnapshotBatch = internalMutation({
+  args: {
+    schoolYear: v.number(),
+    refresh: v.boolean(),
+    cursor: v.optional(v.string()),
+    offset: v.optional(v.number()),
+    userIds: v.optional(v.array(v.id("users"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const selectedIds = args.userIds;
+    const offset = args.offset ?? 0;
+    let nextCursor: string | null = null;
+    let students: Doc<"users">[];
+
+    if (selectedIds) {
+      const selected = selectedIds.slice(offset, offset + SNAPSHOT_BATCH_SIZE);
+      students = (await Promise.all(selected.map((userId) => ctx.db.get(userId))))
+        .filter((user): user is Doc<"users"> => user !== null);
+    } else {
+      const page = await ctx.db
+        .query("users")
+        .withIndex("by_isStudent_and_lastName_and_firstName", (q) =>
+          q.eq("isStudent", true),
+        )
+        .paginate({ cursor: args.cursor ?? null, numItems: SNAPSHOT_BATCH_SIZE });
+      students = page.page;
+      nextCursor = page.isDone ? null : page.continueCursor;
+    }
+
+    for (const student of students) {
+      if (!student.isActive || !isStudentRole(student.roles)) continue;
+      if (!args.refresh) {
+        const existing = await ctx.db
+          .query("wrappedSnapshots")
+          .withIndex("by_userId_and_schoolYearStart", (q) =>
+            q.eq("userId", student._id).eq("schoolYearStart", args.schoolYear),
+          )
+          .unique();
+        if (existing?.schemaVersion === WRAPPED_SCHEMA_VERSION) continue;
+      }
+      await storeSnapshot(
+        ctx,
+        student._id,
+        await buildSummaryForUser(ctx, student._id, args.schoolYear),
+      );
+    }
+
+    if (selectedIds && offset + SNAPSHOT_BATCH_SIZE < selectedIds.length) {
+      await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
+        schoolYear: args.schoolYear,
+        refresh: args.refresh,
+        userIds: selectedIds,
+        offset: offset + SNAPSHOT_BATCH_SIZE,
+      });
+    } else if (nextCursor) {
+      await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
+        schoolYear: args.schoolYear,
+        refresh: args.refresh,
+        cursor: nextCursor,
+      });
+    }
+    return null;
+  },
+});
+
+/** Refreshes every active student's current-school-year snapshot overnight. */
+export const refreshCurrentSchoolYear = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    await ctx.scheduler.runAfter(0, internal.wrapped.snapshots.runSnapshotBatch, {
+      schoolYear: currentSchoolYearStart(new Date()),
+      refresh: true,
+    });
+    return null;
   },
 });

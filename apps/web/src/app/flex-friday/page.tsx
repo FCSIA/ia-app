@@ -133,7 +133,7 @@ export default function FlexFridayPage() {
           selectedFriday={flex.selectedFriday}
           onSelectFriday={flex.setSelectedFriday}
           onAddFriday={() => setFridayFormOpen(true)}
-          canManage={flex.canManage}
+          canManage={flex.canCreateFriday}
           isStudent={flex.isStudent}
           activeView={flex.activeView}
           onViewChange={flex.setActiveView}
@@ -158,7 +158,8 @@ export default function FlexFridayPage() {
                 onAddSession={openNewSessionForm}
                 onEditSession={openEditSessionForm}
                 onDeleteSession={handleDeleteSession}
-                canManage={flex.canCreateSession}
+                canCreate={flex.canCreateSession}
+                canManage={flex.canManageSessions}
                 search={flex.sessionSearch}
                 onSearchChange={flex.setSessionSearch}
               />
@@ -179,7 +180,8 @@ export default function FlexFridayPage() {
                     current === id ? null : (id as Id<'flexWorkshops'>),
                   )
                 }
-                canManage={flex.canCreateSession}
+                canManageWorkshops={flex.canManageWorkshops}
+                canManageAttendance={flex.canManageAttendance}
                 isStudent={flex.isStudent}
                 search={flex.workshopSearch}
                 onSearchChange={flex.setWorkshopSearch}

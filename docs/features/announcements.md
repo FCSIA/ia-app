@@ -18,6 +18,8 @@ a club, inside club workflows.
   promoted/pinned announcements.
 - Supports school-wide, grade, pathway, club, and intersection targeting.
 - Supports pending approval for some club-scoped posts.
+- Supports up to three signed PNG, JPEG, GIF, or WebP image uploads per post,
+  plus up to three HTTPS link embeds rendered as safe outbound cards.
 
 ## Source Files
 
@@ -44,13 +46,17 @@ a club, inside club workflows.
 ## Data Model
 
 - `announcements`
+- `announcementImages`
 - `comments`
 - `announcementReads`
 - `announcementBookmarks`
 
 Targeting fields live on the announcement document. Read and bookmark state are
 separate child tables so they can grow per user without bloating the
-announcement document.
+announcement document. Image uploads are staged as user-owned records, checked
+against storage metadata and file signatures, then consumed into
+`announcementImages` only when the announcement is created. Arbitrary iframe
+markup is not accepted; embeds are validated HTTPS URLs and open externally.
 
 ## Permissions
 

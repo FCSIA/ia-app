@@ -19,8 +19,12 @@ export function useFlexFriday() {
   const deferredWorkshopSearch = useDeferredValue(workshopSearch);
 
   const canManage = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
-  const canCreateSession = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
-  const isStudent = !!user && hasRole(user, 'STUDENT');
+  const canCreateFriday = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
+  const canCreateSession = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'STUDENT_ADMIN');
+  const canManageSessions = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const canManageWorkshops = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN');
+  const canManageAttendance = !!user && hasRole(user, 'TEACHER', 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'STUDENT_ADMIN');
+  const isStudent = !!user && hasRole(user, 'STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN');
 
   const fridaysQuery = useQuery(api.flexFriday.fridays.list, {});
   const fridays = fridaysQuery ?? [];
@@ -65,7 +69,7 @@ export function useFlexFriday() {
   const [attendanceWorkshopId, setAttendanceWorkshopId] = useState<Id<'flexWorkshops'> | null>(null);
   const rosterData = useQuery(
     api.flexFriday.attendance.getRoster,
-    attendanceWorkshopId && canCreateSession
+    attendanceWorkshopId && canManageAttendance
       ? { workshopId: attendanceWorkshopId }
       : 'skip',
   );
@@ -89,7 +93,11 @@ export function useFlexFriday() {
   return {
     user,
     canManage,
+    canCreateFriday,
     canCreateSession,
+    canManageSessions,
+    canManageWorkshops,
+    canManageAttendance,
     isStudent,
     
     selectedFriday,

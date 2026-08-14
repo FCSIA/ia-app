@@ -4,16 +4,26 @@ import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser
 import { logAuditEvent } from "../audit/_lib";
 import { announcementAudience, deliverMany } from "../notifications/delivery";
 import {
+  MAX_ANNOUNCEMENT_BODY_CHARACTERS,
+  MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
+  MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
+  normalizeBoundedText,
+  normalizeAnnouncementEmbedUrls,
+  normalizeOptionalBoundedText,
+} from "./contentValidation";
+import {
   announcementListItemValidator,
   assertCanApproveAnnouncement,
   canViewAnnouncement,
   commentWithAuthorValidator,
   getAccessibleClubIds,
   getViewerAudience,
+  canPostGlobalAnnouncements,
   isElevatedReader,
 } from "./_lib";
 import { serializeAnnouncement, serializeComment } from "./serialize";
 import { getClubContext } from "../clubs/access";
+import { consumeStagedAnnouncementImages } from "../uploads/announcementImages";
 
 function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: number) {
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
@@ -156,14 +166,24 @@ export const create = mutation({
     isAdminGeneral: v.boolean(),
     expiresAt: v.optional(v.number()),
     promoted: v.optional(v.boolean()),
+    imageUploadIds: v.optional(v.array(v.id("announcementImageUploads"))),
+    embedUrls: v.optional(v.array(v.string())),
   },
   returns: v.id("announcements"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const canPostGlobally =
-      user.roles.includes("ADMIN") ||
-      user.roles.includes("SUPER_ADMIN") ||
-      user.roles.includes("TEACHER");
+    const title = normalizeBoundedText(
+      args.title,
+      "Announcement title",
+      MAX_ANNOUNCEMENT_TITLE_CHARACTERS,
+    );
+    const body = normalizeBoundedText(
+      args.body,
+      "Announcement body",
+      MAX_ANNOUNCEMENT_BODY_CHARACTERS,
+    );
+    const embedUrls = normalizeAnnouncementEmbedUrls(args.embedUrls);
+    const canPostGlobally = canPostGlobalAnnouncements(user.roles);
     const clubContext = args.clubId && !canPostGlobally
       ? await getClubContext(ctx, args.clubId, user)
       : null;
@@ -196,8 +216,8 @@ export const create = mutation({
 
     const annId = await ctx.db.insert("announcements", {
       authorId: user._id,
-      title: args.title.trim(),
-      body: args.body.trim(),
+      title,
+      body,
       targetType: args.targetType,
       targetGrade: args.targetGrade,
       targetGrades: args.targetGrades,
@@ -210,6 +230,7 @@ export const create = mutation({
       isAdminGeneral: args.isAdminGeneral,
       expiresAt: args.expiresAt,
       promotedUntil,
+      embedUrls,
       submittedById: status === "PENDING_APPROVAL" ? user._id : undefined,
       approvedById: status === "ACTIVE" ? user._id : undefined,
       approvedAt: status === "ACTIVE" ? now : undefined,
@@ -217,12 +238,18 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    await consumeStagedAnnouncementImages(ctx, {
+      imageUploadIds: args.imageUploadIds ?? [],
+      uploaderId: user._id,
+      announcementId: annId,
+    });
+
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "ANNOUNCEMENT_CREATED",
       entityType: "Announcement",
       entityId: annId,
-      meta: { title: args.title },
+      meta: { title, imageCount: args.imageUploadIds?.length ?? 0, embedCount: embedUrls.length },
     });
 
     if (status === "ACTIVE") {
@@ -299,10 +326,15 @@ export const reject = mutation({
     const ann = await ctx.db.get(args.announcementId);
     if (!ann) throw new ConvexError("Announcement not found");
     await assertCanApproveAnnouncement(ctx, ann, user);
+    const note = normalizeOptionalBoundedText(
+      args.note,
+      "Rejection note",
+      MAX_ANNOUNCEMENT_REJECTION_NOTE_CHARACTERS,
+    );
 
     await ctx.db.patch(args.announcementId, {
       status: "REJECTED",
-      rejectionNote: args.note,
+      rejectionNote: note,
       updatedAt: Date.now(),
     });
 

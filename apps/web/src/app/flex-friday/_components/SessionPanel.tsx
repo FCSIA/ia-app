@@ -13,6 +13,7 @@ interface Props {
   onAddSession: () => void;
   onEditSession: (session: any) => void;
   onDeleteSession: (session: any) => void;
+  canCreate: boolean;
   canManage: boolean;
   search: string;
   onSearchChange: (value: string) => void;
@@ -25,6 +26,7 @@ export function SessionPanel({
   onAddSession,
   onEditSession,
   onDeleteSession,
+  canCreate,
   canManage,
   search,
   onSearchChange,
@@ -33,7 +35,7 @@ export function SessionPanel({
     <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Sessions</h2>
-        {canManage && (
+        {canCreate && (
           <Button size="sm" leadingIcon={Plus} onClick={onAddSession} variant="tertiary">
             Add session
           </Button>

@@ -7,10 +7,12 @@ import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
 import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
+import { formatSchoolTime } from "@/lib/time-format";
 
 export function WelcomeWidget() {
   const [now, setNow] = useState(new Date());
   const user = useCurrentUser();
+  const use24HourTime = user?.use24HourTime ?? false;
   const isStudent =
     !!user && hasRole(user, "STUDENT", "STUDENT_LEADER", "STUDENT_ADMIN");
 
@@ -56,9 +58,17 @@ export function WelcomeWidget() {
 
         {isStudent ? (
           <div className="min-w-0 sm:text-right">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
-              Now
-            </p>
+            <div className="flex items-baseline gap-2 sm:justify-end">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                Now
+              </p>
+              <time
+                dateTime={now.toISOString()}
+                className="text-sm font-semibold tabular-nums text-foreground"
+              >
+                {formatSchoolTime(format(now, "HH:mm"), use24HourTime)}
+              </time>
+            </div>
             <h2 className="truncate text-base font-semibold text-foreground">
               {currentClass ?? "No active class"}
             </h2>
@@ -70,9 +80,9 @@ export function WelcomeWidget() {
               ) : null}
               <span>
                 {!currentClass && nextBlock
-                  ? `Next: ${nextBlock.displayLabel} at ${nextBlock.startTime}`
+                  ? `Next: ${nextBlock.displayLabel} at ${formatSchoolTime(nextBlock.startTime, use24HourTime)}`
                   : currentBlock
-                    ? `${currentBlock.startTime}–${currentBlock.endTime}`
+                    ? `${formatSchoolTime(currentBlock.startTime, use24HourTime)}–${formatSchoolTime(currentBlock.endTime, use24HourTime)}`
                     : "No more blocks today"}
               </span>
             </div>

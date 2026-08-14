@@ -27,6 +27,10 @@ export async function serializeAnnouncement(
     .query("comments")
     .withIndex("by_announcementId", (q) => q.eq("announcementId", ann._id))
     .collect();
+  const images = await ctx.db
+    .query("announcementImages")
+    .withIndex("by_announcementId_and_createdAt", (q) => q.eq("announcementId", ann._id))
+    .collect();
 
   const isPinned = !!ann.promotedUntil && ann.promotedUntil > Date.now();
 
@@ -41,6 +45,16 @@ export async function serializeAnnouncement(
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
     commentCount: comments.length,
+    images: (
+      await Promise.all(
+        images.map(async (image) => {
+          const url = await ctx.storage.getUrl(image.storageId);
+          return url
+            ? { _id: image._id, url, mimeType: image.mimeType, size: image.size }
+            : null;
+        }),
+      )
+    ).filter((image): image is NonNullable<typeof image> => image !== null),
   };
 }
 

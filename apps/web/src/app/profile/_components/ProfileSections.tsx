@@ -1,6 +1,6 @@
 'use client';
 
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   Bell,
   Lock,
@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { NotificationCategoryOption } from '@/components/notifications/notification-category-options';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
@@ -300,9 +300,8 @@ export function AccountSettingsCard({
             <FieldGroup className="gap-4">
               <Field>
                 <FieldLabel htmlFor="current-password">Current password</FieldLabel>
-                <Input
+                <PasswordInput
                   id="current-password"
-                  type="password"
                   autoComplete="current-password"
                   value={form.currentPassword}
                   onChange={(event) =>
@@ -313,9 +312,8 @@ export function AccountSettingsCard({
               </Field>
               <Field>
                 <FieldLabel htmlFor="new-password">New password</FieldLabel>
-                <Input
+                <PasswordInput
                   id="new-password"
-                  type="password"
                   autoComplete="new-password"
                   value={form.newPassword}
                   onChange={(event) =>
@@ -326,9 +324,8 @@ export function AccountSettingsCard({
               </Field>
               <Field>
                 <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
-                <Input
+                <PasswordInput
                   id="confirm-password"
-                  type="password"
                   autoComplete="new-password"
                   value={form.confirm}
                   onChange={(event) =>
@@ -451,6 +448,9 @@ export function NotificationPreferencesCard({
 type AppearanceCardProps = {
   theme: string | undefined;
   setTheme: (theme: string) => void;
+  use24HourTime: boolean;
+  savingTimeFormat: boolean;
+  onUse24HourTimeChange: (use24HourTime: boolean) => void;
 };
 
 const APPEARANCE_OPTIONS = [
@@ -462,7 +462,13 @@ const APPEARANCE_OPTIONS = [
   ...(customThemeEnabled ? [{ id: 'custom', label: 'Custom' }] : []),
 ] as const;
 
-export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
+export function AppearanceCard({
+  theme,
+  setTheme,
+  use24HourTime,
+  savingTimeFormat,
+  onUse24HourTimeChange,
+}: AppearanceCardProps) {
   return (
     <SettingsCard
       icon={Palette}
@@ -486,6 +492,19 @@ export function AppearanceCard({ theme, setTheme }: AppearanceCardProps) {
       </RadioGroup>
 
       {customThemeEnabled && theme === 'custom' ? <CustomThemeEditor /> : null}
+
+      <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Use 24-hour time</p>
+          <p className="text-xs text-muted-foreground">Show times like 13:45 instead of 1:45 PM.</p>
+        </div>
+        <Switch
+          checked={use24HourTime}
+          disabled={savingTimeFormat}
+          onCheckedChange={onUse24HourTimeChange}
+          aria-label="Use 24-hour time"
+        />
+      </div>
     </SettingsCard>
   );
 }

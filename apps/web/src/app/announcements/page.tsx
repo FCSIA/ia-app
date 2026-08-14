@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
@@ -24,6 +24,8 @@ import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
+import { uploadFileToConvex } from '@/lib/convex-upload';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -32,6 +34,8 @@ const PATHWAY_OPTIONS = [
 ];
 
 const GRADE_OPTIONS = [9, 10, 11, 12];
+const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
+const MAX_ANNOUNCEMENT_BODY_CHARACTERS = 10_000;
 
 const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
   ...ANNOUNCEMENT_TAG_LABELS,
@@ -58,6 +62,8 @@ export default function AnnouncementsPage() {
   const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
   const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
+  const [embedUrls, setEmbedUrls] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: '',
     body: '',
@@ -91,7 +97,7 @@ export default function AnnouncementsPage() {
     setForm({ ...next, targetType });
   };
 
-  const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
+  const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
@@ -101,6 +107,8 @@ export default function AnnouncementsPage() {
   const isLoading = data === undefined;
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
+  const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const finalizeAnnouncementImage = useAction(api.uploads.files.finalizeAnnouncementImage);
   const archiveAnnouncement = useMutation(api.announcements.engagement.archive);
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
@@ -173,46 +181,46 @@ export default function AnnouncementsPage() {
     action: 'approve' | 'reject';
   } | null>(null);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (createPending) return;
     const isIntersection = form.targetType === 'INTERSECTION';
     setCreatePending(true);
-    void createAnnouncement({
-      title: form.title,
-      body: form.body,
-      targetType: form.targetType as 'SCHOOL_WIDE' | 'GRADE' | 'PATHWAY' | 'CLUB' | 'INTERSECTION',
-      allowComments: form.allowComments,
-      isAdminGeneral: form.isAdminGeneral,
-      promoted: form.promoted,
-      expiresAt: form.expiresAt ? Date.parse(form.expiresAt) : undefined,
-      targetGrades: form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
-      targetMajorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMajorPathways : [],
-      targetMinorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMinorPathways : [],
-    })
-      .then(() => {
-        setShowNew(false);
-        setForm({
-          title: '',
-          body: '',
-          targetType: 'SCHOOL_WIDE',
-          targetGrades: [],
-          targetMajorPathways: [],
-          targetMinorPathways: [],
-          allowComments: false,
-          isAdminGeneral: false,
-          promoted: false,
-          expiresAt: '',
-        });
-        toast({ title: 'Announcement created' });
-      })
-      .catch((error: unknown) =>
-        toast({
-          title: error instanceof Error ? error.message : 'Failed to create',
-          variant: 'destructive',
-        }),
-      )
-      .finally(() => setCreatePending(false));
+    try {
+      const imageUploadIds = await Promise.all(images.map(async (file) => {
+        const { storageId, uploadIntentId } = await uploadFileToConvex(
+          { generateUploadUrl: () => generateUploadUrl({ purpose: 'ANNOUNCEMENT_IMAGE' }) },
+          file,
+        );
+        return (await finalizeAnnouncementImage({ storageId, uploadIntentId })).imageUploadId;
+      }));
+      await createAnnouncement({
+        title: form.title,
+        body: form.body,
+        targetType: form.targetType as 'SCHOOL_WIDE' | 'GRADE' | 'PATHWAY' | 'CLUB' | 'INTERSECTION',
+        allowComments: form.allowComments,
+        isAdminGeneral: form.isAdminGeneral,
+        promoted: form.promoted,
+        expiresAt: form.expiresAt ? Date.parse(form.expiresAt) : undefined,
+        targetGrades: form.targetType === 'GRADE' || isIntersection ? form.targetGrades : [],
+        targetMajorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMajorPathways : [],
+        targetMinorPathways: form.targetType === 'PATHWAY' || isIntersection ? form.targetMinorPathways : [],
+        imageUploadIds,
+        embedUrls,
+      });
+      setShowNew(false);
+      setImages([]);
+      setEmbedUrls([]);
+      setForm({
+        title: '', body: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
+        allowComments: false, isAdminGeneral: false, promoted: false, expiresAt: '',
+      });
+      toast({ title: 'Announcement created' });
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Failed to create', variant: 'destructive' });
+    } finally {
+      setCreatePending(false);
+    }
   };
 
   const hasActiveFilters =
@@ -429,13 +437,22 @@ export default function AnnouncementsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Input placeholder="Title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
+                <Input placeholder="Title" maxLength={MAX_ANNOUNCEMENT_TITLE_CHARACTERS} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
                 <Textarea
                   className="min-h-[120px] resize-y"
                   placeholder="Write your announcement..."
+                  maxLength={MAX_ANNOUNCEMENT_BODY_CHARACTERS}
                   value={form.body}
                   onChange={(event) => setForm({ ...form, body: event.target.value })}
                   required
+                />
+                <AnnouncementMediaInput
+                  images={images}
+                  embedUrls={embedUrls}
+                  disabled={createPending}
+                  onImagesChange={setImages}
+                  onEmbedUrlsChange={setEmbedUrls}
+                  onError={(title) => toast({ title, variant: 'destructive' })}
                 />
                 <div className="space-y-4">
                   <Label className="text-sm font-semibold">Audience Targeting</Label>

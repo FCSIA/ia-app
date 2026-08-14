@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   Compass,
+  ArrowLeft,
   Home,
   PanelLeft,
   Plus,
@@ -240,6 +241,11 @@ export function ClubWorkspace({
   const headerSlot = (
     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
       <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Button asChild type="button" variant="ghost" size="icon" aria-label="Back to clubs">
+          <Link href="/clubs">
+            <ArrowLeft />
+          </Link>
+        </Button>
         <Button
           type="button"
           variant="ghost"

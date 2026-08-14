@@ -18,6 +18,7 @@ import {
 } from "./reportValidation";
 import { contentRateLimiter } from "../rateLimits";
 import { consumeStagedFeedbackImages } from "../uploads/feedbackImages";
+import { canReviewFeedback } from "./feedbackAccess";
 
 const genericReportContentTypeValidator = v.union(v.literal("GENERAL"), v.literal("ANNOUNCEMENT"), v.literal("EVENT"));
 const MAX_FEEDBACK_RESPONSES_PER_REPORT = 25;
@@ -271,7 +272,7 @@ export const listFeedback = query({
   returns: v.array(reportValidator),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
-    if (!user || !requireAnyRoleSafe(user, ["SUPER_ADMIN"])) {
+    if (!user || !canReviewFeedback(user)) {
       return [];
     }
 

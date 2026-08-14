@@ -24,6 +24,14 @@ export const announcementListItemValidator = docs.announcements.extend({
     v.null(),
   ),
   commentCount: v.number(),
+  images: v.array(
+    v.object({
+      _id: v.id("announcementImages"),
+      url: v.string(),
+      mimeType: v.string(),
+      size: v.number(),
+    }),
+  ),
 });
 
 export const commentWithAuthorValidator = docs.comments.extend({
@@ -42,6 +50,12 @@ export function isElevatedReader(roles: string[]) {
     roles.includes("ADMIN") ||
     roles.includes("SUPER_ADMIN") ||
     roles.includes("TEACHER")
+  );
+}
+
+export function canPostGlobalAnnouncements(roles: readonly string[]) {
+  return roles.some((role) =>
+    ["ADMIN", "SUPER_ADMIN", "TEACHER", "STUDENT_ADMIN"].includes(role),
   );
 }
 

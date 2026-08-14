@@ -26,6 +26,7 @@ and special-day plans without rewriting student course choices.
   exact shared-class subsets, and compare one friend's public schedule beside
   their own.
 - Admins create reusable regular, special, and no-school templates, reorder canonical periods, and change block times.
+- Students choose a saved 12-hour or 24-hour display format from Profile settings; AM/PM is the default for every account.
 - Every in-range Monday–Thursday inherits the required default regular template unless an administrator assigns another template or creates a custom date plan.
 - Fridays remain explicitly unassigned until an administrator assigns a template. Resetting a Friday returns it to unassigned; resetting Monday–Thursday returns it to the default template.
 - Date assignments stay linked to their template, so later template edits update every linked date. `Unlink and customize` snapshots the current blocks onto that date and severs the link.

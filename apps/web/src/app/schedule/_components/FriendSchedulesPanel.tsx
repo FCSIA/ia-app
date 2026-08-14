@@ -243,6 +243,7 @@ export function FriendSchedulesPanel() {
                       key={friend.id}
                       friend={friend}
                       blocks={blocks}
+                      day={data.resolvedDay}
                       onRemove={() =>
                         void runScheduleAction(
                           `friend-remove:${friend.user._id}`,

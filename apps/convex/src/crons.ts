@@ -9,5 +9,11 @@ crons.daily(
   internal.bootstrap.sweepExpiredSeedCredentials,
   {},
 );
+crons.cron(
+  "refresh Wrapped snapshots",
+  "0 7 * * *",
+  internal.wrapped.snapshots.refreshCurrentSchoolYear,
+  {},
+);
 
 export default crons;

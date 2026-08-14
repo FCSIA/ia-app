@@ -44,9 +44,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserAvatar } from '@/components/ui/user-avatar';
-import { getWeekdayForDate, WEEKDAYS } from '@/components/schedule/schedule-utils';
-import { ScheduleDatePicker } from '@/components/schedule/schedule-date-picker';
-import type { ScheduleWeekday } from '@/components/schedule/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -58,14 +55,8 @@ type EligibleFriend = FunctionReturnType<
   typeof api.schedule.groups.listEligibleFriends
 >[number];
 
-function entryFor(schedule: GroupSchedule, weekday: ScheduleWeekday, periodNumber: number) {
-  return schedule?.entries.find(
-    (entry) => entry.weekday === weekday && entry.periodNumber === periodNumber,
-  );
-}
-
-function localDateKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function entryFor(schedule: GroupSchedule, periodNumber: number) {
+  return schedule?.entries.find((entry) => entry.periodNumber === periodNumber);
 }
 function sameClass(
   left: ReturnType<typeof entryFor>,
@@ -79,13 +70,11 @@ function sameClass(
 function ScheduleColumn({
   person,
   schedule,
-  weekday,
   compareSchedule,
   unavailableCopy,
 }: {
   person: GroupPerson;
   schedule: GroupSchedule;
-  weekday: ScheduleWeekday;
   compareSchedule: GroupSchedule;
   unavailableCopy?: string;
 }) {
@@ -109,9 +98,9 @@ function ScheduleColumn({
                   ? 5
                   : null;
             const isLunch = periodNumber === lunchNumber;
-            const entry = isLunch ? undefined : entryFor(schedule, weekday, periodNumber);
+            const entry = isLunch ? undefined : entryFor(schedule, periodNumber);
             const together =
-              !isLunch && sameClass(entry, entryFor(compareSchedule, weekday, periodNumber));
+              !isLunch && sameClass(entry, entryFor(compareSchedule, periodNumber));
             return (
               <div
                 key={periodNumber}
@@ -265,22 +254,16 @@ function GroupWorkspaceHeader({
 function GroupWorkspaceBody({
   data,
   selectedMember,
-  weekday,
-  selectedDateKey,
   peopleById,
   pendingRemoveId,
   onSelectMember,
-  onDateKeyChange,
   onRemoveMember,
 }: {
   data: GroupData;
   selectedMember: GroupMember | null;
-  weekday: ScheduleWeekday;
-  selectedDateKey: string;
   peopleById: Map<string, GroupPerson>;
   pendingRemoveId: string | null;
   onSelectMember: (userId: string) => void;
-  onDateKeyChange: (dateKey: string) => void;
   onRemoveMember: (friendId: Id<'users'>) => void;
 }) {
   return (
@@ -368,7 +351,7 @@ function GroupWorkspaceBody({
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold">{cluster.className}</p>
                           <p className="text-[11px] text-muted-foreground">
-                            {WEEKDAYS.find((day) => day.value === cluster.weekday)?.shortLabel} Â· Period {cluster.periodNumber}
+                            Period {cluster.periodNumber}
                           </p>
                         </div>
                         <Badge color={cluster.everyoneShared ? 'orange' : 'gray'} size="sm">
@@ -394,19 +377,11 @@ function GroupWorkspaceBody({
       </aside>
 
       <main className="min-w-0">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3">
           <div>
             <h2 className="text-sm font-semibold">Side-by-side</h2>
             <p className="text-xs text-muted-foreground">Your schedule and one friend.</p>
           </div>
-          <ScheduleDatePicker
-            dateKey={selectedDateKey}
-            onDateChange={(nextDateKey) => {
-              if (getWeekdayForDate(new Date(`${nextDateKey}T12:00:00`))) {
-                onDateKeyChange(nextDateKey);
-              }
-            }}
-          />
         </div>
 
         {selectedMember ? (
@@ -414,13 +389,11 @@ function GroupWorkspaceBody({
             <ScheduleColumn
               person={data.owner}
               schedule={data.ownerSchedule}
-              weekday={weekday}
               compareSchedule={selectedMember.schedule}
             />
             <ScheduleColumn
               person={selectedMember.user}
               schedule={selectedMember.schedule}
-              weekday={weekday}
               compareSchedule={data.ownerSchedule}
               unavailableCopy={
                 !selectedMember.friendshipActive
@@ -494,8 +467,6 @@ export function ScheduleGroupWorkspace({
   const router = useRouter();
   const { toast } = useToast();
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
-  const [selectedDateKey, setSelectedDateKey] = useState(localDateKey);
-  const weekday = getWeekdayForDate(new Date(`${selectedDateKey}T12:00:00`)) ?? 'MONDAY';
   const [optimisticAddedIds, setOptimisticAddedIds] = useState<Set<string>>(() => new Set());
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -601,12 +572,9 @@ export function ScheduleGroupWorkspace({
         <GroupWorkspaceBody
           data={data}
           selectedMember={selectedMember}
-          weekday={weekday}
-          selectedDateKey={selectedDateKey}
           peopleById={peopleById}
           pendingRemoveId={pendingRemoveId}
           onSelectMember={setSelectedFriendId}
-          onDateKeyChange={setSelectedDateKey}
           onRemoveMember={(friendId) => void handleRemoveMember(friendId)}
         />
 

@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import {
   internalMutation,
@@ -37,6 +37,7 @@ import {
 import {
   clubChannelPollOptionValidator,
   clubChannelReactionInputValidator,
+  type ClubChannelReaction,
 } from "../validators";
 import {
   assertStagedChatAttachmentIds,
@@ -73,6 +74,44 @@ const MAX_THREAD_PARENT_DEPTH = 8;
 const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 const MAX_CHANNEL_SEARCH_RESULTS = 30;
+const AUDIT_MESSAGE_PREVIEW_CHARACTERS = 240;
+
+export function channelMessageAuditMeta(input: {
+  clubId: Id<"clubs">;
+  channelId: Id<"clubChannels">;
+  body: string;
+  bodyMarkdown?: string;
+  parentMessageId?: Id<"clubChannelMessages">;
+  replyToMessageId?: Id<"clubChannelMessages">;
+  attachmentCount?: number;
+  hasPoll?: boolean;
+}) {
+  return {
+    clubId: input.clubId,
+    channelId: input.channelId,
+    parentMessageId: input.parentMessageId ?? null,
+    replyToMessageId: input.replyToMessageId ?? null,
+    body: input.body,
+    bodyPreview: input.body.slice(0, AUDIT_MESSAGE_PREVIEW_CHARACTERS),
+    bodyMarkdown: input.bodyMarkdown ?? null,
+    attachmentCount: input.attachmentCount ?? 0,
+    hasPoll: input.hasPoll ?? false,
+  };
+}
+
+export function channelMessageReactionAuditMeta(input: {
+  clubId: Id<"clubs">;
+  channelId: Id<"clubChannels">;
+  emoji: ClubChannelReaction;
+  removedReactionCount?: number;
+}) {
+  return {
+    clubId: input.clubId,
+    channelId: input.channelId,
+    emoji: input.emoji,
+    removedReactionCount: input.removedReactionCount ?? 0,
+  };
+}
 
 const messageAttachmentValidator = v.object({
   _id: v.id("clubChannelMessageAttachments"),
@@ -619,6 +658,23 @@ export const postMessage = mutation({
         createdAt: Date.now(),
       });
     }
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_CHANNEL_MESSAGE_POSTED",
+      entityType: "ClubChannelMessage",
+      entityId: messageId,
+      meta: channelMessageAuditMeta({
+        clubId: channel.clubId,
+        channelId: channel._id,
+        body: trimmedBody,
+        bodyMarkdown,
+        parentMessageId: args.parentMessageId,
+        replyToMessageId: args.replyToMessageId,
+        attachmentCount: attachmentUploadIds.length,
+        hasPoll: !!poll,
+      }),
+    });
 
     await ctx.scheduler.runAfter(
       0,
@@ -1265,6 +1321,55 @@ export const getMessagePage = query({
   },
 });
 
+export const listReactionUsers = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    messageId: v.id("clubChannelMessages"),
+    emoji: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: paginationResultValidator(clubUserRefValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message || message.channelId !== readable.channel._id || message.deletedAt) {
+      return emptyMessagePage(args.paginationOpts.cursor);
+    }
+
+    const reaction = normalizeClubChannelReaction(args.emoji);
+    if (!reaction) return emptyMessagePage(args.paginationOpts.cursor);
+
+    const reactions = await ctx.db
+      .query("clubChannelMessageReactions")
+      .withIndex("by_messageId_and_emoji_and_userId", (q) =>
+        q.eq("messageId", message._id).eq("emoji", reaction),
+      )
+      .paginate({
+        ...args.paginationOpts,
+        numItems: boundedChannelMessagePageSize(args.paginationOpts.numItems),
+      });
+
+    const reactors = await Promise.all(
+      reactions.page.map(async (row) => {
+        if (normalizeClubChannelReaction(row.emoji) !== reaction) return null;
+        const reactor = await ctx.db.get(row.userId);
+        return reactor ? toClubUserRef(reactor) : null;
+      }),
+    );
+
+    return {
+      ...reactions,
+      page: reactors.filter((reactor): reactor is NonNullable<typeof reactor> => reactor !== null),
+    };
+  },
+});
+
 export const searchMessages = query({
   args: {
     clubId: v.id("clubs"),
@@ -1484,7 +1589,7 @@ export const updateMessage = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.authorId !== user._id) throw new ConvexError("Not authorized");
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
     const { body, bodyMarkdown } = normalizePortableMessageBody(args.body, args.bodyMarkdown);
@@ -1498,6 +1603,24 @@ export const updateMessage = mutation({
       bodyMarkdown,
       bodyRich: args.bodyRich,
       updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_CHANNEL_MESSAGE_UPDATED",
+      entityType: "ClubChannelMessage",
+      entityId: message._id,
+      meta: {
+        ...channelMessageAuditMeta({
+          clubId: channel.clubId,
+          channelId: channel._id,
+          body,
+          bodyMarkdown,
+          parentMessageId: message.parentMessageId,
+          replyToMessageId: message.replyToMessageId,
+        }),
+        previousBody: message.body,
+        previousBodyMarkdown: message.bodyMarkdown ?? null,
+      },
     });
   },
 });
@@ -1534,12 +1657,15 @@ export const deleteMessage = mutation({
       action: "CLUB_CHANNEL_MESSAGE_DELETED",
       entityType: "ClubChannelMessage",
       entityId: message._id,
-      meta: {
-        channelId: channel._id,
+      meta: channelMessageAuditMeta({
         clubId: channel.clubId,
-        parentMessageId: message.parentMessageId ?? null,
-        replyToMessageId: message.replyToMessageId ?? null,
-      },
+        channelId: channel._id,
+        body: message.body,
+        bodyMarkdown: message.bodyMarkdown,
+        parentMessageId: message.parentMessageId,
+        replyToMessageId: message.replyToMessageId,
+        hasPoll: !!message.pollQuestion,
+      }),
     });
     await ctx.scheduler.runAfter(
       0,
@@ -1557,7 +1683,7 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
     const emoji = normalizeClubChannelReaction(args.emoji);
@@ -1580,6 +1706,18 @@ export const toggleReaction = mutation({
     ).flat();
     if (existing.length) {
       await Promise.all(existing.map((reaction) => ctx.db.delete(reaction._id)));
+      await logAuditEvent(ctx, {
+        actorId: user._id,
+        action: "CLUB_CHANNEL_MESSAGE_REACTION_REMOVED",
+        entityType: "ClubChannelMessage",
+        entityId: message._id,
+        meta: channelMessageReactionAuditMeta({
+          clubId: channel.clubId,
+          channelId: channel._id,
+          emoji,
+          removedReactionCount: existing.length,
+        }),
+      });
       return null;
     }
     await ctx.db.insert("clubChannelMessageReactions", {
@@ -1587,6 +1725,17 @@ export const toggleReaction = mutation({
       userId: user._id,
       emoji,
       createdAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_CHANNEL_MESSAGE_REACTION_ADDED",
+      entityType: "ClubChannelMessage",
+      entityId: message._id,
+      meta: channelMessageReactionAuditMeta({
+        clubId: channel.clubId,
+        channelId: channel._id,
+        emoji,
+      }),
     });
     return null;
   },

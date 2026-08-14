@@ -10,7 +10,8 @@ Wrapped creates end-of-year student summary snapshots from Convex data.
 
 ## What It Does
 
-- Generates per-student yearly summaries for a configured school year.
+- Generates and stores one yearly summary for every active student, including
+  students with no recorded activity.
 - Reads activity across schedule, clubs, channels, reactions, mentions, and Flex
   Friday attendance.
 - Stores generated summaries in `wrappedSnapshots`.
@@ -33,7 +34,10 @@ Wrapped creates end-of-year student summary snapshots from Convex data.
 ## Data Model
 
 `wrappedSnapshots` stores the user, school-year start, summary payload, creation
-time, and generation metadata.
+time, and generation metadata. Snapshot generation runs in durable batches, so
+an admin-triggered run cannot stop after a first page of students. A nightly
+cron refreshes the current school year's records; the final stored snapshot is
+therefore available for every eligible student before the May viewing window.
 
 ## Permissions
 
@@ -42,9 +46,9 @@ generation status from the Admin Panel.
 
 ## Known Limits
 
-Snapshot generation currently runs as a mutation over bounded seeded/demo data.
-Before production-scale year-end generation, move long-running work to a batched
-or durable workflow.
+Snapshot generation processes ten users per transaction and schedules the next
+batch. This keeps each transaction bounded while allowing the run to cover the
+entire student population.
 
 ## Related
 

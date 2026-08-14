@@ -61,9 +61,11 @@ export const schema = defineSchema({
     isTeacherStaff: v.boolean(),
     isStudentAdmin: v.boolean(),
     isOtherRole: v.boolean(),
+    canReviewFeedback: v.optional(v.boolean()),
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
+    use24HourTime: v.optional(v.boolean()),
     avatarUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),
@@ -462,6 +464,7 @@ export const schema = defineSchema({
     submittedById: v.optional(v.id("users")),
     rejectionNote: v.optional(v.string()),
     promotedUntil: v.optional(v.number()),
+    embedUrls: v.optional(v.array(v.string())),
     updatedAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])
@@ -580,6 +583,16 @@ export const schema = defineSchema({
       "isActive",
       "position",
     ]),
+
+  announcementImages: defineTable({
+    announcementId: v.id("announcements"),
+    storageId: v.id("_storage"),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_announcementId_and_createdAt", ["announcementId", "createdAt"])
+    .index("by_storageId", ["storageId"]),
 
   clubUnitMembers: defineTable({
     clubId: v.id("clubs"),
@@ -773,6 +786,16 @@ export const schema = defineSchema({
     .index("by_storageId", ["storageId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
+  announcementImageUploads: defineTable({
+    uploaderId: v.id("users"),
+    storageId: v.id("_storage"),
+    mimeType: v.string(),
+    size: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
+
   uploadIntents: defineTable({
     uploaderId: v.id("users"),
     purpose: v.union(
@@ -780,6 +803,7 @@ export const schema = defineSchema({
       v.literal("CLUB_IMAGE"),
       v.literal("USER_IMAGE"),
       v.literal("FEEDBACK_IMAGE"),
+      v.literal("ANNOUNCEMENT_IMAGE"),
     ),
     storageId: v.optional(v.id("_storage")),
     createdAt: v.number(),
@@ -894,6 +918,22 @@ export const schema = defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_flexFridayId", ["flexFridayId"])
     .index("by_startAt", ["startAt"]),
+
+  calendarInvites: defineTable({
+    calendarEntryId: v.id("calendarEntries"),
+    senderId: v.id("users"),
+    recipientId: v.id("users"),
+    status: v.union(
+      v.literal("PENDING"),
+      v.literal("ACCEPTED"),
+      v.literal("DECLINED"),
+    ),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_calendarEntryId", ["calendarEntryId"])
+    .index("by_calendarEntryId_and_recipientId", ["calendarEntryId", "recipientId"])
+    .index("by_recipientId_and_status_and_createdAt", ["recipientId", "status", "createdAt"]),
 
   flexFridays: defineTable({
     date: v.number(),

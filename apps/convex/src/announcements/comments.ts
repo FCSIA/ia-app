@@ -5,6 +5,10 @@ import { logAuditEvent } from "../audit/_lib";
 import { assertAnnouncementAccess, commentWithAuthorValidator } from "./_lib";
 import { serializeComment } from "./serialize";
 import { contentRateLimiter } from "../rateLimits";
+import {
+  MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
+  normalizeBoundedText,
+} from "./contentValidation";
 
 export const list = query({
   args: { announcementId: v.id("announcements") },
@@ -38,11 +42,16 @@ export const add = mutation({
     if (!ann) throw new ConvexError("Announcement not found");
     await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
     if (!ann.allowComments) throw new ConvexError("Comments disabled");
+    const body = normalizeBoundedText(
+      args.body,
+      "Comment",
+      MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
+    );
 
     const id = await ctx.db.insert("comments", {
       announcementId: args.announcementId,
       authorId: user._id,
-      body: args.body.trim(),
+      body,
       createdAt: Date.now(),
     });
 

@@ -16,7 +16,8 @@ interface Props {
   onRegister: (workshopId: string) => void;
   onUnregister: (workshopId: string) => void;
   onAttendance: (workshopId: string) => void;
-  canManage: boolean;
+  canManageWorkshops: boolean;
+  canManageAttendance: boolean;
   isStudent: boolean;
   search: string;
   onSearchChange: (value: string) => void;
@@ -33,7 +34,8 @@ export function WorkshopPanel({
   onRegister,
   onUnregister,
   onAttendance,
-  canManage,
+  canManageWorkshops,
+  canManageAttendance,
   isStudent,
   search,
   onSearchChange,
@@ -51,7 +53,7 @@ export function WorkshopPanel({
             </Badge>
           )}
         </div>
-        {canManage && (
+        {canManageWorkshops && (
           <Button
             size="sm"
             leadingIcon={Plus}
@@ -159,32 +161,38 @@ export function WorkshopPanel({
                             </Button>
                           )}
 
-                          {canManage && (
+                          {(canManageWorkshops || canManageAttendance) && (
                             <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="tertiary"
-                                onClick={() => onAttendance(w._id)}
-                              >
-                                Roster
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                aria-label={`Edit ${w.title}`}
-                                onClick={() => onEditWorkshop(w)}
-                              >
-                                <Pencil />
-                              </Button>
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                className="text-destructive hover:bg-destructive/10"
-                                aria-label={`Delete ${w.title}`}
-                                onClick={() => onDeleteWorkshop(w)}
-                              >
-                                <Trash2 />
-                              </Button>
+                              {canManageAttendance && (
+                                <Button
+                                  size="sm"
+                                  variant="tertiary"
+                                  onClick={() => onAttendance(w._id)}
+                                >
+                                  Roster
+                                </Button>
+                              )}
+                              {canManageWorkshops && (
+                                <>
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    aria-label={`Edit ${w.title}`}
+                                    onClick={() => onEditWorkshop(w)}
+                                  >
+                                    <Pencil />
+                                  </Button>
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    aria-label={`Delete ${w.title}`}
+                                    onClick={() => onDeleteWorkshop(w)}
+                                  >
+                                    <Trash2 />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>

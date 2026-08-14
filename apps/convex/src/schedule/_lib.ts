@@ -176,6 +176,19 @@ const SCHEDULE_WEEKDAYS: ScheduleEntryInput["weekday"][] = [
   "FRIDAY",
 ];
 
+export const MAX_SCHEDULE_CLASS_NAME_CHARACTERS = 160;
+
+export function normalizeScheduleClassName(value: string) {
+  const normalized = value.trim();
+  if (!normalized) throw new ConvexError("Class names cannot be empty.");
+  if (Array.from(normalized).length > MAX_SCHEDULE_CLASS_NAME_CHARACTERS) {
+    throw new ConvexError(
+      `Class names must be at most ${MAX_SCHEDULE_CLASS_NAME_CHARACTERS} characters.`,
+    );
+  }
+  return normalized;
+}
+
 export function isStudentUser(user: Doc<"users">) {
   return user.roles.some((role) => STUDENT_ROLES.includes(role));
 }
