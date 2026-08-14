@@ -37,6 +37,7 @@ import {
 import {
   clubChannelPollOptionValidator,
   clubChannelReactionInputValidator,
+  type ClubChannelReaction,
 } from "../validators";
 import {
   assertStagedChatAttachmentIds,
@@ -95,6 +96,20 @@ export function channelMessageAuditMeta(input: {
     bodyMarkdown: input.bodyMarkdown ?? null,
     attachmentCount: input.attachmentCount ?? 0,
     hasPoll: input.hasPoll ?? false,
+  };
+}
+
+export function channelMessageReactionAuditMeta(input: {
+  clubId: Id<"clubs">;
+  channelId: Id<"clubChannels">;
+  emoji: ClubChannelReaction;
+  removedReactionCount?: number;
+}) {
+  return {
+    clubId: input.clubId,
+    channelId: input.channelId,
+    emoji: input.emoji,
+    removedReactionCount: input.removedReactionCount ?? 0,
   };
 }
 
@@ -1668,7 +1683,7 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel } = await assertMessageAccess(ctx, user, args.messageId);
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
     const emoji = normalizeClubChannelReaction(args.emoji);
@@ -1691,6 +1706,18 @@ export const toggleReaction = mutation({
     ).flat();
     if (existing.length) {
       await Promise.all(existing.map((reaction) => ctx.db.delete(reaction._id)));
+      await logAuditEvent(ctx, {
+        actorId: user._id,
+        action: "CLUB_CHANNEL_MESSAGE_REACTION_REMOVED",
+        entityType: "ClubChannelMessage",
+        entityId: message._id,
+        meta: channelMessageReactionAuditMeta({
+          clubId: channel.clubId,
+          channelId: channel._id,
+          emoji,
+          removedReactionCount: existing.length,
+        }),
+      });
       return null;
     }
     await ctx.db.insert("clubChannelMessageReactions", {
@@ -1698,6 +1725,17 @@ export const toggleReaction = mutation({
       userId: user._id,
       emoji,
       createdAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_CHANNEL_MESSAGE_REACTION_ADDED",
+      entityType: "ClubChannelMessage",
+      entityId: message._id,
+      meta: channelMessageReactionAuditMeta({
+        clubId: channel.clubId,
+        channelId: channel._id,
+        emoji,
+      }),
     });
     return null;
   },

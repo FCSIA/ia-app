@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { Id } from "../_generated/dataModel";
-import { channelMessageAuditMeta } from "./channels";
+import { channelMessageAuditMeta, channelMessageReactionAuditMeta } from "./channels";
 
 describe("channel message audit metadata", () => {
   test("records the canonical text and conversation context", () => {
@@ -37,5 +37,21 @@ describe("channel message audit metadata", () => {
 
     expect(meta.body).toHaveLength(300);
     expect(meta.bodyPreview).toHaveLength(240);
+  });
+
+  test("records a normalized reaction with its conversation context", () => {
+    expect(
+      channelMessageReactionAuditMeta({
+        clubId: "club" as Id<"clubs">,
+        channelId: "channel" as Id<"clubChannels">,
+        emoji: "FIRE",
+        removedReactionCount: 2,
+      }),
+    ).toEqual({
+      clubId: "club",
+      channelId: "channel",
+      emoji: "FIRE",
+      removedReactionCount: 2,
+    });
   });
 });
