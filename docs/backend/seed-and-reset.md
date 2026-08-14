@@ -50,22 +50,10 @@ cursor, start/update time, completion time, and any error. Wait for `COMPLETE`
 or investigate `FAILED`; the completion and error fields are the authoritative
 run outcome.
 
-Each seeded account receives a random temporary password. After the run reaches
-`COMPLETE`, claim those credentials with the returned run id:
-
-```bash
-pnpm --filter cvx exec convex run \
-  --deployment local \
-  bootstrap:claimSeedCredentials \
-  '{"runId":"<run-id>"}'
-```
-
-The claim returns at most 50 credentials. If `remaining` is `true`, repeat the
-same command. Each returned batch is deleted in the same transaction, so it
-cannot be claimed twice. Unclaimed credentials expire after 24 hours, and
-starting a replacement run removes credentials from the previous run. Store
-the output only in an approved password manager; do not commit or paste it into
-project files, tickets, or chat.
+All local demo accounts use the same deterministic password defined by the
+seed. The password applies only to the disposable isolated local deployment;
+never use or configure it for a shared or production deployment. Starting a
+replacement run removes credentials from the previous run.
 
 ## Dashboard Alternative
 
