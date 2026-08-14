@@ -532,6 +532,13 @@ export async function deleteSeedBatch(ctx: MutationCtx) {
       return deleted;
     }
 
+    const groupMembers = await ctx.db
+      .query("studentScheduleGroupMembers")
+      .take(1000);
+    for (const member of groupMembers) await ctx.db.delete(member._id);
+    const groups = await ctx.db.query("studentScheduleGroups").take(100);
+    for (const group of groups) await ctx.db.delete(group._id);
+
     const schedules = await ctx.db.query("studentSchedules").take(500);
     for (const schedule of schedules) {
       await ctx.db.delete(schedule._id);
@@ -624,10 +631,25 @@ export async function seedRegularDayTemplate(
     .query("schoolScheduleSettings")
     .withIndex("by_key", (q) => q.eq("key", "default"))
     .unique();
+  const currentDate = new Date(now);
+  const currentYear = currentDate.getFullYear();
+  const academicStartYear = currentDate.getMonth() >= 7 ? currentYear : currentYear - 1;
+  const academicYearStartDateKey = `${academicStartYear}-08-01`;
+  const academicYearEndDateKey = `${academicStartYear + 1}-06-30`;
   if (!settings) {
     await ctx.db.insert("schoolScheduleSettings", {
       key: "default",
       regularTemplateId: templateId,
+      academicYearStartDateKey,
+      academicYearEndDateKey,
+      updatedById: actorId,
+      updatedAt: now,
+    });
+  } else {
+    await ctx.db.patch(settings._id, {
+      regularTemplateId: templateId,
+      academicYearStartDateKey,
+      academicYearEndDateKey,
       updatedById: actorId,
       updatedAt: now,
     });
@@ -659,6 +681,25 @@ export async function seedAcceptedFriendPairs(
       acceptedAt: now,
     });
     friendshipsInserted += 1;
+  }
+
+  // Give the primary demo student a small, useful friend network for testing
+  // shared schedules and schedule groups.
+  const primaryStudent =
+    students.find((student) => student.uniqueId === "STU001") ?? students[0];
+  if (primaryStudent) {
+    for (const friend of students.slice(1, 5)) {
+      const existing = await getFriendshipBetween(ctx, primaryStudent._id, friend._id);
+      if (existing) continue;
+      await ctx.db.insert("studentScheduleFriends", {
+        requesterId: primaryStudent._id,
+        addresseeId: friend._id,
+        status: "ACCEPTED",
+        createdAt: now,
+        acceptedAt: now,
+      });
+      friendshipsInserted += 1;
+    }
   }
 
   return friendshipsInserted;

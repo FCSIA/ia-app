@@ -13,6 +13,7 @@ import {
   isStudentUser,
   scheduleSeedResultValidator,
   deleteSeedBatch,
+  getFriendshipBetween,
   seedDefaultBlocks,
   seedAcceptedFriendPairs,
   seedRegularDayTemplate,
@@ -144,7 +145,7 @@ export const seedFromStaticData = internalMutation({
         await ctx.db.delete(entry._id);
       }
 
-      for (const [index, course] of scheduleCourses
+    for (const [index, course] of scheduleCourses
         .slice(0, instructionalPeriods.length)
         .entries()) {
         const periodNumber = instructionalPeriods[index];
@@ -166,6 +167,53 @@ export const seedFromStaticData = internalMutation({
     }
 
     const nextIndex = cursor + batchSize;
+    if (nextIndex >= students.length) {
+      const owner = students.find((student) => student.uniqueId === "STU001");
+      if (owner) {
+        const existingGroups = await ctx.db
+          .query("studentScheduleGroups")
+          .withIndex("by_ownerId_and_createdAt", (q) =>
+            q.eq("ownerId", owner._id),
+          )
+          .take(1);
+        if (existingGroups.length === 0) {
+          const groupId = await ctx.db.insert("studentScheduleGroups", {
+            ownerId: owner._id,
+            name: "Shared Classes Demo",
+            createdAt: now,
+            updatedAt: now,
+          });
+          const [outgoing, incoming] = await Promise.all([
+            ctx.db
+              .query("studentScheduleFriends")
+              .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
+                q.eq("requesterId", owner._id).eq("status", "ACCEPTED"),
+              )
+              .take(4),
+            ctx.db
+              .query("studentScheduleFriends")
+              .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
+                q.eq("addresseeId", owner._id).eq("status", "ACCEPTED"),
+              )
+              .take(4),
+          ]);
+          const friendIds = Array.from(
+            new Set([
+              ...outgoing.map((friendship) => friendship.addresseeId),
+              ...incoming.map((friendship) => friendship.requesterId),
+            ]),
+          ).slice(0, 4);
+          for (const friendId of friendIds) {
+            await ctx.db.insert("studentScheduleGroupMembers", {
+              groupId,
+              userId: friendId,
+              addedAt: now,
+            });
+          }
+        }
+      }
+    }
+
     return {
       blocksInserted,
       schedulesUpserted,

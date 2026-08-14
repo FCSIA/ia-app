@@ -2,7 +2,7 @@
 
 import Image, { type ImageProps } from 'next/image';
 import { useTheme } from 'next-themes';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 type IaOrbitMarkProps = Omit<ImageProps, 'src'>;
 
@@ -13,7 +13,13 @@ function usesDarkOrbit(theme: string | undefined) {
 /** IA Orbit rendition that follows the active application appearance. */
 export function IaOrbitMark({ alt = 'IA Orbit', ...props }: IaOrbitMarkProps) {
   const { resolvedTheme } = useTheme();
-  const appearance = usesDarkOrbit(resolvedTheme) ? 'dark' : 'default';
+  // Keep the server render and the first client render identical. The saved
+  // appearance is only available in the browser after hydration.
+  const [appearance, setAppearance] = useState<'dark' | 'default'>('default');
+
+  useEffect(() => {
+    setAppearance(usesDarkOrbit(resolvedTheme) ? 'dark' : 'default');
+  }, [resolvedTheme]);
 
   useEffect(() => {
     const id = 'ia-orbit-theme-favicon';

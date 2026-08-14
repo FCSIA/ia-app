@@ -15,6 +15,10 @@ const STUDENT_COUNT_BY_PROFILE: Record<SeedProfile, number> = {
   full: 1500,
 };
 
+// This password is intentionally shared by local demo accounts only. The
+// local deployment is disposable and is never used for production data.
+export const LOCAL_DEMO_PASSWORD = "STU001STU001";
+
 export function isLocalDemoSeedEnabled(value: string | undefined) {
   return value === "true";
 }
@@ -154,7 +158,7 @@ const ANCHOR_STUDENTS = [
     gradeLevel: 9,
     major: "INFORMATION_TECHNOLOGY" as Pathway,
     minor: "ENGINEERING" as Pathway,
-    roles: ["STUDENT"] as AppRole[],
+    roles: ["STUDENT", "STUDENT_ADMIN"] as AppRole[],
   },
   {
     uniqueId: "STU002",
@@ -164,7 +168,7 @@ const ANCHOR_STUDENTS = [
     gradeLevel: 10,
     major: "HEALTH_SCIENCE" as Pathway,
     minor: "INFORMATION_TECHNOLOGY" as Pathway,
-    roles: ["STUDENT"] as AppRole[],
+    roles: ["STUDENT", "STUDENT_LEADER"] as AppRole[],
   },
   {
     uniqueId: "STU003",
@@ -500,7 +504,8 @@ export const run = internalMutation({
       }
       const result = await createLinkedUser(ctx, {
         ...student,
-        mustResetPassword: true,
+        password: LOCAL_DEMO_PASSWORD,
+        mustResetPassword: false,
       });
       if (result.temporaryPassword) {
         generatedCredentials.push({
