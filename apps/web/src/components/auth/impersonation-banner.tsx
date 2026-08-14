@@ -25,6 +25,10 @@ export function ImpersonationBanner() {
       const response = await fetch("/api/auth/admin/stop-impersonating", {
         method: "POST",
         credentials: "include",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: "{}",
       });
       if (!response.ok) throw new Error("Could not stop impersonation.");
       window.location.assign("/admin");
