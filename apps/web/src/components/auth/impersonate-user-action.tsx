@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Eye } from "lucide-react";
-import { api } from "~/apps/convex/src/_generated/api";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { logAuditEvent } from "../audit/_lib";
 import { getCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { createAuth } from "../auth";
@@ -14,8 +15,14 @@ export const prepare = mutation({
     const target = await ctx.db.get(args.userId);
     const reason = args.reason.trim();
     if (!reason) throw new ConvexError("A reason is required.");
-    if (!target || !target.isActive || !target.authUserId) throw new ConvexError("This account cannot be impersonated.");
-    if (target._id === actor._id || target.roles.includes("ADMIN") || target.roles.includes("SUPER_ADMIN")) {
+    if (!target || !target.isActive || !target.authUserId) {
+      throw new ConvexError("This account cannot be impersonated.");
+    }
+    if (
+      target._id === actor._id ||
+      target.roles.includes("ADMIN") ||
+      target.roles.includes("SUPER_ADMIN")
+    ) {
       throw new ConvexError("Privileged accounts cannot be impersonated.");
     }
     await logAuditEvent(ctx, {
@@ -31,19 +38,28 @@ export const prepare = mutation({
 
 export const performImpersonationChecks = internalMutation({
   args: { authUserId: v.string(), targetUserId: v.id("users"), reason: v.string() },
+  returns: v.object({ targetAuthUserId: v.string() }),
   handler: async (ctx, args) => {
     const actor = await ctx.db
       .query("users")
       .withIndex("by_authUserId", (q) => q.eq("authUserId", args.authUserId))
       .unique();
     if (!actor) throw new ConvexError("Actor not found.");
-    if (!actor.roles.includes("SUPER_ADMIN")) throw new ConvexError("Unauthorized.");
+    if (!actor.roles.includes("SUPER_ADMIN")) {
+      throw new ConvexError("Unauthorized.");
+    }
 
     const target = await ctx.db.get(args.targetUserId);
     const reason = args.reason.trim();
     if (!reason) throw new ConvexError("A reason is required.");
-    if (!target || !target.isActive || !target.authUserId) throw new ConvexError("This account cannot be impersonated.");
-    if (target._id === actor._id || target.roles.includes("ADMIN") || target.roles.includes("SUPER_ADMIN")) {
+    if (!target || !target.isActive || !target.authUserId) {
+      throw new ConvexError("This account cannot be impersonated.");
+    }
+    if (
+      target._id === actor._id ||
+      target.roles.includes("ADMIN") ||
+      target.roles.includes("SUPER_ADMIN")
+    ) {
       throw new ConvexError("Privileged accounts cannot be impersonated.");
     }
 
@@ -54,57 +70,72 @@ export const performImpersonationChecks = internalMutation({
       entityId: target._id,
       meta: { reason },
     });
-    
     return { targetAuthUserId: target.authUserId };
   },
 });
+
+function jsonResponse(message: string, status: number) {
+  return new Response(JSON.stringify({ message }), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
 
 export const httpImpersonate = httpAction(async (ctx, request) => {
   const auth = createAuth(ctx);
   const headers = new Headers(request.headers);
   const session = await auth.api.getSession({ headers });
-  
+
   if (!session?.user) {
-    return new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401, headers: { "content-type": "application/json" } });
+    return jsonResponse("Unauthorized", 401);
   }
 
   const reason = headers.get("x-ia-impersonation-reason")?.trim();
   if (!reason) {
-    return new Response(JSON.stringify({ message: "A reason is required." }), { status: 400, headers: { "content-type": "application/json" } });
+    return jsonResponse("A reason is required.", 400);
   }
 
-  let body;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return new Response(JSON.stringify({ message: "Invalid JSON" }), { status: 400, headers: { "content-type": "application/json" } });
-  }
-  
-  const userId = body.userId;
-  if (!userId) {
-    return new Response(JSON.stringify({ message: "Missing userId" }), { status: 400, headers: { "content-type": "application/json" } });
+    return jsonResponse("Invalid JSON", 400);
   }
 
-  let targetAuthUserId;
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("userId" in body) ||
+    typeof body.userId !== "string"
+  ) {
+    return jsonResponse("Missing userId", 400);
+  }
+
+  let targetAuthUserId: string;
   try {
     const result = await ctx.runMutation(internal.users.impersonation.performImpersonationChecks, {
       authUserId: session.user.id,
-      targetUserId: userId as any,
+      targetUserId: body.userId as Id<"users">,
       reason,
     });
     targetAuthUserId = result.targetAuthUserId;
-  } catch (error: any) {
-    return new Response(JSON.stringify({ message: error.message || "Cannot impersonate" }), { status: 403, headers: { "content-type": "application/json" } });
+  } catch (error) {
+    return jsonResponse(
+      error instanceof Error ? error.message : "Cannot impersonate",
+      403,
+    );
   }
 
   try {
-    const resHeaders = new Headers(request.headers);
-    await auth.api.impersonateUser({
+    return await auth.api.impersonateUser({
       body: { userId: targetAuthUserId },
-      headers: resHeaders,
+      headers,
+      asResponse: true,
     });
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: resHeaders });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ message: error.message || "Better auth error" }), { status: 500, headers: { "content-type": "application/json" } });
+  } catch (error) {
+    return jsonResponse(
+      error instanceof Error ? error.message : "Better auth error",
+      500,
+    );
   }
 });
