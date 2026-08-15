@@ -11,8 +11,12 @@ import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
+  GitBranch,
   QrCode,
   Send,
   RectangleEllipsis,
@@ -60,8 +64,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputCopy } from "@/components/ui/input-copy";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { SearchInput } from "@/components/ui/search";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabPanel, TabsList, TabItem } from "@/components/ui/tabs";
 import { api } from "~/apps/convex/src/_generated/api";
 import { parseInviteCsv } from "@/lib/parse-invite-csv";
@@ -438,6 +445,7 @@ export default function ClubPeoplePage() {
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
 
   const canAssignRoles = !!club?.viewer.permissions.assignRoles;
+  const canManageStructure = !!club?.viewer.permissions.manageClubStructure;
   const canRemoveMembers = !!club?.viewer.permissions.removeMembers;
   const canApproveRequests = !!club?.viewer.permissions.manageJoinRequests;
   const canInvite = !!club?.viewer.permissions.inviteMembers;
@@ -680,6 +688,7 @@ export default function ClubPeoplePage() {
                       person={person}
                       isCurrentUser={person._id === user?._id}
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
+                      canManageUnits={canManageStructure && person.kind === "MEMBER"}
                       canRemove={canRemoveMembers && person.kind === "MEMBER"}
                       canImpersonate={Boolean(
                         user &&
@@ -768,6 +777,7 @@ function PersonRow({
   person,
   isCurrentUser,
   canAssignRole,
+  canManageUnits,
   canRemove,
   canImpersonate,
   onRemove,
@@ -775,18 +785,21 @@ function PersonRow({
   person: ClubDirectoryEntry;
   isCurrentUser: boolean;
   canAssignRole: boolean;
+  canManageUnits: boolean;
   canRemove: boolean;
   canImpersonate: boolean;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
   const showManage =
-    (canAssignRole || canRemove || canImpersonate) &&
+    (canAssignRole || canManageUnits || canRemove || canImpersonate) &&
     person.kind === "MEMBER" &&
     !isCurrentUser;
   const isSponsor = person.kind === "SPONSOR";
+  const [primaryUnitName, ...otherUnitNames] = person.unitNames;
+  const unitMembershipLabel = person.unitNames.join(", ");
 
   return (
-    <div className="group flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
+    <div className="group/person flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
       <ClubAvatar
         person={person}
         className="size-9"
@@ -813,6 +826,30 @@ function PersonRow({
               {person.roleName}
             </Badge>
           ) : null}
+          {primaryUnitName ? (
+            <Badge
+              variant="solid"
+              size="sm"
+              className="bg-muted/60 text-muted-foreground"
+              title={unitMembershipLabel}
+            >
+              <GitBranch />
+              {primaryUnitName}
+            </Badge>
+          ) : null}
+          {otherUnitNames.length ? (
+            <Badge
+              variant="solid"
+              size="sm"
+              className="bg-muted/60 text-muted-foreground"
+              title={unitMembershipLabel}
+              aria-label={`${otherUnitNames.length} more unit ${
+                otherUnitNames.length === 1 ? "membership" : "memberships"
+              }`}
+            >
+              +{otherUnitNames.length}
+            </Badge>
+          ) : null}
           {isCurrentUser ? (
             <Badge
               variant="solid"
@@ -826,6 +863,7 @@ function PersonRow({
       {showManage ? (
         <div className="flex shrink-0 items-center gap-1">
           {canAssignRole ? <SetRoleDialog person={person} /> : null}
+          {canManageUnits ? <UnitMembershipPopover person={person} /> : null}
           {canImpersonate ? (
             <ImpersonateUserAction
               userId={person._id}
@@ -846,5 +884,234 @@ function PersonRow({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
+  const clubId = useClubId();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [unitPath, setUnitPath] = useState<string[]>([]);
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [pendingUnitId, setPendingUnitId] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() ?? false;
+  const options = useQuery(
+    api.clubs.hierarchy.listMemberUnitOptions,
+    open ? { clubId, memberId: person._id } : "skip",
+  );
+  const setMember = useMutation(api.clubs.hierarchy.setMember);
+  const removeMember = useMutation(api.clubs.hierarchy.removeMember);
+  const unitById = useMemo(
+    () =>
+      new Map<string, NonNullable<typeof options>["units"][number]>(
+        (options?.units ?? []).map((unit) => [unit._id, unit]),
+      ),
+    [options?.units],
+  );
+  const childrenByParentId = useMemo(() => {
+    const children = new Map<string | null, NonNullable<typeof options>["units"]>();
+    for (const unit of options?.units ?? []) {
+      const parentId = unit.parentUnitId ?? null;
+      const siblings = children.get(parentId) ?? [];
+      siblings.push(unit);
+      children.set(parentId, siblings);
+    }
+    return children;
+  }, [options?.units]);
+  const parentUnitId = unitPath.at(-1) ?? null;
+  const parentUnit = parentUnitId ? unitById.get(parentUnitId) : null;
+  const units = childrenByParentId.get(parentUnitId) ?? [];
+  const assignedUnitId =
+    pendingUnitId ?? units.find((unit) => unit.disabled)?._id ?? "";
+
+  const addMembership = async (unitId: string) => {
+    if (unitById.get(unitId)?.disabled) return;
+    setPendingUnitId(unitId);
+    try {
+      await setMember({
+        clubId,
+        unitId: unitId as Id<"clubUnits">,
+        memberId: person._id,
+      });
+      setOpen(false);
+    } catch (error) {
+      setPendingUnitId(null);
+      toast({
+        title:
+          error instanceof Error ? error.message : "Could not assign unit",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeMembership = async (unitId: Id<"clubUnits">) => {
+    try {
+      await removeMember({ clubId, unitId, memberId: person._id });
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : "Could not remove unit assignment",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setUnitPath([]);
+          setPendingUnitId(null);
+          setDirection(1);
+        }
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label={`Assign ${fullName(person)} to a unit`}
+          title="Assign unit"
+        >
+          <GitBranch className="size-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-2"
+        aria-label={`Unit assignments for ${fullName(person)}`}
+      >
+        <AnimatePresence initial={false} mode="wait" custom={direction}>
+          <motion.div
+            key={parentUnitId ?? "root"}
+            custom={direction}
+            initial={
+              reduceMotion ? false : { opacity: 0, x: direction * 14 }
+            }
+            animate={{ opacity: 1, x: 0 }}
+            exit={
+              reduceMotion
+                ? undefined
+                : { opacity: 0, x: direction * -10 }
+            }
+            transition={{
+              duration: reduceMotion ? 0.01 : 0.16,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            <div className="flex items-center gap-1 px-2 pb-2 pt-1">
+              {parentUnit ? (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Back to parent unit"
+                  onClick={() => {
+                    setDirection(-1);
+                    setUnitPath((path) => path.slice(0, -1));
+                  }}
+                >
+                  <ChevronLeft />
+                </Button>
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  Choose unit
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {parentUnit?.name ?? fullName(person)}
+                </p>
+              </div>
+            </div>
+
+            {options === undefined ? (
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                Loading units…
+              </p>
+            ) : units.length ? (
+              <ScrollArea className="max-h-64">
+                <div className="relative">
+                  <RadioGroup
+                    value={assignedUnitId}
+                    onValueChange={(unitId) => void addMembership(unitId)}
+                    className="w-full gap-0.5"
+                  >
+                    {units.map((unit, index) => (
+                      <RadioItem
+                        key={unit._id}
+                        value={unit._id}
+                        label={unit.name}
+                        index={index}
+                        className="w-full pr-10"
+                        aria-disabled={unit.disabled}
+                      />
+                    ))}
+                  </RadioGroup>
+                  <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
+                    {units.map((unit) => {
+                      const hasChildren = (childrenByParentId.get(unit._id) ?? [])
+                        .length > 0;
+                      return (
+                        <div key={unit._id} className="flex h-8 items-center">
+                          {hasChildren ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="pointer-events-auto size-7"
+                              aria-label={`View units inside ${unit.name}`}
+                              onClick={() => {
+                                setDirection(1);
+                                setUnitPath((path) => [...path, unit._id]);
+                              }}
+                            >
+                              <ChevronRight />
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </ScrollArea>
+            ) : (
+              <p className="px-3 py-2 text-xs text-muted-foreground">
+                No units here yet
+              </p>
+            )}
+
+            {parentUnitId === null && options?.directMemberships.length ? (
+              <>
+                <Separator className="my-2" />
+                <p className="px-2 pb-1 text-xs text-muted-foreground">
+                  Assigned
+                </p>
+                {options.directMemberships.map((membership) => {
+                  const unit = unitById.get(membership.unitId);
+                  return (
+                    <Button
+                      key={membership.unitId}
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      leadingIcon={X}
+                      onClick={() => void removeMembership(membership.unitId)}
+                    >
+                      Remove {unit?.name ?? "archived unit"}
+                    </Button>
+                  );
+                })}
+              </>
+            ) : null}
+          </motion.div>
+        </AnimatePresence>
+      </PopoverContent>
+    </Popover>
   );
 }

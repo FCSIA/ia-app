@@ -493,6 +493,16 @@ export const removeRole = mutation({
       throw new ConvexError("The default club role cannot be removed");
     }
 
+    const channels = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId))
+      .take(500);
+    if (channels.some((channel) => channel.accessRoleIds?.includes(role._id))) {
+      throw new ConvexError(
+        "Remove this role from channel access settings before deleting it",
+      );
+    }
+
     const defaultRole = await getDefaultClubRole(ctx, args.clubId);
     if (!defaultRole || defaultRole._id === role._id) {
       throw new ConvexError("This club does not have a fallback role");

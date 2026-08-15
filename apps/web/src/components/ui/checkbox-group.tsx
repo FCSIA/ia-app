@@ -400,7 +400,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
             className={cn(
               "col-start-1 row-start-1 transition-[color,font-variation-settings] duration-80 [text-box:trim-both_cap_alphabetic]",
               checked || isActive
-                ? "text-muted-foreground"
+                ? "text-foreground"
                 : "text-muted-foreground"
             )}
             style={{

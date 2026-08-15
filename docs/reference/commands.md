@@ -17,6 +17,12 @@ tags: [commands, development]
 | `pnpm build`            | Build all workspaces                                      |
 | `pnpm test`             | Run test suites                                           |
 
+Temporary public URL for any local port:
+
+```bash
+pnpm dlx localtunnel --port <PORT>
+```
+
 ## Deploy
 
 Pushes to `main` deploy the web app to Vercel production via

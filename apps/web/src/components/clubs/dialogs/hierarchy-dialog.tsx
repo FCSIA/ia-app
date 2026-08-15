@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Crown,
   GitBranch,
   Plus,
   QrCode,
@@ -31,8 +30,6 @@ import type {
   ClubUnit,
   ClubUnitMember,
 } from '@/components/clubs/types';
-import { fullName } from '@/components/clubs/types';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
 import { PeoplePicker } from '@/components/clubs/people-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -124,7 +121,7 @@ export function ClubStructureActions({
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Club structure</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Organize teams, committees, local leaders, and join policies.
+                Organize teams, houses, rooms, and join policies.
               </p>
             </div>
             <Button
@@ -265,9 +262,6 @@ export function ClubStructureEditor({ club }: { club: ClubDetail }) {
                   >
                     <GitBranch className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate text-left">{unit.name}</span>
-                    {unit.viewerRole === 'LEADER' ? (
-                      <Crown className="size-3.5 shrink-0 text-amber-500" />
-                    ) : null}
                   </Button>
                 ))}
                 {hierarchy && hierarchy.units.length === 0 ? (
@@ -562,7 +556,11 @@ function MemberManager({ club, unit }: { club: ClubDetail; unit: ClubUnit }) {
     const removedId = selectedIds.find((id) => !nextIds.includes(id));
     try {
       if (addedId) {
-        await setMember({ clubId: club._id, unitId: unit._id, memberId: addedId as Id<'users'>, role: 'MEMBER' });
+        await setMember({
+          clubId: club._id,
+          unitId: unit._id,
+          memberId: addedId as Id<'users'>,
+        });
       } else if (removedId) {
         await removeMember({
           clubId: club._id,
@@ -576,72 +574,12 @@ function MemberManager({ club, unit }: { club: ClubDetail; unit: ClubUnit }) {
   };
 
   return (
-    <section className="space-y-3 border-t pt-5">
+    <section className="flex flex-col gap-3 border-t pt-5">
       <div>
-        <h3 className="flex items-center gap-2 text-sm font-semibold"><Users className="size-4" /> Members and leaders</h3>
-        <p className="mt-1 text-xs leading-4 text-muted-foreground">Assignments are local to this unit. Leadership here does not grant club-wide admin access.</p>
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><Users className="size-4" /> Members</h3>
       </div>
       <PeoplePicker people={people} selectedIds={selectedIds} onChange={(ids) => void changeSelection(ids)} placeholder="Assign club members" />
-      <div className="space-y-2">
-        {members?.map((member) => (
-          <UnitMemberRow key={member._id} clubId={club._id} unitId={unit._id} member={member} />
-        ))}
-        {members?.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">No one is assigned yet.</p> : null}
-      </div>
     </section>
-  );
-}
-
-function UnitMemberRow({
-  clubId,
-  unitId,
-  member,
-}: {
-  clubId: Id<'clubs'>;
-  unitId: Id<'clubUnits'>;
-  member: ClubUnitMember;
-}) {
-  const { toast } = useToast();
-  const setMember = useMutation(api.clubs.hierarchy.setMember);
-  const [title, setTitle] = useState(member.title ?? '');
-  const [saving, setSaving] = useState(false);
-
-  const save = async (role = member.role) => {
-    setSaving(true);
-    try {
-      await setMember({ clubId, unitId, memberId: member.userId, role, title: role === 'LEADER' ? title : undefined });
-    } catch (error) {
-      toast({ title: mutationError(error), variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="grid gap-2 rounded-lg border bg-background p-2.5 sm:grid-cols-[minmax(0,1fr)_8rem_minmax(8rem,12rem)_auto] sm:items-center">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <ClubAvatar person={member.user} className="size-8" fallbackClassName="text-[10px]" />
-        <span className="truncate text-sm font-medium">{fullName(member.user)}</span>
-      </div>
-      <Select
-        value={member.role === 'LEADER' ? 'Leader' : 'Member'}
-        onValueChange={(value) =>
-          void save(value === 'Leader' ? 'LEADER' : 'MEMBER')
-        }
-      >
-        <SelectTrigger className="w-full min-w-0" />
-        <SelectContent>
-          <SelectItem index={0} value="Member">Member</SelectItem>
-          <SelectItem index={1} value="Leader">Leader</SelectItem>
-        </SelectContent>
-      </Select>
-      {member.role === 'LEADER' ? (
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Executive, Logistics…" aria-label={`Leadership title for ${fullName(member.user)}`} />
-      ) : <span className="hidden text-xs text-muted-foreground sm:block">No local title</span>}
-      <Button type="button" size="icon-sm" variant="ghost" loading={saving} disabled={member.role !== 'LEADER'} aria-label={`Save ${fullName(member.user)} title`} onClick={() => void save()}>
-        <Save className="size-3.5" />
-      </Button>
-    </div>
   );
 }
 

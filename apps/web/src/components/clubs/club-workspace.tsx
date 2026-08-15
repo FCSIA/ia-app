@@ -14,7 +14,6 @@ import {
   Home,
   PanelLeft,
   Plus,
-  Pencil,
   Settings,
   Trash2,
   Users2,
@@ -1009,23 +1008,22 @@ function ChannelActionsTrigger({
   canDelete: boolean;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <>
       {canEdit ? (
         <Button
-          type="button"
+          asChild
           variant="ghost"
           size="icon-sm"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(true);
-          }}
           className="size-6 text-muted-foreground hover:text-foreground !bg-transparent"
-          aria-label="Edit channel"
+          aria-label="Channel settings"
         >
-          <Pencil />
+          <Link
+            href={`/clubs/${clubId}/settings/channels/${channel._id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Settings />
+          </Link>
         </Button>
       ) : null}
       {canDelete ? (
@@ -1043,14 +1041,6 @@ function ChannelActionsTrigger({
         >
           <Trash2 />
         </Button>
-      ) : null}
-      {canEdit ? (
-        <ChannelDialog
-          clubId={clubId}
-          channel={channel}
-          open={open}
-          onOpenChange={setOpen}
-        />
       ) : null}
     </>
   );
