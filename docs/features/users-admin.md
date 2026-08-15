@@ -12,7 +12,7 @@ User management is handled through Convex functions and the Admin Panel.
 
 - Lists students and staff for admin workflows.
 - Creates and links app users to Better Auth users.
-- Imports and exports student rows by CSV.
+- Imports and exports student rows by CSV, and imports administrator accounts by CSV.
 - Activates, deactivates, bulk-deletes, assigns roles, and resets passwords.
 - Stores dashboard layout preferences for each user.
 
@@ -31,6 +31,7 @@ User management is handled through Convex functions and the Admin Panel.
 - `api.users.admin.list`
 - `api.users.admin.createUser`
 - `api.users.admin.importStudents`
+- `api.users.admin.importAdministrators`
 - `api.users.admin.exportStudents`
 - `api.users.admin.activate`
 - `api.users.admin.deactivate`
@@ -50,6 +51,12 @@ is limited to super admins, cannot include the acting account, and removes the
 linked Better Auth identity, sessions, profile record, and profile images.
 Historical school and collaboration records remain for audit continuity. Normal
 users can read their own public profile and change their own password.
+
+Administrator CSV import is restricted to `SUPER_ADMIN`. It accepts up to 200
+rows with `first_name,last_name,administrator_id,email`, creates only `ADMIN`
+accounts, requires a supplied email, skips existing IDs rather than overwriting
+them, returns temporary credentials only to the initiating browser, and records
+the batch count in the audit log. It cannot create `SUPER_ADMIN` accounts.
 
 ## Side Effects
 

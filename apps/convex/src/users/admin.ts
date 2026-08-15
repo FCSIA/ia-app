@@ -44,6 +44,7 @@ import {
   setBetterAuthPassword,
   syncBetterAuthRole,
   isStudentUser,
+  administratorImportResultValidator,
   studentExportRowValidator,
   studentImportResultValidator,
   toAdminUserProfile,
@@ -59,6 +60,13 @@ const studentImportRowValidator = v.object({
   major: v.optional(pathwayValidator),
   minor: v.optional(pathwayValidator),
   email: v.optional(v.string()),
+});
+
+const administratorImportRowValidator = v.object({
+  uniqueId: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+  email: v.string(),
 });
 
 export const list = query({
@@ -280,6 +288,7 @@ const studentImportRowResultValidator = v.union(
 );
 
 const STUDENT_IMPORT_BATCH_SIZE = 5;
+const ADMINISTRATOR_IMPORT_BATCH_SIZE = 5;
 
 export const requireStudentImportActor = internalQuery({
   args: {},
@@ -489,6 +498,215 @@ export const importStudents = action({
     return results;
   },
 });
+
+type AdministratorImportRowResult =
+  | {
+      kind: "created";
+      credential?: GeneratedCredential;
+    }
+  | {
+      kind: "skipped";
+      error?: string;
+    };
+
+type AdministratorImportResult = {
+  created: number;
+  skipped: number;
+  errors: string[];
+  generatedCredentials: GeneratedCredential[];
+};
+
+const administratorImportRowResultValidator = v.union(
+  v.object({
+    kind: v.literal("created"),
+    credential: v.optional(generatedCredentialValidator),
+  }),
+  v.object({
+    kind: v.literal("skipped"),
+    error: v.optional(v.string()),
+  }),
+);
+
+export const requireAdministratorImportActor = internalQuery({
+  args: {},
+  returns: v.id("users"),
+  handler: async (ctx): Promise<Id<"users">> => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+    return actor._id;
+  },
+});
+
+export const importAdministratorRow = internalMutation({
+  args: {
+    row: administratorImportRowValidator,
+  },
+  returns: administratorImportRowResultValidator,
+  handler: async (ctx, args): Promise<AdministratorImportRowResult> => {
+    const uniqueId = normalizeUniqueId(args.row.uniqueId);
+    const firstName = args.row.firstName.trim();
+    const lastName = args.row.lastName.trim();
+    const email = args.row.email.trim();
+
+    const skip = (error?: string): AdministratorImportRowResult => ({
+      kind: "skipped",
+      ...(error === undefined ? {} : { error }),
+    });
+
+    if (!uniqueId || !firstName || !lastName || !email) {
+      return skip("missing first name, last name, administrator ID, or email");
+    }
+    if (uniqueId.length < 3) {
+      return skip(
+        `Administrator ID '${uniqueId}' is too short. It must be at least 3 characters.`,
+      );
+    }
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_uniqueId", (q) => q.eq("uniqueId", uniqueId))
+      .unique();
+    if (existing) return skip();
+
+    const temporaryPassword = generateTemporaryPassword();
+    await createLinkedUser(ctx, {
+      uniqueId,
+      firstName,
+      lastName,
+      email,
+      password: temporaryPassword,
+      roles: ["ADMIN"],
+    });
+
+    return {
+      kind: "created",
+      credential: {
+        firstName,
+        lastName,
+        uniqueId,
+        email,
+        temporaryPassword,
+      },
+    };
+  },
+});
+
+export const logAdministratorImportAudit = internalMutation({
+  args: {
+    actorId: v.id("users"),
+    created: v.number(),
+    skipped: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    await logAuditEvent(ctx, {
+      actorId: args.actorId,
+      action: "ADMINISTRATOR_CSV_IMPORT",
+      entityType: "User",
+      meta: {
+        created: args.created,
+        skipped: args.skipped,
+        generatedPasswords: true,
+      },
+    });
+    return null;
+  },
+});
+
+export const importAdministrators = action({
+  args: {
+    rows: v.array(administratorImportRowValidator),
+  },
+  returns: administratorImportResultValidator,
+  handler: async (ctx, args): Promise<AdministratorImportResult> => {
+    const actorId: Id<"users"> = await ctx.runQuery(
+      internal.users.admin.requireAdministratorImportActor,
+      {},
+    );
+
+    if (args.rows.length === 0) {
+      throw new ConvexError("Import at least one administrator.");
+    }
+    if (args.rows.length > 200) {
+      throw new ConvexError("Import at most 200 administrators at a time.");
+    }
+
+    const results: AdministratorImportResult = {
+      created: 0,
+      skipped: 0,
+      errors: [],
+      generatedCredentials: [],
+    };
+    const seenUniqueIds = new Set<string>();
+    const work = args.rows.map((row, index) => {
+      const uniqueId = normalizeUniqueId(row.uniqueId);
+      const duplicateWithinImport =
+        uniqueId.length > 0 && seenUniqueIds.has(uniqueId);
+      if (uniqueId.length > 0) seenUniqueIds.add(uniqueId);
+
+      return {
+        row,
+        rowNumber: index + 2,
+        uniqueId,
+        duplicateWithinImport,
+      };
+    });
+
+    for (
+      let start = 0;
+      start < work.length;
+      start += ADMINISTRATOR_IMPORT_BATCH_SIZE
+    ) {
+      const batch = work.slice(start, start + ADMINISTRATOR_IMPORT_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (entry): Promise<AdministratorImportRowResult> => {
+          if (entry.duplicateWithinImport) {
+            return {
+              kind: "skipped",
+              error: `Duplicate administrator ID '${entry.uniqueId}' in this CSV.`,
+            };
+          }
+
+          try {
+            return await ctx.runMutation(
+              internal.users.admin.importAdministratorRow,
+              { row: entry.row },
+            );
+          } catch (error) {
+            return {
+              kind: "skipped",
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        }),
+      );
+
+      for (const [batchIndex, result] of batchResults.entries()) {
+        const rowNumber = batch[batchIndex]!.rowNumber;
+        if (result.kind === "created") {
+          results.created += 1;
+          if (result.credential) results.generatedCredentials.push(result.credential);
+        } else {
+          results.skipped += 1;
+          if (result.error) results.errors.push(`Row ${rowNumber}: ${result.error}`);
+        }
+      }
+    }
+
+    try {
+      await ctx.runMutation(internal.users.admin.logAdministratorImportAudit, {
+        actorId,
+        created: results.created,
+        skipped: results.skipped,
+      });
+    } catch (error) {
+      console.error("Failed to record administrator import audit event", error);
+    }
+
+    return results;
+  },
+});
+
 export const exportStudents = query({
   args: {},
   returns: v.array(studentExportRowValidator),

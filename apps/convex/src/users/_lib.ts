@@ -107,6 +107,12 @@ export const studentImportResultValidator = v.object({
   })),
 });
 
+// Administrator imports return the same one-time credential envelope as the
+// student roster import. Keeping one validator ensures the two operator flows
+// expose the same bounded result without persisting passwords in application
+// data or audit events.
+export const administratorImportResultValidator = studentImportResultValidator;
+
 export const studentExportRowValidator = v.object({
   firstName: v.string(),
   lastName: v.string(),

@@ -9,6 +9,7 @@ import { AdminFillTabPanel, AdminScrollTabPanel } from './admin-tab-panel';
 import { AuditTabPanel } from './panels/audit-tab-panel';
 import { FeedbackTabPanel } from './panels/feedback-tab-panel';
 import { ModerationTabPanel } from './panels/moderation-tab-panel';
+import { AdministratorRosterTabPanel } from './panels/administrator-roster-tab-panel';
 import { ScheduleTabPanel } from './panels/schedule-tab-panel';
 import { UsersTabPanel } from './panels/users-tab-panel';
 import { WrappedTabPanel } from './panels/wrapped-tab-panel';
@@ -56,6 +57,12 @@ export function AdminPageContent() {
         {isSuperAdmin ? (
           <AdminScrollTabPanel value="schedule">
             {activeTab === 'schedule' ? <ScheduleTabPanel /> : null}
+          </AdminScrollTabPanel>
+        ) : null}
+
+        {isSuperAdmin ? (
+          <AdminScrollTabPanel value="administrator-roster">
+            {activeTab === 'administrator-roster' ? <AdministratorRosterTabPanel /> : null}
           </AdminScrollTabPanel>
         ) : null}
 

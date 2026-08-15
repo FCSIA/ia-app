@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 export const ADMIN_TABS = [
   'users',
   'schedule',
+  'administrator-roster',
   'moderation',
   'feedback',
   'wrapped',
@@ -26,6 +27,7 @@ export function resolveAdminTab(
   }
 
   if (requestedTab === 'schedule' && isSuperAdmin) return 'schedule';
+  if (requestedTab === 'administrator-roster' && isSuperAdmin) return 'administrator-roster';
   if (requestedTab === 'feedback' && isSuperAdmin) return 'feedback';
   if (requestedTab === 'wrapped' && canManageWrapped) return 'wrapped';
   if (

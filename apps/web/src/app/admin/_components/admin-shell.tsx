@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ContactRound, FileText, MessageSquareText, MessageSquareWarning, Sparkles, Users } from 'lucide-react';
+import { ContactRound, FileText, MessageSquareText, MessageSquareWarning, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { Tabs, TabsList, TabItem } from '@/components/ui/tabs';
 import type { AdminTabId } from '../_hooks/use-admin-tab';
 
@@ -38,6 +38,9 @@ export function AdminShell({
             <TabItem value="users" icon={Users} label="Users" />
             {isSuperAdmin ? (
               <TabItem value="schedule" icon={ContactRound} label="Student roster" />
+            ) : null}
+            {isSuperAdmin ? (
+              <TabItem value="administrator-roster" icon={ShieldCheck} label="Admin roster" />
             ) : null}
             <TabItem
               value="moderation"
