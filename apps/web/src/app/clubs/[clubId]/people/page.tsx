@@ -16,6 +16,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
   GitBranch,
   QrCode,
   Send,
@@ -69,9 +70,19 @@ import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { SearchInput } from "@/components/ui/search";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabPanel, TabsList, TabItem } from "@/components/ui/tabs";
 import { api } from "~/apps/convex/src/_generated/api";
 import { parseInviteCsv } from "@/lib/parse-invite-csv";
+import { parseUnitAssignmentCsv } from "@/lib/parse-unit-assignment-csv";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { ImpersonateUserAction } from "@/components/auth/impersonate-user-action";
 import { useToast } from "@/hooks/use-toast";
@@ -80,6 +91,15 @@ import { filterBySearchQuery } from "@/lib/search";
 type StudentResult = FunctionReturnType<
   typeof api.clubs.invitations.searchInviteCandidates
 >[number];
+
+type UnitAssignmentPreview = {
+  line: number;
+  name: string;
+  unit: string;
+  memberId: Id<"users"> | null;
+  unitId: Id<"clubUnits"> | null;
+  issue: string | null;
+};
 
 const subscribeToOrigin = () => () => undefined;
 const getClientOrigin = () => window.location.origin;
@@ -373,7 +393,13 @@ function ManagePeopleDialog({
 
           <TabPanel value="bulk" className="mt-4">
             <div className="flex flex-col gap-3 rounded-lg border p-5">
-              <Label htmlFor="invite-csv">CSV upload</Label>
+              <div className="space-y-1">
+                <Label htmlFor="invite-csv">Unique ID CSV upload</Label>
+                <p className="text-xs text-muted-foreground">
+                  Use one student unique ID per row. To assign students to club
+                  units, use Import units on the People page instead.
+                </p>
+              </div>
               <Input
                 key={csvKey}
                 id="invite-csv"
@@ -389,7 +415,7 @@ function ManagePeopleDialog({
                 disabled={!csvFile || csvPending}
                 onClick={() => void handleCsvUpload()}
               >
-                {csvPending ? "Uploading..." : "Upload CSV"}
+                {csvPending ? "Uploading..." : "Invite by unique ID"}
               </Button>
               {result ? (
                 <div className="rounded-md bg-muted/30 p-3 text-sm">
@@ -409,6 +435,283 @@ function ManagePeopleDialog({
             </div>
           </TabPanel>
         </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function normalizeAssignmentMatch(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+const MAX_BULK_UNIT_ASSIGNMENT_ROWS = 100;
+
+function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
+  const clubId = useClubId();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
+  const [replaceExisting, setReplaceExisting] = useState(true);
+  const [preview, setPreview] = useState<UnitAssignmentPreview[]>([]);
+  const [isApplying, setIsApplying] = useState(false);
+  const hierarchy = useQuery(
+    api.clubs.hierarchy.list,
+    open ? { clubId } : "skip",
+  );
+  const bulkSetMembers = useMutation(api.clubs.hierarchy.bulkSetMembers);
+
+  const previewSummary = useMemo(() => {
+    const matched = preview.filter((row) => row.issue === null);
+    return { matched, unresolved: preview.length - matched.length };
+  }, [preview]);
+
+  const reset = () => {
+    setFile(null);
+    setFileKey((key) => key + 1);
+    setPreview([]);
+    setIsApplying(false);
+  };
+
+  const buildPreview = async () => {
+    if (!file || !hierarchy) return;
+    try {
+      const rows = parseUnitAssignmentCsv(await file.text());
+      if (rows.length > MAX_BULK_UNIT_ASSIGNMENT_ROWS) {
+        throw new Error(
+          `A CSV import can assign up to ${MAX_BULK_UNIT_ASSIGNMENT_ROWS} rows at a time`,
+        );
+      }
+      const memberByName = new Map<string, ClubDirectoryEntry[]>();
+      for (const person of club.directory) {
+        if (person.kind !== "MEMBER") continue;
+        const key = normalizeAssignmentMatch(fullName(person));
+        const matches = memberByName.get(key) ?? [];
+        matches.push(person);
+        memberByName.set(key, matches);
+      }
+      const unitByName = new Map<string, typeof hierarchy.units>();
+      for (const unit of hierarchy.units) {
+        const key = normalizeAssignmentMatch(unit.name);
+        const matches = unitByName.get(key) ?? [];
+        matches.push(unit);
+        unitByName.set(key, matches);
+      }
+
+      setPreview(
+        rows.map((row) => {
+          if (!row.name || !row.unit) {
+            return {
+              ...row,
+              memberId: null,
+              unitId: null,
+              issue: "Name and unit are required",
+            };
+          }
+          const members =
+            memberByName.get(normalizeAssignmentMatch(row.name)) ?? [];
+          const units =
+            unitByName.get(normalizeAssignmentMatch(row.unit)) ?? [];
+          const issue =
+            members.length === 0
+              ? "No club member with this name"
+              : members.length > 1
+                ? "Name matches more than one club member"
+                : units.length === 0
+                  ? "No active unit with this name"
+                  : units.length > 1
+                    ? "Unit name is ambiguous"
+                    : null;
+          return {
+            ...row,
+            memberId: issue ? null : members[0]._id,
+            unitId: issue ? null : units[0]._id,
+            issue,
+          };
+        }),
+      );
+    } catch (error) {
+      setPreview([]);
+      toast({
+        title: error instanceof Error ? error.message : "Could not read CSV",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const apply = async () => {
+    if (!previewSummary.matched.length || previewSummary.unresolved) return;
+    setIsApplying(true);
+    try {
+      const result = await bulkSetMembers({
+        clubId,
+        assignments: previewSummary.matched.map((row) => ({
+          memberId: row.memberId!,
+          unitId: row.unitId!,
+        })),
+        replaceExisting,
+      });
+      toast({
+        title: "Unit assignments updated",
+        description: `${result.assigned} assigned${result.removed ? `, ${result.removed} previous assignments removed` : ""}`,
+      });
+      setOpen(false);
+      reset();
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : "Could not apply assignments",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) reset();
+      }}
+    >
+      <Button
+        type="button"
+        variant="tertiary"
+        size="sm"
+        leadingIcon={FileSpreadsheet}
+        onClick={() => setOpen(true)}
+        aria-label="Import unit assignments"
+      >
+        Import units
+      </Button>
+      <DialogContent size="lg" className="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Import unit assignments</DialogTitle>
+          <DialogDescription>
+            Upload a CSV with <code>name</code> and <code>unit</code> columns.
+            Names and unit labels must match this club exactly.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Label htmlFor="unit-assignment-csv">CSV file</Label>
+              <Input
+                key={fileKey}
+                id="unit-assignment-csv"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null);
+                  setPreview([]);
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="tertiary"
+              disabled={!file || !hierarchy}
+              onClick={() => void buildPreview()}
+            >
+              Preview CSV
+            </Button>
+          </div>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-border/70 px-3 py-2 text-sm">
+            <Checkbox
+              checked={replaceExisting}
+              onCheckedChange={(checked) =>
+                setReplaceExisting(checked === true)
+              }
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-foreground">
+                Replace direct assignments
+              </span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Remove each listed student’s current direct unit assignments
+                before adding the CSV assignment.
+              </span>
+            </span>
+          </label>
+
+          {preview.length ? (
+            <>
+              <div className="flex items-baseline justify-between text-sm">
+                <p className="font-medium text-foreground">
+                  {previewSummary.matched.length} ready to assign
+                </p>
+                {previewSummary.unresolved ? (
+                  <p className="text-destructive">
+                    {previewSummary.unresolved} need attention
+                  </p>
+                ) : null}
+              </div>
+              <ScrollArea className="h-72 rounded-md border border-border/70">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Line</TableHead>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {preview.map((row, index) => (
+                      <TableRow
+                        key={`${row.line}-${row.name}-${row.unit}`}
+                        index={index}
+                      >
+                        <TableCell>{row.line}</TableCell>
+                        <TableCell className="text-foreground">
+                          {row.name || "—"}
+                        </TableCell>
+                        <TableCell>{row.unit || "—"}</TableCell>
+                        <TableCell
+                          className={
+                            row.issue ? "text-destructive" : "text-foreground"
+                          }
+                        >
+                          {row.issue ?? "Ready"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </>
+          ) : null}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="tertiary"
+            onClick={() => setOpen(false)}
+            disabled={isApplying}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={
+              !previewSummary.matched.length ||
+              previewSummary.unresolved > 0 ||
+              isApplying
+            }
+            loading={isApplying}
+            onClick={() => void apply()}
+          >
+            Apply assignments
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -617,6 +920,9 @@ export default function ClubPeoplePage() {
                 >
                   <UserPlus className="size-4" />
                 </Button>
+              ) : null}
+              {club && canManageStructure ? (
+                <BulkUnitAssignmentDialog club={club} />
               ) : null}
             </div>
           </div>
