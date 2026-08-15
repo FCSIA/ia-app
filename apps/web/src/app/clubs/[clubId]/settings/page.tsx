@@ -13,8 +13,8 @@ import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
+  CardGroup,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -38,7 +38,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { TabItem, Tabs, TabsList } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { Elevated } from "@/lib/elevated";
@@ -499,176 +498,203 @@ export default function ClubSettingsPage() {
               className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover"
             >
               <div>
-                <p className="text-sm font-semibold text-foreground">Channels</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Organize audiences, posting rights, and House/Room placement.</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Channels
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Organize audiences, posting rights, and House/Room placement.
+                </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
           ) : null}
 
           {canManageRoles ? (
-            <Elevated offset={1} className="overflow-hidden rounded-xl">
-              <Card className="pb-0">
-                <CardHeader className="border-b border-border/70 px-5 py-4">
-                  <h2>
-                    <CardTitle className="text-xl tracking-tight">
-                      Roles
-                    </CardTitle>
+            <section aria-labelledby="roles-heading">
+              <div className="mb-3 flex items-center justify-between gap-4 px-1">
+                <div>
+                  <h2
+                    id="roles-heading"
+                    className="text-xl font-semibold tracking-tight"
+                  >
+                    Roles
                   </h2>
-                  <CardAction>
-                    <Button
-                      size="sm"
-                      leadingIcon={Plus}
-                      onClick={() => openEditor({ mode: "create" })}
-                    >
-                      New role
-                    </Button>
-                  </CardAction>
-                </CardHeader>
-                <CardContent className="p-5 pt-4">
-                  {roles && roles.length > 0 && selectedRole ? (
-                    <>
-                      <div className="min-w-0 overflow-x-auto pb-1">
-                        <Tabs
-                          value={selectedRole._id}
-                          onValueChange={setSelectedRoleId}
-                        >
-                          <TabsList>
-                            {roles.map((role) => (
-                              <TabItem
-                                key={role._id}
-                                value={role._id}
-                                label={role.name}
-                              />
-                            ))}
-                          </TabsList>
-                        </Tabs>
-                      </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Set what each role can do in this club.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  leadingIcon={Plus}
+                  onClick={() => openEditor({ mode: "create" })}
+                >
+                  New role
+                </Button>
+              </div>
 
-                      <div className="flex items-center justify-between gap-3 py-1">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-semibold text-foreground">
-                            {selectedRole.name}
-                          </h3>
-                          <p className="text-xs text-muted-foreground">
-                            {
-                              Object.values(selectedRole.permissions).filter(
-                                Boolean,
-                              ).length
-                            }{" "}
-                            permissions enabled
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
+              {roles && roles.length > 0 && selectedRole ? (
+                <div className="grid overflow-hidden rounded-xl border border-border/70 bg-card lg:grid-cols-[minmax(12rem,0.36fr)_minmax(0,1fr)]">
+                  <aside
+                    className="border-b border-border/70 lg:border-b-0 lg:border-r"
+                    aria-label="Club roles"
+                  >
+                    <CardGroup
+                      border="outlined"
+                      className="rounded-none border-0"
+                    >
+                      {roles.map((role) => {
+                        const enabledCount = Object.values(
+                          role.permissions,
+                        ).filter(Boolean).length;
+                        return (
+                          <Card
+                            key={role._id}
+                            onClick={() => setSelectedRoleId(role._id)}
+                            label={`Edit ${role.name} role`}
+                            selected={role._id === selectedRole._id}
+                            className="min-h-16 bg-transparent"
+                          >
+                            <CardHeader className="min-w-0 px-4 py-3.5 sm:px-5">
+                              <div className="min-w-0">
+                                <CardTitle className="truncate text-sm">
+                                  {role.name}
+                                </CardTitle>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {enabledCount} permission
+                                  {enabledCount === 1 ? "" : "s"}
+                                </p>
+                              </div>
+                            </CardHeader>
+                          </Card>
+                        );
+                      })}
+                    </CardGroup>
+                  </aside>
+
+                  <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-lg font-semibold text-foreground">
+                          {selectedRole.name}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {
+                            Object.values(selectedRole.permissions).filter(
+                              Boolean,
+                            ).length
+                          }{" "}
+                          permissions enabled
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          variant="tertiary"
+                          size="sm"
+                          leadingIcon={Pencil}
+                          onClick={() =>
+                            openEditor({ mode: "rename", role: selectedRole })
+                          }
+                        >
+                          Rename
+                        </Button>
+                        {!selectedRole.isDefault ? (
                           <Button
                             variant="tertiary"
                             size="sm"
-                            leadingIcon={Pencil}
-                            onClick={() =>
-                              openEditor({ mode: "rename", role: selectedRole })
-                            }
+                            leadingIcon={Trash2}
+                            onClick={() => setRemoveRoleOpen(true)}
                           >
-                            Rename
+                            Remove
                           </Button>
-                          {!selectedRole.isDefault ? (
-                            <Button
-                              variant="tertiary"
-                              size="sm"
-                              leadingIcon={Trash2}
-                              onClick={() => setRemoveRoleOpen(true)}
-                            >
-                              Remove
-                            </Button>
-                          ) : null}
-                        </div>
+                        ) : null}
                       </div>
-
-                      <div className="flex items-center justify-between gap-4 border-y border-border/70 py-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">
-                            People group
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Show {selectedRole.name} as a filter in People.
-                            Hidden roles still appear on member profiles.
-                          </p>
-                        </div>
-                        <Switch
-                          aria-label={`Show ${selectedRole.name} as a People group`}
-                          checked={selectedRole.showInDirectory}
-                          onCheckedChange={(checked) =>
-                            void setDirectoryVisibility(checked)
-                          }
-                        />
-                      </div>
-
-                      <div className="divide-y divide-border/70">
-                        {permissionGroups.map((group) => (
-                          <section
-                            key={group.title}
-                            className="grid gap-4 py-5 md:grid-cols-[13rem_1fr] md:gap-8"
-                          >
-                            <div className="flex items-start justify-between gap-3 md:block">
-                              <div>
-                                <h4 className="text-sm font-semibold text-foreground">
-                                  {group.title}
-                                </h4>
-                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                                  {group.description}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="shrink-0 md:mt-2"
-                                disabled={savingPermissionGroup !== null}
-                                loading={savingPermissionGroup === group.title}
-                                onClick={() => void setPermissionGroup(group)}
-                              >
-                                {group.items.every(
-                                  (item) => selectedRole.permissions[item.key],
-                                )
-                                  ? "Turn off all"
-                                  : "Turn on all"}
-                              </Button>
-                            </div>
-                            <div className="divide-y divide-border/60">
-                              {group.items.map((item) => (
-                                <div
-                                  key={item.key}
-                                  className="flex min-h-14 items-center justify-between gap-4 py-2.5"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-foreground">
-                                      {item.label}
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                      {item.description}
-                                    </p>
-                                  </div>
-                                  <Switch
-                                    aria-label={item.label}
-                                    checked={selectedRole.permissions[item.key]}
-                                    onCheckedChange={(checked) =>
-                                      void setPermission(item.key, checked)
-                                    }
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="py-12 text-center text-sm text-muted-foreground">
-                      Loading club roles…
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </Elevated>
+
+                    <div className="flex items-center justify-between gap-4 border-b border-border/70 px-4 py-3.5 sm:px-5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          People group
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Show {selectedRole.name} as a filter in People. Hidden
+                          roles still appear on member profiles.
+                        </p>
+                      </div>
+                      <Switch
+                        aria-label={`Show ${selectedRole.name} as a People group`}
+                        checked={selectedRole.showInDirectory}
+                        onCheckedChange={(checked) =>
+                          void setDirectoryVisibility(checked)
+                        }
+                      />
+                    </div>
+
+                    <div className="divide-y divide-border/70 px-4 sm:px-5">
+                      {permissionGroups.map((group) => (
+                        <section
+                          key={group.title}
+                          className="grid gap-4 py-5 md:grid-cols-[10.5rem_1fr] md:gap-6"
+                        >
+                          <div className="flex items-start justify-between gap-3 md:block">
+                            <div>
+                              <h4 className="text-sm font-semibold text-foreground">
+                                {group.title}
+                              </h4>
+                              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                {group.description}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 md:mt-2"
+                              disabled={savingPermissionGroup !== null}
+                              loading={savingPermissionGroup === group.title}
+                              onClick={() => void setPermissionGroup(group)}
+                            >
+                              {group.items.every(
+                                (item) => selectedRole.permissions[item.key],
+                              )
+                                ? "Turn off all"
+                                : "Turn on all"}
+                            </Button>
+                          </div>
+                          <div className="divide-y divide-border/60">
+                            {group.items.map((item) => (
+                              <div
+                                key={item.key}
+                                className="flex min-h-14 items-center justify-between gap-4 py-2.5"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-foreground">
+                                    {item.label}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {item.description}
+                                  </p>
+                                </div>
+                                <Switch
+                                  aria-label={item.label}
+                                  checked={selectedRole.permissions[item.key]}
+                                  onCheckedChange={(checked) =>
+                                    void setPermission(item.key, checked)
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border/70 py-12 text-center text-sm text-muted-foreground">
+                  Loading club roles…
+                </div>
+              )}
+            </section>
           ) : null}
         </div>
       </div>
@@ -725,13 +751,15 @@ export default function ClubSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {selectedRole?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the role. Everyone assigned to it will
-              be moved to the default club role, and its permissions will no
-              longer apply.
+              This permanently removes the role. Everyone assigned to it will be
+              moved to the default club role, and its permissions will no longer
+              apply.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removingRole}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={removingRole}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={removingRole}
               onClick={(event) => {
