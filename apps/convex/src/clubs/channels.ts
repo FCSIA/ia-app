@@ -406,15 +406,13 @@ export const create = mutation({
     clubId: v.id("clubs"),
     name: v.string(),
     description: v.optional(v.string()),
-    visibility: v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("MEMBER_READONLY")),
     ownerUnitId: v.optional(v.id("clubUnits")),
-    audienceKind: v.optional(v.union(v.literal("CLUB"), v.literal("UNIT_MEMBERS"), v.literal("UNIT_LEADERS"), v.literal("CUSTOM"))),
-    audienceUnitId: v.optional(v.id("clubUnits")),
-    includeDescendants: v.optional(v.boolean()),
-    includeAncestorLeaders: v.optional(v.boolean()),
-    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("UNIT_LEADERS"), v.literal("CLUB_MANAGERS"))),
+    accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
+    accessUnitId: v.optional(v.id("clubUnits")),
+    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS"))),
     memberIds: v.optional(v.array(v.id("users"))),
   },
+  returns: v.id("clubChannels"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
@@ -423,49 +421,63 @@ export const create = mutation({
       throw new ConvexError("You do not have permission to create channels");
     }
 
-    const audienceKind = args.audienceKind ?? (args.visibility === "PRIVATE" ? "CUSTOM" : "CLUB");
-    const postingPolicy = args.postingPolicy ?? (args.visibility === "MEMBER_READONLY" ? "CLUB_MANAGERS" : "AUDIENCE");
-    if ((audienceKind === "UNIT_MEMBERS" || audienceKind === "UNIT_LEADERS") && !args.audienceUnitId) {
-      throw new ConvexError("Choose a unit for this channel audience");
+    const accessRoleIds = [...new Set(args.accessRoleIds ?? [])];
+    const postingPolicy = args.postingPolicy ?? "AUDIENCE";
+    for (const roleId of accessRoleIds) {
+      const role = await ctx.db.get(roleId);
+      if (!role || role.clubId !== args.clubId) {
+        throw new ConvexError("Club role not found");
+      }
     }
-    for (const unitId of [args.ownerUnitId, args.audienceUnitId]) {
+    for (const unitId of [args.ownerUnitId, args.accessUnitId]) {
       if (!unitId) continue;
       const unit = await ctx.db.get(unitId);
       if (!unit || unit.clubId !== args.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
     }
     const memberIds = [...new Set(args.memberIds ?? [])];
-    if (audienceKind === "CUSTOM") {
-      for (const memberId of memberIds) {
-        const membership = await ctx.db.query("clubMembers")
-          .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId).eq("userId", memberId))
-          .unique();
-        if (!membership) throw new ConvexError("Channel members must belong to the club");
-      }
+    for (const memberId of memberIds) {
+      const membership = await ctx.db.query("clubMembers")
+        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId).eq("userId", memberId))
+        .unique();
+      if (!membership) throw new ConvexError("Channel members must belong to the club");
     }
+    const siblingChannels = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_ownerUnitId", (q) =>
+        q.eq("clubId", args.clubId).eq("ownerUnitId", args.ownerUnitId),
+      )
+      .take(500);
+    const position = siblingChannels.reduce(
+      (maximum, channel) => Math.max(maximum, (channel.position ?? -1) + 1),
+      0,
+    );
+    const restricted = accessRoleIds.length > 0 || !!args.accessUnitId || memberIds.length > 0;
     const channelId = await ctx.db.insert("clubChannels", {
       clubId: args.clubId,
       ownerUnitId: args.ownerUnitId,
-      audienceKind,
-      audienceUnitId: args.audienceUnitId,
-      includeDescendants: args.includeDescendants ?? false,
-      includeAncestorLeaders: args.includeAncestorLeaders ?? false,
+      position,
+      accessPolicyVersion: 2,
+      accessRoleIds,
+      accessUnitId: args.accessUnitId,
       postingPolicy,
       name: args.name,
       description: args.description,
-      visibility: args.visibility,
+      visibility: restricted
+        ? "PRIVATE"
+        : postingPolicy === "CLUB_MANAGERS"
+          ? "MEMBER_READONLY"
+          : "PUBLIC",
       createdById: user._id,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
-    if (audienceKind === "CUSTOM") {
-      for (const memberId of new Set([...memberIds, user._id])) {
-        await ctx.db.insert("clubChannelMemberships", {
-          channelId,
-          userId: memberId,
-          createdAt: Date.now(),
-        });
-      }
+    for (const memberId of memberIds) {
+      await ctx.db.insert("clubChannelMemberships", {
+        channelId,
+        userId: memberId,
+        createdAt: Date.now(),
+      });
     }
 
     await ctx.db.insert("auditEvents", {
@@ -511,10 +523,10 @@ export const createMissingUnitChannels = mutation({
       await ctx.db.insert("clubChannels", {
         clubId: args.clubId,
         ownerUnitId: unit._id,
-        audienceKind: "UNIT_MEMBERS",
-        audienceUnitId: unit._id,
-        includeDescendants: true,
-        includeAncestorLeaders: true,
+        position: 0,
+        accessPolicyVersion: 2,
+        accessRoleIds: [],
+        accessUnitId: unit._id,
         postingPolicy: "AUDIENCE",
         name: unit.name,
         description: unit.description,
@@ -1497,15 +1509,10 @@ export const update = mutation({
     channelId: v.id("clubChannels"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    visibility: v.optional(
-      v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("MEMBER_READONLY")),
-    ),
-    ownerUnitId: v.optional(v.id("clubUnits")),
-    audienceKind: v.optional(v.union(v.literal("CLUB"), v.literal("UNIT_MEMBERS"), v.literal("UNIT_LEADERS"), v.literal("CUSTOM"))),
-    audienceUnitId: v.optional(v.id("clubUnits")),
-    includeDescendants: v.optional(v.boolean()),
-    includeAncestorLeaders: v.optional(v.boolean()),
-    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("UNIT_LEADERS"), v.literal("CLUB_MANAGERS"))),
+    ownerUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
+    accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
+    accessUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
+    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS"))),
     memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.null(),
@@ -1516,20 +1523,20 @@ export const update = mutation({
     const context = await getClubContext(ctx, channel.clubId, user);
     if (!context.permissions.editChannels) throw new ConvexError("You do not have permission to edit channels");
 
-    if (channel.visibility === "PRIVATE" && args.visibility && args.visibility !== "PRIVATE") {
-      const explicitMember = await ctx.db.query("clubChannelMemberships")
-        .withIndex("by_channelId_and_userId", (q) => q.eq("channelId", channel._id).eq("userId", user._id)).unique();
-      if (!canChangePrivateChannelVisibility({ isSponsor: context.isSponsor, isAdmin: context.isAdmin, isExplicitMember: !!explicitMember })) {
-        throw new ConvexError("Private channel membership is required to change visibility");
+    const accessRoleIds = [...new Set(args.accessRoleIds ?? channel.accessRoleIds ?? [])];
+    for (const roleId of accessRoleIds) {
+      const role = await ctx.db.get(roleId);
+      if (!role || role.clubId !== channel.clubId) {
+        throw new ConvexError("Club role not found");
       }
     }
-
-    const audienceKind = args.audienceKind ?? channel.audienceKind;
-    const audienceUnitId = args.audienceUnitId ?? channel.audienceUnitId;
-    if ((audienceKind === "UNIT_MEMBERS" || audienceKind === "UNIT_LEADERS") && !audienceUnitId) {
-      throw new ConvexError("Choose a unit for this channel audience");
-    }
-    for (const unitId of [args.ownerUnitId === undefined ? channel.ownerUnitId : args.ownerUnitId, audienceUnitId]) {
+    const ownerUnitId = args.ownerUnitId === undefined
+      ? channel.ownerUnitId
+      : args.ownerUnitId ?? undefined;
+    const accessUnitId = args.accessUnitId === undefined
+      ? channel.accessUnitId
+      : args.accessUnitId ?? undefined;
+    for (const unitId of [ownerUnitId, accessUnitId]) {
       if (!unitId) continue;
       const unit = await ctx.db.get(unitId);
       if (!unit || unit.clubId !== channel.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
@@ -1543,7 +1550,7 @@ export const update = mutation({
         if (!membership) throw new ConvexError("Channel members must belong to the club");
       }
       const existing = await getChannelMemberships(ctx, channel._id);
-      const wanted = new Set([...memberIds, user._id]);
+      const wanted = new Set(memberIds);
       for (const row of existing) if (!wanted.has(row.userId)) await ctx.db.delete(row._id);
       for (const memberId of wanted) {
         if (!existing.some((row) => row.userId === memberId)) {
@@ -1551,16 +1558,129 @@ export const update = mutation({
         }
       }
     }
-    const { channelId, memberIds: _memberIds, ownerUnitId, audienceUnitId: _audienceUnitId, ...updates } = args;
+    const explicitCount = args.memberIds === undefined
+      ? (await getChannelMemberships(ctx, channel._id)).length
+      : new Set(args.memberIds).size;
+    const postingPolicy = args.postingPolicy ?? (
+      channel.postingPolicy === "CLUB_MANAGERS" ? "CLUB_MANAGERS" : "AUDIENCE"
+    );
+    const restricted = accessRoleIds.length > 0 || !!accessUnitId || explicitCount > 0;
+    const { channelId, memberIds: _memberIds, ...updates } = args;
     await ctx.db.patch(channelId, {
       ...updates,
-      ...(ownerUnitId === undefined ? {} : { ownerUnitId }),
-      ...(args.audienceUnitId === undefined ? {} : { audienceUnitId }),
+      accessPolicyVersion: 2,
+      accessRoleIds,
+      accessUnitId,
+      ownerUnitId,
+      postingPolicy,
+      audienceKind: undefined,
+      audienceUnitId: undefined,
+      includeDescendants: undefined,
+      includeAncestorLeaders: undefined,
+      visibility: restricted
+        ? "PRIVATE"
+        : postingPolicy === "CLUB_MANAGERS"
+          ? "MEMBER_READONLY"
+          : "PUBLIC",
       updatedAt: Date.now(),
     });
-    if (args.visibility && args.visibility !== channel.visibility) {
-      await logAuditEvent(ctx, { actorId: user._id, action: "club.channel_visibility_changed", entityType: "clubChannel", entityId: channel._id, meta: { from: channel.visibility, to: args.visibility, clubId: channel.clubId } });
+    return null;
+  },
+});
+
+export const reorderChannels = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    ownerUnitId: v.union(v.id("clubUnits"), v.null()),
+    channelIds: v.array(v.id("clubChannels")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.editChannels) {
+      throw new ConvexError("You do not have permission to reorder channels");
     }
+
+    const ownerUnitId = args.ownerUnitId ?? undefined;
+    if (ownerUnitId) {
+      const unit = await ctx.db.get(ownerUnitId);
+      if (!unit || unit.clubId !== args.clubId || !unit.isActive) {
+        throw new ConvexError("Club unit not found");
+      }
+    }
+
+    const siblings = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_ownerUnitId", (q) =>
+        q.eq("clubId", args.clubId).eq("ownerUnitId", ownerUnitId),
+      )
+      .take(501);
+    if (siblings.length > 500) {
+      throw new ConvexError("This channel group is too large to reorder");
+    }
+    if (args.channelIds.length !== siblings.length) {
+      throw new ConvexError("Channels changed while you were reordering them");
+    }
+    const siblingIds = new Set(siblings.map((channel) => channel._id));
+    const requestedIds = new Set(args.channelIds);
+    if (
+      requestedIds.size !== args.channelIds.length ||
+      args.channelIds.some((channelId) => !siblingIds.has(channelId))
+    ) {
+      throw new ConvexError("Channel order does not match this group");
+    }
+
+    const byId = new Map(siblings.map((channel) => [channel._id, channel]));
+    const now = Date.now();
+    for (const [position, channelId] of args.channelIds.entries()) {
+      const channel = byId.get(channelId);
+      if (channel?.position === position) continue;
+      await ctx.db.patch(channelId, { position, updatedAt: now });
+    }
+    return null;
+  },
+});
+
+export const moveChannel = mutation({
+  args: {
+    channelId: v.id("clubChannels"),
+    ownerUnitId: v.union(v.id("clubUnits"), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) throw new ConvexError("Channel not found");
+    const context = await getClubContext(ctx, channel.clubId, user);
+    if (!context.permissions.editChannels) {
+      throw new ConvexError("You do not have permission to move channels");
+    }
+
+    const ownerUnitId = args.ownerUnitId ?? undefined;
+    if (ownerUnitId) {
+      const unit = await ctx.db.get(ownerUnitId);
+      if (!unit || unit.clubId !== channel.clubId || !unit.isActive) {
+        throw new ConvexError("Club unit not found");
+      }
+    }
+    if (channel.ownerUnitId === ownerUnitId) return null;
+
+    const targetChannels = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_ownerUnitId", (q) =>
+        q.eq("clubId", channel.clubId).eq("ownerUnitId", ownerUnitId),
+      )
+      .take(500);
+    const position = targetChannels.reduce(
+      (maximum, target) => Math.max(maximum, (target.position ?? -1) + 1),
+      0,
+    );
+    await ctx.db.patch(channel._id, {
+      ownerUnitId,
+      position,
+      updatedAt: Date.now(),
+    });
     return null;
   },
 });

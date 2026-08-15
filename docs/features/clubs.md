@@ -22,15 +22,17 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   membership-invite permission, plus invites, bulk CSV invites, open joins,
   join requests, and join codes.
 - Lets club managers create reusable roles, assign them to members, rename
-  them, and configure their permissions. Roles can be opted into as a People
+  them, remove them, and configure their permissions. Removing the default role
+  leaves affected members roleless rather than granting a replacement role.
+  Roles can be opted into as a People
   directory group; ungrouped roles remain visible on member rows without
   adding another People filter tab.
 - Lets club managers model an arbitrary internal tree of programs, teams,
   houses, rooms, subsystems, committees, or other locally named units.
-- Assigns club members to any number of units as members or leaders, with an
-  optional unit-local leadership title.
-- Supports manager assignment, open self-join, and revocable code/QR self-join
-  at each unit.
+- Assigns club members to any number of units. Unit rows record presence only;
+  club roles remain independent from the structure tree.
+- Supports manager assignment, open self-join, and revocable code/locally
+  generated QR self-join at each unit.
 
 On web, hierarchy administration lives at
 `/clubs/[clubId]/settings/structure`, a dedicated two-pane workspace for club
@@ -39,6 +41,11 @@ action. Unit QR links return to the club overview and redeem the specific unit
 code after the app confirms the viewer is already a club member.
 
 - Supports public, private, and member-read-only channels.
+- Gives every channel its own settings page, where managers can filter access
+  by club roles, one structure branch, both filters together, or neither.
+- Keeps explicitly selected people as access exceptions for special cases.
+- Lets managers drag channels into sibling order and move them inward or
+  outward through the structure tree without coupling placement to access.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
 
@@ -115,22 +122,27 @@ encoding Robotics, Pathway Leadership, TSA, or a fixed subclub/group depth in
 the schema. A safety limit of 12 levels and 250 active units per club prevents
 pathological trees without prescribing the school's organization model.
 
-`clubUnitMembers` records direct assignments only. A student must first be a
-member of the containing club, may belong to several units, and can be a
-`MEMBER` or `LEADER` independently in each one. Leaders may have a free-form
-local title such as Executive, Logistics, House Leader, or Room Leader.
-Ancestor membership is not synthesized into database rows; the tree supplies
-organizational context while explicit assignments remain auditable.
+`clubUnitMembers` records direct, presence-only assignments. A student must
+first be a member of the containing club and may belong to several units.
+Ancestor membership is not synthesized into database rows; explicit
+assignments remain auditable.
 
 Existing club sponsors, club leaders, and admins can manage the full tree.
-Unit leadership does not grant club-wide administration. Units do not create a
-second announcement or club-role system. Channels remain club-owned, but may
-use a unit-aware audience: club-wide, a unit and its descendants, unit leaders,
-or explicitly selected members. Sidebar placement is independent from audience,
-so a club-wide channel can appear under a House without making the House its
-only audience. The backend resolves unit ancestry at every channel read/write
-boundary; it does not copy unit membership into channel rows. Join codes are
-scoped to one unit and can only be redeemed by an existing club member.
+Units do not create a second role or permission system. Channel roles, access,
+and sidebar placement remain independent. A channel may select several club
+roles (OR within that filter), one structure unit, or both (AND across the two
+filters). An assignment at the selected unit or any ancestor matches the unit
+filter, so higher nodes can see descendant channels; child assignments never
+gain access to parent or sibling branches. Explicitly selected people are an OR
+exception. Club managers, sponsors, admins, and roles with the private-channel
+bypass permission can access all channels. The backend resolves these rules at
+every channel read/write boundary rather than copying unit membership into
+channel rows. Join codes are scoped to one unit and can only be redeemed by an
+existing club member.
+
+Channel administration lives at `/clubs/[clubId]/settings/channels`, which owns
+sidebar order and structure placement. Each channel's details and access rules
+are edited at `/clubs/[clubId]/settings/channels/[channelId]`.
 
 Channel managers can enable a club-level default that creates a unit-aware,
 private channel whenever a new unit is added. Existing units can be backfilled

@@ -394,7 +394,9 @@ export const bulkInvite = mutation({
     }
 
     if (args.uniqueIds.length === 0) {
-      throw new Error("CSV file is empty");
+      throw new Error(
+        "CSV has no recognizable student unique IDs. Use Import units for a name,unit file.",
+      );
     }
 
     const seen = new Set<string>();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useMemo, useState } from 'react';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, UserPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -78,19 +78,15 @@ export function PeoplePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="secondary"
-            size="lg"
+            variant="tertiary"
+            size="sm"
             type="button"
             disabled={disabled}
             active={open}
-            trailingIcon={ChevronsUpDown}
-            className="w-full justify-between"
+            leadingIcon={UserPlus}
+            className="w-fit"
           >
-            <span className="truncate">
-              {selected.length > 0
-                ? `${selected.length} sponsor${selected.length === 1 ? '' : 's'} selected`
-                : placeholder}
-            </span>
+            <span className="truncate">{placeholder}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-[min(22rem,calc(100vw-2rem))] p-0">

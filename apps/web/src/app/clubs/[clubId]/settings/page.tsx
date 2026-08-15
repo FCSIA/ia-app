@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
-import { ChevronRight, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { useClubId } from "../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
@@ -13,8 +21,8 @@ import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
+  CardGroup,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,8 +45,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Field,
+  FieldContent,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
-import { TabItem, Tabs, TabsList } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { Elevated } from "@/lib/elevated";
@@ -96,8 +115,8 @@ const permissionGroups: Array<{
       },
       {
         key: "viewPrivateChannels",
-        label: "View private channels",
-        description: "See private channels without being individually added.",
+        label: "View every private channel",
+        description: "Bypass channel access filters across the club.",
       },
       {
         key: "postToReadOnlyChannels",
@@ -143,7 +162,7 @@ const permissionGroups: Array<{
       {
         key: "assignRoles",
         label: "Assign roles",
-        description: "Change the role assigned to a member.",
+        description: "Change a member's club-wide role.",
       },
       {
         key: "manageMemberTags",
@@ -169,7 +188,7 @@ const permissionGroups: Array<{
       {
         key: "manageClubStructure",
         label: "Club structure",
-        description: "Manage teams, committees, and leadership structure.",
+        description: "Organize members into school, house, room, or team units.",
       },
       {
         key: "manageJoinCodes",
@@ -499,8 +518,12 @@ export default function ClubSettingsPage() {
               className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4 transition-colors hover:bg-hover"
             >
               <div>
-                <p className="text-sm font-semibold text-foreground">Channels</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Organize audiences, posting rights, and House/Room placement.</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Channels
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Configure access, posting, and sidebar placement.
+                </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
@@ -509,68 +532,90 @@ export default function ClubSettingsPage() {
           {canManageRoles ? (
             <Elevated offset={1} className="overflow-hidden rounded-xl">
               <Card className="pb-0">
-                <CardHeader className="border-b border-border/70 px-5 py-4">
-                  <h2>
-                    <CardTitle className="text-xl tracking-tight">
-                      Roles
-                    </CardTitle>
-                  </h2>
-                  <CardAction>
-                    <Button
-                      size="sm"
-                      leadingIcon={Plus}
-                      onClick={() => openEditor({ mode: "create" })}
-                    >
-                      New role
-                    </Button>
-                  </CardAction>
-                </CardHeader>
-                <CardContent className="p-5 pt-4">
+                <CardContent className="p-0">
                   {roles && roles.length > 0 && selectedRole ? (
-                    <>
-                      <div className="min-w-0 overflow-x-auto pb-1">
-                        <Tabs
-                          value={selectedRole._id}
-                          onValueChange={setSelectedRoleId}
-                        >
-                          <TabsList>
-                            {roles.map((role) => (
-                              <TabItem
-                                key={role._id}
-                                value={role._id}
-                                label={role.name}
-                              />
-                            ))}
-                          </TabsList>
-                        </Tabs>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 py-1">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-semibold text-foreground">
-                            {selectedRole.name}
-                          </h3>
-                          <p className="text-xs text-muted-foreground">
-                            {
-                              Object.values(selectedRole.permissions).filter(
-                                Boolean,
-                              ).length
-                            }{" "}
-                            permissions enabled
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Button
-                            variant="tertiary"
-                            size="sm"
-                            leadingIcon={Pencil}
-                            onClick={() =>
-                              openEditor({ mode: "rename", role: selectedRole })
-                            }
+                    <div className="grid md:grid-cols-[13rem_minmax(0,1fr)]">
+                      <aside className="border-b border-border/70 md:border-b-0 md:border-r">
+                        <CardHeader className="border-b border-border/70 px-5 py-4">
+                          <h2>
+                            <CardTitle className="text-xl tracking-tight">
+                              Club roles
+                            </CardTitle>
+                          </h2>
+                        </CardHeader>
+                        <div className="p-2">
+                          <CardGroup
+                            orientation="inline"
+                            separated
+                            className="gap-0.5"
+                            aria-label="Club roles"
                           >
-                            Rename
+                            {roles.map((role) => {
+                              const enabledCount = Object.values(
+                                role.permissions,
+                              ).filter(Boolean).length;
+
+                              return (
+                                <Card
+                                  key={role._id}
+                                  label={`Edit ${role.name} role`}
+                                  selected={role._id === selectedRole._id}
+                                  onClick={() => setSelectedRoleId(role._id)}
+                                  className="min-h-8 gap-2 rounded-md px-3 text-sm font-medium"
+                                >
+                                  <span className="min-w-0 flex-1 truncate">
+                                    {role.name}
+                                  </span>
+                                  <span className="text-xs tabular-nums text-muted-foreground">
+                                    {enabledCount}
+                                  </span>
+                                </Card>
+                              );
+                            })}
+                          </CardGroup>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            leadingIcon={Plus}
+                            className="mt-1 w-full justify-start"
+                            onClick={() => openEditor({ mode: "create" })}
+                          >
+                            New role
                           </Button>
-                          {!selectedRole.isDefault ? (
+                        </div>
+                      </aside>
+
+                      <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-3 border-b border-border/70 px-5 py-4">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-lg font-semibold text-foreground">
+                              {selectedRole.name}
+                            </h3>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              Club-wide ·{" "}
+                              {
+                                Object.values(selectedRole.permissions).filter(
+                                  Boolean,
+                                ).length
+                              }{" "}
+                              of {Object.keys(selectedRole.permissions).length}{" "}
+                              permissions enabled
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              leadingIcon={Pencil}
+                              onClick={() =>
+                                openEditor({
+                                  mode: "rename",
+                                  role: selectedRole,
+                                })
+                              }
+                            >
+                              Rename
+                            </Button>
                             <Button
                               variant="tertiary"
                               size="sm"
@@ -579,88 +624,120 @@ export default function ClubSettingsPage() {
                             >
                               Remove
                             </Button>
-                          ) : null}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between gap-4 border-y border-border/70 py-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">
-                            People group
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            Show {selectedRole.name} as a filter in People.
-                            Hidden roles still appear on member profiles.
-                          </p>
+                        <div className="flex items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              People
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              Show {selectedRole.name} as a filter in People.
+                              Hidden roles still appear on member profiles.
+                            </p>
+                          </div>
+                          <Switch
+                            aria-label={`Show ${selectedRole.name} as a People group`}
+                            checked={selectedRole.showInDirectory}
+                            onCheckedChange={(checked) =>
+                              void setDirectoryVisibility(checked)
+                            }
+                          />
                         </div>
-                        <Switch
-                          aria-label={`Show ${selectedRole.name} as a People group`}
-                          checked={selectedRole.showInDirectory}
-                          onCheckedChange={(checked) =>
-                            void setDirectoryVisibility(checked)
-                          }
-                        />
-                      </div>
 
-                      <div className="divide-y divide-border/70">
-                        {permissionGroups.map((group) => (
-                          <section
-                            key={group.title}
-                            className="grid gap-4 py-5 md:grid-cols-[13rem_1fr] md:gap-8"
-                          >
-                            <div className="flex items-start justify-between gap-3 md:block">
-                              <div>
-                                <h4 className="text-sm font-semibold text-foreground">
-                                  {group.title}
-                                </h4>
-                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                                  {group.description}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="shrink-0 md:mt-2"
-                                disabled={savingPermissionGroup !== null}
-                                loading={savingPermissionGroup === group.title}
-                                onClick={() => void setPermissionGroup(group)}
-                              >
-                                {group.items.every(
-                                  (item) => selectedRole.permissions[item.key],
-                                )
-                                  ? "Turn off all"
-                                  : "Turn on all"}
-                              </Button>
-                            </div>
-                            <div className="divide-y divide-border/60">
-                              {group.items.map((item) => (
-                                <div
-                                  key={item.key}
-                                  className="flex min-h-14 items-center justify-between gap-4 py-2.5"
-                                >
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-foreground">
-                                      {item.label}
-                                    </p>
-                                    <p className="mt-0.5 text-xs text-muted-foreground">
-                                      {item.description}
-                                    </p>
-                                  </div>
-                                  <Switch
-                                    aria-label={item.label}
-                                    checked={selectedRole.permissions[item.key]}
-                                    onCheckedChange={(checked) =>
-                                      void setPermission(item.key, checked)
+                        <div className="divide-y divide-border/70 px-5">
+                          {permissionGroups.map((group) => (
+                            <Collapsible
+                              key={group.title}
+                              className="group/permission py-5"
+                            >
+                              <section>
+                                <div className="flex items-center justify-between gap-3">
+                                  <CollapsibleTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      trailingIcon={ChevronDown}
+                                      className="-ml-3 justify-start font-semibold text-foreground group-data-[state=open]/permission:[&_svg]:rotate-180"
+                                    >
+                                      {group.title}
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="shrink-0"
+                                    disabled={savingPermissionGroup !== null}
+                                    loading={
+                                      savingPermissionGroup === group.title
                                     }
-                                  />
+                                    onClick={() =>
+                                      void setPermissionGroup(group)
+                                    }
+                                  >
+                                    {group.items.every(
+                                      (item) =>
+                                        selectedRole.permissions[item.key],
+                                    )
+                                      ? "Disable all"
+                                      : "Enable all"}
+                                  </Button>
                                 </div>
-                              ))}
-                            </div>
-                          </section>
-                        ))}
+                                <CollapsibleContent className="overflow-hidden [--radix-accordion-content-height:var(--radix-collapsible-content-height)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none">
+                                  <div className="pt-3">
+                                    <FieldGroup className="gap-0 divide-y divide-border/60">
+                                      {group.items.map((item) => (
+                                        <Field
+                                          key={item.key}
+                                          orientation="horizontal"
+                                          className="min-h-14 items-center py-2.5"
+                                        >
+                                          <FieldContent>
+                                            <div className="flex items-center gap-2">
+                                              <FieldLabel
+                                                htmlFor={`${selectedRole._id}-${item.key}`}
+                                              >
+                                                {item.label}
+                                              </FieldLabel>
+                                              <Tooltip content={item.description}>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon-compact"
+                                                  aria-label={`About ${item.label}`}
+                                                >
+                                                  <CircleHelp />
+                                                </Button>
+                                              </Tooltip>
+                                            </div>
+                                          </FieldContent>
+                                          <Switch
+                                            id={`${selectedRole._id}-${item.key}`}
+                                            aria-label={item.label}
+                                            checked={
+                                              selectedRole.permissions[item.key]
+                                            }
+                                            onCheckedChange={(enabled) =>
+                                              void setPermission(
+                                                item.key,
+                                                enabled,
+                                              )
+                                            }
+                                          />
+                                        </Field>
+                                      ))}
+                                    </FieldGroup>
+                                  </div>
+                                </CollapsibleContent>
+                              </section>
+                            </Collapsible>
+                          ))}
+                        </div>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="py-12 text-center text-sm text-muted-foreground">
                       Loading club roles…
@@ -685,7 +762,7 @@ export default function ClubSettingsPage() {
             <DialogDescription>
               {editor?.mode === "rename"
                 ? "The new name appears everywhere this role is shown."
-                : "New roles start without permissions."}
+                : "New club-wide roles start without permissions."}
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -726,12 +803,16 @@ export default function ClubSettingsPage() {
             <AlertDialogTitle>Remove {selectedRole?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the role. Everyone assigned to it will
-              be moved to the default club role, and its permissions will no
+              {selectedRole?.isDefault
+                ? " no longer have a club role."
+                : " move to the default club role."} Its permissions will no
               longer apply.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={removingRole}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={removingRole}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={removingRole}
               onClick={(event) => {

@@ -29,6 +29,12 @@ tags: [commands, development]
 See [versioning and the devlog](versioning.md) for the version scheme and how
 commit subjects become changelog entries.
 
+Temporary public URL for any local port:
+
+```bash
+pnpm dlx localtunnel --port <PORT>
+```
+
 ## Deploy
 
 [`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys an

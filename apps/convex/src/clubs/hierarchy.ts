@@ -4,17 +4,13 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import {
-  clubUnitJoinPolicyValidator,
-  clubUnitMemberRoleValidator,
-} from "../validators";
+import { clubUnitJoinPolicyValidator } from "../validators";
 import { getClubContext } from "./access";
 import {
   MAX_CLUB_UNITS,
   MAX_CLUB_UNIT_DESCRIPTION_LENGTH,
   MAX_CLUB_UNIT_KIND_LENGTH,
   MAX_CLUB_UNIT_NAME_LENGTH,
-  MAX_CLUB_UNIT_TITLE_LENGTH,
   assertDistinctSiblingName,
   assertHierarchyDepth,
   normalizeOptionalLabel,
@@ -32,15 +28,12 @@ const unitSummaryValidator = v.object({
   joinCode: v.union(v.string(), v.null()),
   joinCodeUpdatedAt: v.union(v.number(), v.null()),
   position: v.number(),
-  viewerRole: v.union(clubUnitMemberRoleValidator, v.null()),
-  viewerTitle: v.union(v.string(), v.null()),
+  viewerIsMember: v.boolean(),
 });
 
 const unitMemberValidator = v.object({
   _id: v.id("clubUnitMembers"),
   userId: v.id("users"),
-  role: clubUnitMemberRoleValidator,
-  title: v.union(v.string(), v.null()),
   joinedAt: v.number(),
   user: v.object({
     _id: v.id("users"),
@@ -50,6 +43,30 @@ const unitMemberValidator = v.object({
     roles: v.array(v.string()),
     avatarUrl: v.union(v.string(), v.null()),
   }),
+});
+
+const memberUnitOptionValidator = v.object({
+  _id: v.id("clubUnits"),
+  parentUnitId: v.union(v.id("clubUnits"), v.null()),
+  name: v.string(),
+  kind: v.union(v.string(), v.null()),
+  disabled: v.boolean(),
+  disabledReason: v.union(v.literal("ALREADY_ASSIGNED"), v.null()),
+});
+
+const memberUnitOptionsValidator = v.object({
+  canManage: v.boolean(),
+  directMemberships: v.array(v.object({
+    unitId: v.id("clubUnits"),
+  })),
+  units: v.array(memberUnitOptionValidator),
+});
+
+const MAX_BULK_UNIT_ASSIGNMENTS = 100;
+const MAX_DIRECT_UNIT_MEMBERSHIPS_PER_IMPORTED_MEMBER = 50;
+const bulkUnitAssignmentValidator = v.object({
+  memberId: v.id("users"),
+  unitId: v.id("clubUnits"),
 });
 
 type ClubUnitCtx = QueryCtx | MutationCtx;
@@ -141,14 +158,13 @@ export const list = query({
         )
         .take(MAX_CLUB_UNITS),
     ]);
-    const viewerMembershipByUnit = new Map(
-      viewerMemberships.map((membership) => [membership.unitId, membership]),
+    const viewerUnitIds = new Set(
+      viewerMemberships.map((membership) => membership.unitId),
     );
 
     return {
       canManage: context.permissions.manageClubStructure,
       units: units.map((unit) => {
-        const viewerMembership = viewerMembershipByUnit.get(unit._id);
         return {
           _id: unit._id,
           parentUnitId: unit.parentUnitId ?? null,
@@ -161,8 +177,7 @@ export const list = query({
             ? unit.joinCodeUpdatedAt ?? null
             : null,
           position: unit.position,
-          viewerRole: viewerMembership?.role ?? null,
-          viewerTitle: viewerMembership?.title ?? null,
+          viewerIsMember: viewerUnitIds.has(unit._id),
         };
       }),
     };
@@ -227,10 +242,9 @@ export const create = mutation({
       await ctx.db.insert("clubChannels", {
         clubId: args.clubId,
         ownerUnitId: unitId,
-        audienceKind: "UNIT_MEMBERS",
-        audienceUnitId: unitId,
-        includeDescendants: true,
-        includeAncestorLeaders: true,
+        position: 0,
+        accessPolicyVersion: 2,
+        accessUnitId: unitId,
         postingPolicy: "AUDIENCE",
         name,
         description: undefined,
@@ -313,7 +327,7 @@ export const archive = mutation({
     const user = await getCurrentAppUser(ctx);
     await requireHierarchyManager(ctx, args.clubId, user);
     const unit = await requireUnit(ctx, args.clubId, args.unitId);
-    const [child, member] = await Promise.all([
+    const [child, member, channels] = await Promise.all([
       ctx.db
         .query("clubUnits")
         .withIndex("by_parentUnitId_and_isActive_and_position", (q) =>
@@ -326,9 +340,27 @@ export const archive = mutation({
           q.eq("clubId", args.clubId).eq("unitId", unit._id),
         )
         .first(),
+      ctx.db
+        .query("clubChannels")
+        .withIndex("by_clubId_and_visibility", (q) =>
+          q.eq("clubId", args.clubId),
+        )
+        .take(500),
     ]);
     if (child) throw new ConvexError("Remove this unit's child units first");
     if (member) throw new ConvexError("Remove this unit's members first");
+    if (
+      channels.some(
+        (channel) =>
+          channel.ownerUnitId === unit._id ||
+          channel.accessUnitId === unit._id ||
+          channel.audienceUnitId === unit._id,
+      )
+    ) {
+      throw new ConvexError(
+        "Move or update this unit's channels before archiving it",
+      );
+    }
 
     await ctx.db.patch(unit._id, { isActive: false, updatedAt: Date.now() });
     await logAuditEvent(ctx, {
@@ -363,8 +395,6 @@ export const listMembers = query({
           ? {
               _id: membership._id,
               userId: membership.userId,
-              role: membership.role,
-              title: membership.title ?? null,
               joinedAt: membership.joinedAt,
               user: toClubUserRef(member),
             }
@@ -375,13 +405,59 @@ export const listMembers = query({
   },
 });
 
+/**
+ * Bounded, manager-facing unit choices for assigning a person from People.
+ * A direct membership is never duplicated.
+ */
+export const listMemberUnitOptions = query({
+  args: { clubId: v.id("clubs"), memberId: v.id("users") },
+  returns: memberUnitOptionsValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    const [units, directMemberships] = await Promise.all([
+      ctx.db
+        .query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) =>
+          q.eq("clubId", args.clubId).eq("isActive", true),
+        )
+        .take(MAX_CLUB_UNITS),
+      ctx.db
+        .query("clubUnitMembers")
+        .withIndex("by_userId_and_clubId", (q) =>
+          q.eq("userId", args.memberId).eq("clubId", args.clubId),
+        )
+        .take(MAX_CLUB_UNITS),
+    ]);
+    const directUnitIds = new Set(
+      directMemberships.map((membership) => membership.unitId),
+    );
+
+    return {
+      canManage: context.permissions.manageClubStructure,
+      directMemberships: directMemberships.map((membership) => ({
+        unitId: membership.unitId,
+      })),
+      units: units.map((unit) => {
+        const assigned = directUnitIds.has(unit._id);
+        return {
+          _id: unit._id,
+          parentUnitId: unit.parentUnitId ?? null,
+          name: unit.name,
+          kind: unit.kind ?? null,
+          disabled: assigned,
+          disabledReason: assigned ? "ALREADY_ASSIGNED" as const : null,
+        };
+      }),
+    };
+  },
+});
+
 export const setMember = mutation({
   args: {
     clubId: v.id("clubs"),
     unitId: v.id("clubUnits"),
     memberId: v.id("users"),
-    role: clubUnitMemberRoleValidator,
-    title: v.optional(v.string()),
   },
   returns: v.id("clubUnitMembers"),
   handler: async (ctx, args) => {
@@ -398,9 +474,6 @@ export const setMember = mutation({
       throw new ConvexError("Only club members can be assigned within its structure");
     }
 
-    const title = args.role === "LEADER"
-      ? normalizeOptionalLabel(args.title, MAX_CLUB_UNIT_TITLE_LENGTH)
-      : undefined;
     const existing = await ctx.db
       .query("clubUnitMembers")
       .withIndex("by_unitId_and_userId", (q) =>
@@ -412,22 +485,135 @@ export const setMember = mutation({
       clubId: args.clubId,
       unitId: args.unitId,
       userId: args.memberId,
-      role: args.role,
-      title,
       joinedAt: now,
       updatedAt: now,
     });
     if (existing) {
-      await ctx.db.patch(existing._id, { role: args.role, title, updatedAt: now });
+      await ctx.db.patch(existing._id, {
+        role: undefined,
+        title: undefined,
+        updatedAt: now,
+      });
     }
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_UNIT_MEMBER_SET",
       entityType: "ClubUnit",
       entityId: args.unitId,
-      meta: { clubId: args.clubId, memberId: args.memberId, role: args.role, title },
+      meta: { clubId: args.clubId, memberId: args.memberId },
     });
     return membershipId;
+  },
+});
+
+/** Atomically replaces or adds direct unit memberships for a bounded CSV import. */
+export const bulkSetMembers = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    assignments: v.array(bulkUnitAssignmentValidator),
+    replaceExisting: v.boolean(),
+  },
+  returns: v.object({ assigned: v.number(), removed: v.number() }),
+  handler: async (ctx, args) => {
+    if (args.assignments.length === 0) {
+      throw new ConvexError("Add at least one assignment");
+    }
+    if (args.assignments.length > MAX_BULK_UNIT_ASSIGNMENTS) {
+      throw new ConvexError(
+        `A CSV import can assign up to ${MAX_BULK_UNIT_ASSIGNMENTS} rows at a time`,
+      );
+    }
+
+    const user = await getCurrentAppUser(ctx);
+    await requireHierarchyManager(ctx, args.clubId, user);
+
+    const uniqueAssignments = new Map<
+      string,
+      (typeof args.assignments)[number]
+    >();
+    for (const assignment of args.assignments) {
+      uniqueAssignments.set(
+        `${assignment.memberId}:${assignment.unitId}`,
+        assignment,
+      );
+    }
+    const assignments = [...uniqueAssignments.values()];
+    const memberIds = [
+      ...new Set(assignments.map((assignment) => assignment.memberId)),
+    ];
+    const unitIds = [
+      ...new Set(assignments.map((assignment) => assignment.unitId)),
+    ];
+
+    const memberships = await Promise.all(
+      memberIds.map((memberId) =>
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_userId", (q) =>
+            q.eq("clubId", args.clubId).eq("userId", memberId),
+          )
+          .unique(),
+      ),
+    );
+    await Promise.all(
+      unitIds.map((unitId) => requireUnit(ctx, args.clubId, unitId)),
+    );
+    if (memberships.some((membership) => membership === null)) {
+      throw new ConvexError("Every imported person must be a club member");
+    }
+    let removed = 0;
+    if (args.replaceExisting) {
+      for (const memberId of memberIds) {
+        const current = await ctx.db
+          .query("clubUnitMembers")
+          .withIndex("by_userId_and_clubId", (q) =>
+            q.eq("userId", memberId).eq("clubId", args.clubId),
+          )
+          .take(MAX_DIRECT_UNIT_MEMBERSHIPS_PER_IMPORTED_MEMBER + 1);
+        if (current.length > MAX_DIRECT_UNIT_MEMBERSHIPS_PER_IMPORTED_MEMBER) {
+          throw new ConvexError(
+            "An imported member has too many direct unit assignments to replace in one CSV import",
+          );
+        }
+        for (const membership of current) {
+          await ctx.db.delete(membership._id);
+          removed += 1;
+        }
+      }
+    }
+
+    const now = Date.now();
+    for (const assignment of assignments) {
+      const existing = await ctx.db
+        .query("clubUnitMembers")
+        .withIndex("by_unitId_and_userId", (q) =>
+          q.eq("unitId", assignment.unitId).eq("userId", assignment.memberId),
+        )
+        .unique();
+      if (!existing) {
+        await ctx.db.insert("clubUnitMembers", {
+          clubId: args.clubId,
+          unitId: assignment.unitId,
+          userId: assignment.memberId,
+          joinedAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_UNIT_MEMBERS_BULK_SET",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: {
+        clubId: args.clubId,
+        assigned: assignments.length,
+        removed,
+        replaceExisting: args.replaceExisting,
+      },
+    });
+    return { assigned: assignments.length, removed };
   },
 });
 
@@ -520,7 +706,6 @@ export const join = mutation({
         clubId: args.clubId,
         unitId: unit._id,
         userId: user._id,
-        role: "MEMBER",
         joinedAt: now,
         updatedAt: now,
       });

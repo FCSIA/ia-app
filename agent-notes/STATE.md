@@ -63,9 +63,15 @@
   structure, settings, and role administration.
 - Clubs now support manager-configured arbitrary internal trees through generic
   units rather than fixed subclub/group levels. Units have free-form type
-  labels, direct member/leader assignments with local titles, per-unit join
-  policies and revocable QR codes, and audited mutations. Structure management
-  and permanent club deletion live in the dedicated club settings page.
+  labels, presence-only member assignments, per-unit join policies and
+  revocable QR codes, and audited mutations. Roles and structure are
+  independent. Channel settings own optional role and unit filters; role
+  choices are ORed, role/unit filters are ANDed, parent assignments inherit
+  downward without sibling access, and selected people remain OR exceptions.
+  Channel sidebar order is persisted per structure level and managed through
+  the settings Sortable editor; placement remains independent from access.
+  Structure management and permanent club deletion live in the dedicated club
+  settings page.
 - Club creation uses the staff/admin allowlist; club deactivation requires admin
   roles; workspace detail data is hidden from authenticated users who cannot
   access the club workspace.

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getChannelViewerContext, getViewerContext } from "./access";
 import { getChannelAccess } from "./channelAccess";
@@ -68,6 +68,7 @@ const clubDetailValidator = v.union(
         customRoleName: v.union(v.string(), v.null()),
         roleId: v.union(v.id("clubRoles"), v.null()),
         roleName: v.union(v.string(), v.null()),
+        unitNames: v.array(v.string()),
         joinedAt: v.string(),
       }),
     ),
@@ -139,7 +140,15 @@ export const get = query({
 
     const context = await getViewerContext(ctx, args.clubId, user);
 
-    const [memberships, sponsorsRows, tags, pendingRequests, customRoles] = await Promise.all([
+    const [
+      memberships,
+      sponsorsRows,
+      tags,
+      pendingRequests,
+      customRoles,
+      units,
+      unitMemberships,
+    ] = await Promise.all([
       ctx.db
         .query("clubMembers")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
@@ -166,6 +175,16 @@ export const get = query({
         .query("clubRoles")
         .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
         .take(100),
+      ctx.db
+        .query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) =>
+          q.eq("clubId", args.clubId).eq("isActive", true),
+        )
+        .take(250),
+      ctx.db
+        .query("clubUnitMembers")
+        .withIndex("by_clubId_and_unitId", (q) => q.eq("clubId", args.clubId))
+        .collect(),
     ]);
 
     // Deduplicate memberships by userId to prevent duplicate entries
@@ -202,6 +221,15 @@ export const get = query({
     const hydratedMembers = members.filter((m): m is NonNullable<typeof m> => !!m);
     const hydratedSponsors = sponsors.filter((s): s is NonNullable<typeof s> => !!s);
     const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
+    const unitNameById = new Map(units.map((unit) => [unit._id, unit.name]));
+    const unitNamesByUserId = new Map<Id<"users">, string[]>();
+    for (const membership of unitMemberships) {
+      const unitName = unitNameById.get(membership.unitId);
+      if (!unitName) continue;
+      const names = unitNamesByUserId.get(membership.userId) ?? [];
+      names.push(unitName);
+      unitNamesByUserId.set(membership.userId, names);
+    }
     const defaultRole = customRoles.find((role) => role.isDefault);
     const legacyLeaderRole = customRoles.find((role) => role.position === 1);
     const roleForMember = (member: (typeof hydratedMembers)[number]) => {
@@ -263,6 +291,7 @@ export const get = query({
         customRoleName: null,
         roleId: null,
         roleName: "Sponsor",
+        unitNames: unitNamesByUserId.get(s.userId) ?? [],
         joinedAt: new Date(0).toISOString(),
       })),
       ...hydratedMembers
@@ -277,6 +306,7 @@ export const get = query({
             customRoleName: m.customRoleId ? customRoleNames.get(m.customRoleId) ?? null : null,
             roleId: role?._id ?? null,
             roleName: role?.name ?? (m.role === "LEADER" ? "Leader" : "Member"),
+            unitNames: unitNamesByUserId.get(m.userId) ?? [],
             joinedAt: new Date(
               uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
             ).toISOString(),
@@ -372,6 +402,10 @@ export const getWorkspaceNavigation = query({
             _id: channel._id,
             clubId: channel.clubId,
             ownerUnitId: channel.ownerUnitId,
+            position: channel.position,
+            accessPolicyVersion: channel.accessPolicyVersion,
+            accessRoleIds: channel.accessRoleIds,
+            accessUnitId: channel.accessUnitId,
             audienceKind: channel.audienceKind,
             audienceUnitId: channel.audienceUnitId,
             includeDescendants: channel.includeDescendants,
@@ -388,7 +422,14 @@ export const getWorkspaceNavigation = query({
           };
         }),
       )
-    ).filter((channel): channel is NonNullable<typeof channel> => !!channel);
+    )
+      .filter((channel): channel is NonNullable<typeof channel> => !!channel)
+      .sort(
+        (a, b) =>
+          (a.position ?? Number.MAX_SAFE_INTEGER) -
+            (b.position ?? Number.MAX_SAFE_INTEGER) ||
+          a.createdAt - b.createdAt,
+      );
 
     const [memberRows, sponsorRows, unitRows] = await Promise.all([
       ctx.db

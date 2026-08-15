@@ -4,7 +4,6 @@ import { type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { AnimatePresence, motion } from "framer-motion";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   ChevronDown,
@@ -15,7 +14,6 @@ import {
   Home,
   PanelLeft,
   Plus,
-  Pencil,
   Settings,
   Trash2,
   Users2,
@@ -379,9 +377,6 @@ export function ClubWorkspace({
       headerSlot={headerSlot}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
-      pageTransitionKey={
-        activeChannelId ? `club-channel-workspace-${clubId}` : undefined
-      }
       channelSearch={channelSearch}
       onMobileSwipeRight={() => setMobileNavigationOpen(true)}
     >
@@ -951,48 +946,33 @@ function UnitChannelTree({
           ))}
         </CardGroup>
       ) : null}
-      <AnimatePresence initial={false}>
-        {(!directChannels.length || expanded) && children.length ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 420,
-              damping: 34,
-              opacity: { duration: 0.12 },
-            }}
-            className="overflow-hidden motion-reduce:transition-none"
-          >
-            <div
-              className={
-                directChannels.length
-                  ? "ml-3 border-l border-border/60 pl-1.5"
-                  : ""
-              }
-            >
-              {children.map((child) => (
-                <UnitChannelTree
-                  key={child._id}
-                  unit={child}
-                  units={units}
-                  channels={channels}
-                  clubId={clubId}
-                  activeChannelId={activeChannelId}
-                  density={density}
-                  onNavigate={onNavigate}
-                  canEditChannels={canEditChannels}
-                  canDeleteChannels={canDeleteChannels}
-                  onDeleteChannel={onDeleteChannel}
-                  openUnitIds={openUnitIds}
-                  onToggle={onToggle}
-                />
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {(!directChannels.length || expanded) && children.length ? (
+        <div
+          className={
+            directChannels.length
+              ? "ml-3 border-l border-border/60 pl-1.5"
+              : ""
+          }
+        >
+          {children.map((child) => (
+            <UnitChannelTree
+              key={child._id}
+              unit={child}
+              units={units}
+              channels={channels}
+              clubId={clubId}
+              activeChannelId={activeChannelId}
+              density={density}
+              onNavigate={onNavigate}
+              canEditChannels={canEditChannels}
+              canDeleteChannels={canDeleteChannels}
+              onDeleteChannel={onDeleteChannel}
+              openUnitIds={openUnitIds}
+              onToggle={onToggle}
+            />
+          ))}
+          </div>
+      ) : null}
     </div>
   );
 }
@@ -1028,23 +1008,22 @@ function ChannelActionsTrigger({
   canDelete: boolean;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
-  const [open, setOpen] = useState(false);
   return (
     <>
       {canEdit ? (
         <Button
-          type="button"
+          asChild
           variant="ghost"
           size="icon-sm"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(true);
-          }}
           className="size-6 text-muted-foreground hover:text-foreground !bg-transparent"
-          aria-label="Edit channel"
+          aria-label="Channel settings"
         >
-          <Pencil />
+          <Link
+            href={`/clubs/${clubId}/settings/channels/${channel._id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Settings />
+          </Link>
         </Button>
       ) : null}
       {canDelete ? (
@@ -1062,14 +1041,6 @@ function ChannelActionsTrigger({
         >
           <Trash2 />
         </Button>
-      ) : null}
-      {canEdit ? (
-        <ChannelDialog
-          clubId={clubId}
-          channel={channel}
-          open={open}
-          onOpenChange={setOpen}
-        />
       ) : null}
     </>
   );

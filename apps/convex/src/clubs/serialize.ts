@@ -37,6 +37,10 @@ export const visibleClubChannelValidator = v.object({
   _creationTime: v.number(),
   clubId: v.id("clubs"),
   ownerUnitId: v.optional(v.id("clubUnits")),
+  position: v.optional(v.number()),
+  accessPolicyVersion: v.optional(v.literal(2)),
+  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
+  accessUnitId: v.optional(v.id("clubUnits")),
   audienceKind: v.optional(clubChannelAudienceKindValidator),
   audienceUnitId: v.optional(v.id("clubUnits")),
   includeDescendants: v.optional(v.boolean()),
@@ -58,6 +62,10 @@ export const workspaceClubChannelValidator = v.object({
   _id: v.id("clubChannels"),
   clubId: v.id("clubs"),
   ownerUnitId: v.optional(v.id("clubUnits")),
+  position: v.optional(v.number()),
+  accessPolicyVersion: v.optional(v.literal(2)),
+  accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
+  accessUnitId: v.optional(v.id("clubUnits")),
   audienceKind: v.optional(clubChannelAudienceKindValidator),
   audienceUnitId: v.optional(v.id("clubUnits")),
   includeDescendants: v.optional(v.boolean()),
@@ -207,6 +215,10 @@ export async function getVisibleChannels(
       _creationTime: channel._creationTime,
       clubId: channel.clubId,
       ownerUnitId: channel.ownerUnitId,
+      position: channel.position,
+      accessPolicyVersion: channel.accessPolicyVersion,
+      accessRoleIds: channel.accessRoleIds,
+      accessUnitId: channel.accessUnitId,
       audienceKind: channel.audienceKind,
       audienceUnitId: channel.audienceUnitId,
       includeDescendants: channel.includeDescendants,
@@ -223,5 +235,10 @@ export async function getVisibleChannels(
       _count: { messages: messages.length },
     });
   }
-  return result;
+  return result.sort(
+    (a, b) =>
+      (a.position ?? Number.MAX_SAFE_INTEGER) -
+        (b.position ?? Number.MAX_SAFE_INTEGER) ||
+      a.createdAt - b.createdAt,
+  );
 }

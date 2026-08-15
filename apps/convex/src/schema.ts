@@ -540,6 +540,9 @@ export const schema = defineSchema({
   clubRoles: defineTable({
     clubId: v.id("clubs"),
     name: v.string(),
+    // Legacy role-to-unit linkage. Roles and structure are now independent;
+    // this remains optional until stored rows are cleaned up.
+    leaderUnitId: v.optional(v.id("clubUnits")),
     permissions: v.optional(clubRolePermissionsValidator),
     isDefault: v.optional(v.boolean()),
     showInDirectory: v.optional(v.boolean()),
@@ -598,7 +601,9 @@ export const schema = defineSchema({
     clubId: v.id("clubs"),
     unitId: v.id("clubUnits"),
     userId: v.id("users"),
-    role: clubUnitMemberRoleValidator,
+    // Legacy fields retained only for widen-migrate-narrow compatibility.
+    // Current membership semantics are presence-only.
+    role: v.optional(clubUnitMemberRoleValidator),
     title: v.optional(v.string()),
     joinedAt: v.number(),
     updatedAt: v.number(),
@@ -657,9 +662,18 @@ export const schema = defineSchema({
 
   clubChannels: defineTable({
     clubId: v.id("clubs"),
-    // Optional while existing channels are widened into policy-backed rows.
-    // `ownerUnitId` controls navigation placement; audience controls access.
+    // Navigation placement is independent from access filters.
     ownerUnitId: v.optional(v.id("clubUnits")),
+    // Optional during rollout; settings normalizes sibling positions when a
+    // manager reorders a channel group.
+    position: v.optional(v.number()),
+    // Current access model. Role and unit filters are ANDed; explicitly
+    // selected people are an OR exception. A unit match includes assignments
+    // at the selected unit or any ancestor of it.
+    accessPolicyVersion: v.optional(v.literal(2)),
+    accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
+    accessUnitId: v.optional(v.id("clubUnits")),
+    // Legacy audience fields retained while stored channels are widened.
     audienceKind: v.optional(clubChannelAudienceKindValidator),
     audienceUnitId: v.optional(v.id("clubUnits")),
     includeDescendants: v.optional(v.boolean()),
