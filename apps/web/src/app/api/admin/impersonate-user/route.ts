@@ -10,14 +10,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const nextUrl = `${siteUrl}/impersonate`;
+  let convexSiteUrl: URL;
+  try {
+    convexSiteUrl = new URL(siteUrl);
+  } catch {
+    return Response.json(
+      { message: "Invalid CONVEX_SITE_URL" },
+      { status: 500 }
+    );
+  }
+
+  const nextUrl = new URL("/impersonate", convexSiteUrl);
   const url = new URL(request.url);
 
   const headers = new Headers(request.headers);
   headers.delete("transfer-encoding");
   headers.delete("content-length");
   headers.delete("connection");
-  headers.set("host", new URL(siteUrl).host);
+  headers.set("host", convexSiteUrl.host);
   headers.set("x-forwarded-host", url.host);
   headers.set("x-forwarded-proto", url.protocol.replace(/:$/, ""));
   headers.set("x-better-auth-forwarded-host", url.host);
