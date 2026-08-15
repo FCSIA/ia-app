@@ -13,7 +13,11 @@ import {
   studentScheduleRecordValidator,
   studentVisibility,
 } from "./_lib";
-import { clusterSharedClasses } from "./groupComparison";
+import {
+  clusterSharedClasses,
+  type GroupComparisonEntry,
+  withLunchComparisonEntry,
+} from "./groupComparison";
 import { canAddAcceptedFriendToGroup, isScheduleGroupOwner } from "./groupPolicy";
 
 const MAX_GROUPS = 20;
@@ -169,8 +173,13 @@ export const get = query({
     const ownerSchedule = await serializeScheduleForUser(ctx, user._id);
     const participants: Array<{
       userId: Id<"users">;
-      entries: NonNullable<typeof ownerSchedule>["entries"] | null;
-    }> = [{ userId: user._id, entries: ownerSchedule?.entries ?? null }];
+      entries: GroupComparisonEntry<Id<"courses">>[] | null;
+    }> = [{
+      userId: user._id,
+      entries: ownerSchedule
+        ? withLunchComparisonEntry(ownerSchedule.entries, ownerSchedule.lunchPeriod)
+        : null,
+    }];
     const members = [];
 
     for (const memberRow of memberRows) {
@@ -187,7 +196,12 @@ export const get = query({
           : null;
       const visibility = studentVisibility(schedule);
       const visibleSchedule = visibility === "PUBLIC" ? schedule : null;
-      participants.push({ userId: member._id, entries: visibleSchedule?.entries ?? null });
+      participants.push({
+        userId: member._id,
+        entries: visibleSchedule
+          ? withLunchComparisonEntry(visibleSchedule.entries, visibleSchedule.lunchPeriod)
+          : null,
+      });
       members.push({
         id: memberRow._id,
         user: serializeUser(member),

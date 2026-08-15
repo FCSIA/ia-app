@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { clusterSharedClasses } from "./groupComparison";
+import { clusterSharedClasses, withLunchComparisonEntry } from "./groupComparison";
 
 describe("schedule group common-class clustering", () => {
   test("matches canonical period assignments even when they were saved on different weekdays", () => {
@@ -89,5 +89,33 @@ describe("schedule group common-class clustering", () => {
 
     expect(clusters).toHaveLength(1);
     expect(clusters[0].attendeeUserIds).toEqual(["owner", "friend-a"]);
+  });
+
+  test("includes a shared lunch assignment without conflating it with a manual class", () => {
+    const clusters = clusterSharedClasses([
+      {
+        userId: "owner",
+        entries: withLunchComparisonEntry(
+          [{ periodNumber: 5, courseId: null, className: "Lunch" }],
+          "PERIOD_4",
+        ),
+      },
+      {
+        userId: "friend-a",
+        entries: withLunchComparisonEntry([], "PERIOD_4"),
+      },
+      {
+        userId: "friend-b",
+        entries: withLunchComparisonEntry([], "PERIOD_5"),
+      },
+    ]);
+
+    expect(clusters).toEqual([
+      expect.objectContaining({
+        className: "Lunch",
+        periodNumber: 4,
+        attendeeUserIds: ["owner", "friend-a"],
+      }),
+    ]);
   });
 });
