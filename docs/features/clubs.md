@@ -22,15 +22,17 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   membership-invite permission, plus invites, bulk CSV invites, open joins,
   join requests, and join codes.
 - Lets club managers create reusable roles, assign them to members, rename
-  them, and configure their permissions. Roles can be opted into as a People
+  them, remove them, and configure their permissions. Removing the default role
+  leaves affected members roleless rather than granting a replacement role.
+  Roles can be opted into as a People
   directory group; ungrouped roles remain visible on member rows without
   adding another People filter tab.
 - Lets club managers model an arbitrary internal tree of programs, teams,
   houses, rooms, subsystems, committees, or other locally named units.
 - Assigns club members to any number of units. Unit rows record presence only;
   club roles remain independent from the structure tree.
-- Supports manager assignment, open self-join, and revocable code/QR self-join
-  at each unit.
+- Supports manager assignment, open self-join, and revocable code/locally
+  generated QR self-join at each unit.
 
 On web, hierarchy administration lives at
 `/clubs/[clubId]/settings/structure`, a dedicated two-pane workspace for club

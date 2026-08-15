@@ -305,7 +305,7 @@ async function reassignRoleMembers(
   ctx: MutationCtx,
   clubId: Id<"clubs">,
   roleId: Id<"clubRoles">,
-  defaultRoleId: Id<"clubRoles">,
+  defaultRoleId: Id<"clubRoles"> | null,
 ) {
   const [roleMembers, legacyRoleMembers] = await Promise.all([
     ctx.db
@@ -327,7 +327,7 @@ async function reassignRoleMembers(
   );
   for (const member of members.values()) {
     await ctx.db.patch(member._id, {
-      roleId: defaultRoleId,
+      roleId: defaultRoleId ?? undefined,
       role: undefined,
       customRoleId: undefined,
     });
@@ -489,10 +489,6 @@ export const removeRole = mutation({
     if (!role || role.clubId !== args.clubId) {
       throw new ConvexError("Club role not found");
     }
-    if (role.isDefault) {
-      throw new ConvexError("The default club role cannot be removed");
-    }
-
     const channels = await ctx.db
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId))
@@ -503,8 +499,10 @@ export const removeRole = mutation({
       );
     }
 
-    const defaultRole = await getDefaultClubRole(ctx, args.clubId);
-    if (!defaultRole || defaultRole._id === role._id) {
+    const defaultRole = role.isDefault
+      ? null
+      : await getDefaultClubRole(ctx, args.clubId);
+    if (!role.isDefault && !defaultRole) {
       throw new ConvexError("This club does not have a fallback role");
     }
 
@@ -512,7 +510,7 @@ export const removeRole = mutation({
       ctx,
       args.clubId,
       args.roleId,
-      defaultRole._id,
+      defaultRole?._id ?? null,
     );
     await ctx.db.delete(role._id);
 
@@ -520,7 +518,7 @@ export const removeRole = mutation({
       await ctx.scheduler.runAfter(0, internal.clubs.management.finishRoleRemoval, {
         clubId: args.clubId,
         roleId: args.roleId,
-        defaultRoleId: defaultRole._id,
+        ...(defaultRole ? { defaultRoleId: defaultRole._id } : {}),
       });
     }
 
@@ -529,7 +527,11 @@ export const removeRole = mutation({
       action: "CLUB_ROLE_REMOVED",
       entityType: "Club",
       entityId: args.clubId,
-      meta: { roleId: role._id, reassignedImmediately: cascade.changed },
+      meta: {
+        roleId: role._id,
+        reassignedImmediately: cascade.changed,
+        reassignedToDefault: !!defaultRole,
+      },
     });
     return null;
   },
@@ -539,7 +541,7 @@ export const finishRoleRemoval = internalMutation({
   args: {
     clubId: v.id("clubs"),
     roleId: v.id("clubRoles"),
-    defaultRoleId: v.id("clubRoles"),
+    defaultRoleId: v.optional(v.id("clubRoles")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -547,10 +549,14 @@ export const finishRoleRemoval = internalMutation({
       ctx,
       args.clubId,
       args.roleId,
-      args.defaultRoleId,
+      args.defaultRoleId ?? null,
     );
     if (cascade.hasMore) {
-      await ctx.scheduler.runAfter(0, internal.clubs.management.finishRoleRemoval, args);
+      await ctx.scheduler.runAfter(0, internal.clubs.management.finishRoleRemoval, {
+        clubId: args.clubId,
+        roleId: args.roleId,
+        ...(args.defaultRoleId ? { defaultRoleId: args.defaultRoleId } : {}),
+      });
     }
     return null;
   },

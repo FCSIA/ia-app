@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputCopy } from '@/components/ui/input-copy';
+import { IaQrCode } from '@/components/ui/ia-qr-code';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -591,10 +592,6 @@ function JoinCodePanel({ clubId, unit }: { clubId: Id<'clubs'>; unit: ClubUnit }
   const joinUrl = origin && unit.joinCode
     ? `${origin}/clubs/${clubId}?unitId=${unit._id}&unitCode=${unit.joinCode}`
     : '';
-  const qrUrl = joinUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
-    : null;
-
   return (
     <section className="space-y-3 border-t pt-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -606,10 +603,13 @@ function JoinCodePanel({ clubId, unit }: { clubId: Id<'clubs'>; unit: ClubUnit }
           {unit.joinCode ? 'Rotate code' : 'Generate code'}
         </Button>
       </div>
-      {joinUrl && qrUrl ? (
+      {joinUrl ? (
         <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qrUrl} alt={`Join ${unit.name} QR code`} className="size-36 rounded-md border bg-white p-2" />
+          <IaQrCode
+            value={joinUrl}
+            label={`Join ${unit.name} QR code`}
+            className="size-36"
+          />
           <div className="min-w-0 space-y-2">
             <InputCopy value={joinUrl} variant="button" />
             <p className="text-xs text-muted-foreground">Printing or sharing this QR lets club members join {unit.name} directly.</p>

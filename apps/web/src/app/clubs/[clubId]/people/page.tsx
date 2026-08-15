@@ -11,12 +11,8 @@ import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Check,
-  ChevronLeft,
-  ChevronRight,
-  FileSpreadsheet,
   GitBranch,
   QrCode,
   Send,
@@ -24,6 +20,7 @@ import {
   Upload,
   UserMinus,
   UserPlus,
+  UserPen,
   Users,
   ShieldCheck,
   X,
@@ -34,7 +31,9 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubAvatar } from "@/components/clubs/club-avatar";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
+import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import { fullName } from "@/components/clubs/types";
+import { IaQrCode } from "@/components/ui/ia-qr-code";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,8 +64,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputCopy } from "@/components/ui/input-copy";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { SearchInput } from "@/components/ui/search";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -209,10 +206,6 @@ function ManagePeopleDialog({
     origin && club.activeJoinCode?.code
       ? `${origin}/clubs/${club._id}?joinCode=${club.activeJoinCode.code}`
       : "";
-  const qrUrl = joinUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}`
-    : null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
@@ -232,13 +225,12 @@ function ManagePeopleDialog({
 
           <TabPanel value="qr" className="mt-4">
             <div className="flex flex-col items-center gap-4 rounded-lg border p-5 text-center">
-              {qrUrl ? (
+              {joinUrl ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={qrUrl}
-                    alt="Club join QR code"
-                    className="size-56 rounded-md border bg-white p-2"
+                  <IaQrCode
+                    value={joinUrl}
+                    label="Club join QR code"
+                    className="size-56"
                   />
                   <InputCopy
                     value={joinUrl}
@@ -580,14 +572,13 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
     >
       <Button
         type="button"
-        variant="tertiary"
-        size="sm"
-        leadingIcon={FileSpreadsheet}
+        size="icon"
         onClick={() => setOpen(true)}
         aria-label="Import unit assignments"
       >
-        Import units
+        <UserPen className="size-4" />
       </Button>
+
       <DialogContent size="lg" className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import unit assignments</DialogTitle>
@@ -994,7 +985,9 @@ export default function ClubPeoplePage() {
                       person={person}
                       isCurrentUser={person._id === user?._id}
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
-                      canManageUnits={canManageStructure && person.kind === "MEMBER"}
+                      canManageUnits={
+                        canManageStructure && person.kind === "MEMBER"
+                      }
                       canRemove={canRemoveMembers && person.kind === "MEMBER"}
                       canImpersonate={Boolean(
                         user &&
@@ -1197,10 +1190,9 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
   const clubId = useClubId();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [unitPath, setUnitPath] = useState<string[]>([]);
-  const [direction, setDirection] = useState<1 | -1>(1);
-  const [pendingUnitId, setPendingUnitId] = useState<string | null>(null);
-  const reduceMotion = useReducedMotion() ?? false;
+  const [pendingUnitId, setPendingUnitId] = useState<Id<"clubUnits"> | null>(
+    null,
+  );
   const options = useQuery(
     api.clubs.hierarchy.listMemberUnitOptions,
     open ? { clubId, memberId: person._id } : "skip",
@@ -1214,37 +1206,23 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
       ),
     [options?.units],
   );
-  const childrenByParentId = useMemo(() => {
-    const children = new Map<string | null, NonNullable<typeof options>["units"]>();
-    for (const unit of options?.units ?? []) {
-      const parentId = unit.parentUnitId ?? null;
-      const siblings = children.get(parentId) ?? [];
-      siblings.push(unit);
-      children.set(parentId, siblings);
-    }
-    return children;
-  }, [options?.units]);
-  const parentUnitId = unitPath.at(-1) ?? null;
-  const parentUnit = parentUnitId ? unitById.get(parentUnitId) : null;
-  const units = childrenByParentId.get(parentUnitId) ?? [];
   const assignedUnitId =
-    pendingUnitId ?? units.find((unit) => unit.disabled)?._id ?? "";
+    pendingUnitId ?? options?.directMemberships[0]?.unitId ?? null;
 
-  const addMembership = async (unitId: string) => {
+  const addMembership = async (unitId: Id<"clubUnits">) => {
     if (unitById.get(unitId)?.disabled) return;
     setPendingUnitId(unitId);
     try {
       await setMember({
         clubId,
-        unitId: unitId as Id<"clubUnits">,
+        unitId,
         memberId: person._id,
       });
       setOpen(false);
     } catch (error) {
       setPendingUnitId(null);
       toast({
-        title:
-          error instanceof Error ? error.message : "Could not assign unit",
+        title: error instanceof Error ? error.message : "Could not assign unit",
         variant: "destructive",
       });
     }
@@ -1265,18 +1243,15 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
   };
 
   return (
-    <Popover
+    <UnitTreePicker
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (!nextOpen) {
-          setUnitPath([]);
           setPendingUnitId(null);
-          setDirection(1);
         }
       }}
-    >
-      <PopoverTrigger asChild>
+      trigger={
         <Button
           type="button"
           size="icon-sm"
@@ -1286,138 +1261,40 @@ function UnitMembershipPopover({ person }: { person: ClubDirectoryEntry }) {
         >
           <GitBranch className="size-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="w-[min(20rem,calc(100vw-2rem))] overflow-hidden p-2"
-        aria-label={`Unit assignments for ${fullName(person)}`}
-      >
-        <AnimatePresence initial={false} mode="wait" custom={direction}>
-          <motion.div
-            key={parentUnitId ?? "root"}
-            custom={direction}
-            initial={
-              reduceMotion ? false : { opacity: 0, x: direction * 14 }
-            }
-            animate={{ opacity: 1, x: 0 }}
-            exit={
-              reduceMotion
-                ? undefined
-                : { opacity: 0, x: direction * -10 }
-            }
-            transition={{
-              duration: reduceMotion ? 0.01 : 0.16,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-          >
-            <div className="flex items-center gap-1 px-2 pb-2 pt-1">
-              {parentUnit ? (
+      }
+      units={options?.units ?? []}
+      value={assignedUnitId}
+      onValueChange={(unitId) => {
+        if (unitId) void addMembership(unitId);
+      }}
+      title="Choose unit"
+      subtitle={fullName(person)}
+      ariaLabel={`Unit assignments for ${fullName(person)}`}
+      loading={options === undefined}
+      footer={
+        options?.directMemberships.length ? (
+          <>
+            <Separator className="my-2" />
+            <p className="px-2 pb-1 text-xs text-muted-foreground">Assigned</p>
+            {options.directMemberships.map((membership) => {
+              const unit = unitById.get(membership.unitId);
+              return (
                 <Button
+                  key={membership.unitId}
                   type="button"
-                  size="icon-sm"
                   variant="ghost"
-                  aria-label="Back to parent unit"
-                  onClick={() => {
-                    setDirection(-1);
-                    setUnitPath((path) => path.slice(0, -1));
-                  }}
+                  size="sm"
+                  className="w-full justify-start"
+                  leadingIcon={X}
+                  onClick={() => void removeMembership(membership.unitId)}
                 >
-                  <ChevronLeft />
+                  Remove {unit?.name ?? "archived unit"}
                 </Button>
-              ) : null}
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">
-                  Choose unit
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {parentUnit?.name ?? fullName(person)}
-                </p>
-              </div>
-            </div>
-
-            {options === undefined ? (
-              <p className="px-3 py-2 text-xs text-muted-foreground">
-                Loading units…
-              </p>
-            ) : units.length ? (
-              <ScrollArea className="max-h-64">
-                <div className="relative">
-                  <RadioGroup
-                    value={assignedUnitId}
-                    onValueChange={(unitId) => void addMembership(unitId)}
-                    className="w-full gap-0.5"
-                  >
-                    {units.map((unit, index) => (
-                      <RadioItem
-                        key={unit._id}
-                        value={unit._id}
-                        label={unit.name}
-                        index={index}
-                        className="w-full pr-10"
-                        aria-disabled={unit.disabled}
-                      />
-                    ))}
-                  </RadioGroup>
-                  <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
-                    {units.map((unit) => {
-                      const hasChildren = (childrenByParentId.get(unit._id) ?? [])
-                        .length > 0;
-                      return (
-                        <div key={unit._id} className="flex h-8 items-center">
-                          {hasChildren ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              className="pointer-events-auto size-7"
-                              aria-label={`View units inside ${unit.name}`}
-                              onClick={() => {
-                                setDirection(1);
-                                setUnitPath((path) => [...path, unit._id]);
-                              }}
-                            >
-                              <ChevronRight />
-                            </Button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </ScrollArea>
-            ) : (
-              <p className="px-3 py-2 text-xs text-muted-foreground">
-                No units here yet
-              </p>
-            )}
-
-            {parentUnitId === null && options?.directMemberships.length ? (
-              <>
-                <Separator className="my-2" />
-                <p className="px-2 pb-1 text-xs text-muted-foreground">
-                  Assigned
-                </p>
-                {options.directMemberships.map((membership) => {
-                  const unit = unitById.get(membership.unitId);
-                  return (
-                    <Button
-                      key={membership.unitId}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start"
-                      leadingIcon={X}
-                      onClick={() => void removeMembership(membership.unitId)}
-                    >
-                      Remove {unit?.name ?? "archived unit"}
-                    </Button>
-                  );
-                })}
-              </>
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
-      </PopoverContent>
-    </Popover>
+              );
+            })}
+          </>
+        ) : null
+      }
+    />
   );
 }

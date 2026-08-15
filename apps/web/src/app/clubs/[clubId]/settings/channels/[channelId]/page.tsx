@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { CircleHelp, ShieldCheck } from "lucide-react";
+import { ChevronDown, CircleHelp, ShieldCheck } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useClubId } from "../../../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { PeoplePicker } from "@/components/clubs/people-picker";
+import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import type { ClubChannel, ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Elevated } from "@/lib/elevated";
 
 type PostingPolicy = "AUDIENCE" | "CLUB_MANAGERS";
+
+function hasSameIds(left: string[], right: string[]) {
+  if (left.length !== right.length) return false;
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+  return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
 
 function legacyUnitId(channel: ClubChannel) {
   if (channel.accessPolicyVersion === 2) return channel.accessUnitId ?? null;
@@ -117,6 +125,7 @@ function ChannelSettingsEditor({
   channel: ClubChannel;
   units: Array<{
     _id: Id<"clubUnits">;
+    parentUnitId: Id<"clubUnits"> | null;
     name: string;
     kind: string | null;
   }>;
@@ -128,7 +137,10 @@ function ChannelSettingsEditor({
   const [roleIds, setRoleIds] = useState<string[]>(
     channel.accessPolicyVersion === 2 ? channel.accessRoleIds ?? [] : [],
   );
-  const [unitId, setUnitId] = useState(legacyUnitId(channel) ?? "any");
+  const [unitId, setUnitId] = useState<Id<"clubUnits"> | null>(
+    legacyUnitId(channel),
+  );
+  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<string[]>(
     channel.memberships.map((membership) => membership.userId),
   );
@@ -145,6 +157,23 @@ function ChannelSettingsEditor({
   const checkedRoleIndices = new Set(
     club.roles.flatMap((role, index) => roleIds.includes(role._id) ? [index] : []),
   );
+  const selectedUnitName = units.find((unit) => unit._id === unitId)?.name;
+  const hasUnsavedChanges =
+    name.trim() !== channel.name ||
+    (description.trim() || "") !== (channel.description ?? "") ||
+    !hasSameIds(
+      roleIds,
+      channel.accessPolicyVersion === 2 ? channel.accessRoleIds ?? [] : [],
+    ) ||
+    unitId !== legacyUnitId(channel) ||
+    !hasSameIds(
+      memberIds,
+      channel.memberships.map((membership) => membership.userId),
+    ) ||
+    postingPolicy !==
+      (channel.postingPolicy === "CLUB_MANAGERS"
+        ? "CLUB_MANAGERS"
+        : "AUDIENCE");
 
   const save = async () => {
     setSaving(true);
@@ -154,8 +183,7 @@ function ChannelSettingsEditor({
         name: name.trim(),
         description: description.trim() || undefined,
         accessRoleIds: roleIds as Id<"clubRoles">[],
-        accessUnitId:
-          unitId === "any" ? null : unitId as Id<"clubUnits">,
+        accessUnitId: unitId,
         memberIds: memberIds as Id<"users">[],
         postingPolicy,
       });
@@ -239,20 +267,29 @@ function ChannelSettingsEditor({
             </FieldSet>
 
             <Field>
-              <FieldLabel htmlFor="channel-unit">Club structure</FieldLabel>
-              <Select value={unitId} onValueChange={setUnitId}>
-                <SelectTrigger id="channel-unit" className="w-full" />
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem index={0} value="any">Any unit</SelectItem>
-                    {units.map((unit, index) => (
-                      <SelectItem key={unit._id} index={index + 1} value={unit._id}>
-                        {unit.name}{unit.kind ? ` · ${unit.kind}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <FieldLabel>Club structure</FieldLabel>
+              <UnitTreePicker
+                open={unitPickerOpen}
+                onOpenChange={setUnitPickerOpen}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    size="md"
+                    className="w-full justify-between"
+                    trailingIcon={ChevronDown}
+                  >
+                    {selectedUnitName ?? "Any unit"}
+                  </Button>
+                }
+                units={units}
+                value={unitId}
+                onValueChange={setUnitId}
+                title="Choose unit"
+                subtitle="Channel access"
+                ariaLabel="Club structure with channel access"
+                anyUnitLabel="Any unit"
+              />
               <FieldDescription>
                 Members assigned here or above can access this channel.
               </FieldDescription>
@@ -297,11 +334,17 @@ function ChannelSettingsEditor({
             </Field>
           </div>
         </CardContent>
-        <CardFooter className="justify-end">
-          <Button loading={saving} disabled={!name.trim()} onClick={() => void save()}>
-            Save changes
-          </Button>
-        </CardFooter>
+        {hasUnsavedChanges ? (
+          <CardFooter className="justify-end">
+            <Button
+              loading={saving}
+              disabled={!name.trim()}
+              onClick={() => void save()}
+            >
+              Save changes
+            </Button>
+          </CardFooter>
+        ) : null}
       </Card>
     </Elevated>
   );

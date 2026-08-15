@@ -616,16 +616,14 @@ export default function ClubSettingsPage() {
                             >
                               Rename
                             </Button>
-                            {!selectedRole.isDefault ? (
-                              <Button
-                                variant="tertiary"
-                                size="sm"
-                                leadingIcon={Trash2}
-                                onClick={() => setRemoveRoleOpen(true)}
-                              >
-                                Remove
-                              </Button>
-                            ) : null}
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              leadingIcon={Trash2}
+                              onClick={() => setRemoveRoleOpen(true)}
+                            >
+                              Remove
+                            </Button>
                           </div>
                         </div>
 
@@ -652,7 +650,6 @@ export default function ClubSettingsPage() {
                           {permissionGroups.map((group) => (
                             <Collapsible
                               key={group.title}
-                              defaultOpen
                               className="group/permission py-5"
                             >
                               <section>
@@ -805,9 +802,11 @@ export default function ClubSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {selectedRole?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the role. Everyone assigned to it will be
-              moved to the default club role, and its permissions will no longer
-              apply.
+              This permanently removes the role. Everyone assigned to it will
+              {selectedRole?.isDefault
+                ? " no longer have a club role."
+                : " move to the default club role."} Its permissions will no
+              longer apply.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
