@@ -7,9 +7,17 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, Inbox, Plus, SlidersHorizontal, X } from 'lucide-react';
-import { Card, CardContent, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
+import { Archive, Check, ChevronDown, Inbox, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +26,6 @@ import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesSearchQuery } from '@/lib/search';
-import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
@@ -62,6 +69,7 @@ export default function AnnouncementsPage() {
   const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
   const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [audienceMode, setAudienceMode] = useState<'SCHOOL_WIDE' | 'TARGETED'>('SCHOOL_WIDE');
   const [images, setImages] = useState<File[]>([]);
   const [embedUrls, setEmbedUrls] = useState<string[]>([]);
   const [form, setForm] = useState({
@@ -215,6 +223,7 @@ export default function AnnouncementsPage() {
         title: '', body: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
         allowComments: false, isAdminGeneral: false, promoted: false, expiresAt: '',
       });
+      setAudienceMode('SCHOOL_WIDE');
       toast({ title: 'Announcement created' });
     } catch (error) {
       toast({ title: error instanceof Error ? error.message : 'Failed to create', variant: 'destructive' });
@@ -430,13 +439,15 @@ export default function AnnouncementsPage() {
           </Popover>
         </div>
 
-        {showNew && canPost ? (
-          <Card className="mb-6">
-            <CardHeader className="mb-4 border-b pb-3">
-              <CardTitle className="text-lg">New Announcement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+        <Dialog open={showNew} onOpenChange={setShowNew}>
+          <DialogContent size="lg" className="max-h-[min(48rem,calc(100vh-2rem))] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>New announcement</DialogTitle>
+              <DialogDescription>
+                Share an update with the whole school or a specific student audience.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <Input placeholder="Title" maxLength={MAX_ANNOUNCEMENT_TITLE_CHARACTERS} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
                 <Textarea
                   className="min-h-[120px] resize-y"
@@ -454,85 +465,93 @@ export default function AnnouncementsPage() {
                   onEmbedUrlsChange={setEmbedUrls}
                   onError={(title) => toast({ title, variant: 'destructive' })}
                 />
-                <div className="space-y-4">
-                  <Label className="text-sm font-semibold">Audience Targeting</Label>
-
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">Grades</Label>
-                      <div className="flex gap-1.5">
-                        {GRADE_OPTIONS.map((grade) => {
-                          const active = form.targetGrades.includes(grade);
-                          return (
-                            <Button
-                              key={grade}
-                              type="button"
-                              variant={active ? 'primary' : 'secondary'}
-                              size="sm"
-                              className={cn('h-8 w-10 p-0 rounded-lg transition-all', active && 'ring-2 ring-primary ring-offset-2')}
-                              onClick={() => {
-                                const next = active ? form.targetGrades.filter((g) => g !== grade) : [...form.targetGrades, grade];
-                                updateTargeting({ targetGrades: next });
-                              }}
-                            >
-                              {grade}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5 block">Pathways</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PATHWAY_OPTIONS.map((p) => {
-                          const active = form.targetMajorPathways.includes(p.value);
-                          return (
-                            <Button
-                              key={p.value}
-                              type="button"
-                              variant={active ? 'primary' : 'secondary'}
-                              size="sm"
-                              className={cn('h-8 rounded-lg transition-all', active && 'ring-2 ring-primary ring-offset-2')}
-                              onClick={() => {
-                                const next = active ? form.targetMajorPathways.filter((v) => v !== p.value) : [...form.targetMajorPathways, p.value];
-                                updateTargeting({ targetMajorPathways: next });
-                              }}
-                            >
-                              {p.label}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {form.targetType !== 'SCHOOL_WIDE' && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-[10px] text-muted-foreground hover:text-foreground h-6 px-1.5"
-                        onClick={() =>
-                          setForm({
-                            ...form,
-                            targetType: 'SCHOOL_WIDE',
-                            targetGrades: [],
-                            targetMajorPathways: [],
-                            targetMinorPathways: [],
-                          })
-                        }
-                      >
-                        Reset to School-wide
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Audience</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="tertiary" className="w-full justify-between" active={audienceMode === 'TARGETED'}>
+                        {audienceMode === 'SCHOOL_WIDE'
+                          ? 'School-wide'
+                          : `${form.targetGrades.length + form.targetMajorPathways.length + form.targetMinorPathways.length} audience filters selected`}
+                        <ChevronDown aria-hidden className="size-4 text-muted-foreground" />
                       </Button>
-                    )}
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-[min(28rem,calc(100vw-2rem))] p-3">
+                      <RadioGroup
+                        value={audienceMode}
+                        onValueChange={(value) => {
+                          const nextMode = value as 'SCHOOL_WIDE' | 'TARGETED';
+                          setAudienceMode(nextMode);
+                          if (nextMode === 'SCHOOL_WIDE') {
+                            updateTargeting({ targetGrades: [], targetMajorPathways: [], targetMinorPathways: [] });
+                          }
+                        }}
+                        className="w-full gap-0.5"
+                      >
+                        <RadioItem index={0} value="SCHOOL_WIDE" label="School-wide" className="w-full" />
+                        <RadioItem index={1} value="TARGETED" label="Target a specific audience" className="w-full" />
+                      </RadioGroup>
+
+                      {audienceMode === 'TARGETED' ? (
+                        <div className="mt-3 grid gap-3 border-t border-border pt-3 sm:grid-cols-2">
+                          <FieldSet className="min-w-0 gap-0">
+                            <FieldLegend variant="label">Grades</FieldLegend>
+                            <CheckboxGroup
+                              checkedIndices={new Set(GRADE_OPTIONS.flatMap((grade, index) => (form.targetGrades.includes(grade) ? [index] : [])))}
+                              className="w-full"
+                            >
+                              {GRADE_OPTIONS.map((grade, index) => (
+                                <CheckboxItem
+                                  key={grade}
+                                  index={index}
+                                  label={`Grade ${grade}`}
+                                  checked={form.targetGrades.includes(grade)}
+                                  onToggle={() => {
+                                    const next = form.targetGrades.includes(grade)
+                                      ? form.targetGrades.filter((value) => value !== grade)
+                                      : [...form.targetGrades, grade];
+                                    updateTargeting({ targetGrades: next });
+                                  }}
+                                />
+                              ))}
+                            </CheckboxGroup>
+                          </FieldSet>
+                          <FieldSet className="min-w-0 gap-0">
+                            <FieldLegend variant="label">Pathways</FieldLegend>
+                            <CheckboxGroup
+                              checkedIndices={new Set(PATHWAY_OPTIONS.flatMap((pathway, index) => (form.targetMajorPathways.includes(pathway.value) ? [index] : [])))}
+                              className="w-full"
+                            >
+                              {PATHWAY_OPTIONS.map((pathway, index) => (
+                                <CheckboxItem
+                                  key={pathway.value}
+                                  index={index}
+                                  label={pathway.label}
+                                  checked={form.targetMajorPathways.includes(pathway.value)}
+                                  onToggle={() => {
+                                    const next = form.targetMajorPathways.includes(pathway.value)
+                                      ? form.targetMajorPathways.filter((value) => value !== pathway.value)
+                                      : [...form.targetMajorPathways, pathway.value];
+                                    updateTargeting({ targetMajorPathways: next });
+                                  }}
+                                />
+                              ))}
+                            </CheckboxGroup>
+                          </FieldSet>
+                        </div>
+                      ) : null}
+                    </PopoverContent>
+                  </Popover>
+                  {audienceMode === 'TARGETED' && form.targetGrades.length === 0 && form.targetMajorPathways.length === 0 && form.targetMinorPathways.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Choose at least one grade or pathway.</p>
+                  ) : null}
                 </div>
 
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Expires (optional)</label>
                   <DateTimePicker value={form.expiresAt} onChange={(expiresAt) => setForm({ ...form, expiresAt })} allowClear />
                 </div>
-                <div className="flex items-center gap-6 pt-2">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
                     <input
                       type="checkbox"
@@ -560,7 +579,7 @@ export default function AnnouncementsPage() {
                           })
                         }
                       />
-                      Push notifications to everyone
+                      Send push notifications
                     </label>
                   ) : null}
                   {hasRole(user, 'ADMIN', 'SUPER_ADMIN') ? (
@@ -575,18 +594,21 @@ export default function AnnouncementsPage() {
                     </label>
                   ) : null}
                 </div>
-                <div className="mt-4 flex gap-2 border-t border-border pt-4">
-                  <Button type="submit" loading={createPending}>
-                    Post Announcement
-                  </Button>
-                  <Button type="button" variant="ghost" disabled={createPending} onClick={() => setShowNew(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        ) : null}
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="tertiary" disabled={createPending} onClick={() => setShowNew(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={createPending}
+                  disabled={audienceMode === 'TARGETED' && form.targetGrades.length === 0 && form.targetMajorPathways.length === 0 && form.targetMinorPathways.length === 0}
+                >
+                  Post announcement
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
