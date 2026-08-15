@@ -5,8 +5,8 @@ tags: [docs, reference, release]
 # Versioning and the devlog
 
 The app carries a version, a changelog, and an in-app devlog that students can
-read. All three come from one file, and a production deploy updates them
-automatically.
+read. All three come from one file. Release data is generated and approved in a
+normal pull request before anything reaches production.
 
 ## What the version means
 
@@ -39,14 +39,20 @@ CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy is a release. `Production Deploy` (`.github/workflows/prod.yml`)
-runs the test suite, cuts the next version from the commits since the previous
-release tag, commits and tags it, deploys Convex and Vercel, and only then
-pushes the release commit to `main`. A failed deploy leaves no release behind.
+A production deploy uses an approved immutable release tag. First, cut the
+release data from `main`, commit the generated `CHANGELOG.md` and devlog files,
+and merge those changes through the normal protected-branch pull-request flow.
+After the release commit is in `main`, a designated maintainer creates and
+pushes its `v<version>` tag. That tag starts `Production Deploy`
+(`.github/workflows/prod.yml`).
 
-The workflow takes three optional inputs: `bump` (`auto`, `patch`, `minor`,
-`major`), and a `title`/`summary` pair that becomes the headline students read
-in the app. Without them the release is just its change list.
+The workflow is read-only. Before installing dependencies or using deployment
+secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
+already reachable from `main`, and the latest approved devlog version matches
+the tag. It then tests and deploys that exact commit to Convex and Vercel. It
+cannot create a release commit, move `main`, or bypass branch protection. A
+failed deploy leaves the already-approved release commit and tag in place so it
+can be safely retried.
 
 To see what the next release would contain, without writing anything:
 
@@ -54,13 +60,16 @@ To see what the next release would contain, without writing anything:
 pnpm devlog:preview
 ```
 
-To cut one by hand — useful when `main` is protected and CI cannot push:
+To prepare one for review from an up-to-date `main` checkout:
 
 ```bash
 pnpm devlog:cut --minor --title="Calendar-first schedules"
 ```
 
-Then commit `CHANGELOG.md` and `packages/devlog`, and tag `v<version>`.
+Commit `CHANGELOG.md` and `packages/devlog`, open a pull request, and wait for
+the usual approval and validation. Once it is merged, create `v<version>` on
+that release commit and push the tag to begin deployment. To retry an approved
+release, manually dispatch the workflow with that existing tag name.
 
 ## How commits become entries
 

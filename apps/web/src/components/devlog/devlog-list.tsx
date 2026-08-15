@@ -57,9 +57,14 @@ function ChangeList({ release }: { release: Release }) {
             </span>
           </div>
           <ul className="divide-y divide-border/60">
-            {changes.map((change, index) => (
+            {changes.map((change) => (
               <li
-                key={`${change.commit ?? change.summary}-${index}`}
+                key={[
+                  release.version,
+                  category,
+                  change.commit ?? change.pr ?? change.scope ?? 'general',
+                  change.summary,
+                ].join(':')}
                 className="grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 py-3 first:pt-1 last:pb-0"
               >
                 {change.scope ? (

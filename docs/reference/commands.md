@@ -31,9 +31,11 @@ commit subjects become changelog entries.
 
 ## Deploy
 
-[`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys
-production on manual dispatch. It tests, cuts the next release, deploys Convex
-and Vercel, then pushes the release commit and tag.
+[`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys an
+existing `vMAJOR.MINOR.PATCH` tag whose commit has already merged into `main`.
+Prepare the generated release data in a normal PR, merge it, then push the
+matching tag. Manual dispatch only retries an existing validated tag; the
+workflow never writes to `main`.
 
 Production URL: `https://ia-app-alpha.vercel.app`
 

@@ -1,9 +1,29 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { APP_VERSION, compareVersions, releasesSince } from '@ia/devlog';
 
 const STORAGE_KEY = 'ia.devlog.seen-version';
+const STORAGE_CHANGE_EVENT = 'ia.devlog.seen-version.changed';
+
+function subscribeToSeenVersion(onStoreChange: () => void) {
+  function onStorage(event: StorageEvent) {
+    if (event.key === STORAGE_KEY && event.storageArea === window.localStorage) {
+      onStoreChange();
+    }
+  }
+
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(STORAGE_CHANGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(STORAGE_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+function getServerSeenVersion() {
+  return APP_VERSION;
+}
 
 function readSeenVersion(): string | null {
   if (typeof window === 'undefined') return null;
@@ -19,6 +39,7 @@ function readSeenVersion(): string | null {
 function writeSeenVersion(version: string) {
   try {
     window.localStorage.setItem(STORAGE_KEY, version);
+    window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
   } catch {
     // Nothing to do — the badge simply reappears next visit.
   }
@@ -36,22 +57,21 @@ type SeenRelease = {
  * advertise itself once per release without a backend round trip.
  *
  * The value is per-browser on purpose: it is a reading marker, not user data.
- * It stays `0` until after mount so the server and client render the same
- * first paint.
+ * The server snapshot is the current version so hydration is stable; the
+ * browser snapshot then reads local storage as an external store.
  */
 export function useSeenRelease(): SeenRelease {
-  const [seenVersion, setSeenVersion] = useState<string | null>(APP_VERSION);
-
-  useEffect(() => {
-    setSeenVersion(readSeenVersion());
-  }, []);
+  const seenVersion = useSyncExternalStore(
+    subscribeToSeenVersion,
+    readSeenVersion,
+    getServerSeenVersion,
+  );
 
   const markSeen = useCallback(() => {
-    setSeenVersion((current) => {
-      if (current && compareVersions(current, APP_VERSION) >= 0) return current;
+    const current = readSeenVersion();
+    if (!current || compareVersions(current, APP_VERSION) < 0) {
       writeSeenVersion(APP_VERSION);
-      return APP_VERSION;
-    });
+    }
   }, []);
 
   return { unseenCount: releasesSince(seenVersion).length, markSeen };
