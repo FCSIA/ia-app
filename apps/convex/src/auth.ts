@@ -128,6 +128,7 @@ export const disabledAdminHttpPaths = [
   "/admin/get-user",
   "/admin/revoke-user-session",
   "/admin/revoke-user-sessions",
+  "/admin/impersonate-user",
 ] as const;
 
 export const authComponent = createClient<DataModel, typeof authSchema>(

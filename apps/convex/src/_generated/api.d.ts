@@ -95,6 +95,7 @@ import type * as schedule_shareLinks from "../schedule/shareLinks.js";
 import type * as search_global from "../search/global.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
+import type * as testQAStep5 from "../testQAStep5.js";
 import type * as uploads_announcementImages from "../uploads/announcementImages.js";
 import type * as uploads_chatAttachments from "../uploads/chatAttachments.js";
 import type * as uploads_feedbackImages from "../uploads/feedbackImages.js";
@@ -207,6 +208,7 @@ declare const fullApi: ApiFromModules<{
   "search/global": typeof search_global;
   seed: typeof seed;
   stats: typeof stats;
+  testQAStep5: typeof testQAStep5;
   "uploads/announcementImages": typeof uploads_announcementImages;
   "uploads/chatAttachments": typeof uploads_chatAttachments;
   "uploads/feedbackImages": typeof uploads_feedbackImages;

@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { Eye } from "lucide-react";
-import { useMutation } from "convex/react";
-
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   AlertDialog,
@@ -27,7 +25,6 @@ export function ImpersonateUserAction({
   userId: Id<"users"> | string;
   name: string;
 }) {
-  const prepare = useMutation(api.users.impersonation.prepare);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
@@ -42,18 +39,14 @@ export function ImpersonateUserAction({
     setPending(true);
     setError(null);
     try {
-      const { authUserId } = await prepare({
-        userId: userId as Id<"users">,
-        reason: trimmedReason,
-      });
-      const response = await fetch("/api/auth/admin/impersonate-user", {
+      const response = await fetch("/api/admin/impersonate-user", {
         method: "POST",
         credentials: "include",
         headers: {
           "content-type": "application/json",
           "x-ia-impersonation-reason": trimmedReason,
         },
-        body: JSON.stringify({ userId: authUserId }),
+        body: JSON.stringify({ userId }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as
