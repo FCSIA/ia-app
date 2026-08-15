@@ -7,7 +7,7 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
-    "version": "0.9.0",
+    "version": "0.4.0",
     "date": "2026-08-13",
     "title": "Club units, moderation replies, and student experience",
     "summary": "Clubs can now model their real internal structure, feedback you send gets a reply, and schedules, collaboration, and Wrapped were reworked around how students actually use them.",
@@ -95,7 +95,7 @@ export const RELEASES: readonly Release[] = [
     ]
   },
   {
-    "version": "0.8.0",
+    "version": "0.3.0",
     "date": "2026-08-11",
     "title": "Calendar-first schedules and a cleaner feed",
     "summary": "School day plans moved onto a real calendar, the announcement feed was flattened, and new accounts start in dark mode.",
@@ -189,7 +189,7 @@ export const RELEASES: readonly Release[] = [
     ]
   },
   {
-    "version": "0.7.0",
+    "version": "0.2.0",
     "date": "2026-08-09",
     "title": "Club hierarchies, threads, and the security pass",
     "summary": "Clubs gained arbitrary internal hierarchies, replies were separated from threads, and the 2026-08-09 security audit findings were remediated.",
@@ -246,7 +246,7 @@ export const RELEASES: readonly Release[] = [
     ]
   },
   {
-    "version": "0.6.0",
+    "version": "0.1.0",
     "date": "2026-08-08",
     "title": "Search, schedule imports, and push notifications",
     "summary": "The first alpha build for the wider student group: global search, screenshot schedule imports, friend links, and browser push.",

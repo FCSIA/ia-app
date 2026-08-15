@@ -12,16 +12,22 @@ normal pull request before anything reaches production.
 
 Versions are `MAJOR.MINOR.PATCH`, and every release ships on a **channel**:
 `alpha`, `beta`, or `stable`. The channel is the honest signal during alpha
-testing — students see `v0.9.0 alpha` in the app, not a number that implies more
+testing — students see `v0.4.0 alpha` in the app, not a number that implies more
 stability than the build has.
 
 While the channel is `alpha` the major version stays `0`:
 
 | Change in the release | Bump |
 | --- | --- |
-| Anything students can newly do (`Added`) | minor — `0.9.0` → `0.10.0` |
+| A routine release — the default | patch — `0.4.0` → `0.4.1` |
+| A milestone worth naming, chosen by a person (`--minor`) | minor — `0.4.0` → `0.5.0` |
 | A breaking change (`feat!:`, `BREAKING CHANGE`) | minor, not major |
-| Fixes, improvements, and internal work only | patch — `0.9.0` → `0.9.1` |
+
+The default is deliberately a patch. Alpha releases almost always add
+something, so bumping the minor whenever a release contains a new capability
+walks the version toward `1.0` much faster than the product matures. Students
+read `v0.9.0` as "nearly finished" no matter what semver says the digits mean,
+so minor bumps are a call someone makes, not a side effect of shipping.
 
 Moving to `1.0.0` is a deliberate decision, not something the tooling does.
 
@@ -108,7 +114,7 @@ Writing entries by hand is also fine — `releases.json` is a normal file. Run
 
 - `DevlogList` — releases newest first; the current one expanded, earlier ones
   behind a disclosure.
-- `AppVersionStamp` — `v0.9.0 alpha · build 1a2b3c4`, for bug reports.
+- `AppVersionStamp` — `v0.4.0 alpha · build 1a2b3c4`, for bug reports.
 - `useSeenRelease` — a per-browser reading marker in `localStorage` that counts
   unread releases. It is a marker, not user data, and is never sent anywhere.
 

@@ -12,7 +12,7 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
-## v0.9.0 — 2026-08-13 (alpha)
+## v0.4.0 — 2026-08-13 (alpha)
 
 **Club units, moderation replies, and student experience**
 
@@ -46,7 +46,7 @@ Clubs can now model their real internal structure, feedback you send gets a repl
 
 - **deps** — Aligned the Convex workspace to 1.43. ([`afbdc4e`](https://github.com/virajdas/ia-app/commit/afbdc4e))
 
-## v0.8.0 — 2026-08-11 (alpha)
+## v0.3.0 — 2026-08-11 (alpha)
 
 **Calendar-first schedules and a cleaner feed**
 
@@ -75,7 +75,7 @@ School day plans moved onto a real calendar, the announcement feed was flattened
 - **web** — Mobile safe area insets are respected, and toasts stay clear of the navigation bar. ([`9fb2e60`](https://github.com/virajdas/ia-app/commit/9fb2e60))
 - **ui** — Restored alert action contrast and kept custom surface text readable. ([`1d4490f`](https://github.com/virajdas/ia-app/commit/1d4490f))
 
-## v0.7.0 — 2026-08-09 (alpha)
+## v0.2.0 — 2026-08-09 (alpha)
 
 **Club hierarchies, threads, and the security pass**
 
@@ -101,7 +101,7 @@ Clubs gained arbitrary internal hierarchies, replies were separated from threads
 
 - **security** — Remediated the 2026-08-09 audit: route and role hardening, private club and channel access, upload ownership checks, and abuse throttles. ([`7cf1716`](https://github.com/virajdas/ia-app/commit/7cf1716))
 
-## v0.6.0 — 2026-08-08 (alpha)
+## v0.1.0 — 2026-08-08 (alpha)
 
 **Search, schedule imports, and push notifications**
 

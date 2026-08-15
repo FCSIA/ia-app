@@ -403,10 +403,14 @@ function nextVersion(current, changes, flags) {
   if (flags.minor) return `${major}.${minor + 1}.0`;
   if (flags.patch) return `${major}.${minor}.${patch + 1}`;
 
-  // While the major version is 0 a breaking change is not a major bump; it is
-  // still the minor position that signals "this release is not just fixes".
-  const notable = changes.some((change) => change.breaking || change.category === "Added");
-  return notable ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+  // Default to a patch. During alpha most releases add something, so bumping
+  // the minor for every `Added` entry marches the version toward 1.0 far
+  // faster than the product is actually maturing — a number students read as
+  // a progress bar. A minor is a milestone someone decides to call, with
+  // `--minor`. A breaking change still forces one, because that is a fact
+  // about the release rather than a judgement about it.
+  const breaking = changes.some((change) => change.breaking);
+  return breaking ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
 }
 
 function buildRelease(log, flags) {

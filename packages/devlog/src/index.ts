@@ -25,11 +25,11 @@ export { RELEASE_CHANNEL, RELEASES };
 /** Newest release, or `undefined` before the first release is cut. */
 export const CURRENT_RELEASE: Release | undefined = RELEASES[0];
 
-/** Version the running build reports, e.g. `0.9.0`. */
+/** Version the running build reports, e.g. `0.4.0`. */
 export const APP_VERSION = CURRENT_RELEASE?.version ?? '0.0.0';
 
 /**
- * Human label for a version, e.g. `v0.9.0 alpha`. Stable channels drop the
+ * Human label for a version, e.g. `v0.4.0 alpha`. Stable channels drop the
  * suffix because "stable" is the absence of a qualifier, not a badge.
  */
 export function formatVersion(
