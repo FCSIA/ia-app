@@ -30,7 +30,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardGroup } from '@/components/ui/card';
 import {
@@ -347,18 +346,11 @@ function GroupWorkspaceBody({
                     .filter((person): person is GroupPerson => Boolean(person));
                   return (
                     <div key={cluster.key} className="px-3 py-2.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{cluster.className}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Period {cluster.periodNumber}
-                          </p>
-                        </div>
-                        <Badge color={cluster.everyoneShared ? 'orange' : 'gray'} size="sm">
-                          {cluster.everyoneShared
-                            ? 'Everyone'
-                            : `${cluster.attendeeUserIds.length} of ${cluster.participantCount}`}
-                        </Badge>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{cluster.className}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Period {cluster.periodNumber}
+                        </p>
                       </div>
                       <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
                         {attendees.map((person) => person.firstName).join(', ')}
