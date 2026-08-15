@@ -68,12 +68,8 @@ export default function CoursesPage() {
     { initialNumItems: 40 },
   );
   const isLoading = coursesStatus === 'LoadingFirstPage';
-  const filterCourses = useQuery(api.courses.catalog.list, { limit: 500 }) ?? [];
-
-  const departments = useMemo(
-    () => Array.from(new Set(filterCourses.map((course) => course.department))).sort(),
-    [filterCourses],
-  );
+  const catalogMetadata = useQuery(api.courses.catalog.listDepartments, {});
+  const departments = catalogMetadata?.departments ?? [];
 
   const apCourseCount = useMemo(
     () => courses.filter((course) => course.catalogSource !== 'COURSE_CATALOG').length,

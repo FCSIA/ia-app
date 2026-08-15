@@ -25,7 +25,7 @@ import {
   authComponent,
   createAuth,
 } from "../auth";
-import { incrementUserCounts } from "../stats";
+import { getStoredUserCount, incrementUserCounts, replaceUserCounts } from "../stats";
 import {
   classifyRoles,
   createLinkedUser,
@@ -152,6 +152,11 @@ export const count = query({
 
     const roleGroup = args.roleGroup ?? "all";
 
+    const storedCount = await getStoredUserCount(ctx, roleGroup);
+    if (storedCount !== null) return storedCount;
+
+    // Old deployments do not have the newer role-group counters yet. Keep the
+    // count exact until `internal.stats.rebuildUserCounts` runs once.
     const users =
       roleGroup === "students"
         ? await ctx.db
@@ -779,11 +784,14 @@ export const assignRoles = mutation({
       }
     }
 
+    const nextRoleFlags = classifyRoles(nextRoles as any);
     await ctx.db.patch(target._id, {
       roles: nextRoles as any,
-      ...classifyRoles(nextRoles as any),
+      ...nextRoleFlags,
       updatedAt: Date.now(),
     });
+
+    await replaceUserCounts(ctx, target, { ...target, ...nextRoleFlags });
 
     const updatedRolesTarget = { ...target, roles: nextRoles as any };
     await syncBetterAuthRole(ctx, updatedRolesTarget);

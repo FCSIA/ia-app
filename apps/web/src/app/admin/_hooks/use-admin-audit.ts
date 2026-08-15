@@ -74,11 +74,10 @@ export function useAdminAudit(activeTab: AdminTabId) {
     return auditEvents.filter((e) => !FLEX_ENTITY_TYPES.includes(e.entityType));
   }, [auditEvents, auditSubView]);
 
-  const auditFilterSource =
-    (useQuery(
-      api.audit.events.list,
-      activeTab === 'audit' ? { limit: 500 } : 'skip',
-    )) ?? [];
+  const auditFilterOptions = useQuery(
+    api.audit.events.listFilterOptions,
+    activeTab === 'audit' ? {} : 'skip',
+  );
 
   const auditEventDetail = useQuery(
     api.audit.events.get,
@@ -89,13 +88,13 @@ export function useAdminAudit(activeTab: AdminTabId) {
   const isAuditDetailLoading = !!selectedAuditEventId && auditEventDetail === undefined;
 
   const auditActionOptions = useMemo(
-    () => Array.from(new Set(auditFilterSource.map((event) => event.action))).sort(),
-    [auditFilterSource],
+    () => auditFilterOptions?.actions ?? [],
+    [auditFilterOptions],
   );
 
   const auditEntityTypeOptions = useMemo(
-    () => Array.from(new Set(auditFilterSource.map((event) => event.entityType))).sort(),
-    [auditFilterSource],
+    () => auditFilterOptions?.entityTypes ?? [],
+    [auditFilterOptions],
   );
 
   const hasActiveAuditFilters =

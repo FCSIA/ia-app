@@ -83,6 +83,14 @@ export const config = {
      * - manifest.json (PWA manifest)
      * - sw.js (Service worker)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)',
+    {
+      source: '/((?!api|_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)',
+      // Router prefetches do not need a second server-side redirect decision.
+      // The destination's Convex functions remain the authorization boundary.
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
   ],
 };

@@ -1,5 +1,9 @@
 import { convexBetterAuthNextJs } from '@convex-dev/better-auth/nextjs';
 
+function isUnauthenticatedError(error: unknown) {
+  return error instanceof Error && /unauthenticated/i.test(error.message);
+}
+
 const convexUrl =
   process.env.NEXT_PUBLIC_CONVEX_URL ??
   process.env.CONVEX_URL ??
@@ -31,4 +35,11 @@ export const { handler, getToken, isAuthenticated, fetchAuthQuery, fetchAuthMuta
   convexBetterAuthNextJs({
     convexUrl,
     convexSiteUrl,
+    // Cache a short-lived Convex JWT for server-rendered auth queries. If the
+    // token has become stale, the integration obtains a fresh token and
+    // retries only authentication failures.
+    jwtCache: {
+      enabled: true,
+      isAuthError: isUnauthenticatedError,
+    },
   });

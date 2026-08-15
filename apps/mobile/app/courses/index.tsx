@@ -47,7 +47,7 @@ export default function CoursesScreen() {
   const [grade, setGrade] = useState<(typeof grades)[number]>("ALL");
   const [department, setDepartment] = useState("ALL");
 
-  const allCourses = useQuery(api.courses.catalog.list, { limit: 500 });
+  const catalogMetadata = useQuery(api.courses.catalog.listDepartments, {});
   const courses = useQuery(api.courses.catalog.list, {
     q: query.trim() || undefined,
     pathway: pathway === "ALL" ? undefined : pathway,
@@ -57,8 +57,8 @@ export default function CoursesScreen() {
   });
 
   const departments = useMemo(
-    () => ["ALL", ...Array.from(new Set((allCourses ?? []).map((course: any) => course.department))).sort()],
-    [allCourses],
+    () => ["ALL", ...(catalogMetadata?.departments ?? [])],
+    [catalogMetadata],
   );
 
   return (

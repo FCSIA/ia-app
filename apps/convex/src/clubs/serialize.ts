@@ -55,7 +55,6 @@ export const visibleClubChannelValidator = v.object({
   viewerCanRead: v.boolean(),
   viewerCanPost: v.boolean(),
   memberships: v.array(v.object({ userId: v.id("users") })),
-  _count: v.object({ messages: v.number() }),
 });
 
 export const workspaceClubChannelValidator = v.object({
@@ -149,15 +148,20 @@ export async function clubSummaryWithCounts(
   ctx: QueryCtx,
   club: Doc<"clubs">,
   role?: string | null,
+  counts?: { members?: number; channels?: number },
 ) {
-  const members = await ctx.db
-    .query("clubMembers")
-    .withIndex("by_clubId", (q) => q.eq("clubId", club._id))
-    .collect();
-  const channels = await ctx.db
-    .query("clubChannels")
-    .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
-    .collect();
+  const memberCount = counts?.members ?? (
+    await ctx.db
+      .query("clubMembers")
+      .withIndex("by_clubId", (q) => q.eq("clubId", club._id))
+      .collect()
+  ).length;
+  const channelCount = counts?.channels ?? (
+    await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
+      .collect()
+  ).length;
 
   return {
     _id: club._id,
@@ -176,8 +180,8 @@ export async function clubSummaryWithCounts(
     updatedAt: club.updatedAt,
     role: role ?? null,
     _count: {
-      members: members.length,
-      channels: channels.length,
+      members: memberCount,
+      channels: channelCount,
     },
   };
 }
@@ -203,13 +207,6 @@ export async function getVisibleChannels(
     const viewer = await toChannelViewerState(ctx, channelDoc, context, userId);
     if (!viewer.viewerCanRead) continue;
 
-    const messages = await ctx.db
-      .query("clubChannelMessages")
-      .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
-        q.eq("channelId", channel._id).eq("parentMessageId", undefined),
-      )
-      .take(500);
-
     result.push({
       _id: channel._id,
       _creationTime: channel._creationTime,
@@ -232,13 +229,15 @@ export async function getVisibleChannels(
       updatedAt: channel.updatedAt,
       ...viewer,
       memberships: memberships.map((m) => ({ userId: m.userId })),
-      _count: { messages: messages.length },
     });
   }
-  return result.sort(
-    (a, b) =>
-      (a.position ?? Number.MAX_SAFE_INTEGER) -
-        (b.position ?? Number.MAX_SAFE_INTEGER) ||
-      a.createdAt - b.createdAt,
-  );
+  return {
+    channels: result.sort(
+      (a, b) =>
+        (a.position ?? Number.MAX_SAFE_INTEGER) -
+          (b.position ?? Number.MAX_SAFE_INTEGER) ||
+        a.createdAt - b.createdAt,
+    ),
+    totalCount: channels.length,
+  };
 }

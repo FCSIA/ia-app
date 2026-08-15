@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { disabledAdminHttpPaths } from "./auth";
+import { disabledAdminHttpPaths, sessionCookieCache } from "./auth";
 
 const sensitiveAdminPaths = [
   "/admin/set-role",
@@ -20,5 +20,13 @@ const sensitiveAdminPaths = [
 describe("Better Auth HTTP hardening", () => {
   test.each(sensitiveAdminPaths)("disables %s", (path) => {
     expect(disabledAdminHttpPaths).toContain(path);
+  });
+
+  test("uses a short, signed session cache without changing Convex authorization", () => {
+    expect(sessionCookieCache).toEqual({
+      enabled: true,
+      maxAge: 60,
+      strategy: "compact",
+    });
   });
 });
