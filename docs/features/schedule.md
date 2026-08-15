@@ -23,8 +23,8 @@ and special-day plans without rewriting student course choices.
   immediately when another active student redeems them.
 - Accepted friends can compare public schedules.
 - Students can organize accepted friends into private comparison groups, see
-  exact shared-class subsets, and compare one friend's public schedule beside
-  their own.
+  exact shared-course subsets plus shared lunch periods, and compare one
+  friend's public schedule beside their own.
 - Admins create reusable regular, special, and no-school templates, reorder canonical periods, and change block times.
 - Students choose a saved 12-hour or 24-hour display format from Profile settings; AM/PM is the default for every account.
 - Every in-range Monday–Thursday inherits the required default regular template unless an administrator assigns another template or creates a custom date plan.

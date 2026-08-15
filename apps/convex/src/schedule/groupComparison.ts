@@ -1,4 +1,4 @@
-import type { ScheduleWeekday } from "../validators";
+import type { ScheduleLunchPeriod, ScheduleWeekday } from "../validators";
 
 export type GroupComparisonEntry<TCourseId extends string = string> = {
   /** Legacy copies may identify the weekday, but comparisons are period-based. */
@@ -6,6 +6,8 @@ export type GroupComparisonEntry<TCourseId extends string = string> = {
   periodNumber: number;
   courseId: TCourseId | null;
   className: string;
+  /** Lunch is a shared schedule slot, not a manually named course. */
+  kind?: "LUNCH";
 };
 
 export type GroupComparisonParticipant<
@@ -40,10 +42,27 @@ export function normalizeManualClassName(value: string) {
 export function scheduleComparisonKey<TCourseId extends string>(
   entry: GroupComparisonEntry<TCourseId>,
 ) {
+  if (entry.kind === "LUNCH") return `${entry.periodNumber}:lunch`;
   const classIdentity = entry.courseId
     ? `course:${entry.courseId}`
     : `manual:${normalizeManualClassName(entry.className)}`;
   return `${entry.periodNumber}:${classIdentity}`;
+}
+
+export function withLunchComparisonEntry<TCourseId extends string>(
+  entries: readonly GroupComparisonEntry<TCourseId>[],
+  lunchPeriod: ScheduleLunchPeriod | null,
+): GroupComparisonEntry<TCourseId>[] {
+  if (!lunchPeriod) return [...entries];
+  return [
+    ...entries,
+    {
+      kind: "LUNCH",
+      periodNumber: lunchPeriod === "PERIOD_4" ? 4 : 5,
+      courseId: null,
+      className: "Lunch",
+    },
+  ];
 }
 
 export function clusterSharedClasses<
