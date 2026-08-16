@@ -10,6 +10,7 @@ import { authClient } from '@/lib/auth-client';
 import { convex } from '@/lib/convex';
 import { customThemeEnabled } from '@/lib/theme-features';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
+import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export const CUSTOM_BG_STORAGE_KEY = 'ia_custom_bg_image';
@@ -238,6 +239,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
       >
         <CustomThemeBootstrap />
+        <PushSubscriptionSync />
         <Suspense fallback={null}>
           <AuthenticatedRouteBoundary>
             <NavigationLoadingProvider>{children}</NavigationLoadingProvider>

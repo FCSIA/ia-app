@@ -3,6 +3,7 @@ import { Work_Sans } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/toaster';
+import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
 
 const workSans = Work_Sans({ subsets: ['latin'], variable: '--font-work-sans' });
 
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className={`${workSans.variable} font-sans`} suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
