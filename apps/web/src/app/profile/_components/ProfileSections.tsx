@@ -8,12 +8,16 @@ import {
   LogOut,
   Palette,
   ShieldAlert,
+  Sparkles,
   User,
   type LucideIcon,
 } from 'lucide-react';
 import { z } from 'zod';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DevlogList } from '@/components/devlog/devlog-list';
+import { AppVersionStamp } from '@/components/devlog/devlog-version';
 import type { NotificationCategoryOption } from '@/components/notifications/notification-category-options';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -128,7 +132,12 @@ type ChangePasswordCardProps = {
   onSubmit: (data: { currentPassword: string; newPassword: string }) => void;
 };
 
-export type ProfileSection = 'account' | 'notifications' | 'appearance' | 'moderation';
+export type ProfileSection =
+  | 'account'
+  | 'notifications'
+  | 'appearance'
+  | 'moderation'
+  | 'whats-new';
 
 const PROFILE_SECTIONS: Array<{
   id: ProfileSection;
@@ -139,12 +148,14 @@ const PROFILE_SECTIONS: Array<{
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
+  { id: 'whats-new', label: "What's new", icon: Sparkles },
 ];
 
 type ProfileSidebarProps = {
   activeSection: ProfileSection;
   canSeeModeration: boolean;
   onSectionChange: (section: ProfileSection) => void;
+  unseenReleases: number;
   user: AppUser | null;
 };
 
@@ -152,6 +163,7 @@ export function ProfileSidebar({
   activeSection,
   canSeeModeration,
   onSectionChange,
+  unseenReleases,
   user,
 }: ProfileSidebarProps) {
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Profile';
@@ -179,20 +191,32 @@ export function ProfileSidebar({
       <Separator />
       <CardContent className="p-2">
         <nav aria-label="Profile settings" className="flex flex-col gap-1">
-          {visibleSections.map(({ id, label, icon }) => (
-            <Button
-              key={id}
-              type="button"
-              variant={activeSection === id ? 'secondary' : 'ghost'}
-              size="md"
-              leadingIcon={icon}
-              className="w-full justify-start"
-              aria-current={activeSection === id ? 'page' : undefined}
-              onClick={() => onSectionChange(id)}
-            >
-              {label}
-            </Button>
-          ))}
+          {visibleSections.map(({ id, label, icon }) => {
+            const unread = id === 'whats-new' ? unseenReleases : 0;
+
+            return (
+              <Button
+                key={id}
+                type="button"
+                variant={activeSection === id ? 'secondary' : 'ghost'}
+                size="md"
+                leadingIcon={icon}
+                className="w-full justify-start"
+                aria-current={activeSection === id ? 'page' : undefined}
+                // The count is decoration; keep it out of the accessible name
+                // and say what it means instead.
+                aria-label={unread > 0 ? `${label}, ${unread} unread` : undefined}
+                onClick={() => onSectionChange(id)}
+              >
+                <span className="flex-1 text-left">{label}</span>
+                {unread > 0 ? (
+                  <Badge size="sm" color="blue" aria-hidden>
+                    {unread}
+                  </Badge>
+                ) : null}
+              </Button>
+            );
+          })}
         </nav>
       </CardContent>
     </Card>
@@ -504,6 +528,25 @@ export function AppearanceCard({
           onCheckedChange={onUse24HourTimeChange}
           aria-label="Use 24-hour time"
         />
+      </div>
+    </SettingsCard>
+  );
+}
+
+export function WhatsNewCard() {
+  return (
+    <SettingsCard
+      icon={Sparkles}
+      title="What's new"
+      description="Every update to the app, newest first. The app is in alpha, so this list moves quickly."
+      contentClassName="flex flex-col gap-5"
+    >
+      <DevlogList />
+      <div className="border-t border-border/60 pt-3">
+        <AppVersionStamp />
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          Include this version when you report a problem so we know which build you were on.
+        </p>
       </div>
     </SettingsCard>
   );

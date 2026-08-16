@@ -58,6 +58,11 @@ without explicit authorization.
 - Commit coherent slices regularly.
 - Use `subsystem: concise change` subjects.
 - Do not stage or revert unrelated work.
+- Student-visible changes carry a `Devlog:` trailer with the sentence students
+  should read. Commit subjects become the in-app devlog; see
+  `docs/reference/versioning.md`.
+- `CHANGELOG.md` and `packages/devlog/src/releases.generated.ts` are generated.
+  Edit `packages/devlog/data/releases.json` and run `pnpm devlog:generate`.
 
 ## Verification
 

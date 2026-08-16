@@ -14,6 +14,8 @@ same change.
   seed/reset, and demo accounts.
 - [Student contributor review](reference/contributor-review.md) - untrusted pull-request
   boundaries, maintainer review, and the Codex Security CLI enablement gate.
+- [Versioning and the devlog](reference/versioning.md) - what the version means,
+  how a release is cut, and how commits become the changelog students read.
 - [Architecture overview](architecture/overview.md) - how the web app, Convex
   backend, auth, storage, and deployment fit together.
 - [Azure portability review](architecture/azure-portability.md) - backend
@@ -67,6 +69,7 @@ same change.
 - [[roles-and-permissions]] — All 8 user roles and what they can do
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do
+- [[versioning]] — Version scheme, release cutting, and the in-app devlog
 
 ## Database
 

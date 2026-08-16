@@ -17,6 +17,18 @@ tags: [commands, development]
 | `pnpm build`            | Build all workspaces                                      |
 | `pnpm test`             | Run test suites                                           |
 
+## Release log
+
+| Command                | What it does                                                  |
+| ---------------------- | ------------------------------------------------------------- |
+| `pnpm devlog:check`    | Verify `CHANGELOG.md` and the in-app devlog match the source   |
+| `pnpm devlog:preview`  | Show the release the current commits would produce             |
+| `pnpm devlog:generate` | Regenerate both outputs after editing `releases.json` by hand  |
+| `pnpm devlog:cut`      | Cut the next version locally (`--minor`, `--patch`, `--set=`)  |
+
+See [versioning and the devlog](versioning.md) for the version scheme and how
+commit subjects become changelog entries.
+
 Temporary public URL for any local port:
 
 ```bash
@@ -25,8 +37,11 @@ pnpm dlx localtunnel --port <PORT>
 
 ## Deploy
 
-Pushes to `main` deploy the web app to Vercel production via
-[`.github/workflows/vercel-production.yml`](../../.github/workflows/vercel-production.yml).
+[`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys an
+existing `vMAJOR.MINOR.PATCH` tag whose commit has already merged into `main`.
+Prepare the generated release data in a normal PR, merge it, then push the
+matching tag. Manual dispatch only retries an existing validated tag; the
+workflow never writes to `main`.
 
 Production URL: `https://ia-app-alpha.vercel.app`
 

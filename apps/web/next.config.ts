@@ -33,7 +33,19 @@ export const globalSecurityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), microphone=()' },
 ];
 
+// The devlog reports the released version from `@ia/devlog`; this pins the
+// exact build behind it so a bug report identifies one deployment.
+const buildCommit = (
+  process.env.NEXT_PUBLIC_APP_COMMIT ??
+  process.env.VERCEL_GIT_COMMIT_SHA ??
+  ''
+).slice(0, 7);
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_COMMIT: buildCommit,
+  },
+
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {
     return [

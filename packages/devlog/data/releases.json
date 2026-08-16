@@ -1,0 +1,305 @@
+{
+  "channel": "alpha",
+  "releases": [
+    {
+      "version": "0.4.0",
+      "date": "2026-08-13",
+      "title": "Club units, moderation replies, and student experience",
+      "summary": "Clubs can now model their real internal structure, feedback you send gets a reply, and schedules, collaboration, and Wrapped were reworked around how students actually use them.",
+      "commit": "b30e21c",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Clubs can build their own internal units with unit-aware channel policies, and unit channels are created automatically.",
+          "commit": "b371ea3"
+        },
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Club managers can add authorized members directly instead of waiting for a join request.",
+          "commit": "59ddc2a"
+        },
+        {
+          "category": "Added",
+          "scope": "moderation",
+          "summary": "Feedback you submit now notifies you when it is resolved, and dismissed feedback is archived rather than lost.",
+          "commit": "c11f24e"
+        },
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Schedules, collaboration, and Wrapped were reworked into one student experience pass.",
+          "commit": "b30e21c",
+          "pr": 88
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Channels nest under their parent rows, workspace navigation is resizable, and the composer stays pinned to the bottom of the workspace.",
+          "commit": "e81628d"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Switching channels keeps the workspace mounted, so the club you are in no longer flashes on every jump.",
+          "commit": "10ecbd0"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Channel controls appear on hover, and club settings sections are visible instead of buried.",
+          "commit": "2461375"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Role settings and structure editing are clearer to configure.",
+          "commit": "7dcb6f9"
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "The mobile navigation drawer respects device safe areas.",
+          "commit": "e465c07"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Repaired the nested channel layout.",
+          "commit": "2418481"
+        },
+        {
+          "category": "Security",
+          "scope": "auth",
+          "summary": "Impersonation HTTP routes are disabled, and supervised impersonation is limited to authorized staff.",
+          "commit": "efa0a9f"
+        },
+        {
+          "category": "Security",
+          "scope": "web",
+          "summary": "Custom themes are disabled in production while the editor is reviewed.",
+          "commit": "2258821"
+        },
+        {
+          "category": "Internal",
+          "scope": "deps",
+          "summary": "Aligned the Convex workspace to 1.43.",
+          "commit": "afbdc4e"
+        }
+      ]
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-08-11",
+      "title": "Calendar-first schedules and a cleaner feed",
+      "summary": "School day plans moved onto a real calendar, the announcement feed was flattened, and new accounts start in dark mode.",
+      "commit": "e777877",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Day plans are calendar-first: templates drive Monday–Thursday inheritance and special days are assigned by date.",
+          "commit": "11edeef"
+        },
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Friend search now spans grades, so you can find people outside your own year.",
+          "commit": "67d4313"
+        },
+        {
+          "category": "Added",
+          "scope": "feedback",
+          "summary": "You can attach images to a report.",
+          "commit": "51a6af8"
+        },
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Club leads can remove members, and superadmins can delete a club outright.",
+          "commit": "d82e984"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "The feed is flatter, with clearer filters, card states, and unread treatment.",
+          "commit": "ae3be14"
+        },
+        {
+          "category": "Improved",
+          "scope": "theme",
+          "summary": "New accounts default to dark mode.",
+          "commit": "43b5240"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Installed-app layout fixes for search, notifications, and chat on phones.",
+          "commit": "3aa6388"
+        },
+        {
+          "category": "Improved",
+          "scope": "admin",
+          "summary": "Feedback is separated from moderation reports in the admin panel.",
+          "commit": "52a842f"
+        },
+        {
+          "category": "Fixed",
+          "scope": "auth",
+          "summary": "Restored dynamic base URL resolution so sign-in works on every deployment host.",
+          "commit": "e777877",
+          "pr": 87
+        },
+        {
+          "category": "Fixed",
+          "scope": "schedule",
+          "summary": "Classes persist across days instead of resetting when you change the date.",
+          "commit": "377b678"
+        },
+        {
+          "category": "Fixed",
+          "scope": "chat",
+          "summary": "Direct messages respect friendship state.",
+          "commit": "9e44157"
+        },
+        {
+          "category": "Fixed",
+          "scope": "uploads",
+          "summary": "Large uploads no longer fail on a Blob slice bounds error.",
+          "commit": "a3a58cf"
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Mobile safe area insets are respected, and toasts stay clear of the navigation bar.",
+          "commit": "9fb2e60"
+        },
+        {
+          "category": "Fixed",
+          "scope": "ui",
+          "summary": "Restored alert action contrast and kept custom surface text readable.",
+          "commit": "1d4490f"
+        }
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-08-09",
+      "title": "Club hierarchies, threads, and the security pass",
+      "summary": "Clubs gained arbitrary internal hierarchies, replies were separated from threads, and the 2026-08-09 security audit findings were remediated.",
+      "commit": "7cf1716",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Clubs support arbitrary internal hierarchies with dedicated hierarchy administration.",
+          "commit": "41fe53f"
+        },
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Inline replies stay in the main timeline; threads are now an explicit action.",
+          "commit": "df07408"
+        },
+        {
+          "category": "Added",
+          "scope": "navigation",
+          "summary": "Compact search in the header, and a swipe gesture that reveals navigation on phones.",
+          "commit": "7f4471f"
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Overhauled superadmin day plans with drag-and-drop block ordering.",
+          "commit": "537a975"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "Simplified the greeting and moved dashboard customization into the header.",
+          "commit": "3e713c7"
+        },
+        {
+          "category": "Improved",
+          "scope": "ui",
+          "summary": "Refreshed the shared interface primitives across the app.",
+          "commit": "2acea5e"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Restored scrolling in club discovery and tightened mobile channel interactions.",
+          "commit": "db5d51a"
+        },
+        {
+          "category": "Security",
+          "scope": "security",
+          "summary": "Remediated the 2026-08-09 audit: route and role hardening, private club and channel access, upload ownership checks, and abuse throttles.",
+          "commit": "7cf1716"
+        }
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-08-08",
+      "title": "Search, schedule imports, and push notifications",
+      "summary": "The first alpha build for the wider student group: global search, screenshot schedule imports, friend links, and browser push.",
+      "commit": "31c9d40",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "search",
+          "summary": "Cmd+K searches people and club channels you have access to.",
+          "commit": "31c9d40",
+          "pr": 72
+        },
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Import your classes from an Infinite Campus screenshot and review the matches before saving.",
+          "pr": 70
+        },
+        {
+          "category": "Added",
+          "scope": "schedule",
+          "summary": "Friend links and private schedule groups.",
+          "commit": "d0394e4",
+          "pr": 75
+        },
+        {
+          "category": "Added",
+          "scope": "notifications",
+          "summary": "Browser push notifications can be activated from notification settings.",
+          "commit": "7b3ee8b",
+          "pr": 73
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "The club directory focuses on your clubs first.",
+          "pr": 69
+        },
+        {
+          "category": "Improved",
+          "scope": "calendar",
+          "summary": "Calendar surfaces follow the active theme.",
+          "pr": 71
+        },
+        {
+          "category": "Fixed",
+          "scope": "web",
+          "summary": "Repaired tab switching in production builds.",
+          "commit": "f62fb8d"
+        },
+        {
+          "category": "Internal",
+          "scope": "docs",
+          "summary": "Established student contribution safety rules and documented client state ownership.",
+          "commit": "32745a3",
+          "pr": 80
+        }
+      ]
+    }
+  ]
+}

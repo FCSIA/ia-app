@@ -9,12 +9,14 @@ import { hasRole, startLogout, useCurrentUser } from '@/lib/auth';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { PROFILE_NOTIFICATION_CATEGORIES } from './_constants';
+import { useSeenRelease } from '@/components/devlog/use-seen-release';
 import {
   AccountSettingsCard,
   AppearanceCard,
   ModerationAlertsCard,
   NotificationPreferencesCard,
   ProfileSidebar,
+  WhatsNewCard,
 } from './_components/ProfileSections';
 import type { PasswordForm, ProfileSection } from './_components/ProfileSections';
 
@@ -40,6 +42,7 @@ export default function ProfilePage() {
   const [savingTimeFormat, setSavingTimeFormat] = useState(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>('account');
   const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
+  const { unseenCount, markSeen } = useSeenRelease();
 
   const changePassword = useMutation(api.users.auth.changePassword);
   const updateTimeFormat = useMutation(api.users.me.updateTimeFormat);
@@ -50,6 +53,11 @@ export default function ProfilePage() {
     .slice(0, 5);
 
   useEffect(() => setMounted(true), []);
+
+  // Reading the section is what marks the release as read.
+  useEffect(() => {
+    if (activeSection === 'whats-new') markSeen();
+  }, [activeSection, markSeen]);
 
   const canSeeModeration =
     hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN') || moderationAlerts.length > 0;
@@ -164,6 +172,7 @@ export default function ProfilePage() {
           activeSection={visibleSection}
           canSeeModeration={canSeeModeration}
           onSectionChange={setActiveSection}
+          unseenReleases={unseenCount}
         />
         <div>
           {visibleSection === 'account' ? (
@@ -199,6 +208,7 @@ export default function ProfilePage() {
           {visibleSection === 'moderation' && canSeeModeration ? (
             <ModerationAlertsCard alerts={moderationAlerts} />
           ) : null}
+          {visibleSection === 'whats-new' ? <WhatsNewCard /> : null}
         </div>
       </div>
     </AppShell>
