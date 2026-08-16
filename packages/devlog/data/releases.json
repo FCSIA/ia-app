@@ -2,6 +2,110 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.4.1",
+      "date": "2026-08-16",
+      "commit": "f72259c",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "users",
+          "summary": "Add administrator roster import.",
+          "commit": "2cf7fdb",
+          "pr": 92
+        },
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Add role and unit channel access controls.",
+          "commit": "8dd9f37"
+        },
+        {
+          "category": "Improved",
+          "scope": "agents",
+          "summary": "Anti-slop skill.",
+          "commit": "986b189"
+        },
+        {
+          "category": "Improved",
+          "summary": "What's new is easier to scan by update type and area.",
+          "commit": "c587b30",
+          "pr": 89
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Remove-shared-slot-count.",
+          "commit": "c60c3c4"
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Include-shared-lunch-slots.",
+          "commit": "dcf67a7",
+          "pr": 93
+        },
+        {
+          "category": "Improved",
+          "scope": "performance",
+          "summary": "Reduce auth and database reads.",
+          "commit": "824d1d9",
+          "pr": 90
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Streamline compose targeting.",
+          "commit": "5f59b90"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Refine member management controls.",
+          "commit": "9510a9e"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Import CSV unit assignments.",
+          "commit": "1993035"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Remove route and channel tree motion.",
+          "commit": "b7c0e65"
+        },
+        {
+          "category": "Fixed",
+          "scope": "notifications",
+          "summary": "Fix push on iOS PWAs and register service worker.",
+          "commit": "f72259c",
+          "pr": 94
+        },
+        {
+          "category": "Fixed",
+          "summary": "Enable student impersonation and fix exit payload.",
+          "commit": "cca8748",
+          "pr": 91
+        },
+        {
+          "category": "Internal",
+          "summary": "Remove code owners.",
+          "commit": "4ec22e9"
+        },
+        {
+          "category": "Internal",
+          "summary": "Document local demo credentials.",
+          "commit": "c39e4d6"
+        },
+        {
+          "category": "Internal",
+          "summary": "Preserve local demo and theme work.",
+          "commit": "f4b787f"
+        }
+      ]
+    },
+    {
       "version": "0.4.0",
       "date": "2026-08-13",
       "title": "Club units, moderation replies, and student experience",

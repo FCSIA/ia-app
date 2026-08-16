@@ -12,6 +12,36 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.4.1 — 2026-08-16 (alpha)
+
+### Added
+
+- **users** — Add administrator roster import. ([#92](https://github.com/virajdas/ia-app/pull/92), [`2cf7fdb`](https://github.com/virajdas/ia-app/commit/2cf7fdb))
+- **clubs** — Add role and unit channel access controls. ([`8dd9f37`](https://github.com/virajdas/ia-app/commit/8dd9f37))
+
+### Improved
+
+- **agents** — Anti-slop skill. ([`986b189`](https://github.com/virajdas/ia-app/commit/986b189))
+- What's new is easier to scan by update type and area. ([#89](https://github.com/virajdas/ia-app/pull/89), [`c587b30`](https://github.com/virajdas/ia-app/commit/c587b30))
+- **schedule** — Remove-shared-slot-count. ([`c60c3c4`](https://github.com/virajdas/ia-app/commit/c60c3c4))
+- **schedule** — Include-shared-lunch-slots. ([#93](https://github.com/virajdas/ia-app/pull/93), [`dcf67a7`](https://github.com/virajdas/ia-app/commit/dcf67a7))
+- **performance** — Reduce auth and database reads. ([#90](https://github.com/virajdas/ia-app/pull/90), [`824d1d9`](https://github.com/virajdas/ia-app/commit/824d1d9))
+- **announcements** — Streamline compose targeting. ([`5f59b90`](https://github.com/virajdas/ia-app/commit/5f59b90))
+- **clubs** — Refine member management controls. ([`9510a9e`](https://github.com/virajdas/ia-app/commit/9510a9e))
+- **clubs** — Import CSV unit assignments. ([`1993035`](https://github.com/virajdas/ia-app/commit/1993035))
+- **web** — Remove route and channel tree motion. ([`b7c0e65`](https://github.com/virajdas/ia-app/commit/b7c0e65))
+
+### Fixed
+
+- **notifications** — Fix push on iOS PWAs and register service worker. ([#94](https://github.com/virajdas/ia-app/pull/94), [`f72259c`](https://github.com/virajdas/ia-app/commit/f72259c))
+- Enable student impersonation and fix exit payload. ([#91](https://github.com/virajdas/ia-app/pull/91), [`cca8748`](https://github.com/virajdas/ia-app/commit/cca8748))
+
+### Internal
+
+- Remove code owners. ([`4ec22e9`](https://github.com/virajdas/ia-app/commit/4ec22e9))
+- Document local demo credentials. ([`c39e4d6`](https://github.com/virajdas/ia-app/commit/c39e4d6))
+- Preserve local demo and theme work. ([`f4b787f`](https://github.com/virajdas/ia-app/commit/f4b787f))
+
 ## v0.4.0 — 2026-08-13 (alpha)
 
 **Club units, moderation replies, and student experience**
