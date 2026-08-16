@@ -188,7 +188,7 @@ export function ProfileSidebar({
           </div>
         </div>
       </CardHeader>
-      <Separator />
+      <Separator className="mx-5 w-auto" />
       <CardContent className="p-2">
         <nav aria-label="Profile settings" className="flex flex-col gap-1">
           {visibleSections.map(({ id, label, icon }) => {
@@ -292,7 +292,7 @@ export function AccountSettingsCard({
           ))}
         </div>
       </section>
-      <Separator />
+      <Separator className="mx-5 w-auto" />
       <section className="p-5" aria-labelledby="password-heading">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -370,7 +370,7 @@ export function AccountSettingsCard({
           </form>
         ) : null}
       </section>
-      <Separator />
+      <Separator className="mx-5 w-auto" />
       <section className="flex items-center justify-between gap-4 p-5" aria-labelledby="sign-out-heading">
         <div className="min-w-0">
           <h2 id="sign-out-heading" className="text-sm font-semibold">
