@@ -1576,7 +1576,7 @@ export function ChannelWorkspace() {
                         {deferredSearch.trim()
                           ? 'No messages match this search.'
                           : canPost
-                            ? `Start the conversation in #${channel.name}.`
+                            ? `Start the conversation in ${channel.name}.`
                             : `No posts have been shared in #${channel.name} yet.`}
                       </EmptyDescription>
                     </EmptyHeader>
