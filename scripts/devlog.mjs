@@ -306,11 +306,14 @@ function toChange(commit) {
   let scope;
   let category;
   let summary;
-  let breaking = false;
+  // Conventional Commits permits either `feat!:` or a BREAKING CHANGE footer.
+  // The footer lives in the commit body, while the bang is part of the
+  // subject, so inspect both before deciding the automatic alpha bump.
+  let breaking = /^BREAKING(?: |-)?CHANGE:\s*/im.test(commit.body);
 
   if (match) {
     const prefix = match.groups.prefix.toLowerCase();
-    breaking = Boolean(match.groups.breaking);
+    breaking ||= Boolean(match.groups.breaking);
     summary = match.groups.rest.trim();
     if (TYPE_CATEGORY[prefix]) {
       // `fix(schedule): ...` — conventional type with an optional scope.
