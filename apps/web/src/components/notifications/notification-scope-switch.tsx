@@ -123,7 +123,9 @@ export function NotificationScopeSwitch({
         disabled={disabled}
         wrapperClassName="min-w-0 flex-1"
       />
-      {locked ? <Lock className="size-4 shrink-0 text-muted-foreground" /> : null}
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        {locked ? <Lock className="size-4 text-muted-foreground" /> : null}
+      </span>
     </div>
   );
 }

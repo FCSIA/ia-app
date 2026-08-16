@@ -8,7 +8,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, BellDot, CheckCheck, Inbox, SearchX, Settings } from 'lucide-react';
+import { Bell, BellDot, Inbox, Mail, MailOpen, SearchX, Settings } from 'lucide-react';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
@@ -114,34 +114,29 @@ export default function NotificationsPage() {
     <AppShell>
       <PageFrame className="pt-0">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 flex items-center gap-2">
-                <Badge variant="solid" size="sm" color={hasUnread ? 'blue' : 'green'}>
-                  {hasUnread ? `${unreadCount} unread` : 'Clear'}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{notifications.length} total</span>
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Notifications</h1>
-            </div>
-            <Button
-              variant="tertiary"
-              size="sm"
-              onClick={handleMarkAllRead}
-              loading={markingAll}
-              disabled={!hasUnread}
-              leadingIcon={CheckCheck}
-              className="w-full sm:w-fit"
-            >
-              Mark all read
-            </Button>
-          </div>
-
           <Tabs defaultValue="inbox" className="w-full">
-            <TabsList>
-              <TabItem value="inbox" icon={Bell} label="Inbox" />
-              <TabItem value="settings" icon={Settings} label="Settings" />
-            </TabsList>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                Notifications
+              </h1>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <TabsList>
+                  <TabItem value="inbox" icon={Bell} label="Inbox" />
+                  <TabItem value="settings" icon={Settings} label="Settings" />
+                </TabsList>
+                <Button
+                  variant="tertiary"
+                  size="icon-sm"
+                  onClick={handleMarkAllRead}
+                  loading={markingAll}
+                  disabled={!hasUnread}
+                  aria-label="Mark all notifications as read"
+                  title="Mark all notifications as read"
+                >
+                  {hasUnread ? <MailOpen /> : <Mail />}
+                </Button>
+              </div>
+            </div>
             <TabPanel value="inbox" className="mt-5">
               <div>
                 <section className="min-w-0">
@@ -155,7 +150,7 @@ export default function NotificationsPage() {
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
                         ? `${filteredNotifications.length} of ${notifications.length}`
-                        : `${notifications.length} notifications`}
+                        : `${hasUnread ? `${unreadCount} unread` : 'All read'} · ${notifications.length} total`}
                     </span>
                   </div>
 
