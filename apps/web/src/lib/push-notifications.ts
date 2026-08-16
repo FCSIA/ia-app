@@ -1,3 +1,5 @@
+import { isIosDevice, isStandaloneDisplay } from '@/lib/pwa';
+
 type PushSubscriptionPayload = {
   endpoint: string;
   keys: {
@@ -15,6 +17,21 @@ export function browserSupportsPush() {
   );
 }
 
+/**
+ * Why push is or isn't available here.
+ *
+ * `needs-ios-install` is the case that matters most in practice: iOS only
+ * exposes the Push API to Home Screen web apps, so a Safari tab is not a
+ * permanent "unsupported" — it's a prompt to install.
+ */
+export type PushAvailability = 'supported' | 'needs-ios-install' | 'unsupported';
+
+export function pushAvailability(): PushAvailability {
+  if (browserSupportsPush()) return 'supported';
+  if (isIosDevice() && !isStandaloneDisplay()) return 'needs-ios-install';
+  return 'unsupported';
+}
+
 export async function getServiceWorkerRegistration() {
   if (!browserSupportsPush()) return null;
   const existing = await navigator.serviceWorker.getRegistration();
@@ -25,6 +42,31 @@ export async function getServiceWorkerRegistration() {
 export function permissionState() {
   if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
   return Notification.permission;
+}
+
+/**
+ * Ask for notification permission.
+ *
+ * MUST be called synchronously from inside the click handler. WebKit requires
+ * transient user activation for this call, and awaiting anything beforehand
+ * (a service worker lookup, a Convex query) spends that activation and makes
+ * the request fail on iOS. Callers therefore invoke this first and await the
+ * returned promise afterwards.
+ */
+export function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return Promise.resolve('denied');
+  }
+  if (Notification.permission !== 'default') {
+    return Promise.resolve(Notification.permission);
+  }
+
+  // Older WebKit only supports the callback form and returns undefined.
+  const result = Notification.requestPermission();
+  if (result && typeof result.then === 'function') return result;
+  return new Promise((resolve) => {
+    Notification.requestPermission(resolve);
+  });
 }
 
 export function subscriptionToPayload(subscription: PushSubscription): PushSubscriptionPayload {
@@ -53,24 +95,49 @@ export function urlBase64ToUint8Array(value: string) {
   return output;
 }
 
-export async function subscribeBrowserToPush(publicKey: string) {
-  const registration = await getServiceWorkerRegistration();
-  if (!registration) throw new Error('This browser does not support push notifications.');
+/**
+ * Whether an existing subscription was created with the VAPID key we now use.
+ *
+ * If the server key is rotated, the browser keeps handing back the old
+ * subscription while the push service rejects every send against it, so the
+ * device goes quiet with no visible error. Detecting the mismatch lets us
+ * resubscribe instead.
+ */
+function subscriptionMatchesKey(subscription: PushSubscription, applicationServerKey: Uint8Array) {
+  const current = subscription.options?.applicationServerKey;
+  // Browser doesn't expose the key: assume it matches rather than churn subs.
+  if (!current) return true;
 
-  const permission =
-    Notification.permission === 'granted'
-      ? 'granted'
-      : await Notification.requestPermission();
+  const currentBytes = new Uint8Array(current as ArrayBuffer);
+  if (currentBytes.length !== applicationServerKey.length) return false;
+  return currentBytes.every((byte, index) => byte === applicationServerKey[index]);
+}
+
+export async function subscribeBrowserToPush(
+  publicKey: string,
+  permission: NotificationPermission,
+) {
   if (permission !== 'granted') {
     throw new Error('Notification permission was not granted.');
   }
 
+  const registration = await getServiceWorkerRegistration();
+  if (!registration) throw new Error('This browser does not support push notifications.');
+
+  // A subscribe() call against a worker that isn't active yet fails on some
+  // browsers on the very first visit.
+  await navigator.serviceWorker.ready;
+
+  const applicationServerKey = urlBase64ToUint8Array(publicKey);
   const existing = await registration.pushManager.getSubscription();
-  if (existing) return existing;
+  if (existing) {
+    if (subscriptionMatchesKey(existing, applicationServerKey)) return existing;
+    await existing.unsubscribe();
+  }
 
   return registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
+    applicationServerKey,
   });
 }
 
