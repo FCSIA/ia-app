@@ -11,6 +11,8 @@ export type StudentImportResult = {
   }>;
 };
 
+export type AdministratorImportResult = StudentImportResult;
+
 export type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
 
 export type AuditEventRecord = {
