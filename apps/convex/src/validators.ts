@@ -251,6 +251,16 @@ export const clubUnitMemberRoleValidator = v.union(
 
 export type ClubUnitMemberRole = Infer<typeof clubUnitMemberRoleValidator>;
 
+export const clubPeopleGroupRuleKindValidator = v.union(
+  v.literal("ROLE"),
+  v.literal("PERSON"),
+  v.literal("UNIT"),
+);
+
+export type ClubPeopleGroupRuleKind = Infer<
+  typeof clubPeopleGroupRuleKindValidator
+>;
+
 export const clubJoinRequestStatusValidator = v.union(
   v.literal("PENDING"),
   v.literal("APPROVED"),

@@ -22,6 +22,7 @@ import {
   UserPlus,
   UserPen,
   Users,
+  UsersRound,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -761,6 +762,10 @@ export default function ClubPeoplePage() {
   const canRemoveMembers = !!club?.viewer.permissions.removeMembers;
   const canApproveRequests = !!club?.viewer.permissions.manageJoinRequests;
   const canInvite = !!club?.viewer.permissions.inviteMembers;
+  const peopleGroups = useQuery(
+    api.clubs.peopleGroups.list,
+    club ? { clubId } : "skip",
+  );
 
   useEffect(() => {
     if (canAssignRoles && club?.roles.length === 0) {
@@ -780,6 +785,13 @@ export default function ClubPeoplePage() {
   const pendingJoinRequests = club?.pendingJoinRequests ?? [];
   const visibleFilter =
     filter === "requests" && !canApproveRequests ? "all" : filter;
+  const selectedGroupId = visibleFilter.startsWith("group:")
+    ? (visibleFilter.slice(6) as Id<"clubPeopleGroups">)
+    : null;
+  const groupMemberIds = useQuery(
+    api.clubs.peopleGroups.members,
+    selectedGroupId ? { clubId, groupId: selectedGroupId } : "skip",
+  );
 
   const stats = useMemo(() => {
     const people = directory ?? [];
@@ -817,6 +829,19 @@ export default function ClubPeoplePage() {
 
     return result;
   }, [deferredSearch, directory, visibleFilter]);
+
+  const groupPeople = useMemo(() => {
+    const memberIds = new Set(groupMemberIds?.memberIds ?? []);
+    return filterBySearchQuery(
+      (directory ?? []).filter((person) => memberIds.has(person._id)),
+      deferredSearch,
+      (person) => [fullName(person), person.uniqueId, person.roleName],
+    );
+  }, [deferredSearch, directory, groupMemberIds?.memberIds]);
+
+  const selectedGroup = peopleGroups?.groups.find(
+    (group) => group._id === selectedGroupId,
+  );
 
   async function respondToRequest(
     requestId: Id<"clubJoinRequests">,
@@ -905,6 +930,13 @@ export default function ClubPeoplePage() {
                       label={`Requests ${pendingJoinRequests.length}`}
                     />
                   ) : null}
+                  {peopleGroups?.groups.map((group) => (
+                    <TabItem
+                      key={group._id}
+                      value={`group:${group._id}`}
+                      label={group.name}
+                    />
+                  ))}
                 </TabsList>
               </div>
             </Tabs>
@@ -937,7 +969,62 @@ export default function ClubPeoplePage() {
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
-            {visibleFilter === "requests" ? (
+            {visibleFilter.startsWith("group:") ? (
+              selectedGroup ? (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="border-b border-border/60 px-3 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {selectedGroup.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {selectedGroup.description || "People matching this group’s rules"}
+                      </p>
+                    </div>
+                  </div>
+                  {groupPeople.length > 0 ? (
+                    <ScrollArea className="min-h-0 flex-1">
+                      <div className="divide-y divide-border/60">
+                        {groupPeople.map((person) => (
+                          <PersonRow
+                            key={person._id}
+                            person={person}
+                            isCurrentUser={person._id === user?._id}
+                            canAssignRole={canAssignRoles && person.kind === "MEMBER"}
+                            canManageUnits={canManageStructure && person.kind === "MEMBER"}
+                            canRemove={canRemoveMembers && person.kind === "MEMBER"}
+                            canImpersonate={Boolean(
+                              user &&
+                                hasRole(user, "SUPER_ADMIN") &&
+                                !person.roles.some(
+                                  (role) => role === "ADMIN" || role === "SUPER_ADMIN",
+                                ),
+                            )}
+                            onRemove={setRemoveTarget}
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
+                      <UsersRound className="mb-2 size-5 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold text-foreground">No people in this group</h3>
+                      <p className="mt-1 max-w-72 text-xs text-muted-foreground">
+                        Add roles, people, or structure branches to change who appears here.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
+                  <UsersRound className="mb-2 size-5 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">No people groups yet</h3>
+                  <p className="mt-1 max-w-72 text-xs text-muted-foreground">
+                    Create a group to organize people independently from roles and units.
+                  </p>
+                </div>
+              )
+            ) : visibleFilter === "requests" ? (
               pendingJoinRequests.length > 0 ? (
                 <ScrollArea className="min-h-0 flex-1">
                   <div className="divide-y divide-border/60">

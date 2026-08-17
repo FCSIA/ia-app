@@ -17,6 +17,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { useClubId } from "../../club-route";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubStructureActions } from "@/components/clubs/dialogs/hierarchy-dialog";
+import { PeopleGroupsSettings } from "@/components/clubs/people-groups-settings";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -629,13 +630,21 @@ export default function ClubSettingsPage() {
 
                         <div className="flex items-center justify-between gap-4 border-b border-border/70 px-5 py-4">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">
-                              People
-                            </p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              Show {selectedRole.name} as a filter in People.
-                              Hidden roles still appear on member profiles.
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <p className="text-sm font-medium text-foreground">
+                                Make this role a group
+                              </p>
+                              <Tooltip content="This role will appear as a tab in People.">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-compact"
+                                  aria-label="About role groups"
+                                >
+                                  <CircleHelp />
+                                </Button>
+                              </Tooltip>
+                            </div>
                           </div>
                           <Switch
                             aria-label={`Show ${selectedRole.name} as a People group`}
@@ -747,6 +756,8 @@ export default function ClubSettingsPage() {
               </Card>
             </Elevated>
           ) : null}
+
+          {club && canManageRoles ? <PeopleGroupsSettings club={club} /> : null}
         </div>
       </div>
 

@@ -23,6 +23,7 @@ import {
   clubJoinPolicyValidator,
   clubUnitJoinPolicyValidator,
   clubUnitMemberRoleValidator,
+  clubPeopleGroupRuleKindValidator,
   clubJoinRequestStatusValidator,
   clubMentionKindValidator,
   eventStatusValidator,
@@ -727,6 +728,31 @@ export const schema = defineSchema({
     .index("by_tagId", ["tagId"])
     .index("by_tagId_and_userId", ["tagId", "userId"])
     .index("by_userId", ["userId"]),
+
+  clubPeopleGroups: defineTable({
+    clubId: v.id("clubs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    position: v.number(),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clubId_and_position", ["clubId", "position"])
+    .index("by_clubId_and_name", ["clubId", "name"]),
+
+  clubPeopleGroupRules: defineTable({
+    clubId: v.id("clubs"),
+    groupId: v.id("clubPeopleGroups"),
+    kind: clubPeopleGroupRuleKindValidator,
+    roleId: v.optional(v.id("clubRoles")),
+    userId: v.optional(v.id("users")),
+    unitId: v.optional(v.id("clubUnits")),
+    createdAt: v.number(),
+  })
+    .index("by_groupId", ["groupId"])
+    .index("by_clubId_and_groupId", ["clubId", "groupId"])
+    .index("by_groupId_and_kind", ["groupId", "kind"]),
 
   clubChannelMessages: defineTable({
     channelId: v.id("clubChannels"),

@@ -39,6 +39,7 @@ import type * as clubs_hierarchy from "../clubs/hierarchy.js";
 import type * as clubs_hierarchyRules from "../clubs/hierarchyRules.js";
 import type * as clubs_invitations from "../clubs/invitations.js";
 import type * as clubs_management from "../clubs/management.js";
+import type * as clubs_peopleGroups from "../clubs/peopleGroups.js";
 import type * as clubs_rolePermissions from "../clubs/rolePermissions.js";
 import type * as clubs_seed from "../clubs/seed.js";
 import type * as clubs_serialize from "../clubs/serialize.js";
@@ -153,6 +154,7 @@ declare const fullApi: ApiFromModules<{
   "clubs/hierarchyRules": typeof clubs_hierarchyRules;
   "clubs/invitations": typeof clubs_invitations;
   "clubs/management": typeof clubs_management;
+  "clubs/peopleGroups": typeof clubs_peopleGroups;
   "clubs/rolePermissions": typeof clubs_rolePermissions;
   "clubs/seed": typeof clubs_seed;
   "clubs/serialize": typeof clubs_serialize;

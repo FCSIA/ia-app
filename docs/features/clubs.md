@@ -99,6 +99,7 @@ invites or adds people.
 - `api.clubs.shared.listChannelAttachments`
 - `api.search.global.palette`
 - `api.clubs.tags.*`
+- `api.clubs.peopleGroups.*`
 - `api.clubs.hierarchy.*`
 
 ## Data Model
@@ -110,6 +111,7 @@ Core tables:
 - `clubInvites`, `clubJoinRequests`
 - `clubChannels`, `clubChannelMemberships`
 - `clubTags`, `clubTagMembers`
+- `clubPeopleGroups`, `clubPeopleGroupRules`
 - `clubChannelMessages` plus attachments, reactions, poll votes, and mentions
 
 Channel messages keep `body` as a searchable plain-text projection. New rich

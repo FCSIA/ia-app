@@ -121,6 +121,8 @@ export const cleanupDeletedClub = internalMutation({
       sponsors,
       invites,
       joinRequests,
+      peopleGroups,
+      peopleGroupRules,
       channels,
       tags,
       announcements,
@@ -155,6 +157,14 @@ export const cleanupDeletedClub = internalMutation({
         .withIndex("by_clubId_and_status", (q) => q.eq("clubId", args.clubId))
         .take(CLUB_DELETION_BATCH_SIZE),
       ctx.db
+        .query("clubPeopleGroups")
+        .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
+        .take(CLUB_DELETION_BATCH_SIZE),
+      ctx.db
+        .query("clubPeopleGroupRules")
+        .withIndex("by_clubId_and_groupId", (q) => q.eq("clubId", args.clubId))
+        .take(CLUB_DELETION_BATCH_SIZE),
+      ctx.db
         .query("clubChannels")
         .withIndex("by_clubId_and_visibility", (q) =>
           q.eq("clubId", args.clubId),
@@ -181,6 +191,8 @@ export const cleanupDeletedClub = internalMutation({
       ...sponsors,
       ...invites,
       ...joinRequests,
+      ...peopleGroups,
+      ...peopleGroupRules,
     ]) {
       await ctx.db.delete(row._id);
     }
@@ -225,6 +237,8 @@ export const cleanupDeletedClub = internalMutation({
       sponsors,
       invites,
       joinRequests,
+      peopleGroups,
+      peopleGroupRules,
       channels,
       tags,
       announcements,
