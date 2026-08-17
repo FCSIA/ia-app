@@ -7,6 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { useClubId } from '../../../club-route';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubStructureEditor } from '@/components/clubs/dialogs/hierarchy-dialog';
+import { BulkStructureImportDialog } from '@/components/clubs/dialogs/bulk-structure-import-dialog';
 import type { ClubDetail } from '@/components/clubs/types';
 import { Button } from '@/components/ui/button';
 
@@ -40,9 +41,12 @@ export default function ClubStructureSettingsPage() {
       title={title}
       contentClassName="flex flex-col overflow-hidden"
       actions={
-        <Button asChild variant="tertiary" size="sm">
-          <Link href={`/clubs/${clubId}/settings`}>Back to settings</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <BulkStructureImportDialog clubId={clubId} />
+          <Button asChild variant="tertiary" size="sm">
+            <Link href={`/clubs/${clubId}/settings`}>Back to settings</Link>
+          </Button>
+        </div>
       }
     >
       {club ? <ClubStructureEditor club={club} /> : null}

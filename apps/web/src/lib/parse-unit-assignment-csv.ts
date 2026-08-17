@@ -4,6 +4,7 @@ export type UnitAssignmentCsvRow = {
   line: number;
   name: string;
   unit: string;
+  role: string;
 };
 
 /** Parse a two-column CSV with `name` and `unit` headers for club structure imports. */
@@ -21,6 +22,9 @@ export function parseUnitAssignmentCsv(text: string): UnitAssignmentCsvRow[] {
   const unitIndex = headers.findIndex((header) =>
     ["unit", "unitname"].includes(header),
   );
+  const roleIndex = headers.findIndex((header) =>
+    ["role", "position", "clubrole"].includes(header),
+  );
   if (nameIndex === -1 || unitIndex === -1) {
     throw new Error("CSV needs `name` and `unit` columns");
   }
@@ -35,6 +39,7 @@ export function parseUnitAssignmentCsv(text: string): UnitAssignmentCsvRow[] {
       line: index + 2,
       name: row[headers[nameIndex]],
       unit: row[headers[unitIndex]],
+      role: roleIndex === -1 ? "" : cells[roleIndex]?.trim() ?? "",
     };
   });
 }

@@ -12,9 +12,15 @@ describe("parseUnitAssignmentCsv", () => {
         line: 2,
         name: "Janavarthanan, Harshita",
         unit: "Token Invalid 4",
+        role: "",
       },
-      { line: 3, name: "Eniola Famakinwa", unit: "IT" },
+      { line: 3, name: "Eniola Famakinwa", unit: "IT", role: "" },
     ]);
+  });
+
+  it("reads an optional role column", () => {
+    expect(parseUnitAssignmentCsv("name,unit,role\nA Student,Room 1,Room Lead 1"))
+      .toEqual([{ line: 2, name: "A Student", unit: "Room 1", role: "Room Lead 1" }]);
   });
 
   it("requires name and unit headers", () => {

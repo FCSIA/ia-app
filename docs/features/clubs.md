@@ -54,7 +54,17 @@ code after the app confirms the viewer is already a club member.
 - Backend: `apps/convex/src/clubs/`
 - Web routes: `apps/web/src/app/clubs/`
 - Shared components: `apps/web/src/components/clubs/`
-- CSV parser: `apps/web/src/lib/parse-invite-csv.ts`
+- CSV parsers: `apps/web/src/lib/parse-invite-csv.ts`,
+  `apps/web/src/lib/parse-unit-assignment-csv.ts`, and
+  `apps/web/src/lib/parse-club-structure-csv.ts`
+
+Managers can import a structure CSV with `name,parent,kind` from the Club
+structure settings page. A separate People-page assignment CSV accepts
+`name,unit,role`; it creates missing club roles when the manager can manage
+roles, assigns units, and skips rows for people who are not already club
+members. Unit and role changes from one assignment import commit together, and
+bulk-created units honor the club's automatic unit-channel setting. It never
+invites or adds people.
 
 ## Convex Surface
 

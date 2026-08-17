@@ -290,6 +290,91 @@ export const setMemberRole = mutation({
   },
 });
 
+const bulkMemberRoleAssignmentValidator = v.object({
+  memberId: v.id("users"),
+  roleName: v.string(),
+});
+
+export const bulkSetMemberRoles = mutation({
+  args: {
+    clubId: v.id("clubs"),
+    assignments: v.array(bulkMemberRoleAssignmentValidator),
+  },
+  returns: v.object({ assigned: v.number(), skipped: v.number(), createdRoles: v.number() }),
+  handler: async (ctx, args) => {
+    if (args.assignments.length === 0) throw new ConvexError("Add at least one role assignment");
+    if (args.assignments.length > 100) throw new ConvexError("A role CSV can contain up to 100 rows");
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.assignRoles) {
+      throw new ConvexError("You do not have permission to assign club roles");
+    }
+    const memberships = await Promise.all(
+      args.assignments.map((assignment) =>
+        ctx.db.query("clubMembers").withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", args.clubId).eq("userId", assignment.memberId),
+        ).unique(),
+      ),
+    );
+    const roles = await ctx.db.query("clubRoles")
+      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
+      .take(100);
+    const roleByName = new Map(
+      roles.map((role) => [role.name.trim().toLocaleLowerCase(), role._id]),
+    );
+    const now = Date.now();
+    let createdRoles = 0;
+    for (const assignment of args.assignments) {
+      const name = normalizedRoleName(assignment.roleName);
+      if (!name) throw new ConvexError("Every role assignment needs a role");
+      if (roleByName.has(name.toLocaleLowerCase())) continue;
+      if (!context.permissions.manageRoles) {
+        throw new ConvexError(`Role does not exist: ${name}`);
+      }
+      await assertRoleNameAvailable(ctx, args.clubId, name);
+      if (roles.length + createdRoles >= 100) throw new ConvexError("A club can have up to 100 roles");
+      const roleId = await ctx.db.insert("clubRoles", {
+        clubId: args.clubId,
+        name,
+        permissions: NO_CLUB_PERMISSIONS,
+        isDefault: false,
+        showInDirectory: false,
+        position: roles.reduce((position, role) => Math.max(position, (role.position ?? -1) + 1), createdRoles),
+        createdById: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      roleByName.set(name.toLocaleLowerCase(), roleId);
+      createdRoles += 1;
+    }
+    let assigned = 0;
+    let skipped = 0;
+    for (let index = 0; index < args.assignments.length; index += 1) {
+      const membership = memberships[index];
+      if (!membership) {
+        skipped += 1;
+        continue;
+      }
+      const role = roleByName.get(normalizedRoleName(args.assignments[index].roleName).toLocaleLowerCase());
+      if (!role) throw new ConvexError("Role could not be resolved");
+      await ctx.db.patch(membership._id, {
+        roleId: role,
+        role: undefined,
+        customRoleId: undefined,
+      });
+      assigned += 1;
+    }
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "CLUB_MEMBER_ROLES_BULK_SET",
+      entityType: "Club",
+      entityId: args.clubId,
+      meta: { clubId: args.clubId, assigned, skipped, createdRoles },
+    });
+    return { assigned, skipped, createdRoles };
+  },
+});
+
 const clubRoleValidator = v.object({
   _id: v.id("clubRoles"),
   name: v.string(),

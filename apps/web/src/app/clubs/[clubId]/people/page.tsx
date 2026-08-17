@@ -93,9 +93,11 @@ type UnitAssignmentPreview = {
   line: number;
   name: string;
   unit: string;
+  role: string;
   memberId: Id<"users"> | null;
   unitId: Id<"clubUnits"> | null;
   issue: string | null;
+  skipped: boolean;
 };
 
 const subscribeToOrigin = () => () => undefined;
@@ -451,11 +453,13 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
     api.clubs.hierarchy.list,
     open ? { clubId } : "skip",
   );
-  const bulkSetMembers = useMutation(api.clubs.hierarchy.bulkSetMembers);
+  const bulkImportMembers = useMutation(api.clubs.hierarchy.bulkImportMembers);
 
   const previewSummary = useMemo(() => {
     const matched = preview.filter((row) => row.issue === null);
-    return { matched, unresolved: preview.length - matched.length };
+    const skipped = preview.filter((row) => row.skipped);
+    const blocked = preview.length - matched.length - skipped.length;
+    return { matched, skipped, blocked };
   }, [preview]);
 
   const reset = () => {
@@ -492,12 +496,13 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
 
       setPreview(
         rows.map((row) => {
-          if (!row.name || !row.unit) {
+          if (!row.name || (!row.unit && !row.role)) {
             return {
               ...row,
               memberId: null,
               unitId: null,
               issue: "Name and unit are required",
+              skipped: false,
             };
           }
           const members =
@@ -506,19 +511,20 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
             unitByName.get(normalizeAssignmentMatch(row.unit)) ?? [];
           const issue =
             members.length === 0
-              ? "No club member with this name"
+              ? "Skipped — not a club member"
               : members.length > 1
                 ? "Name matches more than one club member"
-                : units.length === 0
+                : row.unit && units.length === 0
                   ? "No active unit with this name"
-                  : units.length > 1
+                  : row.unit && units.length > 1
                     ? "Unit name is ambiguous"
                     : null;
           return {
             ...row,
-            memberId: issue ? null : members[0]._id,
-            unitId: issue ? null : units[0]._id,
+            memberId: issue === "Skipped — not a club member" ? null : members[0]?._id ?? null,
+            unitId: issue || !row.unit ? null : units[0]._id,
             issue,
+            skipped: issue === "Skipped — not a club member",
           };
         }),
       );
@@ -532,20 +538,26 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
   };
 
   const apply = async () => {
-    if (!previewSummary.matched.length || previewSummary.unresolved) return;
+    if (!previewSummary.matched.length || previewSummary.blocked) return;
     setIsApplying(true);
     try {
-      const result = await bulkSetMembers({
+      const unitRows = previewSummary.matched.filter((row) => row.unitId);
+      const roleRows = previewSummary.matched.filter((row) => row.role);
+      const result = await bulkImportMembers({
         clubId,
-        assignments: previewSummary.matched.map((row) => ({
+        unitAssignments: unitRows.map((row) => ({
           memberId: row.memberId!,
           unitId: row.unitId!,
+        })),
+        roleAssignments: roleRows.map((row) => ({
+          memberId: row.memberId!,
+          roleName: row.role,
         })),
         replaceExisting,
       });
       toast({
-        title: "Unit assignments updated",
-        description: `${result.assigned} assigned${result.removed ? `, ${result.removed} previous assignments removed` : ""}`,
+        title: "Assignments updated",
+        description: `${result.assignedUnits} units and ${result.assignedRoles} roles assigned${result.skippedRoles ? `, ${result.skippedRoles} non-members skipped` : ""}${result.removed ? `, ${result.removed} previous assignments removed` : ""}${result.createdRoles ? `, ${result.createdRoles} roles created` : ""}`,
       });
       setOpen(false);
       reset();
@@ -638,9 +650,13 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                 <p className="font-medium text-foreground">
                   {previewSummary.matched.length} ready to assign
                 </p>
-                {previewSummary.unresolved ? (
+                {previewSummary.blocked ? (
                   <p className="text-destructive">
-                    {previewSummary.unresolved} need attention
+                    {previewSummary.blocked} need attention
+                  </p>
+                ) : previewSummary.skipped.length ? (
+                  <p className="text-muted-foreground">
+                    {previewSummary.skipped.length} not in this club will be skipped
                   </p>
                 ) : null}
               </div>
@@ -651,6 +667,7 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                       <TableHead>Line</TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Unit</TableHead>
+                      <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -665,6 +682,7 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                           {row.name || "—"}
                         </TableCell>
                         <TableCell>{row.unit || "—"}</TableCell>
+                        <TableCell>{row.role || "—"}</TableCell>
                         <TableCell
                           className={
                             row.issue ? "text-destructive" : "text-foreground"
@@ -694,7 +712,7 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
             type="button"
             disabled={
               !previewSummary.matched.length ||
-              previewSummary.unresolved > 0 ||
+              previewSummary.blocked > 0 ||
               isApplying
             }
             loading={isApplying}
