@@ -7,6 +7,20 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.6.0",
+    "date": "2026-08-17",
+    "title": "PWA Android notification reliability",
+    "commit": "038d0c8",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "pwa",
+        "summary": "Fix Android push notification delivery.",
+        "commit": "038d0c8"
+      }
+    ]
+  },
+  {
     "version": "0.4.2",
     "date": "2026-08-17",
     "title": "Club structure and leadership imports",

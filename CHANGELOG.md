@@ -12,6 +12,14 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.6.0 — 2026-08-17 (alpha)
+
+**PWA Android notification reliability**
+
+### Fixed
+
+- **pwa** — Fix Android push notification delivery. ([`038d0c8`](https://github.com/virajdas/ia-app/commit/038d0c8))
+
 ## v0.4.2 — 2026-08-17 (alpha)
 
 **Club structure and leadership imports**
