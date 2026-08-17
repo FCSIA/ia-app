@@ -68,12 +68,23 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = new URL(event.notification.data?.url || '/notifications', self.location.origin).href;
 
+  // Compare by origin + pathname to avoid mismatches from query params or
+  // trailing slashes, which is common on Android Chrome PWA.
+  const target = new URL(targetUrl);
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
-        if ('focus' in client && client.url === targetUrl) {
-          return client.focus();
-        }
+        try {
+          const existing = new URL(client.url);
+          if (
+            existing.origin === target.origin &&
+            existing.pathname.replace(/\/$/, '') === target.pathname.replace(/\/$/, '') &&
+            'focus' in client
+          ) {
+            client.navigate(targetUrl);
+            return client.focus();
+          }
+        } catch { /* skip unparseable client URLs */ }
       }
       return self.clients.openWindow(targetUrl);
     })
