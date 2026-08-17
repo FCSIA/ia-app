@@ -12,6 +12,14 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.4.2 — 2026-08-17 (alpha)
+
+**Club structure and leadership imports**
+
+### Improved
+
+- **clubs** — Club managers can import houses, rooms, and leadership assignments atomically while skipping people who have not joined. ([`5bbdb03`](https://github.com/virajdas/ia-app/commit/5bbdb03))
+
 ## v0.4.1 — 2026-08-16 (alpha)
 
 ### Added

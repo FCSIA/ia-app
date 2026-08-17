@@ -7,6 +7,20 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.4.2",
+    "date": "2026-08-17",
+    "title": "Club structure and leadership imports",
+    "commit": "5bbdb03",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Club managers can import houses, rooms, and leadership assignments atomically while skipping people who have not joined.",
+        "commit": "5bbdb03"
+      }
+    ]
+  },
+  {
     "version": "0.4.1",
     "date": "2026-08-16",
     "commit": "f72259c",
