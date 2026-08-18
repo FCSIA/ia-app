@@ -94,3 +94,4 @@ apps/api/uploads/*
 
 # data
 .data
+.worktrees/

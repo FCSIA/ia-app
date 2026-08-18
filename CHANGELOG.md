@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.1 — 2026-08-18 (alpha)
+
+### Fixed
+
+- **notifications** — Browser notifications now arrive reliably on Android, and a Send test button confirms delivery on your own device. ([`2945fa8`](https://github.com/virajdas/ia-app/commit/2945fa8))
+
 ## v0.8.0 — 2026-08-18 (alpha)
 
 **Android PWA push notifications and high-urgency delivery**

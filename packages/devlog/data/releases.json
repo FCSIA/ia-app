@@ -2,6 +2,19 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.1",
+      "date": "2026-08-18",
+      "commit": "674f449",
+      "changes": [
+        {
+          "category": "Fixed",
+          "scope": "notifications",
+          "summary": "Browser notifications now arrive reliably on Android, and a Send test button confirms delivery on your own device.",
+          "commit": "2945fa8"
+        }
+      ]
+    },
+    {
       "version": "0.8.0",
       "date": "2026-08-18",
       "title": "Android PWA push notifications and high-urgency delivery",
