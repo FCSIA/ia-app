@@ -2,6 +2,25 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.3",
+      "date": "2026-08-18",
+      "commit": "42e2440",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "clubs",
+          "summary": "Configure role and custom People tabs from Club Settings.",
+          "commit": "240fe53"
+        },
+        {
+          "category": "Improved",
+          "scope": "auth",
+          "summary": "Passwords can now be at least six characters long across web, mobile, and backend validation.",
+          "commit": "42e2440"
+        }
+      ]
+    },
+    {
       "version": "0.8.2",
       "date": "2026-08-18",
       "commit": "73eca3a",
@@ -271,7 +290,7 @@
         {
           "category": "Added",
           "scope": "schedule",
-          "summary": "Day plans are calendar-first: templates drive Monday\u2013Thursday inheritance and special days are assigned by date.",
+          "summary": "Day plans are calendar-first: templates drive Monday–Thursday inheritance and special days are assigned by date.",
           "commit": "11edeef"
         },
         {

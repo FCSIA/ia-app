@@ -12,6 +12,16 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.3 — 2026-08-18 (alpha)
+
+### Added
+
+- **clubs** — Configure role and custom People tabs from Club Settings. ([`240fe53`](https://github.com/virajdas/ia-app/commit/240fe53))
+
+### Improved
+
+- **auth** — Passwords can now be at least six characters long across web, mobile, and backend validation. ([`42e2440`](https://github.com/virajdas/ia-app/commit/42e2440))
+
 ## v0.8.2 — 2026-08-18 (alpha)
 
 ### Fixed

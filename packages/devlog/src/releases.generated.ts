@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.3",
+    "date": "2026-08-18",
+    "commit": "42e2440",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Configure role and custom People tabs from Club Settings.",
+        "commit": "240fe53"
+      },
+      {
+        "category": "Improved",
+        "scope": "auth",
+        "summary": "Passwords can now be at least six characters long across web, mobile, and backend validation.",
+        "commit": "42e2440"
+      }
+    ]
+  },
+  {
     "version": "0.8.2",
     "date": "2026-08-18",
     "commit": "73eca3a",
