@@ -1,12 +1,17 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { notificationCategoryValidator } from "../validators";
 import { activatePushPreferences } from "./_pushActivation";
+import { subscriptionsToRetire } from "./_subscriptionPruning";
 import {
   preferenceAllowsPush,
   resolveNotificationPreference,
 } from "./deliveryPreference";
+
+const subscriptionPageSize = 20;
 
 const pushSubscriptionValidator = v.object({
   endpoint: v.string(),
@@ -58,6 +63,28 @@ export const listMine = query({
   },
 });
 
+/**
+ * Disable the browsers a user stopped using, once they have too many.
+ *
+ * Runs on registration because that is the moment the list grows, and the
+ * moment the current device is guaranteed to be the most recently updated row
+ * and therefore safe from being retired itself.
+ */
+async function retireSurplusSubscriptions(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  now: number,
+) {
+  const rows = await ctx.db
+    .query("notificationPushSubscriptions")
+    .withIndex("by_userId_and_enabled", (q) => q.eq("userId", userId).eq("enabled", true))
+    .take(100);
+
+  for (const row of subscriptionsToRetire(rows)) {
+    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+  }
+}
+
 export const upsertSubscription = mutation({
   args: {
     subscription: pushSubscriptionValidator,
@@ -95,6 +122,7 @@ export const upsertSubscription = mutation({
       });
     }
 
+    await retireSurplusSubscriptions(ctx, user._id, now);
     await activatePushPreferences(ctx, user._id, now);
 
     return { success: true };
@@ -148,7 +176,7 @@ export const getDeliveryTargets = internalQuery({
     const subscriptions = await ctx.db
       .query("notificationPushSubscriptions")
       .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
-      .take(20);
+      .take(subscriptionPageSize);
 
     return subscriptions.map((subscription) => ({
       id: subscription._id,
@@ -213,7 +241,7 @@ export const getTestTargets = internalQuery({
     const subscriptions = await ctx.db
       .query("notificationPushSubscriptions")
       .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
-      .take(20);
+      .take(subscriptionPageSize);
 
     return subscriptions.map((subscription) => ({
       id: subscription._id,
