@@ -146,7 +146,7 @@
     --accent-foreground: 150 10% 18%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     --border: 150 8% 90%;
     --input: 150 8% 90%;
@@ -260,7 +260,7 @@
     --accent-foreground: 290 50% 22%;
 
     --destructive: 0 80% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     --border: 330 70% 78%;
     --input: 330 70% 78%;
@@ -306,7 +306,7 @@
     --accent-foreground: 150 5% 92%;
 
     --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     --border: 150 6% 14%;
     --input: 150 6% 14%;
@@ -386,7 +386,7 @@
     --accent-foreground: 150 5% 92%;
 
     --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
 
     /* Very subtle borders — almost invisible */
     --border: 150 6% 14%;
