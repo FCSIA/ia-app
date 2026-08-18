@@ -1161,7 +1161,7 @@ export default function ClubPeoplePage() {
               Keep member
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               disabled={isRemoving}
               onClick={(event) => {
                 event.preventDefault();

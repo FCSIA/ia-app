@@ -169,7 +169,7 @@ function BulkDeleteUsersAction({
           <AlertDialogCancel disabled={disabled}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             disabled={disabled}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            variant="destructive"
             onClick={() => {
               onDelete();
               setOpen(false);
