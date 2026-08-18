@@ -237,7 +237,7 @@ function GroupWorkspaceHeader({
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant="destructive"
                 onClick={onDelete}
               >
                 Delete group
@@ -450,7 +450,8 @@ export function ScheduleGroupWorkspace({
   const { groupId: rawGroupId } = use(params);
   const groupId = rawGroupId as Id<'studentScheduleGroups'>;
   const { isAuthenticated } = useConvexAuth();
-  const data = useQuery(api.schedule.groups.get, isAuthenticated ? { groupId } : 'skip');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const data = useQuery(api.schedule.groups.get, isAuthenticated && !isDeleting ? { groupId } : 'skip');
   const eligibleFriends = useQuery(api.schedule.groups.listEligibleFriends, isAuthenticated ? {} : 'skip');
   const addMember = useMutation(api.schedule.groups.addMember);
   const removeMember = useMutation(api.schedule.groups.removeMember);
@@ -533,8 +534,13 @@ export function ScheduleGroupWorkspace({
   };
 
   const handleDeleteGroup = async () => {
+    setIsDeleting(true);
     const success = await run(() => deleteGroup({ groupId }), 'Could not delete group');
-    if (success) router.push('/schedule?tab=groups');
+    if (success) {
+      router.push('/schedule?tab=groups');
+    } else {
+      setIsDeleting(false);
+    }
   };
 
   const handleRenameGroup = async () => {
