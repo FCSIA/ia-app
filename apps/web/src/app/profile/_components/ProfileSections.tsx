@@ -40,7 +40,7 @@ const contentClass = 'p-5';
 const passwordFormSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required.'),
-    newPassword: z.string().min(8, 'Your new password must be at least 8 characters long.'),
+    newPassword: z.string().min(6, 'Your new password must be at least 6 characters long.'),
     confirm: z.string().min(1, 'Confirm your new password.'),
   })
   .refine((form) => form.newPassword === form.confirm, {
@@ -343,6 +343,7 @@ export function AccountSettingsCard({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, newPassword: event.target.value }))
                   }
+                  minLength={6}
                   required
                 />
               </Field>
@@ -355,6 +356,7 @@ export function AccountSettingsCard({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, confirm: event.target.value }))
                   }
+                  minLength={6}
                   required
                 />
               </Field>

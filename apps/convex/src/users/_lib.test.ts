@@ -11,7 +11,7 @@ import {
 } from "./_lib";
 
 describe("generateTemporaryPassword", () => {
-  test("defaults to Better Auth's 12-character minimum", () => {
+  test("defaults to a 12-character temporary password", () => {
     expect(generateTemporaryPassword()).toHaveLength(12);
   });
 });
@@ -83,11 +83,15 @@ describe("privileged account boundaries", () => {
 describe("initial password validation", () => {
   test("rejects short and unique-ID passwords", () => {
     expect(() => assertInitialPasswordAllowed("short", "STU001")).toThrow(
-      /at least 12/i,
+      /at least 6/i,
     );
     expect(() =>
       assertInitialPasswordAllowed("STUDENT00001", "student00001"),
     ).toThrow(/cannot match/i);
+  });
+
+  test("accepts passwords at the six-character minimum", () => {
+    expect(() => assertInitialPasswordAllowed("sixsix", "STU001")).not.toThrow();
   });
 
   test("accepts a strong unrelated temporary password", () => {

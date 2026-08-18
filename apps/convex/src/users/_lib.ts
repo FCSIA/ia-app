@@ -215,8 +215,8 @@ export function assertInitialPasswordAllowed(
   password: string,
   uniqueId: string,
 ) {
-  if (password.length < 12) {
-    throw new ConvexError("Password must be at least 12 characters.");
+  if (password.length < 6) {
+    throw new ConvexError("Password must be at least 6 characters.");
   }
   if (password.toUpperCase() === uniqueId.toUpperCase()) {
     throw new ConvexError("Password cannot match the user's unique ID.");

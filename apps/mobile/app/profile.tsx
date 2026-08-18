@@ -91,7 +91,7 @@ export default function ProfileScreen() {
   }
 
   async function submitPassword() {
-    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 12 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
+    if (!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword) return;
     try {
       await changePassword({
         currentPassword: passwordForm.currentPassword,
@@ -166,7 +166,7 @@ export default function ProfileScreen() {
           label="New password"
           value={passwordForm.newPassword}
           onChangeText={(newPassword) => setPasswordForm((current) => ({ ...current, newPassword }))}
-          hint="At least 8 characters"
+          hint="At least 6 characters"
         />
         <PasswordField
           label="Confirm password"
@@ -175,7 +175,7 @@ export default function ProfileScreen() {
         />
         <Button
           title="Change password"
-          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 8 || passwordForm.newPassword !== passwordForm.confirmPassword}
+          disabled={!passwordForm.currentPassword || passwordForm.newPassword.length < 6 || passwordForm.newPassword !== passwordForm.confirmPassword}
           onPress={() => void submitPassword()}
         />
       </Sheet>

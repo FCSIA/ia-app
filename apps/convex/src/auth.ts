@@ -164,7 +164,7 @@ export const createAuthOptions = (ctx: GenericCtx<DataModel>) =>
       enabled: true,
       disableSignUp: true,
       requireEmailVerification: false,
-      minPasswordLength: 12,
+      minPasswordLength: 6,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async () => {

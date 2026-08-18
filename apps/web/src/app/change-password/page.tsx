@@ -27,8 +27,8 @@ export default function ForcedPasswordChangePage() {
     event.preventDefault();
     setError(null);
 
-    if (newPassword.length < 12) {
-      setError('New password must be at least 12 characters.');
+    if (newPassword.length < 6) {
+      setError('New password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -80,10 +80,10 @@ export default function ForcedPasswordChangePage() {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               aria-invalid={!!error}
-              minLength={12}
+              minLength={6}
               required
             />
-            <FieldDescription>Use at least 12 characters.</FieldDescription>
+            <FieldDescription>Use at least 6 characters.</FieldDescription>
           </Field>
           <Field data-invalid={!!error}>
             <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
@@ -93,7 +93,7 @@ export default function ForcedPasswordChangePage() {
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               aria-invalid={!!error}
-              minLength={12}
+              minLength={6}
               required
             />
             <FieldError>{error}</FieldError>
