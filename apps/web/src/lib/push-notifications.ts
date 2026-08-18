@@ -32,11 +32,39 @@ export function pushAvailability(): PushAvailability {
   return 'unsupported';
 }
 
+const serviceWorkerReadyTimeoutMs = 10_000;
+
+/**
+ * A registration that is guaranteed to have an *active* worker.
+ *
+ * `pushManager.subscribe()` throws `AbortError: no active Service Worker` when
+ * the registration it is called on is still installing, which is exactly the
+ * state a first-ever visit is in when the user taps Enable push. Registering
+ * and then awaiting `navigator.serviceWorker.ready` closes that window.
+ *
+ * `ready` never rejects — it just hangs if installation failed — so it is
+ * raced against a timeout rather than awaited indefinitely, turning a dead
+ * worker into a visible error instead of a spinner that never stops.
+ */
 export async function getServiceWorkerRegistration() {
   if (!browserSupportsPush()) return null;
+
   const existing = await navigator.serviceWorker.getRegistration();
-  if (existing) return existing;
-  return navigator.serviceWorker.register('/sw.js');
+  if (existing?.active) return existing;
+
+  if (!existing) {
+    await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  }
+
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('The app service worker did not start, so push cannot be enabled.')),
+        serviceWorkerReadyTimeoutMs,
+      ),
+    ),
+  ]);
 }
 
 export function permissionState() {
@@ -125,10 +153,6 @@ export async function subscribeBrowserToPush(
   const registration = await getServiceWorkerRegistration();
   if (!registration) throw new Error('This browser does not support push notifications.');
 
-  // A subscribe() call against a worker that isn't active yet fails on some
-  // browsers on the very first visit.
-  await navigator.serviceWorker.ready;
-
   const applicationServerKey = urlBase64ToUint8Array(publicKey);
   const existing = await registration.pushManager.getSubscription();
   if (existing) {
@@ -142,7 +166,19 @@ export async function subscribeBrowserToPush(
   });
 }
 
+/**
+ * The subscription this browser currently holds, or null.
+ *
+ * Deliberately swallows a worker that never starts: callers use this to render
+ * current state, and "no worker" and "no subscription" mean the same thing to
+ * them. Enabling push goes through `subscribeBrowserToPush`, which does
+ * surface the failure.
+ */
 export async function getCurrentPushSubscription() {
-  const registration = await getServiceWorkerRegistration();
-  return registration?.pushManager.getSubscription() ?? null;
+  try {
+    const registration = await getServiceWorkerRegistration();
+    return (await registration?.pushManager.getSubscription()) ?? null;
+  } catch {
+    return null;
+  }
 }

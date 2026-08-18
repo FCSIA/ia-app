@@ -46,6 +46,7 @@ browser push delivery for subscribed devices.
 - `api.notifications.push.listMine`
 - `api.notifications.push.upsertSubscription`
 - `api.notifications.push.removeSubscription`
+- `api.notifications.pushNode.sendTestToMe`
 
 ## Data Model
 
@@ -108,6 +109,58 @@ disabled when push services return a permanent failure (`404`/`410`). Auth
 failures (`401`/`403`) are deliberately not treated as permanent, because they
 indicate a bad VAPID configuration rather than a dead endpoint.
 
+### Notification display rules
+
+The service worker never lets one notification silently replace another. A
+`tag` replaces any showing notification carrying the same tag, and without
+`renotify` the replacement is completely silent — no sound, no vibration, no
+heads-up banner. Tagging every notification with its category therefore made
+Android look broken: the first announcement arrived and every one after it
+swapped in behind the shade unannounced.
+
+Each notification now gets a unique tag unless the payload sets `tag`
+explicitly, and every tagged notification sets `renotify: true` so the device
+alerts again. `renotify` without a tag is a `TypeError`, so the two always
+travel together. A sender that genuinely wants grouping — collapsing a busy
+channel into a single entry, say — opts in by putting a stable `tag` in the
+push payload.
+
+### Diagnosing a silent device
+
+`api.notifications.pushNode.sendTestToMe` sends a push to every browser the
+caller has registered and returns the push service's own status codes. The
+Browser push panel exposes it as **Send test** once push is on, and surfaces
+the last delivery error recorded against the current browser.
+
+The test send deliberately skips preference resolution: it answers "can this
+browser receive a push at all", so a category opt-out is not reported as a
+transport failure. It reuses the same send path as real deliveries, so a pass
+means real notifications take a working route.
+
+### Service worker install must not be able to fail
+
+`cache.addAll()` rejects as a unit, and a rejected `install` handler aborts the
+whole registration: no active worker, no push, no install prompt, and nothing
+the user can see. One renamed icon was enough to disable notifications on every
+device that had not already activated an older worker. Static assets are now
+cached individually with `Promise.allSettled` and failures are swallowed —
+caching is an optimisation, delivery is not.
+
+For the same reason `getServiceWorkerRegistration` returns only a registration
+with an *active* worker, racing `navigator.serviceWorker.ready` against a
+timeout. `ready` never rejects; it hangs forever when installation failed, so
+without the race a broken worker showed up as a spinner that never stopped
+instead of an error.
+
+### Subscription rotation on Android
+
+Chrome on Android invalidates push subscriptions on its own — after a WebAPK
+update, an FCM registration refresh, or storage pressure. The service worker
+handles `pushsubscriptionchange` by re-subscribing with the same application
+server key and posting `PUSH_SUBSCRIPTION_CHANGED` to open clients;
+`PushSubscriptionSync` listens for that message and sends the new endpoint to
+the server without waiting for the next cold start.
+
 ### Platform requirements
 
 | Platform | Works in a browser tab | Notes |
@@ -120,6 +173,10 @@ indicate a bad VAPID configuration rather than a dead endpoint.
 iOS only exposes the Push API to Home Screen web apps. In a plain Safari tab
 `window.Notification` is undefined, so the settings panel detects iOS and shows
 Add to Home Screen instructions instead of reporting an unsupported browser.
+
+Android needs no install step for push, but the manifest still declares an
+explicit `scope` so the installed WebAPK and the service worker agree on what
+the app covers.
 
 Two iOS constraints shape the client code:
 

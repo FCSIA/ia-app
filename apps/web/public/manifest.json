@@ -4,6 +4,7 @@
   "short_name": "IA School",
   "description": "School communication and operations platform",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
