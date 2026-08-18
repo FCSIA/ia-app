@@ -21,6 +21,8 @@ const pushSubscriptionPublicValidator = v.object({
   enabled: v.boolean(),
   createdAt: v.string(),
   updatedAt: v.string(),
+  failureCount: v.number(),
+  lastError: v.optional(v.string()),
 });
 
 function publicVapidKey() {
@@ -50,6 +52,8 @@ export const listMine = query({
       enabled: row.enabled,
       createdAt: new Date(row.createdAt).toISOString(),
       updatedAt: new Date(row.updatedAt).toISOString(),
+      failureCount: row.failureCount,
+      lastError: row.lastError,
     }));
   },
 });
@@ -178,5 +182,46 @@ export const recordSendResult = internalMutation({
     });
 
     return null;
+  },
+});
+
+export const currentUserForTest = internalQuery({
+  args: {},
+  handler: async (ctx) => getMaybeCurrentAppUser(ctx),
+});
+
+/**
+ * Every registered browser for a user, ignoring notification preferences.
+ *
+ * The test send deliberately skips `getDeliveryTargets`: a device test has to
+ * answer "can this browser receive a push at all", and folding preference
+ * resolution into it would report a category opt-out as a transport failure.
+ */
+export const getTestTargets = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  returns: v.array(v.object({
+    id: v.id("notificationPushSubscriptions"),
+    endpoint: v.string(),
+    keys: v.object({
+      p256dh: v.string(),
+      auth: v.string(),
+    }),
+  })),
+  handler: async (ctx, args) => {
+    const subscriptions = await ctx.db
+      .query("notificationPushSubscriptions")
+      .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
+      .take(20);
+
+    return subscriptions.map((subscription) => ({
+      id: subscription._id,
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+      },
+    }));
   },
 });
