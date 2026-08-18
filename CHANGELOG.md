@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.2 — 2026-08-18 (alpha)
+
+### Fixed
+
+- **notifications** — Notifications keep arriving after you reinstall the app or clear browser data, instead of going to browsers you no longer use. ([`0e3afdf`](https://github.com/virajdas/ia-app/commit/0e3afdf))
+
 ## v0.8.1 — 2026-08-18 (alpha)
 
 ### Fixed

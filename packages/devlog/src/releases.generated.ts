@@ -7,6 +7,19 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.2",
+    "date": "2026-08-18",
+    "commit": "73eca3a",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "notifications",
+        "summary": "Notifications keep arriving after you reinstall the app or clear browser data, instead of going to browsers you no longer use.",
+        "commit": "0e3afdf"
+      }
+    ]
+  },
+  {
     "version": "0.8.1",
     "date": "2026-08-18",
     "commit": "674f449",
