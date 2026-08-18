@@ -7,6 +7,20 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.0",
+    "date": "2026-08-18",
+    "title": "Android PWA push notifications and high-urgency delivery",
+    "commit": "884ad25",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "notifications",
+        "summary": "Fix Android PWA delivery, SW registration, and FCM high urgency.",
+        "commit": "884ad25"
+      }
+    ]
+  },
+  {
     "version": "0.6.0",
     "date": "2026-08-17",
     "title": "PWA Android notification reliability",

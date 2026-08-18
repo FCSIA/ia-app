@@ -12,6 +12,14 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.0 — 2026-08-18 (alpha)
+
+**Android PWA push notifications and high-urgency delivery**
+
+### Fixed
+
+- **notifications** — Fix Android PWA delivery, SW registration, and FCM high urgency. ([`884ad25`](https://github.com/virajdas/ia-app/commit/884ad25))
+
 ## v0.6.0 — 2026-08-17 (alpha)
 
 **PWA Android notification reliability**
