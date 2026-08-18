@@ -13,6 +13,7 @@ const pushDefaultCategories: NotificationCategory[] = [
   "FLEX_FRIDAY",
   "CONTENT_MODERATED",
   "FRIEND_REQUEST",
+  "FRIEND_SCHEDULE_CHANGE",
 ];
 
 const maxScopedPreferencesPerCategory = 50;

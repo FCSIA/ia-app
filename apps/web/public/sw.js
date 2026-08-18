@@ -45,23 +45,35 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('push', (event) => {
   let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch {
+      payload = { body: event.data.text() };
+    }
   }
 
   const title = payload.title || 'IA notification';
   const options = {
     body: payload.body || '',
-    icon: '/icons/ia-orbit-default-192.png',
-    badge: '/icons/ia-orbit-default-192.png',
+    icon: payload.icon || '/icons/ia-orbit-default-192.png',
+    badge: payload.badge || '/icons/ia-orbit-default-192.png',
     data: {
       url: payload.url || '/notifications',
     },
+    tag: payload.tag || payload.category || undefined,
+    vibrate: [100, 50, 100],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).catch((err) => {
+      console.warn('[SW] showNotification with rich options failed, trying minimal:', err);
+      return self.registration.showNotification(title, {
+        body: options.body,
+        data: options.data,
+      });
+    })
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -81,7 +93,9 @@ self.addEventListener('notificationclick', (event) => {
             existing.pathname.replace(/\/$/, '') === target.pathname.replace(/\/$/, '') &&
             'focus' in client
           ) {
-            client.navigate(targetUrl);
+            if ('navigate' in client && client.url !== targetUrl) {
+              client.navigate(targetUrl);
+            }
             return client.focus();
           }
         } catch { /* skip unparseable client URLs */ }
@@ -90,3 +104,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+

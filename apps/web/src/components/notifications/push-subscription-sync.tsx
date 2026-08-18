@@ -27,9 +27,10 @@ export function PushSubscriptionSync() {
   const publicKey = useQuery(api.notifications.push.getPublicKey, isAuthenticated ? {} : 'skip');
   const upsertSubscription = useMutation(api.notifications.push.upsertSubscription);
   const attempted = useRef(false);
+  const configuredKey = publicKey ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null;
 
   useEffect(() => {
-    if (!isAuthenticated || !publicKey || attempted.current) return;
+    if (!isAuthenticated || !configuredKey || attempted.current) return;
     if (!browserSupportsPush() || Notification.permission !== 'granted') return;
 
     attempted.current = true;
@@ -37,13 +38,10 @@ export function PushSubscriptionSync() {
 
     void (async () => {
       try {
-        const existing = await getCurrentPushSubscription();
-        if (!existing || cancelled) return;
-
-        // Re-runs the key check, replacing the subscription if the VAPID key
-        // has rotated. Permission is already granted, so this is silent.
-        const current = await subscribeBrowserToPush(publicKey, 'granted');
-        if (cancelled) return;
+        // Re-runs the key check, replacing the subscription if missing or if the
+        // VAPID key has rotated. Permission is already granted, so this is silent.
+        const current = await subscribeBrowserToPush(configuredKey.trim(), 'granted');
+        if (cancelled || !current) return;
 
         await upsertSubscription({
           subscription: subscriptionToPayload(current),
@@ -57,7 +55,8 @@ export function PushSubscriptionSync() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, publicKey, upsertSubscription]);
+  }, [isAuthenticated, configuredKey, upsertSubscription]);
 
   return null;
 }
+

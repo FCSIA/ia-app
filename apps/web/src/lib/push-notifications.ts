@@ -85,8 +85,9 @@ export function subscriptionToPayload(subscription: PushSubscription): PushSubsc
 }
 
 export function urlBase64ToUint8Array(value: string) {
-  const padding = '='.repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const trimmed = value.trim();
+  const padding = '='.repeat((4 - (trimmed.length % 4)) % 4);
+  const base64 = (trimmed + padding).replace(/-/g, '+').replace(/_/g, '/');
   const raw = window.atob(base64);
   const output = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i += 1) {

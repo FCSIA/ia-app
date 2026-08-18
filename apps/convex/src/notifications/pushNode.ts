@@ -11,6 +11,14 @@ function publicVapidKey() {
   return process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null;
 }
 
+function formatVapidSubject() {
+  const raw = process.env.VAPID_SUBJECT ?? process.env.SITE_URL ?? "mailto:admin@example.com";
+  if (raw.startsWith("mailto:") || raw.startsWith("https://") || raw.startsWith("http://")) {
+    return raw;
+  }
+  return `https://${raw}`;
+}
+
 function configureWebPush() {
   const publicKey = publicVapidKey();
   const privateKey = process.env.VAPID_PRIVATE_KEY;
@@ -19,7 +27,7 @@ function configureWebPush() {
   }
 
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT ?? process.env.SITE_URL ?? "mailto:admin@example.com",
+    formatVapidSubject(),
     publicKey,
     privateKey,
   );
@@ -59,7 +67,16 @@ export const sendForDelivery = internalAction({
       title: args.title,
       body: args.body,
       url: args.href,
+      category: args.category,
     });
+
+    const pushOptions = {
+      TTL: 60 * 60 * 24, // 24 hours
+      urgency: "high" as const,
+      headers: {
+        Urgency: "high",
+      },
+    };
 
     await Promise.all(targets.map(async (target) => {
       try {
@@ -69,6 +86,7 @@ export const sendForDelivery = internalAction({
             keys: target.keys,
           },
           payload,
+          pushOptions,
         );
         await ctx.runMutation(internal.notifications.push.recordSendResult, {
           id: target.id,
