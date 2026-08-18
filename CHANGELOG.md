@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.4 — 2026-08-18 (alpha)
+
+### Fixed
+
+- **web** — Destructive confirmation buttons now stay readable in every theme. ([`c2dbf2e`](https://github.com/virajdas/ia-app/commit/c2dbf2e))
+
 ## v0.8.3 — 2026-08-18 (alpha)
 
 ### Added

@@ -7,6 +7,19 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.4",
+    "date": "2026-08-18",
+    "commit": "c2dbf2e",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Destructive confirmation buttons now stay readable in every theme.",
+        "commit": "c2dbf2e"
+      }
+    ]
+  },
+  {
     "version": "0.8.3",
     "date": "2026-08-18",
     "commit": "42e2440",
