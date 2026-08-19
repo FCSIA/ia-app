@@ -119,10 +119,14 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
+                maxLength={255}
                 required
               />
               <AlignLeft className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             </div>
+            {form.title.length >= 255 && (
+              <p className="text-xs text-destructive mt-1 ml-1">Maximum length of 255 characters reached.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -180,7 +184,11 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               className="rounded-2xl min-h-[90px] border-foreground/5 bg-foreground/[0.02] resize-none"
+              maxLength={255}
             />
+            {form.description.length >= 255 && (
+              <p className="text-xs text-destructive mt-1 ml-1">Maximum length of 255 characters reached.</p>
+            )}
           </div>
 
           <DialogFooter className="pt-2">

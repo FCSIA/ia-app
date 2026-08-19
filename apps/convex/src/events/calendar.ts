@@ -148,7 +148,7 @@ export const listEligibleFriends = query({
   ),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    requireStudentUser(user);
+    if (!isStudentUser(user)) return [];
     const friendIds = await acceptedFriendIds(ctx, user._id);
     const friends = [];
     for (const friendId of friendIds) {
