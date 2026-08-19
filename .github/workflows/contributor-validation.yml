@@ -18,6 +18,69 @@ env:
   NEXT_PUBLIC_CONVEX_SITE_URL: http://127.0.0.1:3211
 
 jobs:
+  security-audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Install OSV-Scanner
+        env:
+          OSV_VERSION: v2.5.1
+        run: |
+          curl --fail --silent --show-error --location \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64" \
+            --output "$RUNNER_TEMP/osv-scanner"
+          curl --fail --silent --show-error --location \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS" \
+            --output "$RUNNER_TEMP/osv-scanner_SHA256SUMS"
+          grep 'osv-scanner_linux_amd64$' "$RUNNER_TEMP/osv-scanner_SHA256SUMS" | \
+            sed "s#  osv-scanner_linux_amd64#  $RUNNER_TEMP/osv-scanner#" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+
+      - name: Audit Bun lockfile
+        run: |
+          set +e
+          "$RUNNER_TEMP/osv-scanner" scan source \
+            --lockfile=bun.lock \
+            --format json \
+            --output-file "$RUNNER_TEMP/osv-results.json"
+          scanner_status=$?
+          set -e
+
+          # OSV-Scanner uses 0 for a clean scan and 1 for findings. Any other
+          # status is an execution or input error and must fail this job.
+          if [ "$scanner_status" -gt 1 ]; then
+            echo "OSV-Scanner failed with status $scanner_status." >&2
+            [ -f "$RUNNER_TEMP/osv-results.json" ] && cat "$RUNNER_TEMP/osv-results.json" >&2
+            exit "$scanner_status"
+          fi
+          if [ ! -s "$RUNNER_TEMP/osv-results.json" ] || ! jq empty "$RUNNER_TEMP/osv-results.json"; then
+            echo "OSV-Scanner did not produce valid JSON output." >&2
+            exit 1
+          fi
+
+          missing_severity=$(jq '[.results[]?.packages[]?.vulnerabilities[]? | select((.database_specific.severity // "") == "")] | length' "$RUNNER_TEMP/osv-results.json")
+          if [ "$missing_severity" -gt 0 ]; then
+            echo "OSV-Scanner returned findings without database severity metadata; refusing to classify them." >&2
+            cat "$RUNNER_TEMP/osv-results.json"
+            exit 1
+          fi
+
+          blocked_count=$(jq '[.results[]?.packages[]?.vulnerabilities[]? | select(.database_specific.severity == "HIGH" or .database_specific.severity == "CRITICAL")] | length' "$RUNNER_TEMP/osv-results.json")
+          echo "Accepted existing image-size advisories: 2 (configured in osv-scanner.toml; expires 2026-10-01)."
+          echo "Blocking high/critical findings: $blocked_count"
+          if [ "$blocked_count" -gt 0 ]; then
+            cat "$RUNNER_TEMP/osv-results.json"
+            exit 1
+          fi
+          if [ "$scanner_status" -eq 1 ]; then
+            echo "OSV-Scanner found only lower-severity findings; those are non-blocking."
+          fi
+
   trust-policy:
     name: Classify contributor trust
     runs-on: ubuntu-latest
@@ -56,68 +119,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Test production audit inventory
-        run: bun run audit:production:test
-
-      - name: Generate production audit inventory
-        run: bun run audit:production -- --output "$RUNNER_TEMP/ia-production-osv.json"
-
-      - name: Install OSV-Scanner
-        env:
-          OSV_VERSION: v2.5.1
-        run: |
-          curl --fail --silent --show-error --location \
-            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64" \
-            --output "$RUNNER_TEMP/osv-scanner"
-          curl --fail --silent --show-error --location \
-            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_SHA256SUMS" \
-            --output "$RUNNER_TEMP/osv-scanner_SHA256SUMS"
-          grep 'osv-scanner_linux_amd64$' "$RUNNER_TEMP/osv-scanner_SHA256SUMS" | \
-            sed "s#  osv-scanner_linux_amd64#  $RUNNER_TEMP/osv-scanner#" | sha256sum --check --strict
-          chmod +x "$RUNNER_TEMP/osv-scanner"
-
-      - name: Audit production dependencies
-        run: |
-          set +e
-          "$RUNNER_TEMP/osv-scanner" scan source \
-            --lockfile="osv-scanner:$RUNNER_TEMP/ia-production-osv.json" \
-            --format json \
-            --output-file "$RUNNER_TEMP/ia-production-osv-results.json"
-          scanner_status=$?
-          set -e
-
-          # OSV-Scanner uses 0 for a clean scan and 1 for a scan that found
-          # vulnerabilities. Any other status is an execution or input error,
-          # not a vulnerability result; never allow it to pass on parsed JSON.
-          if [ "$scanner_status" -gt 1 ]; then
-            echo "OSV-Scanner failed with status $scanner_status; refusing to treat it as audit output." >&2
-            if [ -f "$RUNNER_TEMP/ia-production-osv-results.json" ]; then
-              cat "$RUNNER_TEMP/ia-production-osv-results.json" >&2
-            fi
-            exit "$scanner_status"
-          fi
-          if [ ! -s "$RUNNER_TEMP/ia-production-osv-results.json" ] || ! jq empty "$RUNNER_TEMP/ia-production-osv-results.json"; then
-            echo "OSV-Scanner did not produce valid JSON output." >&2
-            exit 1
-          fi
-
-          # OSV-Scanner reports all severities. Only high and critical findings
-          # block this gate. These two image-size advisories are the existing
-          # accepted exceptions: the published package has no patched release.
-          blocked_count=$(jq '[.results[]?.packages[]?.vulnerabilities[]? | select((.database_specific.severity // "") == "HIGH" or (.database_specific.severity // "") == "CRITICAL") | select(.id != "GHSA-w3rx-r6r6-pgpr" and .id != "GHSA-5p2g-fcmc-qvqq")] | length' "$RUNNER_TEMP/ia-production-osv-results.json")
-          accepted_count=$(jq '[.results[]?.packages[]?.vulnerabilities[]? | select(.id == "GHSA-w3rx-r6r6-pgpr" or .id == "GHSA-5p2g-fcmc-qvqq")] | length' "$RUNNER_TEMP/ia-production-osv-results.json")
-          if [ "$accepted_count" -gt 0 ]; then
-            echo "Accepted existing image-size findings: $accepted_count"
-          fi
-          if [ "$blocked_count" -gt 0 ]; then
-            cat "$RUNNER_TEMP/ia-production-osv-results.json"
-            exit 1
-          fi
-          if [ "$scanner_status" -ne 0 ]; then
-            echo "OSV-Scanner found no unaccepted high/critical production advisories; lower-severity results are non-blocking."
-            jq -r '.results[]?.packages[]? | .package.name + "@" + .package.version + ": " + ((.vulnerabilities // []) | map(.id) | join(", "))' "$RUNNER_TEMP/ia-production-osv-results.json"
-          fi
 
       - name: Verify generated brand assets
         run: bun run brand:check
@@ -169,14 +170,14 @@ jobs:
   ci-gate:
     name: CI Gate
     if: ${{ always() }}
-    needs: [trust-policy, validate, trusted-fast]
+    needs: [security-audit, trust-policy, validate, trusted-fast]
     runs-on: ubuntu-latest
     steps:
       - name: Require the applicable validation path
-        if: ${{ needs.trust-policy.result != 'success' || (needs.validate.result != 'success' && needs.trusted-fast.result != 'success') }}
+        if: ${{ needs.security-audit.result != 'success' || needs.trust-policy.result != 'success' || (needs.validate.result != 'success' && needs.trusted-fast.result != 'success') }}
         run: |
           echo "Contributor validation did not produce a successful applicable gate." >&2
-          echo "trust-policy=${{ needs.trust-policy.result }} validate=${{ needs.validate.result }} trusted-fast=${{ needs.trusted-fast.result }}" >&2
+          echo "security-audit=${{ needs.security-audit.result }} trust-policy=${{ needs.trust-policy.result }} validate=${{ needs.validate.result }} trusted-fast=${{ needs.trusted-fast.result }}" >&2
           exit 1
       - name: Validation passed
         run: echo "CI Gate passed."

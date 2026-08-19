@@ -28,8 +28,7 @@
     "devlog:generate": "node scripts/devlog.mjs generate",
     "devlog:preview": "node scripts/devlog.mjs preview",
     "release": "node scripts/release.mjs",
-    "audit:production": "node scripts/audit-production.mjs",
-    "audit:production:test": "bun test scripts/audit-production.test.mjs",
+    "release:test": "bun test scripts/release.test.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },

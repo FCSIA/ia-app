@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseReleaseArgs } from "./release-args.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const run = (command, args, options = {}) =>
@@ -16,12 +17,13 @@ function fail(message) {
 }
 
 const args = process.argv.slice(2);
-const dryRun = args.includes("--dry-run");
-const releaseFlags = args.filter((arg) => arg === "--minor" || arg === "--patch" || arg.startsWith("--set="));
-if (args.some((arg) => arg !== "--dry-run" && !releaseFlags.includes(arg))) {
-  fail("supported options are --minor, --set=MAJOR.MINOR.PATCH, and --dry-run");
+let dryRun;
+let releaseFlags;
+try {
+  ({ dryRun, releaseFlags } = parseReleaseArgs(args));
+} catch (error) {
+  fail(error.message);
 }
-if (releaseFlags.filter((arg) => arg !== "--patch").length > 1) fail("choose one version option");
 
 if (capture("git", ["branch", "--show-current"]) !== "main") fail("run from the main branch");
 if (!dryRun && capture("git", ["status", "--porcelain"])) fail("refusing to run with dirty changes");

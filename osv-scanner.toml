@@ -1,0 +1,9 @@
+[[IgnoredVulns]]
+id = "GHSA-w3rx-r6r6-pgpr"
+ignoreUntil = 2026-10-01
+reason = "image-size has no published patched release; retain this existing accepted exception until the next security review."
+
+[[IgnoredVulns]]
+id = "GHSA-5p2g-fcmc-qvqq"
+ignoreUntil = 2026-10-01
+reason = "image-size has no published patched release; retain this existing accepted exception until the next security review."

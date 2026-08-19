@@ -109,12 +109,9 @@ scripts; do not regenerate the lockfile with another tool.
 
 ## Security audit
 
-Contributor Validation builds a production-only inventory from `bun.lock` and
-scans it with OSV-Scanner. Required runtime edges establish the production
-closure; optional edges are included only when their resolved instance is also
-independently selected by that closure. This excludes unused optional-peer
-artifacts without excluding selected runtime optionals, and excludes workspace
-`devDependencies` while retaining the two known `image-size` findings as
-reported, accepted production exceptions.
-The raw `bun audit --prod` command is not the CI production gate because Bun
-can include workspace tooling and optional-peer resolution paths in its output.
+Contributor Validation scans `bun.lock` directly with OSV-Scanner. High and
+critical findings block CI; the two known `image-size` advisories are accepted
+in `osv-scanner.toml` until 2026-10-01. Findings without severity metadata also
+fail the gate. The raw `bun audit --prod` command is not the CI security gate
+because Bun can include workspace tooling and optional-peer resolution paths in
+its output.
