@@ -252,15 +252,15 @@ export default function EventsPage() {
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={255} required />
-                  {form.title.length >= 255 && (
-                    <p className="text-xs text-destructive ml-1">Maximum length of 255 characters reached.</p>
+                  <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={1000} required />
+                  {form.title.length >= 1000 && (
+                    <p className="text-xs text-destructive ml-1">Maximum length of 1000 characters reached.</p>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={255} rows={3} />
-                  {form.description.length >= 255 && (
-                    <p className="text-xs text-destructive ml-1">Maximum length of 255 characters reached.</p>
+                  <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} rows={3} />
+                  {form.description.length >= 1000 && (
+                    <p className="text-xs text-destructive ml-1">Maximum length of 1000 characters reached.</p>
                   )}
                 </div>
                 <Input placeholder="Location (optional)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
