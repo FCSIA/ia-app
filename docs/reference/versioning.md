@@ -51,8 +51,10 @@ branch and pull request containing the generated release files. When that PR
 merges, the merge-triggered release workflow
 (`.github/workflows/release-on-merge.yml`)
 creates and pushes the tag; `Production Deploy` (`.github/workflows/prod.yml`)
-only validates and deploys that existing immutable tag. Humans never create or
-push release tags.
+is called directly after the tag exists and validates and deploys that existing
+immutable tag. The tag-push trigger remains available for external/manual
+retry paths, but deployment does not depend on workflow recursion from a
+`GITHUB_TOKEN` push. Humans never create or push release tags.
 
 The workflow is read-only. Before installing dependencies or using deployment
 secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
@@ -61,6 +63,12 @@ the tag. It then tests and deploys that exact commit to Convex and Vercel. It
 cannot create a release commit, move `main`, or bypass branch protection. A
 failed deploy leaves the already-approved release commit and tag in place so it
 can be safely retried.
+
+The `main` branch ruleset must require pull requests, the `CI Gate` status, and
+that branches be up to date before merging. The release workflow also compares
+the release branch's recorded base commit with the squash merge's first parent;
+both checks are required so a release PR cannot publish stale release metadata
+after another PR reaches `main`.
 
 To see what the next release would contain, without writing anything:
 

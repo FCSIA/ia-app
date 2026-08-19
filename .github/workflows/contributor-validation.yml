@@ -12,9 +12,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  trust-policy:
+    name: Classify contributor trust
+    runs-on: ubuntu-latest
+    outputs:
+      trusted: ${{ steps.policy.outputs.trusted }}
+    steps:
+      - name: Apply explicit trusted-developer allowlist
+        id: policy
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          TRUSTED_DEVELOPERS: "virajdas,sreyassabbani,KirillMcQ,rebanto,daivik-debuger"
+        run: |
+          case ",${TRUSTED_DEVELOPERS}," in
+            *",${PR_AUTHOR},"*) echo "trusted=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "trusted=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
   validate:
     name: Lint, test, and build
-    if: github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'COLLABORATOR'
+    needs: trust-policy
+    if: ${{ always() && (needs.trust-policy.outputs.trusted != 'true' || startsWith(github.event.pull_request.head.ref, 'release/v')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -104,7 +122,8 @@ jobs:
 
   trusted-fast:
     name: Trusted contributor validation
-    if: github.event.pull_request.author_association == 'MEMBER' || github.event.pull_request.author_association == 'OWNER' || github.event.pull_request.author_association == 'COLLABORATOR'
+    needs: trust-policy
+    if: ${{ always() && needs.trust-policy.outputs.trusted == 'true' && !startsWith(github.event.pull_request.head.ref, 'release/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -118,5 +137,30 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Verify release log
         run: bun run devlog:check
+
+      - name: Verify generated brand assets
+        run: bun run brand:check
+
       - name: Lint
         run: bun run lint
+
+      - name: Test
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+  ci-gate:
+    name: CI Gate
+    if: ${{ always() }}
+    needs: [trust-policy, validate, trusted-fast]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the applicable validation path
+        if: ${{ needs.trust-policy.result != 'success' || (needs.validate.result != 'success' && needs.trusted-fast.result != 'success') }}
+        run: |
+          echo "Contributor validation did not produce a successful applicable gate." >&2
+          echo "trust-policy=${{ needs.trust-policy.result }} validate=${{ needs.validate.result }} trusted-fast=${{ needs.trusted-fast.result }}" >&2
+          exit 1
+      - name: Validation passed
+        run: echo "CI Gate passed."

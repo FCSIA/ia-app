@@ -70,7 +70,7 @@ const staged = capture("git", ["diff", "--cached", "--name-only"]).split("\n").f
 const allowed = new Set(["packages/devlog/data/releases.json", "packages/devlog/src/releases.generated.ts", "CHANGELOG.md"]);
 if (staged.length === 0) fail("release generation produced no files");
 if (staged.some((file) => !allowed.has(file))) fail(`unexpected staged file: ${staged.find((file) => !allowed.has(file))}`);
-run("git", ["commit", "-m", `release: ${tag}`]);
+run("git", ["commit", "-m", `release: ${tag}`, "-m", `Release-Base: ${local}`]);
 run("git", ["push", "--set-upstream", "origin", branch]);
 const pr = capture("gh", ["pr", "create", "--base", "main", "--head", branch, "--title", `release: ${tag}`, "--body", `Merging this PR publishes ${tag} automatically.\n\nGenerated from packages/devlog/data/releases.json.`]);
 process.stdout.write(`\nRelease PR: ${pr}\nMerging it creates ${tag} and deploys that exact release.\n`);
