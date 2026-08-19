@@ -332,7 +332,7 @@ export function ChannelMessageComposer({
                 placeholder={placeholder}
                 className={cn(
                   'max-h-40 min-h-10 resize-none py-2.5',
-                  'font-mono text-base sm:text-sm leading-5',
+                  'font-mono text-sm any-pointer-coarse:text-base leading-5',
                 )}
               />
             ) : (
@@ -342,7 +342,7 @@ export function ChannelMessageComposer({
                 onKeyDown={handleKeyDown}
                 className={cn(
                   'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
-                  'py-2 pl-1 pr-2 text-base sm:text-sm leading-5 outline-none',
+                  'py-2 pl-1 pr-2 text-sm any-pointer-coarse:text-base leading-5 outline-none',
                   '[&_[data-slate-placeholder=true]]:top-2',
                   '[&_[data-slate-placeholder=true]]:text-muted-foreground',
                 )}

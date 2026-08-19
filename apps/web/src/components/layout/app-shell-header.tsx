@@ -87,7 +87,7 @@ function ChannelSearch({
           value={channelSearch.value}
           onChange={(event) => channelSearch.onValueChange(event.target.value)}
           placeholder={`Search #${channelSearch.channelName}`}
-          className="h-8 min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+          className="h-8 min-w-0 flex-1 bg-transparent text-sm any-pointer-coarse:text-base text-foreground outline-none placeholder:text-muted-foreground"
         />
       </label>
       <span className="mx-1 h-4 w-px shrink-0 bg-border/70" aria-hidden />
