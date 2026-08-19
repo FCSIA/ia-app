@@ -40,29 +40,30 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 `apps/convex/.env.local` selects a stateful backend. Never copy it between
 worktrees: doing so makes separate code branches deploy to and write data into
-the same Convex deployment. Stop any `pnpm dev` or `pnpm cvx:dev` watcher using
+the same Convex deployment. Stop any `bun run dev` or `bun run cvx:dev` watcher using
 that deployment before changing a worktree's selection.
 
 For ordinary worktree development, initialize each worktree's own local backend:
 
 ```bash
-pnpm setup:convex-local
-pnpm dev
+bun run setup:convex-local
+bun run dev
 ```
 
-`pnpm setup:convex-local` creates or selects the worktree-local deployment,
+`bun run setup:convex-local` creates or selects the worktree-local deployment,
 repairs its local URL pair from the Convex port configuration, generates
 `BETTER_AUTH_SECRET` only when it is missing, defaults `SITE_URL` only when it
-is missing, and then runs `pnpm sync:convex-env`. Existing deployment variables
-are preserved. Use `pnpm sync:convex-env` by itself after ordinary URL or mobile
+is missing, and then runs `bun run sync:convex-env`. Existing deployment variables
+are preserved. Use `bun run sync:convex-env` by itself after ordinary URL or mobile
 host changes; it does not create deployments or modify deployment-scoped
 secrets.
 
 After selection, both `CONVEX_URL` and `CONVEX_SITE_URL` must be local URLs (or
-both must identify the same named cloud deployment). `pnpm sync:convex-env`
+both must identify the same named cloud deployment). `bun run sync:convex-env`
 refuses to copy a mixed local/cloud configuration into the web and mobile apps.
-Use `direnv exec . pnpm ...` when the system Node version is not supported by
-Convex local; the repo shell provides Node 24.
+Use the Nix/direnv shell when the system Node version is not supported by
+Convex local; the repo shell provides Node 24. Invoke your separately installed
+Bun from the shell rather than expecting direnv to provide it.
 
 ### Physical-device clients
 
@@ -86,10 +87,10 @@ an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment
 instead:
 
 ```bash
-pnpm --filter cvx exec convex deployment create dev/<feature-name> \
+bun run --filter cvx exec convex deployment create dev/<feature-name> \
   --type dev --select --expiration "in 7 days"
-pnpm sync:convex-env
-pnpm dev
+bun run sync:convex-env
+bun run dev
 ```
 
 Free and Starter plans allow named deployments, but their usage is summed
@@ -119,7 +120,7 @@ VAPID_SUBJECT=mailto:admin@example.com
 Generate keys with:
 
 ```bash
-pnpm --filter cvx exec web-push generate-vapid-keys
+bun run --filter cvx exec web-push generate-vapid-keys
 ```
 
 Then set the same public key in the web app and Convex, and keep the private
@@ -129,13 +130,13 @@ key only in Convex:
 # apps/web/.env.local
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
 
-pnpm --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
-pnpm --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
+bun run --filter cvx exec convex env set VAPID_PUBLIC_KEY "..."
+bun run --filter cvx exec convex env set VAPID_PRIVATE_KEY "..."
+bun run --filter cvx exec convex env set VAPID_SUBJECT "mailto:admin@example.com"
 ```
 
-If `pnpm` is only available through the repo's Nix/direnv shell, run the same
-commands as `direnv exec . pnpm ...`.
+Bun is not provided by the repo's Nix/direnv shell; install it separately and
+invoke it from the shell when using the shell's Node 24 environment.
 
 ## Mobile / Expo
 

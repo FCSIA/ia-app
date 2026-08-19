@@ -131,7 +131,7 @@ for (const [relativePath, expected] of outputs) {
 
 if (stale.length > 0) {
   throw new Error(
-    `Brand assets are stale. Run pnpm brand:generate:\n${stale.join("\n")}`,
+    `Brand assets are stale. Run bun run brand:generate:\n${stale.join("\n")}`,
   );
 }
 

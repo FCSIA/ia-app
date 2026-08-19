@@ -8,8 +8,8 @@ The mobile app has one codebase and two ways to run it.
 
 | Use case | Command | Opens |
 | --- | --- | --- |
-| Quick, basic testing | `pnpm dev:mobile` | Expo Go |
-| Normal iPhone development | `pnpm --filter mobile dev:client` | The installed Innovation Academy development app |
+| Quick, basic testing | `bun run dev:mobile` | Expo Go |
+| Normal iPhone development | `bun run --filter mobile dev:client` | The installed Innovation Academy development app |
 
 Prefer the installed development app on iPhone. It includes this project's
 native configuration and libraries, while still loading JavaScript changes
@@ -42,7 +42,7 @@ This setup requires a Mac with Xcode and the phone connected by cable.
      export EXPO_IOS_PERSONAL_TEAM=1
      export IOS_BUNDLE_IDENTIFIER=is.yourname.innovationacademy.dev
 
-     pnpm --filter mobile exec expo prebuild --platform ios --clean --no-install
+     bun run --filter mobile exec expo prebuild --platform ios --clean --no-install
      cd apps/mobile/ios
      pod install
      open InnovationAcademy.xcworkspace
@@ -60,19 +60,19 @@ This setup requires a Mac with Xcode and the phone connected by cable.
 Start Convex too when working against a local development backend:
 
 ```bash
-pnpm --filter cvx dev
+bun run --filter cvx dev
 ```
 
 Start Metro for the installed development app:
 
 ```bash
-pnpm --filter mobile dev:client
+bun run --filter mobile dev:client
 ```
 
 Use this instead when the phone is not on the Mac's Wi-Fi:
 
 ```bash
-pnpm --filter mobile dev:client:tunnel
+bun run --filter mobile dev:client:tunnel
 ```
 
 Open the installed **Innovation Academy** app, not Expo Go.
@@ -84,7 +84,7 @@ dependency change, stop Metro and restart it with a cleared cache before
 debugging the individual errors:
 
 ```nu
-pnpm --filter mobile dev:client:clear
+bun run --filter mobile dev:client:clear
 ```
 
 Reopen the installed app afterward. If the change also affected native
@@ -96,12 +96,12 @@ With a free Apple Personal Team, the installed app expires after about seven
 days. After the first-time setup, connect and unlock one iPhone, then renew it:
 
 ```bash
-pnpm mobile:ios:refresh
+bun run mobile:ios:refresh
 ```
 
 The command only proceeds when Xcode can see one paired physical iOS device. It
 stops when it finds zero or multiple devices; disconnect the others, or select
-one explicitly with `pnpm mobile:ios:refresh -- "<iPhone UDID>"`. It asks Xcode
+one explicitly with `bun run mobile:ios:refresh -- "<iPhone UDID>"`. It asks Xcode
 to renew the provisioning profile, rebuilds the app, and installs it on the
 connected phone. It also selects the only Apple development team registered in
 Xcode, overriding a stale school team left by prebuild. When more than one
@@ -109,7 +109,7 @@ development team is available, select one from Nushell with:
 
 ```nu
 with-env { IOS_APPLE_TEAM_ID: "YOUR_TEAM_ID" } {
-  pnpm mobile:ios:refresh
+  bun run mobile:ios:refresh
 }
 ```
 

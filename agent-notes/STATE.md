@@ -3,13 +3,29 @@
 ## Active Focus
 
 - **Branch**: `codex/security-audit-remediation`
-- **Goal**: Land the complete remediation for
-  `docs/reference/security-audit-2026-08-09.md` without touching production.
+- **Goal**: Complete the pnpm → Bun migration and its production audit gate
+  without touching production.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Bun Migration
+
+- Bun `1.3.14` and `bun.lock` are the repository package-manager contract;
+  `pnpm-lock.yaml` and `pnpm-workspace.yaml` are retired.
+- Bun's native `audit --prod` includes workspace tooling and optional-peer
+  resolution paths, so it is not the production CI gate.
+- Contributor Validation generates a production dependency inventory from
+  `bun.lock` and scans it with OSV-Scanner. Workspace `devDependencies` are
+  excluded; the two known `image-size` advisories remain reported accepted
+  exceptions because no patched package release is available.
+- Optional peer artifacts are excluded unless their resolved instance is also
+  independently selected by the runtime dependency closure. This removes the
+  unused Better Auth/Prisma branch structurally while retaining selected
+  runtime optional dependencies. No dependency change or advisory ignore was
+  added for it.
 
 ### Security Audit Remediation (2026-08-09)
 
@@ -372,9 +388,9 @@ narrowed in draft PR #45.
 ## Handoff Commands
 
 ```bash
-direnv exec . pnpm --filter cvx codegen
-direnv exec . pnpm --filter cvx typecheck
-direnv exec . pnpm lint
-direnv exec . pnpm build
-direnv exec . pnpm test
+bun run --filter cvx codegen
+bun run --filter cvx typecheck
+bun run lint
+bun run build
+bun run test
 ```

@@ -9,7 +9,7 @@ const mobileEnvPath = join(root, 'apps', 'mobile', '.env.local');
 const args = process.argv.slice(2);
 
 if (!existsSync(convexEnvPath)) {
-  console.error('Missing apps/convex/.env.local — run `pnpm --filter cvx dev` and link a project first.');
+  console.error('Missing apps/convex/.env.local — run `bun run --filter cvx dev` and link a project first.');
   process.exit(1);
 }
 
@@ -94,7 +94,7 @@ console.log(`Synced Convex env to apps/mobile/.env.local`);
 console.log(`  EXPO_PUBLIC_CONVEX_URL=${clientUrl(convexUrl, mobileHost)}`);
 console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, mobileHost)}`);
 if (!mobileHost && !webHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
-  console.log('Tip: run `pnpm sync:convex-env -- --android` for Android emulator, or `pnpm sync:convex-env -- --host <your LAN IPv4>` for a physical-device client.');
+  console.log('Tip: run `bun run sync:convex-env -- --android` for Android emulator, or `bun run sync:convex-env -- --host <your LAN IPv4>` for a physical-device client.');
 }
 
 if (mobileHost) {

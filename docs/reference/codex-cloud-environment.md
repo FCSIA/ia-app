@@ -57,8 +57,8 @@ runs checks or edits code.
 For normal coding tasks, prefer this safer setup:
 
 - Keep generated Convex files committed.
-- Let agents run local checks such as `pnpm --filter cvx typecheck` and
-  `pnpm --filter web build`.
+- Let agents run local checks such as `bun run --filter cvx typecheck` and
+  `bun run --filter web build`.
 - Have agents create/select a local Convex deployment instead of sharing a
   cloud dev deployment.
 - Ask agents not to deploy or run destructive seed/reset functions.
@@ -82,7 +82,7 @@ For ordinary queued coding work:
 ```text
 Read AGENTS.md, agent-notes/STATE.md, docs/index.md, then inspect the smallest
 relevant source files. Make the requested change. Verify with the narrowest
-useful checks first; prefer pnpm --filter cvx typecheck and pnpm --filter web
+useful checks first; prefer bun run --filter cvx typecheck and bun run --filter web
 build. For any Convex work, read docs/backend/convex-local-production.md and
 docs/reference/environment.md, inspect `git worktree list` and this worktree's
 apps/convex/.env.local, then use the worktree-local Convex backend. Do not use
@@ -98,7 +98,7 @@ docs/backend/convex-local-production.md and docs/reference/environment.md before
 any Convex watcher or deployment selection; read docs/backend/seed-and-reset.md
 before seed work. Inspect `git worktree list` and this worktree's
 apps/convex/.env.local, then use the worktree-local backend. Use
-pnpm --filter cvx typecheck after edits. Do not use cloud Convex or run
+bun run --filter cvx typecheck after edits. Do not use cloud Convex or run
 bootstrap:resetAndSeed unless I explicitly ask.
 ```
 
@@ -108,10 +108,10 @@ From a Linux-like shell, the setup script should be equivalent to:
 
 ```bash
 bash scripts/codex-cloud-setup.sh
-pnpm --filter cvx typecheck
-pnpm --filter web build
+bun run --filter cvx typecheck
+bun run --filter web build
 ```
 
-`pnpm lint` is still the intended broad check, but the current handoff notes
+`bun run lint` is still the intended broad check, but the current handoff notes
 say legacy `apps/api` lint failures block it until that code is fixed or
 removed.

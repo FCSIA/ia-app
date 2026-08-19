@@ -39,18 +39,20 @@ packages/devlog/src/releases.generated.ts   generated — consumed by the app
 CHANGELOG.md                            generated — read by maintainers
 ```
 
-`scripts/devlog.mjs` owns both generated files. `pnpm devlog:check` regenerates
+`scripts/devlog.mjs` owns both generated files. `bun run devlog:check` regenerates
 them in memory and fails if either has drifted, so a hand edit cannot survive
 CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy uses an approved immutable release tag. First, cut the
-release data from `main`, commit the generated `CHANGELOG.md` and devlog files,
-and merge those changes through the normal protected-branch pull-request flow.
-After the release commit is in `main`, a designated maintainer creates and
-pushes its `v<version>` tag. That tag starts `Production Deploy`
-(`.github/workflows/prod.yml`).
+A production deploy uses an approved immutable release tag. Run the single
+release command from an up-to-date clean `main` checkout; it creates a release
+branch and pull request containing the generated release files. When that PR
+merges, the merge-triggered release workflow
+(`.github/workflows/release-on-merge.yml`)
+creates and pushes the tag; `Production Deploy` (`.github/workflows/prod.yml`)
+only validates and deploys that existing immutable tag. Humans never create or
+push release tags.
 
 The workflow is read-only. Before installing dependencies or using deployment
 secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
@@ -63,19 +65,19 @@ can be safely retried.
 To see what the next release would contain, without writing anything:
 
 ```bash
-pnpm devlog:preview
+bun run devlog:preview
 ```
 
 To prepare one for review from an up-to-date `main` checkout:
 
 ```bash
-pnpm devlog:cut --minor --title="Calendar-first schedules"
+bun run release --minor
 ```
 
-Commit `CHANGELOG.md` and `packages/devlog`, open a pull request, and wait for
-the usual approval and validation. Once it is merged, create `v<version>` on
-that release commit and push the tag to begin deployment. To retry an approved
-release, manually dispatch the workflow with that existing tag name.
+The command prints the pull request URL. Wait for the usual approval and
+validation; merging the release PR begins deployment automatically. Use
+`bun run release --set=1.0.0` for an explicit version or `--dry-run` to inspect
+the proposed release without mutations.
 
 ## How commits become entries
 
@@ -106,7 +108,7 @@ Devlog-scope: clubs
 `Devlog: skip` keeps a commit out of the log entirely.
 
 Writing entries by hand is also fine — `releases.json` is a normal file. Run
-`pnpm devlog:generate` afterwards so the generated outputs match.
+`bun run devlog:generate` afterwards so the generated outputs match.
 
 ## The in-app devlog
 

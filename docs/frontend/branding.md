@@ -28,8 +28,8 @@ After changing `IA Orbit.icon`, export the iOS Default and Dark appearances at
 `icon-composer/IA Orbit-dark.png`, then run:
 
 ```bash
-pnpm brand:generate
-pnpm brand:check
+bun run brand:generate
+bun run brand:check
 ```
 
 The generator owns the exact-size web icons, light/dark browser favicons,
@@ -37,4 +37,4 @@ mobile icon and in-app marks, Android adaptive foreground, monochrome
 notification icon, splash mark, and the Expo-local copy of the iOS Icon
 Composer source. Web and mobile marks use the Dark rendition for dark and
 high-contrast app themes, and the Default rendition for other themes.
-`pnpm brand:check` fails when any generated asset drifts from the source.
+`bun run brand:check` fails when any generated asset drifts from the source.

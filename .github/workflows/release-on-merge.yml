@@ -1,0 +1,48 @@
+name: Publish Release Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-release:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Validate and create immutable release tag
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "JSON.parse(require('fs').readFileSync('packages/devlog/data/releases.json')).releases[0].version")"
+          tag="v${version}"
+
+          if [[ "$RELEASE_BRANCH" != "release/$tag" ]]; then
+            echo "Release branch $RELEASE_BRANCH does not match generated version $tag." >&2
+            exit 1
+          fi
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          if git show-ref --verify --quiet "refs/tags/$tag"; then
+            echo "$tag already exists; refusing to move it." >&2
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$MERGE_SHA" ]]; then
+            echo "Checked-out commit does not match the pull request merge commit." >&2
+            exit 1
+          fi
+
+          git tag -a "$tag" -m "Release $tag" "$MERGE_SHA"
+          git push origin "$tag"

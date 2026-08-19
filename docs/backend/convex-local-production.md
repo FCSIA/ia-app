@@ -96,7 +96,7 @@ VAPID_PRIVATE_KEY
 VAPID_SUBJECT
 ```
 
-For this app, `pnpm --filter cvx deploy` deploys Convex schema, functions, HTTP
+For this app, `bun run --filter cvx exec convex deploy` deploys Convex schema, functions, HTTP
 routes, storage integration, and component configuration. In CI this should run
 with a production `CONVEX_DEPLOY_KEY` stored in the CI or Azure secret store,
 not in git.
@@ -182,8 +182,8 @@ and agent, including feature, schema, seed, and ordinary local test work. Each
 worktree gets an isolated backend.
 
 ```bash
-pnpm setup:convex-local
-pnpm dev
+bun run setup:convex-local
+bun run dev
 ```
 
 The setup command creates or selects the worktree-local deployment, initializes
@@ -221,10 +221,10 @@ physical-device testing, a webhook, or shared dashboard access. Do not let two
 schema-changing worktrees select the same cloud deployment.
 
 ```bash
-pnpm --filter cvx exec convex deployment create dev/<feature-name> \
+bun run --filter cvx exec convex deployment create dev/<feature-name> \
   --type dev --select --expiration "in 7 days"
-pnpm sync:convex-env
-pnpm dev
+bun run sync:convex-env
+bun run dev
 ```
 
 This creates and selects a cloud deployment for the current worktree, then
@@ -239,10 +239,10 @@ reverse usage already metered in the month.
 Before selecting a deployment, starting a watcher, or resetting seed data,
 inspect `git worktree list` and the current worktree's
 `apps/convex/.env.local`. Use an isolated local deployment unless Mode B's
-specific need applies. Stop `pnpm dev` / `pnpm cvx:dev` watchers pointed at a
+specific need applies. Stop `bun run dev` / `bun run cvx:dev` watchers pointed at a
 shared deployment before switching selections, and never copy
-`apps/convex/.env.local` between worktrees. Use `pnpm setup:convex-local` for
-local selection and initialization; use `pnpm sync:convex-env` after selecting
+`apps/convex/.env.local` between worktrees. Use `bun run setup:convex-local` for
+local selection and initialization; use `bun run sync:convex-env` after selecting
 a cloud deployment so the clients follow the same backend. The sync command
 rejects a mixed configuration where `CONVEX_URL` and `CONVEX_SITE_URL` point at
 different deployments. If the system `node` is unsupported, run Convex
@@ -260,9 +260,9 @@ from deployment repair and cannot reconcile an incompatible schema or data.
 To select an existing named cloud dev deployment:
 
 ```bash
-pnpm --filter cvx exec convex deployment select dev/<feature-name>
-pnpm sync:convex-env
-pnpm dev
+bun run --filter cvx exec convex deployment select dev/<feature-name>
+bun run sync:convex-env
+bun run dev
 ```
 
 ## Environment Separation
@@ -303,8 +303,8 @@ Before real student data goes into managed Convex:
 - Add scheduled exports of audit, roster, moderation, and upload inventory data
   to district-controlled Azure storage if required.
 - Document retention and deletion runbooks.
-- Run `pnpm --filter cvx codegen`, `pnpm --filter cvx typecheck`, and
-  `pnpm --filter web build` before deploying.
+- Run `bun run --filter cvx codegen`, `bun run --filter cvx typecheck`, and
+  `bun run --filter web build` before deploying.
 
 ## Self-Hosted Convex In District Azure
 

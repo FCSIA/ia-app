@@ -62,15 +62,15 @@ without explicit authorization.
   should read. Commit subjects become the in-app devlog; see
   `docs/reference/versioning.md`.
 - `CHANGELOG.md` and `packages/devlog/src/releases.generated.ts` are generated.
-  Edit `packages/devlog/data/releases.json` and run `pnpm devlog:generate`.
+  Edit `packages/devlog/data/releases.json` and run `bun run devlog:generate`.
 
 ## Verification
 
 Run the narrowest relevant checks. For web code:
 
-- `direnv exec . pnpm --filter web exec tsc --noEmit`
-- `direnv exec . pnpm --filter web lint`
-- `direnv exec . pnpm --filter web build` when production compilation matters
+- `bun run --filter web typecheck`
+- `bun run --filter web lint`
+- `bun run --filter web build` when production compilation matters
 
 These checks establish code correctness, not design approval. Report skipped or
 unavailable verification honestly.
