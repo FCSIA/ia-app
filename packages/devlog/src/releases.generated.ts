@@ -7,6 +7,20 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.6",
+    "date": "2026-08-20",
+    "commit": "9b0068e",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Keep editable text readable on touch devices without changing desktop sizing.",
+        "commit": "9b0068e",
+        "pr": 104
+      }
+    ]
+  },
+  {
     "version": "0.8.5",
     "date": "2026-08-19",
     "commit": "3754668",

@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.6 — 2026-08-20 (alpha)
+
+### Improved
+
+- **web** — Keep editable text readable on touch devices without changing desktop sizing. ([#104](https://github.com/virajdas/ia-app/pull/104), [`9b0068e`](https://github.com/virajdas/ia-app/commit/9b0068e))
+
 ## v0.8.5 — 2026-08-19 (alpha)
 
 ### Fixed
