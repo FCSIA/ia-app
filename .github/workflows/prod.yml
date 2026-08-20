@@ -4,7 +4,7 @@
 # maintainer tags its merged main commit. This workflow is deliberately
 # read-only: it deploys that exact tagged commit and never writes to main.
 #
-# Required repo secret:
+# Required repo secrets:
 #   CONVEX_DEPLOY_KEY — production deploy key with the `deployment:deploy` permission
 #   VERCEL_TOKEN — create at https://vercel.com/account/tokens
 #
@@ -39,11 +39,12 @@ jobs:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.release_tag }}
+
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          # Fetch the submitted tag only. Validation below proves that its
-          # commit is already in main before code or deployment secrets run.
+          # Check out the submitted tag and fetch full history so validation can
+          # prove that its commit is already in main before deployment secrets run.
           ref: ${{ github.event_name == 'push' && github.ref || inputs.release_tag }}
           fetch-depth: 0
           persist-credentials: false
@@ -52,23 +53,33 @@ jobs:
         id: release
         run: |
           set -euo pipefail
+
           if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Release tag must use vMAJOR.MINOR.PATCH (received: $RELEASE_TAG)." >&2
             exit 1
           fi
 
-          git fetch --no-tags origin main:refs/remotes/origin/main
           release_sha=$(git rev-parse "$RELEASE_TAG^{commit}")
+
           if ! git merge-base --is-ancestor "$release_sha" origin/main; then
             echo "Release tag $RELEASE_TAG does not point to a commit already merged into main." >&2
             exit 1
           fi
 
           release_version="${RELEASE_TAG#v}"
+
           RELEASE_VERSION="$release_version" node -e '
-            const { releases } = JSON.parse(require("node:fs").readFileSync("packages/devlog/data/releases.json", "utf8"));
+            const { releases } = JSON.parse(
+              require("node:fs").readFileSync(
+                "packages/devlog/data/releases.json",
+                "utf8"
+              )
+            );
+
             if (releases[0]?.version !== process.env.RELEASE_VERSION) {
-              throw new Error(`Latest approved devlog version is v${releases[0]?.version ?? "none"}, not v${process.env.RELEASE_VERSION}.`);
+              throw new Error(
+                `Latest approved devlog version is v${releases[0]?.version ?? "none"}, not v${process.env.RELEASE_VERSION}.`
+              );
             }
           '
 
