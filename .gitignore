@@ -91,6 +91,7 @@ Microsoft/
 !apps/api/uploads/.gitkeep
 apps/api/uploads/*
 .env*
+apps/web/next-env.d.ts
 
 # data
 .data
