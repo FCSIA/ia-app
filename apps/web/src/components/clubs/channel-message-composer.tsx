@@ -330,6 +330,11 @@ export function ChannelMessageComposer({
                 onChange={(event) => setMarkdownSource(event.target.value)}
                 onKeyDown={handleMarkdownSourceKeyDown}
                 placeholder={placeholder}
+                spellCheck
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                inputMode="text"
+                enterKeyHint="send"
                 className={cn(
                   'max-h-40 min-h-10 resize-none py-2.5',
                   'font-mono text-sm any-pointer-coarse:text-base leading-5',
@@ -340,6 +345,11 @@ export function ChannelMessageComposer({
                 data-slot="input-group-control"
                 placeholder={placeholder}
                 onKeyDown={handleKeyDown}
+                spellCheck
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                inputMode="text"
+                enterKeyHint="send"
                 className={cn(
                   'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
                   'py-2 pl-1 pr-2 text-sm any-pointer-coarse:text-base leading-5 outline-none',

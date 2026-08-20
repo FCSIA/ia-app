@@ -1540,7 +1540,7 @@ export function ChannelWorkspace() {
 
         <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-2 pb-24">
+            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-2">
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
                 <MessageScrollerItem>
                   <div className="flex justify-center py-2">
@@ -1585,12 +1585,12 @@ export function ChannelWorkspace() {
               )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
-          <MessageScrollerButton className="data-[direction=end]:bottom-24" />
+          <MessageScrollerButton />
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="absolute inset-x-0 bottom-0 z-10 border-t bg-card/85 p-2 backdrop-blur-xl">
-        <div className="pointer-events-auto mx-auto max-w-4xl">
+      <div className="shrink-0 border-t bg-card/85 p-2 backdrop-blur-xl">
+        <div className="mx-auto max-w-4xl">
           {canPost ? (
             <div className="flex flex-col gap-1.5">
               {replyingToMessageId ? (

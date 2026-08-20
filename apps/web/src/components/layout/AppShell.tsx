@@ -136,7 +136,7 @@ export function AppShell({
           onOpenChange={setMobileOpen}
         />
 
-        <div className="app-main-surface flex min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]">
+        <div className="app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]">
           <AppShellHeader
             headerSlot={headerSlot}
             channelSearch={channelSearch}

@@ -53,17 +53,26 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {
   overlayClassName?: string
+  /** Keep interactive content inside device cutouts and the home indicator. */
+  safeArea?: boolean
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, overlayClassName, ...props }, ref) => (
+>(({ side = "right", className, children, overlayClassName, safeArea = true, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay className={overlayClassName} />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cn(
+        sheetVariants({ side }),
+        className,
+        safeArea && side === "top" && "pt-[env(safe-area-inset-top)]",
+        safeArea && side === "bottom" && "pb-[env(safe-area-inset-bottom)]",
+        safeArea && (side === "left" || side === "right") &&
+          "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      )}
       onPointerDownOutside={(e) => {
         if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
           e.preventDefault();
