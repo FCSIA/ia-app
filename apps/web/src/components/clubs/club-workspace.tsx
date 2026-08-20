@@ -135,6 +135,7 @@ function ClubIdentity({
 
 type ClubWorkspaceProps = {
   children: ReactNode;
+  navigationOnly?: boolean;
   rightPane?: ReactNode;
   resizableRightPane?: boolean;
   mobileRightPane?: {
@@ -150,6 +151,7 @@ type ClubWorkspaceProps = {
 
 export function ClubWorkspace({
   children,
+  navigationOnly = false,
   rightPane,
   resizableRightPane = false,
   mobileRightPane,
@@ -160,6 +162,7 @@ export function ClubWorkspace({
   channelSearch,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
   const clubId = useClubId();
   const user = useCurrentUser();
   const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
@@ -204,6 +207,11 @@ export function ClubWorkspace({
   const activeChannelId = pathname.match(
     /\/clubs\/[^/]+\/channels\/([^/]+)/,
   )?.[1];
+  const clubRootPath = `/clubs/${clubId}`;
+  const navigationPath = `${clubRootPath}/navigation`;
+  const isNavigationPage = pathname === navigationPath;
+  const isClubOverview = pathname === clubRootPath;
+  const mobileBackHref = isNavigationPage ? "/clubs" : navigationPath;
 
   const nav: Array<{
     href: string;
@@ -239,21 +247,28 @@ export function ClubWorkspace({
   const headerSlot = (
     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Button asChild type="button" variant="ghost" size="icon" aria-label="Back to clubs">
+        <Button asChild type="button" variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Back to clubs">
           <Link href="/clubs">
             <ArrowLeft />
           </Link>
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 shrink-0 md:hidden"
-          aria-label="Open club channels"
-          onClick={() => setMobileNavigationOpen(true)}
-        >
-          <PanelLeft className="size-4" />
+        <Button asChild type="button" variant="ghost" size="icon" className="md:hidden" aria-label={isNavigationPage ? "Back to clubs" : "Back to club navigation"}>
+          <Link href={mobileBackHref}>
+            <ArrowLeft />
+          </Link>
         </Button>
+        {isClubOverview ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 md:hidden"
+            aria-label="Open club channels"
+            onClick={() => setMobileNavigationOpen(true)}
+          >
+            <PanelLeft className="size-4" />
+          </Button>
+        ) : null}
         <div className="min-w-0 flex-1">
           {title ?? (
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
@@ -372,13 +387,50 @@ export function ClubWorkspace({
     </div>
   );
 
+  if (navigationOnly) {
+    return (
+      <AppShell
+        headerSlot={headerSlot}
+        mainClassName={FLUSH_MAIN_CLASS}
+        pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
+      >
+        <div className="min-h-0 flex-1">
+          <ClubNavigationPanel
+            density="mobile"
+            standalone
+            clubId={clubId}
+            viewerId={user?._id ?? null}
+            club={club}
+            myClubs={myClubs}
+            showClubPicker={showClubPicker}
+            nav={nav}
+            pathname={pathname}
+            channels={channels}
+            units={navigation?.units ?? []}
+            activeChannelId={activeChannelId}
+            canCreateChannels={canCreateChannels}
+            canEditChannels={canEditChannels}
+            canDeleteChannels={canDeleteChannels}
+            onDeleteChannel={(channel) => {
+              if (confirm(`Delete #${channel.name}?`)) {
+                void deleteChannel({ channelId: channel._id }).then(() =>
+                  toast({ title: "Channel deleted" }),
+                );
+              }
+            }}
+          />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
       headerSlot={headerSlot}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
-      onMobileSwipeRight={() => setMobileNavigationOpen(true)}
+      onMobileSwipeRight={() => router.push(navigationPath)}
     >
       <div className="flex min-h-0 flex-1">
         <Sheet
@@ -490,6 +542,7 @@ type NavigationItem = {
 
 function ClubNavigationPanel({
   density,
+  standalone = false,
   clubId,
   viewerId,
   club,
@@ -507,6 +560,7 @@ function ClubNavigationPanel({
   onDeleteChannel,
 }: {
   density: "desktop" | "mobile";
+  standalone?: boolean;
   clubId: Id<"clubs">;
   viewerId: string | null;
   club?: ClubWorkspaceNavigation["club"];
@@ -586,7 +640,7 @@ function ClubNavigationPanel({
       <div
         className={cn(
           "shrink-0 border-b border-border/70 p-2",
-          density === "mobile" && "pr-12",
+          density === "mobile" && !standalone && "pr-12",
         )}
       >
         {showClubPicker ? (
