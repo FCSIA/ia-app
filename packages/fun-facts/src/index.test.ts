@@ -20,12 +20,12 @@ describe("navigation loading facts", () => {
   });
 
   it("selects ordinary facts outside the rare threshold", () => {
-    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.5, 0]));
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.7, 0]));
     expect(pick()).toMatchObject({ rarity: "common" });
   });
 
   it("does not repeat common facts inside the 30-item history window", () => {
-    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.5, 0]));
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.7, 0]));
     const ids = Array.from({ length: 30 }, () => pick().id);
     expect(new Set(ids)).toHaveLength(ids.length);
   });

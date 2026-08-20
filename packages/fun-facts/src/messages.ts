@@ -122,6 +122,7 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'Cotton candy was invented by a dentist. (He also invented the machine that makes it.)',
   'The cookie monster\'s real name is Sid. (Sesame Street canon.)',
   'Nutella uses about 25% of the world\'s hazelnut supply.',
+  'Fun fact: Maggi noodles feel like an Asian staple, but the MAGGI brand was invented in Switzerland in 1884.',
   'Spam stands for "Shoulder of Pork and Ham." Or so the legend goes.',
 
   // Language & words
@@ -567,4 +568,16 @@ export const NAVIGATION_LOADING_MESSAGES = [
   'The “knapsack” originally referred to a donkey’s load carrier.',
   'The first “computer virus” was called “Creeper,” created in 1971 as an experiment.',
   'The inventor of the “Velcro,” George',
+  'Earth and the Moon are both satellites — Earth orbits the Sun, while the Moon orbits Earth.',
+  'Mercury is the only planet in our solar system without an atmosphere.',
+  'GPS works partly because scientists correct for Einstein’s time-travel effects on satellite clocks.',
+  'Sprites are enormous red flashes of light that can appear above thunderstorms.',
+  'Noctilucent clouds are the highest clouds in Earth’s atmosphere, and meteor dust helps them form.',
+  'The “headless chicken monster” is a real deep-sea sea cucumber, also nicknamed a “Spanish dancer.”',
+  'Black corals can look white, pink, or other colors while alive; their skeletons are dark.',
+  'Some deep-sea coral colonies can survive for thousands of years.',
+  'The fangtooth fish has the biggest teeth of any ocean animal compared with its body size.',
+  'The deepest confirmed fish sighting was a snailfish filmed 8,336 meters below the ocean surface.',
+  'Hellbenders breathe mostly through their wrinkly skin instead of using gills.',
+  'Male hellbenders guard their eggs for months by fanning them with oxygenated water.',
 ] as const;

@@ -32,7 +32,7 @@ export const RARE_LOADING_FACTS: readonly LoadingFact[] = [
 
 /** Avoid showing the same fact again too soon in one session. */
 const RECENT_MESSAGE_COUNT = 30;
-const RARE_FACT_CHANCE = 0.1;
+const RARE_FACT_CHANCE = 0.6;
 
 const COMMON_LOADING_FACTS: readonly LoadingFact[] = NAVIGATION_LOADING_MESSAGES.map(
   (text, index) => ({
