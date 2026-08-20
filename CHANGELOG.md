@@ -12,6 +12,13 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.7 — 2026-08-20 (alpha)
+
+### Added
+
+- **actions** — Support production deploys from private repo. ([`1b87c26`](https://github.com/virajdas/ia-app/commit/1b87c26))
+- **web** — Swipe back from club content to the full club navigation, then swipe again for app navigation. ([`2fec13b`](https://github.com/virajdas/ia-app/commit/2fec13b))
+
 ## v0.8.6 — 2026-08-20 (alpha)
 
 ### Improved

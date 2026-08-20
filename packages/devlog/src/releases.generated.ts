@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.7",
+    "date": "2026-08-20",
+    "commit": "1b87c26",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "actions",
+        "summary": "Support production deploys from private repo.",
+        "commit": "1b87c26"
+      },
+      {
+        "category": "Added",
+        "scope": "web",
+        "summary": "Swipe back from club content to the full club navigation, then swipe again for app navigation.",
+        "commit": "2fec13b"
+      }
+    ]
+  },
+  {
     "version": "0.8.6",
     "date": "2026-08-20",
     "commit": "9b0068e",
