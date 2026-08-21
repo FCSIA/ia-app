@@ -486,6 +486,17 @@
   .pill {
     @apply inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm;
   }
+
+  @media (hover: none) and (pointer: coarse) {
+    .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
+      .app-main-surface {
+      padding-bottom: 0;
+    }
+
+    .app-root[data-viewport-mode='visual'] .channel-composer-dock:focus-within {
+      padding-bottom: 0;
+    }
+  }
 }
 
 .shimmer-text {

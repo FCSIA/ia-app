@@ -393,6 +393,7 @@ export function ClubWorkspace({
         headerSlot={headerSlot}
         mainClassName={FLUSH_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
+        viewportMode="visual"
       >
         <div className="min-h-0 flex-1">
           <ClubNavigationPanel
@@ -431,6 +432,7 @@ export function ClubWorkspace({
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
       onMobileSwipeRight={() => router.push(navigationPath)}
+      viewportMode="visual"
     >
       <div className="flex min-h-0 flex-1">
         <Sheet

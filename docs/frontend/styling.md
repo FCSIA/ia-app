@@ -30,6 +30,16 @@ base styles, and reusable app-wide utilities.
 The standalone web shell opts into `viewport-fit=cover` and applies iOS
 safe-area insets at its shared header and main surface. Do not add page-level
 notch or home-indicator padding; that would double the shell-owned inset.
+Viewport-bounded workspaces use `AppShell`'s `visual` viewport mode so the
+software keyboard resizes the shell, the document stays locked, and the
+workspace's designated scrollport remains the only scrolling surface.
+On touch-primary devices, a focused channel composer collapses the shell's
+home-indicator inset and its own bottom padding because the keyboard already
+owns that edge. Keep this focus-owned adjustment in CSS; do not add keyboard
+detection or page-level viewport resizing for composer spacing.
+The Previous/Next/Done form assistant above the iPhone keyboard is owned by
+iOS/WebKit and has no web API for hiding it. Do not replace accessible inputs
+or editors with simulated controls to suppress operating-system chrome.
 
 ## Common Utilities
 

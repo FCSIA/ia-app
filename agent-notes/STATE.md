@@ -196,6 +196,11 @@
   instead of spacious nested cards. Channel reactions now stay in document flow,
   the solid composer and message spacing preserve clear separation, channel
   alerts update optimistically, and pinned messages live in the channel toolbar.
+- Web club workspaces are bounded to the live visual viewport. On iPhone PWAs,
+  opening the keyboard resizes the shell while the message timeline remains the
+  sole scroll owner, so the shared safe-area header and composer stay anchored.
+  The focused root composer uses the same solid card surface as the workspace
+  and collapses duplicate shell/dock bottom insets without keyboard detection.
 - The web PWA header exposes search without a keyboard shortcut hint on compact
   screens. Dashboard customization lives in the header, and the greeting is a
   borderless date summary instead of a live seconds clock.

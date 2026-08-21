@@ -1589,7 +1589,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="shrink-0 border-t bg-card/85 p-2 backdrop-blur-xl">
+      <div className="channel-composer-dock shrink-0 border-t bg-card p-2">
         <div className="mx-auto max-w-4xl">
           {canPost ? (
             <div className="flex flex-col gap-1.5">

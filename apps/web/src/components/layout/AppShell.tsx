@@ -4,6 +4,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -27,6 +28,7 @@ import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigat
 import { useNavigationLoadingOptional } from "@/components/layout/navigation-loading-provider";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
+import { cn } from "@/lib/utils";
 
 export type { ChannelSearchControl } from "@/components/layout/app-shell-header";
 
@@ -37,6 +39,7 @@ export function AppShell({
   pageTransitionClassName,
   channelSearch,
   onMobileSwipeRight,
+  viewportMode = "document",
 }: {
   children: ReactNode;
   headerSlot?: ReactNode;
@@ -44,6 +47,7 @@ export function AppShell({
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
   onMobileSwipeRight?: () => void;
+  viewportMode?: "document" | "visual";
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -53,6 +57,8 @@ export function AppShell({
   const [commandOpen, setCommandOpen] = useState(false);
   const [searchScope, setSearchScope] = useState<SearchScope>("everything");
   const navigationLoading = useNavigationLoadingOptional();
+  const appRootRef = useRef<HTMLDivElement>(null);
+  const usesVisualViewport = viewportMode === "visual";
   const safePathname = pathname ?? "/dashboard";
   const openMobileNavigation = useCallback(() => {
     if (onMobileSwipeRight) {
@@ -86,6 +92,45 @@ export function AppShell({
   useEffect(() => {
     setMobileOpen(false);
   }, [safePathname]);
+
+  useEffect(() => {
+    if (!usesVisualViewport) return;
+
+    const root = appRootRef.current;
+    if (!root) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const viewport = window.visualViewport;
+
+    const syncHeight = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      root.style.setProperty("--app-visual-viewport-height", `${Math.round(height)}px`);
+
+      // Focusing the composer can make WebKit pan the layout viewport before
+      // the visual viewport resize arrives. The bounded shell owns no document
+      // scrolling, so return that transient pan to the message scrollport.
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    syncHeight();
+    viewport?.addEventListener("resize", syncHeight);
+    viewport?.addEventListener("scroll", syncHeight);
+    window.addEventListener("resize", syncHeight);
+
+    return () => {
+      viewport?.removeEventListener("resize", syncHeight);
+      viewport?.removeEventListener("scroll", syncHeight);
+      window.removeEventListener("resize", syncHeight);
+      root.style.removeProperty("--app-visual-viewport-height");
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, [usesVisualViewport]);
 
   const unreadData = useQuery(api.notifications.inbox.unreadCount);
 
@@ -125,7 +170,14 @@ export function AppShell({
   return (
     <Fragment>
       <div
-        className="app-root flex min-h-[100dvh] w-full bg-background"
+        ref={appRootRef}
+        data-viewport-mode={viewportMode}
+        className={cn(
+          "app-root flex w-full bg-background",
+          usesVisualViewport
+            ? "h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
+            : "min-h-[100dvh]",
+        )}
         {...swipeHandlers}
       >
         {/* z-40 keeps hover labels above the adjacent workspace sidebar. */}
@@ -136,7 +188,12 @@ export function AppShell({
           onOpenChange={setMobileOpen}
         />
 
-        <div className="app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]">
+        <div
+          className={cn(
+            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]",
+            usesVisualViewport && "h-full overflow-hidden",
+          )}
+        >
           <AppShellHeader
             headerSlot={headerSlot}
             channelSearch={channelSearch}
