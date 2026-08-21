@@ -110,6 +110,18 @@ if (!getDeploymentEnv("SITE_URL")) {
   console.log("Preserved the existing local SITE_URL.");
 }
 
+if (!getDeploymentEnv("AUTH_ALLOW_ANY_LOCAL_WEB_HOST")) {
+  convex([
+    "env",
+    "set",
+    "--deployment",
+    "local",
+    "AUTH_ALLOW_ANY_LOCAL_WEB_HOST",
+    "true",
+  ]);
+  console.log("Enabled LAN and tunnel auth hosts for the local deployment.");
+}
+
 if (!getDeploymentEnv("ALLOW_LOCAL_DEMO_SEED")) {
   convex([
     "env",

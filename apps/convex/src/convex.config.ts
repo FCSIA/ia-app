@@ -6,6 +6,8 @@ import betterAuth from "./betterAuth/convex.config";
 
 const app = defineApp({
   env: {
+    AUTH_ALLOW_ANY_LOCAL_WEB_HOST: v.optional(v.string()),
+    BETTER_AUTH_TRUSTED_ORIGINS: v.optional(v.string()),
     BETTER_AUTH_MAINTENANCE_SECRET: v.string(),
   },
 });

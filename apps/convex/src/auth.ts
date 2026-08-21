@@ -6,6 +6,7 @@ import { defaultAc, userAc } from "better-auth/plugins/admin/access";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
+import { env } from "./_generated/server";
 import authConfig from "./auth.config";
 import { createLoginRateLimitPlugin } from "./auth/loginRateLimitPlugin";
 import authSchema from "./betterAuth/schema";
@@ -15,8 +16,16 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   "http://localhost:3000";
 
+const environmentTrustedOrigins = (
+  env.BETTER_AUTH_TRUSTED_ORIGINS ?? ""
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const configuredTrustedOrigins = [
   siteUrl,
+  ...environmentTrustedOrigins,
   "ia-app://",
   "ia-app://*",
   process.env.NEXT_PUBLIC_SITE_URL,
@@ -34,34 +43,53 @@ const configuredTrustedOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter((origin): origin is string => Boolean(origin));
 
-const configuredSiteHostname = (() => {
-  try {
-    return new URL(siteUrl).hostname;
-  } catch {
-    return "localhost";
-  }
-})();
-
-function hostFromEnvUrl(value?: string) {
+function webHostFromOrigin(value?: string) {
   if (!value) return null;
   try {
-    return new URL(value).hostname;
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.host;
   } catch {
     return null;
   }
 }
 
+export function canAllowAnyLocalWebHost(
+  enabled: string | undefined,
+  value: string,
+) {
+  if (enabled !== "true") return false;
+  try {
+    const { hostname } = new URL(value);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
+}
+
+const allowAnyLocalWebHost = canAllowAnyLocalWebHost(
+  env.AUTH_ALLOW_ANY_LOCAL_WEB_HOST,
+  siteUrl,
+);
+
 export const configuredAuthHostnames = Array.from(
   new Set(
     [
-      configuredSiteHostname,
-      hostFromEnvUrl(process.env.CONVEX_SITE_URL),
-      hostFromEnvUrl(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
+      webHostFromOrigin(siteUrl),
+      ...environmentTrustedOrigins.map(webHostFromOrigin),
+      webHostFromOrigin(process.env.CONVEX_SITE_URL),
+      webHostFromOrigin(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
+      process.env.VERCEL_URL,
       process.env.MOBILE_CONVEX_HOST,
       "localhost",
       "127.0.0.1",
       "10.0.2.2",
       "ia-app-alpha.vercel.app",
+      allowAnyLocalWebHost ? "*" : undefined,
     ].filter((host): host is string => Boolean(host)),
   ),
 );
@@ -74,6 +102,10 @@ export const configuredAuthHostnames = Array.from(
 // string (`getBaseURL`: `if (url) return withPath(url, path)`), which ignores
 // the forwarded host and pins every deployment — prod, Vercel previews,
 // localhost and the Expo clients — to one hardcoded origin.
+//
+// The wildcard is enabled only by setup:convex-local, and only while SITE_URL
+// is loopback. The web proxy separately rejects cross-origin browser POSTs.
+// Cloud deployments remain on this explicit hostname allowlist.
 export const authBaseURL: BetterAuthOptions["baseURL"] = {
   allowedHosts: configuredAuthHostnames,
   fallback: siteUrl,

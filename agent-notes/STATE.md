@@ -99,6 +99,16 @@
 
 ### Frontend and Routing
 
+- Web authentication now stays on the browser's current origin, so local LAN
+  addresses and development tunnels retain the session cookie. The web auth
+  proxy rejects cross-origin POSTs; arbitrary forwarded hosts are accepted only
+  by explicitly initialized loopback Convex deployments, while cloud
+  deployments retain an explicit origin allowlist.
+- Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
+  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  loopback. Protected-route auth startup renders a branded connection state
+  instead of an unexplained blank screen when the backend is slow or
+  unreachable.
 - Web sign-out now transitions through a query-free `/logout` route before
   revoking the session, and protected route content stays unmounted while
   Convex authentication is loading or absent. This prevents live page queries

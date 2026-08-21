@@ -9,6 +9,7 @@ const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
 const websocketUrl = convexUrl?.replace(/^http/, 'ws');
 const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+const isProduction = process.env.NODE_ENV === 'production';
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -21,12 +22,14 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "worker-src 'self' blob:",
-  "upgrade-insecure-requests",
+  ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
 
 export const globalSecurityHeaders = [
   { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  ...(isProduction
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+    : []),
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
@@ -45,6 +48,12 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_COMMIT: buildCommit,
   },
+
+  // Allow the requested LocalTunnel hostname to load Next.js dev resources.
+  allowedDevOrigins: [
+    'ia-app-dev.loca.lt',
+    '10.0.0.231',
+  ],
 
   // PWA support via service worker (manual, no paid plugin needed)
   async headers() {

@@ -27,6 +27,11 @@ authenticated queries from rerunning without credentials during logout.
 The old `ia_token` localStorage key is not the auth mechanism for new code.
 `ia_user` remains as a temporary cached public user for synchronous UI reads.
 
+Browser auth requests use the origin currently serving the web app. This keeps
+LAN addresses and development tunnels on the same cookie origin as the page.
+The Next.js auth proxy rejects cross-origin browser POSTs before forwarding
+them to Convex.
+
 ## Files
 
 | File | Purpose |
@@ -76,6 +81,11 @@ NEXT_PUBLIC_CONVEX_URL=https://...
 NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 NEXT_PUBLIC_SITE_URL=https://...
 ```
+
+`pnpm setup:convex-local` enables forwarded LAN and tunnel hosts only for the
+loopback local deployment. Cloud development or preview deployments remain
+allowlisted; add their exact comma-separated web origins to the deployment's
+`BETTER_AUTH_TRUSTED_ORIGINS` value.
 
 ## Related
 

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { authBaseURL, configuredAuthHostnames, createAuthOptions } from "./auth";
+import {
+  authBaseURL,
+  canAllowAnyLocalWebHost,
+  configuredAuthHostnames,
+  createAuthOptions,
+} from "./auth";
 
 // Regression guard for the 2026-08-12 production login outage.
 //
@@ -38,6 +43,13 @@ describe("Better Auth base URL resolution", () => {
       expect(configuredAuthHostnames).toContain(host);
     },
   );
+
+  test("allows arbitrary forwarded hosts only for explicitly enabled loopback development", () => {
+    expect(canAllowAnyLocalWebHost("true", "http://localhost:3000")).toBe(true);
+    expect(canAllowAnyLocalWebHost("true", "http://127.0.0.1:3000")).toBe(true);
+    expect(canAllowAnyLocalWebHost("false", "http://localhost:3000")).toBe(false);
+    expect(canAllowAnyLocalWebHost("true", "https://app.example.com")).toBe(false);
+  });
 
   // The guard above only protects the exported constant. This asserts the
   // constant is actually the one handed to Better Auth, so replacing

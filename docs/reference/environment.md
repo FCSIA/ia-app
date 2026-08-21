@@ -64,8 +64,26 @@ refuses to copy a mixed local/cloud configuration into the web and mobile apps.
 Use `direnv exec . pnpm ...` when the system Node version is not supported by
 Convex local; the repo shell provides Node 24.
 
-For a feature that needs a public URL, mobile-device access, webhooks, or a
-shared dashboard, create a named cloud dev deployment instead:
+### Physical-device clients
+
+A loopback URL such as `http://127.0.0.1:3210` points back to the phone when it
+is used by a mobile browser, installed web app, or native client. For a device
+on the same LAN, rewrite only the public client URLs to the development
+machine's LAN address, then restart the web development server:
+
+```bash
+pnpm sync:convex-env -- --host 10.0.0.231
+pnpm dev
+```
+
+The server-side Convex URLs remain on loopback. The rewritten public URLs are
+used by both the web PWA and the Expo client. An HTTPS frontend tunnel cannot
+connect to a local HTTP Convex backend because browsers block mixed content;
+use the named cloud development deployment flow below for HTTPS tunnels.
+
+For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
+an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment
+instead:
 
 ```bash
 pnpm --filter cvx exec convex deployment create dev/<feature-name> \
