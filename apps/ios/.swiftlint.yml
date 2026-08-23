@@ -1,0 +1,22 @@
+line_length:
+  warning: 150
+  error: 220
+
+identifier_name:
+  min_length: 1
+
+type_body_length:
+  warning: 600
+
+file_length:
+  warning: 700
+
+cyclomatic_complexity:
+  warning: 12
+
+function_body_length:
+  warning: 80
+
+# SwiftFormat owns brace placement; its output trips this rule.
+disabled_rules:
+  - opening_brace

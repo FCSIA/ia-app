@@ -1,0 +1,7 @@
+--swiftversion 6.0
+--trimwhitespace always
+--semicolons inline
+--commas inline
+--hexliteralcase uppercase
+--self insert
+--patternlet inline

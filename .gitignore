@@ -17,6 +17,9 @@ out
 .expo-shared
 android
 ios
+# apps/ios is the native Swift experiment's source of truth, not an
+# Expo-generated native dir.
+!apps/ios
 
 # Environment variables
 .env
