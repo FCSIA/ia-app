@@ -146,7 +146,29 @@ struct InboundDecodingTests {
         }
         #expect(updated.queryId == 0)
         #expect(updated.value?["isDone"]?.boolValue == true)
-        #expect(updated.journal == "")
+        #expect(updated.journal == nil, "null journal must stay nil, not empty string")
+    }
+
+    @Test
+    func transitionPreservesNonEmptyJournal() throws {
+        let ts = ConvexTS.encodeUnsigned(9)
+        let payload = """
+        {"type":"Transition",
+         "startVersion":{"querySet":1,"ts":"\(ts)","identity":1},
+         "endVersion":{"querySet":1,"ts":"\(ts)","identity":1},
+         "modifications":[{"type":"QueryUpdated","queryId":2,
+           "value":{"page":[],"isDone":true,"continueCursor":"cursor-1"},
+           "logLines":[],"journal":"{\\"cursor\\":\\"cursor-1\\"}"}]}
+        """
+        let message = try JSONDecoder().decode(SyncInboundMessage.self, from: Data(payload.utf8))
+        guard case .transition(let transition) = message,
+              case .updated(let updated) = transition.modifications.first
+        else {
+            Issue.record("expected transition with updated modification")
+            return
+        }
+        #expect(updated.journal == "{\"cursor\":\"cursor-1\"}")
+        #expect(updated.value?["continueCursor"]?.stringValue == "cursor-1")
     }
 
     @Test

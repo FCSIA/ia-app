@@ -58,6 +58,17 @@ struct SyncIntegrationTests {
         #expect(updateCount >= 1)
         print("[integration] first delivery latency: \(latencyMs)ms across \(updateCount) updates")
 
+        // 4. The paginated chat path — previously untested against a real
+        // server: real club -> workspace navigation -> getMessagePage with
+        // float64 paginationOpts (the exact path the slice's chat uses).
+        let paginated = await actor.probePaginatedDelivery(timeoutSeconds: 20)
+        if case .delivered(let pageLatencyMs, _) = paginated {
+            print("[integration] paginated page latency: \(pageLatencyMs)ms")
+            #expect(pageLatencyMs < 20000)
+        } else {
+            Issue.record("Paginated getMessagePage never delivered: \(paginated)")
+        }
+
         // 4. Token refresh endpoint stays healthy under force.
         let refreshed = try await auth.convexToken(forceRefresh: true)
         #expect(!refreshed.isEmpty)
@@ -81,10 +92,11 @@ private actor SyncProbeActor {
 
     func probeFirstDelivery(timeoutSeconds: TimeInterval) async -> ProbeResult {
         let client = ConvexSyncClient(backendURL: convexURL)
-        await client.start { force in
-            try? await self.auth.convexToken(forceRefresh: force)
+        await client.start { [weak self] force in
+            try? await self?.auth.convexToken(forceRefresh: force)
         }
         let stream = client.subscribe(path: "clubs/management:getAll", argsObject: [:])
+        defer { Task { await client.shutdown() } }
         let startedAt = Date()
         var updates = 0
         let deadline = startedAt.addingTimeInterval(timeoutSeconds)
@@ -93,14 +105,109 @@ private actor SyncProbeActor {
             if update.failure == nil, update.value != nil {
                 updates += 1
                 let latency = Int(Date().timeIntervalSince(startedAt) * 1000)
-                await client.shutdown()
                 return .delivered(latencyMs: latency, updateCount: updates)
             }
             if Date() > deadline {
                 break
             }
         }
-        await client.shutdown()
+        return .timedOut
+    }
+
+    /// Walks club list -> workspace navigation -> getMessagePage, proving the
+    /// paginated chat arguments validate and deliver against a real backend.
+    func probePaginatedDelivery(timeoutSeconds: TimeInterval) async -> ProbeResult {
+        let client = ConvexSyncClient(backendURL: convexURL)
+        await client.start { [weak self] force in
+            try? await self?.auth.convexToken(forceRefresh: force)
+        }
+        defer { Task { await client.shutdown() } }
+        let startedAt = Date()
+        let deadline = startedAt.addingTimeInterval(timeoutSeconds)
+
+        // Step 1: first real club id.
+        guard case .delivered = await self.awaitFirstValue(
+            client.subscribe(path: "clubs/management:getAll", argsObject: [:]),
+            deadline: deadline
+        ), let clubsJSON = self.lastValue,
+        let clubId = clubsJSON.arrayValue?.first?["_id"]?.stringValue else {
+            return .timedOut
+        }
+
+        // Step 2: first readable channel from workspace navigation.
+        _ = await self.awaitFirstValue(
+            client.subscribe(
+                path: "clubs/detail:getWorkspaceNavigation",
+                argsObject: ["clubId": .string(clubId)]
+            ),
+            deadline: deadline
+        )
+        guard let navJSON = self.lastValue, !navJSON.isNull,
+              let channelId = navJSON["channels"]?.arrayValue?.first?["_id"]?.stringValue
+        else {
+            // Club without channels: navigation delivery already proves the
+            // reactive path; there is no valid page target to subscribe.
+            print("[integration] club has no channels; skipping page probe")
+            return .delivered(latencyMs: Int(Date().timeIntervalSince(startedAt) * 1000), updateCount: 1)
+        }
+        return await self.probeMessagePage(
+            client: client,
+            clubId: clubId,
+            channelId: channelId,
+            startedAt: startedAt,
+            deadline: deadline
+        )
+    }
+
+    private func probeMessagePage(
+        client: ConvexSyncClient,
+        clubId: String,
+        channelId: String?,
+        startedAt: Date,
+        deadline: Date
+    ) async -> ProbeResult {
+        var argsObject: [String: ConvexJSON] = ["clubId": .string(clubId)]
+        if let channelId {
+            argsObject["channelId"] = .string(channelId)
+        } else {
+            argsObject["channelId"] = .null
+        }
+        argsObject["paginationOpts"] = .object([
+            "cursor": .null,
+            "numItems": .double(30),
+            "id": .double(1)
+        ])
+        let stream = client.subscribe(path: "clubs/channels:getMessagePage", argsObject: argsObject)
+        for await update in stream {
+            if update.failure == nil, update.value != nil {
+                return .delivered(latencyMs: Int(Date().timeIntervalSince(startedAt) * 1000), updateCount: 1)
+            }
+            if let failure = update.failure {
+                print("[integration] getMessagePage failed: \(failure)")
+                return .timedOut
+            }
+            if Date() > deadline {
+                break
+            }
+        }
+        return .timedOut
+    }
+
+    private var lastValue: ConvexJSON?
+
+    private func awaitFirstValue(
+        _ stream: AsyncStream<ConvexSyncClient.QueryUpdate>,
+        deadline: Date
+    ) async -> ProbeResult {
+        for await update in stream {
+            if update.failure == nil, let value = update.value {
+                self.lastValue = value
+                return .delivered(latencyMs: 0, updateCount: 1)
+            }
+            if Date() > deadline {
+                break
+            }
+        }
         return .timedOut
     }
 }

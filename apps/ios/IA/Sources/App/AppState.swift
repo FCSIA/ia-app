@@ -30,6 +30,9 @@ public final class AppState {
     public func bootstrapIfNeeded() async {
         guard !self.bootstrapped else { return }
         self.bootstrapped = true
+        // Endpoint transparency: the resolved targets should never be a
+        // surprise, especially since defaults are loopback.
+        print("[ia-ios] convex=\(self.config.convexURL.absoluteString) site=\(self.config.siteURL.absoluteString)")
         let client = BetterAuthClient(siteURL: config.siteURL)
         self.auth = client
         do {
@@ -72,14 +75,20 @@ public final class AppState {
     public func signOut() async {
         self.tokenRefreshTask?.cancel()
         self.tokenRefreshTask = nil
+        await self.teardownSync()
+        try? await self.auth?.signOut()
+        self.currentUser = nil
+        self.phase = .loggedOut
+    }
+
+    /// Full sync teardown so the next sign-in builds a fresh, authenticated
+    /// client instead of reusing a token-less zombie connection.
+    private func teardownSync() async {
         if let sync {
             await sync.shutdown()
         }
         sync = nil
         self.latestConvexToken = nil
-        try? await self.auth?.signOut()
-        self.currentUser = nil
-        self.phase = .loggedOut
     }
 
     // MARK: Sync lifecycle
@@ -89,25 +98,43 @@ public final class AppState {
         let client = ConvexSyncClient(backendURL: config.convexURL) { [weak self] status in
             Task { @MainActor in
                 self?.connectionStatus = status
-                if case .authFailed = status {
+                switch status {
+                case .authFailed, .fatal:
+                    // A dead or unauthorized connection must be rebuilt from
+                    // scratch on the next sign-in.
+                    await self?.teardownSync()
                     self?.phase = .loggedOut
+                default:
+                    break
                 }
             }
         }
         self.sync = client
         let authClient = self.auth
-        await client.start(tokenProvider: { force in
+        await client.start(tokenProvider: { [weak self] force in
             guard let authClient else { return nil }
-            return try? await authClient.convexToken(forceRefresh: force)
+            do {
+                let token = try await authClient.convexToken(forceRefresh: force)
+                await MainActor.run {
+                    self?.latestConvexToken = token
+                }
+                return token
+            } catch {
+                return nil
+            }
         })
-        if self.latestConvexToken == nil {
-            self.latestConvexToken = try? await authClient?.convexToken(forceRefresh: false)
-        }
         self.scheduleTokenRefresh()
     }
 
-    private func scheduleTokenRefresh() {
+    private func scheduleTokenRefresh(afterFailure seconds: TimeInterval? = nil) {
         self.tokenRefreshTask?.cancel()
+        if let seconds {
+            self.tokenRefreshTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(seconds))
+                await self?.refreshTokenNow(force: true)
+            }
+            return
+        }
         guard let token = latestConvexToken,
               let expiration = JWTHelpers.expiration(token)
         else {
@@ -135,7 +162,9 @@ public final class AppState {
             }
             self.scheduleTokenRefresh()
         } catch {
-            // Leave the current token; AuthError handling covers hard failures.
+            // One transient blip must not kill the proactive refresh chain:
+            // retry shortly; AuthError handling still covers hard failures.
+            self.scheduleTokenRefresh(afterFailure: 30)
         }
     }
 

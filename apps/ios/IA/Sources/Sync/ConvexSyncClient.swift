@@ -42,6 +42,11 @@ public actor ConvexSyncClient {
     private var lastCloseReason: String? = "InitialConnect"
     private var socket: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
+    /// Incremented on every fresh socket; lets a superseded receive loop
+    /// detect it no longer owns the connection and exit without clobbering
+    /// the newer socket.
+    private var connectionGeneration = 0
     private var watchdogRunning = false
     private var retryCount = 0
     private var lastInboundAt = Date()
@@ -74,7 +79,7 @@ public actor ConvexSyncClient {
     private struct QueryRecord {
         let path: String
         let argsArray: ConvexJSON
-        var journal: String = ""
+        var journal: String?
         var latest: ConvexJSON?
         var failure: String?
         var subscribers: [UUID: AsyncStream<QueryUpdate>.Continuation] = [:]
@@ -112,6 +117,7 @@ public actor ConvexSyncClient {
     public func shutdown() {
         self.stopped = true
         self.receiveTask?.cancel()
+        self.reconnectTask?.cancel()
         self.socket?.cancel(with: .normalClosure, reason: nil)
         self.socket = nil
         self.failAllPendingMutations("Client shut down")
@@ -176,7 +182,7 @@ public actor ConvexSyncClient {
                     queryId: queryId,
                     udfPath: path,
                     args: argsArray,
-                    journal: self.queries[queryId]?.journal
+                    journal: self.queries[queryId]?.journal ?? nil
                 )
                 await self.safelySend(.modifyQuerySet(
                     baseVersion: version,
@@ -288,14 +294,19 @@ public actor ConvexSyncClient {
         guard !self.stopped else { return }
         do {
             let url = try syncURL()
+            // Tear down any previous socket before adopting the new one so a
+            // watchdog reconnect can never leave two live connections.
+            self.receiveTask?.cancel()
+            self.socket?.cancel(with: .goingAway, reason: nil)
+            self.connectionGeneration += 1
+            let generation = self.connectionGeneration
             let task = self.urlSession.webSocketTask(with: url)
             self.socket = task
             self.lastInboundAt = Date()
             self.chunkBuffer = TransitionChunkBuffer()
             task.resume()
-            self.receiveTask?.cancel()
             self.receiveTask = Task { [weak self] in
-                await self?.receiveLoop()
+                await self?.receiveLoop(generation: generation)
             }
             await self.handleOpen()
         } catch {
@@ -312,7 +323,7 @@ public actor ConvexSyncClient {
             connectionCount: self.connectionCount - 1,
             lastCloseReason: self.lastCloseReason,
             maxObservedTimestamp: self.maxObservedTimestamp.map(ConvexTS.encodeUnsigned),
-            clientTs: Self.monotonicMillis()
+            clientTs: Self.epochMillis()
         ))
         // Per connection the server restarts identity versioning at 0.
         self.currentVersion = StateVersion(querySet: 0, ts: 0, identity: 0)
@@ -342,8 +353,8 @@ public actor ConvexSyncClient {
         await self.startWatchdogIfNeeded()
     }
 
-    private func receiveLoop() async {
-        while !self.stopped {
+    private func receiveLoop(generation: Int) async {
+        while !self.stopped, self.connectionGeneration == generation {
             guard let task = socket else { return }
             do {
                 let message = try await task.receive()
@@ -356,7 +367,9 @@ public actor ConvexSyncClient {
                     continue
                 }
             } catch {
-                guard !self.stopped else { return }
+                // A cancelled loop belongs to a superseded connection; the new
+                // socket must stay untouched.
+                guard !self.stopped, self.connectionGeneration == generation else { return }
                 self.socket = nil
                 self.emit(.disconnected(reason: error.localizedDescription))
                 self.scheduleReconnect()
@@ -384,6 +397,9 @@ public actor ConvexSyncClient {
             return
         }
         guard let message = try? JSONDecoder().decode(SyncInboundMessage.self, from: data) else {
+            // Undecodable frames must be visible; silent drops turn into
+            // inexplicable mutation timeouts.
+            print("[convex-sync] undecodable \(typeName) frame (\(data.count) bytes)")
             return
         }
         await self.handleMessage(message)
@@ -454,7 +470,14 @@ public actor ConvexSyncClient {
                 }
                 self.queries[failed.queryId] = record
             case .removed(let queryId):
-                self.queries.removeValue(forKey: queryId)
+                if let removed = queries.removeValue(forKey: queryId) {
+                    for continuation in removed.subscribers.values {
+                        continuation.finish()
+                    }
+                }
+                for (key, linkedId) in self.queryIdsByKey where linkedId == queryId {
+                    queryIdsByKey.removeValue(forKey: key)
+                }
             }
         }
         self.currentVersion = transition.endVersion
@@ -516,10 +539,12 @@ public actor ConvexSyncClient {
 
     private func scheduleReconnect() {
         guard !self.stopped else { return }
+        self.lastCloseReason = "Transient"
         self.retryCount += 1
         let exponential = min(pow(2, Double(retryCount)), Self.maxBackoffSeconds)
         let jittered = exponential * Double.random(in: 0.5 ... 1.5)
-        Task { [weak self] in
+        self.reconnectTask?.cancel()
+        self.reconnectTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(jittered))
             await self?.openSocket()
         }
@@ -588,8 +613,9 @@ public actor ConvexSyncClient {
         self.statusHandler(status)
     }
 
-    private static func monotonicMillis() -> Int64 {
-        Int64(DispatchTime.now().uptimeNanoseconds / 1_000_000)
+    /// Epoch millis — the server derives clock skew from Connect.clientTs.
+    private static func epochMillis() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
     }
 }
 

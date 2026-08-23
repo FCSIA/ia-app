@@ -129,7 +129,14 @@ public final class ChatViewModel: Identifiable {
                 ]
             )
             for await update in stream {
-                guard update.failure == nil, let value = update.value, !value.isNull else { continue }
+                // A failed delivery also ends the wait; otherwise a single
+                // bad frame would pin isLoadingOlder forever.
+                guard update.failure == nil, let value = update.value, !value.isNull else {
+                    if let failure = update.failure {
+                        strongSelf.actionFailure = failure
+                    }
+                    break
+                }
                 if let page = try? ConvexPage<MessageSummary>.decode(value, item: MessageSummary.init) {
                     strongSelf.upsertPage(paginationId: paginationId, page: page)
                     break // one authoritative delivery is enough for an older window
@@ -142,8 +149,10 @@ public final class ChatViewModel: Identifiable {
     private func paginationOpts(cursor: String?, id: Int) -> ConvexJSON {
         .object([
             "cursor": cursor.map { .string($0) } ?? .null,
-            "numItems": .int64(Int64(ChatLimits.pageSize)),
-            "id": .int64(Int64(id))
+            // The backend validator uses v.number(): plain float64 on the
+            // wire. int64 would encode as $integer and fail validation.
+            "numItems": .double(Double(ChatLimits.pageSize)),
+            "id": .double(Double(id))
         ])
     }
 
@@ -193,7 +202,11 @@ public final class ChatViewModel: Identifiable {
 
     public func send(_ rawText: String, client: ConvexSyncClient) async {
         let body = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty, body.count <= ChatLimits.bodyMaxLength else { return }
+        guard !body.isEmpty else { return }
+        guard body.count <= ChatLimits.bodyMaxLength else {
+            self.actionFailure = "Message exceeds the \(ChatLimits.bodyMaxLength)-character limit."
+            return
+        }
 
         let generatedId = Self.makeClientGeneratedId()
         let entry = OptimisticEntry(id: "optimistic:\(generatedId)", body: body, createdAt: Date())
@@ -216,12 +229,13 @@ public final class ChatViewModel: Identifiable {
             if let newId = outcome.result?.stringValue {
                 self.reconciling[newId] = entry.id
                 self.reconcileOptimistic()
-                // Safety net if reconciliation lags.
-                let optimisticId = entry.id
-                Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(8))
-                    self?.dropOptimisticIfStillPresent(optimisticId)
-                }
+            }
+            // Safety net whenever reconciliation lags or the payload shape
+            // carries no id to reconcile against.
+            let optimisticId = entry.id
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(8))
+                self?.dropOptimisticIfStillPresent(optimisticId)
             }
         } else {
             if let index = optimisticEntries.firstIndex(where: { $0.id == entry.id }) {

@@ -10,6 +10,7 @@ struct ChannelScreen: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: ChatViewModel?
     @State private var composerText = ""
+    @State private var lastFollowedMessageID: String?
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -80,8 +81,14 @@ struct ChannelScreen: View {
                 .padding(.top, 8)
             }
             .defaultScrollAnchor(.bottom)
-            .onChange(of: model.messages.count) { _, _ in
-                proxy.scrollTo("bottom", anchor: .bottom)
+            .onChange(of: model.messages.last?.id) { _, newLastID in
+                // Only follow the live edge; loading older history must not
+                // yank the viewport to the newest message.
+                guard let newLastID else { return }
+                if newLastID != self.lastFollowedMessageID || self.lastFollowedMessageID == nil {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                self.lastFollowedMessageID = newLastID
             }
             .onChange(of: model.optimisticEntries.count) { _, newCount in
                 if newCount > 0 {
@@ -117,16 +124,25 @@ struct ChannelScreen: View {
         }
     }
 
-    @ViewBuilder
     private func connectionBanner(_ model: ChatViewModel) -> some View {
-        // Only surfaces when the viewer cannot post; keeps context visible.
-        if let context = model.context, !context.viewerCanPost, model.messages.isEmpty == false {
-            Text("You can read but not post in this channel.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(.bar)
+        // Surfaces live-connection health and read-only context; a dead
+        // socket must never look like a quiet channel.
+        VStack(spacing: 0) {
+            if case .connected = self.appState.connectionStatus {} else {
+                Label("Connection offline — messages will not update.", systemImage: "wifi.slash")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(.bar)
+            }
+            if let context = model.context, !context.viewerCanPost, model.messages.isEmpty == false {
+                Text("You can read but not post in this channel.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(.bar)
+            }
         }
     }
 

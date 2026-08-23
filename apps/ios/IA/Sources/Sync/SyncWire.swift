@@ -113,8 +113,13 @@ public struct QuerySetModification: Sendable, Encodable {
         case .add:
             try container.encode(self.udfPath, forKey: .udfPath)
             try container.encode(self.args, forKey: .args)
-            // Journal is always present on Add per local_state.ts ("null" when empty).
-            try container.encode(self.journal, forKey: .journal)
+            // The journal key is always present on Add: null until the server
+            // has echoed one back.
+            if let journal = self.journal {
+                try container.encode(journal, forKey: .journal)
+            } else {
+                try container.encodeNil(forKey: .journal)
+            }
         case .remove:
             break
         }
@@ -156,8 +161,8 @@ public struct QueryUpdated: Sendable {
     public let queryId: Int
     public let value: ConvexJSON?
     public let logLines: [String]
-    /// Normalized to "" when null on the wire.
-    public let journal: String
+    /// Verbatim from the wire: nil when the server sent null.
+    public let journal: String?
 }
 
 public struct QueryFailed: Sendable {
@@ -165,8 +170,8 @@ public struct QueryFailed: Sendable {
     public let errorMessage: String
     public let logLines: [String]
     public let errorData: ConvexJSON?
-    /// Normalized to "" when null on the wire.
-    public let journal: String
+    /// Verbatim from the wire: nil when the server sent null.
+    public let journal: String?
 }
 
 public struct Transition: Sendable {
@@ -282,12 +287,11 @@ extension StateModification {
             return
         }
         let logLines = wire.array("logLines").compactMap(\.stringValue)
-        // Journal is string | null on the wire; normalize null to "" so it can be
-        // re-sent in a reconnect Add (which requires the key present).
-        let rawJournal = wire["journal"]
-        let journal: String = switch rawJournal {
+        // Journal is string | null on the wire; pass through verbatim so
+        // reconnect Adds re-send exactly what the server last sent.
+        let journal: String? = switch wire["journal"] {
         case .some(.string(let s)): s
-        default: ""
+        default: nil
         }
         switch type {
         case "QueryUpdated":
@@ -392,9 +396,12 @@ public struct TransitionChunkBuffer {
         let total = obj["totalParts"] as? Int ?? 0
         let chunk = obj["chunk"] as? String ?? ""
 
-        if self.parts.isEmpty {
+        // A part 0 always (re)starts an assembly — including after a prior
+        // stream was aborted mid-way.
+        if partNumber == 0 {
             self.transitionId = id
             self.totalParts = total
+            self.parts = [:]
         }
         guard id == self.transitionId, partNumber == self.parts.count, total == self.totalParts, total > 0 else {
             self.parts = [:]

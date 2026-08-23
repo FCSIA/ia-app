@@ -2,6 +2,13 @@ import SwiftUI
 
 // MARK: - Club directory
 
+/// Typed navigation routes; two levels of String destinations would collide
+/// inside one NavigationStack (SwiftUI honors one destination per type).
+enum ClubRoute: Hashable {
+    case workspace(clubId: String)
+    case channel(channelId: String)
+}
+
 struct ClubsView: View {
     @Environment(AppState.self) private var appState
     @State private var clubs: [ClubSummaryModel] = []
@@ -20,7 +27,7 @@ struct ClubsView: View {
                     )
                 } else {
                     List(self.clubs) { club in
-                        NavigationLink(value: club.id) {
+                        NavigationLink(value: ClubRoute.workspace(clubId: club.id)) {
                             ClubRowView(club: club)
                         }
                     }
@@ -28,8 +35,13 @@ struct ClubsView: View {
                 }
             }
             .navigationTitle("Clubs")
-            .navigationDestination(for: String.self) { clubId in
-                ClubWorkspaceView(clubId: clubId)
+            .navigationDestination(for: ClubRoute.self) { route in
+                switch route {
+                case .workspace(let clubId):
+                    ClubWorkspaceView(clubId: clubId)
+                case .channel:
+                    EmptyView()
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -106,7 +118,7 @@ struct ClubWorkspaceView: View {
         Group {
             if let navigation {
                 List(navigation.channels) { channel in
-                    NavigationLink(value: channel.id) {
+                    NavigationLink(value: ClubRoute.channel(channelId: channel.id)) {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 5) {
                                 Image(systemName: self.iconName(channel.visibility))
@@ -136,12 +148,17 @@ struct ClubWorkspaceView: View {
         }
         .navigationTitle(self.navigation?.clubName ?? "Workspace")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: String.self) { channelId in
-            ChannelScreen(
-                clubId: self.clubId,
-                channelId: channelId,
-                channelNameFallback: self.navigation?.channels.first { $0.id == channelId }?.name ?? "Channel"
-            )
+        .navigationDestination(for: ClubRoute.self) { route in
+            switch route {
+            case .channel(let channelId):
+                ChannelScreen(
+                    clubId: self.clubId,
+                    channelId: channelId,
+                    channelNameFallback: self.navigation?.channels.first { $0.id == channelId }?.name ?? "Channel"
+                )
+            case .workspace:
+                EmptyView()
+            }
         }
         .task {
             guard let client = appState.syncClient() else { return }

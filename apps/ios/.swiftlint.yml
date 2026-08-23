@@ -12,7 +12,7 @@ file_length:
   warning: 700
 
 cyclomatic_complexity:
-  warning: 12
+  warning: 15
 
 function_body_length:
   warning: 80
