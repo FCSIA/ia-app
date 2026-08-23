@@ -4,7 +4,7 @@ tags: [docs, index]
 
 # IA App Documentation
 
-This documentation describes the current Convex-era IA School App. Treat code as
+This documentation describes the current Convex-era IA App. Treat code as
 the source of truth when it disagrees with docs, then update the docs in the
 same change.
 

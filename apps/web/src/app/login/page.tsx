@@ -137,7 +137,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-primary/10" />
         <div className="absolute inset-x-0 bottom-0 p-10 text-white">
           <div className="max-w-lg rounded-2xl border border-white/20 bg-black/25 p-5 backdrop-blur-sm">
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-white/75">IA School App</p>
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-white/75">Innovation Academy</p>
             <p className="mt-2 text-xl font-medium leading-snug">
               Classes, clubs, events, and school updates in one place.
             </p>

@@ -8,7 +8,7 @@ import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registra
 const workSans = Work_Sans({ subsets: ['latin'], variable: '--font-work-sans' });
 
 export const metadata: Metadata = {
-  title: 'IA School App',
+  title: 'IA App',
   description: 'School communication and operations platform',
   manifest: '/manifest.json',
   icons: {
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'IA School',
+    title: 'IA App',
   },
 };
 

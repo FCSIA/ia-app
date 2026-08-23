@@ -6,7 +6,7 @@ tags: [reference, deployment, operations, convex, azure]
 
 ← [[index|Home]]
 
-This page describes how to run the IA School App in production **after Convex is the application backend** — data, mutations, real-time subscriptions, and server functions live in **Convex Cloud**; the web app is **Next.js**.
+This page describes how to run the IA App in production **after Convex is the application backend** — data, mutations, real-time subscriptions, and server functions live in **Convex Cloud**; the web app is **Next.js**.
 
 For feature-level runtime detail, see [[overview]] and [[data-flow]]. For local development env vars, see [[environment]].
 

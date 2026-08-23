@@ -257,18 +257,6 @@ export function ClubWorkspace({
             <ArrowLeft />
           </Link>
         </Button>
-        {isClubOverview ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 md:hidden"
-            aria-label="Open club channels"
-            onClick={() => setMobileNavigationOpen(true)}
-          >
-            <PanelLeft className="size-4" />
-          </Button>
-        ) : null}
         <div className="min-w-0 flex-1">
           {title ?? (
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">

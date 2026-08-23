@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "IA School App",
-  "short_name": "IA School",
+  "name": "IA App",
+  "short_name": "IA App",
   "description": "School communication and operations platform",
   "start_url": "/",
   "scope": "/",

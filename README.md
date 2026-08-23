@@ -1,4 +1,4 @@
-# IA School App
+# IA App
 
 A full-stack school communication and management platform for FCS Innovation Academy.
 

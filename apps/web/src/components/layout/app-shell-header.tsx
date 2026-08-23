@@ -162,7 +162,7 @@ function AppShellHeader({
       >
         <Menu className="size-5" />
       </Button>
-      <div className="flex min-w-0 flex-1 items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4 -ml-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>
 
