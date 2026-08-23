@@ -64,6 +64,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
+import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
@@ -644,6 +645,11 @@ function MessageRow({
   currentUserId?: string;
   compact?: boolean;
 }) {
+  const isTouchPrimary = useTouchPrimary();
+  // Thread replies are always compact; on touch-primary devices every row
+  // uses the compact rhythm so more of the conversation fits above the
+  // keyboard. Type sizes stay untouched — the win is spacing, not legibility.
+  const dense = compact || isTouchPrimary;
   const isAuthor = message.author._id === currentUserId;
   const isDeleted = message.isDeleted;
   const isEdited = !isDeleted && message.updatedAt !== message.createdAt;
@@ -663,7 +669,7 @@ function MessageRow({
           <Message
             className={cn(
               'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
-              compact ? 'py-1.5' : 'py-2.5',
+              dense ? 'py-1.5' : 'py-2.5',
               isSending &&
                 'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
             )}
@@ -671,7 +677,7 @@ function MessageRow({
       <MessageAvatar className="self-start overflow-visible bg-transparent">
         <MessageAuthorPreview
           author={message.author}
-          compact={compact}
+          compact={dense}
           currentUserId={currentUserId}
           canSendFriendRequest={canSendFriendRequest}
           friendshipStatus={friendshipStatus}
@@ -1033,6 +1039,7 @@ export function ChannelWorkspace() {
   }
   const clubId = useClubId();
   const channelId = useRouteChannelId(channelIdParam);
+  const isTouchPrimary = useTouchPrimary();
   const { toast } = useToast();
 
   const [rootComposerResetKey, setRootComposerResetKey] = useState(0);
@@ -1540,7 +1547,12 @@ export function ChannelWorkspace() {
 
         <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport>
-            <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-1 p-2">
+            <MessageScrollerContent
+              className={cn(
+                'mx-auto w-full max-w-4xl p-2',
+                isTouchPrimary ? 'gap-0.5 py-1.5' : 'gap-1',
+              )}
+            >
               {messagePageStatus === 'CanLoadMore' || messagePageStatus === 'LoadingMore' ? (
                 <MessageScrollerItem>
                   <div className="flex justify-center py-2">
