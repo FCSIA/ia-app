@@ -496,6 +496,14 @@
     .app-root[data-viewport-mode='visual'] .channel-composer-dock:focus-within {
       padding-bottom: 0;
     }
+
+    /* While the keyboard owns half the screen, the context toolbar above the
+       timeline is the only vertical space the page controls. Reclaim it for
+       messages; pinned/alert controls stay reachable once typing ends. */
+    .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
+      .channel-context-toolbar {
+      display: none;
+    }
   }
 }
 

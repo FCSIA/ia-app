@@ -1523,7 +1523,7 @@ export function ChannelWorkspace() {
       }}
     >
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
-        <div className="shrink-0 border-b bg-card px-2 py-1.5">
+        <div className="channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5">
           <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
             <ChannelNotificationSettings
               key={channelId}
