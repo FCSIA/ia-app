@@ -290,7 +290,7 @@ function ClubListRow({
     return (
       <Card
         index={index}
-        href={`/clubs/${club._id}`}
+        href={`/clubs/${club._id}/navigation`}
         label={`Open ${club.name}`}
         className="min-h-12 gap-2.5 rounded-none border-0 bg-transparent px-3 py-2"
       >
@@ -306,7 +306,7 @@ function ClubListRow({
   return (
     <Card
       index={index}
-      href={`/clubs/${club._id}`}
+      href={`/clubs/${club._id}/navigation`}
       label={`Open ${club.name}`}
       className="group min-h-[4.5rem] gap-3 rounded-none border-0 bg-transparent px-3 py-2.5"
     >

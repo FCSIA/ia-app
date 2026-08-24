@@ -12,7 +12,6 @@ import {
   Compass,
   ArrowLeft,
   Home,
-  PanelLeft,
   Plus,
   Settings,
   Trash2,
@@ -95,7 +94,7 @@ function ClubPickerItem({
       index={index}
       label={club.name}
       checked={active}
-      onSelect={() => router.push(`/clubs/${club._id}`)}
+      onSelect={() => router.push(`/clubs/${club._id}/navigation`)}
       className="h-11 px-2.5"
       icon={ClubLogoIcon}
     />
@@ -210,7 +209,6 @@ export function ClubWorkspace({
   const clubRootPath = `/clubs/${clubId}`;
   const navigationPath = `${clubRootPath}/navigation`;
   const isNavigationPage = pathname === navigationPath;
-  const isClubOverview = pathname === clubRootPath;
   const mobileBackHref = isNavigationPage ? "/clubs" : navigationPath;
 
   const nav: Array<{

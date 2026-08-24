@@ -59,7 +59,7 @@ export function useGlobalCommandActions({
         id: `my-club-${club._id}`,
         label: club.name,
         detail: 'Club workspace',
-        href: `/clubs/${club._id}`,
+        href: `/clubs/${club._id}/navigation`,
         Icon: UsersRound,
         badge: 'Joined',
         keywords: ['my club', 'joined club', club.name, club.description ?? ''],
@@ -72,7 +72,7 @@ export function useGlobalCommandActions({
         id: `club-${club._id}`,
         label: club.name,
         detail: club.description || 'Club workspace',
-        href: `/clubs/${club._id}`,
+        href: `/clubs/${club._id}/navigation`,
         Icon: UsersRound,
         keywords: ['club', club.name, club.description ?? ''],
       }));

@@ -61,7 +61,7 @@ export function MyClubsWidget() {
             return (
               <Link
                 key={club._id}
-                href={`/clubs/${club._id}`}
+                href={`/clubs/${club._id}/navigation`}
                 className="group flex flex-col gap-3 rounded-[1.2rem] border border-border/70 bg-card p-3 transition-colors hover:bg-muted/40"
               >
                 <div className="flex items-center gap-3">

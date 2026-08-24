@@ -68,8 +68,8 @@ The backend must still reject unauthorized queries or mutations.
 | `/announcements` | Announcement feed |
 | `/announcements/:id` | Announcement detail and comments |
 | `/clubs` | Club directory and invites |
-| `/clubs/:clubId` | Club workspace |
-| `/clubs/:clubId/navigation` | Full-screen mobile club navigation |
+| `/clubs/:clubId` | Club overview |
+| `/clubs/:clubId/navigation` | Club entry navigation with picker and channels |
 | `/clubs/:clubId/channels/:channelId` | Club channel messages |
 | `/clubs/:clubId/people` | Club members, invites, join codes |
 | `/courses` | Course catalog |
