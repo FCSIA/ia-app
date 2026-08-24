@@ -7,6 +7,55 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.8",
+    "date": "2026-08-24",
+    "commit": "e09d979",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Channel messages on your phone now sit closer together so you.",
+        "commit": "e09d979"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "While you type in a channel on your phone, the small toolbar.",
+        "commit": "d5bda41"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "The app now uses the shorter IA App name and a cleaner mobile club header.",
+        "commit": "a4ae48f"
+      },
+      {
+        "category": "Improved",
+        "scope": "fun-facts",
+        "summary": "Loading screens now surface more rare facts and include new science, ocean, animal, and food trivia.",
+        "commit": "d421e95"
+      },
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Club chat now keeps its safe-area header anchored and its composer flush with the keyboard on iPhone.",
+        "commit": "1e3ecb0"
+      },
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "LAN and tunneled development now load styles, keep sign-in sessions on the public origin, and connect mobile PWAs to local data.",
+        "commit": "a12630b"
+      },
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Stop tracking generated Next.js types.",
+        "commit": "d7cdeb6"
+      }
+    ]
+  },
+  {
     "version": "0.8.7",
     "date": "2026-08-20",
     "commit": "1b87c26",

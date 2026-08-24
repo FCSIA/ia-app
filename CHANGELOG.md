@@ -12,6 +12,21 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.8 — 2026-08-24 (alpha)
+
+### Improved
+
+- **web** — Channel messages on your phone now sit closer together so you. ([`e09d979`](https://github.com/virajdas/ia-app/commit/e09d979))
+- **web** — While you type in a channel on your phone, the small toolbar. ([`d5bda41`](https://github.com/virajdas/ia-app/commit/d5bda41))
+- **web** — The app now uses the shorter IA App name and a cleaner mobile club header. ([`a4ae48f`](https://github.com/virajdas/ia-app/commit/a4ae48f))
+- **fun-facts** — Loading screens now surface more rare facts and include new science, ocean, animal, and food trivia. ([`d421e95`](https://github.com/virajdas/ia-app/commit/d421e95))
+
+### Fixed
+
+- **web** — Club chat now keeps its safe-area header anchored and its composer flush with the keyboard on iPhone. ([`1e3ecb0`](https://github.com/virajdas/ia-app/commit/1e3ecb0))
+- **web** — LAN and tunneled development now load styles, keep sign-in sessions on the public origin, and connect mobile PWAs to local data. ([`a12630b`](https://github.com/virajdas/ia-app/commit/a12630b))
+- **web** — Stop tracking generated Next.js types. ([`d7cdeb6`](https://github.com/virajdas/ia-app/commit/d7cdeb6))
+
 ## v0.8.7 — 2026-08-20 (alpha)
 
 ### Added
