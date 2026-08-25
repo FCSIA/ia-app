@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.9",
+    "date": "2026-08-25",
+    "commit": "366932f",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Club chat now removes the extra safe-area gap below the composer while the iPhone keyboard is open.",
+        "commit": "366932f"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Opening a club now starts with its channel list and club navigation.",
+        "commit": "5ff2a67"
+      }
+    ]
+  },
+  {
     "version": "0.8.8",
     "date": "2026-08-24",
     "commit": "e09d979",

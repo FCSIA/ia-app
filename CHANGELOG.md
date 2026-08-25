@@ -12,6 +12,13 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.9 — 2026-08-25 (alpha)
+
+### Improved
+
+- **web** — Club chat now removes the extra safe-area gap below the composer while the iPhone keyboard is open. ([`366932f`](https://github.com/virajdas/ia-app/commit/366932f))
+- **clubs** — Opening a club now starts with its channel list and club navigation. ([`5ff2a67`](https://github.com/virajdas/ia-app/commit/5ff2a67))
+
 ## v0.8.8 — 2026-08-24 (alpha)
 
 ### Improved
