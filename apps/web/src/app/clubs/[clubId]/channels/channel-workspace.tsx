@@ -64,6 +64,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
 import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 
@@ -522,6 +523,7 @@ function ReactionButton({
   reaction,
   onToggleReaction,
   isReactionPending,
+  openDetailsOnPress,
 }: {
   clubId: Id<'clubs'>;
   channelId: Id<'clubChannels'>;
@@ -529,8 +531,15 @@ function ReactionButton({
   reaction: ClubChannelMessage['reactions'][number];
   onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   isReactionPending: boolean;
+  openDetailsOnPress: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const reactionLabel = REACTION_LABELS[reaction.emoji] ?? reaction.emoji;
+  const reactionName =
+    QUICK_REACTIONS.find((candidate) => candidate.value === reaction.emoji)?.name ??
+    'Reaction';
+  const reactionCountLabel = `${reaction.count} ${reaction.count === 1 ? 'person' : 'people'}`;
+  const supportedReaction = isChannelReaction(reaction.emoji) ? reaction.emoji : null;
   const { results: reactors, status, loadMore } = usePaginatedQuery(
     api.clubs.channels.listReactionUsers,
     open
@@ -544,47 +553,103 @@ function ReactionButton({
     { initialNumItems: 25 },
   );
 
-  return (
-    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={100}>
-      <HoverCardTrigger asChild>
+  const trigger = (
+    <Button
+      variant="tertiary"
+      size="sm"
+      className={cn(
+        'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
+        reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
+      )}
+      disabled={isReactionPending}
+      aria-label={
+        openDetailsOnPress
+          ? `View ${reactionName.toLowerCase()} reactions, ${reactionCountLabel}`
+          : `${reactionName} reaction, ${reactionCountLabel}${
+              supportedReaction
+                ? reaction.reactedByCurrentUser
+                  ? ', click to remove yours'
+                  : ', click to add yours'
+                : ''
+            }`
+      }
+      onClick={
+        !openDetailsOnPress && supportedReaction
+          ? () => onToggleReaction(messageId, supportedReaction)
+          : undefined
+      }
+    >
+      <span>{reactionLabel}</span>
+      {reaction.count}
+    </Button>
+  );
+
+  const details = (
+    <>
+      <p className="text-sm font-semibold text-foreground">{reactionLabel} reactions</p>
+      <div className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto pr-1">
+        {status === 'LoadingFirstPage' ? (
+          <p className="text-sm text-muted-foreground">Loading people…</p>
+        ) : reactors.length > 0 ? (
+          reactors.map((reactor) => (
+            <p key={reactor._id} className="truncate text-sm text-foreground">
+              {fullName(reactor)}
+            </p>
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground">No reactions yet.</p>
+        )}
+      </div>
+      {status === 'CanLoadMore' ? (
+        <Button type="button" size="sm" variant="ghost" className="mt-2 w-full" onClick={() => loadMore(50)}>
+          Show more
+        </Button>
+      ) : null}
+      {openDetailsOnPress && supportedReaction ? (
         <Button
-          variant="tertiary"
+          type="button"
           size="sm"
-          className={cn(
-            'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
-            reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
-          )}
-          disabled={isReactionPending || !isChannelReaction(reaction.emoji)}
+          variant={reaction.reactedByCurrentUser ? 'tertiary' : 'primary'}
+          className="mt-2 w-full"
+          disabled={isReactionPending}
           onClick={() => {
-            if (isChannelReaction(reaction.emoji)) {
-              onToggleReaction(messageId, reaction.emoji);
-            }
+            onToggleReaction(messageId, supportedReaction);
+            setOpen(false);
           }}
         >
-          <span>{REACTION_LABELS[reaction.emoji] ?? reaction.emoji}</span>
-          {reaction.count}
+          {reaction.reactedByCurrentUser ? 'Remove your reaction' : 'Add reaction'}
         </Button>
-      </HoverCardTrigger>
-      <HoverCardContent side="top" align="start" collisionPadding={12} className="w-64 rounded-lg p-3">
-        <p className="text-sm font-semibold text-foreground">Reactions</p>
-        <div className="mt-2 max-h-56 space-y-1 overflow-y-auto pr-1">
-          {status === 'LoadingFirstPage' ? (
-            <p className="text-sm text-muted-foreground">Loading people…</p>
-          ) : reactors.length > 0 ? (
-            reactors.map((reactor) => (
-              <p key={reactor._id} className="truncate text-sm text-foreground">
-                {fullName(reactor)}
-              </p>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground">No reactions yet.</p>
-          )}
-        </div>
-        {status === 'CanLoadMore' ? (
-          <Button type="button" size="sm" variant="ghost" className="mt-2 w-full" onClick={() => loadMore(50)}>
-            Show more
-          </Button>
-        ) : null}
+      ) : null}
+    </>
+  );
+
+  if (openDetailsOnPress) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="start"
+          collisionPadding={12}
+          className="w-64 rounded-lg p-3"
+          aria-label={`${reactionName} reactions`}
+        >
+          {details}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <HoverCard open={open} onOpenChange={setOpen} openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
+      <HoverCardContent
+        side="top"
+        align="start"
+        collisionPadding={12}
+        className="w-64 rounded-lg p-3"
+      >
+        {details}
       </HoverCardContent>
     </HoverCard>
   );
@@ -616,6 +681,7 @@ function MessageRow({
   canPinMessages,
   canModerateMessages,
   currentUserId,
+  openReactionDetailsOnPress,
   compact = false,
 }: {
   clubId: Id<'clubs'>;
@@ -643,6 +709,7 @@ function MessageRow({
   canPinMessages: boolean;
   canModerateMessages: boolean;
   currentUserId?: string;
+  openReactionDetailsOnPress: boolean;
   compact?: boolean;
 }) {
   const isTouchPrimary = useTouchPrimary();
@@ -765,6 +832,7 @@ function MessageRow({
                     reaction={reaction}
                     onToggleReaction={onToggleReaction}
                     isReactionPending={isReactionPending}
+                    openDetailsOnPress={openReactionDetailsOnPress}
                   />
                 ))}
               </div>
@@ -1039,6 +1107,7 @@ export function ChannelWorkspace() {
   }
   const clubId = useClubId();
   const channelId = useRouteChannelId(channelIdParam);
+  const isMobile = useIsMobile();
   const isTouchPrimary = useTouchPrimary();
   const { toast } = useToast();
 
@@ -1382,6 +1451,7 @@ export function ChannelWorkspace() {
           highlighted={matchingIds.has(message._id)}
           canPinMessages={canPinMessages}
           canModerateMessages={canModerateMessages}
+          openReactionDetailsOnPress={isMobile || isTouchPrimary}
           compact={compact}
         />
         {isEditing && (
