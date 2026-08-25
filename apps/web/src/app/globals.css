@@ -486,24 +486,26 @@
   .pill {
     @apply inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm;
   }
+}
 
-  @media (hover: none) and (pointer: coarse) {
-    .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
-      .app-main-surface {
-      padding-bottom: 0;
-    }
+/* These keyboard-state overrides must remain unlayered so they outrank the
+   Tailwind utilities that provide the shell and dock's resting padding. */
+@media (hover: none) and (pointer: coarse) {
+  .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
+    .app-main-surface {
+    padding-bottom: 0;
+  }
 
-    .app-root[data-viewport-mode='visual'] .channel-composer-dock:focus-within {
-      padding-bottom: 0;
-    }
+  .app-root[data-viewport-mode='visual'] .channel-composer-dock:focus-within {
+    padding-bottom: 0;
+  }
 
-    /* While the keyboard owns half the screen, the context toolbar above the
-       timeline is the only vertical space the page controls. Reclaim it for
-       messages; pinned/alert controls stay reachable once typing ends. */
-    .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
-      .channel-context-toolbar {
-      display: none;
-    }
+  /* While the keyboard owns half the screen, the context toolbar above the
+     timeline is the only vertical space the page controls. Reclaim it for
+     messages; pinned/alert controls stay reachable once typing ends. */
+  .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
+    .channel-context-toolbar {
+    display: none;
   }
 }
 
