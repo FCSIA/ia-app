@@ -496,6 +496,11 @@
     padding-bottom: 0;
   }
 
+  .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
+    .app-mobile-tabbar {
+    display: none;
+  }
+
   .app-root[data-viewport-mode='visual'] .channel-composer-dock:focus-within {
     padding-bottom: 0;
   }

@@ -12,6 +12,7 @@ import {
   Compass,
   ArrowLeft,
   Home,
+  Menu,
   Plus,
   Settings,
   Trash2,
@@ -161,7 +162,6 @@ export function ClubWorkspace({
   channelSearch,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
-  const router = useRouter();
   const clubId = useClubId();
   const user = useCurrentUser();
   const [isResizablePaneViewport, setIsResizablePaneViewport] = useState(false);
@@ -209,7 +209,6 @@ export function ClubWorkspace({
   const clubRootPath = `/clubs/${clubId}`;
   const navigationPath = `${clubRootPath}/navigation`;
   const isNavigationPage = pathname === navigationPath;
-  const mobileBackHref = isNavigationPage ? "/clubs" : navigationPath;
 
   const nav: Array<{
     href: string;
@@ -250,11 +249,24 @@ export function ClubWorkspace({
             <ArrowLeft />
           </Link>
         </Button>
-        <Button asChild type="button" variant="ghost" size="icon" className="md:hidden" aria-label={isNavigationPage ? "Back to clubs" : "Back to club navigation"}>
-          <Link href={mobileBackHref}>
-            <ArrowLeft />
-          </Link>
-        </Button>
+        {isNavigationPage ? (
+          <Button asChild type="button" variant="ghost" size="icon-lg" className="md:hidden" aria-label="Back to clubs">
+            <Link href="/clubs">
+              <ArrowLeft />
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            leadingIcon={Menu}
+            className="min-h-11 px-3 md:hidden"
+            onClick={() => setMobileNavigationOpen(true)}
+          >
+            Browse
+          </Button>
+        )}
         <div className="min-w-0 flex-1">
           {title ?? (
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
@@ -417,7 +429,7 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
-      onMobileSwipeRight={() => router.push(navigationPath)}
+      onMobileSwipeRight={() => setMobileNavigationOpen(true)}
       viewportMode="visual"
     >
       <div className="flex min-h-0 flex-1">
@@ -425,7 +437,7 @@ export function ClubWorkspace({
           open={mobileNavigationOpen}
           onOpenChange={setMobileNavigationOpen}
         >
-          <SheetContent side="left" className="w-72 border-r bg-card p-0">
+          <SheetContent side="left" className="w-[min(22rem,88vw)] border-r bg-card p-0">
             <SheetTitle className="sr-only">Club navigation</SheetTitle>
             <SheetDescription className="sr-only">
               Browse this club and its channels.
