@@ -16,7 +16,7 @@ import { useShape } from "@/lib/shape-context";
 
 const buttonVariants = cva(
   [
-    "group relative isolate inline-flex items-center justify-center outline-none cursor-pointer",
+    "group relative isolate inline-flex touch-manipulation items-center justify-center outline-none cursor-pointer",
     "whitespace-nowrap align-middle [&_svg]:shrink-0",
     "transition-colors duration-80",
     "disabled:opacity-50 disabled:pointer-events-none",
@@ -32,13 +32,13 @@ const buttonVariants = cva(
         destructive: "text-destructive-foreground",
       },
       size: {
-        sm: "h-7 px-3 text-[12px] gap-1",
-        md: "h-8 px-4 text-[13px] gap-1.5",
-        lg: "h-9 px-5 text-[14px] gap-1.5",
-        "icon-compact": "h-7 w-7 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
-        "icon-sm": "h-8 w-8 p-0 [&_svg]:h-3.5 [&_svg]:w-3.5",
-        icon: "h-9 w-9 p-0 [&_svg]:h-4 [&_svg]:w-4",
-        "icon-lg": "h-10 w-10 p-0 [&_svg]:h-5 [&_svg]:w-5",
+        sm: "h-7 px-3 text-[12px] gap-1 any-pointer-coarse:min-h-11",
+        md: "h-8 px-4 text-[13px] gap-1.5 any-pointer-coarse:min-h-11",
+        lg: "h-9 px-5 text-[14px] gap-1.5 any-pointer-coarse:min-h-11",
+        "icon-compact": "h-7 w-7 p-0 any-pointer-coarse:h-11 any-pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        "icon-sm": "h-8 w-8 p-0 any-pointer-coarse:h-11 any-pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        icon: "h-9 w-9 p-0 any-pointer-coarse:h-11 any-pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
+        "icon-lg": "h-11 w-11 p-0 [&_svg]:h-5 [&_svg]:w-5",
       },
     },
     defaultVariants: {
@@ -124,7 +124,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         : size === "lg" || size === "icon"
           ? "h-9 w-9"
           : size === "icon-lg"
-            ? "h-10 w-10"
+            ? "h-11 w-11"
             : "h-8 w-8";
     const shape = useShape();
     const bgClass = active

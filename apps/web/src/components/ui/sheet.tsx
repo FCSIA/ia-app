@@ -21,7 +21,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] dark:bg-black/75 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg outline-none transition ease-out data-[state=closed]:duration-180 data-[state=open]:duration-240 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none motion-reduce:transition-none",
   {
     variants: {
       side: {
@@ -40,7 +40,7 @@ const sheetVariants = cva(
           "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+          "inset-x-0 bottom-0 max-h-[88dvh] w-full overflow-y-auto rounded-t-2xl border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:max-h-none sm:w-3/4 sm:max-w-sm sm:overflow-hidden sm:rounded-none sm:border-l sm:border-t-0 sm:data-[state=closed]:slide-out-to-right sm:data-[state=open]:slide-in-from-right",
       },
     },
     defaultVariants: {
@@ -70,8 +70,10 @@ const SheetContent = React.forwardRef<
         className,
         safeArea && side === "top" && "pt-[env(safe-area-inset-top)]",
         safeArea && side === "bottom" && "pb-[env(safe-area-inset-bottom)]",
-        safeArea && (side === "left" || side === "right") &&
+        safeArea && side === "left" &&
           "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+        safeArea && side === "right" &&
+          "pb-[env(safe-area-inset-bottom)] sm:pt-[env(safe-area-inset-top)]",
       )}
       onPointerDownOutside={(e) => {
         if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
@@ -87,8 +89,15 @@ const SheetContent = React.forwardRef<
       }}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))] rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
+      <SheetPrimitive.Close
+        className={cn(
+          "absolute right-[calc(.5rem+env(safe-area-inset-right))] z-10 flex size-11 touch-manipulation items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm ring-offset-background transition-[background-color,color,transform] hover:bg-hover hover:text-foreground active:scale-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none",
+          side === "left"
+            ? "top-[calc(.5rem+env(safe-area-inset-top))]"
+            : "top-2 sm:top-[calc(.5rem+env(safe-area-inset-top))]",
+        )}
+      >
+        <X className="size-5" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
       {children}
@@ -117,7 +126,7 @@ const SheetFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      "flex flex-col-reverse gap-2 [&>button]:min-h-11 sm:flex-row sm:justify-end sm:[&>button]:min-h-0",
       className
     )}
     {...props}
