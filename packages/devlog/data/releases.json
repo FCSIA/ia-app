@@ -2,6 +2,37 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.11",
+      "date": "2026-08-27",
+      "commit": "35f0a4d",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "web",
+          "summary": "Mobile and tablet navigation now uses a persistent labeled tab bar, compact More drawer, and faster club browsing.",
+          "commit": "30713cd"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Mobile web navigation, search, chat, announcements, and schedules now feel more deliberate on phones.",
+          "commit": "cdd8476"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Mobile and tablet page changes now animate smoothly without blocking the entire screen, and Calendar uses the shared viewport layout.",
+          "commit": "fd35232"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Dialogs, sheets, forms, tabs, and menus now fit phones better with larger touch targets and safe-area-aware panels.",
+          "commit": "54953e3"
+        }
+      ]
+    },
+    {
       "version": "0.8.10",
       "date": "2026-08-27",
       "commit": "09c2ff0",

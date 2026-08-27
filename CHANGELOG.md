@@ -12,6 +12,18 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.11 — 2026-08-27 (alpha)
+
+### Added
+
+- **web** — Mobile and tablet navigation now uses a persistent labeled tab bar, compact More drawer, and faster club browsing. ([`30713cd`](https://github.com/virajdas/ia-app/commit/30713cd))
+
+### Improved
+
+- **web** — Mobile web navigation, search, chat, announcements, and schedules now feel more deliberate on phones. ([`cdd8476`](https://github.com/virajdas/ia-app/commit/cdd8476))
+- **web** — Mobile and tablet page changes now animate smoothly without blocking the entire screen, and Calendar uses the shared viewport layout. ([`fd35232`](https://github.com/virajdas/ia-app/commit/fd35232))
+- **web** — Dialogs, sheets, forms, tabs, and menus now fit phones better with larger touch targets and safe-area-aware panels. ([`54953e3`](https://github.com/virajdas/ia-app/commit/54953e3))
+
 ## v0.8.10 — 2026-08-27 (alpha)
 
 ### Improved
