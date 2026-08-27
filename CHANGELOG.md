@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.12 — 2026-08-27 (alpha)
+
+### Internal
+
+- **release** — Prepare the production deployment after Vercel's Hobby-plan author verification blocked v0.8.11.
+
 ## v0.8.11 — 2026-08-27 (alpha)
 
 ### Added
