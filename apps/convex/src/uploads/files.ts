@@ -3,7 +3,7 @@ import { action, internalMutation, mutation, type ActionCtx, type MutationCtx } 
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { getClubContext } from "../clubs/access";
+import { getClubContext, type ClubContext } from "../clubs/access";
 import { assertSafeStoredFile } from "./fileSignatures";
 import { uploadRateLimiter } from "../rateLimits";
 import { recordUploadUsage } from "./quota";
@@ -74,6 +74,14 @@ export function validateClubImageMetadata(
     throw new ConvexError("Only image uploads are allowed");
   }
   return { mimeType, size: metadata.size };
+}
+
+export function assertCanManageClubImage(
+  context: Pick<ClubContext, "permissions" | "canManageMembership">,
+) {
+  if (!context.permissions.manageClubSettings) {
+    throw new ConvexError("You do not have permission to manage club settings");
+  }
 }
 
 async function deleteRejectedUpload(
@@ -345,7 +353,7 @@ export const finalizeClubImageMutation = internalMutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageMembership) throw new ConvexError("Unauthorized");
+    assertCanManageClubImage(context);
 
     await claimUploadIntent(ctx, {
       uploadIntentId: args.uploadIntentId,
@@ -403,7 +411,7 @@ export const clearClubImage = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageMembership) throw new ConvexError("Unauthorized");
+    assertCanManageClubImage(context);
     const club = await ctx.db.get(args.clubId);
     if (!club) throw new ConvexError("Club not found");
     const storageId = args.kind === "logo" ? club.logoStorageId : club.bannerStorageId;

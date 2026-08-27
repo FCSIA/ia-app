@@ -175,7 +175,7 @@ export function AppShell({
         className={cn(
           "app-root flex w-full bg-background",
           usesVisualViewport
-            ? "h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
+            ? "fixed inset-x-0 top-0 h-[var(--app-visual-viewport-height,100dvh)] min-h-0 overflow-hidden overscroll-none"
             : "min-h-[100dvh]",
         )}
         {...swipeHandlers}

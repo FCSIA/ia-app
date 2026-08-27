@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Archive, Inbox } from 'lucide-react';
+import { Archive, Inbox, CheckCircle2 } from 'lucide-react';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/ui/search';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { formatDateTime } from '../_lib/admin-utils';
 import { AdminNotice, AdminPanel } from './admin-ui';
 
 type FeedbackReport = Doc<'moderationReports'> & {
@@ -49,8 +50,9 @@ export function FeedbackTab({
   responseMutation: FeedbackResponseMutation;
   canUpdateFeedback?: boolean;
 }) {
-  const [view, setView] = useState<'active' | 'archive'>('active');
-  const activeReports = filteredReports.filter((report) => report.status !== 'DISMISSED');
+  const [view, setView] = useState<'active' | 'resolved' | 'archive'>('active');
+  const activeReports = filteredReports.filter((report) => report.status === 'PENDING');
+  const resolvedReports = filteredReports.filter((report) => report.status === 'RESOLVED');
   const archivedReports = filteredReports.filter((report) => report.status === 'DISMISSED');
 
   return (
@@ -67,9 +69,10 @@ export function FeedbackTab({
       }
       contentClassName="space-y-3"
     >
-      <Tabs value={view} onValueChange={(value) => setView(value as 'active' | 'archive')}>
+      <Tabs value={view} onValueChange={(value) => setView(value as 'active' | 'resolved' | 'archive')}>
         <TabsList aria-label="Feedback views">
           <TabItem value="active" label={`Active ${activeReports.length}`} icon={Inbox} />
+          <TabItem value="resolved" label={`Resolved ${resolvedReports.length}`} icon={CheckCircle2} />
           <TabItem value="archive" label={`Archive ${archivedReports.length}`} icon={Archive} />
         </TabsList>
 
@@ -77,6 +80,16 @@ export function FeedbackTab({
           <FeedbackList
             reports={activeReports}
             emptyMessage={deferredFeedbackSearch ? 'No active feedback matches your search.' : 'No active feedback submitted.'}
+            clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
+            reportMutation={reportMutation}
+            responseMutation={responseMutation}
+            canUpdateFeedback={canUpdateFeedback}
+          />
+        </TabPanel>
+        <TabPanel value="resolved" className="mt-3">
+          <FeedbackList
+            reports={resolvedReports}
+            emptyMessage={deferredFeedbackSearch ? 'No resolved feedback matches your search.' : 'No resolved feedback.'}
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
@@ -139,6 +152,8 @@ function FeedbackList({
               <p className="mt-2 text-sm font-medium text-foreground">{report.reason}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 By {report.submitter?.firstName} {report.submitter?.lastName}
+                {' · '}
+                Submitted {formatDateTime(report._creationTime)}
               </p>
               {report.images.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
