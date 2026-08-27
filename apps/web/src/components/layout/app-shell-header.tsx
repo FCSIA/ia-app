@@ -3,7 +3,6 @@ import {
   ArrowLeftRight,
   ChevronDown,
   LogOut,
-  Menu,
   Search,
   Settings,
 } from "lucide-react";
@@ -34,7 +33,6 @@ type AppShellHeaderProps = {
   searchScope: SearchScope;
   commandHint: boolean;
   user: ReturnType<typeof useCurrentUser>;
-  onOpenMobileNavigation: () => void;
   onOpenGlobalSearch: () => void;
   onToggleSearchScope: () => void;
   onOpenProfile: () => void;
@@ -144,7 +142,6 @@ function AppShellHeader({
   searchScope,
   commandHint,
   user,
-  onOpenMobileNavigation,
   onOpenGlobalSearch,
   onToggleSearchScope,
   onOpenProfile,
@@ -152,17 +149,7 @@ function AppShellHeader({
 }: AppShellHeaderProps) {
   return (
     <header className="app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6 lg:px-8">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="md:hidden"
-        aria-label="Open navigation"
-        onClick={onOpenMobileNavigation}
-      >
-        <Menu className="size-5" />
-      </Button>
-      <div className="flex min-w-0 flex-1 items-center gap-4 -ml-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>
 
@@ -183,8 +170,8 @@ function AppShellHeader({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
-        className="size-9 shrink-0 lg:hidden"
+        size="icon-lg"
+        className="shrink-0 lg:hidden"
         aria-label="Search"
         onClick={onOpenGlobalSearch}
       >
@@ -196,15 +183,15 @@ function AppShellHeader({
           <DropdownTrigger
             render={
               <Button
-                variant="secondary"
-                size="lg"
-                className="rounded-full pl-0 pr-3"
+                variant="ghost"
+                size="icon-lg"
+                className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
               >
                 <UserAvatar
                   firstName={user.firstName}
                   lastName={user.lastName}
                   avatarUrl={user.avatarUrl}
-                  className="size-9"
+                  className="size-11 sm:size-9"
                   fallbackClassName="text-xs"
                 />
                 <span className="hidden truncate pl-1 sm:inline">
@@ -212,7 +199,7 @@ function AppShellHeader({
                 </span>
                 <ChevronDown
                   aria-hidden
-                  className="size-4 text-muted-foreground"
+                  className="hidden size-4 text-muted-foreground sm:block"
                 />
               </Button>
             }

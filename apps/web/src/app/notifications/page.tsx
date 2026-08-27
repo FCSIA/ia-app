@@ -111,37 +111,35 @@ export default function NotificationsPage() {
   const hasQuery = deferredSearch.trim().length > 0;
 
   return (
-    <AppShell>
+    <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Notifications
+        </h1>
+      }
+    >
       <PageFrame className="pt-0">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 flex items-center gap-2">
-                <Badge variant="solid" size="sm" color={hasUnread ? 'blue' : 'green'}>
-                  {hasUnread ? `${unreadCount} unread` : 'Clear'}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{notifications.length} total</span>
-              </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Notifications</h1>
-            </div>
-            <Button
-              variant="tertiary"
-              size="sm"
-              onClick={handleMarkAllRead}
-              loading={markingAll}
-              disabled={!hasUnread}
-              leadingIcon={CheckCheck}
-              className="w-full sm:w-fit"
-            >
-              Mark all read
-            </Button>
-          </div>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
 
           <Tabs defaultValue="inbox" className="w-full">
-            <TabsList>
-              <TabItem value="inbox" icon={Bell} label="Inbox" />
-              <TabItem value="settings" icon={Settings} label="Settings" />
-            </TabsList>
+            <div className="flex items-center justify-between gap-2">
+              <TabsList>
+                <TabItem value="inbox" icon={Bell} label="Inbox" />
+                <TabItem value="settings" icon={Settings} label="Settings" />
+              </TabsList>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllRead}
+                loading={markingAll}
+                disabled={!hasUnread}
+                leadingIcon={CheckCheck}
+                className="shrink-0 px-2 text-muted-foreground"
+              >
+                <span className="hidden sm:inline">Mark all read</span>
+                <span className="sm:hidden">Mark read</span>
+              </Button>
+            </div>
             <TabPanel value="inbox" className="mt-5">
               <div>
                 <section className="min-w-0">

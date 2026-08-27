@@ -18,6 +18,7 @@ import { GlobalCommandPalette } from "@/components/layout/GlobalCommandPalette";
 import {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
+  AppShellMobileTabBar,
 } from "@/components/layout/app-shell-navigation";
 import {
   AppShellHeader,
@@ -190,7 +191,7 @@ export function AppShell({
 
         <div
           className={cn(
-            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[env(safe-area-inset-bottom)]",
+            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0",
             usesVisualViewport && "h-full overflow-hidden",
           )}
         >
@@ -200,7 +201,6 @@ export function AppShell({
             searchScope={searchScope}
             commandHint={commandHint}
             user={user}
-            onOpenMobileNavigation={() => setMobileOpen(true)}
             onOpenGlobalSearch={() => setCommandOpen(true)}
             onToggleSearchScope={toggleSearchScope}
             onOpenProfile={() => {
@@ -220,6 +220,10 @@ export function AppShell({
             </PageTransition>
           </main>
         </div>
+        <AppShellMobileTabBar
+          {...navigationProps}
+          onOpenMenu={() => setMobileOpen(true)}
+        />
       </div>
       <GlobalCommandPalette
         user={user}

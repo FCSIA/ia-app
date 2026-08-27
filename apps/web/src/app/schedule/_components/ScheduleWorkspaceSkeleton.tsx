@@ -4,7 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ScheduleWorkspaceSkeleton() {
   return (
-    <AppShell>
+    <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Schedule
+        </h1>
+      }
+    >
       <PageFrame>
         <div aria-hidden="true" className="flex flex-col gap-5">
           <div className="flex items-center gap-3">

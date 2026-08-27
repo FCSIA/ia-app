@@ -446,7 +446,7 @@ const TabItem = forwardRef<HTMLButtonElement, TabItemProps>(
         className={cn(
           // Fixed height (not py) so the text-box trim below doesn't shrink
           // the tab — browsers without text-box support render identically.
-          "relative z-10 flex h-8 items-center gap-2 px-3 cursor-pointer bg-transparent border-none outline-none",
+          "relative z-10 flex h-8 touch-manipulation items-center gap-2 px-3 cursor-pointer bg-transparent border-none outline-none any-pointer-coarse:h-11",
           className
         )}
         {...props}

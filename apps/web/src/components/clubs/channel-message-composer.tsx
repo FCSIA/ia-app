@@ -353,7 +353,7 @@ export function ChannelMessageComposer({
                 className={cn(
                   'max-h-40 min-h-10 min-w-0 flex-1 overflow-y-auto',
                   'py-2 pl-1 pr-2 text-sm any-pointer-coarse:text-base leading-5 outline-none',
-                  '[&_[data-slate-placeholder=true]]:top-2',
+                  '[&_[data-slate-placeholder=true]]:top-2 [&_[data-slate-placeholder=true]]:max-w-full [&_[data-slate-placeholder=true]]:overflow-hidden [&_[data-slate-placeholder=true]]:text-ellipsis [&_[data-slate-placeholder=true]]:whitespace-nowrap',
                   '[&_[data-slate-placeholder=true]]:text-muted-foreground',
                 )}
               />

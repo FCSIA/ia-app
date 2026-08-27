@@ -10,7 +10,7 @@ import {
   type HTMLAttributes,
 } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useIcon } from "@/lib/icon-context";
 import { spring, exitFallbackMs } from "@/lib/springs";
@@ -84,6 +84,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const substrate = useSurface();
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
+    const reduceMotion = useReducedMotion();
 
     useEffect(() => {
       if (open) setMounted(true);
@@ -121,7 +122,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             )}
             initial={{ opacity: 0 }}
             animate={{ opacity: open ? 1 : 0 }}
-            transition={open ? spring.slow : spring.slow.exit}
+            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
           />
         </DialogPrimitive.Overlay>
         <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
@@ -130,14 +131,13 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               container ? "absolute" : "fixed",
               "z-50",
               isMobileTop
-                ? "left-0 top-0 w-full rounded-none sm:left-1/2 sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
-                : "left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2",
+                ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
+                : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",
               surfaceClasses(dialogLevel),
-              "p-6 focus:outline-none",
+              "max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] focus:outline-none sm:p-6",
               size === "sm" && "sm:max-w-[400px]",
               size === "lg" && "sm:max-w-[540px]",
-              !isMobileTop && shape.container,
-              isMobileTop && "sm:" + shape.container, // apply shape roundedness only on desktop for top mobile position
+              shape.container,
               className
             )}
             initial={{ opacity: 0, scale: 0.97 }}
@@ -145,7 +145,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               opacity: open ? 1 : 0,
               scale: open ? 1 : 0.97,
             }}
-            transition={open ? spring.slow : spring.slow.exit}
+            transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
             onAnimationComplete={handleExitComplete}
           >
             <SurfaceProvider value={dialogLevel}>
@@ -153,8 +153,8 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
               <DialogPrimitive.Close asChild>
                 <Button
                   variant="ghost"
-                  size="icon-sm"
-                  className="absolute right-3 top-3"
+                  size="icon-lg"
+                  className="absolute right-1.5 top-1.5 sm:right-3 sm:top-3 sm:size-8"
                 >
                   <XIcon />
                   <span className="sr-only">Close</span>
@@ -181,7 +181,10 @@ function DialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 function DialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex justify-end gap-2 mt-6", className)}
+      className={cn(
+        "mt-6 flex flex-col-reverse gap-2 [&>button]:min-h-11 sm:flex-row sm:justify-end sm:[&>button]:min-h-0",
+        className,
+      )}
       {...props}
     />
   );

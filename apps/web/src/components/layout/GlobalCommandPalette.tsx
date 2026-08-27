@@ -245,7 +245,7 @@ function GlobalCommandPaletteContent({
         placeholder="Search IA: people, club channels, pages, events..."
       />
       <ScrollArea
-        viewportClassName="scroll-fade-y [&>div]:!block [&>div]:w-full [&>div]:min-w-0"
+        viewportClassName="[&>div]:!block [&>div]:w-full [&>div]:min-w-0"
         className="h-[min(28rem,65vh)]"
       >
         <div className="min-w-0 p-2">

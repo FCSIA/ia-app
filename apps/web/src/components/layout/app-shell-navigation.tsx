@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   CalendarRange,
   ClipboardList,
   Home,
   MessageSquareText,
+  Menu,
   Megaphone,
   Settings,
   Shield,
@@ -20,13 +22,13 @@ import { cn } from "@/lib/utils";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Tooltip } from "@/components/ui/tooltip";
-import { VisuallyHidden } from "@/components/ui/visually-hidden";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -130,7 +132,7 @@ function MobileNavLink({
       href={href}
       prefetch={true}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+        "flex min-h-12 touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-[background-color,color,transform] active:scale-[0.985]",
         active
           ? "bg-sidebar-primary text-sidebar-primary-foreground"
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -152,7 +154,7 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
 
   return (
     <aside
-      className="sticky top-0 z-40 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground md:flex"
+      className="sticky top-0 z-40 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground lg:flex"
       aria-label="Primary navigation"
     >
       <AppLogo className="size-11" />
@@ -204,26 +206,33 @@ function AppShellMobileNavigation({
   onOpenChange: (open: boolean) => void;
 }) {
   const primary = getNavigationItems(props);
+  const directPaths = new Set(
+    getMobileTabItems(props)
+      .filter((item) => item.href !== "#more")
+      .map((item) => item.href),
+  );
+  const overflowPrimary = primary.filter((item) => !directPaths.has(item.href));
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="left"
-        className="w-72 border-r bg-sidebar p-0 text-sidebar-foreground"
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      shouldScaleBackground={false}
+    >
+      <DrawerContent
+        className="max-h-[min(82dvh,42rem)] border-sidebar-border bg-sidebar text-sidebar-foreground"
       >
-        <VisuallyHidden>
-          <SheetTitle>Navigation</SheetTitle>
-          <SheetDescription>
-            Navigate to another area of the app.
-          </SheetDescription>
-        </VisuallyHidden>
-        <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-            <AppLogo className="size-10" />
-          </div>
-          <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
-            <nav className="flex flex-col gap-1 p-3">
-              {primary.map((item) => (
+        <DrawerHeader className="border-b border-sidebar-border px-4 pb-3 pt-1 text-left">
+          <DrawerTitle className="text-base text-sidebar-foreground">
+            More
+          </DrawerTitle>
+          <DrawerDescription className="text-xs text-sidebar-foreground/65">
+            Events, account tools, and additional app areas.
+          </DrawerDescription>
+        </DrawerHeader>
+        <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">
+          <nav className="flex flex-col gap-1 p-3 pb-2">
+              {overflowPrimary.map((item) => (
                 <MobileNavLink
                   key={item.href}
                   item={item}
@@ -235,7 +244,9 @@ function AppShellMobileNavigation({
                   }
                 />
               ))}
-              <div className="my-2 h-px bg-sidebar-border" />
+              {overflowPrimary.length ? (
+                <div className="my-2 h-px bg-sidebar-border" />
+              ) : null}
               {accountNav.map((item) => (
                 <MobileNavLink
                   key={item.href}
@@ -257,12 +268,102 @@ function AppShellMobileNavigation({
                     />
                   ))
                 : null}
-            </nav>
-          </ScrollArea>
-          <div className="flex items-center justify-between border-t border-sidebar-border p-3" />
-        </div>
-      </SheetContent>
-    </Sheet>
+          </nav>
+        </ScrollArea>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+type MobileTabItem = NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
+
+function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
+  return [
+    { href: "/dashboard", label: "Home", icon: Home },
+    { href: "/announcements", label: "Feed", icon: Megaphone },
+    { href: "/clubs", label: "Clubs", icon: UsersRound },
+    props.showSchedule
+      ? { href: "/schedule", label: "Schedule", icon: ClipboardList }
+      : { href: "/calendar", label: "Calendar", icon: CalendarRange },
+    { href: "#more", label: "More", icon: Menu },
+  ];
+}
+
+function AppShellMobileTabBar({
+  onOpenMenu,
+  ...props
+}: AppShellNavigationProps & { onOpenMenu: () => void }) {
+  const reduceMotion = useReducedMotion();
+  const items = getMobileTabItems(props);
+  const directItems = items.filter((item) => item.href !== "#more");
+  const moreActive = !directItems.some((item) => isActive(props.pathname, item.href));
+
+  return (
+    <nav
+      aria-label="Primary mobile navigation"
+      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+    >
+      {items.map((item) => {
+        const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
+        const Icon = item.icon;
+        const content = (
+          <>
+            {active ? (
+              <motion.span
+                layoutId="app-mobile-tab-active"
+                aria-hidden
+                className="absolute inset-x-1 inset-y-1 rounded-xl bg-active"
+                transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
+              />
+            ) : null}
+            <Icon
+              aria-hidden
+              className={cn(
+                "relative size-5 transition-transform duration-150",
+                active && "scale-105",
+              )}
+              strokeWidth={active ? 2.25 : 1.75}
+            />
+            <span className="relative max-w-full truncate text-[10px] font-medium leading-none">
+              {item.label}
+            </span>
+            {item.href === "#more" && props.unreadBadge ? (
+              <span className="absolute right-[22%] top-1.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                {props.unreadBadge}
+              </span>
+            ) : null}
+          </>
+        );
+
+        const className = cn(
+          "relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 overflow-hidden rounded-xl px-1 text-muted-foreground outline-none transition-[color,transform] active:scale-[0.96] focus-visible:ring-1 focus-visible:ring-ring",
+          active && "text-foreground",
+        );
+
+        return item.href === "#more" ? (
+          <button
+            key={item.href}
+            type="button"
+            className={className}
+            aria-label="Open more navigation"
+            aria-current={active ? "page" : undefined}
+            onClick={onOpenMenu}
+          >
+            {content}
+          </button>
+        ) : (
+          <Link
+            key={item.href}
+            href={item.href}
+            prefetch
+            className={className}
+            aria-current={active ? "page" : undefined}
+          >
+            {content}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -286,4 +387,8 @@ function AppLogo({ className }: { className: string }) {
   );
 }
 
-export { AppShellDesktopNavigation, AppShellMobileNavigation };
+export {
+  AppShellDesktopNavigation,
+  AppShellMobileNavigation,
+  AppShellMobileTabBar,
+};

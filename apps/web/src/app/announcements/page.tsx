@@ -268,30 +268,35 @@ export default function AnnouncementsPage() {
   ].filter(Boolean).length;
 
   return (
-    <AppShell>
+    <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Announcements
+        </h1>
+      }
+    >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Announcements</h1>
-          <div className="flex items-center justify-between gap-2 sm:justify-end">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="min-w-0 overflow-x-auto">
             <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
               <TabsList aria-label="Announcement view">
                 <TabItem value="active" label="Active" icon={Inbox} />
                 <TabItem value="archived" label="Archived" icon={Archive} />
               </TabsList>
             </Tabs>
-            {canPost ? (
-              <Button
-                size="sm"
-                leadingIcon={Plus}
-                onClick={() => {
-                  setShowArchived(false);
-                  setShowNew(true);
-                }}
-              >
-                New
-              </Button>
-            ) : null}
           </div>
+          {canPost ? (
+            <Button
+              size="sm"
+              leadingIcon={Plus}
+              onClick={() => {
+                setShowArchived(false);
+                setShowNew(true);
+              }}
+            >
+              New
+            </Button>
+          ) : null}
         </div>
 
         <div className="mb-5 flex items-center gap-2">

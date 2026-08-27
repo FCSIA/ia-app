@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
+import { FILL_MAIN_CLASS } from '@/components/layout/app-main';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
@@ -222,8 +223,11 @@ export default function CalendarPage() {
 
   if (!isMounted) {
     return (
-      <AppShell>
-        <div className="flex h-[calc(100vh-2rem)] min-h-[600px] w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-card shadow-surface-1">
+      <AppShell
+        mainClassName={FILL_MAIN_CLASS}
+        pageTransitionClassName="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-xl border border-border bg-card shadow-surface-1">
           <Skeleton className="h-5 w-32" />
         </div>
       </AppShell>
@@ -571,7 +575,7 @@ export default function CalendarPage() {
 
   return (
     <AppShell 
-      mainClassName="flex-1 flex flex-col p-4 md:p-6 h-[calc(100vh-3.5rem)] overflow-hidden"
+      mainClassName={FILL_MAIN_CLASS}
       pageTransitionClassName="flex-1 flex flex-col min-h-0"
     >
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-surface-1">
