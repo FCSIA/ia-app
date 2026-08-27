@@ -7,6 +7,18 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.12",
+    "date": "2026-08-27",
+    "commit": "a732106",
+    "changes": [
+      {
+        "category": "Internal",
+        "scope": "release",
+        "summary": "Prepare the production deployment after Vercel's Hobby-plan author verification blocked v0.8.11."
+      }
+    ]
+  },
+  {
     "version": "0.8.11",
     "date": "2026-08-27",
     "commit": "35f0a4d",
