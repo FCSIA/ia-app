@@ -491,6 +491,16 @@
 /* These keyboard-state overrides must remain unlayered so they outrank the
    Tailwind utilities that provide the shell and dock's resting padding. */
 @media (hover: none) and (pointer: coarse) {
+  /* iOS zooms a focused editable surface whose computed type is below 16px.
+     This guard covers raw feature inputs and contenteditables in addition to
+     the shared Input and Textarea adapters. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  textarea,
+  select,
+  [contenteditable='true'] {
+    font-size: 16px;
+  }
+
   .app-root[data-viewport-mode='visual']:has(.channel-composer-dock:focus-within)
     .app-main-surface {
     padding-bottom: 0;

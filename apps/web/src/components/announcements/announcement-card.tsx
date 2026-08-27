@@ -156,7 +156,7 @@ export function AnnouncementCard({
             </p>
           </div>
 
-          <div className="relative z-30 flex shrink-0 flex-col items-center gap-0.5">
+          <div className="relative z-30 -mr-3 flex shrink-0 flex-col items-center gap-0.5">
             {announcement.allowComments ? (
               <Tooltip content="Open comments">
                 <Button asChild variant="ghost" size="sm" leadingIcon={MessageCircle} aria-label={`Open ${announcement._count?.comments || 0} comments`}>

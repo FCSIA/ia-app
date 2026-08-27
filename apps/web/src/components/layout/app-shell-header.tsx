@@ -183,15 +183,15 @@ function AppShellHeader({
           <DropdownTrigger
             render={
               <Button
-                variant="secondary"
-                size="lg"
-                className="h-11 min-w-11 rounded-full pl-0 pr-2 sm:h-9 sm:pr-3"
+                variant="ghost"
+                size="icon-lg"
+                className="shrink-0 rounded-full p-0 hover:bg-transparent active:bg-transparent sm:h-9 sm:w-auto sm:min-w-11 sm:px-0 sm:pr-3"
               >
                 <UserAvatar
                   firstName={user.firstName}
                   lastName={user.lastName}
                   avatarUrl={user.avatarUrl}
-                  className="size-10 sm:size-9"
+                  className="size-11 sm:size-9"
                   fallbackClassName="text-xs"
                 />
                 <span className="hidden truncate pl-1 sm:inline">

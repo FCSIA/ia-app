@@ -27,7 +27,14 @@ Command.displayName = CommandPrimitive.displayName
 const CommandDialog = ({ children, ...props }: DialogProps) => {
   return (
     <Dialog {...props}>
-      <DialogContent size="lg" mobilePosition="top" className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 sm:w-[calc(100%-1rem)]">
+      <DialogContent
+        size="lg"
+        mobilePosition="top"
+        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-1rem)]"
+        onOpenAutoFocus={(event) => {
+          if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault()
+        }}
+      >
         <DialogTitle className="sr-only">Command menu</DialogTitle>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-1 [&_[cmdk-input]]:h-11 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2">
           {children}
@@ -46,7 +53,7 @@ const CommandInput = React.forwardRef<
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full bg-transparent py-3 text-sm any-pointer-coarse:text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}

@@ -259,12 +259,12 @@ export function ClubWorkspace({
           <Button
             type="button"
             variant="ghost"
-            size="lg"
-            leadingIcon={Menu}
-            className="min-h-11 px-3 md:hidden"
+            size="icon-lg"
+            className="md:hidden"
+            aria-label="Open club navigation"
             onClick={() => setMobileNavigationOpen(true)}
           >
-            Browse
+            <Menu />
           </Button>
         )}
         <div className="min-w-0 flex-1">

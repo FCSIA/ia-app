@@ -154,7 +154,7 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
           }}
           role="group"
           className={cn(
-            "relative flex flex-col gap-0.5 w-72 max-w-full select-none",
+            "relative flex w-72 max-w-full flex-col gap-0.5 select-none",
             className
           )}
           {...props}
@@ -314,7 +314,7 @@ const CheckboxItem = forwardRef<HTMLDivElement, CheckboxItemProps>(
           }
         }}
         className={cn(
-          `relative z-10 flex items-center gap-2.5 ${shape.item} px-3 py-2 cursor-pointer outline-none`,
+          `relative z-10 flex h-8 w-full touch-manipulation items-center gap-2.5 ${shape.item} px-3 cursor-pointer outline-none any-pointer-coarse:h-11`,
           disabled && "cursor-not-allowed opacity-50",
           className
         )}

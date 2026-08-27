@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Utensils } from "lucide-react";
+import { BookOpen, Pencil, Utensils } from "lucide-react";
 import { useState } from "react";
 import { ScheduleDayEditor } from "@/components/schedule/schedule-day-editor";
 import { ScheduleImportDialog } from "@/components/schedule/schedule-import-dialog";
@@ -33,7 +33,37 @@ export function MySchedulePanel() {
   } = useScheduleWorkspace();
 
   const selectedWeekday = data?.resolvedDay.weekday;
+  const [isEditing, setIsEditing] = useState(false);
   const [lunchOpen, setLunchOpen] = useState(false);
+
+  if (!isEditing) {
+    return (
+      <TabPanel value="my" className="mt-5">
+        <section className="max-w-2xl">
+          <header className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-foreground">My schedule</h2>
+            <Button
+              size="sm"
+              variant="tertiary"
+              leadingIcon={Pencil}
+              onClick={() => setIsEditing(true)}
+            >
+              Edit schedule
+            </Button>
+          </header>
+          {data?.resolvedDay ? (
+            <ResolvedDayPanel
+              day={data.resolvedDay}
+              entries={scheduleEntries}
+              lunchPeriod={lunchPeriod}
+              selectedDateKey={selectedDateKey}
+              onDateChange={setSelectedDateKey}
+            />
+          ) : null}
+        </section>
+      </TabPanel>
+    );
+  }
 
   return (
     <TabPanel value="my" className="mt-5">
@@ -54,6 +84,13 @@ export function MySchedulePanel() {
           <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3">
             <h2 className="text-base font-semibold text-foreground">Classes</h2>
             <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(false)}
+              >
+                Done
+              </Button>
               <Popover open={lunchOpen} onOpenChange={setLunchOpen}>
                 <PopoverTrigger asChild>
                   <Button

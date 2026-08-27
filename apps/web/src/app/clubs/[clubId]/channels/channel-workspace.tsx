@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
@@ -728,11 +728,47 @@ function MessageRow({
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const replySwipeStart = useRef<{ x: number; y: number } | null>(null);
+  const [replySwipeOffset, setReplySwipeOffset] = useState(0);
+  const canSwipeToReply = isTouchPrimary && !isDeleted && !isSending && !isEditing;
+
+  const resetReplySwipe = () => {
+    replySwipeStart.current = null;
+    setReplySwipeOffset(0);
+  };
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={isDeleted || isSending || isEditing}>
-        <div>
+        <div
+          data-swipe-navigation-ignore
+          className="touch-pan-y select-none [-webkit-touch-callout:none]"
+          style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
+          onTouchStart={(event) => {
+            if (!canSwipeToReply || event.touches.length !== 1) return;
+            if ((event.target as HTMLElement).closest('button, a, input, textarea, [contenteditable=true]')) return;
+            const touch = event.touches[0];
+            replySwipeStart.current = { x: touch.clientX, y: touch.clientY };
+          }}
+          onTouchMove={(event) => {
+            const start = replySwipeStart.current;
+            if (!start || event.touches.length !== 1) return;
+            const touch = event.touches[0];
+            const deltaX = touch.clientX - start.x;
+            const deltaY = Math.abs(touch.clientY - start.y);
+            if (Math.abs(deltaX) < deltaY * 1.25) return;
+            setReplySwipeOffset(Math.max(-40, Math.min(40, deltaX)));
+          }}
+          onTouchEnd={(event) => {
+            const start = replySwipeStart.current;
+            const touch = event.changedTouches[0];
+            if (start && touch && Math.abs(touch.clientX - start.x) >= 64 && Math.abs(touch.clientX - start.x) > Math.abs(touch.clientY - start.y) * 1.25) {
+              onStartReply(message._id);
+            }
+            resetReplySwipe();
+          }}
+          onTouchCancel={resetReplySwipe}
+        >
           <Message
             className={cn(
               'rounded-md gap-3 px-3 transition-colors hover:bg-hover',

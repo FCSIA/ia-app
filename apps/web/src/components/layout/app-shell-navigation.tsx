@@ -301,7 +301,7 @@ function AppShellMobileTabBar({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border/70 bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
     >
       {items.map((item) => {
         const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
@@ -312,7 +312,7 @@ function AppShellMobileTabBar({
               <motion.span
                 layoutId="app-mobile-tab-active"
                 aria-hidden
-                className="absolute inset-x-2 top-1 h-10 rounded-xl bg-active"
+                className="absolute inset-x-1 inset-y-1 rounded-xl bg-active"
                 transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
               />
             ) : null}

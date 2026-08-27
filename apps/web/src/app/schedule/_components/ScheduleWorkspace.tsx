@@ -39,7 +39,13 @@ export function ScheduleWorkspace() {
   }
 
   return (
-    <AppShell>
+    <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Schedule
+        </h1>
+      }
+    >
       <PageFrame className="gap-5">
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
           {canEditOwnSchedule ? (
