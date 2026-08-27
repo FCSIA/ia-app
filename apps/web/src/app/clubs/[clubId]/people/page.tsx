@@ -21,6 +21,7 @@ import {
   UserMinus,
   UserPlus,
   UserPen,
+  UserRoundCheck,
   Users,
   UsersRound,
   ShieldCheck,
@@ -839,6 +840,30 @@ export default function ClubPeoplePage() {
     );
   }, [deferredSearch, directory, groupMemberIds?.memberIds]);
 
+  const visiblePeople = visibleFilter.startsWith("group:")
+    ? groupPeople
+    : filtered;
+  const friendshipTargetIds = useMemo(
+    () =>
+      visiblePeople
+        .filter((person) => person._id !== user?._id)
+        .map((person) => person._id),
+    [user?._id, visiblePeople],
+  );
+  const friendshipStatuses = useQuery(
+    api.schedule.friends.getStatuses,
+    user && friendshipTargetIds.length > 0
+      ? { userIds: friendshipTargetIds }
+      : "skip",
+  );
+  const friendshipStatusByUserId = useMemo(
+    () =>
+      new Map(
+        friendshipStatuses?.map(({ userId, status }) => [userId, status]),
+      ),
+    [friendshipStatuses],
+  );
+
   const selectedGroup = peopleGroups?.groups.find(
     (group) => group._id === selectedGroupId,
   );
@@ -990,6 +1015,10 @@ export default function ClubPeoplePage() {
                             key={person._id}
                             person={person}
                             isCurrentUser={person._id === user?._id}
+                            isFriend={
+                              friendshipStatusByUserId.get(person._id) ===
+                              "FRIENDS"
+                            }
                             canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                             canManageUnits={canManageStructure && person.kind === "MEMBER"}
                             canRemove={canRemoveMembers && person.kind === "MEMBER"}
@@ -1089,6 +1118,9 @@ export default function ClubPeoplePage() {
                       key={person._id}
                       person={person}
                       isCurrentUser={person._id === user?._id}
+                      isFriend={
+                        friendshipStatusByUserId.get(person._id) === "FRIENDS"
+                      }
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                       canManageUnits={
                         canManageStructure && person.kind === "MEMBER"
@@ -1180,6 +1212,7 @@ export default function ClubPeoplePage() {
 function PersonRow({
   person,
   isCurrentUser,
+  isFriend,
   canAssignRole,
   canManageUnits,
   canRemove,
@@ -1188,6 +1221,7 @@ function PersonRow({
 }: {
   person: ClubDirectoryEntry;
   isCurrentUser: boolean;
+  isFriend: boolean;
   canAssignRole: boolean;
   canManageUnits: boolean;
   canRemove: boolean;
@@ -1211,9 +1245,27 @@ function PersonRow({
       />
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex flex-wrap items-center gap-2">
+          {isCurrentUser ? (
+            <span
+              className="inline-flex size-1.5 shrink-0 rounded-full bg-primary"
+              role="img"
+              aria-label="You"
+              title="You"
+            />
+          ) : null}
           <p className="truncate text-sm font-semibold text-foreground">
             {fullName(person)}
           </p>
+          {isFriend ? (
+            <span
+              className="inline-flex shrink-0 text-primary"
+              role="img"
+              aria-label="Friend"
+              title="Friend"
+            >
+              <UserRoundCheck className="size-3.5" aria-hidden />
+            </span>
+          ) : null}
           {isSponsor ? (
             <Badge
               variant="solid"
@@ -1252,14 +1304,6 @@ function PersonRow({
               }`}
             >
               +{otherUnitNames.length}
-            </Badge>
-          ) : null}
-          {isCurrentUser ? (
-            <Badge
-              variant="solid"
-              className="px-1.5 py-0 h-5 text-[10px] uppercase tracking-widest text-muted-foreground"
-            >
-              You
             </Badge>
           ) : null}
         </div>

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+  assertCanManageClubImage,
   validateChatAttachmentMetadata,
   validateClubImageMetadata,
 } from "./files";
+import { NO_CLUB_PERMISSIONS } from "../clubs/rolePermissions";
 
 describe("upload metadata validation", () => {
   test("uses stored MIME type instead of client fallback for chat attachments", () => {
@@ -52,5 +54,25 @@ describe("upload metadata validation", () => {
         "application/octet-stream",
       ),
     ).toEqual({ mimeType: "image/webp", size: 1024 });
+  });
+});
+
+describe("club image authorization", () => {
+  test("allows branding editors without membership-management permission", () => {
+    expect(() =>
+      assertCanManageClubImage({
+        permissions: { ...NO_CLUB_PERMISSIONS, manageClubSettings: true },
+        canManageMembership: false,
+      }),
+    ).not.toThrow();
+  });
+
+  test("rejects roles without club-settings permission", () => {
+    expect(() =>
+      assertCanManageClubImage({
+        permissions: NO_CLUB_PERMISSIONS,
+        canManageMembership: true,
+      }),
+    ).toThrow("You do not have permission to manage club settings");
   });
 });
