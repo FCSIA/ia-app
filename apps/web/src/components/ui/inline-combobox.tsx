@@ -339,6 +339,7 @@ const InlineComboboxItem = ({
   keywords,
   label,
   onClick,
+  onPointerDown,
   ...props
 }: {
   focusEditor?: boolean;
@@ -366,12 +367,20 @@ const InlineComboboxItem = ({
 
   return (
     <ComboboxItem
+      {...props}
       className={cn(comboboxItemVariants(), className)}
+      onPointerDown={(event) => {
+        // Touch browsers blur the inline input before dispatching the item's
+        // click. That cancellation removes the mention target, leaving only
+        // the trigger character behind. Keep focus in the editor until the
+        // selection handler inserts the chosen item.
+        event.preventDefault();
+        onPointerDown?.(event);
+      }}
       onClick={(event) => {
         removeInput(focusEditor);
         onClick?.(event);
       }}
-      {...props}
     />
   );
 };

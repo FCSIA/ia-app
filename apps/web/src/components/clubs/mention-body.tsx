@@ -25,6 +25,7 @@ type RichTextLeaf = {
 
 type RichTextElement = {
   type?: string;
+  key?: string;
   value?: string;
   children?: RichTextNode[];
   [key: string]: unknown;
@@ -99,7 +100,8 @@ function serializeNodeMarkdown(node: RichTextNode): string {
   }
 
   if (node.type === 'mention' && typeof node.value === 'string') {
-    return `[@${node.value}](user://${node.value})`;
+    const token = typeof node.key === 'string' ? node.key : node.value;
+    return `[@${node.value}](user://${token})`;
   }
 
   const content = (node.children ?? []).map(serializeNodeMarkdown).join('');

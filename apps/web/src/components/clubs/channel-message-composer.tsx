@@ -164,7 +164,9 @@ export function ChannelMessageComposer({
     () =>
       suggestionEntries.map((entry) => ({
         key: entry.token,
-        text: entry.token,
+        // The key stays the stable token that the backend resolves. Person
+        // mentions render and serialize with a readable name instead.
+        text: entry.kind === 'person' ? entry.label : entry.token,
         label: entry.label,
         detail: entry.detail,
         kind: entry.kind,
