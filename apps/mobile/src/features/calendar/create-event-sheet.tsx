@@ -102,11 +102,13 @@ export function CreateEventSheet({ open, onClose, defaultClubId }: CreateEventSh
         value={form.title}
         onChangeText={(title) => setForm((current) => ({ ...current, title }))}
         placeholder="Title"
+        maxLength={160}
       />
       <TextField
         value={form.description}
         onChangeText={(description) => setForm((current) => ({ ...current, description }))}
         placeholder="Description (optional)"
+        maxLength={2000}
         multiline
       />
       <TextField

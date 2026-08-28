@@ -16,6 +16,10 @@ import {
   canRespondToCalendarInvite,
   canShareCalendarEntryWithFriend,
 } from "./calendarInvitePolicy";
+import {
+  normalizeEventTitle,
+  normalizeOptionalEventDescription,
+} from "./contentValidation";
 
 const MAX_CALENDAR_RANGE_MS = 92 * 24 * 60 * 60 * 1000;
 const MAX_CALENDAR_INVITE_RECIPIENTS = 20;
@@ -300,15 +304,15 @@ export const create = mutation({
       throw new ConvexError("Shared calendar entries must be created by their owning feature");
     }
 
-    const title = args.title.trim();
-    if (!title) throw new ConvexError("Title is required");
+    const title = normalizeEventTitle(args.title);
+    const description = normalizeOptionalEventDescription(args.description);
     if (args.endAt !== undefined && args.endAt < args.startAt) {
       throw new ConvexError("End time must be after start time");
     }
 
     const entryId = await ctx.db.insert("calendarEntries", {
       title,
-      description: args.description?.trim(),
+      description,
       location: args.location?.trim(),
       startAt: args.startAt,
       endAt: args.endAt,
@@ -363,15 +367,15 @@ export const update = mutation({
       throw new Error("You can only edit your own personal entries");
     }
 
-    const title = args.title.trim();
-    if (!title) throw new ConvexError("Title is required");
+    const title = normalizeEventTitle(args.title);
+    const description = normalizeOptionalEventDescription(args.description);
     if (args.endAt !== undefined && args.endAt < args.startAt) {
       throw new ConvexError("End time must be after start time");
     }
 
     await ctx.db.patch(args.entryId, {
       title,
-      description: args.description?.trim(),
+      description,
       location: args.location?.trim(),
       startAt: args.startAt,
       endAt: args.endAt,

@@ -251,8 +251,8 @@ export default function EventsPage() {
                 }}
                 className="space-y-4"
               >
-                <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-                <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+                <Input placeholder="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={160} required />
+                <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={2000} rows={3} />
                 <Input placeholder="Location (optional)" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>

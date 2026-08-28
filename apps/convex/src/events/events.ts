@@ -4,6 +4,10 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializeEventDetail, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 import { getClubContext } from "../clubs/access";
+import {
+  normalizeEventTitle,
+  normalizeOptionalEventDescription,
+} from "./contentValidation";
 
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "STUDENT_ADMIN"] as const;
 
@@ -79,6 +83,8 @@ export const create = mutation({
   },
   returns: v.id("events"),
   handler: async (ctx, args) => {
+    const title = normalizeEventTitle(args.title);
+    const description = normalizeOptionalEventDescription(args.description);
     const user = await getCurrentAppUser(ctx);
     const admin = isAdmin(user);
     const canCreateGeneral = admin;
@@ -110,8 +116,8 @@ export const create = mutation({
       categoryId: undefined,
       status,
       type: args.clubId ? "CLUB" : "GENERAL",
-      title: args.title.trim(),
-      description: args.description?.trim(),
+      title,
+      description,
       location: args.location?.trim(),
       flyerUrl: undefined,
       startAt: args.startAt,
@@ -131,8 +137,8 @@ export const create = mutation({
     if (status === "PUBLISHED") {
       await ctx.db.insert("calendarEntries", {
         eventId,
-        title: args.title.trim(),
-        description: args.description?.trim(),
+        title,
+        description,
         location: args.location?.trim(),
         startAt: args.startAt,
         endAt: args.endAt,

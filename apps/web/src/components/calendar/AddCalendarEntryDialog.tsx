@@ -118,6 +118,7 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
                 placeholder="e.g., Assignment due, Study session..."
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+                maxLength={160}
                 className="rounded-2xl pl-10 h-12 border-foreground/5 bg-foreground/[0.02]"
                 required
               />
@@ -179,6 +180,7 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
               placeholder="Any extra notes..."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
+              maxLength={2000}
               className="rounded-2xl min-h-[90px] border-foreground/5 bg-foreground/[0.02] resize-none"
             />
           </div>
