@@ -2,6 +2,73 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.13",
+      "date": "2026-08-28",
+      "commit": "4873982",
+      "changes": [
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "What's new is easier to read on mobile, and feedback now tells the team which app version you used.",
+          "commit": "4873982"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Removing a club role now shows which channel rules will change and warns before access becomes club-wide.",
+          "commit": "f1f0ead"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club links now open the overview on desktop while the installed mobile app keeps its navigation screen.",
+          "commit": "ce2d0ac"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "Uploaded images now appear directly inside club channel conversations.",
+          "commit": "fb9e0ac"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Announcement filters stay contained and easier to scan on mobile.",
+          "commit": "698dedf"
+        },
+        {
+          "category": "Improved",
+          "scope": "settings",
+          "summary": "Profile picture editing and settings separators feel cleaner on mobile.",
+          "commit": "7342090"
+        },
+        {
+          "category": "Improved",
+          "scope": "notifications",
+          "summary": "Notifications keep their controls compact and aligned on mobile.",
+          "commit": "b86d2fe"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club channels are easier to scan and navigate on mobile.",
+          "commit": "73ee384"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club chat mentions now select reliably on mobile and show people's names instead of student IDs.",
+          "commit": "0c5d726"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club messages now show poll and mention options when your role allows them, and notifications identify the sender.",
+          "commit": "6cd0ae6"
+        }
+      ]
+    },
+    {
       "version": "0.8.12",
       "date": "2026-08-27",
       "commit": "a732106",

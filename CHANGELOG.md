@@ -12,6 +12,24 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.13 — 2026-08-28 (alpha)
+
+### Improved
+
+- **web** — What's new is easier to read on mobile, and feedback now tells the team which app version you used. ([`4873982`](https://github.com/virajdas/ia-app/commit/4873982))
+- **clubs** — Removing a club role now shows which channel rules will change and warns before access becomes club-wide. ([`f1f0ead`](https://github.com/virajdas/ia-app/commit/f1f0ead))
+- **clubs** — Club links now open the overview on desktop while the installed mobile app keeps its navigation screen. ([`ce2d0ac`](https://github.com/virajdas/ia-app/commit/ce2d0ac))
+- **web** — Uploaded images now appear directly inside club channel conversations. ([`fb9e0ac`](https://github.com/virajdas/ia-app/commit/fb9e0ac))
+- **announcements** — Announcement filters stay contained and easier to scan on mobile. ([`698dedf`](https://github.com/virajdas/ia-app/commit/698dedf))
+- **settings** — Profile picture editing and settings separators feel cleaner on mobile. ([`7342090`](https://github.com/virajdas/ia-app/commit/7342090))
+- **notifications** — Notifications keep their controls compact and aligned on mobile. ([`b86d2fe`](https://github.com/virajdas/ia-app/commit/b86d2fe))
+- **clubs** — Club channels are easier to scan and navigate on mobile. ([`73ee384`](https://github.com/virajdas/ia-app/commit/73ee384))
+
+### Fixed
+
+- **clubs** — Club chat mentions now select reliably on mobile and show people's names instead of student IDs. ([`0c5d726`](https://github.com/virajdas/ia-app/commit/0c5d726))
+- **clubs** — Club messages now show poll and mention options when your role allows them, and notifications identify the sender. ([`6cd0ae6`](https://github.com/virajdas/ia-app/commit/6cd0ae6))
+
 ## v0.8.12 — 2026-08-27 (alpha)
 
 ### Internal
