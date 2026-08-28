@@ -314,35 +314,36 @@ export default function AnnouncementsPage() {
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="max-h-[min(38rem,var(--radix-popover-content-available-height))] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-3"
+              className="w-[min(44rem,calc(100vw-2rem))] overflow-hidden p-0"
               aria-labelledby="announcement-filters-title"
             >
-              <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h3 id="announcement-filters-title" className="text-sm font-semibold text-foreground">
-                  Filters
-                </h3>
-                {activeFilterCount > 0 ? (
-                  <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
-                    Reset
-                  </Button>
-                ) : null}
-              </div>
+              <div className="max-h-[min(38rem,var(--radix-popover-content-available-height))] overflow-y-auto p-3">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <h3 id="announcement-filters-title" className="text-sm font-semibold text-foreground">
+                    Filters
+                  </h3>
+                  {activeFilterCount > 0 ? (
+                    <Button variant="ghost" size="sm" onClick={resetFacetFilters}>
+                      Reset
+                    </Button>
+                  ) : null}
+                </div>
 
-              <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Read state</FieldLegend>
-                  <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} className="w-full">
+                  <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'unread', 'read'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} />
+                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
                   </RadioGroup>
                 </FieldSet>
 
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Saved state</FieldLegend>
-                  <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} className="w-full">
+                  <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'saved', 'pinned'].map((value, index) => (
-                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} />
+                      <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
                   </RadioGroup>
                 </FieldSet>
@@ -350,13 +351,14 @@ export default function AnnouncementsPage() {
                 {availableTags.length > 0 ? (
                   <FieldSet className="min-w-0 gap-0">
                     <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} className="w-full">
+                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} orientation="horizontal" className="w-full flex-wrap">
                       {['all', ...availableTags].map((tag, index) => (
                         <RadioItem
                           key={tag}
                           index={index}
                           value={tag}
                           label={tag === 'all' ? 'Any' : ANNOUNCEMENT_SCOPE_LABELS[tag] || tag.replace(/_/g, ' ')}
+                          className="min-w-[calc(50%-0.125rem)] flex-1"
                         />
                       ))}
                     </RadioGroup>
@@ -439,6 +441,7 @@ export default function AnnouncementsPage() {
                     </CheckboxGroup>
                   </FieldSet>
                 ) : null}
+                </div>
               </div>
             </PopoverContent>
           </Popover>

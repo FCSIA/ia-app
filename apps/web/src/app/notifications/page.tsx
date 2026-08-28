@@ -8,7 +8,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, BellDot, CheckCheck, Inbox, SearchX, Settings } from 'lucide-react';
+import { Bell, BellDot, Inbox, Mail, MailOpen, SearchX, Settings } from 'lucide-react';
 import { PageFrame } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Badge, type BadgeColor } from '@/components/ui/badge';
@@ -129,15 +129,15 @@ export default function NotificationsPage() {
               </TabsList>
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={handleMarkAllRead}
                 loading={markingAll}
                 disabled={!hasUnread}
-                leadingIcon={CheckCheck}
-                className="shrink-0 px-2 text-muted-foreground"
+                className="shrink-0"
+                size="icon-sm"
+                aria-label="Mark all notifications as read"
+                title="Mark all notifications as read"
               >
-                <span className="hidden sm:inline">Mark all read</span>
-                <span className="sm:hidden">Mark read</span>
+                {hasUnread ? <MailOpen /> : <Mail />}
               </Button>
             </div>
             <TabPanel value="inbox" className="mt-5">
@@ -153,7 +153,7 @@ export default function NotificationsPage() {
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
                         ? `${filteredNotifications.length} of ${notifications.length}`
-                        : `${notifications.length} notifications`}
+                        : `${hasUnread ? `${unreadCount} unread` : 'All read'} · ${notifications.length} total`}
                     </span>
                   </div>
 

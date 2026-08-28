@@ -6,17 +6,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
-  ChevronDown,
   ChevronRight,
   ChevronsUpDown,
   Compass,
   ArrowLeft,
   Home,
   Menu,
+  Hash,
   Plus,
   Settings,
   Trash2,
   Users2,
+  X,
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
 import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
@@ -34,6 +35,7 @@ import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetTitle,
@@ -398,7 +400,6 @@ export function ClubWorkspace({
         <div className="min-h-0 flex-1">
           <ClubNavigationPanel
             density="mobile"
-            standalone
             clubId={clubId}
             viewerId={user?._id ?? null}
             club={club}
@@ -439,7 +440,10 @@ export function ClubWorkspace({
           open={mobileNavigationOpen}
           onOpenChange={setMobileNavigationOpen}
         >
-          <SheetContent side="left" className="w-[min(22rem,88vw)] border-r bg-card p-0">
+          <SheetContent
+            side="left"
+            className="w-[min(22rem,88vw)] border-r bg-card p-0 pt-[env(safe-area-inset-top)] [&>button]:hidden"
+          >
             <SheetTitle className="sr-only">Club navigation</SheetTitle>
             <SheetDescription className="sr-only">
               Browse this club and its channels.
@@ -459,6 +463,7 @@ export function ClubWorkspace({
               canCreateChannels={canCreateChannels}
               canEditChannels={canEditChannels}
               canDeleteChannels={canDeleteChannels}
+              showMobileClose
               onNavigate={() => setMobileNavigationOpen(false)}
               onDeleteChannel={(channel) => {
                 if (confirm(`Delete #${channel.name}?`)) {
@@ -544,7 +549,6 @@ type NavigationItem = {
 
 function ClubNavigationPanel({
   density,
-  standalone = false,
   clubId,
   viewerId,
   club,
@@ -558,11 +562,11 @@ function ClubNavigationPanel({
   canCreateChannels,
   canEditChannels,
   canDeleteChannels,
+  showMobileClose = false,
   onNavigate,
   onDeleteChannel,
 }: {
   density: "desktop" | "mobile";
-  standalone?: boolean;
   clubId: Id<"clubs">;
   viewerId: string | null;
   club?: ClubWorkspaceNavigation["club"];
@@ -576,6 +580,7 @@ function ClubNavigationPanel({
   canCreateChannels: boolean;
   canEditChannels: boolean;
   canDeleteChannels: boolean;
+  showMobileClose?: boolean;
   onNavigate?: () => void;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
@@ -641,10 +646,23 @@ function ClubNavigationPanel({
     <div className="flex size-full min-h-0 flex-col">
       <div
         className={cn(
-          "shrink-0 border-b border-border/70 p-2",
-          density === "mobile" && !standalone && "pr-12",
+          "relative shrink-0 border-b border-border/70 p-2",
+          showMobileClose && "pr-12",
         )}
       >
+        {showMobileClose ? (
+          <SheetClose asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute right-2 top-2 size-9"
+              aria-label="Close club navigation"
+            >
+              <X />
+            </Button>
+          </SheetClose>
+        ) : null}
         {showClubPicker ? (
           <DropdownMenu>
             <DropdownTrigger
@@ -724,7 +742,6 @@ function ClubNavigationPanel({
           <section aria-labelledby={`channels-${density}`}>
             <div className="flex h-7 items-center justify-between pl-2 pr-1">
               <div className="flex items-center gap-1 text-muted-foreground">
-                <ChevronDown className="size-3" />
                 <h2
                   id={`channels-${density}`}
                   className="text-[11px] font-bold uppercase tracking-wide"
@@ -870,11 +887,11 @@ function ChannelRow({
   const secondaryControlClassName =
     density === "mobile"
       ? "flex"
-      : "hidden group-hover:flex group-focus-within:flex";
+      : "hidden group-hover/channel:flex group-focus-within/channel:flex";
   const visibilityClassName =
     density === "mobile"
       ? "block"
-      : "hidden group-hover:block group-focus-within:block";
+      : "hidden group-hover/channel:flex group-focus-within/channel:flex";
   return (
     <Card
       href={`/clubs/${clubId}/channels/${channel._id}`}
@@ -882,13 +899,13 @@ function ChannelRow({
       label={`Open #${channel.name}`}
       selected={active}
       className={cn(
-        "group gap-1.5 rounded-md px-2 text-sm font-medium",
+        "group/channel gap-1.5 rounded-md px-2 text-sm font-medium",
         rowClassName,
         active ? "text-foreground" : "text-muted-foreground",
       )}
     >
-      {onToggle ? (
-        <div className="relative z-30 flex shrink-0">
+      <div className="relative z-30 flex size-6 shrink-0 items-center justify-center">
+        {onToggle ? (
           <Button
             type="button"
             variant="ghost"
@@ -900,7 +917,7 @@ function ChannelRow({
               event.stopPropagation();
               onToggle();
             }}
-            className="size-6 text-muted-foreground hover:text-foreground"
+            className="size-6 -translate-x-1 text-muted-foreground hover:text-foreground"
           >
             <ChevronRight
               className={cn(
@@ -909,35 +926,46 @@ function ChannelRow({
               )}
             />
           </Button>
-        </div>
-      ) : null}
-      <span className="min-w-0 flex-1 break-words whitespace-normal group-hover:truncate group-focus-within:truncate">
+        ) : (
+          <Hash
+            aria-hidden="true"
+            className="size-4 shrink-0 -translate-x-1 text-muted-foreground"
+          />
+        )}
+      </div>
+      <span className="min-w-0 flex-1 -translate-x-1.5 break-words whitespace-normal group-hover/channel:truncate group-focus-within/channel:truncate">
         {channel.name}
       </span>
-      <ClubChannelVisibilityIcon
-        visibility={channel.visibility}
-        className={cn(
-          "size-4 shrink-0",
-          visibilityClassName,
-          active ? "text-foreground/70" : "text-muted-foreground",
-        )}
-      />
-      {canEditChannels || canDeleteChannels ? (
-        <div
-          className={cn(
-            "relative z-30 shrink-0 items-center gap-0.5",
-            secondaryControlClassName,
-          )}
-        >
-          <ChannelActionsTrigger
-            clubId={clubId}
-            channel={channel}
-            canEdit={canEditChannels}
-            canDelete={canDeleteChannels}
-            onDeleteChannel={onDeleteChannel}
-          />
-        </div>
-      ) : null}
+      <div className="relative z-30 flex shrink-0 items-center gap-0.5">
+        {channel.visibility !== "PUBLIC" ? (
+          <Button
+            asChild
+            variant="ghost"
+            size="icon-sm"
+            className={cn(
+              visibilityClassName,
+              active
+                ? "text-foreground/60"
+                : "pointer-events-none translate-x-1 text-muted-foreground",
+            )}
+          >
+            <span aria-hidden="true">
+              <ClubChannelVisibilityIcon visibility={channel.visibility} />
+            </span>
+          </Button>
+        ) : null}
+        {canEditChannels || canDeleteChannels ? (
+          <div className={cn("items-center gap-0.5", secondaryControlClassName)}>
+            <ChannelActionsTrigger
+              clubId={clubId}
+              channel={channel}
+              canEdit={canEditChannels}
+              canDelete={canDeleteChannels}
+              onDeleteChannel={onDeleteChannel}
+            />
+          </div>
+        ) : null}
+      </div>
     </Card>
   );
 }
@@ -1006,7 +1034,7 @@ function UnitChannelTree({
         <div
           className={
             directChannels.length
-              ? "ml-3 border-l border-border/60 pl-1.5"
+              ? "ml-4 border-l"
               : ""
           }
         >
