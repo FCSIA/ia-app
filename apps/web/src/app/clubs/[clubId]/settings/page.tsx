@@ -350,6 +350,12 @@ export default function ClubSettingsPage() {
 
   const selectedRole =
     roles?.find((role) => role._id === selectedRoleId) ?? roles?.[0];
+  const roleRemovalImpact = useQuery(
+    api.clubs.management.getRoleRemovalImpact,
+    removeRoleOpen && selectedRole
+      ? { clubId, roleId: selectedRole._id }
+      : "skip",
+  );
 
   const openEditor = (next: Exclude<Editor, null>) => {
     setEditor(next);
@@ -452,7 +458,12 @@ export default function ClubSettingsPage() {
     if (!selectedRole) return;
     setRemovingRole(true);
     try {
-      await removeRole({ clubId, roleId: selectedRole._id });
+      await removeRole({
+        clubId,
+        roleId: selectedRole._id,
+        confirmChannelAccessUpdates:
+          (roleRemovalImpact?.channels.length ?? 0) > 0,
+      });
       setRemoveRoleOpen(false);
       setSelectedRoleId("");
       toast({ title: `${selectedRole.name} removed` });
@@ -819,19 +830,38 @@ export default function ClubSettingsPage() {
                 : " move to the default club role."} Its permissions will no
               longer apply.
             </AlertDialogDescription>
+            {roleRemovalImpact === undefined ? (
+              <p className="text-sm text-muted-foreground">
+                Checking affected channel access…
+              </p>
+            ) : roleRemovalImpact.channels.length > 0 ? (
+              <p
+                className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                {roleRemovalImpact.channels.length} {roleRemovalImpact.channels.length === 1 ? "channel" : "channels"} will be updated to remove this role.
+                {roleRemovalImpact.channels.filter((channel) => channel.broadensAccess).length > 0
+                  ? ` ${roleRemovalImpact.channels.filter((channel) => channel.broadensAccess).map((channel) => `#${channel.name}`).join(", ")} will become visible to all club members because this role is their only access restriction.`
+                  : " Their other access restrictions will remain in place."}
+              </p>
+            ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={removingRole}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={removingRole}
+              disabled={removingRole || roleRemovalImpact === undefined}
               onClick={(event) => {
                 event.preventDefault();
                 void deleteSelectedRole();
               }}
             >
-              {removingRole ? "Removing…" : "Remove role"}
+              {removingRole
+                ? "Removing…"
+                : roleRemovalImpact?.channels.length
+                  ? `Remove role and update ${roleRemovalImpact.channels.length} ${roleRemovalImpact.channels.length === 1 ? "channel" : "channels"}`
+                  : "Remove role"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
@@ -385,6 +385,44 @@ const clubRoleValidator = v.object({
 });
 
 const ROLE_CASCADE_BATCH_SIZE = 450;
+const ROLE_CHANNEL_ACCESS_UPDATE_LIMIT = 450;
+
+type ChannelRoleAccessContext = QueryCtx | MutationCtx;
+
+async function channelsUsingRoleForAccess(
+  ctx: ChannelRoleAccessContext,
+  clubId: Id<"clubs">,
+  roleId: Id<"clubRoles">,
+) {
+  const channels = await ctx.db
+    .query("clubChannels")
+    .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", clubId))
+    .take(ROLE_CHANNEL_ACCESS_UPDATE_LIMIT);
+  return channels.filter((channel) => channel.accessRoleIds?.includes(roleId));
+}
+
+export function roleRemovalChannelAccessUpdate(
+  channel: Pick<
+    Doc<"clubChannels">,
+    "accessRoleIds" | "accessUnitId" | "postingPolicy" | "visibility"
+  >,
+  roleId: Id<"clubRoles">,
+) {
+  const accessRoleIds = (channel.accessRoleIds ?? []).filter(
+    (accessRoleId) => accessRoleId !== roleId,
+  );
+  const broadensAccess = accessRoleIds.length === 0 && !channel.accessUnitId;
+
+  return {
+    accessRoleIds,
+    broadensAccess,
+    visibility: broadensAccess
+      ? channel.postingPolicy === "CLUB_MANAGERS"
+        ? "MEMBER_READONLY" as const
+        : "PUBLIC" as const
+      : channel.visibility,
+  };
+}
 
 async function reassignRoleMembers(
   ctx: MutationCtx,
@@ -561,7 +599,11 @@ export const renameRole = mutation({
 });
 
 export const removeRole = mutation({
-  args: { clubId: v.id("clubs"), roleId: v.id("clubRoles") },
+  args: {
+    clubId: v.id("clubs"),
+    roleId: v.id("clubRoles"),
+    confirmChannelAccessUpdates: v.optional(v.boolean()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -574,14 +616,27 @@ export const removeRole = mutation({
     if (!role || role.clubId !== args.clubId) {
       throw new ConvexError("Club role not found");
     }
-    const channels = await ctx.db
-      .query("clubChannels")
-      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId))
-      .take(500);
-    if (channels.some((channel) => channel.accessRoleIds?.includes(role._id))) {
+    const affectedChannels = await channelsUsingRoleForAccess(
+      ctx,
+      args.clubId,
+      role._id,
+    );
+    if (affectedChannels.length > 0 && !args.confirmChannelAccessUpdates) {
       throw new ConvexError(
-        "Remove this role from channel access settings before deleting it",
+        "Confirm the channel access updates before deleting this role",
       );
+    }
+
+    const broadenedChannelCount = affectedChannels.filter((channel) =>
+      roleRemovalChannelAccessUpdate(channel, role._id).broadensAccess,
+    ).length;
+    for (const channel of affectedChannels) {
+      const update = roleRemovalChannelAccessUpdate(channel, role._id);
+      await ctx.db.patch(channel._id, {
+        accessRoleIds: update.accessRoleIds,
+        visibility: update.visibility,
+        updatedAt: Date.now(),
+      });
     }
 
     const defaultRole = role.isDefault
@@ -616,9 +671,45 @@ export const removeRole = mutation({
         roleId: role._id,
         reassignedImmediately: cascade.changed,
         reassignedToDefault: !!defaultRole,
+        channelAccessRulesUpdated: affectedChannels.length,
+        channelsBroadened: broadenedChannelCount,
       },
     });
     return null;
+  },
+});
+
+export const getRoleRemovalImpact = query({
+  args: { clubId: v.id("clubs"), roleId: v.id("clubRoles") },
+  returns: v.object({
+    channels: v.array(
+      v.object({
+        _id: v.id("clubChannels"),
+        name: v.string(),
+        broadensAccess: v.boolean(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const context = await getClubContext(ctx, args.clubId, user);
+    if (!context.permissions.manageRoles) {
+      throw new ConvexError("You do not have permission to manage club roles");
+    }
+    const role = await ctx.db.get(args.roleId);
+    if (!role || role.clubId !== args.clubId) {
+      throw new ConvexError("Club role not found");
+    }
+
+    const channels = await channelsUsingRoleForAccess(ctx, args.clubId, role._id);
+    return {
+      channels: channels.map((channel) => ({
+        _id: channel._id,
+        name: channel.name,
+        broadensAccess: roleRemovalChannelAccessUpdate(channel, role._id)
+          .broadensAccess,
+      })),
+    };
   },
 });
 

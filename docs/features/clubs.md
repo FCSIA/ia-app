@@ -22,7 +22,9 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   membership-invite permission, plus invites, bulk CSV invites, open joins,
   join requests, and join codes.
 - Lets club managers create reusable roles, assign them to members, rename
-  them, remove them, and configure their permissions. Removing the default role
+  them, remove them, and configure their permissions. Role removal explicitly
+  confirms any affected channel rules and warns when a channel will become
+  club-wide. Removing the default role
   leaves affected members roleless rather than granting a replacement role.
   Roles can be opted into as a People
   directory group; ungrouped roles remain visible on member rows without
