@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
 import { router } from "expo-router";
 import {
@@ -42,6 +42,7 @@ import type {
   ChatMessage,
   ChatThread,
   ClubChatData,
+  ClubMentionContext,
   QuickReaction,
 } from "./types";
 import { useChatComposer } from "./use-chat-composer";
@@ -50,6 +51,7 @@ import { useManagedChatAttachments } from "./use-managed-chat-attachments";
 import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
+import { buildChatMentionSuggestions } from "./mention-suggestions";
 
 type ClubChatScreenProps = {
   clubId: string;
@@ -101,6 +103,16 @@ export function ClubChatScreen({
       channelId: channelId as Id<"clubChannels">,
     },
   );
+  const [mentionContextRequested, setMentionContextRequested] = useState(false);
+  const rawMentionContext = useQuery(
+    api.clubs.channels.getMentionContext,
+    mentionContextRequested
+      ? {
+          clubId: clubId as Id<"clubs">,
+          channelId: channelId as Id<"clubChannels">,
+        }
+      : "skip",
+  );
   const messages = useMemo(
     () =>
       paginationStatus === "LoadingFirstPage"
@@ -110,6 +122,10 @@ export function ClubChatScreen({
   );
   const thread = rawThread as ChatThread | null | undefined;
   const channelContext = rawChannelContext as ClubChatData | null | undefined;
+  const mentionContext = rawMentionContext as
+    | ClubMentionContext
+    | null
+    | undefined;
   const postMessageMutation = useMutation(api.clubs.channels.postMessage);
   const postMessage = useMemo(
     () =>
@@ -145,7 +161,13 @@ export function ClubChatScreen({
   const channel = channelContext?.channel;
   const canPost =
     channelContext === undefined ? undefined : !!channel?.viewerCanPost;
-  const canManage = !!channelContext?.canManageChannels;
+  const canCreatePoll = !!channelContext?.canCreatePolls;
+  const canPinMessages = !!channelContext?.canPinMessages;
+  const canModerateMessages = !!channelContext?.canModerateMessages;
+
+  useEffect(() => {
+    setMentionContextRequested(false);
+  }, [channelId, clubId]);
   const threadRoot = threadRootId
     ? thread === undefined
       ? undefined
@@ -197,32 +219,10 @@ export function ClubChatScreen({
     markdown: composer.markdownDraft,
     onRestore: composer.restoreDraft,
   });
-  const mentionSuggestions = useMemo<ChatMentionSuggestion[]>(() => {
-    const builtIns: ChatMentionSuggestion[] = [
-      ...(canManage
-        ? [
-            {
-              token: "all",
-              label: "Everyone in this channel",
-              displayText: "@all",
-              detail: "Managers only",
-            },
-          ]
-        : []),
-    ];
-    const people = (channelContext?.members ?? []).map((person) => {
-      const name =
-        [person.firstName, person.lastName].filter(Boolean).join(" ") ||
-        "Member";
-      return {
-        token: person.uniqueId,
-        label: name,
-        displayText: `@${name}`,
-        detail: formatClubRole(person.role),
-      };
-    });
-    return [...builtIns, ...people];
-  }, [canManage, channelContext?.members]);
+  const mentionSuggestions = useMemo<ChatMentionSuggestion[]>(
+    () => buildChatMentionSuggestions(mentionContext),
+    [mentionContext],
+  );
 
   const handleComposerLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -692,7 +692,7 @@ export function ClubChatScreen({
                 isPending={composerPending}
                 channelName={channel?.name}
                 threadMode={!!threadRootId}
-                canCreatePoll={canManage}
+                canCreatePoll={canCreatePoll}
                 attachments={attachments.items}
                 attachmentPickerBusy={attachments.pickerBusy}
                 canPickAttachments={attachments.canPickAttachments}
@@ -701,6 +701,7 @@ export function ClubChatScreen({
                   attachments.attachmentSubmissionBlocked
                 }
                 suggestions={mentionSuggestions}
+                onMentionIntent={() => setMentionContextRequested(true)}
                 inputNativeID={CHAT_INPUT_NATIVE_ID}
                 onLayout={handleComposerLayout}
                 onReset={resetComposer}
@@ -720,7 +721,8 @@ export function ClubChatScreen({
         message={liveActionMessage}
         currentUserId={user?._id}
         canPost={canPost}
-        canManage={canManage}
+        canPinMessages={canPinMessages}
+        canModerateMessages={canModerateMessages}
         pendingActions={pendingActions}
         onClose={() => setActionMessage(null)}
         onReply={startReply}
@@ -769,12 +771,4 @@ function ChannelHeaderMark({
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Try again.";
-}
-
-function formatClubRole(role: "MEMBER" | "LEADER" | "SPONSOR") {
-  return role === "SPONSOR"
-    ? "Sponsor"
-    : role === "LEADER"
-      ? "Leader"
-      : "Member";
 }

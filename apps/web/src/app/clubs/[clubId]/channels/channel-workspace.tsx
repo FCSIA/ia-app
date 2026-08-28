@@ -238,7 +238,7 @@ function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAt
             {isImage ? (
               <AttachmentMedia
                 variant="image"
-                className="aspect-[3/2] w-full rounded-b-none"
+                className="aspect-[3/2] rounded-b-none"
               >
                 <Image
                   src={href}

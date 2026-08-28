@@ -60,6 +60,10 @@ import {
   clubChannelReactionStorageValues,
   normalizeClubChannelReaction,
 } from "./channelReactions";
+import {
+  channelNotificationAuthorName,
+  channelNotificationTitle,
+} from "./channelNotificationCopy";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
@@ -726,6 +730,8 @@ export const deliverPostedMessageNotifications = internalMutation({
     if (!message || message.deletedAt) return null;
     const channel = await ctx.db.get(message.channelId);
     if (!channel) return null;
+    const author = await ctx.db.get(message.authorId);
+    const authorName = author ? channelNotificationAuthorName(author) : "";
 
     const mentionRecipients = new Map(
       args.mentionRecipients.map(({ userId, kind }) => [userId, kind]),
@@ -748,7 +754,11 @@ export const deliverPostedMessageNotifications = internalMutation({
       ),
       {
         category: "CLUB_CHANNEL_MESSAGE",
-        title: `#${channel.name}`,
+        title: channelNotificationTitle({
+          authorName,
+          channelName: channel.name,
+          kind: "MESSAGE",
+        }),
         body: preview,
         href,
         subject,
@@ -765,7 +775,11 @@ export const deliverPostedMessageNotifications = internalMutation({
         await deliverNotification(ctx, {
           userId: parent.authorId,
           category: "CLUB_CHANNEL_THREAD",
-          title: `Reply in #${channel.name}`,
+          title: channelNotificationTitle({
+            authorName,
+            channelName: channel.name,
+            kind: "THREAD_REPLY",
+          }),
           body: preview,
           href,
           subject,
@@ -780,10 +794,11 @@ export const deliverPostedMessageNotifications = internalMutation({
           mentionKind === "USER"
             ? "CLUB_CHANNEL_MENTION"
             : "CLUB_CHANNEL_TAG_MENTION",
-        title:
-          mentionKind === "USER"
-            ? `Mention in #${channel.name}`
-            : `Group mention in #${channel.name}`,
+        title: channelNotificationTitle({
+          authorName,
+          channelName: channel.name,
+          kind: mentionKind === "USER" ? "USER_MENTION" : "GROUP_MENTION",
+        }),
         body: preview,
         href,
         subject,

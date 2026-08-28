@@ -50,6 +50,7 @@ type RichChatInputProps = {
   editable: boolean;
   nativeID?: string;
   suggestions: ChatMentionSuggestion[];
+  onMentionIntent?: () => void;
   toolbarActions?: ReactNode;
   toolbarTrailing?: ReactNode;
   onChange: (plainText: string, markdown: string) => void;
@@ -63,6 +64,7 @@ export function RichChatInput({
   editable,
   nativeID,
   suggestions,
+  onMentionIntent,
   toolbarActions,
   toolbarTrailing,
   onChange,
@@ -159,6 +161,7 @@ export function RichChatInput({
                 accessibilityRole="menuitem"
                 accessibilityLabel={`Mention ${suggestion.label}`}
                 haptic={false}
+                onPressIn={() => inputRef.current?.focus()}
                 onPress={() => {
                   const insertion = mentionInsertion(suggestion);
                   inputRef.current?.insertMention(
@@ -306,6 +309,7 @@ export function RichChatInput({
             onChangeSelection={setSelection}
             onChangeState={setStyleState}
             onStartMention={() => {
+              onMentionIntent?.();
               setMentionOpen(true);
               setMentionQuery("");
             }}
@@ -317,7 +321,10 @@ export function RichChatInput({
               setMentionOpen(false);
               setMentionQuery("");
             }}
-            onFocus={() => setFocused(true)}
+            onFocus={() => {
+              setFocused(true);
+              onMentionIntent?.();
+            }}
             onBlur={() => setFocused(false)}
             style={{
               minWidth: 0,
