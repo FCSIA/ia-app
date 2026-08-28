@@ -8,6 +8,7 @@ import { Panel } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -16,6 +17,7 @@ function resolveMediaUrl(url?: string | null) {
 }
 
 export function MyClubsWidget() {
+  const clubEntryHref = useClubEntryHref();
   const myData = useQuery(api.clubs.management.getMyClubs);
   const clubs = [
     ...(myData?.memberOf ?? []).map((club) => ({ club, role: club.role })),
@@ -61,7 +63,7 @@ export function MyClubsWidget() {
             return (
               <Link
                 key={club._id}
-                href={`/clubs/${club._id}/navigation`}
+                href={clubEntryHref(club._id)}
                 className="group flex flex-col gap-3 rounded-[1.2rem] border border-border/70 bg-card p-3 transition-colors hover:bg-muted/40"
               >
                 <div className="flex items-center gap-3">

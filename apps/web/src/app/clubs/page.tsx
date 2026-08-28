@@ -6,6 +6,7 @@ import { Check, Plus, Shield, UsersRound, X } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { CreateClubDialog } from '@/components/clubs/dialogs/create-club-dialog';
+import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 import type { ClubSummary } from '@/components/clubs/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -286,11 +287,13 @@ function ClubListRow({
   /** Forwarded by CardGroup so the rendered Card can register its geometry. */
   index?: CardProps['index'];
 }) {
+  const clubEntryHref = useClubEntryHref();
+
   if (density === 'compact') {
     return (
       <Card
         index={index}
-        href={`/clubs/${club._id}/navigation`}
+        href={clubEntryHref(club._id)}
         label={`Open ${club.name}`}
         className="min-h-12 gap-2.5 rounded-none border-0 bg-transparent px-3 py-2"
       >
@@ -306,7 +309,7 @@ function ClubListRow({
   return (
     <Card
       index={index}
-      href={`/clubs/${club._id}/navigation`}
+      href={clubEntryHref(club._id)}
       label={`Open ${club.name}`}
       className="group min-h-[4.5rem] gap-3 rounded-none border-0 bg-transparent px-3 py-2.5"
     >

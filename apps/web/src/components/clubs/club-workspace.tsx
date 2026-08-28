@@ -19,6 +19,7 @@ import {
   Users2,
 } from "lucide-react";
 import { ClubChannelVisibilityIcon } from "@/components/clubs/channel-visibility";
+import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
 import { AppShell } from "@/components/layout/AppShell";
 import type { ChannelSearchControl } from "@/components/layout/AppShell";
 import { FLUSH_MAIN_CLASS } from "@/components/layout/app-main";
@@ -70,6 +71,7 @@ function ClubPickerItem({
   index: number;
 }) {
   const router = useRouter();
+  const clubEntryHref = useClubEntryHref();
   const ClubLogoIcon = ({ className }: { className?: string }) => (
     <span
       className={cn(
@@ -95,7 +97,7 @@ function ClubPickerItem({
       index={index}
       label={club.name}
       checked={active}
-      onSelect={() => router.push(`/clubs/${club._id}/navigation`)}
+      onSelect={() => router.push(clubEntryHref(club._id))}
       className="h-11 px-2.5"
       icon={ClubLogoIcon}
     />

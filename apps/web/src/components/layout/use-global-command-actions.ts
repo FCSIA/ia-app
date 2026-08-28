@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { hasRole, type AppUser } from '@/lib/auth';
+import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
 
 export type CommandAction = {
   id: string;
@@ -51,6 +52,8 @@ export function useGlobalCommandActions({
   schedule,
   user,
 }: PaletteData) {
+  const clubEntryHref = useClubEntryHref();
+
   return useMemo(() => {
     const joinedClubs = (clubs ?? [])
       .filter((club) => myClubIds.has(club._id))
@@ -59,7 +62,7 @@ export function useGlobalCommandActions({
         id: `my-club-${club._id}`,
         label: club.name,
         detail: 'Club workspace',
-        href: `/clubs/${club._id}/navigation`,
+        href: clubEntryHref(club._id),
         Icon: UsersRound,
         badge: 'Joined',
         keywords: ['my club', 'joined club', club.name, club.description ?? ''],
@@ -72,7 +75,7 @@ export function useGlobalCommandActions({
         id: `club-${club._id}`,
         label: club.name,
         detail: club.description || 'Club workspace',
-        href: `/clubs/${club._id}/navigation`,
+        href: clubEntryHref(club._id),
         Icon: UsersRound,
         keywords: ['club', club.name, club.description ?? ''],
       }));
@@ -202,6 +205,7 @@ export function useGlobalCommandActions({
   }, [
     announcements,
     clubs,
+    clubEntryHref,
     courses,
     events,
     flexFridays,

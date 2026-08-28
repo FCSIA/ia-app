@@ -22,6 +22,20 @@ export function isStandaloneDisplay() {
   return standaloneMedia || iosStandalone;
 }
 
+/**
+ * True only for the compact installed-web-app experience.
+ *
+ * Club navigation has a dedicated entry screen in the mobile PWA, whereas the
+ * desktop workspace keeps that navigation visible alongside the club overview.
+ */
+export function isMobilePwaDisplay() {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia?.('(max-width: 767px)').matches === true &&
+    isStandaloneDisplay()
+  );
+}
+
 /** True for iPhone/iPad, including iPadOS which reports a desktop user agent. */
 export function isIosDevice() {
   if (typeof navigator === 'undefined') return false;
