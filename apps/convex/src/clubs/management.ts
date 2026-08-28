@@ -74,7 +74,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST")),
+    joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY")),
     memberLimit: v.optional(v.number()),
     sponsorIds: v.optional(v.array(v.id("users"))),
   },
@@ -131,7 +131,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     overview: v.optional(v.string()),
     accentColor: v.optional(v.string()),
-    joinPolicy: v.optional(v.union(v.literal("OPEN"), v.literal("REQUEST"))),
+    joinPolicy: v.optional(v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY"))),
     memberLimit: v.optional(v.union(v.number(), v.null())),
   },
   returns: v.null(),

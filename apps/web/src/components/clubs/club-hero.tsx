@@ -16,6 +16,7 @@ import { EditableAvatar } from "@/components/ui/editable-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ export function ClubHero({
     logoUrl: club.logoUrl ?? "",
     bannerUrl: club.bannerUrl ?? "",
     memberLimit: club.memberLimit?.toString() ?? "",
+    joinPolicy: club.joinPolicy,
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -91,6 +93,7 @@ export function ClubHero({
       logoUrl: club.logoUrl ?? "",
       bannerUrl: club.bannerUrl ?? "",
       memberLimit: club.memberLimit?.toString() ?? "",
+      joinPolicy: club.joinPolicy,
     });
     setEditing(true);
   };
@@ -130,6 +133,7 @@ export function ClubHero({
       overview: form.overview || undefined,
       accentColor: form.accentColor || undefined,
       memberLimit,
+      joinPolicy: form.joinPolicy,
     }).then(() => {
       toast({ title: "Club branding saved" });
       setEditing(false);
@@ -354,6 +358,21 @@ export function ClubHero({
                 }
               />
             </div>
+
+            <Field>
+              <FieldLabel htmlFor="club-join-policy">Joining</FieldLabel>
+              <Select value={form.joinPolicy} onValueChange={(joinPolicy) => setForm((current) => ({ ...current, joinPolicy: joinPolicy as typeof current.joinPolicy }))}>
+                <SelectTrigger id="club-join-policy" />
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem index={0} value="OPEN">Open join</SelectItem>
+                    <SelectItem index={1} value="REQUEST">Request approval</SelectItem>
+                    <SelectItem index={2} value="INVITE_ONLY">Invite only</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription>Choose whether anyone can join, managers approve requests, or only invitations add members.</FieldDescription>
+            </Field>
 
             <Field>
               <FieldLabel htmlFor="club-member-limit">Member limit</FieldLabel>

@@ -231,6 +231,7 @@ export type ClubChannelPostingPolicy = Infer<typeof clubChannelPostingPolicyVali
 export const clubJoinPolicyValidator = v.union(
   v.literal("OPEN"),
   v.literal("REQUEST"),
+  v.literal("INVITE_ONLY"),
 );
 
 export type ClubJoinPolicy = Infer<typeof clubJoinPolicyValidator>;

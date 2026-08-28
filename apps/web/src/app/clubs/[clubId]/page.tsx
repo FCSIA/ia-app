@@ -269,7 +269,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{club.name}</h1>
               <div className="flex items-center gap-1.5">
-                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Open' : 'Approval'}</Badge>
+                <Badge variant="solid">{club.joinPolicy === 'OPEN' ? 'Open' : club.joinPolicy === 'REQUEST' ? 'Approval' : 'Invite only'}</Badge>
                 {club.memberLimit != null ? (
                   <Badge variant="solid" color={isFull ? 'red' : 'amber'}>
                     {isFull ? 'Full' : 'Limited'}
@@ -286,7 +286,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <Button leadingIcon={UserPlus} onClick={() => void joinOpenClub({ clubId }).then(() => toast({ title: 'Joined club' }))} disabled={isFull}>
                 {isFull ? 'Club is full' : 'Join club'}
               </Button>
-            ) : (
+            ) : club.joinPolicy === 'REQUEST' ? (
               <Button
                 leadingIcon={UserPlus}
                 onClick={() => void requestToJoin({ clubId }).then(() => toast({ title: 'Join request sent' }))}
@@ -294,7 +294,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               >
                 {isFull ? 'Club is full' : club.viewer.hasPendingJoinRequest ? 'Request pending' : 'Request to join'}
               </Button>
-            )}
+            ) : null}
             <RedeemJoinCodePanel club={club} />
           </div>
         </div>

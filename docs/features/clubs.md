@@ -20,7 +20,7 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 - Collects files and images previously shared in each readable channel.
 - Supports direct member adds by sponsors, admins, and club roles with the
   membership-invite permission, plus invites, bulk CSV invites, open joins,
-  join requests, and join codes.
+  manager-approved join requests, invite-only clubs, and join codes.
 - Lets club managers create reusable roles, assign them to members, rename
   them, remove them, and configure their permissions. Role removal explicitly
   confirms any affected channel rules and warns when a channel will become

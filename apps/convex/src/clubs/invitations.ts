@@ -202,6 +202,9 @@ export const requestToJoin = mutation({
     if (!club || !club.isActive) {
       throw new Error("Club not found");
     }
+    if (club.joinPolicy !== "REQUEST") {
+      throw new Error("This club does not accept join requests");
+    }
 
     const existingRequest = await ctx.db
       .query("clubJoinRequests")

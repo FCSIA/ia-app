@@ -33,7 +33,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sponsorIds, setSponsorIds] = useState<string[]>([]);
-  const [joinPolicy, setJoinPolicy] = useState<'OPEN' | 'REQUEST'>('OPEN');
+  const [joinPolicy, setJoinPolicy] = useState<'OPEN' | 'REQUEST' | 'INVITE_ONLY'>('OPEN');
   const [memberLimit, setMemberLimit] = useState(40);
 
   const staffPage = useQuery(
@@ -124,7 +124,7 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
 
             <Field>
               <FieldLabel htmlFor="join-policy">Join policy</FieldLabel>
-              <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST')}>
+              <Select value={joinPolicy} onValueChange={(value) => setJoinPolicy(value as 'OPEN' | 'REQUEST' | 'INVITE_ONLY')}>
                 <SelectTrigger id="join-policy" placeholder="Choose policy" />
                 <SelectContent>
                   <SelectGroup>
@@ -133,6 +133,9 @@ export function CreateClubDialog({ open, onOpenChange }: Props) {
                     </SelectItem>
                     <SelectItem index={1} value="REQUEST">
                       Request approval
+                    </SelectItem>
+                    <SelectItem index={2} value="INVITE_ONLY">
+                      Invite only
                     </SelectItem>
                   </SelectGroup>
                 </SelectContent>

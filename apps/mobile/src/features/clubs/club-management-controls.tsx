@@ -3,11 +3,12 @@ import { View } from "react-native";
 import { SegmentedControl, TextField, Txt } from "@/components/ui";
 import { spacing } from "@/lib/tokens";
 
-export type ClubJoinPolicy = "OPEN" | "REQUEST";
+export type ClubJoinPolicy = "OPEN" | "REQUEST" | "INVITE_ONLY";
 
 const joinPolicies = [
   { label: "Open", value: "OPEN" },
   { label: "Approval", value: "REQUEST" },
+  { label: "Invite only", value: "INVITE_ONLY" },
 ] as const;
 
 export function ClubFormField({
@@ -40,7 +41,7 @@ export function JoinPolicyControl({
   return (
     <ClubFormField
       label="Joining"
-      hint={value === "OPEN" ? "Anyone can join" : "A manager approves"}
+      hint={value === "OPEN" ? "Anyone can join" : value === "REQUEST" ? "A manager approves" : "Managers send invites"}
     >
       <SegmentedControl segments={joinPolicies} value={value} onChange={onChange} />
     </ClubFormField>

@@ -101,7 +101,7 @@ export const clubSummaryValidator = v.object({
   bannerUrl: v.optional(v.string()),
   accentColor: v.optional(v.string()),
   overview: v.optional(v.string()),
-  joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST")),
+  joinPolicy: v.union(v.literal("OPEN"), v.literal("REQUEST"), v.literal("INVITE_ONLY")),
   memberLimit: v.optional(v.number()),
   isActive: v.boolean(),
   autoCreateUnitChannels: v.optional(v.boolean()),
