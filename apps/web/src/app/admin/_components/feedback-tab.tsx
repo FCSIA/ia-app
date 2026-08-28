@@ -154,6 +154,7 @@ function FeedbackList({
                 By {report.submitter?.firstName} {report.submitter?.lastName}
                 {' · '}
                 Submitted {formatDateTime(report._creationTime)}
+                {report.appVersion ? ` · ${report.appVersion}` : ''}
               </p>
               {report.images.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">

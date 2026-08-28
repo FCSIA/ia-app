@@ -44,6 +44,12 @@ export default function ProfilePage() {
   const [optimisticPrefs, setOptimisticPrefs] = useState<Record<string, PreferenceState>>({});
   const { unseenCount, markSeen } = useSeenRelease();
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('section') === 'whats-new') {
+      setActiveSection('whats-new');
+    }
+  }, []);
+
   const changePassword = useMutation(api.users.auth.changePassword);
   const updateTimeFormat = useMutation(api.users.me.updateTimeFormat);
   const upsertPreference = useMutation(api.notifications.preferences.upsert);
@@ -174,7 +180,7 @@ export default function ProfilePage() {
           onSectionChange={setActiveSection}
           unseenReleases={unseenCount}
         />
-        <div>
+        <div className="min-w-0">
           {visibleSection === 'account' ? (
             <AccountSettingsCard
               user={user}

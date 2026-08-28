@@ -160,6 +160,7 @@ async function createReport(
     contentType: "GENERAL" | "ANNOUNCEMENT" | "EVENT" | "CLUB_CHANNEL_MESSAGE";
     contentId: string;
     reason: string;
+    appVersion?: string;
     reportedUserId?: Id<"users">;
     clubId?: Id<"clubs">;
     imageUploadIds?: Id<"feedbackImageUploads">[];
@@ -172,6 +173,7 @@ async function createReport(
     contentType: input.contentType,
     contentId: input.contentId,
     reason: input.reason,
+    ...(input.appVersion ? { appVersion: input.appVersion } : {}),
     reportedUserId: input.reportedUserId,
     clubId: input.clubId,
     status: "PENDING",
@@ -327,6 +329,7 @@ export const submit = mutation({
     reportedUserId: v.optional(v.id("users")),
     clubId: v.optional(v.id("clubs")),
     imageUploadIds: v.optional(v.array(v.id("feedbackImageUploads"))),
+    appVersion: v.optional(v.string()),
   },
   returns: v.id("moderationReports"),
   handler: async (ctx, args) => {
@@ -334,6 +337,13 @@ export const submit = mutation({
     if (Array.from(args.contentId).length < 1 || Array.from(args.contentId).length > 128) throw new ConvexError("Invalid report reference");
     if (args.imageUploadIds && args.contentType !== "GENERAL") {
       throw new ConvexError("Images can only be attached to feedback");
+    }
+    if (args.appVersion && args.contentType !== "GENERAL") {
+      throw new ConvexError("App versions can only be attached to feedback");
+    }
+    const appVersion = args.appVersion?.trim();
+    if (appVersion && Array.from(appVersion).length > 64) {
+      throw new ConvexError("Invalid app version");
     }
     if (args.contentType === "EVENT") {
       const id = ctx.db.normalizeId("events", args.contentId);
@@ -345,6 +355,7 @@ export const submit = mutation({
     }
     return await createReport(ctx, user, {
       ...args,
+      ...(appVersion ? { appVersion } : {}),
       reason: normalizeModerationReportReason(args.reason),
     });
   },

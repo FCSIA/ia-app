@@ -1081,6 +1081,9 @@ export const schema = defineSchema({
       v.literal("DISMISSED"),
     ),
     isEscalated: v.boolean(),
+    // Recorded with general feedback so staff can reproduce the issue against
+    // the same in-app release. Optional preserves existing report records.
+    appVersion: v.optional(v.string()),
     reviewNote: v.optional(v.string()),
     reviewedAt: v.optional(v.number()),
     createdAt: v.number(),

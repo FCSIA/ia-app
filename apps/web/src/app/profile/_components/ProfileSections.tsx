@@ -8,7 +8,6 @@ import {
   LogOut,
   Palette,
   ShieldAlert,
-  Sparkles,
   User,
   type LucideIcon,
 } from 'lucide-react';
@@ -60,7 +59,7 @@ type SettingsCardProps = {
   children?: ReactNode;
   contentClassName?: string;
   description?: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
 };
 
@@ -75,7 +74,7 @@ function SettingsCard({
     <Card className={cardClass}>
       <CardHeader className={headerClass}>
         <div className="flex min-w-0 items-center gap-3">
-          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          {Icon ? <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : null}
           <div className="min-w-0">
             <CardTitle className="text-base font-semibold leading-tight">{title}</CardTitle>
             {description ? (
@@ -142,13 +141,13 @@ export type ProfileSection =
 const PROFILE_SECTIONS: Array<{
   id: ProfileSection;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
 }> = [
   { id: 'account', label: 'Account', icon: User },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'moderation', label: 'Moderation', icon: ShieldAlert },
-  { id: 'whats-new', label: "What's new", icon: Sparkles },
+  { id: 'whats-new', label: "What's new" },
 ];
 
 type ProfileSidebarProps = {
@@ -538,10 +537,9 @@ export function AppearanceCard({
 export function WhatsNewCard() {
   return (
     <SettingsCard
-      icon={Sparkles}
       title="What's new"
-      description="Every update to the app, newest first. The app is in alpha, so this list moves quickly."
-      contentClassName="flex flex-col gap-5"
+      description="Release notes, newest first."
+      contentClassName="flex min-w-0 flex-col gap-5"
     >
       <DevlogList />
       <div className="border-t border-border/60 pt-3">

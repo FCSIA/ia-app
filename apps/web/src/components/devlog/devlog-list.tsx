@@ -5,27 +5,16 @@ import { format, parseISO } from 'date-fns';
 import { ChevronDown } from 'lucide-react';
 import {
   RELEASES,
-  RELEASE_CHANNEL,
   groupChanges,
   userFacingChanges,
-  type ChangeCategory,
   type Release,
 } from '@ia/devlog';
-import { Badge, type BadgeColor } from '@/components/ui/badge';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-
-const CATEGORY_COLOR: Record<ChangeCategory, BadgeColor> = {
-  Added: 'green',
-  Improved: 'blue',
-  Fixed: 'amber',
-  Security: 'violet',
-  Internal: 'gray',
-};
 
 function releaseDate(date: string) {
   // `parseISO` reads a date-only string as local midnight; `new Date` would
@@ -48,14 +37,9 @@ function ChangeList({ release }: { release: Release }) {
     <div className="flex flex-col gap-6">
       {groups.map(({ category, changes }) => (
         <section key={category} aria-label={`${category} updates`} className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
-            <Badge size="sm" color={CATEGORY_COLOR[category]}>
-              {category}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {changes.length} {changes.length === 1 ? 'update' : 'updates'}
-            </span>
-          </div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {category} · {changes.length} {changes.length === 1 ? 'update' : 'updates'}
+          </p>
           <ul className="divide-y divide-border/60">
             {changes.map((change) => (
               <li
@@ -65,7 +49,7 @@ function ChangeList({ release }: { release: Release }) {
                   change.commit ?? change.pr ?? change.scope ?? 'general',
                   change.summary,
                 ].join(':')}
-                className="grid grid-cols-[5.25rem_minmax(0,1fr)] gap-x-3 py-3 first:pt-1 last:pb-0"
+                className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-x-3 py-3 first:pt-1 last:pb-0 sm:grid-cols-[5.25rem_minmax(0,1fr)]"
               >
                 {change.scope ? (
                   <span className="pt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -74,7 +58,7 @@ function ChangeList({ release }: { release: Release }) {
                 ) : (
                   <span aria-hidden />
                 )}
-                <p className="text-sm leading-6 text-foreground">{change.summary}</p>
+                <p className="break-words text-sm leading-6 text-foreground">{change.summary}</p>
               </li>
             ))}
           </ul>
@@ -93,37 +77,18 @@ function ReleaseHeading({ release }: { release: Release }) {
   );
 }
 
-function CurrentRelease({ release }: { release: Release }) {
-  return (
-    <section aria-label={`Version ${release.version}`} className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-base font-semibold text-foreground">v{release.version}</h3>
-        <Badge size="sm" variant="dot" color="blue">
-          {RELEASE_CHANNEL}
-        </Badge>
-        <span className="text-xs text-muted-foreground">{releaseDate(release.date)}</span>
-      </div>
-      {(release.title || release.summary) && (
-        <div className="flex max-w-prose flex-col gap-1.5">
-          {release.title ? (
-            <p className="text-base font-semibold leading-6 text-foreground">{release.title}</p>
-          ) : null}
-          {release.summary ? (
-            <p className="text-sm leading-6 text-muted-foreground">{release.summary}</p>
-          ) : null}
-        </div>
-      )}
-      <ChangeList release={release} />
-    </section>
-  );
-}
-
-function EarlierRelease({ release }: { release: Release }) {
-  const [open, setOpen] = useState(false);
+function ReleaseDisclosure({
+  release,
+  defaultOpen = false,
+}: {
+  release: Release;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 py-3 text-left outline-none transition-colors hover:bg-hover focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">
+      <CollapsibleTrigger className="group flex w-full min-w-0 items-center justify-between gap-3 py-3 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring,#6B97FF)]">
         <div className="min-w-0">
           <ReleaseHeading release={release} />
           {release.title ? (
@@ -140,13 +105,20 @@ function EarlierRelease({ release }: { release: Release }) {
           aria-hidden
         />
       </CollapsibleTrigger>
-      <CollapsibleContent className="pb-5 pt-1">
-        {release.summary ? (
-          <p className="mb-3 max-w-prose text-sm leading-6 text-muted-foreground">
-            {release.summary}
-          </p>
-        ) : null}
-        <ChangeList release={release} />
+      <CollapsibleContent className="min-w-0 pb-5 pt-1">
+        {(release.title || release.summary) && (
+          <div className="flex max-w-prose flex-col gap-1.5">
+            {release.title ? (
+              <p className="text-base font-semibold leading-6 text-foreground">{release.title}</p>
+            ) : null}
+            {release.summary ? (
+              <p className="text-sm leading-6 text-muted-foreground">{release.summary}</p>
+            ) : null}
+          </div>
+        )}
+        <div className="mt-5 min-w-0">
+          <ChangeList release={release} />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -159,9 +131,7 @@ function EarlierRelease({ release }: { release: Release }) {
  * cut, so this list stays current without anyone editing a component.
  */
 export function DevlogList({ className }: { className?: string }) {
-  const [current, ...earlier] = RELEASES;
-
-  if (!current) {
+  if (RELEASES.length === 0) {
     return (
       <p className={cn('text-sm text-muted-foreground', className)}>
         No releases have been published yet.
@@ -170,20 +140,14 @@ export function DevlogList({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-5', className)}>
-      <CurrentRelease release={current} />
-      {earlier.length > 0 ? (
-        <div className="border-t border-border/60 pt-3">
-          <h4 className="pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Earlier releases
-          </h4>
-          <div className="flex flex-col divide-y divide-border/60">
-            {earlier.map((release) => (
-              <EarlierRelease key={release.version} release={release} />
-            ))}
-          </div>
-        </div>
-      ) : null}
+    <div className={cn('flex min-w-0 flex-col divide-y divide-border/60', className)}>
+      {RELEASES.map((release, index) => (
+        <ReleaseDisclosure
+          key={release.version}
+          release={release}
+          defaultOpen={index === 0}
+        />
+      ))}
     </div>
   );
 }

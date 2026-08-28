@@ -112,14 +112,16 @@ Writing entries by hand is also fine — `releases.json` is a normal file. Run
 
 `apps/web/src/components/devlog` holds the reusable pieces:
 
-- `DevlogList` — releases newest first; the current one expanded, earlier ones
-  behind a disclosure.
+- `DevlogList` — releases newest first; every release is a disclosure, with
+  the newest one initially expanded.
 - `AppVersionStamp` — `v0.4.0 alpha · build 1a2b3c4`, for bug reports.
 - `useSeenRelease` — a per-browser reading marker in `localStorage` that counts
   unread releases. It is a marker, not user data, and is never sent anywhere.
 
 It is rendered today under **Profile & Settings → What's new**, which also shows
 a count beside the section while there are releases this browser has not read.
+Feedback submissions attach the current displayed version automatically, and
+the feedback form links that version back to this page.
 
 The build stamp comes from `NEXT_PUBLIC_APP_COMMIT`, which `next.config.ts`
 fills from `VERCEL_GIT_COMMIT_SHA` or the value the deploy workflow passes with

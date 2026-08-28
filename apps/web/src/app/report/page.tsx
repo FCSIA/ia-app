@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { MessageSquareText, X } from 'lucide-react';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +13,7 @@ import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { api } from '~/apps/convex/src/_generated/api';
+import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
 const MAX_FEEDBACK_IMAGES = 3;
@@ -92,6 +94,7 @@ export default function ReportPage() {
         contentId: 'report-page',
         reason: trimmedMessage,
         imageUploadIds,
+        appVersion: formatVersion(APP_VERSION, RELEASE_CHANNEL),
       });
       setMessage('');
       setImages((current) => {
@@ -174,6 +177,13 @@ export default function ReportPage() {
                 Send feedback
               </Button>
             </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              We&apos;ll include your app version,{' '}
+              <Link href="/profile?section=whats-new" className="font-medium text-foreground underline underline-offset-4">
+                {formatVersion(APP_VERSION, RELEASE_CHANNEL)}
+              </Link>
+              , with this feedback.
+            </p>
           </form>
         </Panel>
 
