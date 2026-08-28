@@ -222,6 +222,24 @@ export function FriendSchedulesPanel() {
                 </h2>
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {data?.incomingRequests?.length ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    leadingIcon={UserPlus}
+                    onClick={() =>
+                      incomingRequestsRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      })
+                    }
+                  >
+                    Requests
+                    <Badge size="sm" className="ml-1">
+                      {data.incomingRequests.length}
+                    </Badge>
+                  </Button>
+                ) : null}
                 {data?.friends.length ? (
                   <Badge size="sm">{data.friends.length}</Badge>
                 ) : null}

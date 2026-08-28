@@ -45,7 +45,7 @@ const primaryNav: NavItem[] = [
 
 const accountNav: NavItem[] = [
   { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/report", label: "Share feedback", icon: MessageSquareText },
+  { href: "/report", label: "Feedback", icon: MessageSquareText },
   { href: "/profile", label: "Profile & Settings", icon: Settings },
 ];
 
@@ -227,7 +227,7 @@ function AppShellMobileNavigation({
             More
           </DrawerTitle>
           <DrawerDescription className="text-xs text-sidebar-foreground/65">
-            Events, account tools, and additional app areas.
+            Events, feedback, account tools, and additional app areas.
           </DrawerDescription>
         </DrawerHeader>
         <ScrollArea className="min-h-0 flex-1 text-sidebar-foreground">

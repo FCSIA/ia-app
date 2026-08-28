@@ -129,7 +129,7 @@ export function ScheduleGroupsPanel() {
               </EmptyMedia>
               <EmptyTitle>No groups yet</EmptyTitle>
               <EmptyDescription>
-                Create a group for friends you compare often.
+                Create a group to compare schedules with friends.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
