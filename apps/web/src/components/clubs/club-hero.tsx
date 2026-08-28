@@ -1,13 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import {
-  ImagePlus,
-  Palette,
-  Settings2,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { Settings2, Trash2 } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
@@ -16,7 +10,23 @@ import { EditableAvatar } from "@/components/ui/editable-avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
+import { ColorPickerPopover } from "@/components/ui/color-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileInput } from "@/components/ui/file-input";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -51,7 +61,6 @@ export function ClubHero({
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const bannerInputRef = useRef<HTMLInputElement | null>(null);
 
   const uploadClubImage = async (kind: "logo" | "banner", file: File) => {
     const { storageId, uploadIntentId } = await uploadFileToConvex(
@@ -123,7 +132,10 @@ export function ClubHero({
     if (memberLimitText) {
       memberLimit = Number(memberLimitText);
       if (!Number.isInteger(memberLimit) || memberLimit < 1) {
-        toast({ title: "Member limit must be a positive whole number", variant: "destructive" });
+        toast({
+          title: "Member limit must be a positive whole number",
+          variant: "destructive",
+        });
         return;
       }
     }
@@ -146,45 +158,45 @@ export function ClubHero({
   const clubInitial = club.name.trim().charAt(0).toUpperCase() || "C";
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border/70 bg-card">
-      <div
-        className={cn(
-          "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
-          !bannerUrl && "ring-1 ring-inset ring-border/40",
-        )}
-        style={
-          bannerUrl
-            ? {
-                backgroundImage: `url(${bannerUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : accent
+    <>
+      <section className="overflow-hidden rounded-lg border border-border/70 bg-card">
+        <div
+          className={cn(
+            "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
+            !bannerUrl && "ring-1 ring-inset ring-border/40",
+          )}
+          style={
+            bannerUrl
               ? {
-                  background: `linear-gradient(135deg, ${accent}, ${accent}33)`,
+                  backgroundImage: `url(${bannerUrl})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
                 }
-              : undefined
-        }
-      >
-        {canEdit && !editing && (
-          <Button
-            variant="secondary"
-            size="sm"
-            leadingIcon={Settings2}
-            onClick={openEditor}
-            className="absolute right-2 top-2 h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
-          >
-            Customize
-          </Button>
-        )}
-      </div>
+              : accent
+                ? {
+                    background: `linear-gradient(135deg, ${accent}, ${accent}33)`,
+                  }
+                : undefined
+          }
+        >
+          {canEdit && !editing && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={Settings2}
+              onClick={openEditor}
+              className="absolute right-2 top-2 h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
+            >
+              Customize
+            </Button>
+          )}
+        </div>
 
-      <div className="relative -mt-8 space-y-3 px-4 pb-4">
-        <div className="flex items-end gap-3">
+        <div className="relative space-y-3 px-4 pb-4 pt-3">
           <EditableAvatar
             alt={club.name}
             canEdit={canEdit && !editing}
-            className="size-16 rounded-xl border-4 border-background bg-muted"
+            className="absolute -top-8 left-4 size-16 rounded-xl border-4 border-background bg-muted"
             fallback={clubInitial}
             fallbackClassName="rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-lg text-orange-100"
             fallbackStyle={
@@ -199,202 +211,228 @@ export function ClubHero({
             onUpload={(file) => void handleQuickLogoUpload(file)}
             uploadLabel="Change club logo"
           />
-          <div className="min-w-0 pb-0.5">
-            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
-              {club.name}
-            </h1>
-            {club.description ? (
-              <p className="line-clamp-1 text-xs text-muted-foreground">
-                {club.description}
-              </p>
-            ) : null}
+          <div className="min-h-16 pl-20 pt-0.5">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+                {club.name}
+              </h1>
+              {club.description ? (
+                <p className="line-clamp-1 text-xs text-muted-foreground">
+                  {club.description}
+                </p>
+              ) : null}
+            </div>
           </div>
+
+          {club.overview ? (
+            <p className="whitespace-pre-line text-sm leading-5 text-muted-foreground">
+              {club.overview}
+            </p>
+          ) : null}
         </div>
+      </section>
 
-        {club.overview ? (
-          <p className="line-clamp-4 whitespace-pre-line text-sm leading-5 text-muted-foreground">
-            {club.overview}
-          </p>
-        ) : null}
+      {canEdit ? (
+        <Dialog
+          open={editing}
+          onOpenChange={(open) => (open ? openEditor() : setEditing(false))}
+        >
+          <DialogContent size="lg" className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Customize club home</DialogTitle>
+              <DialogDescription>
+                Update the visual identity and joining details members see
+                first.
+              </DialogDescription>
+            </DialogHeader>
 
-        {editing && canEdit && (
-          <div className="space-y-4 border-t border-border pt-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Customize club home</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditing(false)}
+            <div className="space-y-6">
+              <section
+                className="space-y-3"
+                aria-labelledby="club-branding-heading"
               >
-                <X className="size-4" />
-              </Button>
-            </div>
-
-            {/* Banner upload */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Banner image
-              </label>
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-16 w-40 shrink-0 overflow-hidden rounded-md border bg-background bg-cover bg-center"
-                  style={
-                    form.bannerUrl
-                      ? {
-                          backgroundImage: `url(${resolveMediaUrl(form.bannerUrl)})`,
+                <h3
+                  id="club-branding-heading"
+                  className="text-sm font-semibold"
+                >
+                  Branding
+                </h3>
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                  <Field>
+                    <FieldLabel>Banner image</FieldLabel>
+                    <div
+                      className="h-20 overflow-hidden rounded-md border border-border/70 bg-muted bg-cover bg-center"
+                      style={
+                        form.bannerUrl
+                          ? {
+                              backgroundImage: `url(${resolveMediaUrl(form.bannerUrl)})`,
+                            }
+                          : undefined
+                      }
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FileInput
+                        accept="image/*"
+                        label="Upload banner"
+                        loading={uploadingBanner}
+                        onFileSelect={(file) =>
+                          void handleUpload("banner", file)
                         }
-                      : undefined
-                  }
-                />
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUpload("banner", file);
-                      if (bannerInputRef.current)
-                        bannerInputRef.current.value = "";
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="tertiary"
-                    leadingIcon={ImagePlus}
-                    loading={uploadingBanner}
-                    onClick={() => bannerInputRef.current?.click()}
-                    disabled={uploadingBanner}
-                  >
-                    Upload banner
-                  </Button>
-                  {form.bannerUrl && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      leadingIcon={Trash2}
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => void clearClubImage({ clubId: club._id, kind: "banner" }).then(() => setForm((c) => ({ ...c, bannerUrl: "" })))}
-                    >
-                      Remove
-                    </Button>
-                  )}
+                      />
+                      {form.bannerUrl ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          leadingIcon={Trash2}
+                          className="text-destructive hover:text-destructive"
+                          onClick={() =>
+                            void clearClubImage({
+                              clubId: club._id,
+                              kind: "banner",
+                            }).then(() =>
+                              setForm((c) => ({ ...c, bannerUrl: "" })),
+                            )
+                          }
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                  </Field>
+
+                  <div className="space-y-4">
+                    <Field>
+                      <FieldLabel>Logo</FieldLabel>
+                      <EditableAvatar
+                        alt={club.name}
+                        canEdit={canEdit}
+                        className="size-16 rounded-md"
+                        fallback={clubInitial}
+                        fallbackClassName="rounded-md bg-muted text-muted-foreground"
+                        imageUrl={resolveMediaUrl(form.logoUrl)}
+                        loading={uploadingLogo}
+                        onRemove={() =>
+                          void clearClubImage({
+                            clubId: club._id,
+                            kind: "logo",
+                          }).then(() => setForm((c) => ({ ...c, logoUrl: "" })))
+                        }
+                        onUpload={(file) => void handleUpload("logo", file)}
+                        removeLabel="Remove logo"
+                        uploadLabel="Upload logo"
+                        variant="inline"
+                      />
+                    </Field>
+
+                    <Field>
+                      <FieldLabel>Accent color</FieldLabel>
+                      <ColorPickerPopover
+                        value={form.accentColor || "#6366f1"}
+                        onValueChange={(accentColor) =>
+                          setForm((c) => ({ ...c, accentColor }))
+                        }
+                        hideAlpha
+                        swatches={[
+                          "#6366f1",
+                          "#0ea5e9",
+                          "#14b8a6",
+                          "#f59e0b",
+                          "#ef4444",
+                          "#a855f7",
+                        ]}
+                        triggerShowRemove={Boolean(form.accentColor)}
+                        onTriggerRemove={() =>
+                          setForm((c) => ({ ...c, accentColor: "" }))
+                        }
+                      />
+                    </Field>
+                  </div>
                 </div>
-              </div>
+              </section>
+
+              <section
+                className="space-y-4 border-t border-border/70 pt-5"
+                aria-labelledby="club-details-heading"
+              >
+                <h3 id="club-details-heading" className="text-sm font-semibold">
+                  Details
+                </h3>
+                <Field>
+                  <FieldLabel htmlFor="club-overview">
+                    About this club
+                  </FieldLabel>
+                  <Textarea
+                    id="club-overview"
+                    placeholder="What is this club for? Add meeting details or a clear next step."
+                    rows={4}
+                    value={form.overview}
+                    onChange={(e) =>
+                      setForm((c) => ({ ...c, overview: e.target.value }))
+                    }
+                  />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="club-join-policy">Joining</FieldLabel>
+                    <Select
+                      value={form.joinPolicy}
+                      onValueChange={(joinPolicy) =>
+                        setForm((current) => ({
+                          ...current,
+                          joinPolicy: joinPolicy as typeof current.joinPolicy,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="club-join-policy" />
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem index={0} value="OPEN">
+                            Open join
+                          </SelectItem>
+                          <SelectItem index={1} value="REQUEST">
+                            Request approval
+                          </SelectItem>
+                          <SelectItem index={2} value="INVITE_ONLY">
+                            Invite only
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      Choose how new members are added.
+                    </FieldDescription>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="club-member-limit">
+                      Member limit
+                    </FieldLabel>
+                    <Input
+                      id="club-member-limit"
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="numeric"
+                      placeholder="Unlimited"
+                      value={form.memberLimit}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          memberLimit: e.target.value,
+                        }))
+                      }
+                    />
+                    <FieldDescription>
+                      Leave blank for no limit.
+                    </FieldDescription>
+                  </Field>
+                </div>
+              </section>
             </div>
 
-            {/* Logo upload */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                Logo / profile picture
-              </label>
-              <div className="flex items-center gap-3">
-                <EditableAvatar
-                  alt={club.name}
-                  canEdit={canEdit}
-                  className="size-16 rounded-md"
-                  fallback={clubInitial}
-                  fallbackClassName="rounded-md bg-muted text-muted-foreground"
-                  imageUrl={resolveMediaUrl(form.logoUrl)}
-                  loading={uploadingLogo}
-                  onRemove={() => void clearClubImage({ clubId: club._id, kind: "logo" }).then(() => setForm((c) => ({ ...c, logoUrl: "" })))}
-                  onUpload={(file) => void handleUpload("logo", file)}
-                  removeLabel="Remove"
-                  uploadLabel="Upload logo"
-                  variant="inline"
-                />
-              </div>
-            </div>
-
-            {/* Accent color */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                <Palette className="size-3.5" /> Accent color
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="color"
-                  value={form.accentColor || "#6366f1"}
-                  onChange={(e) =>
-                    setForm((c) => ({ ...c, accentColor: e.target.value }))
-                  }
-                  className="h-9 w-16 cursor-pointer p-1"
-                />
-                <Input
-                  placeholder="#6366f1"
-                  value={form.accentColor}
-                  onChange={(e) =>
-                    setForm((c) => ({ ...c, accentColor: e.target.value }))
-                  }
-                  className="h-9 max-w-[160px]"
-                />
-                {form.accentColor && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setForm((c) => ({ ...c, accentColor: "" }))}
-                  >
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Overview */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">
-                About this club
-              </label>
-              <Textarea
-                placeholder="Tell members what this club is about, meeting times, goals…"
-                rows={5}
-                value={form.overview}
-                onChange={(e) =>
-                  setForm((c) => ({ ...c, overview: e.target.value }))
-                }
-              />
-            </div>
-
-            <Field>
-              <FieldLabel htmlFor="club-join-policy">Joining</FieldLabel>
-              <Select value={form.joinPolicy} onValueChange={(joinPolicy) => setForm((current) => ({ ...current, joinPolicy: joinPolicy as typeof current.joinPolicy }))}>
-                <SelectTrigger id="club-join-policy" />
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem index={0} value="OPEN">Open join</SelectItem>
-                    <SelectItem index={1} value="REQUEST">Request approval</SelectItem>
-                    <SelectItem index={2} value="INVITE_ONLY">Invite only</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FieldDescription>Choose whether anyone can join, managers approve requests, or only invitations add members.</FieldDescription>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="club-member-limit">Member limit</FieldLabel>
-              <Input
-                id="club-member-limit"
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                placeholder="Unlimited"
-                value={form.memberLimit}
-                onChange={(e) => setForm((current) => ({ ...current, memberLimit: e.target.value }))}
-              />
-              <FieldDescription>
-                Leave blank for no limit. New joins and approvals stop once the limit is reached.
-              </FieldDescription>
-            </Field>
-
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={handleSave}>
-                Save changes
-              </Button>
+            <DialogFooter>
               <Button
                 size="sm"
                 variant="ghost"
@@ -402,10 +440,13 @@ export function ClubHero({
               >
                 Cancel
               </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
+              <Button size="sm" onClick={handleSave}>
+                Save changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
   );
 }
