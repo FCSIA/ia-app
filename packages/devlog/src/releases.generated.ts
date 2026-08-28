@@ -7,6 +7,49 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.14",
+    "date": "2026-08-28",
+    "commit": "ae971a6",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "calendar",
+        "summary": "Connect a private Canvas or other calendar feed and see its events alongside your school calendar.",
+        "commit": "6fd136d"
+      },
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Clubs can now require an invitation instead of allowing joins or join requests.",
+        "commit": "7758fbc"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Club pages now keep titles clear and make customization easier to manage.",
+        "commit": "ae971a6"
+      },
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "Keep dashboard customization actions easy to scan.",
+        "commit": "d515df6"
+      },
+      {
+        "category": "Improved",
+        "scope": "calendar",
+        "summary": "Keep calendar titles and descriptions within safe limits.",
+        "commit": "d7a754e"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Friend requests and feedback are now easier to find, and group copy clearly describes schedule comparison.",
+        "commit": "0f0034e"
+      }
+    ]
+  },
+  {
     "version": "0.8.13",
     "date": "2026-08-28",
     "commit": "4873982",

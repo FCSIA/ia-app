@@ -12,6 +12,20 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.14 — 2026-08-28 (alpha)
+
+### Added
+
+- **calendar** — Connect a private Canvas or other calendar feed and see its events alongside your school calendar. ([`6fd136d`](https://github.com/virajdas/ia-app/commit/6fd136d))
+- **clubs** — Clubs can now require an invitation instead of allowing joins or join requests. ([`7758fbc`](https://github.com/virajdas/ia-app/commit/7758fbc))
+
+### Improved
+
+- **clubs** — Club pages now keep titles clear and make customization easier to manage. ([`ae971a6`](https://github.com/virajdas/ia-app/commit/ae971a6))
+- **dashboard** — Keep dashboard customization actions easy to scan. ([`d515df6`](https://github.com/virajdas/ia-app/commit/d515df6))
+- **calendar** — Keep calendar titles and descriptions within safe limits. ([`d7a754e`](https://github.com/virajdas/ia-app/commit/d7a754e))
+- **web** — Friend requests and feedback are now easier to find, and group copy clearly describes schedule comparison. ([`0f0034e`](https://github.com/virajdas/ia-app/commit/0f0034e))
+
 ## v0.8.13 — 2026-08-28 (alpha)
 
 ### Improved
