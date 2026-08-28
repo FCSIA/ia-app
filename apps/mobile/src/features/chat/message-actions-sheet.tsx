@@ -26,7 +26,8 @@ type MessageActionsSheetProps = {
   message: ChatMessage | null;
   currentUserId?: string;
   canPost?: boolean;
-  canManage: boolean;
+  canPinMessages: boolean;
+  canModerateMessages: boolean;
   pendingActions: ReadonlySet<string>;
   onClose: () => void;
   onReply: (message: ChatMessage) => void;
@@ -41,7 +42,8 @@ export function MessageActionsSheet({
   message,
   currentUserId,
   canPost,
-  canManage,
+  canPinMessages,
+  canModerateMessages,
   pendingActions,
   onClose,
   onReply,
@@ -53,7 +55,8 @@ export function MessageActionsSheet({
 }: MessageActionsSheetProps) {
   const { color } = useTheme();
   const mine = !!message && message.authorId === currentUserId;
-  const canModerateMessage = mine || canManage;
+  const canPinMessage = mine || canPinMessages;
+  const canDeleteMessage = mine || canModerateMessages;
   const disabled =
     !!message &&
     [...pendingActions].some((key) => key.includes(message._id));
@@ -183,7 +186,7 @@ export function MessageActionsSheet({
                 onPress={() => onEdit(message)}
               />
             ) : null}
-            {canModerateMessage ? (
+            {canPinMessage ? (
               <ActionRow
                 icon={message.isPinned ? PinOff : Pin}
                 label={message.isPinned ? "Unpin message" : "Pin message"}
@@ -197,7 +200,7 @@ export function MessageActionsSheet({
               disabled={disabled}
               onPress={() => onReport(message)}
             />
-            {canModerateMessage ? (
+            {canDeleteMessage ? (
               <ActionRow
                 icon={Trash2}
                 label="Delete message"

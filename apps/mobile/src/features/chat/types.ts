@@ -81,12 +81,21 @@ export type ChatChannel = {
 export type ClubChatData = {
   clubName: string;
   channel: ChatChannel;
-  canManageChannels: boolean;
-  members?: Array<{
+  canCreatePolls: boolean;
+  canPinMessages: boolean;
+  canModerateMessages: boolean;
+};
+
+export type ClubMentionContext = {
+  canMentionEveryone: boolean;
+  members: Array<{
     uniqueId: string;
     firstName: string;
     lastName: string;
-    role: "MEMBER" | "LEADER" | "SPONSOR";
+  }>;
+  tags: Array<{
+    slug: string;
+    name: string;
   }>;
 };
 

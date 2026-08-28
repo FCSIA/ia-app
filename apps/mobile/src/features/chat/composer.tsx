@@ -40,6 +40,7 @@ type ChatComposerProps = {
   hasReadyAttachments: boolean;
   attachmentSubmissionBlocked: boolean;
   suggestions: ChatMentionSuggestion[];
+  onMentionIntent: () => void;
   inputNativeID?: string;
   onLayout?: (event: LayoutChangeEvent) => void;
   onReset: () => void;
@@ -62,6 +63,7 @@ export function ChatComposer({
   hasReadyAttachments,
   attachmentSubmissionBlocked,
   suggestions,
+  onMentionIntent,
   inputNativeID,
   onLayout,
   onReset,
@@ -126,6 +128,7 @@ export function ChatComposer({
               editable={!isPending}
               nativeID={inputNativeID}
               suggestions={suggestions}
+              onMentionIntent={onMentionIntent}
             />
             <ComposerLengthStatus
               error={lengthError}
@@ -252,6 +255,7 @@ export function ChatComposer({
               editable={!isPending}
               nativeID={inputNativeID}
               suggestions={suggestions}
+              onMentionIntent={onMentionIntent}
               toolbarActions={
                 <>
                   <ComposerToolButton
