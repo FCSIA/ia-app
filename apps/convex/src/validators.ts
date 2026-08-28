@@ -367,6 +367,12 @@ export const calendarSourceValidator = v.union(
 
 export type CalendarSource = Infer<typeof calendarSourceValidator>;
 
+export const externalCalendarProviderValidator = v.union(v.literal("ICS"));
+export const externalCalendarSubscriptionStatusValidator = v.union(
+  v.literal("ACTIVE"),
+  v.literal("ERROR"),
+);
+
 export const flexFridayTypeValidator = v.union(
   v.literal("ALL_STUDENT"),
   v.literal("GRADE_SPECIFIC"),

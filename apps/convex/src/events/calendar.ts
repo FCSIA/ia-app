@@ -38,6 +38,23 @@ const calendarEntryOutputValidator = v.object({
     }),
   ),
 });
+const externalCalendarEntryOutputValidator = v.object({
+  _id: v.id("externalCalendarEvents"),
+  _creationTime: v.number(),
+  title: v.string(),
+  description: v.optional(v.string()),
+  location: v.optional(v.string()),
+  startAt: v.number(),
+  endAt: v.optional(v.number()),
+  tags: v.array(v.string()),
+  source: v.literal("EXTERNAL"),
+  subscriptionId: v.id("externalCalendarSubscriptions"),
+  readOnly: v.literal(true),
+});
+const calendarListEntryValidator = v.union(
+  calendarEntryOutputValidator,
+  externalCalendarEntryOutputValidator,
+);
 const calendarInviteOutputValidator = v.object({
   _id: v.id("calendarInvites"),
   _creationTime: v.number(),
@@ -81,7 +98,7 @@ export const list = query({
     endDate: v.number(),
     sources: v.optional(v.array(v.string())),
   },
-  returns: v.array(calendarEntryOutputValidator),
+  returns: v.array(calendarListEntryValidator),
   handler: async (ctx, args) => {
     if (args.endDate < args.startDate) {
       throw new Error("Calendar end date must be after start date");
@@ -103,7 +120,7 @@ export const list = query({
     const requested =
       args.sources && args.sources.length > 0
         ? args.sources
-        : ["DISTRICT", "SCHOOL", "CLUB", "PERSONAL", "FLEX_FRIDAY"];
+        : ["DISTRICT", "SCHOOL", "CLUB", "PERSONAL", "FLEX_FRIDAY", "EXTERNAL"];
 
     const allowed = new Set(requested);
     const includePersonal = allowed.has("PERSONAL");
@@ -116,7 +133,19 @@ export const list = query({
       return true;
     });
 
-    if (!includePersonal) return visibleEntries;
+    const externalEntries = allowed.has("EXTERNAL") ? await ctx.db
+      .query("externalCalendarEvents")
+      .withIndex("by_userId_and_startAt", (q) =>
+        q.eq("userId", user._id).gte("startAt", args.startDate).lte("startAt", args.endDate),
+      )
+      .take(500) : [];
+    const importedEntries = externalEntries.map((entry) => ({
+      ...entry,
+      source: "EXTERNAL" as const,
+      readOnly: true as const,
+    }));
+
+    if (!includePersonal) return [...visibleEntries, ...importedEntries];
 
     const acceptedInvites = await ctx.db
       .query("calendarInvites")
@@ -136,7 +165,7 @@ export const list = query({
       sharedEntries.push({ ...entry, inviteId: invite._id, sharedBy: serializeUser(sender) });
     }
 
-    return [...visibleEntries, ...sharedEntries];
+    return [...visibleEntries, ...sharedEntries, ...importedEntries];
   },
 });
 

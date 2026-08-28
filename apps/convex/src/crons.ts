@@ -15,5 +15,11 @@ crons.cron(
   internal.wrapped.snapshots.refreshCurrentSchoolYear,
   {},
 );
+crons.interval(
+  "refresh external calendar feeds",
+  { hours: 6 },
+  internal.events.externalCalendarSync.refreshDue,
+  {},
+);
 
 export default crons;

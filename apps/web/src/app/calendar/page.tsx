@@ -16,7 +16,7 @@ import {
   endOfWeek,
   isToday,
 } from 'date-fns';
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Settings2, Calendar as CalendarIcon, AlignJustify, Users } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, AlignJustify, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
@@ -25,8 +25,9 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { ExternalCalendarSettingsDialog } from '@/components/calendar/ExternalCalendarSettingsDialog';
 
-export type CalendarSource = 'DISTRICT' | 'SCHOOL' | 'CLUB' | 'PERSONAL' | 'FLEX_FRIDAY';
+export type CalendarSource = 'DISTRICT' | 'SCHOOL' | 'CLUB' | 'PERSONAL' | 'FLEX_FRIDAY' | 'EXTERNAL';
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -36,6 +37,7 @@ const SOURCE_COLORS: Record<CalendarSource, { bg: string; text: string; dot: str
   DISTRICT: { bg: 'color-mix(in srgb, #f43f5e 18%, hsl(var(--card)))', text: 'hsl(var(--foreground))', dot: '#f43f5e', isMultiDay: true },
   CLUB:     { bg: 'hsl(var(--accent))', text: 'hsl(var(--foreground))', dot: '#eab308' },
   FLEX_FRIDAY: { bg: 'hsl(var(--accent))', text: 'hsl(var(--foreground))', dot: '#22c55e' },
+  EXTERNAL: { bg: 'hsl(var(--accent))', text: 'hsl(var(--foreground))', dot: '#14b8a6' },
 };
 
 // Mock resources for the Resource view matching the screenshot
@@ -200,7 +202,6 @@ function CalendarInviteStrip() {
 }
 
 export default function CalendarPage() {
-  const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [view, setView] = useState<'month' | 'day' | 'resource'>('day');
@@ -631,14 +632,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="tertiary"
-              size="sm"
-              leadingIcon={Settings2}
-              onClick={() => toast({ title: 'Calendar Settings', description: 'Calendar settings are coming soon!' })}
-            >
-              Settings
-            </Button>
+             <ExternalCalendarSettingsDialog />
             <AddCalendarEntryDialog 
               trigger={
                 <Button size="sm" leadingIcon={Plus}>

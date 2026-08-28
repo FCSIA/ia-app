@@ -986,6 +986,37 @@ export const schema = defineSchema({
     .index("by_calendarEntryId_and_recipientId", ["calendarEntryId", "recipientId"])
     .index("by_recipientId_and_status_and_createdAt", ["recipientId", "status", "createdAt"]),
 
+  externalCalendarSubscriptions: defineTable({
+    userId: v.id("users"),
+    provider: v.literal("ICS"),
+    displayName: v.string(),
+    feedUrl: v.string(),
+    status: v.union(v.literal("ACTIVE"), v.literal("ERROR")),
+    lastSyncedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    nextRefreshAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_status_and_nextRefreshAt", ["status", "nextRefreshAt"]),
+
+  externalCalendarEvents: defineTable({
+    subscriptionId: v.id("externalCalendarSubscriptions"),
+    userId: v.id("users"),
+    externalId: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    location: v.optional(v.string()),
+    startAt: v.number(),
+    endAt: v.optional(v.number()),
+    tags: v.array(v.string()),
+    lastSeenAt: v.number(),
+  })
+    .index("by_subscriptionId_and_externalId", ["subscriptionId", "externalId"])
+    .index("by_userId_and_startAt", ["userId", "startAt"])
+    .index("by_subscriptionId_and_lastSeenAt", ["subscriptionId", "lastSeenAt"]),
+
   flexFridays: defineTable({
     date: v.number(),
     type: flexFridayTypeValidator,
@@ -1086,12 +1117,23 @@ export const schema = defineSchema({
     appVersion: v.optional(v.string()),
     reviewNote: v.optional(v.string()),
     reviewedAt: v.optional(v.number()),
+    // These fields are populated only for GENERAL feedback mirrored to GitHub.
+    // They are optional so existing reports remain valid during the migration.
+    githubIssueNumber: v.optional(v.number()),
+    githubIssueUrl: v.optional(v.string()),
+    githubIssueSyncState: v.optional(
+      v.union(v.literal("PENDING"), v.literal("SYNCED"), v.literal("FAILED")),
+    ),
+    githubIssueSyncError: v.optional(v.union(v.string(), v.null())),
+    githubIssueCreatedAt: v.optional(v.number()),
+    githubIssueStateUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"])
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
+    .index("by_githubIssueNumber", ["githubIssueNumber"])
     .index("by_submitterId_and_contentType_and_createdAt", [
       "submitterId",
       "contentType",

@@ -55,6 +55,8 @@ import type * as events__lib from "../events/_lib.js";
 import type * as events_approvals from "../events/approvals.js";
 import type * as events_calendar from "../events/calendar.js";
 import type * as events_calendarInvitePolicy from "../events/calendarInvitePolicy.js";
+import type * as events_externalCalendarSync from "../events/externalCalendarSync.js";
+import type * as events_externalCalendars from "../events/externalCalendars.js";
 import type * as events_events from "../events/events.js";
 import type * as events_serialize from "../events/serialize.js";
 import type * as flexFriday__lib from "../flexFriday/_lib.js";
@@ -170,6 +172,8 @@ declare const fullApi: ApiFromModules<{
   "events/approvals": typeof events_approvals;
   "events/calendar": typeof events_calendar;
   "events/calendarInvitePolicy": typeof events_calendarInvitePolicy;
+  "events/externalCalendarSync": typeof events_externalCalendarSync;
+  "events/externalCalendars": typeof events_externalCalendars;
   "events/events": typeof events_events;
   "events/serialize": typeof events_serialize;
   "flexFriday/_lib": typeof flexFriday__lib;
