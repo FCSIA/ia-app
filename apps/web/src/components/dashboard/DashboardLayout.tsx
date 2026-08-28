@@ -287,58 +287,58 @@ export function DashboardLayout({
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
           {editing ? (
-            <div className="flex items-center justify-end">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="tertiary"
-                      size="sm"
-                      leadingIcon={Plus}
-                      className="h-9 rounded-full px-4"
-                      disabled={missingWidgets.length === 0}
-                    >
-                      Add widget
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg rounded-[2rem]">
-                    <DialogHeader>
-                      <DialogTitle>Add a widget</DialogTitle>
-                      <DialogDescription>
-                        Choose a widget to add to your dashboard.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="mt-4 grid gap-2">
-                      {missingWidgets.length === 0 ? (
-                        <p className="py-6 text-center text-sm text-muted-foreground">
-                          All available widgets are already on your dashboard.
-                        </p>
-                      ) : (
-                        missingWidgets.map((widget) => (
-                          <button
-                            key={widget.id}
-                            type="button"
-                            onClick={() => handleAdd(widget.id)}
-                            className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
-                          >
-                            <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                              <LayoutGrid className="size-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-foreground">
-                                {widget.label}
-                              </p>
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                {widget.description}
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    leadingIcon={Plus}
+                    className="h-9 rounded-full px-4"
+                    disabled={missingWidgets.length === 0}
+                  >
+                    Add widget
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg rounded-[2rem]">
+                  <DialogHeader>
+                    <DialogTitle>Add a widget</DialogTitle>
+                    <DialogDescription>
+                      Choose a widget to add to your dashboard.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-4 grid gap-2">
+                    {missingWidgets.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-muted-foreground">
+                        All available widgets are already on your dashboard.
+                      </p>
+                    ) : (
+                      missingWidgets.map((widget) => (
+                        <button
+                          key={widget.id}
+                          type="button"
+                          onClick={() => handleAdd(widget.id)}
+                          className="flex items-start gap-3 rounded-[1.2rem] border border-border/70 bg-muted/20 px-4 py-3 text-left transition hover:border-border hover:bg-muted/60"
+                        >
+                          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <LayoutGrid className="size-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">
+                              {widget.label}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {widget.description}
+                            </p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
 
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="lg"
