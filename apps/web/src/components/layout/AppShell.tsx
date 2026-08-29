@@ -25,7 +25,10 @@ import {
   type ChannelSearchControl,
   type SearchScope,
 } from "@/components/layout/app-shell-header";
-import { useMobileNavigationSwipe } from "@/components/layout/use-mobile-navigation-swipe";
+import {
+  useMobileNavigationSwipe,
+  type MobileNavigationSwipeOptions,
+} from "@/components/layout/use-mobile-navigation-swipe";
 import { useNavigationLoadingOptional } from "@/components/layout/navigation-loading-provider";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
@@ -40,6 +43,7 @@ export function AppShell({
   pageTransitionClassName,
   channelSearch,
   onMobileSwipeRight,
+  mobileNavigationSwipeOptions,
   viewportMode = "document",
 }: {
   children: ReactNode;
@@ -48,6 +52,7 @@ export function AppShell({
   pageTransitionClassName?: string;
   channelSearch?: ChannelSearchControl;
   onMobileSwipeRight?: () => void;
+  mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
   viewportMode?: "document" | "visual";
 }) {
   const pathname = usePathname();
@@ -68,7 +73,10 @@ export function AppShell({
     }
     setMobileOpen(true);
   }, [onMobileSwipeRight]);
-  const swipeHandlers = useMobileNavigationSwipe(openMobileNavigation);
+  const swipeHandlers = useMobileNavigationSwipe(
+    openMobileNavigation,
+    mobileNavigationSwipeOptions,
+  );
 
   useEffect(() => {
     setCommandHint(/Mac|iPhone|iPad|iPod/i.test(navigator.platform));

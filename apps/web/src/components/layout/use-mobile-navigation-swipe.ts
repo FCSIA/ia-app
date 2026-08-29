@@ -1,6 +1,14 @@
 import { useEffect, useRef, type TouchEvent as ReactTouchEvent } from "react";
 
-function useMobileNavigationSwipe(onSwipeRight: () => void) {
+type MobileNavigationSwipeOptions = {
+  onProgress?: (progress: number) => void;
+  onCancel?: () => void;
+};
+
+function useMobileNavigationSwipe(
+  onSwipeRight: () => void,
+  { onProgress, onCancel }: MobileNavigationSwipeOptions = {},
+) {
   const swipeStartRef = useRef<{ x: number; y: number; at: number } | null>(
     null,
   );
@@ -65,23 +73,42 @@ function useMobileNavigationSwipe(onSwipeRight: () => void) {
   const onTouchMove = (event: ReactTouchEvent<HTMLDivElement>) => {
     if (event.touches.length !== 1) return;
     const touch = event.touches[0];
-    // Start the Sheet's slide-in while the finger is still moving instead of
-    // waiting until release, so the navigation visibly follows the gesture.
+    const start = swipeStartRef.current;
+    if (onProgress && start) {
+      const deltaX = touch.clientX - start.x;
+      const deltaY = Math.abs(touch.clientY - start.y);
+      if (deltaX > 0 && deltaX > deltaY * 1.4 && deltaY <= 64) {
+        onProgress(Math.min(1, deltaX / (window.innerWidth * 0.72)));
+        return;
+      }
+    }
+    // Non-interactive mobile navigation still opens before release.
     revealNavigationFromSwipe(touch.clientX, touch.clientY, 36);
   };
 
   const onTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
     if (event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
+    if (onProgress) {
+      const opened = revealNavigationFromSwipe(
+        touch.clientX,
+        touch.clientY,
+        window.innerWidth * 0.28,
+      );
+      if (!opened) onCancel?.();
+      swipeStartRef.current = null;
+      return;
+    }
     revealNavigationFromSwipe(touch.clientX, touch.clientY, 72);
     swipeStartRef.current = null;
   };
 
   const onTouchCancel = () => {
     swipeStartRef.current = null;
+    onCancel?.();
   };
 
   return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
 }
 
-export { useMobileNavigationSwipe };
+export { useMobileNavigationSwipe, type MobileNavigationSwipeOptions };

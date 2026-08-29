@@ -1,6 +1,13 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
@@ -35,7 +42,6 @@ import { MenuItem } from "@/components/ui/menu-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetTitle,
@@ -172,6 +178,15 @@ export function ClubWorkspace({
   const [isResizableNavigationViewport, setIsResizableNavigationViewport] =
     useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const [mobileNavigationRevealing, setMobileNavigationRevealing] =
+    useState(false);
+  const mobileNavigationReveal = useMotionValue(0);
+  const mobileNavigationX = useTransform(
+    mobileNavigationReveal,
+    [0, 1],
+    ["-100%", "0%"],
+  );
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!resizableRightPane) return;
@@ -266,7 +281,10 @@ export function ClubWorkspace({
             size="icon-lg"
             className="md:hidden"
             aria-label="Open club navigation"
-            onClick={() => setMobileNavigationOpen(true)}
+            onClick={() => {
+              mobileNavigationReveal.set(1);
+              setMobileNavigationOpen(true);
+            }}
           >
             <Menu />
           </Button>
@@ -432,49 +450,66 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
-      onMobileSwipeRight={() => setMobileNavigationOpen(true)}
+      onMobileSwipeRight={() => {
+        mobileNavigationReveal.set(1);
+        setMobileNavigationRevealing(false);
+        setMobileNavigationOpen(true);
+      }}
+      mobileNavigationSwipeOptions={{
+        onProgress: (progress) => {
+          setMobileNavigationRevealing(true);
+          mobileNavigationReveal.set(progress);
+        },
+        onCancel: () => setMobileNavigationRevealing(false),
+      }}
       viewportMode="visual"
     >
       <div className="flex min-h-0 flex-1">
-        <Sheet
-          open={mobileNavigationOpen}
-          onOpenChange={setMobileNavigationOpen}
-        >
-          <SheetContent
-            side="left"
-            className="w-[min(22rem,88vw)] border-r bg-card p-0 pt-[env(safe-area-inset-top)] [&>button]:hidden"
-          >
-            <SheetTitle className="sr-only">Club navigation</SheetTitle>
-            <SheetDescription className="sr-only">
-              Browse this club and its channels.
-            </SheetDescription>
-            <ClubNavigationPanel
-              density="mobile"
-              clubId={clubId}
-              viewerId={user?._id ?? null}
-              club={club}
-              myClubs={myClubs}
-              showClubPicker={showClubPicker}
-              nav={nav}
-              pathname={pathname}
-              channels={channels}
-              units={navigation?.units ?? []}
-              activeChannelId={activeChannelId}
-              canCreateChannels={canCreateChannels}
-              canEditChannels={canEditChannels}
-              canDeleteChannels={canDeleteChannels}
-              showMobileClose
-              onNavigate={() => setMobileNavigationOpen(false)}
-              onDeleteChannel={(channel) => {
-                if (confirm(`Delete #${channel.name}?`)) {
-                  void deleteChannel({ channelId: channel._id }).then(() =>
-                    toast({ title: "Channel deleted" }),
-                  );
-                }
-              }}
-            />
-          </SheetContent>
-        </Sheet>
+        <AnimatePresence>
+          {mobileNavigationOpen || mobileNavigationRevealing ? (
+            <motion.aside
+              aria-label="Club navigation"
+              className="fixed inset-0 z-50 flex bg-card pt-[env(safe-area-inset-top)] md:hidden"
+              initial={{ x: "-100%" }}
+              animate={mobileNavigationRevealing ? undefined : { x: 0 }}
+              exit={{ x: "-100%" }}
+              style={
+                mobileNavigationRevealing ? { x: mobileNavigationX } : undefined
+              }
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 460, damping: 42 }
+              }
+            >
+              <ClubNavigationPanel
+                density="mobile"
+                clubId={clubId}
+                viewerId={user?._id ?? null}
+                club={club}
+                myClubs={myClubs}
+                showClubPicker={showClubPicker}
+                nav={nav}
+                pathname={pathname}
+                channels={channels}
+                units={navigation?.units ?? []}
+                activeChannelId={activeChannelId}
+                canCreateChannels={canCreateChannels}
+                canEditChannels={canEditChannels}
+                canDeleteChannels={canDeleteChannels}
+                onClose={() => setMobileNavigationOpen(false)}
+                onNavigate={() => setMobileNavigationOpen(false)}
+                onDeleteChannel={(channel) => {
+                  if (confirm(`Delete #${channel.name}?`)) {
+                    void deleteChannel({ channelId: channel._id }).then(() =>
+                      toast({ title: "Channel deleted" }),
+                    );
+                  }
+                }}
+              />
+            </motion.aside>
+          ) : null}
+        </AnimatePresence>
 
         <Sheet
           open={!!rightPane && !!mobileRightPane && !isResizablePaneViewport}
@@ -562,7 +597,7 @@ function ClubNavigationPanel({
   canCreateChannels,
   canEditChannels,
   canDeleteChannels,
-  showMobileClose = false,
+  onClose,
   onNavigate,
   onDeleteChannel,
 }: {
@@ -580,7 +615,7 @@ function ClubNavigationPanel({
   canCreateChannels: boolean;
   canEditChannels: boolean;
   canDeleteChannels: boolean;
-  showMobileClose?: boolean;
+  onClose?: () => void;
   onNavigate?: () => void;
   onDeleteChannel: (channel: ClubNavigationChannel) => void;
 }) {
@@ -647,21 +682,20 @@ function ClubNavigationPanel({
       <div
         className={cn(
           "relative shrink-0 border-b border-border/70 p-2",
-          showMobileClose && "pr-12",
+          onClose && "pr-12",
         )}
       >
-        {showMobileClose ? (
-          <SheetClose asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="absolute right-2 top-2 size-9"
-              aria-label="Close club navigation"
-            >
-              <X />
-            </Button>
-          </SheetClose>
+        {onClose ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute right-2 top-2 size-9"
+            aria-label="Close club navigation"
+            onClick={onClose}
+          >
+            <X />
+          </Button>
         ) : null}
         {showClubPicker ? (
           <DropdownMenu>
