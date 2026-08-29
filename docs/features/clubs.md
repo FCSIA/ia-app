@@ -11,7 +11,8 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
 
 ## What It Does
 
-- Lists active clubs and the current user's club memberships.
+- Lists the current user's memberships at `/clubs` and the full active club
+  directory at `/clubs/discover`.
 - Shows a club workspace with announcements, people, channels, and settings.
 - Lets members search channel names and message history, then open a result in
   its conversation.

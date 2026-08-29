@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import {
-  AnimatePresence,
+  animate,
   motion,
   useMotionValue,
   useReducedMotion,
@@ -178,8 +178,6 @@ export function ClubWorkspace({
   const [isResizableNavigationViewport, setIsResizableNavigationViewport] =
     useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-  const [mobileNavigationRevealing, setMobileNavigationRevealing] =
-    useState(false);
   const mobileNavigationReveal = useMotionValue(0);
   const mobileNavigationX = useTransform(
     mobileNavigationReveal,
@@ -187,6 +185,22 @@ export function ClubWorkspace({
     ["-100%", "0%"],
   );
   const reduceMotion = useReducedMotion();
+
+  const settleMobileNavigation = (open: boolean) => {
+    if (open) setMobileNavigationOpen(true);
+    if (reduceMotion) {
+      mobileNavigationReveal.set(open ? 1 : 0);
+      if (!open) setMobileNavigationOpen(false);
+      return;
+    }
+    void animate(mobileNavigationReveal, open ? 1 : 0, {
+      type: "spring",
+      stiffness: 460,
+      damping: 42,
+    }).then(() => {
+      if (!open) setMobileNavigationOpen(false);
+    });
+  };
 
   useEffect(() => {
     if (!resizableRightPane) return;
@@ -281,10 +295,7 @@ export function ClubWorkspace({
             size="icon-lg"
             className="md:hidden"
             aria-label="Open club navigation"
-            onClick={() => {
-              mobileNavigationReveal.set(1);
-              setMobileNavigationOpen(true);
-            }}
+            onClick={() => settleMobileNavigation(true)}
           >
             <Menu />
           </Button>
@@ -450,66 +461,52 @@ export function ClubWorkspace({
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
-      onMobileSwipeRight={() => {
-        mobileNavigationReveal.set(1);
-        setMobileNavigationRevealing(false);
-        setMobileNavigationOpen(true);
-      }}
+      onMobileSwipeRight={() => settleMobileNavigation(true)}
       mobileNavigationSwipeOptions={{
-        onProgress: (progress) => {
-          setMobileNavigationRevealing(true);
-          mobileNavigationReveal.set(progress);
-        },
-        onCancel: () => setMobileNavigationRevealing(false),
+        onProgress: (progress) => mobileNavigationReveal.set(progress),
+        onCancel: () => settleMobileNavigation(false),
       }}
       viewportMode="visual"
     >
       <div className="flex min-h-0 flex-1">
-        <AnimatePresence>
-          {mobileNavigationOpen || mobileNavigationRevealing ? (
-            <motion.aside
-              aria-label="Club navigation"
-              className="fixed inset-0 z-50 flex bg-card pt-[env(safe-area-inset-top)] md:hidden"
-              initial={{ x: "-100%" }}
-              animate={mobileNavigationRevealing ? undefined : { x: 0 }}
-              exit={{ x: "-100%" }}
-              style={
-                mobileNavigationRevealing ? { x: mobileNavigationX } : undefined
+        <motion.aside
+          data-mobile-navigation-panel
+          aria-label="Club navigation"
+          aria-hidden={!mobileNavigationOpen}
+          inert={!mobileNavigationOpen}
+          className={cn(
+            "fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] top-0 z-30 flex bg-card pt-[env(safe-area-inset-top)] md:hidden",
+            mobileNavigationOpen ? "pointer-events-auto" : "pointer-events-none",
+          )}
+          initial={false}
+          style={{ x: mobileNavigationX }}
+        >
+          <ClubNavigationPanel
+            density="mobile"
+            clubId={clubId}
+            viewerId={user?._id ?? null}
+            club={club}
+            myClubs={myClubs}
+            showClubPicker={showClubPicker}
+            nav={nav}
+            pathname={pathname}
+            channels={channels}
+            units={navigation?.units ?? []}
+            activeChannelId={activeChannelId}
+            canCreateChannels={canCreateChannels}
+            canEditChannels={canEditChannels}
+            canDeleteChannels={canDeleteChannels}
+            onClose={() => settleMobileNavigation(false)}
+            onNavigate={() => settleMobileNavigation(false)}
+            onDeleteChannel={(channel) => {
+              if (confirm(`Delete #${channel.name}?`)) {
+                void deleteChannel({ channelId: channel._id }).then(() =>
+                  toast({ title: "Channel deleted" }),
+                );
               }
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { type: "spring", stiffness: 460, damping: 42 }
-              }
-            >
-              <ClubNavigationPanel
-                density="mobile"
-                clubId={clubId}
-                viewerId={user?._id ?? null}
-                club={club}
-                myClubs={myClubs}
-                showClubPicker={showClubPicker}
-                nav={nav}
-                pathname={pathname}
-                channels={channels}
-                units={navigation?.units ?? []}
-                activeChannelId={activeChannelId}
-                canCreateChannels={canCreateChannels}
-                canEditChannels={canEditChannels}
-                canDeleteChannels={canDeleteChannels}
-                onClose={() => setMobileNavigationOpen(false)}
-                onNavigate={() => setMobileNavigationOpen(false)}
-                onDeleteChannel={(channel) => {
-                  if (confirm(`Delete #${channel.name}?`)) {
-                    void deleteChannel({ channelId: channel._id }).then(() =>
-                      toast({ title: "Channel deleted" }),
-                    );
-                  }
-                }}
-              />
-            </motion.aside>
-          ) : null}
-        </AnimatePresence>
+            }}
+          />
+        </motion.aside>
 
         <Sheet
           open={!!rightPane && !!mobileRightPane && !isResizablePaneViewport}
@@ -924,7 +921,7 @@ function ChannelRow({
       : "hidden group-hover/channel:flex group-focus-within/channel:flex";
   const visibilityClassName =
     density === "mobile"
-      ? "block"
+      ? "inline-flex"
       : "hidden group-hover/channel:flex group-focus-within/channel:flex";
   return (
     <Card

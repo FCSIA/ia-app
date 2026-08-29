@@ -558,7 +558,7 @@ function ReactionButton({
       variant="tertiary"
       size="sm"
       className={cn(
-        'h-7 gap-1 rounded-full px-2 text-xs shadow-none',
+        '!h-6 !min-h-6 gap-1 rounded-full px-2 py-0 text-xs shadow-none',
         reaction.reactedByCurrentUser && 'border-primary/40 bg-primary/10',
       )}
       disabled={isReactionPending}
@@ -586,7 +586,21 @@ function ReactionButton({
 
   const details = (
     <>
-      <p className="text-sm font-semibold text-foreground">{reactionLabel} reactions</p>
+      {openDetailsOnPress ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-compact"
+          className="absolute right-2 top-2 !size-7 !min-h-7"
+          aria-label="Close reaction details"
+          onClick={() => setOpen(false)}
+        >
+          <X />
+        </Button>
+      ) : null}
+      <p className={cn('text-sm font-semibold text-foreground', openDetailsOnPress && 'pr-8')}>
+        {reactionLabel} reactions
+      </p>
       <div className="mt-2 flex max-h-56 flex-col gap-1 overflow-y-auto pr-1">
         {status === 'LoadingFirstPage' ? (
           <p className="text-sm text-muted-foreground">Loading people…</p>
@@ -609,7 +623,7 @@ function ReactionButton({
         <Button
           type="button"
           size="sm"
-          variant={reaction.reactedByCurrentUser ? 'tertiary' : 'primary'}
+          variant="primary"
           className="mt-2 w-full"
           disabled={isReactionPending}
           onClick={() => {

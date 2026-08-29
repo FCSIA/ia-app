@@ -55,7 +55,7 @@ function useMobileNavigationSwipe(
     const target = event.target as HTMLElement;
     if (
       target.closest(
-        '[data-swipe-navigation-ignore], input, textarea, select, [contenteditable="true"], [role="slider"], [role="tablist"]',
+        '[data-mobile-navigation-panel], [data-swipe-navigation-ignore], input, textarea, select, [contenteditable="true"], [role="slider"], [role="tablist"]',
       )
     ) {
       swipeStartRef.current = null;
@@ -90,12 +90,19 @@ function useMobileNavigationSwipe(
     if (event.changedTouches.length !== 1) return;
     const touch = event.changedTouches[0];
     if (onProgress) {
-      const opened = revealNavigationFromSwipe(
-        touch.clientX,
-        touch.clientY,
-        window.innerWidth * 0.28,
-      );
-      if (!opened) onCancel?.();
+      const start = swipeStartRef.current;
+      const deltaX = start ? touch.clientX - start.x : 0;
+      const deltaY = start ? Math.abs(touch.clientY - start.y) : Infinity;
+      if (
+        start &&
+        deltaX >= window.innerWidth * 0.28 &&
+        deltaX > deltaY * 1.4 &&
+        deltaY <= 64
+      ) {
+        swipeActionRef.current();
+      } else {
+        onCancel?.();
+      }
       swipeStartRef.current = null;
       return;
     }
