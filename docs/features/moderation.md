@@ -45,7 +45,8 @@ reports.
 - `feedbackReportResponses`
 
 Reports store submitter, content type/id, optional club, optional reported user,
-reason, status, escalation flag, review note, and timestamps. General feedback
+reason, status, escalation flag, review note, timestamps, and (for general
+feedback) optional GitHub-issue sync metadata. General feedback
 can include up to three validated PNG, JPEG, GIF, or WebP image attachments;
 only super admins can retrieve their previews. Staff responses are separate,
 append-only records linked to general feedback and limited to 25 per item.
@@ -64,6 +65,12 @@ Keyword and report changes write audit events. A resolved general-feedback item
 notifies its submitter; dismissed feedback remains available only in the
 super-admin archive. Each staff response notifies the original submitter and
 links them to the read-only feedback history.
+
+When configured, each general-feedback submission creates a GitHub issue in
+`virajdas/ia-app` without the submitter's identity or attachments. GitHub's
+signed `issues` webhook updates the app when that issue is closed (`completed`
+becomes resolved; `not_planned` becomes dismissed) or reopened (becomes
+pending). The issue link is visible to feedback reviewers.
 
 ## Known Limits
 

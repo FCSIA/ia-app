@@ -103,6 +103,25 @@ Runtime secrets such as Better Auth credentials belong in the Convex deployment
 environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; invoke the
 internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
 
+## GitHub Feedback Issues
+
+To mirror general feedback into `virajdas/ia-app`, create a fine-grained GitHub
+token with **Issues: Read and write** access restricted to that repository, then
+set these variables on the target Convex deployment:
+
+```bash
+pnpm --filter cvx exec convex env set GITHUB_FEEDBACK_TOKEN "..."
+pnpm --filter cvx exec convex env set GITHUB_FEEDBACK_WEBHOOK_SECRET "..."
+```
+
+In the repository's GitHub webhook settings, add the Convex HTTP endpoint
+`https://<your-convex-site>/github/feedback-webhook`, use the same webhook
+secret, choose JSON, and subscribe only to **Issues** events. The receiver
+validates GitHub's `X-Hub-Signature-256`, accepts only this repository, and
+reacts to actual close/reopen events—not labels. Closure reasons map as follows:
+`completed` becomes resolved; `not_planned` becomes dismissed; reopening returns
+the feedback to pending.
+
 ## Web Push
 
 Browser push notifications require VAPID keys. The public key is needed by the

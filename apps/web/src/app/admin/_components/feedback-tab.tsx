@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Archive, Inbox, CheckCircle2 } from 'lucide-react';
+import { Archive, Inbox, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,7 @@ type FeedbackResponseMutation = (args: {
   reportId: Id<'moderationReports'>;
   body: string;
 }) => Promise<void>;
+type RetryGithubIssueMutation = (reportId: Id<'moderationReports'>) => Promise<void>;
 
 export function FeedbackTab({
   feedbackSearch,
@@ -40,6 +41,7 @@ export function FeedbackTab({
   filteredReports,
   reportMutation,
   responseMutation,
+  retryGithubIssueMutation,
   canUpdateFeedback = true,
 }: {
   feedbackSearch: string;
@@ -48,6 +50,7 @@ export function FeedbackTab({
   filteredReports: FeedbackReport[];
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
+  retryGithubIssueMutation: RetryGithubIssueMutation;
   canUpdateFeedback?: boolean;
 }) {
   const [view, setView] = useState<'active' | 'resolved' | 'archive'>('active');
@@ -83,6 +86,7 @@ export function FeedbackTab({
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
+            retryGithubIssueMutation={retryGithubIssueMutation}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -93,6 +97,7 @@ export function FeedbackTab({
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
+            retryGithubIssueMutation={retryGithubIssueMutation}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -103,6 +108,7 @@ export function FeedbackTab({
             clearSearch={deferredFeedbackSearch ? () => onFeedbackSearchChange('') : undefined}
             reportMutation={reportMutation}
             responseMutation={responseMutation}
+            retryGithubIssueMutation={retryGithubIssueMutation}
             canUpdateFeedback={canUpdateFeedback}
           />
         </TabPanel>
@@ -117,6 +123,7 @@ function FeedbackList({
   clearSearch,
   reportMutation,
   responseMutation,
+  retryGithubIssueMutation,
   canUpdateFeedback,
 }: {
   reports: FeedbackReport[];
@@ -124,6 +131,7 @@ function FeedbackList({
   clearSearch?: () => void;
   reportMutation: FeedbackMutation;
   responseMutation: FeedbackResponseMutation;
+  retryGithubIssueMutation: RetryGithubIssueMutation;
   canUpdateFeedback: boolean;
 }) {
   if (reports.length === 0) {
@@ -156,6 +164,23 @@ function FeedbackList({
                 Submitted {formatDateTime(report._creationTime)}
                 {report.appVersion ? ` · ${report.appVersion}` : ''}
               </p>
+              {report.githubIssueUrl ? (
+                <Button asChild className="mt-3" size="sm" variant="tertiary" trailingIcon={ExternalLink}>
+                  <a href={report.githubIssueUrl} target="_blank" rel="noreferrer">
+                    GitHub issue #{report.githubIssueNumber}
+                  </a>
+                </Button>
+              ) : null}
+              {report.githubIssueSyncState === 'FAILED' ? (
+                <div className="mt-3 flex items-center gap-2">
+                  <p className="text-xs text-destructive">GitHub issue sync failed. The feedback remains in this queue.</p>
+                  {canUpdateFeedback ? (
+                    <Button size="sm" variant="tertiary" onClick={() => void retryGithubIssueMutation(report._id)}>
+                      Retry sync
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               {report.images.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {report.images.map((image, index) => (

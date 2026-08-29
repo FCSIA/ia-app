@@ -9,6 +9,8 @@ const app = defineApp({
     AUTH_ALLOW_ANY_LOCAL_WEB_HOST: v.optional(v.string()),
     BETTER_AUTH_TRUSTED_ORIGINS: v.optional(v.string()),
     BETTER_AUTH_MAINTENANCE_SECRET: v.string(),
+    GITHUB_FEEDBACK_TOKEN: v.optional(v.string()),
+    GITHUB_FEEDBACK_WEBHOOK_SECRET: v.optional(v.string()),
   },
 });
 

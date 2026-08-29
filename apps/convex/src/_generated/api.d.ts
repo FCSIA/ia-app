@@ -69,6 +69,7 @@ import type * as flexFriday_sessions from "../flexFriday/sessions.js";
 import type * as flexFriday_workshops from "../flexFriday/workshops.js";
 import type * as http from "../http.js";
 import type * as moderation_feedbackAccess from "../moderation/feedbackAccess.js";
+import type * as moderation_feedbackGithub from "../moderation/feedbackGithub.js";
 import type * as moderation_keywords from "../moderation/keywords.js";
 import type * as moderation_reportValidation from "../moderation/reportValidation.js";
 import type * as moderation_reports from "../moderation/reports.js";
@@ -186,6 +187,7 @@ declare const fullApi: ApiFromModules<{
   "flexFriday/workshops": typeof flexFriday_workshops;
   http: typeof http;
   "moderation/feedbackAccess": typeof moderation_feedbackAccess;
+  "moderation/feedbackGithub": typeof moderation_feedbackGithub;
   "moderation/keywords": typeof moderation_keywords;
   "moderation/reportValidation": typeof moderation_reportValidation;
   "moderation/reports": typeof moderation_reports;
