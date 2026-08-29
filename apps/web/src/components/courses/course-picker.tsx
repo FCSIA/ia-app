@@ -17,6 +17,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { rankCourseSearch } from "./course-search";
 import { formatCourseNumbers } from "./course-meta";
 import type { CourseSummary } from "./types";
 
@@ -80,16 +81,22 @@ export function CoursePicker({
 
     if (!search) return ranked;
 
-    return ranked.filter((course) =>
-      [
-        course.title,
-        course.department,
-        course.gradeText,
-        formatCourseNumbers(course),
-      ]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(search)),
-    );
+    return ranked
+      .map((course) => ({
+        course,
+        searchRank: rankCourseSearch(search, [
+          course.title,
+          course.department,
+          course.gradeText,
+          formatCourseNumbers(course),
+        ]),
+      }))
+      .filter(
+        (result): result is { course: CourseSummary; searchRank: number } =>
+          result.searchRank !== null,
+      )
+      .sort((left, right) => left.searchRank - right.searchRank)
+      .map((result) => result.course);
   }, [courses, deferredQuery, preferredGradeLevel]);
 
   return (
