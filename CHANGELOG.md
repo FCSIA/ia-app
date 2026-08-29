@@ -12,6 +12,18 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.15 — 2026-08-29 (alpha)
+
+### Added
+
+- **clubs** — Club chat navigation now follows your right-swipe gesture before opening. ([`736be25`](https://github.com/virajdas/ia-app/commit/736be25))
+- **calendar** — Mobile calendar users can connect Canvas feeds and share personal reminders with friends. ([`390edff`](https://github.com/virajdas/ia-app/commit/390edff))
+
+### Improved
+
+- **clubs** — In club chats, swipe left to reply while swipe right opens workspace navigation. ([`4b75dd6`](https://github.com/virajdas/ia-app/commit/4b75dd6))
+- **courses** — Course search now finds likely matches when a course name is slightly misspelled. ([`30dbece`](https://github.com/virajdas/ia-app/commit/30dbece))
+
 ## v0.8.14 — 2026-08-28 (alpha)
 
 ### Added

@@ -7,6 +7,37 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.15",
+    "date": "2026-08-29",
+    "commit": "736be25",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Club chat navigation now follows your right-swipe gesture before opening.",
+        "commit": "736be25"
+      },
+      {
+        "category": "Added",
+        "scope": "calendar",
+        "summary": "Mobile calendar users can connect Canvas feeds and share personal reminders with friends.",
+        "commit": "390edff"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "In club chats, swipe left to reply while swipe right opens workspace navigation.",
+        "commit": "4b75dd6"
+      },
+      {
+        "category": "Improved",
+        "scope": "courses",
+        "summary": "Course search now finds likely matches when a course name is slightly misspelled.",
+        "commit": "30dbece"
+      }
+    ]
+  },
+  {
     "version": "0.8.14",
     "date": "2026-08-28",
     "commit": "ae971a6",
