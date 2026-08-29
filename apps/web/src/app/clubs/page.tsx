@@ -30,6 +30,10 @@ export default function ClubsLandingPage() {
 
   const hasAdministrativeClubAccess = isSuperAdmin(user);
 
+  const allClubsData = useQuery(
+    api.clubs.management.getAll,
+    hasAdministrativeClubAccess ? {} : 'skip',
+  );
   const myData = useQuery(
     api.clubs.management.getMyClubs,
     hasAdministrativeClubAccess ? 'skip' : {},
@@ -51,7 +55,12 @@ export default function ClubsLandingPage() {
     return Array.from(map.values());
   }, [myData]);
 
-  const isLoading = !hasAdministrativeClubAccess && myData === undefined;
+  const listedClubs = hasAdministrativeClubAccess
+    ? (allClubsData ?? [])
+    : myClubs;
+  const isLoading = hasAdministrativeClubAccess
+    ? allClubsData === undefined
+    : myData === undefined;
 
   const headerSlot = (
     <div className="min-w-0">
@@ -111,17 +120,20 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        {!hasAdministrativeClubAccess ? (
-          <section className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1">
+        <section className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1">
             <div className="flex min-h-12 items-center justify-between border-b px-4 py-2">
               <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-foreground">Your clubs</h2>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {hasAdministrativeClubAccess ? 'All clubs' : 'Your clubs'}
+                </h2>
                 <p className="text-xs text-muted-foreground">
-                  Open the spaces you belong to.
+                  {hasAdministrativeClubAccess
+                    ? 'Open any active club workspace.'
+                    : 'Open the spaces you belong to.'}
                 </p>
               </div>
               <span className="text-xs tabular-nums text-muted-foreground">
-                {myClubs.length}
+                {listedClubs.length}
               </span>
             </div>
             {isLoading ? (
@@ -130,14 +142,16 @@ export default function ClubsLandingPage() {
                   <Skeleton key={id} className="h-[4.5rem] w-full" />
                 ))}
               </div>
-            ) : myClubs.length > 0 ? (
+            ) : listedClubs.length > 0 ? (
               <CardGroup orientation="inline" border="outlined">
-                {myClubs.map((club) => (
+                {listedClubs.map((club) => (
                   <ClubListRow
                     key={club._id}
                     club={club}
-                    joined
+                    joined={!hasAdministrativeClubAccess}
                     badge={
+                      !hasAdministrativeClubAccess &&
+                      'kind' in club &&
                       club.kind === 'sponsor' ? (
                         <Badge variant="solid" color="indigo" className="shrink-0">
                           <Shield data-icon="inline-start" />
@@ -152,9 +166,15 @@ export default function ClubsLandingPage() {
               <Empty className="border-0 py-8">
                 <EmptyHeader>
                   <EmptyMedia variant="icon"><UsersRound /></EmptyMedia>
-                  <EmptyTitle>You haven&apos;t joined a club yet</EmptyTitle>
+                  <EmptyTitle>
+                    {hasAdministrativeClubAccess
+                      ? 'No clubs available yet'
+                      : "You haven't joined a club yet"}
+                  </EmptyTitle>
                   <EmptyDescription>
-                    Browse the directory to find clubs you can join.
+                    {hasAdministrativeClubAccess
+                      ? 'Active clubs will appear here.'
+                      : 'Browse the directory to find clubs you can join.'}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
@@ -165,12 +185,15 @@ export default function ClubsLandingPage() {
               </Empty>
             )}
           </section>
-        ) : null}
 
         {hasAdministrativeClubAccess || myClubs.length > 0 ? (
           <div className="flex justify-end">
             <Button asChild variant="ghost" trailingIcon={ArrowRight}>
-              <Link href="/clubs/discover">Discover more clubs</Link>
+              <Link href="/clubs/discover">
+                {hasAdministrativeClubAccess
+                  ? 'Search clubs'
+                  : 'Discover more clubs'}
+              </Link>
             </Button>
           </div>
         ) : null}
