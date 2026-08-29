@@ -3,9 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "convex/react";
+import { pickDailySchoolMessage } from "@ia/fun-facts";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";
-import { getCurrentResolvedScheduleStatus } from "@/components/schedule/schedule-utils";
+import {
+  getCurrentResolvedScheduleStatus,
+  parseTimeToMinutes,
+} from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
 import { formatSchoolTime } from "@/lib/time-format";
 import { schoolDateKey } from "@/lib/school-date";
@@ -44,6 +48,21 @@ export function WelcomeWidget() {
     null;
   const currentBlock = currentStatus.currentBlock;
   const nextBlock = currentStatus.nextBlock;
+  const lastBlockEnd =
+    resolvedDay?.blocks.reduce(
+      (latest, block) => Math.max(latest, parseTimeToMinutes(block.endTime)),
+      -1,
+    ) ?? -1;
+  const schoolIsOver =
+    lastBlockEnd >= 0 && now.getHours() * 60 + now.getMinutes() >= lastBlockEnd;
+  const quietMessage =
+    resolvedDay === undefined
+      ? null
+      : !resolvedDay.hasPersonalSchedule || resolvedDay.blocks.length === 0
+        ? pickDailySchoolMessage("no-school", `${user?._id ?? "guest"}:${dateKey}`)
+        : schoolIsOver
+          ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${dateKey}`)
+          : null;
 
   return (
     <section className="px-1 py-2 sm:px-2 sm:py-4">
@@ -54,11 +73,11 @@ export function WelcomeWidget() {
             {firstName ? `, ${firstName}` : ""}.
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {format(now, "EEEE, MMMM d")}
+            {quietMessage ?? format(now, "EEEE, MMMM d")}
           </p>
         </div>
 
-        {isStudent ? (
+        {isStudent && !quietMessage ? (
           <div className="min-w-0 sm:text-right">
             <div className="flex items-baseline gap-2 sm:justify-end">
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">

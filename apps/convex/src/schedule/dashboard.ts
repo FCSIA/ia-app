@@ -140,7 +140,9 @@ export const get = query({
  */
 export const getDay = query({
   args: { dateKey: v.string() },
-  returns: scheduleDashboardValidator.fields.resolvedDay,
+  returns: scheduleDashboardValidator.fields.resolvedDay.extend({
+    hasPersonalSchedule: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     const dateKey = normalizeDateKey(args.dateKey);
@@ -167,6 +169,7 @@ export const getDay = query({
       source: dayPlanSource.source,
       sourceId: dayPlanSource.sourceId,
       sourceTemplateId: dayPlanSource.sourceTemplateId,
+      hasPersonalSchedule: mySchedule !== null,
     };
   },
 });

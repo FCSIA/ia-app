@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useQuery } from "convex/react";
 import { format, differenceInMinutes } from "date-fns";
 import { CheckCircle2, ChevronRight, Clock, RefreshCw, SlidersHorizontal, Timer } from "lucide-react-native";
-import { pickNavigationLoadingFact } from "@ia/fun-facts";
+import { pickDailySchoolMessage, pickNavigationLoadingFact } from "@ia/fun-facts";
 import { AppHeader } from "@/components/app-header";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";
@@ -745,6 +745,21 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
     () => resolveSchoolDayStatus(schedule, schoolDay, now),
     [schedule, schoolDay, now],
   );
+  const dayContext = getDashboardDayContext(schedule, schoolDay);
+  const hasPersonalSchedule = getAppPersona(user) !== "student" || Boolean(schedule?.mySchedule);
+  const lastBlockEnd = dayContext.blocks.reduce(
+    (latest: number, block: any) => Math.max(latest, timeToMinutes(block.endTime)),
+    -1,
+  );
+  const schoolIsOver =
+    dayContext.isToday &&
+    lastBlockEnd >= 0 &&
+    now.getHours() * 60 + now.getMinutes() >= lastBlockEnd;
+  const quietMessage = !hasPersonalSchedule || dayContext.blocks.length === 0
+    ? pickDailySchoolMessage("no-school", `${user?._id ?? "guest"}:${format(now, "yyyy-MM-dd")}`)
+    : schoolIsOver
+      ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${format(now, "yyyy-MM-dd")}`)
+      : null;
   
   const firstName = user?.firstName ?? "";
   const hour = now.getHours();
@@ -754,31 +769,41 @@ function WelcomeWidget({ user, schedule, schoolDay }: { user: AppUser; schedule:
     <Card style={{ padding: spacing.xl, gap: spacing.xl, marginBottom: spacing.xs, marginTop: spacing.xs }}>
       <View style={{ flexDirection: "column", gap: spacing.xl }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: spacing.md }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-            <Clock size={20} color={color("primary")} opacity={0.6} />
-            <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, fontVariant: ["tabular-nums"] }}>
-              {format(now, "h:mm")}
+          {quietMessage ? (
+            <Txt variant="label" tone="muted">
+              {quietMessage}
             </Txt>
-          </View>
-          <Txt variant="caption" tone="muted">
-            {format(now, "EEEE, MMM d")}
-          </Txt>
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                <Clock size={20} color={color("primary")} opacity={0.6} />
+                <Txt style={{ fontSize: 32, fontWeight: "800", lineHeight: 38, fontVariant: ["tabular-nums"] }}>
+                  {format(now, "h:mm")}
+                </Txt>
+              </View>
+              <Txt variant="caption" tone="muted">
+                {format(now, "EEEE, MMM d")}
+              </Txt>
+            </>
+          )}
         </View>
 
         <View style={{ flex: 1, gap: spacing.md }}>
           <Txt variant="title" style={{ fontSize: 28, lineHeight: 34 }}>
             {greeting}{firstName ? `, ${firstName}` : ""}.
           </Txt>
-          <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
-            <Txt variant="overline" tone="muted">Current Status</Txt>
-            <Txt variant="section">{schoolStatus.title}</Txt>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs }}>
-              {schoolStatus.subtitle === "In progress" && (
-                <Badge label="Active" color="green" />
-              )}
-              <Txt variant="caption" tone="muted">{schoolStatus.meta ?? schoolStatus.subtitle}</Txt>
+          {!quietMessage ? (
+            <View style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+              <Txt variant="overline" tone="muted">Current Status</Txt>
+              <Txt variant="section">{schoolStatus.title}</Txt>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.xs }}>
+                {schoolStatus.subtitle === "In progress" && (
+                  <Badge label="Active" color="green" />
+                )}
+                <Txt variant="caption" tone="muted">{schoolStatus.meta ?? schoolStatus.subtitle}</Txt>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </View>
     </Card>

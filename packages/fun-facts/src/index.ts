@@ -2,6 +2,31 @@ import { NAVIGATION_LOADING_MESSAGES } from "./messages";
 
 export { NAVIGATION_LOADING_MESSAGES };
 
+export const NO_SCHOOL_MESSAGES = [
+  "No school today",
+  "Looks like a day off",
+  "No classes on the books",
+  "The halls can wait",
+] as const;
+
+export const SCHOOL_OVER_MESSAGES = [
+  "School's over",
+  "Class dismissed",
+  "That's a wrap",
+  "The final bell has rung",
+] as const;
+
+export type SchoolDayMessageContext = "no-school" | "school-over";
+
+export function pickDailySchoolMessage(context: SchoolDayMessageContext, seed: string): string {
+  const messages = context === "no-school" ? NO_SCHOOL_MESSAGES : SCHOOL_OVER_MESSAGES;
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0;
+  }
+  return messages[Math.abs(hash) % messages.length];
+}
+
 export type LoadingFactVisual = "phoenix";
 
 export type LoadingFact = {
