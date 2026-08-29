@@ -12,6 +12,13 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.16 — 2026-08-29 (alpha)
+
+### Improved
+
+- **clubs** — Club navigation scrolls more smoothly, reactions are more compact, and club discovery now has clearer pages and empty states. ([`eda148c`](https://github.com/virajdas/ia-app/commit/eda148c))
+- **dashboard** — Home now swaps the clock and date for a lighthearted message when there is no school or the school day is over. ([`c866ece`](https://github.com/virajdas/ia-app/commit/c866ece))
+
 ## v0.8.15 — 2026-08-29 (alpha)
 
 ### Added

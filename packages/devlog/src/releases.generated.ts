@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.16",
+    "date": "2026-08-29",
+    "commit": "eda148c",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Club navigation scrolls more smoothly, reactions are more compact, and club discovery now has clearer pages and empty states.",
+        "commit": "eda148c"
+      },
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "Home now swaps the clock and date for a lighthearted message when there is no school or the school day is over.",
+        "commit": "c866ece"
+      }
+    ]
+  },
+  {
     "version": "0.8.15",
     "date": "2026-08-29",
     "commit": "736be25",
