@@ -741,7 +741,6 @@ function MessageRow({
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={isDeleted || isSending || isEditing}>
         <div
-          data-swipe-navigation-ignore
           className="touch-pan-y select-none [-webkit-touch-callout:none]"
           style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
           onTouchStart={(event) => {
@@ -757,12 +756,14 @@ function MessageRow({
             const deltaX = touch.clientX - start.x;
             const deltaY = Math.abs(touch.clientY - start.y);
             if (Math.abs(deltaX) < deltaY * 1.25) return;
-            setReplySwipeOffset(Math.max(-40, Math.min(40, deltaX)));
+            // Right swipes belong to the workspace navigation gesture. Replies
+            // deliberately use the opposite direction so the two never compete.
+            setReplySwipeOffset(Math.max(-40, Math.min(0, deltaX)));
           }}
           onTouchEnd={(event) => {
             const start = replySwipeStart.current;
             const touch = event.changedTouches[0];
-            if (start && touch && Math.abs(touch.clientX - start.x) >= 64 && Math.abs(touch.clientX - start.x) > Math.abs(touch.clientY - start.y) * 1.25) {
+            if (start && touch && touch.clientX - start.x <= -64 && start.x - touch.clientX > Math.abs(touch.clientY - start.y) * 1.25) {
               onStartReply(message._id);
             }
             resetReplySwipe();
