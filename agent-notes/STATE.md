@@ -121,7 +121,7 @@
   by explicitly initialized loopback Convex deployments, while cloud
   deployments retain an explicit origin allowlist.
 - Same-LAN web PWAs now receive LAN-reachable public Convex URLs from
-  `pnpm sync:convex-env -- --host <LAN IPv4>` while server calls stay on
+  `bun run sync:convex-env -- --host <LAN IPv4>` while server calls stay on
   loopback. Protected-route auth startup renders a branded connection state
   instead of an unexplained blank screen when the backend is slow or
   unreachable.
@@ -157,7 +157,7 @@
 - Android Expo Go QA now uses safe-area in-app headers instead of native stack
   headers, non-translucent status bars, React Native-safe RGB/RGBA mobile
   colors, visible disabled/primary buttons, and Android emulator Convex env
-  sync via `pnpm sync:convex-env -- --android`.
+  sync via `bun run sync:convex-env -- --android`.
 - Mobile navigation is student-prioritized: tab bar is Home, Calendar, Clubs,
   Feed, Discover. The old More and Classes tabs are removed. Inbox and Profile
   are reachable from every tab through the shared in-app header, and Profile

@@ -38,7 +38,7 @@ bunx localtunnel --port <PORT>
 Web development through the shared LocalTunnel hostname:
 
 ```bash
-pnpm dlx localtunnel --port 3000 --subdomain ia-app-dev
+bunx localtunnel --port 3000 --subdomain ia-app-dev
 ```
 
 ## Deploy

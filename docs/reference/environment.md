@@ -73,8 +73,8 @@ on the same LAN, rewrite only the public client URLs to the development
 machine's LAN address, then restart the web development server:
 
 ```bash
-pnpm sync:convex-env -- --host 10.0.0.231
-pnpm dev
+bun run sync:convex-env -- --host 10.0.0.231
+bun run dev
 ```
 
 The server-side Convex URLs remain on loopback. The rewritten public URLs are

@@ -82,7 +82,7 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 NEXT_PUBLIC_SITE_URL=https://...
 ```
 
-`pnpm setup:convex-local` enables forwarded LAN and tunnel hosts only for the
+`bun run setup:convex-local` enables forwarded LAN and tunnel hosts only for the
 loopback local deployment. Cloud development or preview deployments remain
 allowlisted; add their exact comma-separated web origins to the deployment's
 `BETTER_AUTH_TRUSTED_ORIGINS` value.
