@@ -64,6 +64,6 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
-    "convex": "1.43.0"
+    "convex": "1.45.0"
   }
 }

@@ -81,7 +81,7 @@ export const configuredAuthHostnames = Array.from(
     [
       webHostFromOrigin(siteUrl),
       ...environmentTrustedOrigins.map(webHostFromOrigin),
-      webHostFromOrigin(process.env.CONVEX_SITE_URL),
+      webHostFromOrigin(env.CONVEX_SITE_URL),
       webHostFromOrigin(process.env.EXPO_PUBLIC_CONVEX_SITE_URL),
       process.env.VERCEL_URL,
       process.env.MOBILE_CONVEX_HOST,
