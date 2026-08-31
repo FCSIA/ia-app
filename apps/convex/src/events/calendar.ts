@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import {
   getCurrentAppUser,
@@ -55,6 +56,23 @@ const calendarListEntryValidator = v.union(
   calendarEntryOutputValidator,
   externalCalendarEntryOutputValidator,
 );
+
+export function serializeExternalCalendarEntry(entry: Doc<"externalCalendarEvents">) {
+  return {
+    _id: entry._id,
+    _creationTime: entry._creationTime,
+    title: entry.title,
+    description: entry.description,
+    location: entry.location,
+    startAt: entry.startAt,
+    endAt: entry.endAt,
+    tags: entry.tags,
+    source: "EXTERNAL" as const,
+    subscriptionId: entry.subscriptionId,
+    readOnly: true as const,
+  };
+}
+
 const calendarInviteOutputValidator = v.object({
   _id: v.id("calendarInvites"),
   _creationTime: v.number(),
@@ -139,11 +157,7 @@ export const list = query({
         q.eq("userId", user._id).gte("startAt", args.startDate).lte("startAt", args.endDate),
       )
       .take(500) : [];
-    const importedEntries = externalEntries.map((entry) => ({
-      ...entry,
-      source: "EXTERNAL" as const,
-      readOnly: true as const,
-    }));
+    const importedEntries = externalEntries.map(serializeExternalCalendarEntry);
 
     if (!includePersonal) return [...visibleEntries, ...importedEntries];
 
