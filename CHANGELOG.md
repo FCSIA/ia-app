@@ -12,6 +12,26 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.19 — 2026-08-31 (alpha)
+
+### Added
+
+- **calendar** — Long agenda titles now fade at hidden edges, calendar actions align right, and sticky date headers stay opaque. ([`129579c`](https://github.com/virajdas/ia-app/commit/129579c))
+
+### Improved
+
+- **web** — Club chat now keeps your place while older messages load and keeps consecutive messages compact. ([`fd62daf`](https://github.com/virajdas/ia-app/commit/fd62daf))
+- **dashboard** — The Dashboard calendar now aligns its controls cleanly and keeps selected-day event indicators visible. ([`57996e6`](https://github.com/virajdas/ia-app/commit/57996e6))
+- **calendar** — Calendar agenda rows now keep long titles on one scrollable line and use clean circular action buttons. ([`88bce51`](https://github.com/virajdas/ia-app/commit/88bce51))
+- **web** — You can select and copy notification text on a computer. ([`bd61057`](https://github.com/virajdas/ia-app/commit/bd61057))
+- **web** — Consecutive messages in club chats now stay grouped so names are not repeated. ([`cb754c3`](https://github.com/virajdas/ia-app/commit/cb754c3))
+- **calendar** — Calendar now uses readable agenda and day views on phones, with consistent event views and a compact Dashboard date picker. ([`84e5fd8`](https://github.com/virajdas/ia-app/commit/84e5fd8))
+- **web** — Custom themes now let you choose page text color and automatically use higher-contrast text on custom surfaces. ([`ead3f2d`](https://github.com/virajdas/ia-app/commit/ead3f2d))
+
+### Fixed
+
+- **calendar** — Calendar views now scroll correctly, show readable agenda details, and make Canvas connections easier to set up. ([`0ac5f08`](https://github.com/virajdas/ia-app/commit/0ac5f08))
+
 ## v0.8.18 — 2026-08-31 (alpha)
 
 ### Improved
