@@ -99,9 +99,9 @@ export function channelMessageAuditMeta(input: {
     channelId: input.channelId,
     parentMessageId: input.parentMessageId ?? null,
     replyToMessageId: input.replyToMessageId ?? null,
-    body: input.body,
     bodyPreview: input.body.slice(0, AUDIT_MESSAGE_PREVIEW_CHARACTERS),
-    bodyMarkdown: input.bodyMarkdown ?? null,
+    bodyLength: input.body.length,
+    markdownLength: input.bodyMarkdown?.length ?? 0,
     attachmentCount: input.attachmentCount ?? 0,
     hasPoll: input.hasPoll ?? false,
   };
@@ -660,8 +660,6 @@ export const postMessage = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.patch(channel._id, { lastMessageAt: now });
-
     await consumeStagedChatAttachments(ctx, {
       attachmentUploadIds,
       uploaderId: user._id,
@@ -723,7 +721,15 @@ export const markRead = mutation({
     const access = await getChannelAccess(ctx, channel, context, user._id);
     if (!access.canView) throw new ConvexError("Cannot view this channel");
 
-    const now = Date.now();
+    const latestMessage = await ctx.db
+      .query("clubChannelMessages")
+      .withIndex("by_channelId_and_createdAt", (q) =>
+        q.eq("channelId", channel._id),
+      )
+      .order("desc")
+      .first();
+    if (!latestMessage) return null;
+    const lastReadAt = latestMessage._creationTime;
     const receipt = await ctx.db
       .query("clubChannelReadReceipts")
       .withIndex("by_userId_and_channelId", (q) =>
@@ -731,13 +737,14 @@ export const markRead = mutation({
       )
       .unique();
     if (receipt) {
-      await ctx.db.patch(receipt._id, { lastReadAt: now });
+      if (receipt.lastReadAt >= lastReadAt) return null;
+      await ctx.db.patch(receipt._id, { lastReadAt });
     } else {
       await ctx.db.insert("clubChannelReadReceipts", {
         clubId: channel.clubId,
         channelId: channel._id,
         userId: user._id,
-        lastReadAt: now,
+        lastReadAt,
       });
     }
     return null;
@@ -1831,8 +1838,12 @@ export const updateMessage = mutation({
           parentMessageId: message.parentMessageId,
           replyToMessageId: message.replyToMessageId,
         }),
-        previousBody: message.body,
-        previousBodyMarkdown: message.bodyMarkdown ?? null,
+        previousBodyPreview: message.body.slice(
+          0,
+          AUDIT_MESSAGE_PREVIEW_CHARACTERS,
+        ),
+        previousBodyLength: message.body.length,
+        previousMarkdownLength: message.bodyMarkdown?.length ?? 0,
       },
     });
   },

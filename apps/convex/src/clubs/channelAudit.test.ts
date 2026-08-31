@@ -3,7 +3,7 @@ import type { Id } from "../_generated/dataModel";
 import { channelMessageAuditMeta, channelMessageReactionAuditMeta } from "./channels";
 
 describe("channel message audit metadata", () => {
-  test("records the canonical text and conversation context", () => {
+  test("records bounded content metadata and conversation context", () => {
     const meta = channelMessageAuditMeta({
       clubId: "club" as Id<"clubs">,
       channelId: "channel" as Id<"clubChannels">,
@@ -19,15 +19,15 @@ describe("channel message audit metadata", () => {
       channelId: "channel",
       parentMessageId: "parent",
       replyToMessageId: null,
-      body: "A complete chat message",
       bodyPreview: "A complete chat message",
-      bodyMarkdown: "**A complete chat message**",
+      bodyLength: 23,
+      markdownLength: 27,
       attachmentCount: 2,
       hasPoll: true,
     });
   });
 
-  test("bounds the table preview without truncating the stored message", () => {
+  test("bounds the table preview without duplicating the stored message", () => {
     const body = "x".repeat(300);
     const meta = channelMessageAuditMeta({
       clubId: "club" as Id<"clubs">,
@@ -35,8 +35,9 @@ describe("channel message audit metadata", () => {
       body,
     });
 
-    expect(meta.body).toHaveLength(300);
     expect(meta.bodyPreview).toHaveLength(240);
+    expect(meta.bodyLength).toBe(300);
+    expect(meta).not.toHaveProperty("body");
   });
 
   test("records a normalized reaction with its conversation context", () => {

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, View, type LayoutChangeEvent } from "react-native";
+import {
+  Alert,
+  AppState,
+  Linking,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
 import { router } from "expo-router";
 import {
   SafeAreaView,
@@ -52,6 +58,7 @@ import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
+import { latestChatActivityAt } from "~/apps/shared/chat/activity";
 
 type ClubChatScreenProps = {
   clubId: string;
@@ -120,6 +127,10 @@ export function ClubChatScreen({
         : ([...(results as ChatMessage[])].reverse() as ChatMessage[]),
     [paginationStatus, results],
   );
+  const latestVisibleActivityAt = useMemo(
+    () => latestChatActivityAt(messages),
+    [messages],
+  );
   const thread = rawThread as ChatThread | null | undefined;
   const channelContext = rawChannelContext as ClubChatData | null | undefined;
   const mentionContext = rawMentionContext as
@@ -146,6 +157,7 @@ export function ClubChatScreen({
   const reportMessage = useMutation(
     api.moderation.reports.submitClubChannelMessage,
   );
+  const markChannelRead = useMutation(api.clubs.channels.markRead);
   const composer = useChatComposer();
   const attachments = useManagedChatAttachments();
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
@@ -168,6 +180,45 @@ export function ClubChatScreen({
   useEffect(() => {
     setMentionContextRequested(false);
   }, [channelId, clubId]);
+  const lastMarkedActivityRef = useRef(0);
+  const lastReadAttemptAtRef = useRef(0);
+
+  useEffect(() => {
+    lastMarkedActivityRef.current = 0;
+    lastReadAttemptAtRef.current = 0;
+  }, [channelId]);
+
+  useEffect(() => {
+    if (threadRootId || !latestVisibleActivityAt) return;
+
+    const markVisibleActivityRead = () => {
+      if (AppState.currentState !== "active") return;
+      if (latestVisibleActivityAt <= lastMarkedActivityRef.current) return;
+
+      const previousActivity = lastMarkedActivityRef.current;
+      lastMarkedActivityRef.current = latestVisibleActivityAt;
+      lastReadAttemptAtRef.current = Date.now();
+      void markChannelRead({
+        channelId: channelId as Id<"clubChannels">,
+      }).catch(() => {
+        if (lastMarkedActivityRef.current === latestVisibleActivityAt) {
+          lastMarkedActivityRef.current = previousActivity;
+        }
+      });
+    };
+    const delay = Math.max(
+      0,
+      3_000 - (Date.now() - lastReadAttemptAtRef.current),
+    );
+    const timeout = setTimeout(markVisibleActivityRead, delay);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") markVisibleActivityRead();
+    });
+    return () => {
+      clearTimeout(timeout);
+      subscription.remove();
+    };
+  }, [channelId, latestVisibleActivityAt, markChannelRead, threadRootId]);
   const threadRoot = threadRootId
     ? thread === undefined
       ? undefined

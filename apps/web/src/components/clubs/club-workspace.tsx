@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   animate,
   motion,
@@ -232,10 +232,31 @@ export function ClubWorkspace({
   const navigation = useQuery(api.clubs.detail.getWorkspaceNavigation, {
     clubId,
   }) as ClubWorkspaceNavigation | undefined;
+  const activity = useQuery(api.clubs.detail.getWorkspaceActivity, {
+    clubId,
+  });
   const { toast } = useToast();
   const deleteChannel = useMutation(api.clubs.channels.remove);
   const club = navigation?.club;
-  const channels = navigation?.channels ?? [];
+  const activityByChannelId = useMemo(
+    () =>
+      new Map(
+        activity?.channels.map((channel) => [
+          channel.channelId,
+          channel.hasUnreadMessages,
+        ]) ?? [],
+      ),
+    [activity],
+  );
+  const channels = useMemo<ClubNavigationChannel[]>(
+    () =>
+      (navigation?.channels ?? []).map((channel) => ({
+        ...channel,
+        hasUnreadMessages:
+          activityByChannelId.get(channel._id) ?? false,
+      })),
+    [activityByChannelId, navigation?.channels],
+  );
   const myClubs = navigation?.myClubs ?? [];
   const canCreateChannels = navigation?.viewer.canCreateChannels ?? false;
   const canEditChannels = navigation?.viewer.canEditChannels ?? false;

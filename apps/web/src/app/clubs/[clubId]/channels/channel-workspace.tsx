@@ -76,6 +76,7 @@ import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import type { ClubChannelMessage } from '@/components/clubs/types';
+import { latestChatActivityAt } from '~/apps/shared/chat/activity';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 import {
@@ -1257,6 +1258,10 @@ export function ChannelWorkspace() {
       ),
     [messageResults],
   );
+  const latestVisibleActivityAt = useMemo(
+    () => latestChatActivityAt(messages),
+    [messages],
+  );
   const selectedThreadResult = useQuery(
     api.clubs.channels.getThread,
     selectedThreadId
@@ -1295,9 +1300,44 @@ export function ChannelWorkspace() {
   const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
+  const lastMarkedActivityRef = useRef(0);
+  const lastReadAttemptAtRef = useRef(0);
+
   useEffect(() => {
-    void markChannelRead({ channelId });
-  }, [channelId, markChannelRead]);
+    lastMarkedActivityRef.current = 0;
+    lastReadAttemptAtRef.current = 0;
+  }, [channelId]);
+
+  useEffect(() => {
+    if (!latestVisibleActivityAt) return;
+
+    const markVisibleActivityRead = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (latestVisibleActivityAt <= lastMarkedActivityRef.current) return;
+
+      const previousActivity = lastMarkedActivityRef.current;
+      lastMarkedActivityRef.current = latestVisibleActivityAt;
+      lastReadAttemptAtRef.current = Date.now();
+      void markChannelRead({ channelId }).catch(() => {
+        if (lastMarkedActivityRef.current === latestVisibleActivityAt) {
+          lastMarkedActivityRef.current = previousActivity;
+        }
+      });
+    };
+    const delay = Math.max(
+      0,
+      3_000 - (Date.now() - lastReadAttemptAtRef.current),
+    );
+    const timeout = window.setTimeout(markVisibleActivityRead, delay);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') markVisibleActivityRead();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [channelId, latestVisibleActivityAt, markChannelRead]);
 
   const submitMessage = async ({
     body,

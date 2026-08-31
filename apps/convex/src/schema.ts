@@ -696,8 +696,9 @@ export const schema = defineSchema({
     description: v.optional(v.string()),
     visibility: clubChannelVisibilityValidator,
     createdById: v.id("users"),
-    // Denormalized on message creation so sidebar unread state does not scan
-    // the unbounded messages table.
+    // Legacy denormalized activity marker. New writes derive compact activity
+    // from the indexed message stream so hot channels do not contend on, or
+    // invalidate every subscription to, this otherwise stable channel row.
     lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),

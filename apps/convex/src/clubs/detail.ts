@@ -130,6 +130,19 @@ const workspaceNavigationValidator = v.union(
   v.null(),
 );
 
+const workspaceActivityValidator = v.union(
+  v.object({
+    channels: v.array(
+      v.object({
+        channelId: v.id("clubChannels"),
+        lastMessageAt: v.union(v.number(), v.null()),
+        hasUnreadMessages: v.boolean(),
+      }),
+    ),
+  }),
+  v.null(),
+);
+
 export const get = query({
   args: { clubId: v.id("clubs") },
   returns: clubDetailValidator,
@@ -384,23 +397,12 @@ export const getWorkspaceNavigation = query({
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
       .collect();
-    const [readReceipts, unitRows] = await Promise.all([
-      ctx.db
-        .query("clubChannelReadReceipts")
-        .withIndex("by_userId_and_clubId", (q) =>
-          q.eq("userId", user._id).eq("clubId", club._id),
-        )
-        .take(500),
-      ctx.db
-        .query("clubUnits")
-        .withIndex("by_clubId_and_isActive_and_position", (q) =>
-          q.eq("clubId", club._id).eq("isActive", true),
-        )
-        .take(250),
-    ]);
-    const lastReadAtByChannelId = new Map(
-      readReceipts.map((receipt) => [receipt.channelId, receipt.lastReadAt]),
-    );
+    const unitRows = await ctx.db
+      .query("clubUnits")
+      .withIndex("by_clubId_and_isActive_and_position", (q) =>
+        q.eq("clubId", club._id).eq("isActive", true),
+      )
+      .take(250);
     const accessByChannelId = await getChannelAccessForChannels(
       ctx,
       channelRows,
@@ -447,14 +449,10 @@ export const getWorkspaceNavigation = query({
             description: channel.description,
             visibility: channel.visibility,
             createdById: channel.createdById,
-            lastMessageAt: channel.lastMessageAt,
             createdAt: channel.createdAt,
             updatedAt: channel.updatedAt,
             memberships: memberships.map((membership) => ({ userId: membership.userId })),
             viewerCanPost: access.canPost,
-            hasUnreadMessages:
-              (channel.lastMessageAt ?? 0) >
-              (lastReadAtByChannelId.get(channel._id) ?? 0),
           };
         }),
       )
@@ -522,6 +520,67 @@ export const getWorkspaceNavigation = query({
         position: unit.position,
       })),
       myClubs,
+    };
+  },
+});
+
+/**
+ * High-churn channel activity is isolated from the stable workspace shell so
+ * a message does not recompute club metadata, structure, and memberships for
+ * every connected viewer.
+ */
+export const getWorkspaceActivity = query({
+  args: { clubId: v.id("clubs") },
+  returns: workspaceActivityValidator,
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const club = await ctx.db.get(args.clubId);
+    if (!club || !club.isActive) return null;
+    const context = await getChannelViewerContext(ctx, club, user);
+    if (!context.canAccessWorkspace) return null;
+
+    const channelRows = await ctx.db
+      .query("clubChannels")
+      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
+      .take(500);
+    const [readReceipts, accessByChannelId] = await Promise.all([
+      ctx.db
+        .query("clubChannelReadReceipts")
+        .withIndex("by_userId_and_clubId", (q) =>
+          q.eq("userId", user._id).eq("clubId", club._id),
+        )
+        .take(500),
+      getChannelAccessForChannels(ctx, channelRows, context, user._id),
+    ]);
+    const lastReadAtByChannelId = new Map(
+      readReceipts.map((receipt) => [receipt.channelId, receipt.lastReadAt]),
+    );
+    const visibleChannels = channelRows.filter(
+      (channel) => accessByChannelId.get(channel._id)?.canView,
+    );
+
+    return {
+      channels: await Promise.all(
+        visibleChannels.map(async (channel) => {
+          const latestMessage = await ctx.db
+            .query("clubChannelMessages")
+            .withIndex("by_channelId_and_createdAt", (q) =>
+              q.eq("channelId", channel._id),
+            )
+            .order("desc")
+            .first();
+          const lastMessageAt = latestMessage?._creationTime ?? null;
+          return {
+            channelId: channel._id,
+            lastMessageAt,
+            hasUnreadMessages:
+              lastMessageAt !== null &&
+              lastMessageAt >
+                (lastReadAtByChannelId.get(channel._id) ?? 0),
+          };
+        }),
+      ),
     };
   },
 });

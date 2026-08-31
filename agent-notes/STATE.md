@@ -3,8 +3,9 @@
 ## Active Focus
 
 - **Branch**: `main`
-- **Goal**: Reduce the Convex read amplification found in the 2026-08-31
-  production usage audit, without mutating or deploying to production.
+- **Goal**: Make Convex usage scale predictably from the 2026-08-31 production
+  baseline toward a 1,500-user, chat-heavy school rollout, without mutating or
+  deploying to production.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
@@ -41,17 +42,37 @@
   once, bound unfiltered course candidate reads by the requested limit, and
   move the mobile Home dashboard from the full friend-schedule query to the
   day query.
+- Workspace navigation and channel activity are now separate subscriptions.
+  Message creation no longer patches `clubChannels.lastMessageAt`, so a hot
+  channel does not invalidate the broad club/structure/membership navigation
+  query for every viewer. A compact activity query reads only the newest
+  indexed message per visible channel plus the viewer's receipts. Web and
+  native chat advance receipts only while visible, throttle them to at most one
+  attempt every three seconds, and the mutation skips no-op writes.
+- Message audit events retain a 240-character preview, lengths, attachments,
+  poll, reply, actor, and entity context instead of duplicating each message's
+  full plain-text and Markdown payload into `auditEvents`.
+- Convex Professional is likely sufficient for the realistic 1,500-user school
+  workload after these optimizations, but the literal 3-10 messages per minute
+  from all 1,500 users is a stress ceiling rather than a normal human workload.
+  It implies 47.52M-158.4M messages in a 22-day, eight-hour school-month, or
+  194.4M-648M if sustained 24/7. The current one-scheduled-notification-job per
+  message architecture already makes that at least two function executions per
+  message before reactive subscribers, receipt writes, mentions, or push jobs.
+  Load testing and a reverse notification-subscriber index are required before
+  promising that ceiling on the Professional S256 deployment class.
 - PR #90's documented one-time production refreshes still appear outstanding:
   `courseCatalogMetadata` is empty and `appStats.roleGroupCountsReady` is
   absent. An authorized operator must explicitly approve running
   `internal.courses.metadata.refresh` and
   `internal.stats.rebuildUserCounts` against production.
-- The next scale architecture decision is to separate high-churn channel
-  activity (`lastMessageAt` / unread state) from static workspace navigation.
-  At chat-heavy scale, updating `clubChannels.lastMessageAt` on every send can
-  rerun the broad navigation subscription for every connected viewer. This was
-  not changed silently because it affects data shape, migration, and unread
-  freshness semantics.
+- The next chat scale work is to avoid scheduling a notification job for every
+  ordinary message when all-message notifications are opt-in, materialize or
+  batch per-message reactions/polls/attachments so a 30/50-message page does
+  not perform N-per-message reads, and run a production-shaped load test that
+  measures subscription fanout and S256 concurrency. The legacy optional
+  `clubChannels.lastMessageAt` field remains for compatibility and can be
+  removed in a later narrow migration after deployed clients no longer read it.
 
 ### Security Audit Remediation (2026-08-09)
 

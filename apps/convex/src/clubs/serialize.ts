@@ -79,12 +79,10 @@ export const workspaceClubChannelValidator = v.object({
   description: v.optional(v.string()),
   visibility: clubChannelVisibilityValidator,
   createdById: v.id("users"),
-  lastMessageAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
   memberships: v.array(v.object({ userId: v.id("users") })),
   viewerCanPost: v.boolean(),
-  hasUnreadMessages: v.boolean(),
 });
 
 /** Public user slice for club UIs — uses Convex `_id`, not legacy REST `id`. */
