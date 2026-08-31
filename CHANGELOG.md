@@ -12,6 +12,13 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.20 — 2026-08-31 (alpha)
+
+### Improved
+
+- **dashboard** — Dashboard calendar controls now live in the header, selected dates stay contained, and event dots remain visible. ([`e172d92`](https://github.com/virajdas/ia-app/commit/e172d92))
+- **dashboard** — Fun facts now feature more variety, with Phoenix facts appearing less often. ([`7550cfd`](https://github.com/virajdas/ia-app/commit/7550cfd))
+
 ## v0.8.19 — 2026-08-31 (alpha)
 
 ### Added

@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.20",
+    "date": "2026-08-31",
+    "commit": "e172d92",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "Dashboard calendar controls now live in the header, selected dates stay contained, and event dots remain visible.",
+        "commit": "e172d92"
+      },
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "Fun facts now feature more variety, with Phoenix facts appearing less often.",
+        "commit": "7550cfd"
+      }
+    ]
+  },
+  {
     "version": "0.8.19",
     "date": "2026-08-31",
     "commit": "fd62daf",
