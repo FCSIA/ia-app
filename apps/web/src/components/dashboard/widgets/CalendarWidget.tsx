@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { FunctionReturnType } from 'convex/server';
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
+import { addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
 import { useQuery } from 'convex/react';
-import { ArrowRight, Clock3, MapPin } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Clock3, MapPin } from 'lucide-react';
 
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,10 @@ export function CalendarWidget() {
   const DashboardDayButton = (props: React.ComponentProps<typeof CalendarDayButton>) => {
     const dayEvents = eventsForDay(props.day.date);
     return (
-      <CalendarDayButton {...props}>
+      <CalendarDayButton
+        {...props}
+        className={cn(props.className, 'mx-auto size-(--cell-size) min-w-0 rounded-full')}
+      >
         {props.children}
         <span className="flex h-1 items-center justify-center gap-0.5" aria-hidden="true">
           {dayEvents.slice(0, 3).map((entry) => (
@@ -61,19 +64,54 @@ export function CalendarWidget() {
     <Panel
       title="Calendar"
       action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/calendar">
-            Full calendar
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
+        <>
+          <div className="col-span-2 row-start-2 mt-3 flex items-center justify-self-center sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:mt-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Previous month"
+              onClick={() => setCurrentMonth((month) => addMonths(startOfMonth(month), -1))}
+            >
+              <ChevronLeft />
+            </Button>
+            <span className="min-w-24 whitespace-nowrap text-center text-sm font-semibold text-foreground" aria-live="polite">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Next month"
+              onClick={() => setCurrentMonth((month) => addMonths(startOfMonth(month), 1))}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+          <div className="col-start-2 row-start-1 justify-self-end sm:col-start-3">
+            <Button asChild variant="ghost" size="icon-sm" className="rounded-full sm:hidden">
+              <Link href="/calendar" aria-label="Full calendar">
+                <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+              <Link href="/calendar">
+                Full calendar
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </>
       }
-      className="[&>div:first-child]:flex-row [&>div:first-child]:items-center [&>div:first-child]:justify-between"
+      className="[&>div:first-child]:grid [&>div:first-child]:grid-cols-[1fr_auto] [&>div:first-child]:items-center sm:[&>div:first-child]:grid-cols-[1fr_auto_1fr] [&>div:first-child>div:last-child]:contents"
       contentClassName="space-y-4"
     >
       <Calendar
         mode="single"
         month={currentMonth}
+        hideNavigation
         onMonthChange={setCurrentMonth}
         selected={selectedDay}
         onSelect={(day) => {
@@ -82,7 +120,8 @@ export function CalendarWidget() {
         components={{ DayButton: DashboardDayButton }}
         className="w-full bg-transparent p-0 [--cell-size:2.75rem]"
         classNames={{
-          month: 'w-full gap-2',
+          month: 'w-full',
+          month_caption: 'hidden',
           month_grid: 'w-full',
           weekdays: 'flex border-b border-border/60 pb-1',
           weekday: 'flex-1 py-1 text-xs',
