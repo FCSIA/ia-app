@@ -2,6 +2,30 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.18",
+      "date": "2026-08-31",
+      "commit": "4da382d",
+      "changes": [
+        {
+          "category": "Improved",
+          "summary": "Clubs now keep your place when you switch tabs and show cleaner timestamps.",
+          "commit": "4da382d"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Selecting a club chat mention now works reliably in iPhone and iPad PWAs.",
+          "commit": "c168abb"
+        },
+        {
+          "category": "Fixed",
+          "scope": "calendar",
+          "summary": "Canvas and other connected ICS calendars no longer prevent the calendar from opening after events sync.",
+          "commit": "994632c"
+        }
+      ]
+    },
+    {
       "version": "0.8.17",
       "date": "2026-08-29",
       "commit": "a20d794",

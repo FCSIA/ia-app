@@ -12,6 +12,17 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.18 — 2026-08-31 (alpha)
+
+### Improved
+
+- Clubs now keep your place when you switch tabs and show cleaner timestamps. ([`4da382d`](https://github.com/virajdas/ia-app/commit/4da382d))
+
+### Fixed
+
+- **clubs** — Selecting a club chat mention now works reliably in iPhone and iPad PWAs. ([`c168abb`](https://github.com/virajdas/ia-app/commit/c168abb))
+- **calendar** — Canvas and other connected ICS calendars no longer prevent the calendar from opening after events sync. ([`994632c`](https://github.com/virajdas/ia-app/commit/994632c))
+
 ## v0.8.17 — 2026-08-29 (alpha)
 
 ### Improved
