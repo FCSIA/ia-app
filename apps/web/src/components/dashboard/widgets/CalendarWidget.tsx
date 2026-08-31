@@ -10,6 +10,7 @@ import { ArrowRight, Clock3, MapPin } from 'lucide-react';
 import { Panel } from '@/components/layout/page-frame';
 import { Button } from '@/components/ui/button';
 import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { api } from '~/apps/convex/src/_generated/api';
 
 type CalendarEntry = FunctionReturnType<typeof api.events.calendar.list>[number];
@@ -43,7 +44,13 @@ export function CalendarWidget() {
         {props.children}
         <span className="flex h-1 items-center justify-center gap-0.5" aria-hidden="true">
           {dayEvents.slice(0, 3).map((entry) => (
-            <span key={entry._id} className="size-1 rounded-full bg-primary/70" />
+            <span
+              key={entry._id}
+              className={cn(
+                'size-1 rounded-full',
+                props.modifiers.selected ? 'bg-primary-foreground/80' : 'bg-primary/70',
+              )}
+            />
           ))}
         </span>
       </CalendarDayButton>
@@ -61,6 +68,7 @@ export function CalendarWidget() {
           </Link>
         </Button>
       }
+      className="[&>div:first-child]:flex-row [&>div:first-child]:items-center [&>div:first-child]:justify-between"
       contentClassName="space-y-4"
     >
       <Calendar

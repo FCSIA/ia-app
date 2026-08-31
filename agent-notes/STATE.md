@@ -124,6 +124,8 @@
   intentionally offers agenda and day only. The Dashboard calendar uses the
   shared date-calendar adapter, and the ReUI registry is pinned to Radix Nova so
   the old `new-york` style cannot resolve Base UI source into this Radix app.
+  Its compact picker keeps header actions inline, removes the selected-today
+  cell backdrop, and preserves event-dot contrast on selected dates.
 - The calendar route uses the bounded visual-viewport shell so agenda and day
   own working internal scrollports. Agenda keeps descriptions hidden and uses
   a one-line, horizontally scrollable title region with edge-aware overflow
