@@ -60,6 +60,7 @@ import {
   ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -157,7 +158,7 @@ const REACTION_LABELS = Object.fromEntries(
 type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
 type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
-const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
+const MESSAGE_GROUP_WINDOW_MS = 30 * 60 * 1000;
 
 function isChannelReaction(value: string): value is ChannelReaction {
   return QUICK_REACTIONS.some((reaction) => reaction.value === value);
@@ -816,7 +817,7 @@ function MessageRow({
           <Message
             className={cn(
               'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
-              dense ? 'py-1.5' : 'py-2.5',
+              groupedWithPrevious ? 'py-0' : dense ? 'py-1.5' : 'py-2.5',
               isSending &&
                 'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
             )}
@@ -835,31 +836,31 @@ function MessageRow({
         ) : null}
       </MessageAvatar>
       <MessageContent className="gap-0">
-        <MessageHeader className="gap-2 px-0 text-[13px]">
-          {!groupedWithPrevious ? (
+        {!groupedWithPrevious ? (
+          <MessageHeader className="gap-2 px-0 text-[13px]">
             <span className="text-[13px] font-semibold text-foreground">
               {fullName(message.author)}
             </span>
-          ) : null}
-          <span className="text-xs text-muted-foreground">
-            {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
-          </span>
-          {message.isPinned ? (
-            <Badge variant="solid" color="amber" className="h-5 text-[10px]">
-              Pinned
-            </Badge>
-          ) : null}
-          {isEdited ? (
-            <button
-              type="button"
-              className="group/history flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary"
-              onClick={() => onShowHistory?.(message._id)}
-            >
-              <History className="size-3" />
-              <span>(edited)</span>
-            </button>
-          ) : null}
-        </MessageHeader>
+            <span className="text-xs text-muted-foreground">
+              {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
+            </span>
+            {message.isPinned ? (
+              <Badge variant="solid" color="amber" className="h-5 text-[10px]">
+                Pinned
+              </Badge>
+            ) : null}
+            {isEdited ? (
+              <button
+                type="button"
+                className="group/history flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary"
+                onClick={() => onShowHistory?.(message._id)}
+              >
+                <History className="size-3" />
+                <span>(edited)</span>
+              </button>
+            ) : null}
+          </MessageHeader>
+        ) : null}
 
         {isEditing ? (
           <div className="mt-2" />
@@ -867,7 +868,7 @@ function MessageRow({
           <Bubble
             variant="ghost"
             align="start"
-            className="mt-1"
+            className={cn(!groupedWithPrevious && 'mt-1')}
           >
             {message.replyToMessageId ? (
               <div className="mb-1 flex min-w-0 items-baseline gap-1.5 border-l-2 border-border pl-2 text-xs text-muted-foreground">
@@ -1109,6 +1110,10 @@ function MessageRow({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
+        <ContextMenuLabel>
+          Sent {format(new Date(message.createdAt), 'PPPP \'at\' h:mm:ss a')}
+        </ContextMenuLabel>
+        <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuSub>
             <ContextMenuSubTrigger>
@@ -1708,7 +1713,7 @@ export function ChannelWorkspace() {
         </div>
 
         <MessageScroller className="min-h-0 flex-1">
-          <MessageScrollerViewport>
+          <MessageScrollerViewport preserveScrollOnPrepend>
             <MessageScrollerContent
               className={cn(
                 'mx-auto w-full max-w-4xl p-2',

@@ -6,7 +6,7 @@ type MobileNavigationSwipeOptions = {
 };
 
 function useMobileNavigationSwipe(
-  onSwipeRight: () => void,
+  onSwipeRight: (() => void) | undefined,
   { onProgress, onCancel }: MobileNavigationSwipeOptions = {},
 ) {
   const swipeStartRef = useRef<{ x: number; y: number; at: number } | null>(
@@ -39,7 +39,7 @@ function useMobileNavigationSwipe(
     }
 
     swipeStartRef.current = null;
-    swipeActionRef.current();
+    swipeActionRef.current?.();
     return true;
   };
 
@@ -100,7 +100,7 @@ function useMobileNavigationSwipe(
         deltaX > deltaY * 1.4 &&
         deltaY <= 64
       ) {
-        swipeActionRef.current();
+        swipeActionRef.current?.();
       } else {
         onCancel?.();
       }
@@ -116,6 +116,8 @@ function useMobileNavigationSwipe(
     swipeStartRef.current = null;
     onCancel?.();
   };
+
+  if (!onSwipeRight) return {};
 
   return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel };
 }

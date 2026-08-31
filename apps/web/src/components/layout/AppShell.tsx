@@ -2,7 +2,6 @@
 
 import {
   Fragment,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -66,15 +65,8 @@ export function AppShell({
   const appRootRef = useRef<HTMLDivElement>(null);
   const usesVisualViewport = viewportMode === "visual";
   const safePathname = pathname ?? "/dashboard";
-  const openMobileNavigation = useCallback(() => {
-    if (onMobileSwipeRight) {
-      onMobileSwipeRight();
-      return;
-    }
-    setMobileOpen(true);
-  }, [onMobileSwipeRight]);
   const swipeHandlers = useMobileNavigationSwipe(
-    openMobileNavigation,
+    onMobileSwipeRight,
     mobileNavigationSwipeOptions,
   );
 

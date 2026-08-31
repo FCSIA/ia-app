@@ -207,6 +207,8 @@
   conversational density: the shared club/channel navigation is available on
   desktop and mobile, installed mobile PWAs use a scrollable club rail beside
   the channel pane, and right-swipes begin the spring reveal before touch release.
+  Shell-level right swipes are otherwise disabled; the global More panel opens
+  only from its explicit navigation control.
   Messages render
   as a flat hover-action timeline, and the
   club directory, overview, people, tags, and composer use tighter flat rows
