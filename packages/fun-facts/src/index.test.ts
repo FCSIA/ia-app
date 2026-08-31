@@ -22,7 +22,13 @@ describe("navigation loading facts", () => {
     expect(pick()).toMatchObject({ rarity: "rare", visual: "phoenix" });
   });
 
-  it("selects ordinary facts outside the rare threshold", () => {
+  it("selects non-Phoenix rare facts at the rare threshold", () => {
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.1, 0]));
+    expect(pick()).toMatchObject({ rarity: "rare" });
+    expect(pick().visual).toBeUndefined();
+  });
+
+  it("selects ordinary facts outside the rare and Phoenix thresholds", () => {
     const pick = createNavigationLoadingFactPicker(sequenceRandom([0.7, 0]));
     expect(pick()).toMatchObject({ rarity: "common" });
   });

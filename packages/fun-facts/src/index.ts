@@ -42,6 +42,19 @@ export type LoadingFact = {
  */
 export const RARE_LOADING_FACTS: readonly LoadingFact[] = [
   {
+    id: "honey-never-spoils",
+    text: "Archaeologists have found ancient honey that was still safe to eat.",
+    rarity: "rare",
+  },
+  {
+    id: "octopus-hearts",
+    text: "An octopus has three hearts and blue blood.",
+    rarity: "rare",
+  },
+] as const;
+
+export const PHOENIX_LOADING_FACTS: readonly LoadingFact[] = [
+  {
     id: "phoenix-renewal",
     text: "Across many stories, the phoenix represents renewal and a fresh start.",
     rarity: "rare",
@@ -58,6 +71,7 @@ export const RARE_LOADING_FACTS: readonly LoadingFact[] = [
 /** Avoid showing the same fact again too soon in one session. */
 const RECENT_MESSAGE_COUNT = 30;
 const RARE_FACT_CHANCE = 0.6;
+const PHOENIX_FACT_CHANCE = 0.05;
 
 const COMMON_LOADING_FACTS: readonly LoadingFact[] = NAVIGATION_LOADING_MESSAGES.map(
   (text, index) => ({
@@ -71,7 +85,13 @@ export function createNavigationLoadingFactPicker(random: () => number = Math.ra
   const recentFactIds: string[] = [];
 
   return function pickFact(): LoadingFact {
-    const pool = random() < RARE_FACT_CHANCE ? RARE_LOADING_FACTS : COMMON_LOADING_FACTS;
+    const rarityRoll = random();
+    const pool =
+      rarityRoll < PHOENIX_FACT_CHANCE
+        ? PHOENIX_LOADING_FACTS
+        : rarityRoll < RARE_FACT_CHANCE + PHOENIX_FACT_CHANCE
+          ? RARE_LOADING_FACTS
+          : COMMON_LOADING_FACTS;
     const available = pool.filter((fact) => !recentFactIds.includes(fact.id));
     const candidates = available.length > 0 ? available : pool;
     const index = Math.min(candidates.length - 1, Math.floor(random() * candidates.length));
