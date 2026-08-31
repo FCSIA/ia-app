@@ -25,6 +25,7 @@ import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
 import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action';
+import { InputCopy } from '@/components/ui/input-copy';
 
 const ROLE_BADGE_LIMIT = 2;
 const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
@@ -96,13 +97,27 @@ function ResetPasswordAction({
 }: {
   user: AdminUserRecord;
   disabled: boolean;
-  onResetPassword: (user: AdminUserRecord) => void;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
 }) {
   const [open, setOpen] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState<string>();
+  const [isResetting, setIsResetting] = useState(false);
   const label = `Reset password for ${user.firstName} ${user.lastName}`;
 
+  const resetPassword = async () => {
+    setIsResetting(true);
+    const password = await onResetPassword(user);
+    setIsResetting(false);
+    if (password) setTemporaryPassword(password);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setTemporaryPassword(undefined);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <IconActionButton
         label={label}
         disabled={disabled}
@@ -112,22 +127,25 @@ function ResetPasswordAction({
       </IconActionButton>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset password?</AlertDialogTitle>
+          <AlertDialogTitle>{temporaryPassword ? 'Temporary password created' : 'Reset password?'}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will generate a temporary password for {user.firstName} {user.lastName} and mark
-            their account to change it after signing in.
+            {temporaryPassword
+              ? `Copy this password and share it securely with ${user.firstName} ${user.lastName}. It is only shown once.`
+              : `This will generate a temporary password for ${user.firstName} ${user.lastName} and mark their account to change it after signing in.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {temporaryPassword ? <InputCopy label="Temporary password" value={temporaryPassword} variant="button" /> : null}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              onResetPassword(user);
-              setOpen(false);
-            }}
-          >
-            Reset password
-          </AlertDialogAction>
+          {temporaryPassword ? (
+            <AlertDialogCancel>Done</AlertDialogCancel>
+          ) : (
+            <>
+              <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+              <Button type="button" onClick={() => void resetPassword()} disabled={isResetting}>
+                {isResetting ? 'Resetting...' : 'Reset password'}
+              </Button>
+            </>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -226,8 +244,8 @@ function UserTableSection({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
@@ -527,8 +545,8 @@ export function AdminUsersTab({
   canDeleteUsers: boolean;
   onDeactivate: (userId: string) => void;
   onActivate: (userId: string) => void;
-  onResetPassword: (user: AdminUserRecord) => void;
-  onDeleteUsers: (userIds: string[]) => Promise<boolean>;
+  onResetPassword: (user: AdminUserRecord) => Promise<string | undefined>;
+  onDeleteUsers: (userIds: string[]) => Promise<boolean | undefined>;
   isDeleteUsersPending: boolean;
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
