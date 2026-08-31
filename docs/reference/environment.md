@@ -72,7 +72,7 @@ on the same LAN, rewrite only the public client URLs to the development
 machine's LAN address, then restart the web development server:
 
 ```bash
-pnpm sync:convex-env -- --host 10.0.0.231
+pnpm sync:convex-env -- --host <LAN IPv4>
 pnpm dev
 ```
 
@@ -80,6 +80,21 @@ The server-side Convex URLs remain on loopback. The rewritten public URLs are
 used by both the web PWA and the Expo client. An HTTPS frontend tunnel cannot
 connect to a local HTTP Convex backend because browsers block mixed content;
 use the named cloud development deployment flow below for HTTPS tunnels.
+
+The selected LAN host is retained for later environment syncs. If the machine
+changes networks and the previous address is no longer assigned, requests can
+time out at that old address (for example, `ConnectTimeoutError` to port
+`3211`). Re-run the command above with the current LAN IPv4 address, then
+restart `pnpm dev`. For desktop-only work, reset the public URLs to loopback
+explicitly instead:
+
+```bash
+pnpm sync:convex-env -- --host 127.0.0.1
+pnpm dev
+```
+
+Both cases require the local Convex watcher started by `pnpm dev`; a connection
+refused or timeout on local ports can also mean that watcher is not running.
 
 For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
 an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment

@@ -2,7 +2,15 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
+import { format, isSameDay, isSameYear } from 'date-fns';
+
+function formatChatTimestamp(value: number | string | Date) {
+  const date = new Date(value);
+  const now = new Date();
+  if (isSameDay(date, now)) return format(date, 'h:mm a');
+  if (isSameYear(date, now)) return format(date, 'MMM d');
+  return format(date, 'MMM d, yyyy');
+}
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
 import Image from 'next/image';
 import {
@@ -280,6 +288,7 @@ function MessageBody({ message }: { message: ClubChannelMessage }) {
           ? (message.bodyRich as ClubChannelMessageRichBody)
           : null
       }
+      className="!text-[13px] !leading-normal"
     />
   );
 }
@@ -358,7 +367,7 @@ function PinnedMessagesButton({
                           {fullName(message.author)}
                         </span>
                         <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                          {formatChatTimestamp(message.createdAt)}
                         </span>
                       </span>
                       <span className="mt-0.5 line-clamp-2 block text-sm leading-5 text-muted-foreground">
@@ -804,14 +813,12 @@ function MessageRow({
         />
       </MessageAvatar>
       <MessageContent className="gap-0">
-        <MessageHeader className="gap-2 px-0 text-sm">
-          <span className="text-sm font-semibold text-foreground">
+        <MessageHeader className="gap-2 px-0 text-[13px]">
+          <span className="text-[13px] font-semibold text-foreground">
             {fullName(message.author)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {isSending
-              ? 'Sending…'
-              : formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+            {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
           </span>
           {message.isPinned ? (
             <Badge variant="solid" color="amber" className="h-5 text-[10px]">
@@ -855,12 +862,12 @@ function MessageRow({
             {isDeleted || hasBody ? (
               <BubbleContent
                 className={cn(
-                  'text-sm leading-normal',
+                  'text-[13px] leading-normal',
                   highlighted && 'rounded-md bg-primary/10 px-1.5 py-0.5 ring-1 ring-primary/25',
                 )}
               >
                 {isDeleted ? (
-                  <p className="text-sm italic text-muted-foreground">Message deleted</p>
+                  <p className="text-[13px] italic text-muted-foreground">Message deleted</p>
                 ) : (
                   <MessageBody message={message} />
                 )}
@@ -1229,6 +1236,7 @@ export function ChannelWorkspace() {
   );
 
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
+  const markChannelRead = useMutation(api.clubs.channels.markRead);
   const finalizeChatAttachment = useAction(api.uploads.files.finalizeChatAttachment);
   const discardChatAttachment = useMutation(api.uploads.files.discardChatAttachment);
   const postMessage = useMutation(api.clubs.channels.postMessage).withOptimisticUpdate(
@@ -1257,6 +1265,10 @@ export function ChannelWorkspace() {
   const votePoll = useMutation(api.clubs.channels.votePoll);
   const submitReport = useMutation(api.moderation.reports.submitClubChannelMessage);
   const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
+
+  useEffect(() => {
+    void markChannelRead({ channelId });
+  }, [channelId, markChannelRead]);
 
   const submitMessage = async ({
     body,
@@ -1722,7 +1734,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="channel-composer-dock shrink-0 border-t bg-card p-2">
+      <div className="channel-composer-dock shrink-0 border-t bg-card px-2 pb-2 pt-1.5">
         <div className="mx-auto max-w-4xl">
           {canPost ? (
             <div className="flex flex-col gap-1.5">

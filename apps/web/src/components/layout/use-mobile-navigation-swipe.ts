@@ -91,8 +91,9 @@ function useMobileNavigationSwipe(
     const touch = event.changedTouches[0];
     if (onProgress) {
       const start = swipeStartRef.current;
-      const deltaX = start ? touch.clientX - start.x : 0;
-      const deltaY = start ? Math.abs(touch.clientY - start.y) : Infinity;
+      if (!start) return;
+      const deltaX = touch.clientX - start.x;
+      const deltaY = Math.abs(touch.clientY - start.y);
       if (
         start &&
         deltaX >= window.innerWidth * 0.28 &&
@@ -111,6 +112,7 @@ function useMobileNavigationSwipe(
   };
 
   const onTouchCancel = () => {
+    if (!swipeStartRef.current) return;
     swipeStartRef.current = null;
     onCancel?.();
   };

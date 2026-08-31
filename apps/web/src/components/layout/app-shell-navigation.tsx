@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMobileTabMemory } from "@/components/layout/use-mobile-tab-memory";
 import {
   Drawer,
   DrawerContent,
@@ -30,17 +31,31 @@ import {
 } from "@/components/ui/drawer";
 import { Tooltip } from "@/components/ui/tooltip";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
+export type MobileTabId =
+  | "announcements"
+  | "clubs"
+  | "schedule"
+  | "calendar"
+  | "events"
+  | "flex-friday"
+  | "wrapped";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  mobileTabId?: MobileTabId;
+};
 
 const primaryNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/announcements", label: "Announcements", icon: Megaphone },
-  { href: "/clubs", label: "Clubs", icon: UsersRound },
-  { href: "/schedule", label: "Schedule", icon: ClipboardList },
-  { href: "/events", label: "Events", icon: Ticket },
-  { href: "/calendar", label: "Calendar", icon: CalendarRange },
-  { href: "/flex-friday", label: "Flex Friday", icon: Presentation },
-  { href: "/wrapped", label: "Wrapped", icon: Star },
+  { href: "/announcements", label: "Announcements", icon: Megaphone, mobileTabId: "announcements" },
+  { href: "/clubs", label: "Clubs", icon: UsersRound, mobileTabId: "clubs" },
+  { href: "/schedule", label: "Schedule", icon: ClipboardList, mobileTabId: "schedule" },
+  { href: "/events", label: "Events", icon: Ticket, mobileTabId: "events" },
+  { href: "/calendar", label: "Calendar", icon: CalendarRange, mobileTabId: "calendar" },
+  { href: "/flex-friday", label: "Flex Friday", icon: Presentation, mobileTabId: "flex-friday" },
+  { href: "/wrapped", label: "Wrapped", icon: Star, mobileTabId: "wrapped" },
 ];
 
 const accountNav: NavItem[] = [
@@ -59,6 +74,7 @@ type AppShellNavigationProps = {
   showAdmin: boolean;
   showSchedule: boolean;
   showWrapped: boolean;
+  mobileTabLayout?: string[];
 };
 
 function getNavigationItems({
@@ -277,14 +293,34 @@ function AppShellMobileNavigation({
 
 type MobileTabItem = NavItem | { href: "#more"; label: "More"; icon: typeof Menu };
 
+function getMobileTabEditorItems(props: AppShellNavigationProps) {
+  return getNavigationItems(props).filter(
+    (item): item is NavItem & { mobileTabId: MobileTabId } => item.mobileTabId !== undefined,
+  );
+}
+
 function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
+  const availableItems = getMobileTabEditorItems(props);
+  const availableById = new Map(availableItems.map((item) => [item.mobileTabId, item]));
+  const defaults: MobileTabId[] = [
+    "announcements",
+    "clubs",
+    props.showSchedule ? "schedule" : "calendar",
+  ];
+  const savedIds = (props.mobileTabLayout ?? []).filter(
+    (id): id is MobileTabId => availableById.has(id as MobileTabId),
+  );
+  const selectedIds = [
+    ...savedIds,
+    ...defaults,
+  ].filter((id, index, ids) => availableById.has(id) && ids.indexOf(id) === index).slice(0, 3);
+
   return [
     { href: "/dashboard", label: "Home", icon: Home },
-    { href: "/announcements", label: "Feed", icon: Megaphone },
-    { href: "/clubs", label: "Clubs", icon: UsersRound },
-    props.showSchedule
-      ? { href: "/schedule", label: "Schedule", icon: ClipboardList }
-      : { href: "/calendar", label: "Calendar", icon: CalendarRange },
+    ...selectedIds.map((id) => {
+      const item = availableById.get(id)!;
+      return item.href === "/announcements" ? { ...item, label: "Feed" } : item;
+    }),
     { href: "#more", label: "More", icon: Menu },
   ];
 }
@@ -294,6 +330,7 @@ function AppShellMobileTabBar({
   ...props
 }: AppShellNavigationProps & { onOpenMenu: () => void }) {
   const reduceMotion = useReducedMotion();
+  const { getHref } = useMobileTabMemory();
   const items = getMobileTabItems(props);
   const directItems = items.filter((item) => item.href !== "#more");
   const moreActive = !directItems.some((item) => isActive(props.pathname, item.href));
@@ -340,21 +377,26 @@ function AppShellMobileTabBar({
           active && "text-foreground",
         );
 
-        return item.href === "#more" ? (
-          <button
-            key={item.href}
-            type="button"
-            className={className}
-            aria-label="Open more navigation"
-            aria-current={active ? "page" : undefined}
-            onClick={onOpenMenu}
-          >
-            {content}
-          </button>
-        ) : (
+        if (item.href === "#more") {
+          return (
+            <button
+              key={item.href}
+              type="button"
+              className={className}
+              aria-label="Open more navigation"
+              aria-current={active ? "page" : undefined}
+              onClick={onOpenMenu}
+            >
+              {content}
+            </button>
+          );
+        }
+        const tabId = (item as { mobileTabId?: MobileTabId }).mobileTabId;
+        const href = getHref(tabId, item.href);
+        return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href}
             prefetch
             className={className}
             aria-current={active ? "page" : undefined}
@@ -391,4 +433,5 @@ export {
   AppShellDesktopNavigation,
   AppShellMobileNavigation,
   AppShellMobileTabBar,
+  getMobileTabEditorItems,
 };

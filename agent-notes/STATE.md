@@ -189,8 +189,9 @@
   indexed lookups.
 - Web club pages now use a compact, channel-first workspace inspired by Discord's
   conversational density: the shared club/channel navigation is available on
-  desktop and mobile, mobile right-swipes begin the navigation reveal animation
-  before touch release, messages render
+  desktop and mobile, installed mobile PWAs use a scrollable club rail beside
+  the channel pane, and right-swipes begin the spring reveal before touch release.
+  Messages render
   as a flat hover-action timeline, and the
   club directory, overview, people, tags, and composer use tighter flat rows
   instead of spacious nested cards. Channel reactions now stay in document flow,

@@ -77,6 +77,7 @@ export const schema = defineSchema({
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),
+    mobileTabLayout: v.optional(v.array(v.string())),
     use24HourTime: v.optional(v.boolean()),
     avatarUrl: v.optional(v.string()),
     avatarStorageId: v.optional(v.id("_storage")),
@@ -695,6 +696,9 @@ export const schema = defineSchema({
     description: v.optional(v.string()),
     visibility: clubChannelVisibilityValidator,
     createdById: v.id("users"),
+    // Denormalized on message creation so sidebar unread state does not scan
+    // the unbounded messages table.
+    lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -709,6 +713,15 @@ export const schema = defineSchema({
     .index("by_channelId", ["channelId"])
     .index("by_channelId_and_userId", ["channelId", "userId"])
     .index("by_userId", ["userId"]),
+
+  clubChannelReadReceipts: defineTable({
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    userId: v.id("users"),
+    lastReadAt: v.number(),
+  })
+    .index("by_userId_and_clubId", ["userId", "clubId"])
+    .index("by_userId_and_channelId", ["userId", "channelId"]),
 
   clubTags: defineTable({
     clubId: v.id("clubs"),

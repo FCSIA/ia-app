@@ -641,6 +641,7 @@ export const postMessage = mutation({
       })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
 
+    const now = Date.now();
     const messageId = await ctx.db.insert("clubChannelMessages", {
       channelId: args.channelId,
       authorId: user._id,
@@ -654,9 +655,10 @@ export const postMessage = mutation({
       pollQuestion: poll?.question,
       pollOptions: poll?.options,
       isPinned: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
+    await ctx.db.patch(channel._id, { lastMessageAt: now });
 
     await consumeStagedChatAttachments(ctx, {
       attachmentUploadIds,
@@ -705,6 +707,38 @@ export const postMessage = mutation({
     );
 
     return messageId;
+  },
+});
+
+export const markRead = mutation({
+  args: { channelId: v.id("clubChannels") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) throw new ConvexError("Channel not found");
+    const context = await getClubContext(ctx, channel.clubId, user);
+    const access = await getChannelAccess(ctx, channel, context, user._id);
+    if (!access.canView) throw new ConvexError("Cannot view this channel");
+
+    const now = Date.now();
+    const receipt = await ctx.db
+      .query("clubChannelReadReceipts")
+      .withIndex("by_userId_and_channelId", (q) =>
+        q.eq("userId", user._id).eq("channelId", channel._id),
+      )
+      .unique();
+    if (receipt) {
+      await ctx.db.patch(receipt._id, { lastReadAt: now });
+    } else {
+      await ctx.db.insert("clubChannelReadReceipts", {
+        clubId: channel.clubId,
+        channelId: channel._id,
+        userId: user._id,
+        lastReadAt: now,
+      });
+    }
+    return null;
   },
 });
 

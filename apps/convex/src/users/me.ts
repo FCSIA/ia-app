@@ -18,6 +18,15 @@ import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
+const mobileTabValidator = v.union(
+  v.literal("announcements"),
+  v.literal("clubs"),
+  v.literal("schedule"),
+  v.literal("calendar"),
+  v.literal("events"),
+  v.literal("flex-friday"),
+  v.literal("wrapped"),
+);
 
 async function deleteStoredFile(
   ctx: MutationCtx,
@@ -50,6 +59,30 @@ export const updateDashboardLayout = mutation({
     const user = await getCurrentAppUser(ctx);
     await ctx.db.patch(user._id, {
       dashboardLayout: args.layout,
+      updatedAt: Date.now(),
+    });
+
+    const updated = await ctx.db.get(user._id);
+    if (!updated) {
+      throw new ConvexError("User not found.");
+    }
+    return toUserSelfProfile(updated);
+  },
+});
+
+export const updateMobileTabLayout = mutation({
+  args: {
+    layout: v.array(mobileTabValidator),
+  },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, args) => {
+    if (args.layout.length !== 3 || new Set(args.layout).size !== args.layout.length) {
+      throw new ConvexError("Choose three different tab destinations.");
+    }
+
+    const user = await getCurrentAppUser(ctx);
+    await ctx.db.patch(user._id, {
+      mobileTabLayout: args.layout,
       updatedAt: Date.now(),
     });
 

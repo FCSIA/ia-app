@@ -379,6 +379,15 @@ export const getWorkspaceNavigation = query({
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
       .collect();
+    const readReceipts = await ctx.db
+      .query("clubChannelReadReceipts")
+      .withIndex("by_userId_and_clubId", (q) =>
+        q.eq("userId", user._id).eq("clubId", club._id),
+      )
+      .take(500);
+    const lastReadAtByChannelId = new Map(
+      readReceipts.map((receipt) => [receipt.channelId, receipt.lastReadAt]),
+    );
     const channels = (
       await Promise.all(
         channelRows.map(async (channel) => {
@@ -419,10 +428,14 @@ export const getWorkspaceNavigation = query({
             description: channel.description,
             visibility: channel.visibility,
             createdById: channel.createdById,
+            lastMessageAt: channel.lastMessageAt,
             createdAt: channel.createdAt,
             updatedAt: channel.updatedAt,
             memberships: memberships.map((membership) => ({ userId: membership.userId })),
             viewerCanPost: access.canPost,
+            hasUnreadMessages:
+              (channel.lastMessageAt ?? 0) >
+              (lastReadAtByChannelId.get(channel._id) ?? 0),
           };
         }),
       )
@@ -452,15 +465,27 @@ export const getWorkspaceNavigation = query({
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
       ...sponsorRows.map((sponsorship) => [sponsorship.clubId, "SPONSOR" as const] as const),
     ]);
-    const myClubs = (
-      await Promise.all(
-        Array.from(clubRoles, async ([clubId, role]) => {
-          const row = await ctx.db.get(clubId);
-          if (!row?.isActive) return null;
-          return { _id: row._id, name: row.name, logoUrl: row.logoUrl ?? null, role };
-        }),
-      )
-    ).filter((row): row is NonNullable<typeof row> => !!row);
+    const myClubs = user.roles.includes("SUPER_ADMIN")
+      ? (
+          await ctx.db
+            .query("clubs")
+            .withIndex("by_isActive_and_name", (q) => q.eq("isActive", true))
+            .collect()
+        ).map((row) => ({
+          _id: row._id,
+          name: row.name,
+          logoUrl: row.logoUrl ?? null,
+          role: null,
+        }))
+      : (
+          await Promise.all(
+            Array.from(clubRoles, async ([clubId, role]) => {
+              const row = await ctx.db.get(clubId);
+              if (!row?.isActive) return null;
+              return { _id: row._id, name: row.name, logoUrl: row.logoUrl ?? null, role };
+            }),
+          )
+        ).filter((row): row is NonNullable<typeof row> => !!row);
 
     return {
       club: { _id: club._id, name: club.name, logoUrl: club.logoUrl ?? null },

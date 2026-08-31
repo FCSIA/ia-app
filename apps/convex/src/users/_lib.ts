@@ -27,6 +27,7 @@ export const userSelfProfileValidator = v.object({
   mustResetPassword: docs.users.fields.mustResetPassword,
   canReviewFeedback: docs.users.fields.canReviewFeedback,
   dashboardLayout: docs.users.fields.dashboardLayout,
+  mobileTabLayout: docs.users.fields.mobileTabLayout,
   use24HourTime: docs.users.fields.use24HourTime,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
 });
@@ -48,6 +49,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     mustResetPassword: user.mustResetPassword,
     canReviewFeedback: user.canReviewFeedback,
     dashboardLayout: user.dashboardLayout,
+    mobileTabLayout: user.mobileTabLayout,
     use24HourTime: user.use24HourTime ?? false,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
