@@ -339,7 +339,7 @@ const InlineComboboxItem = ({
   keywords,
   label,
   onClick,
-  onPointerDown,
+  onMouseDown,
   ...props
 }: {
   focusEditor?: boolean;
@@ -369,13 +369,11 @@ const InlineComboboxItem = ({
     <ComboboxItem
       {...props}
       className={cn(comboboxItemVariants(), className)}
-      onPointerDown={(event) => {
-        // Touch browsers blur the inline input before dispatching the item's
-        // click. That cancellation removes the mention target, leaving only
-        // the trigger character behind. Keep focus in the editor until the
-        // selection handler inserts the chosen item.
+      onMouseDown={(event) => {
+        // Safari 26 ignores pointerdown cancellation for roving-tabindex
+        // options. Cancel mousedown so the inline input survives until click.
         event.preventDefault();
-        onPointerDown?.(event);
+        onMouseDown?.(event);
       }}
       onClick={(event) => {
         removeInput(focusEditor);
