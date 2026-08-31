@@ -130,7 +130,7 @@ function EventCalendarAgendaView({
                   role="heading"
                   aria-level={3}
                   className={cn(
-                    "bg-muted/60 sticky top-0 z-10 flex items-baseline justify-between gap-4 border-b px-4 py-2",
+                    "bg-muted sticky top-0 z-10 flex items-baseline justify-between gap-4 border-b px-4 py-2",
                     // The custom ScrollArea's overlay scrollbar (w-2.5 = 10px)
                     // is painted UNDER this sticky, z-10, opaque header, so the
                     // thumb vanishes behind the day bar at the top of the view.

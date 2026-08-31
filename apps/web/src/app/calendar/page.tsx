@@ -218,7 +218,7 @@ export default function CalendarPage() {
         >
           <div className="shrink-0">
             <EventCalendarNav className="px-3 pt-3 md:px-4" />
-            <EventCalendarToolbar className="flex-wrap px-3 pb-3 md:px-4">
+            <EventCalendarToolbar className="flex-wrap justify-end px-3 pb-3 md:px-4">
               <ExternalCalendarSettingsDialog />
               <AddCalendarEntryDialog
                 trigger={

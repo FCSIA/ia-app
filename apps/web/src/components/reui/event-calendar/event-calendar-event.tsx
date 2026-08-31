@@ -306,7 +306,7 @@ function EventCalendarEvent<TData = unknown>({
         data-slot="event-calendar-agenda-dot"
         className="size-2 shrink-0 rounded-full bg-(--ec-event-color)"
       />
-      <span className="min-w-0 flex-1 touch-pan-x overflow-x-auto overscroll-x-contain whitespace-nowrap text-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <span className="scroll-fade-x no-scrollbar min-w-0 flex-1 touch-pan-x overflow-x-auto overscroll-x-contain whitespace-nowrap text-sm">
         {event.title}
       </span>
       {occurrence.isRecurring && (
