@@ -157,8 +157,26 @@ const REACTION_LABELS = Object.fromEntries(
 type ChannelReaction = (typeof QUICK_REACTIONS)[number]['value'];
 type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
+const MESSAGE_GROUP_WINDOW_MS = 5 * 60 * 1000;
+
 function isChannelReaction(value: string): value is ChannelReaction {
   return QUICK_REACTIONS.some((reaction) => reaction.value === value);
+}
+
+function shouldGroupMessages(
+  previous: ClubChannelMessage | undefined,
+  current: ClubChannelMessage,
+) {
+  if (!previous || previous.author._id !== current.author._id) return false;
+  if (previous.isPinned || current.isPinned) return false;
+  if ('deliveryState' in previous || 'deliveryState' in current) return false;
+
+  const previousDate = new Date(previous.createdAt);
+  const currentDate = new Date(current.createdAt);
+  if (!isSameDay(previousDate, currentDate)) return false;
+
+  const elapsed = currentDate.getTime() - previousDate.getTime();
+  return elapsed >= 0 && elapsed <= MESSAGE_GROUP_WINDOW_MS;
 }
 
 const STUDENT_SCHEDULE_ROLES = new Set<AppRole>([
@@ -706,6 +724,7 @@ function MessageRow({
   currentUserId,
   openReactionDetailsOnPress,
   compact = false,
+  groupedWithPrevious = false,
 }: {
   clubId: Id<'clubs'>;
   message: ClubChannelMessage;
@@ -734,6 +753,7 @@ function MessageRow({
   currentUserId?: string;
   openReactionDetailsOnPress: boolean;
   compact?: boolean;
+  groupedWithPrevious?: boolean;
 }) {
   const isTouchPrimary = useTouchPrimary();
   // Thread replies are always compact; on touch-primary devices every row
@@ -802,21 +822,25 @@ function MessageRow({
             )}
           >
       <MessageAvatar className="self-start overflow-visible bg-transparent">
-        <MessageAuthorPreview
-          author={message.author}
-          compact={dense}
-          currentUserId={currentUserId}
-          canSendFriendRequest={canSendFriendRequest}
-          friendshipStatus={friendshipStatus}
-          friendRequestPendingId={friendRequestPendingId}
-          onSendFriendRequest={onSendFriendRequest}
-        />
+        {!groupedWithPrevious ? (
+          <MessageAuthorPreview
+            author={message.author}
+            compact={dense}
+            currentUserId={currentUserId}
+            canSendFriendRequest={canSendFriendRequest}
+            friendshipStatus={friendshipStatus}
+            friendRequestPendingId={friendRequestPendingId}
+            onSendFriendRequest={onSendFriendRequest}
+          />
+        ) : null}
       </MessageAvatar>
       <MessageContent className="gap-0">
         <MessageHeader className="gap-2 px-0 text-[13px]">
-          <span className="text-[13px] font-semibold text-foreground">
-            {fullName(message.author)}
-          </span>
+          {!groupedWithPrevious ? (
+            <span className="text-[13px] font-semibold text-foreground">
+              {fullName(message.author)}
+            </span>
+          ) : null}
           <span className="text-xs text-muted-foreground">
             {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
           </span>
@@ -1453,7 +1477,11 @@ export function ChannelWorkspace() {
     }
   };
 
-  const renderMessageRow = (message: ClubChannelMessage, compact = false) => {
+  const renderMessageRow = (
+    message: ClubChannelMessage,
+    compact = false,
+    groupedWithPrevious = false,
+  ) => {
     const isEditing = editingMessageId === message._id;
 
     return (
@@ -1516,6 +1544,7 @@ export function ChannelWorkspace() {
           canModerateMessages={canModerateMessages}
           openReactionDetailsOnPress={isMobile || isTouchPrimary}
           compact={compact}
+          groupedWithPrevious={groupedWithPrevious}
         />
         {isEditing && (
           <div className="ml-12 mr-3 mt-1">
@@ -1608,9 +1637,9 @@ export function ChannelWorkspace() {
               <MessageScrollerItem messageId={selectedThread._id}>
                 {renderMessageRow(selectedThread)}
               </MessageScrollerItem>
-              {threadReplies.map((reply) => (
+              {threadReplies.map((reply, index) => (
                 <MessageScrollerItem key={reply._id} messageId={reply._id}>
-                  {renderMessageRow(reply, true)}
+                  {renderMessageRow(reply, true, shouldGroupMessages(threadReplies[index - 1], reply))}
                 </MessageScrollerItem>
               ))}
             </MessageScrollerContent>
@@ -1702,9 +1731,9 @@ export function ChannelWorkspace() {
                 </MessageScrollerItem>
               ) : null}
               {visibleMessages.length > 0 ? (
-                visibleMessages.map((message) => (
+                visibleMessages.map((message, index) => (
                   <MessageScrollerItem key={message._id} messageId={message._id}>
-                    {renderMessageRow(message)}
+                    {renderMessageRow(message, false, shouldGroupMessages(visibleMessages[index - 1], message))}
                   </MessageScrollerItem>
                 ))
               ) : messagePageStatus === 'LoadingFirstPage' ? null : (

@@ -6,8 +6,12 @@ import { useEffect, useState } from 'react';
 
 type IaOrbitMarkProps = Omit<ImageProps, 'src'>;
 
-function usesDarkOrbit(theme: string | undefined) {
-  return theme === 'dark' || theme === 'high-contrast' || theme === 'custom';
+type OrbitAppearance = 'default' | 'dark' | 'bubblegum' | 'contrast';
+
+function orbitAppearance(theme: string | undefined): OrbitAppearance {
+  if (theme === 'high-contrast') return 'contrast';
+  if (theme === 'bubblegum') return 'bubblegum';
+  return theme === 'dark' || theme === 'custom' ? 'dark' : 'default';
 }
 
 /** IA Orbit rendition that follows the active application appearance. */
@@ -15,10 +19,10 @@ export function IaOrbitMark({ alt = 'IA Orbit', ...props }: IaOrbitMarkProps) {
   const { resolvedTheme } = useTheme();
   // Keep the server render and the first client render identical. The saved
   // appearance is only available in the browser after hydration.
-  const [appearance, setAppearance] = useState<'dark' | 'default'>('default');
+  const [appearance, setAppearance] = useState<OrbitAppearance>('default');
 
   useEffect(() => {
-    setAppearance(usesDarkOrbit(resolvedTheme) ? 'dark' : 'default');
+    setAppearance(orbitAppearance(resolvedTheme));
   }, [resolvedTheme]);
 
   useEffect(() => {
@@ -27,8 +31,22 @@ export function IaOrbitMark({ alt = 'IA Orbit', ...props }: IaOrbitMarkProps) {
       ?? document.head.appendChild(document.createElement('link'));
     link.id = id;
     link.rel = 'icon';
-    link.type = 'image/x-icon';
-    link.href = appearance === 'dark' ? '/favicon-dark.ico' : '/favicon.ico';
+    const usesPngIcon = appearance === 'bubblegum' || appearance === 'contrast';
+    link.type = usesPngIcon ? 'image/png' : 'image/x-icon';
+    link.href = usesPngIcon
+      ? `/icons/ia-orbit-${appearance}-512.png`
+      : appearance === 'dark'
+        ? '/favicon-dark.ico'
+        : '/favicon.ico';
+
+    const appleIcon = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')
+      ?? document.head.appendChild(document.createElement('link'));
+    appleIcon.rel = 'apple-touch-icon';
+    appleIcon.sizes = '180x180';
+    appleIcon.type = 'image/png';
+    appleIcon.href = usesPngIcon
+      ? `/icons/ia-orbit-${appearance}-180.png`
+      : `/icons/ia-orbit-${appearance}-512.png`;
   }, [appearance]);
 
   return <Image src={`/icons/ia-orbit-${appearance}.png`} alt={alt} {...props} />;
