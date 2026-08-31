@@ -26,7 +26,6 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
-import { customThemeEnabled } from '@/lib/theme-features';
 import { cn } from '@/lib/utils';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
@@ -484,7 +483,7 @@ const APPEARANCE_OPTIONS = [
   { id: 'system', label: 'System' },
   { id: 'high-contrast', label: 'Contrast' },
   { id: 'bubblegum', label: 'Bubblegum' },
-  ...(customThemeEnabled ? [{ id: 'custom', label: 'Custom' }] : []),
+  { id: 'custom', label: 'Custom' },
 ] as const;
 
 export function AppearanceCard({
@@ -516,7 +515,7 @@ export function AppearanceCard({
         ))}
       </RadioGroup>
 
-      {customThemeEnabled && theme === 'custom' ? <CustomThemeEditor /> : null}
+      {theme === 'custom' ? <CustomThemeEditor /> : null}
 
       <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
         <div>

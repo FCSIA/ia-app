@@ -132,7 +132,10 @@ the user remains persisted locally and is never overwritten by the default.
 Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
 automatic contrast is applied to each matching foreground token rather than
-only to secondary controls.
+only to secondary controls. Automatic foregrounds choose black or white by
+comparing WCAG contrast ratios. The Custom theme also exposes a Text color for
+page content over a background image, whose contrast cannot be inferred from a
+single color token.
 
 ## Toasts
 

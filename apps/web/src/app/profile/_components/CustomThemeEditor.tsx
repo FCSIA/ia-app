@@ -6,9 +6,11 @@ import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-
 import {
   CUSTOM_COLORS_STORAGE_KEY,
   applyCustomColors,
+  customColorSlots,
+  loadCustomColors,
   type CustomColorKey,
   type CustomColors,
-} from '@/app/providers';
+} from '@/lib/custom-theme';
 import { Button } from '@/components/ui/button';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { FileInput } from '@/components/ui/file-input';
@@ -17,23 +19,6 @@ import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
 import { uploadUserImage } from '@/lib/upload-user-image';
 import { api } from '~/apps/convex/src/_generated/api';
-
-const PALETTE_SLOTS: Array<{ key: CustomColorKey; label: string; help: string }> = [
-  { key: 'background', label: 'Background', help: 'Outer page backdrop.' },
-  { key: 'primary', label: 'Primary', help: 'Buttons, links, focus rings.' },
-  { key: 'secondary', label: 'Secondary', help: 'Cards and inner panels.' },
-  { key: 'accent', label: 'Accent', help: 'Borders, hover highlights.' },
-];
-
-function loadCustomColors(): CustomColors {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CustomColors) : {};
-  } catch {
-    return {};
-  }
-}
 
 export function CustomThemeEditor() {
   const [mode, setMode] = useState<'image' | 'colors'>('image');
@@ -161,6 +146,9 @@ function CustomBackgroundPanel() {
             Upload a picture and it will sit behind every page. Saved to your account.
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/70">
+            If page text blends into the picture, choose a Text color under Colors.
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
             JPG, PNG, or WebP. Compressed automatically before upload.
           </p>
         </div>
@@ -235,12 +223,12 @@ function CustomColorsPanel() {
       <div>
         <p className="text-sm font-medium text-foreground">Color palette</p>
         <p className="text-xs text-muted-foreground">
-          Pick any color for each slot &mdash; text contrast adjusts automatically. Saved on this device.
+          Surface contrast adjusts automatically. You can override page text for a wallpaper. Saved on this device.
         </p>
       </div>
 
       <div className="space-y-2">
-        {PALETTE_SLOTS.map(({ key, label, help }) => {
+        {customColorSlots.map(({ key, label, help }) => {
           const hex = colors[key];
           const isOpen = openSlot === key;
           return (

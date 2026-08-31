@@ -119,6 +119,10 @@
   schedule screenshot before applying Monday-Thursday classes and saving.
 - The calendar follows active theme tokens, Flex Friday uses the compact app
   shell hierarchy, and Cmd+K searches people plus access-checked club channels.
+- Web Custom appearance is available in production again. Its palette schema
+  now owns both the editor slots and CSS-variable mapping, exposes page Text for
+  wallpaper legibility, validates restored local colors, and selects automatic
+  black/white foregrounds by WCAG contrast rather than a luminance cutoff.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and
