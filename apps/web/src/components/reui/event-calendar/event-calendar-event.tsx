@@ -298,7 +298,7 @@ function EventCalendarEvent<TData = unknown>({
   // Agenda default row: time column, color-dot badge, plain title
   const agendaDefaultContent = (
     <>
-      <span className="text-muted-foreground w-40 shrink-0 truncate tabular-nums">
+      <span className="text-muted-foreground w-24 shrink-0 truncate tabular-nums sm:w-40">
         {agendaTimeText}
       </span>
       <span
@@ -306,7 +306,7 @@ function EventCalendarEvent<TData = unknown>({
         data-slot="event-calendar-agenda-dot"
         className="size-2 shrink-0 rounded-full bg-(--ec-event-color)"
       />
-      <span className="truncate text-sm">{event.title}</span>
+      <span className="min-w-0 flex-1 break-words text-sm">{event.title}</span>
       {occurrence.isRecurring && (
         <RepeatIcon className="text-muted-foreground size-2.5 shrink-0" aria-hidden="true" />
       )}

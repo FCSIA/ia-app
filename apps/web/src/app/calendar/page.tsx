@@ -79,7 +79,7 @@ function CalendarInviteStrip() {
   };
 
   return (
-    <div className="flex shrink-0 gap-3 overflow-x-auto border-b border-border bg-muted/20 px-3 py-3 md:px-4">
+    <div className="flex shrink-0 gap-3 overflow-x-auto bg-muted/20 px-3 py-3 md:px-4">
       {invites.map((invite) => (
         <div
           key={invite._id}
@@ -173,7 +173,16 @@ export default function CalendarPage() {
 
   if (!mounted) {
     return (
-      <AppShell mainClassName={FILL_MAIN_CLASS} pageTransitionClassName="flex min-h-0 flex-1 flex-col">
+      <AppShell
+        headerSlot={
+          <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+            Calendar
+          </h1>
+        }
+        mainClassName={FILL_MAIN_CLASS}
+        pageTransitionClassName="flex min-h-0 flex-1 flex-col"
+        viewportMode="visual"
+      >
         <div className="flex min-h-0 flex-1 items-center justify-center md:rounded-xl md:border md:border-border md:bg-card">
           <Skeleton className="h-5 w-32" />
         </div>
@@ -182,7 +191,16 @@ export default function CalendarPage() {
   }
 
   return (
-    <AppShell mainClassName={FILL_MAIN_CLASS} pageTransitionClassName="flex min-h-0 flex-1 flex-col">
+    <AppShell
+      headerSlot={
+        <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+          Calendar
+        </h1>
+      }
+      mainClassName={FILL_MAIN_CLASS}
+      pageTransitionClassName="flex min-h-0 flex-1 flex-col"
+      viewportMode="visual"
+    >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1">
         <EventCalendar<CalendarEntry>
           events={events}
@@ -213,13 +231,18 @@ export default function CalendarPage() {
           scrollbars="native"
           className="min-h-0 flex-1"
         >
-          <div className="shrink-0 border-b border-border">
+          <div className="shrink-0">
             <EventCalendarNav className="px-3 pt-3 md:px-4" />
             <EventCalendarToolbar className="flex-wrap px-3 pb-3 md:px-4">
               <ExternalCalendarSettingsDialog />
               <AddCalendarEntryDialog
                 trigger={
-                  <Button size="sm" leadingIcon={Plus}>
+                  <Button
+                    size="sm"
+                    leadingIcon={Plus}
+                    aria-label="New reminder"
+                    className="w-9 px-0 sm:w-auto sm:px-3 [&>span>span]:hidden sm:[&>span>span]:inline-flex"
+                  >
                     New reminder
                   </Button>
                 }

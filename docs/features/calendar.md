@@ -60,9 +60,10 @@ overrides, and canonical-period resolution.
 Personal entries are only returned to the user who created them.
 
 External subscriptions and normalized events are private to their owner. The
-feed URL is not returned to clients after creation. ICS feeds refresh every six
-hours, retain events from the previous 31 days through the next year, and mark
-failed connections with an error state for retry.
+feed URL is not returned to clients after creation. A new connection starts its
+first sync immediately; ICS feeds then refresh every six hours. Imports retain
+events from the previous 31 days through the next year and mark failed
+connections with an error state for retry.
 
 ## Permissions
 

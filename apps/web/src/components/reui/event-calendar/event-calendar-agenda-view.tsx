@@ -103,11 +103,7 @@ function EventCalendarAgendaView({
           )}
         </div>
       ) : (
-        // Drop the very last row's bottom border so it does not double up with
-        // the calendar container's own bottom border. Targets the last day
-        // group's last child (its last agenda item); per-item `border-b` is
-        // kept everywhere else, including each day's internal rows.
-        <div className="flex flex-col [&>*:last-child>*:last-child]:border-b-0">
+        <div className="flex min-w-0 flex-col [&>*:last-child>*:last-child]:border-b-0">
           {groups.map(({ day, bucket }) => {
             const items = [...(bucket?.allDay ?? []), ...(bucket?.timed ?? [])]
             const zoned = toZoned(day, settings.timeZone)
@@ -197,12 +193,12 @@ function EventCalendarAgendaView({
           <div
             data-slot="scroll-area-viewport"
             data-ec-native-scroll=""
-            className="h-full overflow-y-auto"
+            className="h-full min-h-0 overflow-auto overscroll-contain"
           >
             {body}
           </div>
         ) : (
-          <ScrollArea className="h-full">{body}</ScrollArea>
+          <ScrollArea orientation="both" className="h-full min-h-0">{body}</ScrollArea>
         )}
       </Comp>
     </EventCalendarViewContext.Provider>
@@ -220,15 +216,29 @@ function EventCalendarAgendaItem({
   segment: EventCalendarSegment
 }) {
   const viewConfig = useEventCalendarViewConfig()
+  const details = viewConfig.renderAgendaEventDetails?.(segment.occurrence)
+
   return (
-    <EventCalendarEvent
-      segment={segment}
-      className={cn(
-        // read-only list: hover only, no selected/focused styling on click
-        "hover:bg-accent/40 gap-3 rounded-none border-b px-4 py-2.5 transition-colors",
-        viewConfig.classNames?.agendaItem
-      )}
-    />
+    <div
+      data-slot="event-calendar-agenda-item"
+      className={cn("min-w-0 border-b", viewConfig.classNames?.agendaItem)}
+    >
+      <EventCalendarEvent
+        segment={segment}
+        className="hover:bg-accent/40 gap-3 rounded-none px-4 py-2.5 transition-colors"
+      />
+      {details ? (
+        <div
+          data-slot="event-calendar-agenda-item-details"
+          className={cn(
+            "min-w-0 break-words px-4 pb-3",
+            viewConfig.classNames?.agendaItemSurface
+          )}
+        >
+          {details}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
