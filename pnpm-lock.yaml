@@ -282,6 +282,9 @@ importers:
       '@convex-dev/better-auth':
         specifier: 0.12.2
         version: 0.12.2(@standard-schema/spec@1.1.0)(better-auth@1.6.22(@prisma/client@6.19.2(prisma@6.19.2(typescript@5.9.3))(typescript@5.9.3))(next@16.2.11(@babel/core@7.29.7)(@types/node@22.19.13)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(prisma@6.19.2(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.1.9(@edge-runtime/vm@5.0.0)(@types/node@22.19.13)(vite@8.1.0(@types/node@22.19.13)(esbuild@0.27.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.21.0)(yaml@2.9.0))))(convex@1.43.0(react@19.2.3))(hono@4.13.1)(react@19.2.3)(typescript@5.9.3)
+      '@date-fns/tz':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

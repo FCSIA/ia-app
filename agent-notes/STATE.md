@@ -119,6 +119,11 @@
   schedule screenshot before applying Monday-Thursday classes and saving.
 - The calendar follows active theme tokens, Flex Friday uses the compact app
   shell hierarchy, and Cmd+K searches people plus access-checked club channels.
+- The web calendar now uses the current Radix ReUI event-calendar source instead
+  of a hand-built scheduler. Desktop offers month, week, day, and agenda; mobile
+  intentionally offers agenda and day only. The Dashboard calendar uses the
+  shared date-calendar adapter, and the ReUI registry is pinned to Radix Nova so
+  the old `new-york` style cannot resolve Base UI source into this Radix app.
 - Web Custom appearance is available in production again. Its palette schema
   now owns both the editor slots and CSS-variable mapping, exposes page Text for
   wallpaper legibility, validates restored local colors, and selects automatic
@@ -309,6 +314,10 @@
 
 - `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
+- Web calendar replacement: `pnpm --filter web exec tsc --noEmit`, web lint,
+  frozen offline install, production build, and `git diff --check` pass. Lint
+  reports only existing warnings outside the calendar slice; signed-in visual
+  review is still required for responsive calendar states.
 - `direnv exec . pnpm --filter web lint` - pass with 7 existing unrelated
   unused-import warnings.
 - `direnv exec . pnpm --filter web build` - pass through compilation,

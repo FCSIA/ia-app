@@ -35,11 +35,23 @@ interface EditCalendarEntryDialogProps {
     inviteId?: Id<'calendarInvites'>;
     sharedBy?: { firstName: string; lastName: string };
   };
-  trigger?: (onOpen: () => void) => React.ReactNode;
+  trigger?: ((onOpen: () => void) => React.ReactNode) | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditCalendarEntryDialog({
+  entry,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: EditCalendarEntryDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+  };
   const { toast } = useToast();
 
   const [form, setForm] = useState({
@@ -135,7 +147,7 @@ export function EditCalendarEntryDialog({ entry, trigger }: EditCalendarEntryDia
         }
       }}
     >
-      {trigger ? (
+      {trigger === null ? null : trigger ? (
         trigger(() => setOpen(true))
       ) : (
         <div className="cursor-pointer" onDoubleClick={() => setOpen(true)}>
