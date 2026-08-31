@@ -12,6 +12,11 @@ export type ChannelAccess = {
   canManage: boolean;
 };
 
+export type ChannelAccessBatchState = {
+  units?: Doc<"clubUnits">[];
+  unitMemberships?: Doc<"clubUnitMembers">[];
+};
+
 type EffectivePolicy = {
   accessRoleIds: Id<"clubRoles">[];
   accessUnitId: Id<"clubUnits"> | null;
@@ -86,64 +91,180 @@ function assignmentCoversUnit(
   return false;
 }
 
-async function isExplicitMember(
-  ctx: ChannelDbCtx,
-  channelId: Id<"clubChannels">,
-  userId: Id<"users">,
-) {
-  return !!(await ctx.db
-    .query("clubChannelMemberships")
-    .withIndex("by_channelId_and_userId", (q) =>
-      q.eq("channelId", channelId).eq("userId", userId),
-    )
-    .unique());
+function elevatedChannelAccess(
+  context: ClubContext,
+  policy: EffectivePolicy,
+): ChannelAccess {
+  const canManage = context.canManageChannels;
+  return {
+    canView: true,
+    canPost:
+      policy.postingPolicy === "AUDIENCE" ||
+      context.permissions.postToReadOnlyChannels ||
+      canManage,
+    canManage,
+  };
 }
 
-async function matchesChannelFilters(
+function deniedChannelAccess(context: ClubContext): ChannelAccess {
+  return {
+    canView: false,
+    canPost: false,
+    canManage: context.canManageChannels,
+  };
+}
+
+function isUnrestrictedPolicy(policy: EffectivePolicy) {
+  return (
+    !policy.explicitOnly &&
+    policy.accessRoleIds.length === 0 &&
+    policy.accessUnitId === null
+  );
+}
+
+/**
+ * Resolve one viewer against a set of sibling channels while loading the
+ * viewer's role and unit state only once. Club shells commonly render dozens
+ * of channels, so repeating the unit-tree reads for every channel multiplies a
+ * small club into hundreds of documents per subscription execution.
+ */
+export async function getChannelAccessForChannels(
   ctx: ChannelDbCtx,
-  channel: Channel,
-  policy: EffectivePolicy,
+  channels: Channel[],
+  context: ClubContext,
   userId: Id<"users">,
+  preloaded: ChannelAccessBatchState = {},
 ) {
-  const clubMembership = await ctx.db
-    .query("clubMembers")
-    .withIndex("by_clubId_and_userId", (q) =>
-      q.eq("clubId", channel.clubId).eq("userId", userId),
-    )
-    .unique();
-  if (!clubMembership) return false;
+  const accessByChannelId = new Map<Id<"clubChannels">, ChannelAccess>();
+  if (channels.length === 0) return accessByChannelId;
 
-  const roleId = clubMembership.roleId ?? clubMembership.customRoleId;
-  const roleMatches =
-    policy.accessRoleIds.length === 0 ||
-    (!!roleId && policy.accessRoleIds.includes(roleId));
-  if (!roleMatches) return false;
-  if (!policy.accessUnitId) return true;
+  const scopedChannels = channels.filter((channel) => {
+    if (channel.clubId === context.club._id) return true;
+    accessByChannelId.set(channel._id, deniedChannelAccess(context));
+    return false;
+  });
+  if (scopedChannels.length === 0) return accessByChannelId;
 
-  const [units, memberships] = await Promise.all([
-    ctx.db
-      .query("clubUnits")
-      .withIndex("by_clubId_and_isActive_and_position", (q) =>
-        q.eq("clubId", channel.clubId).eq("isActive", true),
-      )
-      .take(MAX_CLUB_UNITS),
-    ctx.db
-      .query("clubUnitMembers")
-      .withIndex("by_userId_and_clubId", (q) =>
-        q.eq("userId", userId).eq("clubId", channel.clubId),
-      )
-      .take(MAX_CLUB_UNITS),
-  ]);
-  const parentByUnitId = new Map(
-    units.map((unit) => [unit._id, unit.parentUnitId ?? null]),
+  if (!context.canAccessWorkspace) {
+    for (const channel of scopedChannels) {
+      accessByChannelId.set(channel._id, deniedChannelAccess(context));
+    }
+    return accessByChannelId;
+  }
+
+  const policies = new Map(
+    scopedChannels.map((channel) => [
+      channel._id,
+      effectiveChannelPolicy(channel),
+    ]),
   );
-  return memberships.some((membership) =>
-    assignmentCoversUnit(
-      membership.unitId,
-      policy.accessUnitId!,
-      parentByUnitId,
-    ),
+  if (
+    context.isAdmin ||
+    context.isSponsor ||
+    context.canSeePrivateChannels ||
+    context.canManageChannels
+  ) {
+    for (const channel of scopedChannels) {
+      accessByChannelId.set(
+        channel._id,
+        elevatedChannelAccess(context, policies.get(channel._id)!),
+      );
+    }
+    return accessByChannelId;
+  }
+
+  const restrictedChannels = scopedChannels.filter(
+    (channel) => !isUnrestrictedPolicy(policies.get(channel._id)!),
   );
+  const explicitMembershipEntries = await Promise.all(
+    restrictedChannels.map(async (channel) => {
+      const membership = await ctx.db
+        .query("clubChannelMemberships")
+        .withIndex("by_channelId_and_userId", (q) =>
+          q.eq("channelId", channel._id).eq("userId", userId),
+        )
+        .unique();
+      return [channel._id, !!membership] as const;
+    }),
+  );
+  const explicitMembershipByChannelId = new Map(explicitMembershipEntries);
+
+  const filteredChannels = restrictedChannels.filter(
+    (channel) => !policies.get(channel._id)!.explicitOnly,
+  );
+  const clubId = context.club._id;
+  const clubMembership =
+    context.membership ??
+    (filteredChannels.length > 0
+      ? await ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_userId", (q) =>
+            q.eq("clubId", clubId).eq("userId", userId),
+          )
+          .unique()
+      : null);
+  const needsUnitState = filteredChannels.some(
+    (channel) => policies.get(channel._id)!.accessUnitId !== null,
+  );
+  const [units, unitMemberships] = needsUnitState
+    ? await Promise.all([
+        preloaded.units ??
+          ctx.db
+            .query("clubUnits")
+            .withIndex("by_clubId_and_isActive_and_position", (q) =>
+              q.eq("clubId", clubId).eq("isActive", true),
+            )
+            .take(MAX_CLUB_UNITS),
+        preloaded.unitMemberships ??
+          ctx.db
+            .query("clubUnitMembers")
+            .withIndex("by_userId_and_clubId", (q) =>
+              q.eq("userId", userId).eq("clubId", clubId),
+            )
+            .take(MAX_CLUB_UNITS),
+      ])
+    : [[], []];
+  const parentByUnitId = new Map<
+    Id<"clubUnits">,
+    Id<"clubUnits"> | null
+  >(units.map((unit) => [unit._id, unit.parentUnitId ?? null]));
+
+  for (const channel of scopedChannels) {
+    const policy = policies.get(channel._id)!;
+    if (isUnrestrictedPolicy(policy)) {
+      accessByChannelId.set(channel._id, {
+        canView: true,
+        canPost: policy.postingPolicy === "AUDIENCE",
+        canManage: false,
+      });
+      continue;
+    }
+
+    const explicit = explicitMembershipByChannelId.get(channel._id) ?? false;
+    const roleId = clubMembership?.roleId ?? clubMembership?.customRoleId;
+    const roleMatches =
+      policy.accessRoleIds.length === 0 ||
+      (!!roleId && policy.accessRoleIds.includes(roleId));
+    const unitMatches =
+      policy.accessUnitId === null ||
+      unitMemberships.some((membership) =>
+        assignmentCoversUnit(
+          membership.unitId,
+          policy.accessUnitId!,
+          parentByUnitId,
+        ),
+      );
+    const audienceMember =
+      explicit ||
+      (!policy.explicitOnly && !!clubMembership && roleMatches && unitMatches);
+    accessByChannelId.set(channel._id, {
+      canView: audienceMember,
+      canPost: audienceMember && policy.postingPolicy === "AUDIENCE",
+      canManage: false,
+    });
+  }
+
+  return accessByChannelId;
 }
 
 /**
@@ -156,38 +277,13 @@ export async function getChannelAccess(
   context: ClubContext,
   userId: Id<"users">,
 ): Promise<ChannelAccess> {
-  const policy = effectiveChannelPolicy(channel);
-  const canManage = context.canManageChannels;
-  if (!context.canAccessWorkspace) {
-    return { canView: false, canPost: false, canManage };
-  }
-
-  if (
-    context.isAdmin ||
-    context.isSponsor ||
-    context.canSeePrivateChannels ||
-    canManage
-  ) {
-    return {
-      canView: true,
-      canPost:
-        policy.postingPolicy === "AUDIENCE" ||
-        context.permissions.postToReadOnlyChannels ||
-        canManage,
-      canManage,
-    };
-  }
-
-  const explicit = await isExplicitMember(ctx, channel._id, userId);
-  const audienceMember =
-    explicit ||
-    (!policy.explicitOnly &&
-      (await matchesChannelFilters(ctx, channel, policy, userId)));
-  return {
-    canView: audienceMember,
-    canPost: audienceMember && policy.postingPolicy === "AUDIENCE",
-    canManage,
-  };
+  const accessByChannelId = await getChannelAccessForChannels(
+    ctx,
+    [channel],
+    context,
+    userId,
+  );
+  return accessByChannelId.get(channel._id)!;
 }
 
 /** Resolves a bounded audience for notification and mention delivery. */

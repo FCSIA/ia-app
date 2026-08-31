@@ -2,7 +2,11 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import {
+  getChannelAccess,
+  getChannelAccessForChannels,
+  type ChannelAccessBatchState,
+} from "./channelAccess";
 import {
   clubChannelAudienceKindValidator,
   clubChannelPostingPolicyValidator,
@@ -194,20 +198,42 @@ export async function getVisibleChannels(
   clubId: Id<"clubs">,
   context: ClubContext,
   userId: Id<"users">,
+  preloaded: ChannelAccessBatchState = {},
 ) {
   const channels = await ctx.db
     .query("clubChannels")
     .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", clubId))
     .collect();
 
+  const accessByChannelId = await getChannelAccessForChannels(
+    ctx,
+    channels,
+    context,
+    userId,
+    preloaded,
+  );
+  const membershipsByChannelId = new Map(
+    await Promise.all(
+      channels
+        .filter((channel) => channel.visibility === "PRIVATE")
+        .map(async (channel) => [
+          channel._id,
+          await ctx.db
+            .query("clubChannelMemberships")
+            .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
+            .collect(),
+        ] as const),
+    ),
+  );
   const result = [];
   for (const channel of channels) {
-    const memberships = await ctx.db
-      .query("clubChannelMemberships")
-      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
-      .collect();
+    const memberships = membershipsByChannelId.get(channel._id) ?? [];
     const channelDoc = { ...channel, memberships };
-    const viewer = await toChannelViewerState(ctx, channelDoc, context, userId);
+    const access = accessByChannelId.get(channel._id)!;
+    const viewer = {
+      viewerCanRead: access.canView,
+      viewerCanPost: access.canPost,
+    };
     if (!viewer.viewerCanRead) continue;
 
     result.push({

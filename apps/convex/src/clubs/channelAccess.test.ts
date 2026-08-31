@@ -5,7 +5,11 @@ import { describe, expect, test } from "vitest";
 import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
 import type { ClubContext } from "./access";
-import { getChannelAccess, getChannelAudienceUserIds } from "./channelAccess";
+import {
+  getChannelAccess,
+  getChannelAccessForChannels,
+  getChannelAudienceUserIds,
+} from "./channelAccess";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 
 const modules = import.meta.glob("../**/*.*s");
@@ -181,6 +185,18 @@ describe("channel role and structure filters", () => {
           context,
           userIds.get(uniqueId)!,
         )).canView;
+      const batchedHouseA = await getChannelAccessForChannels(
+        ctx,
+        [roomChannel, houseChannel],
+        context,
+        userIds.get("HOUSE-A")!,
+      );
+      const batchedExplicit = await getChannelAccessForChannels(
+        ctx,
+        [roomChannel, houseChannel],
+        context,
+        userIds.get("EXPLICIT")!,
+      );
 
       return {
         room: Object.fromEntries(
@@ -205,6 +221,14 @@ describe("channel role and structure filters", () => {
           managerContext,
           creatorId,
         ),
+        batchedHouseA: {
+          room: batchedHouseA.get(roomChannelId)?.canView,
+          house: batchedHouseA.get(houseChannelId)?.canView,
+        },
+        batchedExplicit: {
+          room: batchedExplicit.get(roomChannelId)?.canView,
+          house: batchedExplicit.get(houseChannelId)?.canView,
+        },
         userIds: Object.fromEntries(userIds),
       };
     });
@@ -232,5 +256,7 @@ describe("channel role and structure filters", () => {
       result.userIds.EXPLICIT,
     ]));
     expect(result.manager).toMatchObject({ canView: true, canManage: true });
+    expect(result.batchedHouseA).toEqual({ room: true, house: true });
+    expect(result.batchedExplicit).toEqual({ room: true, house: false });
   });
 });

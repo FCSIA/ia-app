@@ -2,14 +2,56 @@
 
 ## Active Focus
 
-- **Branch**: `codex/security-audit-remediation`
-- **Goal**: Land the complete remediation for
-  `docs/reference/security-audit-2026-08-09.md` without touching production.
+- **Branch**: `main`
+- **Goal**: Reduce the Convex read amplification found in the 2026-08-31
+  production usage audit, without mutating or deploying to production.
 - **Coordination note**: A parallel FERPA/compliance session owns `docs/compliance/`
   and the FERPA link in `docs/index.md`. Avoid editing those unless explicitly
   asked.
 
 ## Current Truth
+
+### Convex Usage and Scale Audit (2026-08-31)
+
+- Production `elated-anaconda-301` was inspected read-only. No production
+  function was run, no deployment was selected for mutation, and no data was
+  changed.
+- The current production dataset has 172 application users. Better Auth has 77
+  users with currently valid sessions; 29 distinct users had session activity
+  in the sampled 24-hour window and 77 in the sampled seven-day window.
+- The dashboard screenshots cover roughly August 6-31: 756K function calls and
+  1.05 GB database I/O, of which 98.9% was reads. That is about 29K calls and
+  40.4 MB of I/O per day. Using the 29 recently active users as a directional
+  DAU denominator gives roughly 1,000 calls per active-user day and 1.4-2.7 MB
+  of database I/O per active-user day, depending on whether the period average
+  or August 31 is used.
+- A post-PR #90 production log sample of 1,000 completed executions over about
+  65 minutes read 7.64 MB / 16,692 documents. The dominant uncached reads were
+  `clubs/detail:getWorkspaceNavigation` (~281 KB / 711 documents per uncached
+  execution), `schedule/dashboard:get` (~127 KB / 212 documents),
+  `courses/catalog:list` (~89 KB / 106 documents), `clubs/channels:list`
+  (~383 KB / 976 documents), and `clubs/detail:get` (~331 KB / 841 documents).
+- The 72-hour Convex health insights had no high-read or resource-limit event;
+  they contained only four write-contention retries. This means no single
+  execution crossed the insight thresholds, not that the aggregate read rate
+  is scale-ready.
+- Current fixes batch channel access state across sibling channels, reuse
+  already-loaded club unit state, avoid fetching public-channel membership
+  lists, batch repeated message-author reads, hydrate each schedule course only
+  once, bound unfiltered course candidate reads by the requested limit, and
+  move the mobile Home dashboard from the full friend-schedule query to the
+  day query.
+- PR #90's documented one-time production refreshes still appear outstanding:
+  `courseCatalogMetadata` is empty and `appStats.roleGroupCountsReady` is
+  absent. An authorized operator must explicitly approve running
+  `internal.courses.metadata.refresh` and
+  `internal.stats.rebuildUserCounts` against production.
+- The next scale architecture decision is to separate high-churn channel
+  activity (`lastMessageAt` / unread state) from static workspace navigation.
+  At chat-heavy scale, updating `clubChannels.lastMessageAt` on every send can
+  rerun the broad navigation subscription for every connected viewer. This was
+  not changed silently because it affects data shape, migration, and unread
+  freshness semantics.
 
 ### Security Audit Remediation (2026-08-09)
 

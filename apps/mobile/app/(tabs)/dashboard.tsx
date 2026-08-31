@@ -71,7 +71,7 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
     const startDate = Date.now();
     return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
   }, []);
-  const schedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
+  const schedule = useDashboardSchedule();
   const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
   const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
   const flexFridays = useQuery(api.flexFriday.fridays.list, EMPTY_ARGS);
@@ -181,7 +181,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
     return { startDate, endDate: startDate + 30 * 24 * 60 * 60 * 1000 };
   }, []);
   const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
-  const liveSchedule = useQuery(api.schedule.dashboard.get, EMPTY_ARGS);
+  const liveSchedule = useDashboardSchedule();
   const calendarEntries = useQuery(api.events.calendar.list, calendarWindow);
   const myClubs = useQuery(api.clubs.management.getMyClubs, EMPTY_ARGS);
   const flexCredits = useQuery(api.flexFriday.credits.getMyCredits, EMPTY_ARGS);
@@ -599,6 +599,15 @@ function HomeSkeleton({ count = 1 }: { count?: number }) {
 }
 
 type DashboardSchoolDay = ReturnType<typeof getDashboardSchoolDay>;
+
+function useDashboardSchedule() {
+  const dateKey = format(new Date(), "yyyy-MM-dd");
+  const resolvedDay = useQuery(api.schedule.dashboard.getDay, { dateKey });
+  return useMemo(
+    () => resolvedDay === undefined ? undefined : { resolvedDay },
+    [resolvedDay],
+  );
+}
 
 function getDashboardSchoolDay() {
   const today = new Date().getDay();

@@ -16,7 +16,11 @@ import {
   getViewerContext,
   type ClubContext,
 } from "./access";
-import { getChannelAccess, getChannelAudienceUserIds } from "./channelAccess";
+import {
+  getChannelAccess,
+  getChannelAccessForChannels,
+  getChannelAudienceUserIds,
+} from "./channelAccess";
 import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deliverMany, deliverNotification } from "../notifications/delivery";
@@ -346,16 +350,6 @@ async function resolveChannelMentionPlan(
   return { rows, recipients };
 }
 
-async function getChannelMemberships(
-  ctx: ChannelDbCtx,
-  channelId: Id<"clubChannels">,
-) {
-  return await ctx.db
-    .query("clubChannelMemberships")
-    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
-    .collect();
-}
-
 async function assertMessageAccess(
   ctx: ChannelDbCtx,
   user: Doc<"users">,
@@ -368,13 +362,22 @@ async function assertMessageAccess(
   if (!channel) throw new ConvexError("Channel not found");
 
   const context = await getClubContext(ctx, channel.clubId, user);
-  const memberships = await getChannelMemberships(ctx, channel._id);
   const access = await getChannelAccess(ctx, channel, context, user._id);
   if (!access.canView) {
     throw new ConvexError("Not authorized");
   }
 
-  return { message, channel, context, memberships, access };
+  return { message, channel, context, access };
+}
+
+async function getChannelMemberships(
+  ctx: ChannelDbCtx,
+  channelId: Id<"clubChannels">,
+) {
+  return await ctx.db
+    .query("clubChannelMemberships")
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+    .collect();
 }
 
 export const list = query({
@@ -392,16 +395,16 @@ export const list = query({
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId))
       .collect();
+    const accessByChannelId = await getChannelAccessForChannels(
+      ctx,
+      channels,
+      context,
+      user._id,
+    );
 
-    const filtered = [];
-    for (const channel of channels) {
-      const access = await getChannelAccess(ctx, channel, context, user._id);
-      if (access.canView) {
-        filtered.push(channel);
-      }
-    }
-
-    return filtered;
+    return channels.filter(
+      (channel) => accessByChannelId.get(channel._id)!.canView,
+    );
   },
 });
 
@@ -577,7 +580,6 @@ export const postMessage = mutation({
     }
 
     const context = await getClubContext(ctx, channel.clubId, user);
-    const memberships = await getChannelMemberships(ctx, channel._id);
     const access = await getChannelAccess(ctx, channel, context, user._id);
     if (!access.canPost) {
       throw new ConvexError("Cannot post in this channel");
@@ -1027,8 +1029,11 @@ async function serializeMessageSummary(
   message: Doc<"clubChannelMessages">,
   currentUserId: Id<"users">,
   includeLatestReply: boolean,
+  authorsById?: ReadonlyMap<Id<"users">, Doc<"users"> | null>,
 ) {
-  const author = await ctx.db.get(message.authorId);
+  const author = authorsById === undefined
+    ? await ctx.db.get(message.authorId)
+    : authorsById.get(message.authorId) ?? null;
   if (!author) return null;
   const isDeleted = !!message.deletedAt;
 
@@ -1168,6 +1173,23 @@ async function serializeMessageSummary(
   };
 }
 
+async function loadMessageAuthors(
+  ctx: QueryCtx,
+  messages: Doc<"clubChannelMessages">[],
+) {
+  const authorIds = Array.from(
+    new Set(messages.map((message) => message.authorId)),
+  );
+  return new Map(
+    await Promise.all(
+      authorIds.map(async (authorId) => [
+        authorId,
+        await ctx.db.get(authorId),
+      ] as const),
+    ),
+  );
+}
+
 async function getReadableChannel(
   ctx: QueryCtx,
   user: Doc<"users">,
@@ -1179,16 +1201,9 @@ async function getReadableChannel(
   const club = await ctx.db.get(clubId);
   if (!club || !club.isActive) return null;
   const context = await getChannelViewerContext(ctx, club, user);
-  const viewerMembership = await ctx.db
-    .query("clubChannelMemberships")
-    .withIndex("by_channelId_and_userId", (q) =>
-      q.eq("channelId", channelId).eq("userId", user._id),
-    )
-    .unique();
-  const memberships = viewerMembership ? [viewerMembership] : [];
   const access = await getChannelAccess(ctx, channel, context, user._id);
   if (!access.canView) return null;
-  return { channel, context, memberships, access };
+  return { channel, context, access };
 }
 
 const channelContextMemberValidator = v.object({
@@ -1372,8 +1387,11 @@ export const getMessagePage = query({
         ...args.paginationOpts,
         numItems: boundedChannelMessagePageSize(args.paginationOpts.numItems),
       });
+    const authorsById = await loadMessageAuthors(ctx, result.page);
     const page = await Promise.all(
-      result.page.map((message) => serializeMessageSummary(ctx, message, user._id, true)),
+      result.page.map((message) =>
+        serializeMessageSummary(ctx, message, user._id, true, authorsById)
+      ),
     );
     return {
       ...result,
@@ -1457,9 +1475,16 @@ export const searchMessages = query({
         q.search("body", search).eq("channelId", readable.channel._id),
       )
       .take(MAX_CHANNEL_SEARCH_RESULTS);
+    const authorsById = await loadMessageAuthors(ctx, matches);
     const serialized = await Promise.all(
       matches.map((message) =>
-        serializeMessageSummary(ctx, message, user._id, false),
+        serializeMessageSummary(
+          ctx,
+          message,
+          user._id,
+          false,
+          authorsById,
+        ),
       ),
     );
     return serialized.filter(
@@ -1502,10 +1527,28 @@ export const getThread = query({
       .take(MAX_THREAD_REPLIES + 1);
     const hasMoreReplies = replyRowsNewest.length > MAX_THREAD_REPLIES;
     const replyRows = chronologicalFromNewest(replyRowsNewest.slice(0, MAX_THREAD_REPLIES));
+    const authorsById = await loadMessageAuthors(ctx, [
+      rootMessage,
+      ...replyRows,
+    ]);
     const [root, replies] = await Promise.all([
-      serializeMessageSummary(ctx, rootMessage, user._id, false),
+      serializeMessageSummary(
+        ctx,
+        rootMessage,
+        user._id,
+        false,
+        authorsById,
+      ),
       Promise.all(
-        replyRows.map((message) => serializeMessageSummary(ctx, message, user._id, false)),
+        replyRows.map((message) =>
+          serializeMessageSummary(
+            ctx,
+            message,
+            user._id,
+            false,
+            authorsById,
+          )
+        ),
       ),
     ]);
     if (!root) return null;
@@ -1543,10 +1586,11 @@ export const getMessages = query({
       .order("desc")
       .take(MAX_CHANNEL_MESSAGE_WINDOW);
     const roots = chronologicalFromNewest(rootsNewest);
+    const authorsById = await loadMessageAuthors(ctx, roots);
 
     const messages = await Promise.all(
       roots.map((message) =>
-        serializeMessageSummary(ctx, message, user._id, true),
+        serializeMessageSummary(ctx, message, user._id, true, authorsById),
       ),
     );
     return messages.filter((m): m is NonNullable<typeof m> => !!m);

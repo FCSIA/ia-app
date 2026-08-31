@@ -253,18 +253,30 @@ export async function serializeScheduleForUser(
     )
     .take(60);
 
-  const serializedEntries = [];
-  for (const entry of entries) {
-    const course = entry.courseId ? await ctx.db.get(entry.courseId) : null;
-    serializedEntries.push({
+  const courseIds = Array.from(
+    new Set(
+      entries.flatMap((entry) => (entry.courseId ? [entry.courseId] : [])),
+    ),
+  );
+  const coursesById = new Map(
+    await Promise.all(
+      courseIds.map(async (courseId) => [
+        courseId,
+        await ctx.db.get(courseId),
+      ] as const),
+    ),
+  );
+  const serializedEntries = entries.map((entry) => {
+    const course = entry.courseId ? coursesById.get(entry.courseId) : null;
+    return {
       id: entry._id,
       weekday: entry.weekday,
       periodNumber: entry.periodNumber,
       className: entry.className,
       courseId: entry.courseId,
       course: course ? toCourseSummary(course) : null,
-    });
-  }
+    };
+  });
 
   serializedEntries.sort(
     (left, right) =>

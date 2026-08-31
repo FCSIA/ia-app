@@ -3,7 +3,7 @@ import { query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getChannelViewerContext, getViewerContext } from "./access";
-import { getChannelAccess } from "./channelAccess";
+import { getChannelAccessForChannels } from "./channelAccess";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 import { clubRolePermissionsValidator } from "../validators";
 import {
@@ -315,7 +315,12 @@ export const get = query({
     ];
 
     const visibleChannels = context.canAccessWorkspace
-      ? await getVisibleChannels(ctx, args.clubId, context, user._id)
+      ? await getVisibleChannels(ctx, args.clubId, context, user._id, {
+          units,
+          unitMemberships: unitMemberships.filter(
+            (membership) => membership.userId === user._id,
+          ),
+        })
       : null;
     const summary = await clubSummaryWithCounts(
       ctx,
@@ -379,14 +384,29 @@ export const getWorkspaceNavigation = query({
       .query("clubChannels")
       .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
       .collect();
-    const readReceipts = await ctx.db
-      .query("clubChannelReadReceipts")
-      .withIndex("by_userId_and_clubId", (q) =>
-        q.eq("userId", user._id).eq("clubId", club._id),
-      )
-      .take(500);
+    const [readReceipts, unitRows] = await Promise.all([
+      ctx.db
+        .query("clubChannelReadReceipts")
+        .withIndex("by_userId_and_clubId", (q) =>
+          q.eq("userId", user._id).eq("clubId", club._id),
+        )
+        .take(500),
+      ctx.db
+        .query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) =>
+          q.eq("clubId", club._id).eq("isActive", true),
+        )
+        .take(250),
+    ]);
     const lastReadAtByChannelId = new Map(
       readReceipts.map((receipt) => [receipt.channelId, receipt.lastReadAt]),
+    );
+    const accessByChannelId = await getChannelAccessForChannels(
+      ctx,
+      channelRows,
+      context,
+      user._id,
+      { units: unitRows },
     );
     const channels = (
       await Promise.all(
@@ -408,8 +428,7 @@ export const getWorkspaceNavigation = query({
               memberships = viewerMembership ? [viewerMembership] : [];
             }
           }
-          const channelWithMemberships = { ...channel, memberships };
-          const access = await getChannelAccess(ctx, channel, context, user._id);
+          const access = accessByChannelId.get(channel._id)!;
           if (!access.canView) return null;
           return {
             _id: channel._id,
@@ -448,7 +467,7 @@ export const getWorkspaceNavigation = query({
           a.createdAt - b.createdAt,
       );
 
-    const [memberRows, sponsorRows, unitRows] = await Promise.all([
+    const [memberRows, sponsorRows] = await Promise.all([
       ctx.db
         .query("clubMembers")
         .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", user._id))
@@ -457,9 +476,6 @@ export const getWorkspaceNavigation = query({
         .query("clubSponsors")
         .withIndex("by_userId_and_clubId", (q) => q.eq("userId", user._id))
         .collect(),
-      ctx.db.query("clubUnits")
-        .withIndex("by_clubId_and_isActive_and_position", (q) => q.eq("clubId", club._id).eq("isActive", true))
-        .take(250),
     ]);
     const clubRoles = new Map([
       ...memberRows.map((membership) => [membership.clubId, membership.role ?? null] as const),
