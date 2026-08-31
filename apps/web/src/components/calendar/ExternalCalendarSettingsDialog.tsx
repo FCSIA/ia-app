@@ -71,9 +71,10 @@ export function ExternalCalendarSettingsDialog() {
       <DialogTrigger asChild>
         <Button
           variant="tertiary"
-          size="icon-sm"
+          size="icon"
           aria-label="Calendar connections"
           title="Calendar connections"
+          className="rounded-full"
         >
           <Settings />
         </Button>

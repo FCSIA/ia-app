@@ -306,7 +306,9 @@ function EventCalendarEvent<TData = unknown>({
         data-slot="event-calendar-agenda-dot"
         className="size-2 shrink-0 rounded-full bg-(--ec-event-color)"
       />
-      <span className="min-w-0 flex-1 break-words text-sm">{event.title}</span>
+      <span className="min-w-0 flex-1 touch-pan-x overflow-x-auto overscroll-x-contain whitespace-nowrap text-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {event.title}
+      </span>
       {occurrence.isRecurring && (
         <RepeatIcon className="text-muted-foreground size-2.5 shrink-0" aria-hidden="true" />
       )}
@@ -507,7 +509,7 @@ function EventCalendarEvent<TData = unknown>({
         view === "agenda"
           ? // plain list row: color lives in the dot badge, not a tinted pill;
             // hover AND selection surfaces are owned by the agenda row wrapper
-            "gap-3 rounded-md text-sm"
+            "touch-auto gap-3 rounded-md text-sm"
           : cn(
               // @container removes intrinsic sizing; only grid chips are containers
               // py-1: room above/below inline badges (attendee pill etc.)

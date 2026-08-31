@@ -201,7 +201,7 @@ export default function CalendarPage() {
       pageTransitionClassName="flex min-h-0 flex-1 flex-col"
       viewportMode="visual"
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1">
         <EventCalendar<CalendarEntry>
           events={events}
           view={view}
@@ -211,21 +211,6 @@ export default function CalendarPage() {
           interactions={{ drag: false, resize: false, selectSlot: false }}
           onRangeChange={handleRangeChange}
           onEventClick={(occurrence) => setActiveEntry(occurrence.event.data ?? null)}
-          renderAgendaEventDetails={(occurrence) => {
-            const entry = occurrence.event.data;
-            if (!entry?.description && !entry?.location) return null;
-            return (
-              <div className="space-y-1 text-xs text-muted-foreground">
-                {entry.location ? (
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="size-3.5" aria-hidden="true" />
-                    {entry.location}
-                  </p>
-                ) : null}
-                {entry.description ? <p>{entry.description}</p> : null}
-              </div>
-            );
-          }}
           eventTooltip={!isMobile}
           enableShortcuts={!isMobile}
           scrollbars="native"
@@ -238,12 +223,12 @@ export default function CalendarPage() {
               <AddCalendarEntryDialog
                 trigger={
                   <Button
-                    size="sm"
-                    leadingIcon={Plus}
+                    size="icon"
                     aria-label="New reminder"
-                    className="w-9 px-0 sm:w-auto sm:px-3 [&>span>span]:hidden sm:[&>span>span]:inline-flex"
+                    title="New reminder"
+                    className="rounded-full"
                   >
-                    New reminder
+                    <Plus />
                   </Button>
                 }
               />

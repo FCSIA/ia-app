@@ -125,9 +125,9 @@
   shared date-calendar adapter, and the ReUI registry is pinned to Radix Nova so
   the old `new-york` style cannot resolve Base UI source into this Radix app.
 - The calendar route uses the bounded visual-viewport shell so agenda and day
-  own working internal scrollports. Agenda rows expose wrapped event details,
-  and the connection dialog documents immediate first sync plus automatic
-  six-hour refreshes.
+  own working internal scrollports. Agenda keeps descriptions hidden and uses
+  a one-line, horizontally scrollable title region; the connection dialog
+  documents immediate first sync plus automatic six-hour refreshes.
 - Web Custom appearance is available in production again. Its palette schema
   now owns both the editor slots and CSS-variable mapping, exposes page Text for
   wallpaper legibility, validates restored local colors, and selects automatic

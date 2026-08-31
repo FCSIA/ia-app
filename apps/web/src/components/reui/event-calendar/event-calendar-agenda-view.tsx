@@ -103,7 +103,7 @@ function EventCalendarAgendaView({
           )}
         </div>
       ) : (
-        <div className="flex min-w-0 flex-col [&>*:last-child>*:last-child]:border-b-0">
+        <div className="flex min-w-0 flex-col [&>*:last-child]:border-b-0">
           {groups.map(({ day, bucket }) => {
             const items = [...(bucket?.allDay ?? []), ...(bucket?.timed ?? [])]
             const zoned = toZoned(day, settings.timeZone)
@@ -216,29 +216,14 @@ function EventCalendarAgendaItem({
   segment: EventCalendarSegment
 }) {
   const viewConfig = useEventCalendarViewConfig()
-  const details = viewConfig.renderAgendaEventDetails?.(segment.occurrence)
-
   return (
-    <div
-      data-slot="event-calendar-agenda-item"
-      className={cn("min-w-0 border-b", viewConfig.classNames?.agendaItem)}
-    >
-      <EventCalendarEvent
-        segment={segment}
-        className="hover:bg-accent/40 gap-3 rounded-none px-4 py-2.5 transition-colors"
-      />
-      {details ? (
-        <div
-          data-slot="event-calendar-agenda-item-details"
-          className={cn(
-            "min-w-0 break-words px-4 pb-3",
-            viewConfig.classNames?.agendaItemSurface
-          )}
-        >
-          {details}
-        </div>
-      ) : null}
-    </div>
+    <EventCalendarEvent
+      segment={segment}
+      className={cn(
+        "hover:bg-accent/40 gap-3 rounded-none border-b px-4 py-2.5 transition-colors",
+        viewConfig.classNames?.agendaItem
+      )}
+    />
   )
 }
 
