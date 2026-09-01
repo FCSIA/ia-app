@@ -109,7 +109,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         attribute="class"
         defaultTheme="dark"
         enableSystem
-        themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'custom']}
+        themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
       >
         <CustomThemeBootstrap />
         <PushSubscriptionSync />

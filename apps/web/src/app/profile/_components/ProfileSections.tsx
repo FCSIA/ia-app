@@ -487,6 +487,7 @@ const APPEARANCE_OPTIONS = [
   { id: 'system', label: 'System' },
   { id: 'high-contrast', label: 'Contrast' },
   { id: 'bubblegum', label: 'Bubblegum' },
+  { id: 'bubblegum-dark', label: 'Bubblegum Dark' },
   { id: 'custom', label: 'Custom' },
 ] as const;
 

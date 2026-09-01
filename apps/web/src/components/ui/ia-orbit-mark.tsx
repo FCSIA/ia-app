@@ -10,8 +10,8 @@ type OrbitAppearance = 'default' | 'dark' | 'bubblegum' | 'contrast';
 
 function orbitAppearance(theme: string | undefined): OrbitAppearance {
   if (theme === 'high-contrast') return 'contrast';
-  if (theme === 'bubblegum') return 'bubblegum';
-  return theme === 'dark' || theme === 'custom' ? 'dark' : 'default';
+  if (theme === 'bubblegum' || theme === 'bubblegum-dark') return 'bubblegum';
+  return theme === 'dark' || theme === 'bubblegum-dark' || theme === 'custom' ? 'dark' : 'default';
 }
 
 /** IA Orbit rendition that follows the active application appearance. */

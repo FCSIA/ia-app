@@ -4,7 +4,7 @@
 @import "katex/dist/katex.min.css";
 @import "../../../../packages/design-tokens/src/web.css";
 
-@custom-variant dark (&:is(.dark *, .high-contrast *, .custom *));
+@custom-variant dark (&:is(.dark *, .high-contrast *, .bubblegum-dark *, .custom *));
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -282,6 +282,52 @@
     --sidebar-ring: 328 95% 65%;
   }
 
+  /* ─── Bubblegum dark theme ─────────────────────────────────────────────
+     The same vivid pink voice in a low-light palette. Bright accents retain
+     enough contrast against plum surfaces for controls and dense text. */
+  .bubblegum-dark {
+    --background: 330 36% 6%;
+    --foreground: 330 24% 96%;
+
+    --card: 330 30% 10%;
+    --card-foreground: 330 24% 96%;
+    --popover: 330 30% 10%;
+    --popover-foreground: 330 24% 96%;
+
+    --primary: 328 90% 68%;
+    --primary-foreground: 330 62% 13%;
+
+    --secondary: 330 25% 15%;
+    --secondary-foreground: 330 25% 93%;
+
+    --muted: 330 24% 12%;
+    --muted-foreground: 330 15% 68%;
+    --accent: 290 32% 20%;
+    --accent-foreground: 290 20% 94%;
+
+    --destructive: 0 78% 62%;
+    --destructive-foreground: 0 0% 8%;
+
+    --border: 330 22% 21%;
+    --input: 330 22% 21%;
+    --ring: 328 90% 68%;
+
+    --chart-1: 328 90% 68%;
+    --chart-2: 290 72% 72%;
+    --chart-3: 200 82% 68%;
+    --chart-4: 45 95% 65%;
+    --chart-5: 150 62% 60%;
+
+    --sidebar: 330 36% 5%;
+    --sidebar-foreground: 330 20% 86%;
+    --sidebar-primary: 328 90% 68%;
+    --sidebar-primary-foreground: 330 62% 13%;
+    --sidebar-accent: 330 24% 12%;
+    --sidebar-accent-foreground: 330 20% 92%;
+    --sidebar-border: 330 20% 14%;
+    --sidebar-ring: 328 90% 68%;
+  }
+
   /* ─── Custom theme ─────────────────────────────────────────────────────
      User uploads an image; we use the dark palette for surfaces and overlay
      the image behind the body. Cards stay opaque so content remains readable. */
@@ -410,6 +456,7 @@
   }
 
   .dark,
+  .bubblegum-dark,
   .custom {
     --surface-1: hsl(var(--background));
     --surface-2: color-mix(in oklab, hsl(var(--card)) 94%, white 6%);
@@ -630,6 +677,33 @@
   --surface-6: #3A3A3A;
   --surface-7: #414141;
   --surface-8: #484848;
+  --dm-hi-base: rgba(255,255,255,0.01);
+  --dm-hi-mid: rgba(255,255,255,0.02);
+  --dm-hi-high: rgba(255,255,255,0.04);
+  --dm-hi-peak: rgba(255,255,255,0.06);
+  --dm-ring-base: rgba(255,255,255,0.02);
+  --dm-ring-mid: rgba(255,255,255,0.04);
+  --dm-ring-high: rgba(255,255,255,0.06);
+  --dm-drop: rgba(0,0,0,0.18);
+  --shadow-1: inset 0 0 0 1px var(--dm-ring-base);
+  --shadow-2: inset 0 1px 0 0 var(--dm-hi-base), inset 0 0 0 1px var(--dm-ring-base), 0 1px 1px -0.5px var(--dm-drop);
+  --shadow-3: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-base), 0 0 0 1px rgba(0,0,0,0.12), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop);
+  --shadow-4: inset 0 1px 0 0 var(--dm-hi-mid), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.14), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop);
+  --shadow-5: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-mid), 0 0 0 1px rgba(0,0,0,0.16), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop);
+  --shadow-6: inset 0 1px 0 0 var(--dm-hi-high), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.18), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop);
+  --shadow-7: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.20), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop);
+  --shadow-8: inset 0 1px 0 0 var(--dm-hi-peak), inset 0 0 0 1px var(--dm-ring-high), 0 0 0 1px rgba(0,0,0,0.22), 0 1px 1px -0.5px var(--dm-drop), 0 3px 3px -1.5px var(--dm-drop), 0 6px 6px -3px var(--dm-drop), 0 12px 12px -6px var(--dm-drop), 0 24px 24px -12px var(--dm-drop), 0 48px 48px -24px var(--dm-drop), 0 96px 96px -48px var(--dm-drop);
+}
+
+.bubblegum-dark {
+  --surface-1: hsl(var(--background));
+  --surface-2: color-mix(in oklab, hsl(var(--card)) 94%, white 6%);
+  --surface-3: color-mix(in oklab, hsl(var(--card)) 88%, white 12%);
+  --surface-4: color-mix(in oklab, hsl(var(--card)) 82%, white 18%);
+  --surface-5: color-mix(in oklab, hsl(var(--card)) 76%, white 24%);
+  --surface-6: color-mix(in oklab, hsl(var(--card)) 70%, white 30%);
+  --surface-7: color-mix(in oklab, hsl(var(--card)) 64%, white 36%);
+  --surface-8: color-mix(in oklab, hsl(var(--card)) 58%, white 42%);
   --dm-hi-base: rgba(255,255,255,0.01);
   --dm-hi-mid: rgba(255,255,255,0.02);
   --dm-hi-high: rgba(255,255,255,0.04);

@@ -21,6 +21,7 @@ const themeLabels: Record<ThemeName, string> = {
   dark: "Dark",
   "high-contrast": "High contrast",
   bubblegum: "Bubblegum",
+  "bubblegum-dark": "Bubblegum Dark",
   custom: "Custom",
 };
 

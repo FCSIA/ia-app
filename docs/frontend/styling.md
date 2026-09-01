@@ -128,6 +128,8 @@ The current visual direction is warm, clean, and operational:
 
 New web and mobile installs start in dark mode. A theme explicitly selected by
 the user remains persisted locally and is never overwritten by the default.
+Bubblegum is available as paired light and dark palettes so its pink accent can
+remain usable in low-light environments.
 
 Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
