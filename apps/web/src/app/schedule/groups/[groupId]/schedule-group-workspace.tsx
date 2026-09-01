@@ -46,7 +46,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-type GroupData = FunctionReturnType<typeof api.schedule.groups.get>;
+type GroupData = NonNullable<FunctionReturnType<typeof api.schedule.groups.get>>;
 type GroupSchedule = GroupData['ownerSchedule'];
 type GroupPerson = GroupData['owner'];
 type GroupMember = GroupData['members'][number];

@@ -68,11 +68,20 @@ async function requireOwnedGroup(
   groupId: Id<"studentScheduleGroups">,
   ownerId: Id<"users">,
 ) {
-  const group = await ctx.db.get(groupId);
-  if (!group || !isScheduleGroupOwner(group.ownerId, ownerId)) {
+  const group = await getOwnedGroupOrNull(ctx, groupId, ownerId);
+  if (!group) {
     throw new ConvexError("Schedule group not found.");
   }
   return group;
+}
+
+export async function getOwnedGroupOrNull(
+  ctx: QueryCtx | MutationCtx,
+  groupId: Id<"studentScheduleGroups">,
+  ownerId: Id<"users">,
+) {
+  const group = await ctx.db.get(groupId);
+  return group && isScheduleGroupOwner(group.ownerId, ownerId) ? group : null;
 }
 
 async function acceptedFriendIds(
@@ -155,17 +164,21 @@ export const listEligibleFriends = query({
 
 export const get = query({
   args: { groupId: v.id("studentScheduleGroups") },
-  returns: v.object({
-    group: groupSummaryValidator,
-    owner: userValidator,
-    ownerSchedule: v.union(studentScheduleRecordValidator, v.null()),
-    members: v.array(groupMemberValidator),
-    clusters: v.array(sharedClassClusterValidator),
-  }),
+  returns: v.union(
+    v.object({
+      group: groupSummaryValidator,
+      owner: userValidator,
+      ownerSchedule: v.union(studentScheduleRecordValidator, v.null()),
+      members: v.array(groupMemberValidator),
+      clusters: v.array(sharedClassClusterValidator),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
-    const group = await requireOwnedGroup(ctx, args.groupId, user._id);
+    const group = await getOwnedGroupOrNull(ctx, args.groupId, user._id);
+    if (!group) return null;
     const memberRows = await ctx.db
       .query("studentScheduleGroupMembers")
       .withIndex("by_groupId_and_addedAt", (q) => q.eq("groupId", group._id))
