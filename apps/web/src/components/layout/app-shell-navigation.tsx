@@ -17,17 +17,6 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import {
-  CalendarBlank as PhCalendarBlank,
-  ClipboardText as PhClipboardText,
-  DotsThree as PhDotsThree,
-  House as PhHouse,
-  Megaphone as PhMegaphone,
-  Presentation as PhPresentation,
-  Star as PhStar,
-  Ticket as PhTicket,
-  UsersThree as PhUsersThree,
-} from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
@@ -342,41 +331,6 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   ];
 }
 
-function MobileTabIcon({
-  href,
-  active,
-}: {
-  href: MobileTabItem["href"];
-  active: boolean;
-}) {
-  const className = cn(
-    "relative size-[22px] transition-transform duration-150",
-    active && "scale-105",
-  );
-  const iconProps = { "aria-hidden": true, className, weight: "fill" as const };
-
-  switch (href) {
-    case "/dashboard":
-      return <PhHouse {...iconProps} />;
-    case "/announcements":
-      return <PhMegaphone {...iconProps} />;
-    case "/clubs":
-      return <PhUsersThree {...iconProps} />;
-    case "/schedule":
-      return <PhClipboardText {...iconProps} />;
-    case "/events":
-      return <PhTicket {...iconProps} />;
-    case "/calendar":
-      return <PhCalendarBlank {...iconProps} />;
-    case "/flex-friday":
-      return <PhPresentation {...iconProps} />;
-    case "/wrapped":
-      return <PhStar {...iconProps} />;
-    case "#more":
-      return <PhDotsThree {...iconProps} />;
-  }
-}
-
 function AppShellMobileTabBar({
   onOpenMenu,
   ...props
@@ -395,6 +349,7 @@ function AppShellMobileTabBar({
     >
       {items.map((item) => {
         const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
+        const Icon = item.icon;
         const content = (
           <>
             {active ? (
@@ -405,7 +360,14 @@ function AppShellMobileTabBar({
                 transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
               />
             ) : null}
-            <MobileTabIcon href={item.href} active={active} />
+            <Icon
+              aria-hidden
+              className={cn(
+                "relative size-[22px] transition-[stroke-width,transform] duration-150",
+                active && "scale-105",
+              )}
+              strokeWidth={active ? 2.25 : 1.75}
+            />
             {item.href === "#more" && props.unreadBadge ? (
               <span className="absolute right-[18%] top-1 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                 {props.unreadBadge}
