@@ -32,6 +32,7 @@ import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubAvatar } from "@/components/clubs/club-avatar";
+import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
 import { fullName } from "@/components/clubs/types";
@@ -1235,14 +1236,19 @@ function PersonRow({
   const isSponsor = person.kind === "SPONSOR";
   const [primaryUnitName, ...otherUnitNames] = person.unitNames;
   const unitMembershipLabel = person.unitNames.join(", ");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
-    <div className="group/person flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
-      <ClubAvatar
-        person={person}
-        className="size-9"
-        fallbackClassName="text-[11px]"
-      />
+    <>
+      <div className="group/person flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-hover">
+        <button
+          type="button"
+          aria-label={`View ${fullName(person)} profile`}
+          onClick={() => setProfileOpen(true)}
+          className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+        >
+          <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
+        </button>
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex flex-wrap items-center gap-2">
           {isCurrentUser ? (
@@ -1331,7 +1337,17 @@ function PersonRow({
           ) : null}
         </div>
       ) : null}
-    </div>
+      </div>
+      <UserProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+        person={person}
+        roleName={person.roleName}
+        unitNames={person.unitNames}
+        kind={person.kind}
+        isCurrentUser={isCurrentUser}
+      />
+    </>
   );
 }
 
