@@ -21,6 +21,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { isSuperAdmin, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const CLUB_SKELETON_IDS = ['club-skeleton-1', 'club-skeleton-2', 'club-skeleton-3'];
 
@@ -120,7 +121,7 @@ export default function ClubsLandingPage() {
           </section>
         ) : null}
 
-        <section className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1">
+        <section className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <div className="flex min-h-12 items-center justify-between border-b px-4 py-2">
               <div className="min-w-0">
                 <h2 className="text-sm font-semibold text-foreground">

@@ -62,6 +62,7 @@ import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { useToast } from "@/hooks/use-toast";
 import { isSuperAdmin, useCurrentUser } from "@/lib/auth";
 import { isMobilePwaDisplay } from "@/lib/pwa";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { cn } from "@/lib/utils";
 import type {
   ClubNavigationChannel,
@@ -504,6 +505,7 @@ export function ClubWorkspace({
           inert={!mobileNavigationOpen}
           className={cn(
             "fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(4rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
+            CARD_SURFACE_FOREGROUND,
             mobileNavigationOpen ? "pointer-events-auto" : "pointer-events-none",
           )}
           initial={false}
@@ -544,7 +546,10 @@ export function ClubWorkspace({
         >
           <SheetContent
             side="right"
-            className="w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden"
+            className={cn(
+              "w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden",
+              CARD_SURFACE_FOREGROUND,
+            )}
           >
             <SheetTitle className="sr-only">
               {mobileRightPane?.title}
@@ -652,7 +657,7 @@ function MobileClubNavigation(props: ClubNavigationPanelProps) {
   if (!isMobilePwa) return <ClubNavigationPanel {...props} />;
 
   return (
-    <div className="flex size-full min-h-0 bg-card">
+    <div className={cn("flex size-full min-h-0 bg-card", CARD_SURFACE_FOREGROUND)}>
       <ClubRail
         clubId={props.clubId}
         myClubs={props.myClubs}
@@ -691,6 +696,7 @@ function ClubRail({
                 aria-label={entry.name}
                 aria-current={active ? "page" : undefined}
                 className={cn(
+                  CARD_SURFACE_FOREGROUND,
                   "flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-2 text-xs font-semibold text-primary outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring",
                   active && "bg-active text-foreground",
                 )}
@@ -828,7 +834,10 @@ function ClubNavigationPanel({
                 render={
                   <button
                     type="button"
-                    className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      "flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 text-left shadow-surface-1 outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring",
+                      CARD_SURFACE_FOREGROUND,
+                    )}
                   >
                     <ClubIdentity club={club} showPickerIndicator />
                   </button>
@@ -857,7 +866,10 @@ function ClubNavigationPanel({
             </DropdownMenu>
           ) : (
             <div
-              className="flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 shadow-surface-1"
+              className={cn(
+                "flex min-h-10 w-full items-center gap-2 rounded-md bg-surface-2 px-2 shadow-surface-1",
+                CARD_SURFACE_FOREGROUND,
+              )}
               aria-label="Current club"
             >
               <ClubIdentity club={club} />
