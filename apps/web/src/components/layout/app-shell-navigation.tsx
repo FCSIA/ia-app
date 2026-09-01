@@ -17,6 +17,17 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import {
+  CalendarBlank as PhCalendarBlank,
+  ClipboardText as PhClipboardText,
+  DotsThree as PhDotsThree,
+  House as PhHouse,
+  Megaphone as PhMegaphone,
+  Presentation as PhPresentation,
+  Star as PhStar,
+  Ticket as PhTicket,
+  UsersThree as PhUsersThree,
+} from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
@@ -39,6 +50,9 @@ export type MobileTabId =
   | "events"
   | "flex-friday"
   | "wrapped";
+
+export const MOBILE_TAB_DESTINATION_MIN = 4;
+export const MOBILE_TAB_DESTINATION_MAX = 5;
 
 type NavItem = {
   href: string;
@@ -306,6 +320,7 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
     "announcements",
     "clubs",
     props.showSchedule ? "schedule" : "calendar",
+    "events",
   ];
   const savedIds = (props.mobileTabLayout ?? []).filter(
     (id): id is MobileTabId => availableById.has(id as MobileTabId),
@@ -313,7 +328,9 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
   const selectedIds = [
     ...savedIds,
     ...defaults,
-  ].filter((id, index, ids) => availableById.has(id) && ids.indexOf(id) === index).slice(0, 3);
+  ].filter(
+    (id, index, ids) => availableById.has(id) && ids.indexOf(id) === index,
+  ).slice(0, MOBILE_TAB_DESTINATION_MAX);
 
   return [
     { href: "/dashboard", label: "Home", icon: Home },
@@ -323,6 +340,41 @@ function getMobileTabItems(props: AppShellNavigationProps): MobileTabItem[] {
     }),
     { href: "#more", label: "More", icon: Menu },
   ];
+}
+
+function MobileTabIcon({
+  href,
+  active,
+}: {
+  href: MobileTabItem["href"];
+  active: boolean;
+}) {
+  const className = cn(
+    "relative size-[22px] transition-transform duration-150",
+    active && "scale-105",
+  );
+  const iconProps = { "aria-hidden": true, className, weight: "fill" as const };
+
+  switch (href) {
+    case "/dashboard":
+      return <PhHouse {...iconProps} />;
+    case "/announcements":
+      return <PhMegaphone {...iconProps} />;
+    case "/clubs":
+      return <PhUsersThree {...iconProps} />;
+    case "/schedule":
+      return <PhClipboardText {...iconProps} />;
+    case "/events":
+      return <PhTicket {...iconProps} />;
+    case "/calendar":
+      return <PhCalendarBlank {...iconProps} />;
+    case "/flex-friday":
+      return <PhPresentation {...iconProps} />;
+    case "/wrapped":
+      return <PhStar {...iconProps} />;
+    case "#more":
+      return <PhDotsThree {...iconProps} />;
+  }
 }
 
 function AppShellMobileTabBar({
@@ -338,34 +390,24 @@ function AppShellMobileTabBar({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item) => {
         const active = item.href === "#more" ? moreActive : isActive(props.pathname, item.href);
-        const Icon = item.icon;
         const content = (
           <>
             {active ? (
               <motion.span
                 layoutId="app-mobile-tab-active"
                 aria-hidden
-                className="absolute inset-x-1 inset-y-1 rounded-xl bg-active"
+                className="absolute inset-x-1 inset-y-1 rounded-2xl bg-active"
                 transition={reduceMotion ? { duration: 0 } : { type: "spring", duration: 0.2, bounce: 0 }}
               />
             ) : null}
-            <Icon
-              aria-hidden
-              className={cn(
-                "relative size-5 transition-transform duration-150",
-                active && "scale-105",
-              )}
-              strokeWidth={active ? 2.25 : 1.75}
-            />
-            <span className="relative max-w-full truncate text-[10px] font-medium leading-none">
-              {item.label}
-            </span>
+            <MobileTabIcon href={item.href} active={active} />
             {item.href === "#more" && props.unreadBadge ? (
-              <span className="absolute right-[22%] top-1.5 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              <span className="absolute right-[18%] top-1 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
                 {props.unreadBadge}
               </span>
             ) : null}
@@ -373,7 +415,7 @@ function AppShellMobileTabBar({
         );
 
         const className = cn(
-          "relative flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 overflow-hidden rounded-xl px-1 text-muted-foreground outline-none transition-[color,transform] active:scale-[0.96] focus-visible:ring-1 focus-visible:ring-ring",
+          "relative flex min-h-12 touch-manipulation items-center justify-center overflow-hidden rounded-2xl px-1 text-muted-foreground outline-none transition-[color,transform] active:scale-[0.96] focus-visible:ring-1 focus-visible:ring-ring",
           active && "text-foreground",
         );
 
@@ -384,6 +426,7 @@ function AppShellMobileTabBar({
               type="button"
               className={className}
               aria-label="Open more navigation"
+              title="More"
               aria-current={active ? "page" : undefined}
               onClick={onOpenMenu}
             >
@@ -399,6 +442,8 @@ function AppShellMobileTabBar({
             href={href}
             prefetch
             className={className}
+            aria-label={item.label}
+            title={item.label}
             aria-current={active ? "page" : undefined}
           >
             {content}

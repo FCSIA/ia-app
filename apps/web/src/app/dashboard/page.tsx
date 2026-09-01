@@ -17,7 +17,12 @@ import {
 import { Card, CardDescription, CardGroup, CardHeader, CardMedia, CardTitle } from '@/components/ui/card';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { Sortable, SortableItem, SortableItemHandle } from '@/components/reui/sortable';
-import { getMobileTabEditorItems, type MobileTabId } from '@/components/layout/app-shell-navigation';
+import {
+  getMobileTabEditorItems,
+  MOBILE_TAB_DESTINATION_MAX,
+  MOBILE_TAB_DESTINATION_MIN,
+  type MobileTabId,
+} from '@/components/layout/app-shell-navigation';
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -45,13 +50,14 @@ export default function DashboardPage() {
       'announcements',
       'clubs',
       showSchedule ? 'schedule' : 'calendar',
+      'events',
     ];
     const saved = user?.mobileTabLayout ?? [];
     setTabLayout(
       [...saved, ...defaults].filter(
         (id, index, ids): id is MobileTabId =>
           available.has(id as MobileTabId) && ids.indexOf(id) === index,
-      ).slice(0, 3),
+      ).slice(0, MOBILE_TAB_DESTINATION_MAX),
     );
     setCustomizeView('tab-bar');
   };
@@ -150,7 +156,7 @@ export default function DashboardPage() {
               <DialogHeader>
                 <DialogTitle>Edit tab bar</DialogTitle>
                 <DialogDescription>
-                  Home and More stay in place. Choose and order three other destinations.
+                  Home and More stay in place. Choose and order four or five other destinations.
                 </DialogDescription>
               </DialogHeader>
               <CheckboxGroup
@@ -167,6 +173,11 @@ export default function DashboardPage() {
                     index={index}
                     label={item.label}
                     checked={tabLayout.includes(item.mobileTabId)}
+                    disabled={
+                      tabLayout.includes(item.mobileTabId)
+                        ? tabLayout.length <= MOBILE_TAB_DESTINATION_MIN
+                        : tabLayout.length >= MOBILE_TAB_DESTINATION_MAX
+                    }
                     onToggle={() => {
                       setTabLayout((current) =>
                         current.includes(item.mobileTabId)
@@ -212,7 +223,14 @@ export default function DashboardPage() {
                 <Button type="button" variant="tertiary" onClick={() => setCustomizeView('choice')}>
                   Back
                 </Button>
-                <Button type="button" disabled={tabLayout.length !== 3} onClick={() => void handleSaveTabBar()}>
+                <Button
+                  type="button"
+                  disabled={
+                    tabLayout.length < MOBILE_TAB_DESTINATION_MIN ||
+                    tabLayout.length > MOBILE_TAB_DESTINATION_MAX
+                  }
+                  onClick={() => void handleSaveTabBar()}
+                >
                   Save tab bar
                 </Button>
               </DialogFooter>

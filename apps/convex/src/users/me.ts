@@ -76,8 +76,12 @@ export const updateMobileTabLayout = mutation({
   },
   returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
-    if (args.layout.length !== 3 || new Set(args.layout).size !== args.layout.length) {
-      throw new ConvexError("Choose three different tab destinations.");
+    if (
+      args.layout.length < 4 ||
+      args.layout.length > 5 ||
+      new Set(args.layout).size !== args.layout.length
+    ) {
+      throw new ConvexError("Choose four or five different tab destinations.");
     }
 
     const user = await getCurrentAppUser(ctx);

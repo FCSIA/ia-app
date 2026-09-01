@@ -192,7 +192,7 @@ export function AppShell({
 
         <div
           className={cn(
-            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
+            "app-main-surface flex min-h-0 min-w-0 flex-1 flex-col bg-card pb-[calc(3rem+max(1rem,env(safe-area-inset-bottom)))] lg:pb-0",
             usesVisualViewport && "h-full overflow-hidden",
           )}
         >
