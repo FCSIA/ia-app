@@ -8,6 +8,7 @@ import { Check, Link2, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame } from '@/components/layout/page-frame';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -42,7 +43,7 @@ export default function FriendLinkRedemptionPage({
   return (
     <AppShell>
       <PageFrame className="items-center pt-12 sm:pt-20">
-        <main className="w-full max-w-md overflow-hidden rounded-2xl bg-surface-2 shadow-surface-2">
+        <main className={`w-full max-w-md overflow-hidden rounded-2xl bg-surface-2 shadow-surface-2 ${CARD_SURFACE_FOREGROUND}`}>
           {preview === undefined ? (
             <div className="animate-pulse space-y-4 p-6">
               <div className="mx-auto size-14 rounded-full bg-muted" />

@@ -27,11 +27,15 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 
-const cardClass = 'overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm';
+const cardClass = cn(
+  'overflow-hidden rounded-2xl border-border/70 bg-card/95 shadow-sm',
+  CARD_SURFACE_FOREGROUND,
+);
 const headerClass = 'flex flex-row items-start justify-between gap-4 border-b border-border/70 px-5 py-4';
 const contentClass = 'p-5';
 

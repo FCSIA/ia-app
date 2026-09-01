@@ -30,6 +30,7 @@ import { FileInput } from "@/components/ui/file-input";
 import { uploadFileToConvex } from "@/lib/convex-upload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
 function resolveMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -159,7 +160,7 @@ export function ClubHero({
 
   return (
     <>
-      <section className="overflow-hidden rounded-lg border border-border/70 bg-card">
+      <section className={cn("overflow-hidden rounded-lg border border-border/70 bg-card", CARD_SURFACE_FOREGROUND)}>
         <div
           className={cn(
             "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",

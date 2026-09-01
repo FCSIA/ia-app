@@ -33,6 +33,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 
@@ -83,7 +84,7 @@ function CalendarInviteStrip() {
       {invites.map((invite) => (
         <div
           key={invite._id}
-          className="flex min-w-[17rem] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2"
+          className={`flex min-w-[17rem] items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 ${CARD_SURFACE_FOREGROUND}`}
         >
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{invite.entry.title}</p>
@@ -183,7 +184,7 @@ export default function CalendarPage() {
         pageTransitionClassName="flex min-h-0 flex-1 flex-col"
         viewportMode="visual"
       >
-        <div className="flex min-h-0 flex-1 items-center justify-center md:rounded-xl md:border md:border-border md:bg-card">
+        <div className="flex min-h-0 flex-1 items-center justify-center md:rounded-xl md:border md:border-border md:bg-card md:text-card-foreground md:[--foreground:var(--card-foreground)]">
           <Skeleton className="h-5 w-32" />
         </div>
       </AppShell>
@@ -201,7 +202,7 @@ export default function CalendarPage() {
       pageTransitionClassName="flex min-h-0 flex-1 flex-col"
       viewportMode="visual"
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1">
+      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden border-b border-border bg-card text-foreground md:rounded-xl md:border md:shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
         <EventCalendar<CalendarEntry>
           events={events}
           view={view}

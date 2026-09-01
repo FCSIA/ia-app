@@ -18,6 +18,7 @@ import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ChannelDialog } from "@/components/clubs/dialogs/channel-dialog";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import {
   Card,
   CardContent,
@@ -253,7 +254,7 @@ function ChannelPlacementGroup({
   return (
     <section aria-label={`${label} channels`}>
       <div
-        className="flex min-h-9 items-center border-y border-border/50 bg-surface-2 pr-4 text-sm font-semibold text-foreground"
+        className={`flex min-h-9 items-center border-y border-border/50 bg-surface-2 pr-4 text-sm font-semibold text-foreground ${CARD_SURFACE_FOREGROUND}`}
         style={{ paddingLeft: `${16 + depth * 16}px` }}
       >
         {label}
@@ -286,7 +287,7 @@ function ChannelPlacementGroup({
             <SortableItem
               key={channel._id}
               value={channel._id}
-              className="group bg-card data-[dragging=true]:relative data-[dragging=true]:rounded-lg data-[dragging=true]:shadow-surface-3"
+              className={`group bg-card data-[dragging=true]:relative data-[dragging=true]:rounded-lg data-[dragging=true]:shadow-surface-3 ${CARD_SURFACE_FOREGROUND}`}
             >
               <div
                 className="flex min-h-11 items-center gap-1.5 py-1.5 pr-2"

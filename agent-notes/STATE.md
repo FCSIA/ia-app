@@ -199,9 +199,9 @@
   wallpaper legibility, validates restored local colors, and selects automatic
   black/white foregrounds by WCAG contrast rather than a luminance cutoff.
   Follow-up feedback from v0.8.20 showed page foreground leaking into opaque
-  club cards and reaction popups; raised/card surfaces now scope generic text
-  to their paired card or popover foreground while wallpaper text stays local
-  to the page substrate.
+  club cards and reaction popups. Raised surfaces and app-owned card containers
+  now share one card-foreground scope, while all popup families use the paired
+  popover scope; wallpaper text stays local to the page substrate.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and
@@ -388,9 +388,11 @@
 
 ### Verification (latest)
 
-- Custom-theme surface follow-up: web TypeScript, lint, production build,
-  focused surface/palette assertions, and `git diff --check` pass. Lint reports
-  21 existing warnings; signed-in visual review remains pending.
+- Custom-theme surface follow-up: card and popup foreground scopes are now
+  consistent across schedule, notification, shell, club, admin, and shared UI
+  surfaces. Web TypeScript, lint, production build, focused surface/palette
+  assertions, and `git diff --check` pass. Lint reports 21 existing warnings;
+  signed-in visual review remains pending.
 - `direnv exec . pnpm --filter web exec tsc --noEmit` - pass after the web UI
   primitive workflow and remediation slices.
 - Web calendar replacement: `pnpm --filter web exec tsc --noEmit`, web lint,

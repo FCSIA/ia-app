@@ -15,6 +15,7 @@ import {
 import { Field } from "@base-ui/react/field";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
@@ -205,6 +206,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
           className={cn(
             `flex items-center gap-2 ${shape.input} px-3 py-2 ring-1 transition-all duration-80`,
             bgClass,
+            bgClass === "bg-card" && CARD_SURFACE_FOREGROUND,
             ringClass
           )}
         >

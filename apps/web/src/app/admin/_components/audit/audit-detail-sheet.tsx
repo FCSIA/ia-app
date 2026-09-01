@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { AdminMetric, AdminNotice } from '../admin-ui';
 import type { AuditEventDetail } from '../../_lib/types';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type AuditDetailSheetProps = {
   selectedEventId: string | null;
@@ -60,7 +61,7 @@ export function AuditDetailSheet({
               </div>
 
               {eventDetail.entityPreview ? (
-                <div className="rounded-lg border bg-card p-4">
+                <div className={`rounded-lg border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

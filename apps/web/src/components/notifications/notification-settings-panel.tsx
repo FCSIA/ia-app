@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
+import { Elevated } from '@/lib/elevated';
 import { PushNotificationSettings } from '@/components/notifications/push-notification-settings';
 import { NOTIFICATION_CATEGORY_OPTIONS } from '@/components/notifications/notification-category-options';
 import { NotificationScopeSwitch } from '@/components/notifications/notification-scope-switch';
@@ -187,7 +188,7 @@ function ClubNotificationChannels({
   }, [optimisticClubEnabled, preferences, storedClubEnabled]);
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+    <Elevated offset={1} className="overflow-hidden rounded-xl">
       <div className="flex min-w-0 items-center justify-between gap-3 bg-surface-3 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <Megaphone
@@ -266,6 +267,6 @@ function ClubNotificationChannels({
       ) : (
         <p className="px-3 py-2 text-xs text-muted-foreground">No channels.</p>
       )}
-    </div>
+    </Elevated>
   );
 }

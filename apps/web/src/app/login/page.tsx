@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { LoadingFact } from '@/components/ui/loading-fact';
 import { IaOrbitMark } from '@/components/ui/ia-orbit-mark';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,7 +54,7 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-screen bg-background lg:grid-cols-[minmax(28rem,0.86fr)_minmax(0,1.14fr)]">
       <section className="flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
-        <Card className="w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5">
+        <Card className={`w-full max-w-md border-border/70 bg-card shadow-xl shadow-black/5 ${CARD_SURFACE_FOREGROUND}`}>
           <CardHeader className="space-y-3 pb-6">
             <div className="mb-1 flex flex-col items-center gap-2 self-center">
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 ring-1 ring-primary/20">

@@ -8,6 +8,7 @@ import { Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useShape } from "@/lib/shape-context"
+import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -17,6 +18,7 @@ const Command = React.forwardRef<
     ref={ref}
     className={cn(
       "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
+      POPOVER_SURFACE_FOREGROUND,
       className
     )}
     {...props}

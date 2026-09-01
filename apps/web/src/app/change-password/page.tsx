@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
 import { api } from '~/apps/convex/src/_generated/api';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 export default function ForcedPasswordChangePage() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function ForcedPasswordChangePage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-background p-4">
       <form
-        className="flex w-full max-w-md flex-col gap-6 rounded-xl border bg-card p-6 shadow-sm"
+        className={`flex w-full max-w-md flex-col gap-6 rounded-xl border bg-card p-6 shadow-sm ${CARD_SURFACE_FOREGROUND}`}
         onSubmit={submit}
       >
         <header className="flex flex-col gap-2">

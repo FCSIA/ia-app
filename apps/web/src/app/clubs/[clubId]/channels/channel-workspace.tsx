@@ -137,6 +137,7 @@ import { uploadFileToConvex } from '@/lib/convex-upload';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { useToast } from '@/hooks/use-toast';
 import {
   createClientMessageIdentity,
@@ -1710,7 +1711,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="shrink-0 border-t bg-card p-2">
+      <div className={cn("shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
@@ -1745,7 +1746,7 @@ export function ChannelWorkspace() {
         title: 'Thread',
         onClose: () => setSelectedThreadId(null),
       }}
-      contentClassName="relative flex h-full min-h-0 flex-col bg-card"
+      contentClassName={cn("relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
       scrollOwner="content"
       channelSearch={{
         channelName: channel.name,
@@ -1754,7 +1755,7 @@ export function ChannelWorkspace() {
       }}
     >
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
-        <div className="channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5">
+        <div className={cn("channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5", CARD_SURFACE_FOREGROUND)}>
           <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
             <ChannelNotificationSettings
               key={channelId}
@@ -1825,7 +1826,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className="channel-composer-dock shrink-0 border-t bg-card px-2 pb-2 pt-1.5">
+      <div className={cn("channel-composer-dock shrink-0 border-t bg-card px-2 pb-2 pt-1.5", CARD_SURFACE_FOREGROUND)}>
         <div className="mx-auto max-w-4xl">
           {canPost ? (
             <div className="flex flex-col gap-1.5">

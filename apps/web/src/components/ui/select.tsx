@@ -17,6 +17,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import type { IconComponent } from "@/lib/icon-context";
 import { cn } from "@/lib/utils";
+import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring, exitFallbackMs } from "@/lib/springs";
 import { useProximityHover } from "@/hooks/use-proximity-hover";
 import { useShape } from "@/lib/shape-context";
@@ -516,6 +517,7 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
                     // scrollbar-hiding stylesheet (see header comment) so
                     // long lists keep a visible scrollbar.
                     `relative flex flex-col gap-0.5 min-w-[var(--radix-select-trigger-width)] max-h-[min(300px,var(--radix-select-content-available-height))] overflow-y-auto ![scrollbar-width:thin] ${shape.container} p-1 select-none outline-none`,
+                    POPOVER_SURFACE_FOREGROUND,
                     className
                   )}
                 >

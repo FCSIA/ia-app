@@ -135,11 +135,12 @@ automatic contrast is applied to each matching foreground token rather than
 only to secondary controls. Automatic foregrounds choose black or white by
 comparing WCAG contrast ratios. The Custom theme also exposes a Text color for
 page content over a background image, whose contrast cannot be inferred from a
-single color token. Raised surfaces scope generic `foreground` utilities back
-to `card-foreground`; popup adapters narrow that scope to
-`popover-foreground`. Manual `bg-card` or `bg-surface-*` containers must apply
-the shared card-surface foreground scope so page text choices do not leak onto
-opaque surfaces.
+single color token. `surfaceClasses` and `Elevated` scope generic `foreground`
+utilities back to `card-foreground`. Semantic or app-owned opaque containers
+that cannot use `Elevated` compose the same `CARD_SURFACE_FOREGROUND` scope.
+Popup primitives compose `POPOVER_SURFACE_FOREGROUND` instead. Keep page Text
+local to transparent wallpaper substrates; do not add page-specific text-color
+patches for opaque surfaces.
 
 ## Toasts
 

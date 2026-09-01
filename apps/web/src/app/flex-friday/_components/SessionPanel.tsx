@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { formatTimeRange } from '../_utils';
 import { Card, CardAction, CardGroup } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 interface Props {
   sessions: any[];
@@ -32,7 +33,7 @@ export function SessionPanel({
   onSearchChange,
 }: Props) {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
+    <section className={`flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Sessions</h2>
         {canCreate && (

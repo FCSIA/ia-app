@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 type AnnouncementDetail = AnnouncementCardRecord & {
   embedUrls?: string[];
@@ -111,7 +112,7 @@ function AnnouncementDetailSkeleton() {
         <LoadingBlock className="h-9 w-24 rounded-full" />
         <LoadingBlock className="h-9 w-9 rounded-full" />
       </div>
-      <div className="rounded-2xl border border-border/70 bg-card px-6 py-6 shadow-sm">
+      <div className={cn("rounded-2xl border border-border/70 bg-card px-6 py-6 shadow-sm", CARD_SURFACE_FOREGROUND)}>
         <div className="flex gap-2">
           <LoadingBlock className="h-5 w-20 rounded-full" />
           <LoadingBlock className="h-5 w-24 rounded-full" />
@@ -297,7 +298,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             {commentCount > 0 ? (
               <div className="space-y-4">
                 {announcement.comments?.map((entry) => (
-                  <div key={entry._id} className="rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm">
+                  <div key={entry._id} className={cn("rounded-xl border border-border/70 bg-card px-4 py-4 shadow-sm", CARD_SURFACE_FOREGROUND)}>
                     <div className="flex items-start gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
                         {getInitials(entry.author)}

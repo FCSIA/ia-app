@@ -18,6 +18,7 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { MenuItem } from "@/components/ui/menu-item";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 
 export type ChannelSearchControl = {
   channelName: string;
@@ -148,7 +149,7 @@ function AppShellHeader({
   onLogout,
 }: AppShellHeaderProps) {
   return (
-    <header className="app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6 lg:px-8">
+    <header className={`app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6 lg:px-8 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>

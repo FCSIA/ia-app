@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Clock, X, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,7 +35,7 @@ export function AttendancePanel({
 }: Props) {
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3">
+      <div className={`flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3 ${CARD_SURFACE_FOREGROUND}`}>
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
@@ -78,7 +79,7 @@ export function AttendancePanel({
   );
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3">
+    <section className={`flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-3 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">Attendance roster</h3>
         <Badge variant="solid" color="gray" size="sm">

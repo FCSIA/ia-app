@@ -19,6 +19,7 @@ import { Tabs, TabPanel, TabsList, TabItem } from '@/components/ui/tabs';
 import { NotificationSettingsPanel } from '@/components/notifications/notification-settings-panel';
 import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notification-category-options';
 import { cn } from '@/lib/utils';
+import { Elevated } from '@/lib/elevated';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
@@ -179,7 +180,7 @@ export default function NotificationsPage() {
                       ) : null}
                     </Empty>
                   ) : (
-                    <div className="overflow-hidden rounded-xl bg-surface-2 shadow-surface-1">
+                    <Elevated offset={1} className="overflow-hidden rounded-xl">
                       <ul className="divide-y divide-border/60">
                         {filteredNotifications.map((n) => {
                           const categoryDetails = NOTIFICATION_CATEGORY_DETAILS[n.category];
@@ -239,7 +240,7 @@ export default function NotificationsPage() {
                           );
                         })}
                       </ul>
-                    </div>
+                    </Elevated>
                   )}
 
                   {filteredNotifications.length > 0 && notificationsStatus !== 'Exhausted' ? (

@@ -14,6 +14,7 @@ import {
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { spring } from "@/lib/springs";
 import { fontWeights } from "@/lib/font-weight";
 import { useShape } from "@/lib/shape-context";
@@ -1096,7 +1097,11 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
     return (
       <div
         ref={ref}
-        className={cn("flex flex-col gap-3 p-3 bg-card border border-border/60 rounded-xl", className)}
+        className={cn(
+          "flex flex-col gap-3 p-3 bg-card border border-border/60 rounded-xl",
+          CARD_SURFACE_FOREGROUND,
+          className,
+        )}
         style={{ width: PANEL_WIDTH }}
         {...props}
       >

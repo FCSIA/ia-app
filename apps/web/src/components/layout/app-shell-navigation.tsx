@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { IaOrbitMark } from "@/components/ui/ia-orbit-mark";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMobileTabMemory } from "@/components/layout/use-mobile-tab-memory";
@@ -344,7 +345,7 @@ function AppShellMobileTabBar({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+      className={cn("app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden", CARD_SURFACE_FOREGROUND)}
       style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
     >
       {items.map((item) => {

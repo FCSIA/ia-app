@@ -23,6 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { TabPanel } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 export function ScheduleGroupsPanel() {
   const { isAuthenticated } = useConvexAuth();
@@ -122,7 +123,7 @@ export function ScheduleGroupsPanel() {
             ))}
           </CardGroup>
         ) : (
-          <Empty className="min-h-64 bg-surface-2 shadow-surface-1">
+          <Empty className={`min-h-64 bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <EmptyHeader>
               <EmptyMedia>
                 <Users className="size-6 text-muted-foreground" />

@@ -26,6 +26,7 @@ import {
 import { computeWrappedAvailability } from '@/lib/wrapped';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export default function DashboardPage() {
@@ -203,7 +204,7 @@ export default function DashboardPage() {
                       if (!item) return null;
                       const Icon = item.icon;
                       return (
-                        <SortableItem key={id} value={id} className="bg-card">
+                        <SortableItem key={id} value={id} className={`bg-card ${CARD_SURFACE_FOREGROUND}`}>
                           <div className="flex min-h-11 items-center gap-2 px-2 py-1">
                             <SortableItemHandle
                               render={<Button type="button" variant="ghost" size="icon-compact" aria-label={`Drag ${item.label} to reorder`} />}
