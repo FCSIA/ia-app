@@ -12,6 +12,14 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.21 — 2026-09-01 (alpha)
+
+### Improved
+
+- **dashboard** — Fun facts now rotate through more topics, with special facts appearing less often. ([`3dba3a8`](https://github.com/virajdas/ia-app/commit/3dba3a8))
+- **clubs** — Club chat now keeps navigation and unread updates responsive as activity grows. ([`d262aab`](https://github.com/virajdas/ia-app/commit/d262aab))
+- **convex** — Reduce hot read amplification. ([`7a72403`](https://github.com/virajdas/ia-app/commit/7a72403))
+
 ## v0.8.20 — 2026-08-31 (alpha)
 
 ### Improved

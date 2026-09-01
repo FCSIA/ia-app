@@ -7,6 +7,31 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.21",
+    "date": "2026-09-01",
+    "commit": "3dba3a8",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "dashboard",
+        "summary": "Fun facts now rotate through more topics, with special facts appearing less often.",
+        "commit": "3dba3a8"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Club chat now keeps navigation and unread updates responsive as activity grows.",
+        "commit": "d262aab"
+      },
+      {
+        "category": "Improved",
+        "scope": "convex",
+        "summary": "Reduce hot read amplification.",
+        "commit": "7a72403"
+      }
+    ]
+  },
+  {
     "version": "0.8.20",
     "date": "2026-08-31",
     "commit": "e172d92",
