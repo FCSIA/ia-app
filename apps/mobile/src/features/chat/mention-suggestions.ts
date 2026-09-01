@@ -20,12 +20,6 @@ export function buildChatMentionSuggestions(
         ]
       : []),
     {
-      token: "leaders",
-      label: "Club leaders",
-      displayText: "@leaders",
-      detail: "Leaders and sponsors",
-    },
-    {
       token: "sponsors",
       label: "Club sponsors",
       displayText: "@sponsors",

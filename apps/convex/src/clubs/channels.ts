@@ -57,10 +57,6 @@ import { logAuditEvent } from "../audit/_lib";
 import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
 import {
-  MAX_CHANNEL_CONTEXT_SOURCE_ROWS,
-  selectChannelContextMemberCandidates,
-} from "./channelContext";
-import {
   clubChannelReactionStorageValues,
   normalizeClubChannelReaction,
 } from "./channelReactions";
@@ -83,6 +79,7 @@ const MAX_MENTION_GROUP_ROWS = MAX_CHANNEL_MENTION_RECIPIENTS + 1;
 const MAX_CLIENT_MESSAGE_ID_CHARACTERS = 128;
 const MAX_CHANNEL_SEARCH_RESULTS = 30;
 const AUDIT_MESSAGE_PREVIEW_CHARACTERS = 240;
+const MAX_CHANNEL_MENTION_CONTEXT_MEMBERS = 60;
 
 export function channelMessageAuditMeta(input: {
   clubId: Id<"clubs">;
@@ -229,17 +226,6 @@ async function resolveChannelMentionPlan(
 ): Promise<MentionPlan> {
   assertCanMentionEveryone(input.tokens, input.context.permissions.mentionEveryone);
   const audienceIds = new Set(input.channelAudienceIds);
-
-  if (input.channel.visibility === "PRIVATE") {
-    const sponsorRows = await ctx.db
-      .query("clubSponsors")
-      .withIndex("by_clubId", (q) => q.eq("clubId", input.channel.clubId))
-      .take(MAX_MENTION_GROUP_ROWS);
-    if (sponsorRows.length > MAX_CHANNEL_MENTION_RECIPIENTS) {
-      throw new ConvexError("Mention groups can include at most 50 people");
-    }
-    for (const sponsor of sponsorRows) audienceIds.add(sponsor.userId);
-  }
 
   const rows: PlannedMention[] = [];
   const recipients = new Map<Id<"users">, "USER" | "GROUP">();
@@ -1294,36 +1280,17 @@ export const getMentionContext = query({
     if (!readable) return null;
 
     const { channel, context } = readable;
-    const [sponsors, clubMembers, channelMembers, tags] = await Promise.all([
-      ctx.db
-        .query("clubSponsors")
-        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
-      ctx.db
-        .query("clubMembers")
-        .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
-      channel.visibility === "PRIVATE"
-        ? ctx.db
-          .query("clubChannelMemberships")
-          .withIndex("by_channelId", (q) => q.eq("channelId", args.channelId))
-          .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS)
-        : Promise.resolve([]),
+    const [candidateUserIds, tags] = await Promise.all([
+      getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_CONTEXT_MEMBERS),
       ctx.db
         .query("clubTags")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-        .take(MAX_CHANNEL_CONTEXT_SOURCE_ROWS),
+        .take(MAX_CHANNEL_MENTION_CONTEXT_MEMBERS),
     ]);
-    const candidates = selectChannelContextMemberCandidates({
-      visibility: channel.visibility,
-      sponsors,
-      clubMembers,
-      channelMembers,
-    });
     const members = (
       await Promise.all(
-        candidates.map(async (candidate) => {
-          const member = await ctx.db.get(candidate.userId);
+        candidateUserIds.map(async (userId) => {
+          const member = await ctx.db.get(userId);
           if (!member) return null;
           return {
             uniqueId: member.uniqueId,

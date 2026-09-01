@@ -24,7 +24,6 @@ import type * as bootstrap from "../bootstrap.js";
 import type * as clubs__lib from "../clubs/_lib.js";
 import type * as clubs_access from "../clubs/access.js";
 import type * as clubs_channelAccess from "../clubs/channelAccess.js";
-import type * as clubs_channelContext from "../clubs/channelContext.js";
 import type * as clubs_channelDeletion from "../clubs/channelDeletion.js";
 import type * as clubs_channelDeletionPolicy from "../clubs/channelDeletionPolicy.js";
 import type * as clubs_channelMarkdown from "../clubs/channelMarkdown.js";
@@ -143,7 +142,6 @@ declare const fullApi: ApiFromModules<{
   "clubs/_lib": typeof clubs__lib;
   "clubs/access": typeof clubs_access;
   "clubs/channelAccess": typeof clubs_channelAccess;
-  "clubs/channelContext": typeof clubs_channelContext;
   "clubs/channelDeletion": typeof clubs_channelDeletion;
   "clubs/channelDeletionPolicy": typeof clubs_channelDeletionPolicy;
   "clubs/channelMarkdown": typeof clubs_channelMarkdown;

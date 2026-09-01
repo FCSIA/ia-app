@@ -100,6 +100,17 @@ describe("channel role and structure filters", () => {
         createdAt: now,
         updatedAt: now,
       });
+      const schoolLeaderRoleId = await ctx.db.insert("clubRoles", {
+        clubId,
+        name: "School leader",
+        permissions: { ...NO_CLUB_PERMISSIONS, viewPrivateChannels: true },
+        isDefault: false,
+        showInDirectory: false,
+        position: 2,
+        createdById: creatorId,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       const assignments = [
         ["SCHOOL", schoolId, allowedRoleId],
@@ -109,6 +120,7 @@ describe("channel role and structure filters", () => {
         ["ROOM-A-WRONG-ROLE", roomAId, otherRoleId],
         ["ROOM-B", roomBId, allowedRoleId],
         ["EXPLICIT", roomBId, otherRoleId],
+        ["SCHOOL-LEADER", undefined, schoolLeaderRoleId],
       ] as const;
       const userIds = new Map<string, Id<"users">>();
       for (const [uniqueId, unitId, roleId] of assignments) {
@@ -135,13 +147,15 @@ describe("channel role and structure filters", () => {
           roleId,
           joinedAt: now,
         });
-        await ctx.db.insert("clubUnitMembers", {
-          clubId,
-          unitId,
-          userId,
-          joinedAt: now,
-          updatedAt: now,
-        });
+        if (unitId) {
+          await ctx.db.insert("clubUnitMembers", {
+            clubId,
+            unitId,
+            userId,
+            joinedAt: now,
+            updatedAt: now,
+          });
+        }
       }
 
       const roomChannelId = await ctx.db.insert("clubChannels", {
@@ -178,11 +192,12 @@ describe("channel role and structure filters", () => {
       const houseChannel = (await ctx.db.get(houseChannelId))!;
       const context = memberContext(clubId);
       const managerContext = { ...context, canManageChannels: true };
+      const schoolLeaderContext = { ...context, canSeePrivateChannels: true };
       const access = async (channel: Doc<"clubChannels">, uniqueId: string) =>
         (await getChannelAccess(
           ctx,
           channel,
-          context,
+          uniqueId === "SCHOOL-LEADER" ? schoolLeaderContext : context,
           userIds.get(uniqueId)!,
         )).canView;
       const batchedHouseA = await getChannelAccessForChannels(
@@ -241,6 +256,7 @@ describe("channel role and structure filters", () => {
       "ROOM-A-WRONG-ROLE": false,
       "ROOM-B": false,
       EXPLICIT: true,
+      "SCHOOL-LEADER": true,
     });
     expect(result.house).toEqual({
       school: true,
@@ -254,6 +270,7 @@ describe("channel role and structure filters", () => {
       result.userIds["HOUSE-A"],
       result.userIds["ROOM-A"],
       result.userIds.EXPLICIT,
+      result.userIds["SCHOOL-LEADER"],
     ]));
     expect(result.manager).toMatchObject({ canView: true, canManage: true });
     expect(result.batchedHouseA).toEqual({ room: true, house: true });

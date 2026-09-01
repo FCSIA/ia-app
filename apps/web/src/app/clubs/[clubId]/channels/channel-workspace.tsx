@@ -1419,7 +1419,6 @@ export function ChannelWorkspace() {
       ...(canUseAll
         ? [{ token: 'all', label: 'Everyone', detail: '', kind: 'built-in' as const }]
         : []),
-      { token: 'leaders', label: 'Leaders', detail: '', kind: 'built-in' },
       { token: 'sponsors', label: 'Sponsors', detail: '', kind: 'built-in' },
     ];
     const tags = mentionContext?.tags.map((tag) => ({

@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
+import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 import { MAX_CLUB_UNITS } from "./hierarchyRules";
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
@@ -288,25 +289,35 @@ export async function getChannelAccess(
 
 /** Resolves a bounded audience for notification and mention delivery. */
 export async function getChannelAudienceUserIds(
-  ctx: MutationCtx,
+  ctx: ChannelDbCtx,
   channel: Channel,
   limit: number,
 ) {
   const policy = effectiveChannelPolicy(channel);
-  const explicitRows = await ctx.db
-    .query("clubChannelMemberships")
-    .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
-    .take(limit);
-  const audienceIds = new Set(explicitRows.map((row) => row.userId));
-  if (policy.explicitOnly || audienceIds.size >= limit) {
-    return [...audienceIds].slice(0, limit);
-  }
-
-  const [clubMembers, units, unitMemberships] = await Promise.all([
+  const [
+    explicitRows,
+    sponsors,
+    clubMembers,
+    roles,
+    units,
+    unitMemberships,
+  ] = await Promise.all([
+    ctx.db
+      .query("clubChannelMemberships")
+      .withIndex("by_channelId", (q) => q.eq("channelId", channel._id))
+      .take(limit),
+    ctx.db
+      .query("clubSponsors")
+      .withIndex("by_clubId", (q) => q.eq("clubId", channel.clubId))
+      .take(limit),
     ctx.db
       .query("clubMembers")
       .withIndex("by_clubId", (q) => q.eq("clubId", channel.clubId))
       .take(limit * 4),
+    ctx.db
+      .query("clubRoles")
+      .withIndex("by_clubId_and_position", (q) => q.eq("clubId", channel.clubId))
+      .take(100),
     policy.accessUnitId
       ? ctx.db
           .query("clubUnits")
@@ -324,6 +335,7 @@ export async function getChannelAudienceUserIds(
           .take(MAX_CLUB_UNITS * 4)
       : Promise.resolve([]),
   ]);
+  const roleById = new Map(roles.map((role) => [role._id, role]));
   const parentByUnitId = new Map(
     units.map((unit) => [unit._id, unit.parentUnitId ?? null]),
   );
@@ -332,6 +344,33 @@ export async function getChannelAudienceUserIds(
     const current = membershipsByUserId.get(membership.userId) ?? [];
     current.push(membership.unitId);
     membershipsByUserId.set(membership.userId, current);
+  }
+  const audienceIds = new Set<Id<"users">>();
+  const addAudience = (userId: Id<"users">) => {
+    if (audienceIds.size < limit) audienceIds.add(userId);
+  };
+
+  // Sponsors and club roles that can see or manage every channel receive the
+  // same audience treatment as the per-viewer access boundary. Put them first
+  // so a large house does not hide its school-level leaders from @ suggestions.
+  for (const sponsor of sponsors) addAudience(sponsor.userId);
+  for (const member of clubMembers) {
+    const roleId = member.roleId ?? member.customRoleId;
+    const role = roleId ? roleById.get(roleId) : undefined;
+    const permissions = role?.permissions ?? NO_CLUB_PERMISSIONS;
+    const hasElevatedChannelAccess =
+      member.role === "LEADER" ||
+      member.role === "SPONSOR" ||
+      permissions.viewPrivateChannels ||
+      permissions.createChannels ||
+      permissions.editChannels ||
+      permissions.deleteChannels;
+    if (hasElevatedChannelAccess) addAudience(member.userId);
+  }
+  for (const explicit of explicitRows) addAudience(explicit.userId);
+
+  if (policy.explicitOnly || audienceIds.size >= limit) {
+    return [...audienceIds];
   }
 
   for (const member of clubMembers) {
