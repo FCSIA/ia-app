@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  NAVIGATION_LOADING_MESSAGES,
   NO_SCHOOL_MESSAGES,
+  SPOTLIGHT_LOADING_FACTS,
   SCHOOL_OVER_MESSAGES,
   createNavigationLoadingFactPicker,
   pickDailySchoolMessage,
@@ -12,31 +14,69 @@ function sequenceRandom(values: number[]) {
   return () => values[index++ % values.length] ?? 0;
 }
 
+function seededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1_664_525 + 1_013_904_223) >>> 0;
+    return state / 4_294_967_296;
+  };
+}
+
 describe("navigation loading facts", () => {
   it("keeps the string picker compatible", () => {
     expect(pickNavigationLoadingMessage()).toEqual(expect.any(String));
   });
 
-  it("selects rare facts with app-owned visual metadata", () => {
+  it("selects Phoenix facts with app-owned visual metadata", () => {
     const pick = createNavigationLoadingFactPicker(sequenceRandom([0, 0]));
-    expect(pick()).toMatchObject({ rarity: "rare", visual: "phoenix" });
+    expect(pick()).toMatchObject({ category: "phoenix", visual: "phoenix" });
   });
 
-  it("selects non-Phoenix rare facts at the rare threshold", () => {
-    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.1, 0]));
-    expect(pick()).toMatchObject({ rarity: "rare" });
+  it("selects spotlight facts separately from Phoenix facts", () => {
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.05, 0]));
+    expect(pick()).toMatchObject({ category: "spotlight" });
     expect(pick().visual).toBeUndefined();
   });
 
-  it("selects ordinary facts outside the rare and Phoenix thresholds", () => {
-    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.7, 0]));
-    expect(pick()).toMatchObject({ rarity: "common" });
+  it("selects standard facts outside the spotlight and Phoenix thresholds", () => {
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.5, 0]));
+    expect(pick()).toMatchObject({ category: "standard" });
   });
 
-  it("does not repeat common facts inside the 30-item history window", () => {
+  it("keeps a sufficiently varied spotlight pool", () => {
+    expect(SPOTLIGHT_LOADING_FACTS).toHaveLength(12);
+    SPOTLIGHT_LOADING_FACTS.forEach((fact) => {
+      expect(NAVIGATION_LOADING_MESSAGES).not.toContain(fact.text);
+    });
+  });
+
+  it("does not repeat facts inside the 30-item history window", () => {
     const pick = createNavigationLoadingFactPicker(sequenceRandom([0.7, 0]));
     const ids = Array.from({ length: 30 }, () => pick().id);
     expect(new Set(ids)).toHaveLength(ids.length);
+  });
+
+  it("falls back to an unseen fact when the spotlight pool is exhausted", () => {
+    const pick = createNavigationLoadingFactPicker(sequenceRandom([0.05, 0]));
+    const ids = Array.from({ length: 13 }, () => pick().id);
+
+    expect(new Set(ids)).toHaveLength(ids.length);
+  });
+
+  it.each([
+    [20, 7],
+    [35, 42],
+    [50, 1_337],
+  ])("keeps the previous 30 facts fresh across a %i-pick sample", (sampleSize, seed) => {
+    const pick = createNavigationLoadingFactPicker(seededRandom(seed));
+    const facts = Array.from({ length: sampleSize }, () => pick());
+
+    facts.forEach((fact, index) => {
+      const previousIds = facts
+        .slice(Math.max(0, index - 30), index)
+        .map((previousFact) => previousFact.id);
+      expect(previousIds).not.toContain(fact.id);
+    });
   });
 });
 
