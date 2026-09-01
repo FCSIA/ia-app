@@ -12,6 +12,15 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.22 — 2026-09-01 (alpha)
+
+### Improved
+
+- **schedule** — Deleting a friend group now returns you to the groups list instead of showing an error page. ([`7d019d5`](https://github.com/virajdas/ia-app/commit/7d019d5))
+- **web** — Club cards, menus, and reaction details now use readable text colors with custom themes. ([`6bc7ee8`](https://github.com/virajdas/ia-app/commit/6bc7ee8))
+- **clubs** — Mentions now include people who can access your club channel, including inherited house leaders. ([`223f179`](https://github.com/virajdas/ia-app/commit/223f179))
+- **navigation** — Your mobile tab bar now uses filled icons and can show up to five favorite destinations. ([`8880f5d`](https://github.com/virajdas/ia-app/commit/8880f5d))
+
 ## v0.8.21 — 2026-09-01 (alpha)
 
 ### Improved
