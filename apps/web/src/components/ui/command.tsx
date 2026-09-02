@@ -32,7 +32,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
       <DialogContent
         size="lg"
         mobilePosition="top"
-        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden !bg-transparent p-0 !shadow-none [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-1rem)]"
+        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-2rem)]"
         onOpenAutoFocus={(event) => {
           if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault()
         }}
@@ -71,7 +71,10 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[min(640px,72vh)] overflow-y-auto overflow-x-hidden p-2", className)}
+    className={cn(
+      "max-h-[min(24rem,calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)))] overflow-y-auto overflow-x-hidden p-2",
+      className
+    )}
     {...props}
   />
 ))
