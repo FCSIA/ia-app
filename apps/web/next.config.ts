@@ -9,6 +9,15 @@ const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
 const websocketUrl = convexUrl?.replace(/^http/, 'ws');
 const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+const imageSources = [
+  "'self'",
+  'data:',
+  'blob:',
+  convexUrl,
+  convexSiteUrl,
+  'https://*.convex.cloud',
+  'https://*.convex.site',
+].filter(Boolean).join(' ');
 const isProduction = process.env.NODE_ENV === 'production';
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -17,7 +26,7 @@ const contentSecurityPolicy = [
   "form-action 'self'",
   "object-src 'none'",
   `connect-src ${connectSources}`,
-  "img-src 'self' data: blob: https://*.convex.cloud https://*.convex.site",
+  `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
