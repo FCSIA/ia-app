@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
+import { formatPathwayLabel, formatRoleLabel, getUserRoles, USER_ROLE_GROUP_META } from '../../_lib/admin-utils';
 import type { AdminUserRecord, AdminUserRoleGroup } from '../../_lib/types';
 import { AdminNotice } from '../admin-ui';
 import { UserPermissionsPopover } from './user-permissions-popover';
@@ -28,7 +28,7 @@ import { ImpersonateUserAction } from '@/components/auth/impersonate-user-action
 import { InputCopy } from '@/components/ui/input-copy';
 
 const ROLE_BADGE_LIMIT = 2;
-const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Roles', 'Status', 'Actions'] as const;
+const USER_TABLE_HEADERS = ['Select', 'Name', 'Grade', 'Major', 'Minor', 'Roles', 'Status', 'Actions'] as const;
 
 function roleLabel(role: string) {
   return formatRoleLabel(role);
@@ -381,6 +381,8 @@ function UserTableSection({
           <col className="w-10" />
           <col className="w-[200px]" />
           <col className="w-[72px]" />
+          <col className="w-[156px]" />
+          <col className="w-[156px]" />
           <col />
           <col className="w-[92px]" />
           <col className="w-[176px]" />
@@ -425,6 +427,16 @@ function UserTableSection({
                 </TableCell>
                 <TableCell className={d.cell}>
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block truncate" title={formatPathwayLabel(user.major)}>
+                    {formatPathwayLabel(user.major)}
+                  </span>
+                </TableCell>
+                <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
+                  <span className="block truncate" title={formatPathwayLabel(user.minor)}>
+                    {formatPathwayLabel(user.minor)}
+                  </span>
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
                   <RoleSummary roles={getUserRoles(user)} />

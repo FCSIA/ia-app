@@ -52,6 +52,8 @@ export type AdminUserRecord = {
   lastName: string;
   roles?: string[];
   gradeLevel?: number | null;
+  major?: string | null;
+  minor?: string | null;
   email?: string;
   avatarUrl?: string;
   isActive?: boolean;
