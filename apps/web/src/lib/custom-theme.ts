@@ -10,8 +10,18 @@ export const customColorSlots = [
 
 export type CustomColorKey = (typeof customColorSlots)[number]['key'];
 export type CustomColors = Partial<Record<CustomColorKey, string>>;
+export type CustomColorErrors = Partial<Record<CustomColorKey, string>>;
 
 const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
+const MIN_TEXT_CONTRAST = 4.5;
+const MIN_UI_CONTRAST = 3;
+const defaultCustomColors: Record<CustomColorKey, string> = {
+  background: '#090b0a',
+  foreground: '#f5f6f5',
+  primary: '#f97316',
+  secondary: '#1d201f',
+  accent: '#1d201f',
+};
 
 const colorVariables: Record<
   CustomColorKey,
@@ -88,6 +98,46 @@ export function readableForegroundParts(hex: string): string {
   return blackContrast >= whiteContrast ? '0 0% 0%' : '0 0% 100%';
 }
 
+export function contrastRatio(left: string, right: string): number | null {
+  const leftLuminance = relativeLuminance(left);
+  const rightLuminance = relativeLuminance(right);
+  if (leftLuminance === null || rightLuminance === null) return null;
+  const lighter = Math.max(leftLuminance, rightLuminance);
+  const darker = Math.min(leftLuminance, rightLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function validateCustomColors(colors: CustomColors): CustomColorErrors {
+  const resolved = Object.fromEntries(
+    customColorSlots.map(({ key }) => [key, colors[key] ?? defaultCustomColors[key]]),
+  ) as Record<CustomColorKey, string>;
+  const errors: CustomColorErrors = {};
+  const pageContrast = contrastRatio(resolved.foreground, resolved.background);
+
+  if (pageContrast !== null && pageContrast < MIN_TEXT_CONTRAST) {
+    const message = `Text and Background need at least 4.5:1 contrast (currently ${pageContrast.toFixed(2)}:1).`;
+    errors.foreground = message;
+    errors.background = message;
+  }
+
+  const primaryPageContrast = contrastRatio(resolved.primary, resolved.background);
+  const primaryCardContrast = contrastRatio(resolved.primary, resolved.secondary);
+  if (
+    (primaryPageContrast !== null && primaryPageContrast < MIN_UI_CONTRAST) ||
+    (primaryCardContrast !== null && primaryCardContrast < MIN_UI_CONTRAST)
+  ) {
+    errors.primary = `Primary needs at least 3:1 contrast against page and card surfaces (currently ${primaryPageContrast?.toFixed(2) ?? 'invalid'}:1 and ${primaryCardContrast?.toFixed(2) ?? 'invalid'}:1).`;
+    if (primaryPageContrast !== null && primaryPageContrast < MIN_UI_CONTRAST) {
+      errors.background = errors.background ?? errors.primary;
+    }
+    if (primaryCardContrast !== null && primaryCardContrast < MIN_UI_CONTRAST) {
+      errors.secondary = errors.primary;
+    }
+  }
+
+  return errors;
+}
+
 export function parseCustomColors(raw: string | null): CustomColors {
   if (!raw) return {};
   try {
@@ -110,13 +160,15 @@ export function parseCustomColors(raw: string | null): CustomColors {
 export function loadCustomColors(): CustomColors {
   if (typeof localStorage === 'undefined') return {};
   try {
-    return parseCustomColors(localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY));
+    const colors = parseCustomColors(localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY));
+    return Object.keys(validateCustomColors(colors)).length === 0 ? colors : {};
   } catch {
     return {};
   }
 }
 
 export function buildCustomThemeRule(colors: CustomColors): string | null {
+  if (Object.keys(validateCustomColors(colors)).length > 0) return null;
   const declarations: string[] = [];
   const validColors: CustomColors = {};
 
@@ -167,4 +219,20 @@ export function applyCustomColors(colors: CustomColors) {
 function normalizedHex(value: string) {
   const hex = value.trim().replace(/^#/, '').toLowerCase();
   return /^[0-9a-f]{6}$/.test(hex) ? `#${hex}` : null;
+}
+
+function relativeLuminance(hex: string): number | null {
+  const value = normalizedHex(hex);
+  if (!value) return null;
+  const channels = [
+    Number.parseInt(value.slice(1, 3), 16),
+    Number.parseInt(value.slice(3, 5), 16),
+    Number.parseInt(value.slice(5, 7), 16),
+  ].map((channel) => {
+    const srgb = channel / 255;
+    return srgb <= 0.04045
+      ? srgb / 12.92
+      : Math.pow((srgb + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }

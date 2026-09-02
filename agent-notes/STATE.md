@@ -201,7 +201,10 @@
   Follow-up feedback from v0.8.20 showed page foreground leaking into opaque
   club cards and reaction popups. Raised surfaces and app-owned card containers
   now share one card-foreground scope, while all popup families use the paired
-  popover scope; wallpaper text stays local to the page substrate.
+  popover scope; wallpaper text stays local to the page substrate. Fluid's
+  unlayered surface ladder now gives Custom the same dark-surface cascade level
+  as Bubblegum Dark, and invalid custom Text/Background or Primary/surface
+  contrast combinations are rejected before application or local persistence.
 - `/courses` is included in protected route middleware.
 - Club channel message queries include both `clubId` and `channelId`.
 - Event creation UI only offers eligible clubs to non-general creators and

@@ -135,9 +135,11 @@ Custom palette colors update their paired foreground tokens together. In
 particular, the Secondary color owns card, popover, and muted surfaces, so its
 automatic contrast is applied to each matching foreground token rather than
 only to secondary controls. Automatic foregrounds choose black or white by
-comparing WCAG contrast ratios. The Custom theme also exposes a Text color for
-page content over a background image, whose contrast cannot be inferred from a
-single color token. `surfaceClasses` and `Elevated` scope generic `foreground`
+comparing WCAG contrast ratios. The editor refuses to save Text/Background
+pairs below 4.5:1 or Primary colors below 3:1 against page and card surfaces.
+The Custom theme also exposes a Text color for page content over a background
+image, whose contrast cannot be inferred from a single color token and still
+requires visual review. `surfaceClasses` and `Elevated` scope generic `foreground`
 utilities back to `card-foreground`. Semantic or app-owned opaque containers
 that cannot use `Elevated` compose the same `CARD_SURFACE_FOREGROUND` scope.
 Popup primitives compose `POPOVER_SURFACE_FOREGROUND` instead. Keep page Text

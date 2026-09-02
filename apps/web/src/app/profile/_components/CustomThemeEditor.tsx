@@ -8,7 +8,9 @@ import {
   applyCustomColors,
   customColorSlots,
   loadCustomColors,
+  validateCustomColors,
   type CustomColorKey,
+  type CustomColorErrors,
   type CustomColors,
 } from '@/lib/custom-theme';
 import { Button } from '@/components/ui/button';
@@ -183,10 +185,15 @@ function CustomBackgroundPanel() {
 function CustomColorsPanel() {
   const { toast } = useToast();
   const [colors, setColors] = useState<CustomColors>(loadCustomColors);
+  const [validationErrors, setValidationErrors] = useState<CustomColorErrors>({});
   const [openSlot, setOpenSlot] = useState<CustomColorKey | null>(null);
 
   function persist(next: CustomColors) {
     setColors(next);
+    const errors = validateCustomColors(next);
+    setValidationErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     try {
       if (Object.keys(next).length === 0) {
         localStorage.removeItem(CUSTOM_COLORS_STORAGE_KEY);
@@ -223,7 +230,10 @@ function CustomColorsPanel() {
       <div>
         <p className="text-sm font-medium text-foreground">Color palette</p>
         <p className="text-xs text-muted-foreground">
-          Surface contrast adjusts automatically. You can override page text for a wallpaper. Saved on this device.
+          Surface contrast adjusts automatically. Unreadable page, link, and icon combinations are not saved.
+        </p>
+        <p className="text-[11px] text-muted-foreground/70">
+          Wallpaper pixels cannot be checked automatically; review page text over your image before leaving.
         </p>
       </div>
 
@@ -231,6 +241,7 @@ function CustomColorsPanel() {
         {customColorSlots.map(({ key, label, help }) => {
           const hex = colors[key];
           const isOpen = openSlot === key;
+          const error = validationErrors[key];
           return (
             <div
               key={key}
@@ -280,6 +291,11 @@ function CustomColorsPanel() {
                       </Button>
                     ) : null}
                   </div>
+                  {error ? (
+                    <p className="text-xs leading-5 text-destructive" role="alert">
+                      {error} This draft has not been applied or saved.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
