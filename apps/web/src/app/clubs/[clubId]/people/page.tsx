@@ -32,9 +32,12 @@ import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubAvatar } from "@/components/clubs/club-avatar";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
 import { UnitTreePicker } from "@/components/clubs/unit-tree-picker";
+import { PeopleFilterPopover } from "@/components/clubs/people-filter-popover";
+import type { PeopleKindFilter } from "@/components/clubs/people-filter-popover";
 import { fullName } from "@/components/clubs/types";
 import { IaQrCode } from "@/components/ui/ia-qr-code";
 import { Badge } from "@/components/ui/badge";
@@ -768,6 +771,17 @@ export default function ClubPeoplePage() {
     api.clubs.peopleGroups.list,
     club ? { clubId } : "skip",
   );
+  const hierarchy = useQuery(
+    api.clubs.hierarchy.list,
+    club ? { clubId } : "skip",
+  );
+  const [selectedUnitId, setSelectedUnitId] = useState<Id<"clubUnits"> | null>(
+    null,
+  );
+  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<Id<"clubRoles">>>(
+    () => new Set(),
+  );
+  const [kindFilter, setKindFilter] = useState<PeopleKindFilter>("all");
 
   useEffect(() => {
     if (canAssignRoles && club?.roles.length === 0) {
@@ -782,6 +796,32 @@ export default function ClubPeoplePage() {
       });
     }
   }, [canAssignRoles, club?.roles.length, clubId, initializeRoles, toast]);
+
+  useEffect(() => {
+    setSelectedUnitId(null);
+    setSelectedRoleIds(new Set());
+    setKindFilter("all");
+  }, [clubId]);
+
+  useEffect(() => {
+    if (
+      selectedUnitId &&
+      hierarchy &&
+      !hierarchy.units.some((unit) => unit._id === selectedUnitId)
+    ) {
+      setSelectedUnitId(null);
+    }
+  }, [hierarchy, selectedUnitId]);
+
+  useEffect(() => {
+    if (!club) return;
+    const validIds = new Set(club.roles.map((r) => r._id));
+    setSelectedRoleIds((prev) => {
+      const next = new Set([...prev].filter((id) => validIds.has(id)));
+      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      return next;
+    });
+  }, [club]);
 
   const directory = club?.directory;
   const pendingJoinRequests = club?.pendingJoinRequests ?? [];
@@ -809,6 +849,45 @@ export default function ClubPeoplePage() {
     };
   }, [club?.roles, directory]);
 
+  const selectedUnitIds = useMemo(() => {
+    if (!selectedUnitId || !hierarchy?.units) return null;
+    const byParent = new Map<Id<"clubUnits"> | null, Id<"clubUnits">[]>();
+    for (const unit of hierarchy.units) {
+      const parent = unit.parentUnitId ?? null;
+      const list = byParent.get(parent) ?? [];
+      list.push(unit._id);
+      byParent.set(parent, list);
+    }
+    const collected = new Set<Id<"clubUnits">>([selectedUnitId]);
+    const stack: Id<"clubUnits">[] = [selectedUnitId];
+    while (stack.length) {
+      const cur = stack.pop()!;
+      for (const child of byParent.get(cur) ?? []) {
+        if (!collected.has(child)) {
+          collected.add(child);
+          stack.push(child);
+        }
+      }
+    }
+    return collected;
+  }, [selectedUnitId, hierarchy]);
+
+  const matchesSelectedSubstructure = (person: ClubDirectoryEntry) =>
+    !selectedUnitIds ||
+    ((((person as unknown as { unitIds?: Id<"clubUnits">[] }).unitIds ?? []) as Id<"clubUnits">[]).some((id) =>
+      selectedUnitIds.has(id),
+    ));
+
+  const matchesSelectedRoles = (person: ClubDirectoryEntry) =>
+    selectedRoleIds.size === 0 ||
+    (!!person.roleId && selectedRoleIds.has(person.roleId as Id<"clubRoles">));
+
+  const matchesKindFilter = (person: ClubDirectoryEntry) =>
+    kindFilter === "all" || person.kind === kindFilter;
+
+  const hasActivePopoverFilters =
+    !!selectedUnitId || selectedRoleIds.size > 0 || kindFilter !== "all";
+
   const filtered = useMemo(() => {
     let result = filterBySearchQuery(
       directory ?? [],
@@ -821,6 +900,16 @@ export default function ClubPeoplePage() {
       ],
     );
 
+    if (selectedUnitIds) {
+      result = result.filter(matchesSelectedSubstructure);
+    }
+    if (selectedRoleIds.size > 0) {
+      result = result.filter(matchesSelectedRoles);
+    }
+    if (kindFilter !== "all") {
+      result = result.filter(matchesKindFilter);
+    }
+
     if (visibleFilter === "sponsors")
       result = result.filter((p) => p.kind === "SPONSOR");
     else if (visibleFilter.startsWith("role:")) {
@@ -830,16 +919,26 @@ export default function ClubPeoplePage() {
     }
 
     return result;
-  }, [deferredSearch, directory, visibleFilter]);
+  }, [deferredSearch, directory, visibleFilter, selectedUnitIds, selectedRoleIds, kindFilter]);
 
   const groupPeople = useMemo(() => {
     const memberIds = new Set(groupMemberIds?.memberIds ?? []);
+    let result = (directory ?? []).filter((person) => memberIds.has(person._id));
+    if (selectedUnitIds) {
+      result = result.filter(matchesSelectedSubstructure);
+    }
+    if (selectedRoleIds.size > 0) {
+      result = result.filter(matchesSelectedRoles);
+    }
+    if (kindFilter !== "all") {
+      result = result.filter(matchesKindFilter);
+    }
     return filterBySearchQuery(
-      (directory ?? []).filter((person) => memberIds.has(person._id)),
+      result,
       deferredSearch,
       (person) => [fullName(person), person.uniqueId, person.roleName],
     );
-  }, [deferredSearch, directory, groupMemberIds?.memberIds]);
+  }, [deferredSearch, directory, groupMemberIds?.memberIds, selectedUnitIds, selectedRoleIds, kindFilter]);
 
   const visiblePeople = visibleFilter.startsWith("group:")
     ? groupPeople
@@ -969,6 +1068,23 @@ export default function ClubPeoplePage() {
 
             <div className="flex w-full justify-end gap-2 sm:w-auto">
               {visibleFilter !== "requests" ? (
+                <PeopleFilterPopover
+                  club={club}
+                  hierarchy={hierarchy}
+                  selectedUnitId={selectedUnitId}
+                  onSelectedUnitIdChange={setSelectedUnitId}
+                  selectedRoleIds={selectedRoleIds}
+                  onSelectedRoleIdsChange={setSelectedRoleIds}
+                  kindFilter={kindFilter}
+                  onKindFilterChange={setKindFilter}
+                  onClear={() => {
+                    setSelectedUnitId(null);
+                    setSelectedRoleIds(new Set());
+                    setKindFilter("all");
+                  }}
+                />
+              ) : null}
+              {visibleFilter !== "requests" ? (
                 <SearchInput
                   value={search}
                   onValueChange={setSearch}
@@ -994,7 +1110,7 @@ export default function ClubPeoplePage() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
+          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card ${CARD_SURFACE_FOREGROUND}`}>
             {visibleFilter.startsWith("group:") ? (
               selectedGroup ? (
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -1038,10 +1154,29 @@ export default function ClubPeoplePage() {
                   ) : (
                     <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
                       <UsersRound className="mb-2 size-5 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold text-foreground">No people in this group</h3>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {hasActivePopoverFilters
+                          ? "No people match the current filters"
+                          : "No people in this group"}
+                      </h3>
                       <p className="mt-1 max-w-72 text-xs text-muted-foreground">
-                        Add roles, people, or structure branches to change who appears here.
+                        {hasActivePopoverFilters
+                          ? "No one in this group matches the selected filters."
+                          : "Add roles, people, or structure branches to change who appears here."}
                       </p>
+                      {hasActivePopoverFilters ? (
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedUnitId(null);
+                            setSelectedRoleIds(new Set());
+                            setKindFilter("all");
+                          }}
+                          className="mt-2 text-primary font-semibold"
+                        >
+                          Clear filters
+                        </Button>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -1146,17 +1281,22 @@ export default function ClubPeoplePage() {
                   No people found
                 </h3>
                 <p className="mt-1 max-w-64 text-xs text-muted-foreground">
-                  {deferredSearch
-                    ? "Try a different search."
+                  {deferredSearch || hasActivePopoverFilters
+                    ? "No people match the current filters."
                     : "No one is in this group yet."}
                 </p>
-                {deferredSearch && (
+                {(deferredSearch || hasActivePopoverFilters) && (
                   <Button
                     variant="ghost"
-                    onClick={() => setSearch("")}
+                    onClick={() => {
+                      setSearch("");
+                      setSelectedUnitId(null);
+                      setSelectedRoleIds(new Set());
+                      setKindFilter("all");
+                    }}
                     className="mt-2 text-primary font-semibold"
                   >
-                    Clear search
+                    Clear filters
                   </Button>
                 )}
               </div>

@@ -69,6 +69,7 @@ const clubDetailValidator = v.union(
         roleId: v.union(v.id("clubRoles"), v.null()),
         roleName: v.union(v.string(), v.null()),
         unitNames: v.array(v.string()),
+        unitIds: v.array(v.id("clubUnits")),
         joinedAt: v.string(),
       }),
     ),
@@ -236,12 +237,16 @@ export const get = query({
     const customRoleNames = new Map(customRoles.map((role) => [role._id, role.name]));
     const unitNameById = new Map(units.map((unit) => [unit._id, unit.name]));
     const unitNamesByUserId = new Map<Id<"users">, string[]>();
+    const unitIdsByUserId = new Map<Id<"users">, Id<"clubUnits">[]>();
     for (const membership of unitMemberships) {
       const unitName = unitNameById.get(membership.unitId);
       if (!unitName) continue;
       const names = unitNamesByUserId.get(membership.userId) ?? [];
       names.push(unitName);
       unitNamesByUserId.set(membership.userId, names);
+      const ids = unitIdsByUserId.get(membership.userId) ?? [];
+      ids.push(membership.unitId);
+      unitIdsByUserId.set(membership.userId, ids);
     }
     const defaultRole = customRoles.find((role) => role.isDefault);
     const legacyLeaderRole = customRoles.find((role) => role.position === 1);
@@ -305,6 +310,7 @@ export const get = query({
         roleId: null,
         roleName: "Sponsor",
         unitNames: unitNamesByUserId.get(s.userId) ?? [],
+        unitIds: unitIdsByUserId.get(s.userId) ?? [],
         joinedAt: new Date(0).toISOString(),
       })),
       ...hydratedMembers
@@ -320,6 +326,7 @@ export const get = query({
             roleId: role?._id ?? null,
             roleName: role?.name ?? (m.role === "LEADER" ? "Leader" : "Member"),
             unitNames: unitNamesByUserId.get(m.userId) ?? [],
+            unitIds: unitIdsByUserId.get(m.userId) ?? [],
             joinedAt: new Date(
               uniqueMemberships.find((row) => row.userId === m.userId)?.joinedAt ?? 0,
             ).toISOString(),
