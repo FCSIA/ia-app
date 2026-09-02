@@ -12,6 +12,29 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.23 — 2026-09-02 (alpha)
+
+### Added
+
+- **clubs** — Filter People by substructure, role, and member type — quickly narrow to the group you need. ([`d2d350dd`](https://github.com/virajdas/ia-app/commit/d2d350dd))
+- **web** — Allow local Convex images in CSP. ([`650b96e4`](https://github.com/virajdas/ia-app/commit/650b96e4))
+- **themes** — Bubblegum now has a dark pink option for low-light use. ([`7b11ef50`](https://github.com/virajdas/ia-app/commit/7b11ef50))
+- **profile** — Adjust and crop your profile picture before saving — zoom and drag to frame it perfectly. ([`b948d569`](https://github.com/virajdas/ia-app/commit/b948d569))
+
+### Improved
+
+- **web** — Custom colors now reject unreadable combinations, and automatic Custom surfaces stay dark and legible. ([`d0f78bcb`](https://github.com/virajdas/ia-app/commit/d0f78bcb))
+- **web** — Search now opens as one clear panel instead of a nested dialog. ([`daf93a1d`](https://github.com/virajdas/ia-app/commit/daf93a1d))
+- **web** — Custom themes now keep text readable across schedule panels, navigation, cards, menus, and popups. ([`d91ee4ab`](https://github.com/virajdas/ia-app/commit/d91ee4ab))
+- **clubs** — Tap any profile picture to view that person's profile — works great on your phone. ([`2d920619`](https://github.com/virajdas/ia-app/commit/2d920619))
+- Revert "navigation: expand mobile tab bar". ([`e46a394f`](https://github.com/virajdas/ia-app/commit/e46a394f))
+- **navigation** — Your mobile tab bar can show up to five favorite destinations. ([`0688fcda`](https://github.com/virajdas/ia-app/commit/0688fcda))
+
+### Fixed
+
+- **web** — Fixed the command palette layout so search works cleanly on both desktop and mobile again. ([`0669ac17`](https://github.com/virajdas/ia-app/commit/0669ac17))
+- **navigation** — The mobile tab bar keeps the app's familiar icons while fitting more shortcuts. ([`4a880ac6`](https://github.com/virajdas/ia-app/commit/4a880ac6))
+
 ## v0.8.22 — 2026-09-01 (alpha)
 
 ### Improved

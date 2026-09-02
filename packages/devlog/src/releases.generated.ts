@@ -7,6 +7,84 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.23",
+    "date": "2026-09-02",
+    "commit": "0669ac17",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Filter People by substructure, role, and member type — quickly narrow to the group you need.",
+        "commit": "d2d350dd"
+      },
+      {
+        "category": "Added",
+        "scope": "web",
+        "summary": "Allow local Convex images in CSP.",
+        "commit": "650b96e4"
+      },
+      {
+        "category": "Added",
+        "scope": "themes",
+        "summary": "Bubblegum now has a dark pink option for low-light use.",
+        "commit": "7b11ef50"
+      },
+      {
+        "category": "Added",
+        "scope": "profile",
+        "summary": "Adjust and crop your profile picture before saving — zoom and drag to frame it perfectly.",
+        "commit": "b948d569"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Custom colors now reject unreadable combinations, and automatic Custom surfaces stay dark and legible.",
+        "commit": "d0f78bcb"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Search now opens as one clear panel instead of a nested dialog.",
+        "commit": "daf93a1d"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Custom themes now keep text readable across schedule panels, navigation, cards, menus, and popups.",
+        "commit": "d91ee4ab"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Tap any profile picture to view that person's profile — works great on your phone.",
+        "commit": "2d920619"
+      },
+      {
+        "category": "Improved",
+        "summary": "Revert \"navigation: expand mobile tab bar\".",
+        "commit": "e46a394f"
+      },
+      {
+        "category": "Improved",
+        "scope": "navigation",
+        "summary": "Your mobile tab bar can show up to five favorite destinations.",
+        "commit": "0688fcda"
+      },
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Fixed the command palette layout so search works cleanly on both desktop and mobile again.",
+        "commit": "0669ac17"
+      },
+      {
+        "category": "Fixed",
+        "scope": "navigation",
+        "summary": "The mobile tab bar keeps the app's familiar icons while fitting more shortcuts.",
+        "commit": "4a880ac6"
+      }
+    ]
+  },
+  {
     "version": "0.8.22",
     "date": "2026-09-01",
     "commit": "7d019d5",
