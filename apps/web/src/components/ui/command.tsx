@@ -32,7 +32,7 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
       <DialogContent
         size="lg"
         mobilePosition="top"
-        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-1rem)]"
+        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden !bg-transparent p-0 !shadow-none [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-1rem)]"
         onOpenAutoFocus={(event) => {
           if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault()
         }}
