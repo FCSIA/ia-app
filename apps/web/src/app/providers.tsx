@@ -16,6 +16,7 @@ import {
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
+import { ThemeFavicon } from '@/components/ui/ia-orbit-mark';
 import { api } from '~/apps/convex/src/_generated/api';
 
 /**
@@ -111,6 +112,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
       >
+        <ThemeFavicon />
         <CustomThemeBootstrap />
         <PushSubscriptionSync />
         <Suspense fallback={null}>

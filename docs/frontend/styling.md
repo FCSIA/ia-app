@@ -146,6 +146,12 @@ Popup primitives compose `POPOVER_SURFACE_FOREGROUND` instead. Keep page Text
 local to transparent wallpaper substrates; do not add page-specific text-color
 patches for opaque surfaces.
 
+Fluid elevation uses the unlayered `--surface-1` through `--surface-8` and
+`--shadow-1` through `--shadow-8` token families. They derive from the active
+semantic page and card tokens, with dark themes receiving Fluid's progressive
+surface ladder. Do not introduce a second surface or shadow token namespace or
+override this ladder from `@layer base`.
+
 ## Toasts
 
 The app currently renders both the existing `react-hot-toast` path and the
