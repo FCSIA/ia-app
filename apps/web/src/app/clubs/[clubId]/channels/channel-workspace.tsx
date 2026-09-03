@@ -12,7 +12,6 @@ function formatChatTimestamp(value: number | string | Date) {
   return format(date, 'MMM d, yyyy');
 }
 import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
-import Image from 'next/image';
 import {
   BarChart3,
   FileText,
@@ -261,24 +260,19 @@ function MessageAttachments({ attachments }: { attachments: ClubChannelMessageAt
             orientation={isImage ? 'vertical' : 'horizontal'}
             className={cn(
               isImage
-                ? 'w-52 max-w-[75vw] has-data-[slot=attachment-content]:w-full'
+                ? 'w-fit! max-w-[85vw] sm:max-w-[min(100%,42rem)] has-data-[slot=attachment-content]:w-full'
                 : 'max-w-72',
             )}
           >
             {isImage ? (
-              <AttachmentMedia
-                variant="image"
-                className="aspect-[3/2] rounded-b-none"
-              >
-                <Image
+              <div className="max-h-[min(60vh,32rem)] max-w-full overflow-hidden rounded-t-lg bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={href}
                   alt={attachment.fileName}
-                  width={1200}
-                  height={800}
-                  unoptimized
-                  className="size-full object-cover"
+                  className="block h-auto max-h-[min(60vh,32rem)] w-auto max-w-full object-contain"
                 />
-              </AttachmentMedia>
+              </div>
             ) : (
               <AttachmentMedia>
                 <FileText />
