@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings2, Trash2 } from "lucide-react";
+import { Pencil, Settings2, Trash2 } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
@@ -163,7 +163,7 @@ export function ClubHero({
       <section className={cn("overflow-hidden rounded-lg border border-border/70 bg-card", CARD_SURFACE_FOREGROUND)}>
         <div
           className={cn(
-            "relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
+            "group/banner relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",
             !bannerUrl && "ring-1 ring-inset ring-border/40",
           )}
           style={
@@ -180,24 +180,46 @@ export function ClubHero({
                 : undefined
           }
         >
-          {canEdit && !editing && (
-            <Button
-              variant="secondary"
-              size="sm"
-              leadingIcon={Settings2}
-              onClick={openEditor}
-              className="absolute right-2 top-2 h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
-            >
-              Customize
-            </Button>
-          )}
+          {canEdit && !editing ? (
+            <div className="absolute right-2 top-2 flex items-center gap-2">
+              <FileInput
+                accept="image/*"
+                loading={uploadingBanner}
+                onFileSelect={(file) => void handleUpload("banner", file)}
+              >
+                {({ disabled, open }) => (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leadingIcon={Pencil}
+                    disabled={disabled}
+                    onClick={open}
+                    className="h-8 bg-background/90 px-2.5 opacity-0 backdrop-blur transition-opacity group-hover/banner:opacity-100 group-focus-within/banner:opacity-100 [@media(pointer:coarse)]:opacity-100 hover:bg-background"
+                  >
+                    Edit banner
+                  </Button>
+                )}
+              </FileInput>
+              <Button
+                variant="secondary"
+                size="sm"
+                leadingIcon={Settings2}
+                onClick={openEditor}
+                className="h-8 bg-background/90 px-2.5 backdrop-blur hover:bg-background"
+              >
+                Customize
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         <div className="relative space-y-3 px-4 pb-4 pt-3">
           <EditableAvatar
             alt={club.name}
             canEdit={canEdit && !editing}
-            className="absolute -top-8 left-4 size-16 rounded-xl border-4 border-background bg-muted"
+            containerClassName="absolute -top-8 left-4 size-16"
+            className="size-full rounded-xl border-4 border-background bg-muted"
             fallback={clubInitial}
             fallbackClassName="rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-500/20 to-background text-lg text-orange-100"
             fallbackStyle={
@@ -212,7 +234,7 @@ export function ClubHero({
             onUpload={(file) => void handleQuickLogoUpload(file)}
             uploadLabel="Change club logo"
           />
-          <div className="min-h-16 pl-20 pt-0.5">
+          <div className="pt-6">
             <div className="min-w-0">
               <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
                 {club.name}

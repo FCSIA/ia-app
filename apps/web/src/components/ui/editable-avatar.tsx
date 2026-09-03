@@ -11,6 +11,7 @@ type EditableAvatarProps = {
   alt: string;
   canEdit?: boolean;
   className?: string;
+  containerClassName?: string;
   disabled?: boolean;
   fallback: string;
   fallbackClassName?: string;
@@ -28,6 +29,7 @@ export function EditableAvatar({
   alt,
   canEdit = false,
   className,
+  containerClassName,
   disabled = false,
   fallback,
   fallbackClassName,
@@ -55,6 +57,7 @@ export function EditableAvatar({
         'relative w-fit shrink-0',
         variant === 'overlay' && editable && 'group/avatar',
         variant === 'inline' && 'flex items-center gap-3',
+        containerClassName,
       )}
     >
       <Avatar

@@ -30,7 +30,14 @@ import {
 export { validateChatAttachmentMetadata } from "./chatAttachments";
 
 async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE" | "ANNOUNCEMENT_IMAGE"; fallbackMimeType?: string }) {
-  const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, args);
+  const prepared = await ctx.runMutation(
+    internal.uploads.uploadIntents.prepareUploadValidation,
+    {
+      uploadIntentId: args.uploadIntentId,
+      storageId: args.storageId,
+      purpose: args.purpose,
+    },
+  );
   try {
     const response = await fetch(prepared.url);
     if (!response.ok) throw new ConvexError("Upload not found");
