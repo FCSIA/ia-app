@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAction, useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { EditableAvatar } from '@/components/ui/editable-avatar';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
@@ -16,7 +17,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { AppUser } from '@/lib/auth';
 import { uploadUserImage } from '@/lib/upload-user-image';
-import { AvatarCropDialog } from './AvatarCropDialog';
 
 function initialsOf(firstName: string, lastName: string) {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -151,7 +151,7 @@ export function ProfileAvatarEditor({ user }: { user: AppUser }) {
           />
         </DialogContent>
       </Dialog>
-      <AvatarCropDialog
+      <ImageCropDialog
         open={cropOpen}
         onOpenChange={handleCropOpenChange}
         imageSrc={previewUrl}
