@@ -15,8 +15,8 @@ describe('custom theme contrast validation', () => {
     const colors = { background: '#ffffff', foreground: '#eeeeee' } as const;
 
     expect(validateCustomColors(colors)).toMatchObject({
-      background: expect.stringContaining('3:1'),
-      foreground: expect.stringContaining('3:1'),
+      background: expect.stringContaining('4.5:1'),
+      foreground: expect.stringContaining('4.5:1'),
     });
     expect(buildCustomThemeRule(colors)).toBeNull();
   });
@@ -31,6 +31,35 @@ describe('custom theme contrast validation', () => {
     expect(validateCustomColors(colors)).toMatchObject({
       background: expect.stringContaining('3:1'),
       primary: expect.stringContaining('3:1'),
+    });
+    expect(buildCustomThemeRule(colors)).toBeNull();
+  });
+
+  test('rejects a secondary surface that swallows body text', () => {
+    const colors = {
+      background: '#000000',
+      foreground: '#ffffff',
+      primary: '#767676',
+      secondary: '#eeeeee',
+    } as const;
+
+    expect(validateCustomColors(colors)).toMatchObject({
+      secondary: expect.stringContaining('3:1'),
+    });
+    expect(buildCustomThemeRule(colors)).toBeNull();
+  });
+
+  test('rejects an accent surface that swallows body text', () => {
+    const colors = {
+      background: '#000000',
+      foreground: '#ffffff',
+      primary: '#ffffff',
+      secondary: '#5a5a5a',
+      accent: '#eeeeee',
+    } as const;
+
+    expect(validateCustomColors(colors)).toMatchObject({
+      accent: expect.stringContaining('3:1'),
     });
     expect(buildCustomThemeRule(colors)).toBeNull();
   });

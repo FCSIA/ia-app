@@ -13,7 +13,7 @@ export type CustomColors = Partial<Record<CustomColorKey, string>>;
 export type CustomColorErrors = Partial<Record<CustomColorKey, string>>;
 
 const CUSTOM_COLORS_STYLE_ID = 'ia-custom-colors';
-const MIN_TEXT_CONTRAST = 3;
+const MIN_TEXT_CONTRAST = 4.5;
 const MIN_UI_CONTRAST = 3;
 const defaultCustomColors: Record<CustomColorKey, string> = {
   background: '#090b0a',
@@ -115,7 +115,7 @@ export function validateCustomColors(colors: CustomColors): CustomColorErrors {
   const pageContrast = contrastRatio(resolved.foreground, resolved.background);
 
   if (pageContrast !== null && pageContrast < MIN_TEXT_CONTRAST) {
-    const message = `Text and Background need at least 3:1 contrast (currently ${pageContrast.toFixed(2)}:1).`;
+    const message = `Text and Background need at least 4.5:1 contrast (currently ${pageContrast.toFixed(2)}:1).`;
     errors.foreground = message;
     errors.background = message;
   }
@@ -138,7 +138,7 @@ export function validateCustomColors(colors: CustomColors): CustomColorErrors {
   if (colors.secondary) {
     const secondaryTextContrast = contrastRatio(resolved.foreground, colors.secondary);
     if (secondaryTextContrast !== null && secondaryTextContrast < MIN_UI_CONTRAST) {
-      errors.secondary = `Secondary surface needs at least 3:1 contrast against Text (currently ${secondaryTextContrast.toFixed(2)}:1).`;
+      errors.secondary = errors.secondary ?? `Secondary surface needs at least 3:1 contrast against Text (currently ${secondaryTextContrast.toFixed(2)}:1).`;
     }
   }
 

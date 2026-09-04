@@ -553,6 +553,9 @@ export default function AnnouncementsPage() {
                       ) : null}
                     </PopoverContent>
                   </Popover>
+                  {audienceMode === 'TARGETED' && form.targetGrades.length === 0 && form.targetMajorPathways.length === 0 && form.targetMinorPathways.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Choose at least one grade or pathway.</p>
+                  ) : null}
                 </div>
 
                 <div>

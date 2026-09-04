@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "predev": "node ../../scripts/ensure-port.mjs 3000",
+    "predev": "node ../../scripts/vendor-tesseract.mjs && node ../../scripts/ensure-port.mjs 3000",
     "dev": "next dev -p 3000",
+    "prebuild": "node ../../scripts/vendor-tesseract.mjs",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint ."

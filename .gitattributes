@@ -1,1 +1,5 @@
 scripts/*.sh text eol=lf
+
+apps/web/public/tesseract/** -text
+*.gz binary
+*.wasm binary

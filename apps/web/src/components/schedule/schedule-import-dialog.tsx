@@ -23,35 +23,6 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { parseInfiniteCampusSchedule, type ImportedScheduleRow, type OcrScheduleRow } from '@/lib/schedule-ocr';
 
-export function ScheduleImportDialog({
-  courses,
-  onApply,
-}: {
-  courses: CourseSummary[];
-  onApply: (rows: ImportedScheduleRow[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<OcrScheduleRow[]>([]);
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
-
-  const courseMap = useMemo(
-    () => new Map<string, CourseSummary>(courses.map((course) => [course.id, course])),
-    [courses],
-  );
-
-  const reset = () => {
-    setFile(null);
-    setRows([]);
-    setProgress(0);
-    setStatus('');
-    setError(null);
-    setScanning(false);
-  };
-
 async function prepareImageForOcr(file: File): Promise<Blob | File> {
   if (typeof window === 'undefined') return file;
   return new Promise((resolve) => {
@@ -82,6 +53,35 @@ async function prepareImageForOcr(file: File): Promise<Blob | File> {
     img.src = url;
   });
 }
+
+export function ScheduleImportDialog({
+  courses,
+  onApply,
+}: {
+  courses: CourseSummary[];
+  onApply: (rows: ImportedScheduleRow[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [rows, setRows] = useState<OcrScheduleRow[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+
+  const courseMap = useMemo(
+    () => new Map<string, CourseSummary>(courses.map((course) => [course.id, course])),
+    [courses],
+  );
+
+  const reset = () => {
+    setFile(null);
+    setRows([]);
+    setProgress(0);
+    setStatus('');
+    setError(null);
+    setScanning(false);
+  };
 
   const scan = async () => {
     if (!file) return;
@@ -126,11 +126,7 @@ async function prepareImageForOcr(file: File): Promise<Blob | File> {
       }
     } catch (scanError) {
       console.error('OCR scan failed:', scanError);
-      setError(
-        scanError instanceof Error && scanError.message
-          ? scanError.message
-          : 'Could not scan this image. Please check your image or try another screenshot.'
-      );
+      setError('Could not scan this image. Try a clearer screenshot of the Infinite Campus Term view.');
     } finally {
       setScanning(false);
     }
