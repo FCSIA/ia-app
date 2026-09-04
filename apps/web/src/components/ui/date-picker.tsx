@@ -43,7 +43,7 @@ export function DatePicker({
   const navigationEndMonth = endMonth ?? new Date(anchorYear + 2, 11, 1);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -52,7 +52,7 @@ export function DatePicker({
             leadingIcon={CalendarIcon}
             disabled={disabled}
             className={cn(
-              'w-full justify-start text-left font-normal',
+              'min-w-0 w-full justify-start text-left font-normal',
               !selectedDate && 'text-muted-foreground',
               buttonClassName,
             )}
