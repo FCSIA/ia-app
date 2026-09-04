@@ -113,7 +113,9 @@ function cleanLineDetails(value: string) {
 
 function isDetailOrJunk(line: string) {
   const trimmed = line.trim();
-  if (!trimmed || trimmed.length < 2) return true;
+  if (!trimmed) return true;
+  if (/^([1-9]|1[0-2])$/.test(trimmed)) return false;
+  if (trimmed.length < 2) return true;
   if (/^(?:teacher|instructor|room|staff|start|end|time)\b/i.test(trimmed)) return true;
   if (/^\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?$/i.test(trimmed)) return true;
   if (/^(?:mon|tue|wed|thu|fri|sat|sun)(?:sday|day|nesday|rsday)?\b/i.test(trimmed)) return true;
@@ -179,14 +181,17 @@ export function parseInfiniteCampusSchedule(
     for (const line of lines) {
       const cleaned = cleanLineDetails(line);
       const match = bestCourseMatch([cleaned || line], courses);
-      if (!match || match.confidence < 0.72 || seen.has(match.course.id)) continue;
-      seen.add(match.course.id);
+      const isConfidentMatch = match && match.confidence >= 0.72;
+      
+      if (isConfidentMatch && seen.has(match.course.id)) continue;
+      if (isConfidentMatch) seen.add(match.course.id);
+      
       rows.push({
         periodNumber: rows.length + 1,
         sourceText: cleaned || line,
-        className: match.course.title,
-        matchedCourse: match.course,
-        confidence: match.confidence,
+        className: isConfidentMatch ? match.course.title : (cleaned || line),
+        matchedCourse: isConfidentMatch ? match.course : null,
+        confidence: match ? match.confidence : 0,
       });
       if (rows.length >= 12) break;
     }

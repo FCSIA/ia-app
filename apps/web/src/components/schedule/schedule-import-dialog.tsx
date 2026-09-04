@@ -115,7 +115,7 @@ export function ScheduleImportDialog({
           preserve_interword_spaces: '1',
         });
         const result = await worker.recognize(preparedImage);
-        const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
+        console.log("OCR OUTPUT:", result.data.text); const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
         if (!parsed.length) {
           setError('No period and course pairs were found. Try a sharper screenshot of Infinite Campus Term view.');
         } else {
@@ -206,8 +206,8 @@ export function ScheduleImportDialog({
           {rows.length > 0 ? (
             <div className="flex flex-col gap-2">
               <h3 className="text-sm font-semibold text-foreground">Review classes</h3>
-              <div className="overflow-hidden rounded-lg border border-border/70">
-                <Table>
+              <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-border/70">
+                <Table className="w-full min-w-[28rem]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-16">Period</TableHead>
@@ -220,9 +220,31 @@ export function ScheduleImportDialog({
                   </TableHeader>
                   <TableBody>
                     {rows.map((row, index) => (
-                      <TableRow key={row.periodNumber} index={index}>
-                        <TableCell className="font-medium text-foreground">{row.periodNumber}</TableCell>
+                      <TableRow key={`${row.periodNumber}-${index}`} index={index}>
                         <TableCell>
+                          <Select
+                            value={String(row.periodNumber)}
+                            onValueChange={(val) => {
+                              const newPeriod = parseInt(val, 10);
+                              if (isNaN(newPeriod)) return;
+                              setRows((current) =>
+                                current.map((entry, entryIndex) =>
+                                  entryIndex === index ? { ...entry, periodNumber: newPeriod } : entry
+                                )
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-16 h-8 px-2" />
+                            <SelectContent>
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                <SelectItem key={num} value={String(num)} index={num - 1}>
+                                  {num}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="min-w-[12rem] max-w-[20rem]">
                           <Select
                             value={row.matchedCourse?.id ?? 'custom'}
                             onValueChange={(courseId) => {
@@ -241,7 +263,7 @@ export function ScheduleImportDialog({
                               );
                             }}
                           >
-                            <SelectTrigger />
+                            <SelectTrigger className="w-full" />
                             <SelectContent>
                               <SelectItem value="custom" index={0}>
                                 {row.className} (use OCR text)
@@ -253,7 +275,7 @@ export function ScheduleImportDialog({
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="mt-1 truncate text-[11px] text-muted-foreground" title={row.sourceText}>
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground">
                             Read as: {row.sourceText}
                           </p>
                         </TableCell>
