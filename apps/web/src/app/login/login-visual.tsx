@@ -2,69 +2,65 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { LOGIN_ROTATE_MS, getLoginImagesForHour, isDayHour } from './login-images';
+import { LOGIN_IMAGES } from './login-images';
 
-function currentHour(): number {
-  return new Date().getHours();
+/** One pinned image per browser tab; a new tab rolls again. */
+const STORAGE_KEY = 'ia-login-visual';
+
+function readStoredSrc(): string | null {
+  try {
+    const stored = window.sessionStorage.getItem(STORAGE_KEY);
+    if (stored && LOGIN_IMAGES.some((image) => image.src === stored)) return stored;
+  } catch {
+    // Storage unavailable (private mode, etc.): fall through to a fresh pick.
+  }
+  return null;
+}
+
+function storeSrc(src: string) {
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, src);
+  } catch {
+    // Non-fatal; the pin just won't survive a reload.
+  }
 }
 
 export function LoginVisual() {
-  // Deterministic noon initial keeps SSR and first client paint identical;
-  // the effect below corrects to the viewer's local hour on mount.
-  const [hour, setHour] = useState(12);
-  const [index, setIndex] = useState(0);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [src, setSrc] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
+  // First load wins for the whole tab session: reuse the stored pick, or roll
+  // randomly within the current day/night set and persist it. No rotation after.
   useEffect(() => {
-    setHour(currentHour());
-    const clock = window.setInterval(() => setHour(currentHour()), 60_000);
-    return () => window.clearInterval(clock);
+    const stored = readStoredSrc();
+    if (stored) {
+      setSrc(stored);
+      return;
+    }
+    const pick = LOGIN_IMAGES[Math.floor(Math.random() * LOGIN_IMAGES.length)] ?? LOGIN_IMAGES[0];
+    storeSrc(pick.src);
+    setSrc(pick.src);
   }, []);
-
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(query.matches);
-    const onChange = (event: MediaQueryListEvent) => setReducedMotion(event.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-
-  const images = getLoginImagesForHour(hour);
-  const day = isDayHour(hour);
-
-  useEffect(() => {
-    setIndex(0);
-  }, [day]);
-
-  useEffect(() => {
-    if (reducedMotion || images.length < 2) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState !== 'visible') return;
-      setIndex((current) => (current + 1) % images.length);
-    }, LOGIN_ROTATE_MS);
-    return () => window.clearInterval(timer);
-  }, [images.length, reducedMotion]);
 
   return (
     <section className="relative hidden min-h-screen overflow-hidden bg-primary lg:block" aria-hidden="true">
-      {images.map((image, position) => (
+      {src ? (
         <Image
-          key={image.src}
-          src={image.src}
-          alt={image.alt}
+          src={src}
+          alt=""
           fill
-          priority={position === 0}
+          priority
           sizes="(min-width: 1024px) 58vw, 0px"
-          className={`object-cover transition-opacity duration-700 ${
-            position === index % images.length ? 'opacity-100' : 'opacity-0'
+          onLoad={() => setLoaded(true)}
+          className={`object-cover transition-opacity duration-700 motion-reduce:transition-none ${
+            loaded ? 'opacity-100' : 'opacity-0'
           }`}
         />
-      ))}
-      <div
-        className={`absolute inset-0 bg-gradient-to-tr via-transparent ${
-          day ? 'from-black/40 to-primary/10' : 'from-black/60 to-primary/20'
-        }`}
-      />
+      ) : null}
+      {/* Theme tint: follows the active theme primary (pink in Bubblegum, ember by default). */}
+      <div className="absolute inset-0 bg-primary/30 mix-blend-color" />
+      {/* Legibility scrim for the caption. */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-black/45 via-black/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-10 text-white">
         <div className="max-w-lg rounded-2xl border border-white/20 bg-black/25 p-5 backdrop-blur-sm">
           <p className="text-sm font-medium uppercase tracking-[0.16em] text-white/75">Innovation Academy</p>
