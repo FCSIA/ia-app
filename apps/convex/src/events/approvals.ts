@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { serializeEvent, serializedEventValidator } from "./serialize";
+import { createDocLoader } from "../../lib/docLoader";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 
 export const listPendingForSponsor = query({
@@ -16,11 +17,14 @@ export const listPendingForSponsor = query({
       )
       .collect();
 
+    // One loader across the list: pending approvals cluster on a handful of
+    // clubs and authors, so those documents are read once instead of per row.
+    const loader = createDocLoader(ctx);
     const events = await Promise.all(
       approvals.map(async (approval) => {
-        const event = await ctx.db.get(approval.eventId);
+        const event = await loader.get(approval.eventId);
         if (!event) return null;
-        return serializeEvent(ctx, event);
+        return serializeEvent(ctx, event, loader);
       }),
     );
 

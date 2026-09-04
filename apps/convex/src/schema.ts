@@ -491,6 +491,11 @@ export const schema = defineSchema({
     rejectionNote: v.optional(v.string()),
     promotedUntil: v.optional(v.number()),
     embedUrls: v.optional(v.array(v.string())),
+    // Denormalized so the feed can show "3 comments" without reading every
+    // comment body. Maintained by the comment mutations; `undefined` on rows
+    // written before the counter existed, which serialization falls back to
+    // counting until `backfillCommentCount` has run.
+    commentCount: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])
@@ -537,6 +542,13 @@ export const schema = defineSchema({
     joinCodeExpiresAt: v.optional(v.number()),
     isActive: v.boolean(),
     autoCreateUnitChannels: v.optional(v.boolean()),
+    // Denormalized so a club list does not have to read every member and
+    // channel row to show "42 members". Maintained by the membership and
+    // channel mutations; `undefined` on rows written before the counters
+    // existed, which club summaries fall back to counting until
+    // `backfillClubCounts` has run.
+    memberCount: v.optional(v.number()),
+    channelCount: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

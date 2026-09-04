@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { ClubContext } from "./access";
+import { countClubChannels, countClubMembers } from "./counts";
 import {
   getChannelAccess,
   getChannelAccessForChannels,
@@ -155,18 +156,14 @@ export async function clubSummaryWithCounts(
   role?: string | null,
   counts?: { members?: number; channels?: number },
 ) {
-  const memberCount = counts?.members ?? (
-    await ctx.db
-      .query("clubMembers")
-      .withIndex("by_clubId", (q) => q.eq("clubId", club._id))
-      .collect()
-  ).length;
-  const channelCount = counts?.channels ?? (
-    await ctx.db
-      .query("clubChannels")
-      .withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", club._id))
-      .collect()
-  ).length;
+  // Callers that already hold the rows pass their own totals. Otherwise the
+  // denormalized counters answer it, and only a club written before those
+  // existed falls back to reading every row — which is what
+  // `backfillClubCounts` removes.
+  const memberCount =
+    counts?.members ?? club.memberCount ?? (await countClubMembers(ctx, club._id));
+  const channelCount =
+    counts?.channels ?? club.channelCount ?? (await countClubChannels(ctx, club._id));
 
   return {
     _id: club._id,

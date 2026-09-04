@@ -94,6 +94,30 @@ export async function assertCanApproveAnnouncement(
   }
 }
 
+/**
+ * Move an announcement's denormalized comment counter by `delta`.
+ *
+ * Call this before inserting or deleting the comment itself: a row written
+ * before the counter existed has to be counted the slow way once, and that count
+ * has to describe the state the delta is applied to. Mutations are
+ * transactional, so a later failure rolls the counter back with everything else.
+ */
+export async function adjustCommentCount(
+  ctx: MutationCtx,
+  ann: Doc<"announcements">,
+  delta: number,
+) {
+  const current =
+    ann.commentCount ??
+    (
+      await ctx.db
+        .query("comments")
+        .withIndex("by_announcementId", (q) => q.eq("announcementId", ann._id))
+        .collect()
+    ).length;
+  await ctx.db.patch(ann._id, { commentCount: Math.max(0, current + delta) });
+}
+
 export async function getViewerAudience(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   const viewer = await ctx.db.get(userId);
   if (!viewer) throw new Error("User not found");

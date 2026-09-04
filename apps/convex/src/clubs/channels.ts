@@ -28,6 +28,7 @@ import {
   getChannelAudienceUserIds,
 } from "./channelAccess";
 import { clubUserRefValidator, toClubUserRef } from "./serialize";
+import { adjustClubCounts } from "./counts";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deliverMany, deliverNotification } from "../notifications/delivery";
 import {
@@ -602,6 +603,7 @@ export const create = mutation({
     );
     const restricted =
       accessRoleIds.length > 0 || !!args.accessUnitId || memberIds.length > 0;
+    await adjustClubCounts(ctx, args.clubId, { channels: 1 });
     const channelId = await ctx.db.insert("clubChannels", {
       clubId: args.clubId,
       ownerUnitId: args.ownerUnitId,
@@ -692,9 +694,13 @@ export const createMissingUnitChannels = mutation({
         .filter((id): id is Id<"clubUnits"> => !!id),
     );
     const now = Date.now();
-    let created = 0;
-    for (const unit of units) {
-      if (covered.has(unit._id)) continue;
+    const uncovered = units.filter((unit) => !covered.has(unit._id));
+    const created = uncovered.length;
+    // One patch for the whole run rather than one per channel, and taken before
+    // the inserts so a club that predates the counters counts the state the
+    // delta applies to.
+    await adjustClubCounts(ctx, args.clubId, { channels: created });
+    for (const unit of uncovered) {
       await ctx.db.insert("clubChannels", {
         clubId: args.clubId,
         ownerUnitId: unit._id,
@@ -710,7 +716,6 @@ export const createMissingUnitChannels = mutation({
         createdAt: now,
         updatedAt: now,
       });
-      created += 1;
     }
     if (created)
       await logAuditEvent(ctx, {
@@ -2230,6 +2235,7 @@ export const remove = mutation({
     const context = await getClubContext(ctx, channel.clubId, user);
     if (!context.permissions.deleteChannels)
       throw new ConvexError("You do not have permission to delete channels");
+    await adjustClubCounts(ctx, channel.clubId, { channels: -1 });
     await ctx.db.delete(args.channelId);
     await ctx.scheduler.runAfter(
       0,
