@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
-import { useConvexAuth, useQuery } from 'convex/react';
+import { ConvexQueryCacheProvider, useConvexAuth, useQuery } from '@/lib/convex-react';
 import { usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, useTheme } from 'next-themes';
@@ -13,6 +13,7 @@ import {
   applyCustomColors,
   loadCustomColors,
 } from '@/lib/custom-theme';
+import { ConvexWarmup } from '@/components/layout/convex-warmup';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
@@ -110,22 +111,25 @@ function AuthConnectionState() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="dark"
-        enableSystem
-        themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
-      >
-        <ThemeFavicon />
-        <CustomThemeBootstrap />
-        <PushSubscriptionSync />
-        <Suspense fallback={null}>
-          <AuthenticatedRouteBoundary>
-            <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
-          </AuthenticatedRouteBoundary>
-        </Suspense>
-        <Toaster position="top-right" />
-      </ThemeProvider>
+      <ConvexQueryCacheProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          themes={['light', 'dark', 'system', 'high-contrast', 'bubblegum', 'bubblegum-dark', 'custom']}
+        >
+          <ThemeFavicon />
+          <CustomThemeBootstrap />
+          <PushSubscriptionSync />
+          <Suspense fallback={null}>
+            <AuthenticatedRouteBoundary>
+              <ConvexWarmup />
+              <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
+            </AuthenticatedRouteBoundary>
+          </Suspense>
+          <Toaster position="top-right" />
+        </ThemeProvider>
+      </ConvexQueryCacheProvider>
     </ConvexBetterAuthProvider>
   );
 }

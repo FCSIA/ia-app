@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { ArrowLeft, BookOpen, GraduationCap, LibraryBig } from 'lucide-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { HeroBand, HeroStat, PageFrame, Panel } from '@/components/layout/page-frame';

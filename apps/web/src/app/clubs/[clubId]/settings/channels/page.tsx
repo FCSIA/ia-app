@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import {
   GripVertical,
   IndentDecrease,

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';

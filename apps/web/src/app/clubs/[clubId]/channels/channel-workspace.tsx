@@ -11,7 +11,7 @@ function formatChatTimestamp(value: number | string | Date) {
   if (isSameYear(date, now)) return format(date, 'MMM d');
   return format(date, 'MMM d, yyyy');
 }
-import { useAction, useMutation, usePaginatedQuery, useQuery } from 'convex/react';
+import { useAction, useMutation, usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import {
   BarChart3,
   FileText,

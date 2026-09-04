@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from '@/lib/convex-react';
 import { Plus, Users } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Button } from '@/components/ui/button';

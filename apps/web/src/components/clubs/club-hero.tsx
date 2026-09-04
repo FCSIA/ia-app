@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Pencil, Settings2, Trash2 } from "lucide-react";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { ClubDetail } from "@/components/clubs/types";
 import { Button } from "@/components/ui/button";

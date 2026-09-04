@@ -10,7 +10,7 @@ import {
 } from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   ChevronRight,

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import {
   Bell,
   BookOpen,

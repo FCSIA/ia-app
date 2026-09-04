@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { parse, isAfter, isBefore, differenceInMinutes } from "date-fns";
 import { Timer, CheckCircle2 } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";

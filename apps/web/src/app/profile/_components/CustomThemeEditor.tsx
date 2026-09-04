@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation } from '@/lib/convex-react';
 import { Droplet, Image as ImageIcon, Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import {
   CUSTOM_COLORS_STORAGE_KEY,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import {
   browserSupportsPush,

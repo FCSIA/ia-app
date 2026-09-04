@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 
 import { api } from "~/apps/convex/src/_generated/api";
 import { hasRole, startLogout, useCurrentUser } from "@/lib/auth";

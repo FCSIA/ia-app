@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowRight, Check, Shield, UsersRound, X } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';

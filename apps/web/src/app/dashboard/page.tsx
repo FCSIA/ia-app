@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { GripVertical, LayoutGrid, PanelBottom } from 'lucide-react';
-import { useMutation } from 'convex/react';
+import { useMutation } from '@/lib/convex-react';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/button';

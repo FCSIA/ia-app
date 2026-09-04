@@ -18,7 +18,7 @@ development and talks to Convex through generated function references.
 - `@shadcn/react` behavior primitives for chat scrolling
 - Plate for rich chat authoring and structured mentions
 - `react-markdown` with `remark-gfm` for read-only message rendering
-- Convex React hooks
+- Convex React hooks, through the `@/lib/convex-react` wrapper
 - Better Auth through `ConvexBetterAuthProvider`
 
 ## Directory Map
@@ -42,6 +42,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 `apps/web/src/app/providers.tsx` wraps the app with:
 
 - `ConvexBetterAuthProvider`
+- `ConvexQueryCacheProvider`
 - `ThemeProvider`
 - `react-hot-toast` toaster
 
@@ -77,6 +78,29 @@ Props are values passed from parent to child:
 Prefer composition over long prop chains. If a parent only passes data through
 several layers, move the shared UI boundary or pass `children`/slots instead.
 This keeps pages easier for future students to reason about.
+
+## Convex Data
+
+Import `useQuery` from `@/lib/convex-react`, not from `convex/react`. The
+wrapper re-exports everything `convex/react` exports and replaces `useQuery`
+with one that keeps its subscription open for a few minutes after the component
+unmounts.
+
+Convex drops a query's cached value as soon as its last subscriber goes away, so
+a plain `useQuery` re-fetches from scratch on every route mount — which is why
+each tab used to open on a skeleton even when nothing had changed. Holding the
+subscription means a returning route reads the value out of the client store on
+its first frame while the socket keeps it fresh.
+
+`ConvexWarmup`, mounted once inside the authenticated boundary, does the same
+thing up front for the small, argument-stable queries the main tabs need, so a
+tab is warm even on its first visit. That list lives in
+`apps/web/src/components/layout/convex-warmup.tsx`. Keep it short: anything
+expensive, paginated, or keyed by a value the user picks belongs to the route
+that needs it, where the keep-alive cache already covers repeat visits. When a
+warmed query takes arguments the page also computes, derive both from one
+helper — different arguments are different subscriptions, and the tab would open
+cold again.
 
 ## Client Components
 

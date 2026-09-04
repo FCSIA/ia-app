@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowRight, Bookmark, BookmarkCheck, MessageCircle, Pin } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';

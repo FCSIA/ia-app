@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 

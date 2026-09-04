@@ -1,7 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/layout/AppShell';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import { getUser } from '@/lib/auth';

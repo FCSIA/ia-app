@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import Link from "next/link";
 import {

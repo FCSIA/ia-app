@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { Switch } from '@/components/ui/switch';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';

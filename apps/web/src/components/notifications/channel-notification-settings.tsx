@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { ArrowLeft, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

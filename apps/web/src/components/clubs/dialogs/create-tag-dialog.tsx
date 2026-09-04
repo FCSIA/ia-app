@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { useClubId } from '@/app/clubs/club-route';
