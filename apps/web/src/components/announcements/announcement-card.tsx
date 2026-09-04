@@ -84,7 +84,7 @@ export function AnnouncementCard({
       href={`/announcements/${announcement._id}`}
       label={`Open announcement: ${announcement.title}`}
       className={cn(
-        'relative bg-surface-2 border border-border/50 shadow-surface-1',
+        'relative',
         !announcement.isRead && 'border-l-2 border-l-primary',
         CARD_SURFACE_FOREGROUND,
         className

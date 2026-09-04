@@ -11,6 +11,7 @@ import {
   parseTimeToMinutes,
 } from "@/components/schedule/schedule-utils";
 import { Badge } from "@/components/ui/badge";
+import { PageSurface } from "@/components/ui/page-surface";
 import { formatSchoolTime } from "@/lib/time-format";
 import { schoolDateKey } from "@/lib/school-date";
 
@@ -59,13 +60,19 @@ export function WelcomeWidget() {
     resolvedDay === undefined
       ? null
       : !resolvedDay.hasPersonalSchedule || resolvedDay.blocks.length === 0
-        ? pickDailySchoolMessage("no-school", `${user?._id ?? "guest"}:${dateKey}`)
+        ? pickDailySchoolMessage(
+            "no-school",
+            `${user?._id ?? "guest"}:${dateKey}`,
+          )
         : schoolIsOver
-          ? pickDailySchoolMessage("school-over", `${user?._id ?? "guest"}:${dateKey}`)
+          ? pickDailySchoolMessage(
+              "school-over",
+              `${user?._id ?? "guest"}:${dateKey}`,
+            )
           : null;
 
   return (
-    <section className="px-1 py-2 sm:px-2 sm:py-4">
+    <PageSurface className="px-4 py-3 sm:px-5 sm:py-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -110,6 +117,6 @@ export function WelcomeWidget() {
           </div>
         ) : null}
       </div>
-    </section>
+    </PageSurface>
   );
 }

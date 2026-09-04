@@ -644,7 +644,7 @@ export default function AnnouncementsPage() {
                 {data.length === 1 ? '' : 's'}
               </p>
             ) : null}
-            <CardGroup>
+            <CardGroup border="outlined" className="bg-surface-2 shadow-surface-1">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
