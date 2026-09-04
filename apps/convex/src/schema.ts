@@ -1075,6 +1075,11 @@ export const schema = defineSchema({
     pathway: v.optional(pathwayValidator),
     isSchoolDay: v.boolean(),
     notes: v.optional(v.string()),
+    // Denormalized so listing fifty Fridays does not read every session row of
+    // each one to count them. Maintained by the session mutations; `undefined`
+    // on rows written before the counter existed, which the list falls back to
+    // counting until `backfillFlexSessionCount` has run.
+    sessionCount: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_date", ["date"]),
 
