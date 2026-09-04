@@ -1726,6 +1726,30 @@ function emptyMessagePage(cursor: string | null) {
   };
 }
 
+/** Resolves one root message for an inline-reply jump without paging the
+ * intervening channel history into the client. */
+export const getMessage = query({
+  args: {
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    messageId: v.id("clubChannelMessages"),
+  },
+  returns: v.union(messageSummaryValidator, v.null()),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return null;
+    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    if (!readable) return null;
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message || message.channelId !== readable.channel._id || message.parentMessageId) {
+      return null;
+    }
+
+    return await serializeMessageSummary(ctx, message, user._id, false);
+  },
+});
+
 export const getMessagePage = query({
   args: {
     clubId: v.id("clubs"),

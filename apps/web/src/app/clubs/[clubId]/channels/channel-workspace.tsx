@@ -712,11 +712,38 @@ function ReactionButton({
   );
 }
 
+function ScrollToReplyTarget({
+  messageId,
+  requestKey,
+  targetPresent,
+}: {
+  messageId: string | null;
+  requestKey: number;
+  targetPresent: boolean;
+}) {
+  const { scrollToMessage } = useMessageScroller();
+  const lastScrolledRequestKey = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!messageId || !targetPresent || lastScrolledRequestKey.current === requestKey) return;
+
+    const frame = requestAnimationFrame(() => {
+      if (scrollToMessage(messageId, { align: 'center', behavior: 'smooth' })) {
+        lastScrolledRequestKey.current = requestKey;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messageId, requestKey, scrollToMessage, targetPresent]);
+
+  return null;
+}
+
 function MessageRow({
   clubId,
   message,
   replyTarget,
   onStartReply,
+  onJumpToReply,
   onOpenThread,
   onToggleReaction,
   onTogglePin,
@@ -735,6 +762,7 @@ function MessageRow({
   isDeletePending,
   friendRequestPendingId,
   highlighted,
+  jumpedTo,
   canPinMessages,
   canModerateMessages,
   currentUserId,
@@ -746,6 +774,7 @@ function MessageRow({
   message: ClubChannelMessage;
   replyTarget?: ClubChannelMessage;
   onStartReply: (messageId: string) => void;
+  onJumpToReply: (messageId: string) => void;
   onOpenThread: (messageId: string) => void;
   onToggleReaction: (messageId: string, emoji: ChannelReaction) => void;
   onTogglePin: (messageId: string, pinned: boolean) => void;
@@ -764,6 +793,7 @@ function MessageRow({
   isDeletePending: boolean;
   friendRequestPendingId?: string | null;
   highlighted: boolean;
+  jumpedTo: boolean;
   canPinMessages: boolean;
   canModerateMessages: boolean;
   currentUserId?: string;
@@ -787,52 +817,80 @@ function MessageRow({
   const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const replySwipeStart = useRef<{ x: number; y: number } | null>(null);
+  const replySwipeStart = useRef<{ x: number; y: number; swiping: boolean } | null>(null);
   const [replySwipeOffset, setReplySwipeOffset] = useState(0);
+  const [replySwipeSettling, setReplySwipeSettling] = useState(false);
   const canSwipeToReply = isTouchPrimary && !isDeleted && !isSending && !isEditing;
+  const canUseReplyControls = !compact && !isTouchPrimary;
 
   const resetReplySwipe = () => {
     replySwipeStart.current = null;
+    setReplySwipeSettling(true);
     setReplySwipeOffset(0);
+    requestAnimationFrame(() => setReplySwipeSettling(false));
   };
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={isDeleted || isSending || isEditing}>
-        <div
-          className="touch-pan-y select-none [-webkit-touch-callout:none]"
-          style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
-          onTouchStart={(event) => {
-            if (!canSwipeToReply || event.touches.length !== 1) return;
-            if ((event.target as HTMLElement).closest('button, a, input, textarea, [contenteditable=true]')) return;
-            const touch = event.touches[0];
-            replySwipeStart.current = { x: touch.clientX, y: touch.clientY };
-          }}
-          onTouchMove={(event) => {
-            const start = replySwipeStart.current;
-            if (!start || event.touches.length !== 1) return;
-            const touch = event.touches[0];
-            const deltaX = touch.clientX - start.x;
-            const deltaY = Math.abs(touch.clientY - start.y);
-            if (Math.abs(deltaX) < deltaY * 1.25) return;
-            // Right swipes belong to the workspace navigation gesture. Replies
-            // deliberately use the opposite direction so the two never compete.
-            setReplySwipeOffset(Math.max(-40, Math.min(0, deltaX)));
-          }}
-          onTouchEnd={(event) => {
-            const start = replySwipeStart.current;
-            const touch = event.changedTouches[0];
-            if (start && touch && touch.clientX - start.x <= -64 && start.x - touch.clientX > Math.abs(touch.clientY - start.y) * 1.25) {
-              onStartReply(message._id);
-            }
-            resetReplySwipe();
-          }}
-          onTouchCancel={resetReplySwipe}
-        >
+        <div className="relative touch-pan-y select-none [-webkit-touch-callout:none]">
+          <div
+            aria-hidden="true"
+            className={cn(
+              'pointer-events-none absolute inset-y-0 end-3 flex items-center text-primary transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none',
+              replySwipeOffset ? 'translate-x-0 opacity-100' : 'translate-x-1 opacity-0',
+            )}
+          >
+            <Reply className="size-4" />
+          </div>
+          <div
+            className={cn(
+              'relative will-change-transform',
+              replySwipeSettling && 'transition-transform duration-200 ease-out motion-reduce:transition-none',
+            )}
+            style={replySwipeOffset ? { transform: `translateX(${replySwipeOffset}px)` } : undefined}
+            onTouchStart={(event) => {
+              if (!canSwipeToReply || event.touches.length !== 1) return;
+              if ((event.target as HTMLElement).closest('button, a, input, textarea, [contenteditable=true]')) return;
+              const touch = event.touches[0];
+              replySwipeStart.current = { x: touch.clientX, y: touch.clientY, swiping: false };
+            }}
+            onTouchMove={(event) => {
+              const start = replySwipeStart.current;
+              if (!start || event.touches.length !== 1) return;
+              const touch = event.touches[0];
+              const deltaX = touch.clientX - start.x;
+              const deltaY = Math.abs(touch.clientY - start.y);
+              if (!start.swiping) {
+                if (Math.max(Math.abs(deltaX), deltaY) < 8) return;
+                if (deltaX >= 0 || Math.abs(deltaX) < deltaY * 1.25) {
+                  replySwipeStart.current = null;
+                  return;
+                }
+                start.swiping = true;
+              }
+              // Right swipes belong to the workspace navigation gesture. Replies
+              // deliberately use the opposite direction so the two never compete.
+              event.preventDefault();
+              setReplySwipeSettling(false);
+              setReplySwipeOffset(Math.max(-48, Math.min(0, deltaX)));
+            }}
+            onTouchEnd={(event) => {
+              const start = replySwipeStart.current;
+              const touch = event.changedTouches[0];
+              if (start?.swiping && touch && start.x - touch.clientX >= 48) {
+                setReplySwipeOffset(-48);
+                onStartReply(message._id);
+              }
+              resetReplySwipe();
+            }}
+            onTouchCancel={resetReplySwipe}
+          >
           <Message
             className={cn(
               'rounded-md gap-3 px-3 transition-colors hover:bg-hover',
               groupedWithPrevious ? 'py-0' : dense ? 'py-1.5' : 'py-2.5',
+              jumpedTo && 'bg-primary/10 ring-1 ring-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300',
               isSending &&
                 'animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none',
             )}
@@ -886,7 +944,11 @@ function MessageRow({
             className={cn(!groupedWithPrevious && 'mt-1')}
           >
             {message.replyToMessageId ? (
-              <div className="mb-1 flex min-w-0 items-baseline gap-1.5 border-l-2 border-border pl-2 text-xs text-muted-foreground">
+              <button
+                type="button"
+                className="mb-1 flex min-w-0 items-baseline gap-1.5 border-l-2 border-border pl-2 text-left text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                onClick={() => onJumpToReply(message.replyToMessageId!)}
+              >
                 <span className="shrink-0 font-medium text-foreground">
                   {replyTarget ? fullName(replyTarget.author) : 'Earlier message'}
                 </span>
@@ -897,7 +959,7 @@ function MessageRow({
                       : replyTarget.body || 'Attachment'
                     : 'Message unavailable'}
                 </span>
-              </div>
+              </button>
             ) : null}
             {isDeleted || hasBody ? (
               <BubbleContent
@@ -984,7 +1046,7 @@ function MessageRow({
                       ))}
                     </PopoverContent>
                   </Popover>
-                  {!compact ? (
+                  {canUseReplyControls ? (
                     <Tooltip content="Reply">
                       <Button
                         variant="ghost"
@@ -1123,6 +1185,7 @@ function MessageRow({
       </AlertDialog>
           </Message>
         </div>
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         <ContextMenuLabel>
@@ -1150,12 +1213,14 @@ function MessageRow({
               </ContextMenuGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          {canUseReplyControls ? (
+            <ContextMenuItem onSelect={() => onStartReply(message._id)}>
+              <Reply />
+              Reply
+            </ContextMenuItem>
+          ) : null}
           {!compact ? (
             <>
-              <ContextMenuItem onSelect={() => onStartReply(message._id)}>
-                <Reply />
-                Reply
-              </ContextMenuItem>
               <ContextMenuItem onSelect={() => onOpenThread(message.threadRootId)}>
                 <MessageSquareText />
                 Open thread
@@ -1219,6 +1284,8 @@ export function ChannelWorkspace() {
   const [search, setSearch] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [replyingToMessageId, setReplyingToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [jumpedToMessageId, setJumpedToMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
+  const [jumpRequestKey, setJumpRequestKey] = useState(0);
   const [reportingMessageId, setReportingMessageId] = useState<Id<'clubChannelMessages'> | null>(null);
   const [reportReason, setReportReason] = useState('');
   const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
@@ -1232,6 +1299,8 @@ export function ChannelWorkspace() {
     setEditingMessageId(null);
     setSelectedThreadId(null);
     setReplyingToMessageId(null);
+    setJumpedToMessageId(null);
+    setJumpRequestKey(0);
     setReportingMessageId(null);
     setReportReason('');
     setFriendRequestPendingId(null);
@@ -1275,6 +1344,10 @@ export function ChannelWorkspace() {
   const latestVisibleActivity = useMemo(
     () => latestVisibleChatActivity(messages),
     [messages],
+  );
+  const jumpedToMessage = useQuery(
+    api.clubs.channels.getMessage,
+    jumpedToMessageId ? { clubId, channelId, messageId: jumpedToMessageId } : 'skip',
   );
   const selectedThreadResult = useQuery(
     api.clubs.channels.getThread,
@@ -1468,9 +1541,19 @@ export function ChannelWorkspace() {
     [selectedThreadResult],
   );
 
+  const timelineMessages = useMemo(
+    () =>
+      jumpedToMessage && !messages.some((message) => message._id === jumpedToMessage._id)
+        ? [...messages, jumpedToMessage].sort(
+            (left, right) =>
+              new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+          )
+        : messages,
+    [jumpedToMessage, messages],
+  );
   const flattenedMessages = useMemo(
-    () => [...messages, ...threadReplies],
-    [messages, threadReplies],
+    () => [...timelineMessages, ...threadReplies],
+    [threadReplies, timelineMessages],
   );
   const friendshipTargetIds = useMemo(
     () =>
@@ -1510,9 +1593,9 @@ export function ChannelWorkspace() {
   }, [flattenedMessages, normalizedSearch]);
 
   const visibleMessages = useMemo(() => {
-    if (!normalizedSearch) return messages;
-    return messages.filter((message) => matchingIds.has(message._id));
-  }, [matchingIds, messages, normalizedSearch]);
+    if (!normalizedSearch) return timelineMessages;
+    return timelineMessages.filter((message) => matchingIds.has(message._id));
+  }, [matchingIds, normalizedSearch, timelineMessages]);
 
   const reportingMessage = useMemo(
     () => flattenedMessages.find((message) => message._id === reportingMessageId) ?? null,
@@ -1568,6 +1651,11 @@ export function ChannelWorkspace() {
             setReplyingToMessageId(messageId as Id<'clubChannelMessages'>);
             setSelectedThreadId(null);
           }}
+          onJumpToReply={(messageId) => {
+            setReplyingToMessageId(null);
+            setJumpedToMessageId(messageId as Id<'clubChannelMessages'>);
+            setJumpRequestKey((key) => key + 1);
+          }}
           onOpenThread={(threadId) => {
             setReplyingToMessageId(null);
             setSelectedThreadId(threadId as Id<'clubChannelMessages'>);
@@ -1609,6 +1697,7 @@ export function ChannelWorkspace() {
           isDeletePending={false}
           friendRequestPendingId={friendRequestPendingId}
           highlighted={matchingIds.has(message._id)}
+          jumpedTo={jumpedToMessageId === message._id}
           canPinMessages={canPinMessages}
           canModerateMessages={canModerateMessages}
           openReactionDetailsOnPress={isMobile || isTouchPrimary}
@@ -1761,6 +1850,11 @@ export function ChannelWorkspace() {
       }}
     >
       <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+        <ScrollToReplyTarget
+          messageId={jumpedToMessageId}
+          requestKey={jumpRequestKey}
+          targetPresent={timelineMessages.some((message) => message._id === jumpedToMessageId)}
+        />
         <div className={cn("channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5", CARD_SURFACE_FOREGROUND)}>
           <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
             <ChannelNotificationSettings
