@@ -102,11 +102,19 @@ and the navigation links start them on `pointerenter` and `focus`. Those
 subscriptions go idle immediately, so they expire on their own after one idle
 window.
 
-Resist the temptation to warm these queries for the whole session instead. A
-session-long subscription to a shared list means every write to it re-runs the
-query for every signed-in device, including the ones that never open that tab —
-the cost scales with how many people are logged in rather than with who is
-actually looking. Intent keeps it proportional.
+Resist the temptation to warm these queries at login instead. Judge a candidate
+by its invalidation set, not by the size of its result: every query worth warming
+here reads shared rows — the announcements feed, the events list, the school
+calendar, the 250 school day blocks behind the schedule — so a session-long
+subscription means one write re-runs that query on every signed-in device,
+including the ones that never open the tab. The cost scales with how many people
+are logged in rather than with who is actually looking, and a bounded window at
+login is the worst version of it: it concentrates that load into the minutes when
+everyone signs in at once.
+
+There is no lead time left to recover on touch, either. Pointer events fire
+`pointerenter` before `pointerdown`, so a tab bar prewarms when the finger lands
+rather than when it lifts — the earliest signal the platform gives.
 
 When a prewarmed query takes arguments the route also computes, derive both from
 one helper. Different arguments are a different subscription, and the tab opens
