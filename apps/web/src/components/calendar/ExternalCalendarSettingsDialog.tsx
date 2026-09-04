@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const CANVAS_EXAMPLE = 'https://fultonschools.instructure.com/ical_feed';
 
-export function ExternalCalendarSettingsDialog() {
+export function ExternalCalendarSettingsDialog({ openOnMount = false }: { openOnMount?: boolean }) {
   const { toast } = useToast();
   const subscriptions = useQuery(api.events.externalCalendars.listMine) ?? [];
   const create = useMutation(api.events.externalCalendars.createIcs);
@@ -30,6 +30,10 @@ export function ExternalCalendarSettingsDialog() {
   const [name, setName] = useState('Canvas');
   const [url, setUrl] = useState('');
   const [pending, setPending] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openOnMount) setOpen(true);
+  }, [openOnMount]);
 
   async function addFeed(event: React.FormEvent) {
     event.preventDefault();

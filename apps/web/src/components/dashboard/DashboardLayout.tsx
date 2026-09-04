@@ -33,6 +33,7 @@ import {
 import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
 import { useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import {
@@ -286,6 +287,7 @@ export function DashboardLayout({
     <PageFrame className="pb-24 pt-0">
       <div className="mx-auto w-full max-w-7xl">
         <div className="flex flex-col gap-6">
+          <CanvasCalendarAnnouncement />
           {editing ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
