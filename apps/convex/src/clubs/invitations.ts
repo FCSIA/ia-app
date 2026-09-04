@@ -11,6 +11,7 @@ import {
 } from "../notifications/delivery";
 import { clubJoinRateLimiter, contentRateLimiter } from "../rateLimits";
 import { getDefaultClubRole } from "./rolePermissions";
+import { adjustClubCounts } from "./counts";
 
 const JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const JOIN_CODE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -47,6 +48,7 @@ async function addClubMember(
       throw new Error("Club member limit reached");
   }
   const defaultRole = await getDefaultClubRole(ctx, clubId);
+  await adjustClubCounts(ctx, clubId, { members: 1 });
   await ctx.db.insert("clubMembers", {
     clubId,
     userId,

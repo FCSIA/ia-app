@@ -21,7 +21,11 @@ import {
   canPostGlobalAnnouncements,
   isElevatedReader,
 } from "./_lib";
-import { serializeAnnouncement, serializeComment } from "./serialize";
+import {
+  serializeAnnouncement,
+  serializeAnnouncements,
+  serializeComments,
+} from "./serialize";
 import { getClubContext } from "../clubs/access";
 import { consumeStagedAnnouncementImages } from "../uploads/announcementImages";
 
@@ -100,9 +104,7 @@ export const list = query({
       );
     });
 
-    const serialized = await Promise.all(
-      announcements.map((ann) => serializeAnnouncement(ctx, ann, user._id)),
-    );
+    const serialized = await serializeAnnouncements(ctx, announcements, user._id);
 
     if (!args.unreadOnly) {
       return serialized;
@@ -140,7 +142,7 @@ export const get = query({
 
     return {
       announcement: await serializeAnnouncement(ctx, ann, user._id),
-      comments: await Promise.all(comments.map((c) => serializeComment(ctx, c))),
+      comments: await serializeComments(ctx, comments),
     };
   },
 });
@@ -234,6 +236,7 @@ export const create = mutation({
       submittedById: status === "PENDING_APPROVAL" ? user._id : undefined,
       approvedById: status === "ACTIVE" ? user._id : undefined,
       approvedAt: status === "ACTIVE" ? now : undefined,
+      commentCount: 0,
       createdAt: now,
       updatedAt: now,
     });

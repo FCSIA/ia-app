@@ -7,6 +7,8 @@ import { getCurrentAppUser, getMaybeCurrentAppUser, requireAnyRole } from "../..
 import { logAuditEvent } from "../audit/_lib";
 import { getClubContext, getViewerContext } from "./access";
 import { clubSummaryValidator, clubSummaryWithCounts, toViewerState } from "./serialize";
+import { createDocLoader } from "../../lib/docLoader";
+import { adjustClubCounts } from "./counts";
 import type { AppRole } from "../../lib/roles";
 import {
   clubRolePermissionValidator,
@@ -92,6 +94,10 @@ export const create = mutation({
       joinPolicy: args.joinPolicy,
       memberLimit: args.memberLimit,
       isActive: true,
+      // A new club has no members or channels yet. Setting the counters here
+      // keeps a fresh club distinguishable from one that predates them.
+      memberCount: 0,
+      channelCount: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -882,6 +888,7 @@ export const removeMember = mutation({
       .first();
 
     if (member) {
+      await adjustClubCounts(ctx, args.clubId, { members: -1 });
       await ctx.db.delete(member._id);
     }
 
@@ -952,10 +959,13 @@ export const listMyInvites = query({
       .order("desc")
       .collect();
 
+    const loader = createDocLoader(ctx);
     return Promise.all(
       invites.map(async (invite) => {
-        const club = await ctx.db.get(invite.clubId);
-        const sender = await ctx.db.get(invite.senderId);
+        const [club, sender] = await Promise.all([
+          loader.get(invite.clubId),
+          loader.get(invite.senderId),
+        ]);
         if (!club || !sender) return null;
         return {
           _id: invite._id,

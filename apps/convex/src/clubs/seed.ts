@@ -8,6 +8,7 @@ import {
   type SeedClubDefinition,
 } from "../../seed-data/clubs";
 import { createInitialClubRoles } from "./rolePermissions";
+import { recountClub } from "./counts";
 
 class SeedRandom {
   private seed: number;
@@ -567,6 +568,13 @@ export const run = internalMutation({
         });
         joinRequestsSeeded++;
       }
+    }
+
+    // Seeding writes memberships and channels in bulk without tracking a
+    // per-club total, so the counters are derived once at the end rather than
+    // maintained row by row.
+    for (const club of CLUB_DEFINITIONS) {
+      await recountClub(ctx, clubIdByName.get(club.name)!);
     }
 
     return {

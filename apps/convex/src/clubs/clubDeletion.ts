@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { logAuditEvent } from "../audit/_lib";
+import { adjustClubCounts } from "./counts";
 
 const CLUB_DELETION_BATCH_SIZE = 25;
 
@@ -184,6 +185,14 @@ export const cleanupDeletedClub = internalMutation({
         .take(CLUB_DELETION_BATCH_SIZE),
     ]);
 
+    // Before the rows go: the club document outlives the drain by design — it
+    // is deleted only once every batch comes back short — so its counters
+    // follow the rows down rather than sitting stale for the duration.
+    await adjustClubCounts(ctx, args.clubId, {
+      members: -members.length,
+      channels: -channels.length,
+    });
+
     for (const row of [
       ...members,
       ...unitMembers,
@@ -205,6 +214,7 @@ export const cleanupDeletedClub = internalMutation({
         { channelId: channel._id },
       );
     }
+
     for (const tag of tags) {
       await ctx.db.delete(tag._id);
       await ctx.scheduler.runAfter(

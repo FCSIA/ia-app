@@ -2,8 +2,12 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { assertAnnouncementAccess, commentWithAuthorValidator } from "./_lib";
-import { serializeComment } from "./serialize";
+import {
+  adjustCommentCount,
+  assertAnnouncementAccess,
+  commentWithAuthorValidator,
+} from "./_lib";
+import { serializeComments } from "./serialize";
 import { contentRateLimiter } from "../rateLimits";
 import {
   MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
@@ -24,7 +28,7 @@ export const list = query({
       .query("comments")
       .withIndex("by_announcementId", (q) => q.eq("announcementId", args.announcementId))
       .collect();
-    return Promise.all(comments.map((c) => serializeComment(ctx, c)));
+    return serializeComments(ctx, comments);
   },
 });
 
@@ -48,6 +52,7 @@ export const add = mutation({
       MAX_ANNOUNCEMENT_COMMENT_CHARACTERS,
     );
 
+    await adjustCommentCount(ctx, ann, 1);
     const id = await ctx.db.insert("comments", {
       announcementId: args.announcementId,
       authorId: user._id,
@@ -80,6 +85,8 @@ export const remove = mutation({
       throw new ConvexError("Unauthorized");
     }
 
+    const ann = await ctx.db.get(comment.announcementId);
+    if (ann) await adjustCommentCount(ctx, ann, -1);
     await ctx.db.delete(args.commentId);
     await logAuditEvent(ctx, {
       actorId: user._id,

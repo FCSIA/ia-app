@@ -384,7 +384,7 @@ export const run = internalMutation({
 
     const annIds: any[] = [];
     for (const ann of announcements) {
-      const id = await ctx.db.insert("announcements", ann);
+      const id = await ctx.db.insert("announcements", { ...ann, commentCount: 0 });
       annIds.push({ id, title: ann.title });
     }
 

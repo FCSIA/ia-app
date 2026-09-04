@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
-import { serializeEvent, serializeEventDetail, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
+import { serializeEventDetail, serializeEvents, serializedEventDetailValidator, serializedEventValidator } from "./serialize";
 import { deliverMany, eventAudience } from "../notifications/delivery";
 import { getClubContext } from "../clubs/access";
 import {
@@ -47,7 +47,7 @@ export const list = query({
 
     events.sort((a, b) => a.startAt - b.startAt);
 
-    return Promise.all(events.map((event) => serializeEvent(ctx, event)));
+    return serializeEvents(ctx, events);
   },
 });
 
