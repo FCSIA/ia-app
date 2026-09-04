@@ -57,6 +57,9 @@ const DialogClose = DialogPrimitive.Close;
 interface DialogContentProps
   extends ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   size?: "sm" | "lg";
+  /** Controls the dialog-owned content inset. Use `none` when a composed
+   * primitive owns its internal layout and must meet the dialog edge. */
+  padding?: "default" | "none";
   /** Portal target. When set, the overlay and panel render inside this element
    *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
    *  with a `position: relative; overflow: hidden` container — and usually
@@ -72,6 +75,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       className,
       children,
       size = "sm",
+      padding = "default",
       container,
       mobilePosition = "center",
       ...props
@@ -134,7 +138,9 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
                 ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
                 : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",
               surfaceClasses(dialogLevel),
-              "max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] focus:outline-none sm:p-6",
+              "max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain focus:outline-none",
+              padding === "default" && "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",
+              padding === "none" && "p-0",
               size === "sm" && "sm:max-w-[400px]",
               size === "lg" && "sm:max-w-[540px]",
               shape.container,

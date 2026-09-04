@@ -70,7 +70,8 @@ export function FriendScheduleDialog({
       </DialogTrigger>
       <DialogContent
         size="lg"
-        className="max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background"
+        padding="none"
+        className="max-h-[85vh] flex flex-col overflow-hidden bg-background"
       >
         <DialogHeader className="px-6 pt-6 pb-4 mb-0 border-b border-border/40 shrink-0">
           <div className="flex items-center justify-between pr-8">

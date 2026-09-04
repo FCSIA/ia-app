@@ -10,15 +10,25 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useShape } from "@/lib/shape-context"
 import { POPOVER_SURFACE_FOREGROUND } from "@/lib/surface-classes"
 
+type CommandSurface = "popover" | "inherit"
+
+interface CommandProps extends React.ComponentPropsWithoutRef<typeof CommandPrimitive> {
+  /** `inherit` lets a containing surface, such as `DialogContent`, own the
+   * background and foreground instead of creating a nested command surface. */
+  surface?: CommandSurface
+}
+
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => (
+  CommandProps
+>(({ className, surface = "popover", ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden bg-popover text-popover-foreground",
-      POPOVER_SURFACE_FOREGROUND,
+      "flex h-full w-full flex-col overflow-hidden",
+      surface === "popover" && "bg-popover text-popover-foreground",
+      surface === "popover" && POPOVER_SURFACE_FOREGROUND,
+      surface === "inherit" && "bg-transparent text-foreground",
       className
     )}
     {...props}
@@ -32,13 +42,14 @@ const CommandDialog = ({ children, ...props }: DialogProps) => {
       <DialogContent
         size="lg"
         mobilePosition="top"
-        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden p-0 [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-2rem)]"
+        padding="none"
+        className="w-[calc(100%-1rem)] max-w-[640px] overflow-hidden [&_[cmdk-input-wrapper]]:pr-12 sm:w-[calc(100%-2rem)]"
         onOpenAutoFocus={(event) => {
           if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault()
         }}
       >
         <DialogTitle className="sr-only">Command menu</DialogTitle>
-        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-1 [&_[cmdk-input]]:h-11 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2">
+        <Command surface="inherit" className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-1 [&_[cmdk-input]]:h-11 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2">
           {children}
         </Command>
       </DialogContent>
