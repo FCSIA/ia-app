@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
@@ -23,23 +23,46 @@ import { format } from 'date-fns';
 
 interface AddCalendarEntryDialogProps {
   initialDate?: Date;
+  durationMinutes?: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
 }
 
-export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntryDialogProps) {
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-
-  const [form, setForm] = useState({
+function initialForm(initialDate?: Date) {
+  return {
     title: '',
     description: '',
     location: '',
     date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-    time: '08:00',
-  });
+    time: initialDate ? format(initialDate, 'HH:mm') : '08:00',
+  };
+}
+
+export function AddCalendarEntryDialog({
+  initialDate,
+  durationMinutes,
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
+}: AddCalendarEntryDialogProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const { toast } = useToast();
+
+  const [form, setForm] = useState(() => initialForm(initialDate));
 
   const createEntry = useMutation(api.events.calendar.create);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (open) setForm(initialForm(initialDate));
+  }, [initialDate, open]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setUncontrolledOpen(isOpen);
+    onOpenChange?.(isOpen);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,16 +76,11 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
         description: form.description || undefined,
         location: form.location || undefined,
         startAt,
+        endAt: durationMinutes ? startAt + durationMinutes * 60 * 1000 : undefined,
         source: 'PERSONAL',
       });
-      setOpen(false);
-      setForm({
-        title: '',
-        description: '',
-        location: '',
-        date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        time: '08:00',
-      });
+      handleOpenChange(false);
+      setForm(initialForm(initialDate));
       toast({ title: 'Reminder added to your calendar' });
     } catch (error) {
       toast({
@@ -78,25 +96,21 @@ export function AddCalendarEntryDialog({ initialDate, trigger }: AddCalendarEntr
     <Dialog 
       open={open} 
       onOpenChange={(isOpen) => {
-        setOpen(isOpen);
+        handleOpenChange(isOpen);
         if (isOpen) {
-          setForm({
-            title: '',
-            description: '',
-            location: '',
-            date: initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-            time: '08:00',
-          });
+          setForm(initialForm(initialDate));
         }
       }}
     >
-      <DialogTrigger asChild>
-        {trigger || (
+      {trigger === undefined ? (
+        <DialogTrigger asChild>
           <Button size="sm" leadingIcon={Plus} className="rounded-xl">
             Add Reminder
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      ) : trigger ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-[425px] rounded-[2rem] border-foreground/10 bg-background/95 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
