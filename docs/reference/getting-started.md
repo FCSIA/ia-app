@@ -45,6 +45,9 @@ pnpm dev
 > secrets and settings. Do not copy `apps/convex/.env.local` from another
 > worktree.
 
+For a short-lived UI-only worktree that can reuse an existing dependency install
+and explicitly selected client environment files, see [Git worktrees](worktrees.md).
+
 ## Browser Push Keys (Optional)
 
 Browser push is optional for basic local development, but notification
