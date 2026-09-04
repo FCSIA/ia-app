@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, MessageCircle, Pin } from "lucide-react-native";
-import { useMutation } from "convex/react";
+import { useMutation } from "@/lib/convex-react";
 import { PressableScale, Txt, useToast } from "@/components/ui";
 import { AnnouncementIconAction, announcementAudience } from "@/features/announcements/ui";
 import { announcementUnreadColors } from "@/features/announcements/unread-colors";

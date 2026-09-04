@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
 import { Bell } from "lucide-react-native";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "@/lib/convex-react";
 import { Avatar, IconButton, PressableScale, Txt } from "@/components/ui";
 import { useCurrentUser } from "@/lib/auth";
+import { usePrewarmTab } from "@/lib/route-prewarm";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -21,6 +22,7 @@ export function AppHeader({ title, subtitle, action }: AppHeaderProps) {
   const auth = useConvexAuth();
   const user = useCurrentUser();
   const { color } = useTheme();
+  const prewarm = usePrewarmTab(user);
   const unread = useQuery(api.notifications.inbox.unreadCount, auth.isAuthenticated ? EMPTY_ARGS : "skip");
   const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Innovation Academy";
   const unreadLabel = unread?.count && unread.count > 99 ? "99+" : String(unread?.count ?? "");
@@ -50,7 +52,10 @@ export function AppHeader({ title, subtitle, action }: AppHeaderProps) {
           <IconButton
             icon={Bell}
             label={unread?.count ? `Open inbox, ${unread.count} unread` : "Open inbox"}
-            onPress={() => router.push("/notifications" as never)}
+            onPress={() => {
+              prewarm("notifications");
+              router.push("/notifications" as never);
+            }}
           />
           {unread?.count ? (
             <View

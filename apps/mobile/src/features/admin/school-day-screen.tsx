@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import { Clock3, Pencil, Plus, Trash2 } from "lucide-react-native";
 import { Screen } from "@/components/screen";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useAction, useConvex, useMutation } from "convex/react";
+import { useAction, useConvex, useMutation } from "@/lib/convex-react";
 import { Bell, Camera, KeyRound, Palette, Trash2 } from "lucide-react-native";
 import { authClient } from "@/lib/auth-client";
 import {

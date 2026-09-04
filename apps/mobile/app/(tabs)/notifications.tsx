@@ -2,7 +2,7 @@ import { AppState, RefreshControl, View } from "react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";

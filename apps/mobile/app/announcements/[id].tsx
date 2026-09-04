@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Bookmark, BookmarkCheck, Mail, MailOpen, Pin, SendHorizontal } from "lucide-react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, TextField, Txt, useToast } from "@/components/ui";

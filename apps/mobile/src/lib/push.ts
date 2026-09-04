@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as SecureStore from "expo-secure-store";
-import type { ConvexReactClient } from "convex/react";
+import type { ConvexReactClient } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import {
   isChannelNotificationCovered,

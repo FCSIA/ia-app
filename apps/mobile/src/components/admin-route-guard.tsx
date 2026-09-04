@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Redirect } from "expo-router";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth } from "@/lib/convex-react";
 import { canAccessAdminWorkspace, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 

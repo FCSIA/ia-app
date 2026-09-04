@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { ChevronLeft, ChevronRight, Plus, Trash2, UserPlus } from "lucide-react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { DataBoundary } from "@/components/data-boundary";
 import {
@@ -16,13 +16,13 @@ import {
 } from "@/components/ui";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { getAppPersona, useLiveCurrentUser } from "@/lib/auth";
+import { CALENDAR_SOURCES as sources, monthRange } from "@/lib/calendar-window";
 import { timeRange } from "@/lib/format";
 import { warning } from "@/lib/haptics";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 
-const sources = ["DISTRICT", "SCHOOL", "CLUB", "FLEX_FRIDAY", "PERSONAL", "EXTERNAL"] as const;
 const sourceFilterLabels: Record<(typeof sources)[number], string> = {
   DISTRICT: "District",
   SCHOOL: "School",
@@ -32,13 +32,6 @@ const sourceFilterLabels: Record<(typeof sources)[number], string> = {
   EXTERNAL: "Connected",
 };
 const sourceDisplayLabels = { ...sourceFilterLabels, CLUB: "Club" };
-
-function monthRange(offset: number) {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0, 23, 59, 59, 999);
-  return { start, end };
-}
 
 export function MonthView() {
   const [offset, setOffset] = useState(0);

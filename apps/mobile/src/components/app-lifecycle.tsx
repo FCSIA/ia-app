@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
 import { AppState } from "react-native";
 import * as ScreenCapture from "expo-screen-capture";
-import { useConvex, useConvexAuth, useQuery } from "convex/react";
+import { useConvex, useConvexAuth, useQuery } from "@/lib/convex-react";
 import { openAppHref } from "@/lib/deep-links";
 import {
   clearLastNativeNotificationResponse,
