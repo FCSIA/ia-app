@@ -23,6 +23,16 @@ describe('getFixedBottomViewportOffset', () => {
     ).toBe(0);
   });
 
+  it('moves a bottom-fixed overlay above a keyboard-reduced viewport', () => {
+    expect(
+      getFixedBottomViewportOffset({
+        elementBottom: 844,
+        elementHeight: 320,
+        viewportHeight: 430,
+      }),
+    ).toBe(-414);
+  });
+
   it('rejects unusable measurements', () => {
     expect(
       getFixedBottomViewportOffset({
