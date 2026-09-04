@@ -1067,8 +1067,8 @@ function ChannelRow({
   const active = channel._id === activeChannelId;
   const rowClassName =
     density === "mobile"
-      ? "min-h-9 any-pointer-coarse:min-h-11"
-      : "min-h-8 any-pointer-coarse:min-h-11";
+      ? "min-h-9 pointer-coarse:min-h-11"
+      : "min-h-8 pointer-coarse:min-h-11";
   const secondaryControlClassName =
     density === "mobile"
       ? "flex"

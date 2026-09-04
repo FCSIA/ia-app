@@ -19,7 +19,7 @@ function InputControl({ className, ...props }: React.ComponentProps<"div">) {
       className={cn(
         "group/input-control border-input dark:bg-input/30 shadow-xs relative flex w-full items-center border outline-none transition-[color,box-shadow]",
         shape.input,
-        "h-9 any-pointer-coarse:min-h-11 has-[>textarea]:h-auto",
+        "h-9 pointer-coarse:min-h-11 has-[>textarea]:h-auto",
         "has-[>[data-align=inline-start]]:[&>input]:pl-2",
         "has-[>[data-align=inline-end]]:[&>input]:pr-2",
         "has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>[data-align=block-start]]:[&>input]:pb-3",

@@ -178,12 +178,12 @@ export function UnitTreePicker({
                     ))}
                   </RadioGroup>
                   <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
-                    {canChooseAny ? <div className="h-8 any-pointer-coarse:h-11" /> : null}
+                    {canChooseAny ? <div className="h-8 pointer-coarse:h-11" /> : null}
                     {currentUnits.map((unit) => {
                       const hasChildren = (childrenByParentId.get(unit._id) ?? [])
                         .length > 0;
                       return (
-                        <div key={unit._id} className="flex h-8 any-pointer-coarse:h-11 items-center">
+                        <div key={unit._id} className="flex h-8 pointer-coarse:h-11 items-center">
                           {hasChildren ? (
                             <Button
                               type="button"

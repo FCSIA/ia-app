@@ -2005,7 +2005,7 @@ export function ChannelWorkspace() {
           <textarea
             value={reportReason}
             onChange={(event) => setReportReason(event.target.value)}
-            className="min-h-28 w-full rounded-xl border bg-background px-3 py-2 text-sm any-pointer-coarse:text-base outline-none focus:ring-2 focus:ring-ring"
+            className="min-h-28 w-full rounded-xl border bg-background px-3 py-2 text-sm pointer-coarse:text-base outline-none focus:ring-2 focus:ring-ring"
             placeholder="Why are you reporting this message?"
           />
           <DialogFooter>

@@ -140,12 +140,12 @@ function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
             </RadioGroup>
             <div className="pointer-events-none absolute inset-y-0 right-1 top-0 z-30 flex flex-col gap-0.5">
               {roles.map((role) => (
-                <div key={role._id} className="flex h-8 any-pointer-coarse:h-11 items-center">
+                <div key={role._id} className="flex h-8 pointer-coarse:h-11 items-center">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="pointer-events-auto size-7 any-pointer-coarse:size-11"
+                    className="pointer-events-auto size-7 pointer-coarse:size-11"
                     aria-label={`Rename ${role.name}`}
                     onClick={() => openEditor({ mode: 'rename', roleId: role._id, name: role.name })}
                   >
