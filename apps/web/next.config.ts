@@ -29,7 +29,9 @@ const contentSecurityPolicy = [
   `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  // 'wasm-unsafe-eval' is required to instantiate the same-origin Tesseract OCR
+  // core in public/tesseract; no remote script origins are allowed.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "worker-src 'self' blob:",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');

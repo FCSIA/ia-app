@@ -51,7 +51,9 @@ function PasswordResetGate() {
   const user = useLiveCurrentUser();
   const router = useRouter();
   const segments = useSegments();
-  const onPasswordPage = segments[0] === "change-password";
+  // `useSegments()` is typed to the generated route union, so compare as a
+  // plain string and tolerate an empty segment list on the root route.
+  const onPasswordPage = String(segments[0] ?? "") === "change-password";
 
   useEffect(() => {
     if (!user) return;

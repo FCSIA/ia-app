@@ -28,6 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { filterBySearchQuery } from '@/lib/search';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 function getMemberLimitState(club: ClubDetail) {
   const memberCount = club._count?.members ?? club.members.length;
@@ -417,7 +418,7 @@ export default function ClubOverviewPage() {
   );
 
   const rightPane = (
-    <ScrollArea className="size-full">
+    <ScrollArea className={`size-full bg-surface-2 ${CARD_SURFACE_FOREGROUND}`}>
       <div className="divide-y divide-border">
         <OverviewSidebarSection title="Members">
           <MemberLimitMeter club={club} />
@@ -452,7 +453,7 @@ export default function ClubOverviewPage() {
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
         <ClubHero club={club} canEdit={club.viewer.permissions.manageClubSettings} />
 
-        <section className="space-y-2">
+        <section className={`rounded-2xl bg-surface-2 p-5 shadow-surface-1 border border-border/50 space-y-4 ${CARD_SURFACE_FOREGROUND}`}>
           <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
               <Megaphone className="size-4 text-primary" />
@@ -490,7 +491,7 @@ export default function ClubOverviewPage() {
               ))}
             </CardGroup>
           ) : (
-            <Empty className="rounded-lg border bg-muted/20">
+            <Empty className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-6">
               <EmptyHeader>
                 <EmptyMedia variant="icon">{deferredSearch ? <Search /> : <MessageSquareText />}</EmptyMedia>
                 <EmptyTitle>{deferredSearch ? 'No matches found' : 'No announcements yet'}</EmptyTitle>

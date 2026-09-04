@@ -135,6 +135,20 @@ export function validateCustomColors(colors: CustomColors): CustomColorErrors {
     }
   }
 
+  if (colors.secondary) {
+    const secondaryTextContrast = contrastRatio(resolved.foreground, colors.secondary);
+    if (secondaryTextContrast !== null && secondaryTextContrast < MIN_UI_CONTRAST) {
+      errors.secondary = errors.secondary ?? `Secondary surface needs at least 3:1 contrast against Text (currently ${secondaryTextContrast.toFixed(2)}:1).`;
+    }
+  }
+
+  if (colors.accent) {
+    const accentTextContrast = contrastRatio(resolved.foreground, colors.accent);
+    if (accentTextContrast !== null && accentTextContrast < MIN_UI_CONTRAST) {
+      errors.accent = `Accent surface needs at least 3:1 contrast against Text (currently ${accentTextContrast.toFixed(2)}:1).`;
+    }
+  }
+
   return errors;
 }
 

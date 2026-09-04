@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/lib/auth';
 import { shareUrl } from '@/lib/share';
 import { useToast } from '@/hooks/use-toast';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -82,7 +83,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
+        <Card className={`overflow-hidden rounded-2xl bg-surface-2 border border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
           <CardHeader className="bg-muted/20 pb-6 border-b">
             <div className="flex items-center gap-2 mb-4">
               <Badge 

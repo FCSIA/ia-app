@@ -8,6 +8,7 @@ import type { BadgeColor } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { cn } from '@/lib/utils';
 
 export const ANNOUNCEMENT_BADGE_TEXT_CLASS = 'text-[11px] leading-none';
@@ -82,7 +83,12 @@ export function AnnouncementCard({
       index={index}
       href={`/announcements/${announcement._id}`}
       label={`Open announcement: ${announcement.title}`}
-      className={cn('relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
+      className={cn(
+        'relative bg-surface-2 border border-border/50 shadow-surface-1',
+        !announcement.isRead && 'border-l-2 border-l-primary',
+        CARD_SURFACE_FOREGROUND,
+        className
+      )}
     >
       <CardContent>
         <div className="flex items-start justify-between gap-3">

@@ -23,6 +23,37 @@ import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { parseInfiniteCampusSchedule, type ImportedScheduleRow, type OcrScheduleRow } from '@/lib/schedule-ocr';
 
+async function prepareImageForOcr(file: File): Promise<Blob | File> {
+  if (typeof window === 'undefined') return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const padding = 40;
+      canvas.width = img.width + padding * 2;
+      canvas.height = img.height + padding * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, padding, padding);
+      canvas.toBlob((blob) => {
+        resolve(blob ?? file);
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 export function ScheduleImportDialog({
   courses,
   onApply,
@@ -64,8 +95,13 @@ export function ScheduleImportDialog({
     setError(null);
     setProgress(0);
     try {
+      const preparedImage = await prepareImageForOcr(file);
       const { createWorker, PSM } = await import('tesseract.js');
       const worker = await createWorker('eng', 1, {
+        workerPath: '/tesseract/worker.min.js',
+        corePath: '/tesseract',
+        langPath: '/tesseract',
+        workerBlobURL: false,
         logger: (message) => {
           setStatus(message.status.replace(/_/g, ' '));
           if (typeof message.progress === 'number') {
@@ -78,8 +114,8 @@ export function ScheduleImportDialog({
           tessedit_pageseg_mode: PSM.AUTO,
           preserve_interword_spaces: '1',
         });
-        const result = await worker.recognize(file);
-        const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
+        const result = await worker.recognize(preparedImage);
+        console.log("OCR OUTPUT:", result.data.text); const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
         if (!parsed.length) {
           setError('No period and course pairs were found. Try a sharper screenshot of Infinite Campus Term view.');
         } else {
@@ -89,7 +125,8 @@ export function ScheduleImportDialog({
         await worker.terminate();
       }
     } catch (scanError) {
-      setError(scanError instanceof Error ? scanError.message : 'Could not scan this image.');
+      console.error('OCR scan failed:', scanError);
+      setError('Could not scan this image. Try a clearer screenshot of the Infinite Campus Term view.');
     } finally {
       setScanning(false);
     }
@@ -169,8 +206,8 @@ export function ScheduleImportDialog({
           {rows.length > 0 ? (
             <div className="flex flex-col gap-2">
               <h3 className="text-sm font-semibold text-foreground">Review classes</h3>
-              <div className="overflow-hidden rounded-lg border border-border/70">
-                <Table>
+              <div className="overflow-x-auto overflow-y-hidden rounded-lg border border-border/70">
+                <Table className="w-full min-w-[28rem]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-16">Period</TableHead>
@@ -183,9 +220,31 @@ export function ScheduleImportDialog({
                   </TableHeader>
                   <TableBody>
                     {rows.map((row, index) => (
-                      <TableRow key={row.periodNumber} index={index}>
-                        <TableCell className="font-medium text-foreground">{row.periodNumber}</TableCell>
+                      <TableRow key={`${row.periodNumber}-${index}`} index={index}>
                         <TableCell>
+                          <Select
+                            value={String(row.periodNumber)}
+                            onValueChange={(val) => {
+                              const newPeriod = parseInt(val, 10);
+                              if (isNaN(newPeriod)) return;
+                              setRows((current) =>
+                                current.map((entry, entryIndex) =>
+                                  entryIndex === index ? { ...entry, periodNumber: newPeriod } : entry
+                                )
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-16 h-8 px-2" />
+                            <SelectContent>
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                <SelectItem key={num} value={String(num)} index={num - 1}>
+                                  {num}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="min-w-[12rem] max-w-[20rem]">
                           <Select
                             value={row.matchedCourse?.id ?? 'custom'}
                             onValueChange={(courseId) => {
@@ -204,7 +263,7 @@ export function ScheduleImportDialog({
                               );
                             }}
                           >
-                            <SelectTrigger />
+                            <SelectTrigger className="w-full" />
                             <SelectContent>
                               <SelectItem value="custom" index={0}>
                                 {row.className} (use OCR text)
@@ -216,7 +275,7 @@ export function ScheduleImportDialog({
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="mt-1 truncate text-[11px] text-muted-foreground" title={row.sourceText}>
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground">
                             Read as: {row.sourceText}
                           </p>
                         </TableCell>

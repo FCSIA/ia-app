@@ -35,6 +35,35 @@ describe('custom theme contrast validation', () => {
     expect(buildCustomThemeRule(colors)).toBeNull();
   });
 
+  test('rejects a secondary surface that swallows body text', () => {
+    const colors = {
+      background: '#000000',
+      foreground: '#ffffff',
+      primary: '#767676',
+      secondary: '#eeeeee',
+    } as const;
+
+    expect(validateCustomColors(colors)).toMatchObject({
+      secondary: expect.stringContaining('3:1'),
+    });
+    expect(buildCustomThemeRule(colors)).toBeNull();
+  });
+
+  test('rejects an accent surface that swallows body text', () => {
+    const colors = {
+      background: '#000000',
+      foreground: '#ffffff',
+      primary: '#ffffff',
+      secondary: '#5a5a5a',
+      accent: '#eeeeee',
+    } as const;
+
+    expect(validateCustomColors(colors)).toMatchObject({
+      accent: expect.stringContaining('3:1'),
+    });
+    expect(buildCustomThemeRule(colors)).toBeNull();
+  });
+
   test('uses WCAG relative luminance', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBe(21);
   });
