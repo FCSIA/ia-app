@@ -44,7 +44,7 @@ export type ChannelMentionSuggestion = {
   token: string;
   label: string;
   detail: string;
-  kind: 'built-in' | 'tag' | 'person';
+  kind: 'built-in' | 'tag' | 'person' | 'role' | 'unit';
 };
 
 type ChannelMessageComposerProps = {

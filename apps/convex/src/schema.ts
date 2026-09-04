@@ -924,6 +924,8 @@ export const schema = defineSchema({
     messageId: v.id("clubChannelMessages"),
     userId: v.optional(v.id("users")),
     tagId: v.optional(v.id("clubTags")),
+    roleId: v.optional(v.id("clubRoles")),
+    unitId: v.optional(v.id("clubUnits")),
     kind: clubMentionKindValidator,
     token: v.string(),
     createdAt: v.number(),

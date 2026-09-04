@@ -1446,6 +1446,12 @@ export function ChannelWorkspace() {
       detail: '',
       kind: 'tag' as const,
     })) ?? [];
+    const groups = mentionContext?.groups.map((group) => ({
+      token: group.token,
+      label: group.label,
+      detail: group.detail,
+      kind: group.kind,
+    })) ?? [];
     const people = (mentionContext?.members ?? [])
       .map((person) => ({
         token: person.uniqueId,
@@ -1453,7 +1459,7 @@ export function ChannelWorkspace() {
         detail: '',
         kind: 'person' as const,
       }));
-    return [...builtIns, ...tags, ...people];
+    return [...builtIns, ...groups, ...tags, ...people];
   }, [mentionContext]);
 
   const selectedThread = selectedThreadResult?.root ?? null;

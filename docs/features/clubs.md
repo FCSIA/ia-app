@@ -176,9 +176,13 @@ Admins create clubs. Sponsors and leaders manage most club-local settings.
 Sponsors retain visibility into private channels. Channel read/post permissions
 are enforced through `apps/convex/src/clubs/access.ts`. The backend resolves
 user, built-in, and custom-tag mentions against that readable audience;
-`@all` is manager-only and mention delivery is capped. Message reports accept
-only a message id and reason from clients, then derive the club and author after
-checking channel access.
+`@all` is manager-only and mention delivery is capped. Role names and active
+structure branch names are also available as group mentions: their compact
+tokens remove spaces and punctuation, so a `School Leads` role can be mentioned
+as `@schoolleads`. Structure mentions include descendant units. Every group
+mention is intersected with the channel's readable audience before delivery.
+Message reports accept only a message id and reason from clients, then derive
+the club and author after checking channel access.
 
 `SUPER_ADMIN` club access is presented as administrative rather than personal
 membership. The web and mobile club directories omit personal club groups for

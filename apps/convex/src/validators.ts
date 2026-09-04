@@ -276,6 +276,8 @@ export const clubMentionKindValidator = v.union(
   v.literal("USER"),
   v.literal("BUILT_IN_TAG"),
   v.literal("CUSTOM_TAG"),
+  v.literal("ROLE"),
+  v.literal("UNIT"),
 );
 
 export type ClubMentionKind = Infer<typeof clubMentionKindValidator>;

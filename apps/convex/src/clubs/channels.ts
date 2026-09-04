@@ -58,6 +58,7 @@ import {
   addBoundedMentionRecipients,
   assertCanMentionEveryone,
   boundedPortableMentionTokens,
+  toMentionGroupToken,
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
 import { contentRateLimiter } from "../rateLimits";
@@ -213,10 +214,12 @@ const messagePageValidator = v.object({
 });
 
 type PlannedMention = {
-  kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG";
+  kind: "USER" | "BUILT_IN_TAG" | "CUSTOM_TAG" | "ROLE" | "UNIT";
   token: string;
   userId?: Id<"users">;
   tagId?: Id<"clubTags">;
+  roleId?: Id<"clubRoles">;
+  unitId?: Id<"clubUnits">;
 };
 
 type MentionPlan = {
@@ -243,6 +246,60 @@ async function resolveChannelMentionPlan(
   const rows: PlannedMention[] = [];
   const recipients = new Map<Id<"users">, "USER" | "GROUP">();
   const recipientIds = new Set<Id<"users">>();
+  const dynamicTokens = new Set(
+    input.tokens
+      .map(toMentionGroupToken)
+      .filter(
+        (token) =>
+          token.length > 0 &&
+          token !== "all" &&
+          token !== "leaders" &&
+          token !== "sponsors",
+      ),
+  );
+  const [roles, units] = dynamicTokens.size
+    ? await Promise.all([
+        ctx.db
+          .query("clubRoles")
+          .withIndex("by_clubId_and_position", (q) =>
+            q.eq("clubId", input.channel.clubId),
+          )
+          .take(100),
+        ctx.db
+          .query("clubUnits")
+          .withIndex("by_clubId_and_isActive_and_position", (q) =>
+            q.eq("clubId", input.channel.clubId).eq("isActive", true),
+          )
+          .take(250),
+      ])
+    : [[], []];
+  const roleByToken = new Map<string, (typeof roles)[number]>();
+  const unitByToken = new Map<string, (typeof units)[number]>();
+  const ambiguousRoleTokens = new Set<string>();
+  const ambiguousUnitTokens = new Set<string>();
+  for (const role of roles) {
+    const token = toMentionGroupToken(role.name);
+    if (!dynamicTokens.has(token)) continue;
+    if (roleByToken.has(token)) ambiguousRoleTokens.add(token);
+    else roleByToken.set(token, role);
+  }
+  for (const unit of units) {
+    const token = toMentionGroupToken(unit.name);
+    if (!dynamicTokens.has(token)) continue;
+    if (unitByToken.has(token)) ambiguousUnitTokens.add(token);
+    else unitByToken.set(token, unit);
+  }
+  for (const token of ambiguousRoleTokens) roleByToken.delete(token);
+  for (const token of ambiguousUnitTokens) unitByToken.delete(token);
+  const childrenByUnitId = new Map<Id<"clubUnits">, Id<"clubUnits">[]>();
+  for (const unit of units) {
+    if (!unit.parentUnitId) continue;
+    const children = childrenByUnitId.get(unit.parentUnitId) ?? [];
+    children.push(unit._id);
+    childrenByUnitId.set(unit.parentUnitId, children);
+  }
+  let audienceUnitIdsByUserId: Map<Id<"users">, Set<Id<"clubUnits">>> | null =
+    null;
 
   const addRecipients = (
     ids: Iterable<Id<"users">>,
@@ -334,6 +391,82 @@ async function resolveChannelMentionPlan(
       rows.push({ kind: "CUSTOM_TAG", token: normalizedToken, tagId: tag._id });
       addRecipients(
         tagMembers.map((member) => member.userId),
+        "GROUP",
+      );
+      continue;
+    }
+
+    const dynamicToken = toMentionGroupToken(normalizedToken);
+    const role = roleByToken.get(dynamicToken);
+    if (role) {
+      const [roleMembers, legacyRoleMembers] = await Promise.all([
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_roleId", (q) =>
+            q.eq("clubId", input.channel.clubId).eq("roleId", role._id),
+          )
+          .take(MAX_MENTION_GROUP_ROWS),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_customRoleId", (q) =>
+            q.eq("clubId", input.channel.clubId).eq("customRoleId", role._id),
+          )
+          .take(MAX_MENTION_GROUP_ROWS),
+      ]);
+      rows.push({
+        kind: "ROLE",
+        token: normalizedToken,
+        roleId: role._id,
+      });
+      addRecipients(
+        [...roleMembers, ...legacyRoleMembers].map((member) => member.userId),
+        "GROUP",
+      );
+      continue;
+    }
+
+    const unit = unitByToken.get(dynamicToken);
+    if (unit) {
+      if (!audienceUnitIdsByUserId) {
+        const audienceUnitAssignments = await Promise.all(
+          input.channelAudienceIds.map(async (userId) => ({
+            userId,
+            memberships: await ctx.db
+              .query("clubUnitMembers")
+              .withIndex("by_userId_and_clubId", (q) =>
+                q.eq("userId", userId).eq("clubId", input.channel.clubId),
+              )
+              .take(250),
+          })),
+        );
+        audienceUnitIdsByUserId = new Map(
+          audienceUnitAssignments.map(({ userId, memberships }) => [
+            userId,
+            new Set(memberships.map((membership) => membership.unitId)),
+          ]),
+        );
+      }
+      const coveredUnitIds = new Set<Id<"clubUnits">>([unit._id]);
+      const pendingUnitIds = [unit._id];
+      for (let index = 0; index < pendingUnitIds.length; index += 1) {
+        const currentUnitId = pendingUnitIds[index];
+        for (const childUnitId of childrenByUnitId.get(currentUnitId) ?? []) {
+          if (coveredUnitIds.has(childUnitId)) continue;
+          coveredUnitIds.add(childUnitId);
+          pendingUnitIds.push(childUnitId);
+        }
+      }
+      rows.push({
+        kind: "UNIT",
+        token: normalizedToken,
+        unitId: unit._id,
+      });
+      addRecipients(
+        input.channelAudienceIds.filter((userId) =>
+          [...(audienceUnitIdsByUserId!.get(userId) ?? [])].some((unitId) =>
+            coveredUnitIds.has(unitId),
+          ),
+        ),
         "GROUP",
       );
       continue;
@@ -619,7 +752,7 @@ export const postMessage = mutation({
     if (
       args.clientGeneratedId &&
       Array.from(args.clientGeneratedId).length >
-      MAX_CLIENT_MESSAGE_ID_CHARACTERS
+        MAX_CLIENT_MESSAGE_ID_CHARACTERS
     ) {
       throw new ConvexError("Client message ID is too long");
     }
@@ -687,16 +820,16 @@ export const postMessage = mutation({
     );
     const mentionPlan = mentionTokens.length
       ? await resolveChannelMentionPlan(ctx, {
-        channel,
-        context,
-        tokens: mentionTokens,
+          channel,
+          context,
+          tokens: mentionTokens,
           channelAudienceIds: await getChannelAudienceUserIds(
             ctx,
             channel,
             MAX_CHANNEL_MENTION_RECIPIENTS,
           ),
-        authorId: user._id,
-      })
+          authorId: user._id,
+        })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
 
     const now = Date.now();
@@ -727,6 +860,8 @@ export const postMessage = mutation({
         messageId,
         userId: mention.userId,
         tagId: mention.tagId,
+        roleId: mention.roleId,
+        unitId: mention.unitId,
         kind: mention.kind,
         token: mention.token,
         createdAt: Date.now(),
@@ -1042,11 +1177,11 @@ async function serializeMessage(
   const reactions = isDeleted
     ? []
     : await ctx.db
-      .query("clubChannelMessageReactions")
-      .withIndex("by_messageId_and_createdAt", (q) =>
-        q.eq("messageId", message._id),
-      )
-      .collect();
+        .query("clubChannelMessageReactions")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .collect();
   const reactionMap = new Map<
     string,
     {
@@ -1075,11 +1210,11 @@ async function serializeMessage(
   const attachments = isDeleted
     ? []
     : await ctx.db
-      .query("clubChannelMessageAttachments")
-      .withIndex("by_messageId_and_createdAt", (q) =>
-        q.eq("messageId", message._id),
-      )
-      .collect();
+        .query("clubChannelMessageAttachments")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .collect();
 
   const replies = await ctx.db
     .query("clubChannelMessages")
@@ -1179,7 +1314,7 @@ async function serializeMessageSummary(
 ) {
   const author =
     authorsById === undefined
-    ? await ctx.db.get(message.authorId)
+      ? await ctx.db.get(message.authorId)
       : (authorsById.get(message.authorId) ?? null);
   if (!author) return null;
   const isDeleted = !!message.deletedAt;
@@ -1187,12 +1322,12 @@ async function serializeMessageSummary(
   const reactionRows = isDeleted
     ? []
     : await ctx.db
-      .query("clubChannelMessageReactions")
-      .withIndex("by_messageId_and_createdAt", (q) =>
-        q.eq("messageId", message._id),
-      )
-      .order("desc")
-      .take(MAX_SUMMARY_REACTION_ROWS + 1);
+        .query("clubChannelMessageReactions")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .order("desc")
+        .take(MAX_SUMMARY_REACTION_ROWS + 1);
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
   const reactionMap = new Map<
     string,
@@ -1220,12 +1355,12 @@ async function serializeMessageSummary(
   const attachmentRowsNewest = isDeleted
     ? []
     : await ctx.db
-      .query("clubChannelMessageAttachments")
-      .withIndex("by_messageId_and_createdAt", (q) =>
-        q.eq("messageId", message._id),
-      )
-      .order("desc")
-      .take(MAX_SUMMARY_ATTACHMENTS + 1);
+        .query("clubChannelMessageAttachments")
+        .withIndex("by_messageId_and_createdAt", (q) =>
+          q.eq("messageId", message._id),
+        )
+        .order("desc")
+        .take(MAX_SUMMARY_ATTACHMENTS + 1);
   const attachmentsTruncated =
     attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
   const attachments = chronologicalFromNewest(
@@ -1272,15 +1407,15 @@ async function serializeMessageSummary(
 
   const latestReply = includeLatestReply
     ? ((
-      await ctx.db
-        .query("clubChannelMessages")
-        .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
+        await ctx.db
+          .query("clubChannelMessages")
+          .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
             q
               .eq("channelId", message.channelId)
               .eq("parentMessageId", message._id),
-        )
-        .order("desc")
-        .take(1)
+          )
+          .order("desc")
+          .take(1)
       )[0] ?? null)
     : null;
 
@@ -1329,11 +1464,11 @@ async function serializeMessageSummary(
     hasReplies: !!latestReply,
     latestReplyPreview: latestReply
       ? {
-        _id: latestReply._id,
-        body: latestReply.deletedAt ? "" : latestReply.body,
-        isDeleted: !!latestReply.deletedAt,
-        createdAt: new Date(latestReply.createdAt).toISOString(),
-      }
+          _id: latestReply._id,
+          body: latestReply.deletedAt ? "" : latestReply.body,
+          isDeleted: !!latestReply.deletedAt,
+          createdAt: new Date(latestReply.createdAt).toISOString(),
+        }
       : null,
     poll,
   };
@@ -1440,9 +1575,62 @@ const channelMentionContextValidator = v.union(
         name: v.string(),
       }),
     ),
+    groups: v.array(
+      v.object({
+        token: v.string(),
+        label: v.string(),
+        detail: v.string(),
+        kind: v.union(v.literal("role"), v.literal("unit")),
+      }),
+    ),
   }),
   v.null(),
 );
+
+function mentionGroupSuggestions(
+  roles: Doc<"clubRoles">[],
+  units: Doc<"clubUnits">[],
+  tagSlugs: string[],
+) {
+  const reservedTokens = new Set(tagSlugs.map((slug) => slug.toLowerCase()));
+  const roleByToken = new Map<string, Doc<"clubRoles">>();
+  const ambiguousRoleTokens = new Set<string>();
+  for (const role of roles) {
+    const token = toMentionGroupToken(role.name);
+    if (!token || reservedTokens.has(token)) continue;
+    if (roleByToken.has(token)) ambiguousRoleTokens.add(token);
+    else roleByToken.set(token, role);
+  }
+  for (const token of ambiguousRoleTokens) roleByToken.delete(token);
+
+  const unitByToken = new Map<string, Doc<"clubUnits">>();
+  const ambiguousUnitTokens = new Set<string>();
+  for (const unit of units) {
+    const token = toMentionGroupToken(unit.name);
+    if (!token || reservedTokens.has(token) || roleByToken.has(token)) continue;
+    if (unitByToken.has(token)) ambiguousUnitTokens.add(token);
+    else unitByToken.set(token, unit);
+  }
+
+  return [
+    ...Array.from(roleByToken, ([token, role]) => ({
+      token,
+      label: role.name,
+      detail: "Role",
+      kind: "role" as const,
+    })),
+    ...Array.from(unitByToken, ([token, unit]) =>
+      ambiguousUnitTokens.has(token)
+        ? null
+        : {
+            token,
+            label: unit.name,
+            detail: "Substructure",
+            kind: "unit" as const,
+          },
+    ).filter((group): group is NonNullable<typeof group> => !!group),
+  ];
+}
 
 export const getMentionContext = query({
   args: {
@@ -1462,7 +1650,7 @@ export const getMentionContext = query({
     if (!readable) return null;
 
     const { channel, context } = readable;
-    const [candidateUserIds, tags] = await Promise.all([
+    const [candidateUserIds, tags, roles, units] = await Promise.all([
       getChannelAudienceUserIds(
         ctx,
         channel,
@@ -1472,6 +1660,16 @@ export const getMentionContext = query({
         .query("clubTags")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
         .take(MAX_CHANNEL_MENTION_CONTEXT_MEMBERS),
+      ctx.db
+        .query("clubRoles")
+        .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))
+        .take(100),
+      ctx.db
+        .query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) =>
+          q.eq("clubId", args.clubId).eq("isActive", true),
+        )
+        .take(250),
     ]);
     const members = (
       await Promise.all(
@@ -1491,6 +1689,11 @@ export const getMentionContext = query({
       canMentionEveryone: context.permissions.mentionEveryone,
       members,
       tags: tags.map((tag) => ({ slug: tag.slug, name: tag.name })),
+      groups: mentionGroupSuggestions(
+        roles,
+        units,
+        tags.map((tag) => tag.slug),
+      ),
     };
   },
 });
@@ -1802,11 +2005,11 @@ export const update = mutation({
     }
     const ownerUnitId =
       args.ownerUnitId === undefined
-      ? channel.ownerUnitId
+        ? channel.ownerUnitId
         : (args.ownerUnitId ?? undefined);
     const accessUnitId =
       args.accessUnitId === undefined
-      ? channel.accessUnitId
+        ? channel.accessUnitId
         : (args.accessUnitId ?? undefined);
     for (const unitId of [ownerUnitId, accessUnitId]) {
       if (!unitId) continue;
@@ -1842,8 +2045,8 @@ export const update = mutation({
     }
     const explicitCount =
       args.memberIds === undefined
-      ? (await getChannelMemberships(ctx, channel._id)).length
-      : new Set(args.memberIds).size;
+        ? (await getChannelMemberships(ctx, channel._id)).length
+        : new Set(args.memberIds).size;
     const postingPolicy =
       args.postingPolicy ??
       (channel.postingPolicy === "CLUB_MANAGERS"
