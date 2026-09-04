@@ -12,7 +12,7 @@ const migrations = new Migrations<DataModel>(components.migrations);
  * the feed is correct either way — this backfill is what lets it stop reading
  * every comment body on every load.
  *
- *   npx convex run announcements/migrations:backfillCommentCount
+ *   direnv exec . pnpm --filter cvx exec convex run announcements/migrations:backfillCommentCount
  */
 export const backfillCommentCount = migrations.define({
   table: "announcements",

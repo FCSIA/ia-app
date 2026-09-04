@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react';
-import { ConvexQueryCacheProvider, useConvexAuth, useQuery } from '@/lib/convex-react';
+import { useConvexAuth, useQuery } from '@/lib/convex-react';
 import { usePathname } from 'next/navigation';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, useTheme } from 'next-themes';
@@ -13,7 +13,7 @@ import {
   applyCustomColors,
   loadCustomColors,
 } from '@/lib/custom-theme';
-import { ConvexWarmup } from '@/components/layout/convex-warmup';
+import { ConvexQueryCacheProvider } from '@/components/layout/convex-query-cache-provider';
 import { NavigationLoadingProvider } from '@/components/layout/navigation-loading-provider';
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
@@ -123,7 +123,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <PushSubscriptionSync />
           <Suspense fallback={null}>
             <AuthenticatedRouteBoundary>
-              <ConvexWarmup />
               <NavigationLoadingProvider>{children}</NavigationLoadingProvider>
             </AuthenticatedRouteBoundary>
           </Suspense>

@@ -28,12 +28,16 @@ Migrations live beside the domain they belong to (`src/announcements/migrations.
 `src/clubs/migrations.ts`, `src/schedule/migrations.ts`) and run from the CLI:
 
 ```bash
-npx convex run announcements/migrations:backfillCommentCount
+direnv exec . pnpm --filter cvx exec convex run announcements/migrations:backfillCommentCount
 ```
 
 ```bash
-npx convex run clubs/migrations:backfillClubCounts
+direnv exec . pnpm --filter cvx exec convex run clubs/migrations:backfillClubCounts
 ```
+
+`convex.json` lives in `apps/convex`, so a root-level `npx convex run` cannot
+find the project, and `direnv exec .` is what supplies this repository's Node
+version and deployment selection.
 
 Readers fall back to the old shape until a backfill finishes, so a deploy is
 never blocked on one. `announcements.commentCount` counts comments the slow way
