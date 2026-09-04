@@ -1726,6 +1726,26 @@ function emptyMessagePage(cursor: string | null) {
   };
 }
 
+/** Resolves one root message for an inline-reply jump, returning null unless the
+ * viewer may read the channel and the message really belongs to it. Exported so
+ * the authorization path can be regression tested without the identity layer. */
+export async function findJumpTargetMessage(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  clubId: Id<"clubs">,
+  channelId: Id<"clubChannels">,
+  messageId: Id<"clubChannelMessages">,
+): Promise<Doc<"clubChannelMessages"> | null> {
+  const readable = await getReadableChannel(ctx, user, clubId, channelId);
+  if (!readable) return null;
+
+  const message = await ctx.db.get(messageId);
+  if (!message || message.channelId !== readable.channel._id || message.parentMessageId) {
+    return null;
+  }
+  return message;
+}
+
 /** Resolves one root message for an inline-reply jump without paging the
  * intervening channel history into the client. */
 export const getMessage = query({
@@ -1738,13 +1758,15 @@ export const getMessage = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
-    if (!readable) return null;
 
-    const message = await ctx.db.get(args.messageId);
-    if (!message || message.channelId !== readable.channel._id || message.parentMessageId) {
-      return null;
-    }
+    const message = await findJumpTargetMessage(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+      args.messageId,
+    );
+    if (!message) return null;
 
     return await serializeMessageSummary(ctx, message, user._id, false);
   },

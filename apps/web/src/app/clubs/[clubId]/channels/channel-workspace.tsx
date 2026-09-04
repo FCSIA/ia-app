@@ -821,7 +821,11 @@ function MessageRow({
   const [replySwipeOffset, setReplySwipeOffset] = useState(0);
   const [replySwipeSettling, setReplySwipeSettling] = useState(false);
   const canSwipeToReply = isTouchPrimary && !isDeleted && !isSending && !isEditing;
-  const canUseReplyControls = !compact && !isTouchPrimary;
+  // Swipe-to-reply is an enhancement, never the only route: the hover action bar
+  // is pointer-only anyway, so touch-primary devices keep Reply in the long-press
+  // context menu, which is also what keyboards and assistive tech reach.
+  const showReplyActionButton = !compact && !isTouchPrimary;
+  const canReply = !compact;
 
   const resetReplySwipe = () => {
     replySwipeStart.current = null;
@@ -1046,7 +1050,7 @@ function MessageRow({
                       ))}
                     </PopoverContent>
                   </Popover>
-                  {canUseReplyControls ? (
+                  {showReplyActionButton ? (
                     <Tooltip content="Reply">
                       <Button
                         variant="ghost"
@@ -1213,7 +1217,7 @@ function MessageRow({
               </ContextMenuGroup>
             </ContextMenuSubContent>
           </ContextMenuSub>
-          {canUseReplyControls ? (
+          {canReply ? (
             <ContextMenuItem onSelect={() => onStartReply(message._id)}>
               <Reply />
               Reply

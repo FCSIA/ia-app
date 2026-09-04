@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
 import { useMutation, useQuery } from 'convex/react';
@@ -120,8 +120,18 @@ function CalendarInviteStrip() {
   );
 }
 
-export default function CalendarPage() {
+// Reading the query string bails the whole route out of static rendering unless
+// it sits behind its own Suspense boundary, so the reader stays isolated here.
+function ExternalCalendarSettingsLauncher() {
   const searchParams = useSearchParams();
+  return (
+    <ExternalCalendarSettingsDialog
+      defaultOpen={searchParams?.get('connect') === 'canvas'}
+    />
+  );
+}
+
+export default function CalendarPage() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<CalendarView>('month');
@@ -238,9 +248,9 @@ export default function CalendarPage() {
                 <EventCalendarTitle className="text-base" />
                 <div className="min-w-0 flex-1" />
                 <EventCalendarToolbar>
-                  <ExternalCalendarSettingsDialog
-                    openOnMount={searchParams.get('connect') === 'canvas'}
-                  />
+                  <Suspense fallback={<ExternalCalendarSettingsDialog />}>
+                    <ExternalCalendarSettingsLauncher />
+                  </Suspense>
                   <AddCalendarEntryDialog
                     trigger={
                       <Button
