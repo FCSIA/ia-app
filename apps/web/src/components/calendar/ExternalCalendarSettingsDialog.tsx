@@ -20,13 +20,13 @@ import { useToast } from '@/hooks/use-toast';
 
 const CANVAS_EXAMPLE = 'https://fultonschools.instructure.com/ical_feed';
 
-export function ExternalCalendarSettingsDialog() {
+export function ExternalCalendarSettingsDialog({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const { toast } = useToast();
   const subscriptions = useQuery(api.events.externalCalendars.listMine) ?? [];
   const create = useMutation(api.events.externalCalendars.createIcs);
   const remove = useMutation(api.events.externalCalendars.remove);
   const refresh = useMutation(api.events.externalCalendars.refreshMine);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [name, setName] = useState('Canvas');
   const [url, setUrl] = useState('');
   const [pending, setPending] = useState<string | null>(null);

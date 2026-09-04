@@ -25,6 +25,7 @@ import { Slot } from "@/components/ui/slot"
 
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useTouchPrimary } from "@/hooks/use-touch-primary"
 import { CalendarIcon } from "lucide-react"
 
 // The agenda window length is the agendaDayCount SETTING (the store derives
@@ -79,7 +80,9 @@ function EventCalendarAgendaView({
     getDayKey(day, settings.timeZone) ===
     getDayKey(new Date(), settings.timeZone)
 
+  const touchPrimary = useTouchPrimary()
   const native = viewConfig.scrollbars === "native"
+  const usesOverlayScrollbar = !native || touchPrimary
 
   const body = (
     <>
@@ -131,14 +134,11 @@ function EventCalendarAgendaView({
                   aria-level={3}
                   className={cn(
                     "bg-muted sticky top-0 z-10 flex items-baseline justify-between gap-4 border-b px-4 py-2",
-                    // The custom ScrollArea's overlay scrollbar (w-2.5 = 10px)
-                    // is painted UNDER this sticky, z-10, opaque header, so the
-                    // thumb vanishes behind the day bar at the top of the view.
-                    // Inset the header by the scrollbar lane so its background
-                    // stops before the scrollbar instead of covering it. Native
-                    // scrollbars already sit outside the content box, so this
-                    // only applies to the custom-scrollbar path.
-                    !native && "me-2.5",
+                    // Overlay scrollbars (the custom Radix treatment and native
+                    // touch scrolling) are painted inside the scrollport. Keep
+                    // the sticky, opaque day bar out of their 10px lane so it
+                    // cannot hide the thumb as it moves beneath each header.
+                    usesOverlayScrollbar && "me-2.5",
                     viewConfig.classNames?.agendaDayHeader
                   )}
                 >

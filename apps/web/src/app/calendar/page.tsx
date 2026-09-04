@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
 import { useMutation, useQuery } from 'convex/react';
 import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
@@ -15,7 +16,12 @@ import { EventCalendar } from '@/components/reui/event-calendar/event-calendar';
 import { EventCalendarContent } from '@/components/reui/event-calendar/event-calendar-content';
 import {
   EventCalendarNav,
+  EventCalendarNavNext,
+  EventCalendarNavPrev,
+  EventCalendarNavToday,
+  EventCalendarTitle,
   EventCalendarToolbar,
+  EventCalendarViewSwitcher,
 } from '@/components/reui/event-calendar/event-calendar-nav';
 import type {
   CalendarEvent,
@@ -111,6 +117,17 @@ function CalendarInviteStrip() {
         </div>
       ))}
     </div>
+  );
+}
+
+// Reading the query string bails the whole route out of static rendering unless
+// it sits behind its own Suspense boundary, so the reader stays isolated here.
+function ExternalCalendarSettingsLauncher() {
+  const searchParams = useSearchParams();
+  return (
+    <ExternalCalendarSettingsDialog
+      defaultOpen={searchParams?.get('connect') === 'canvas'}
+    />
   );
 }
 
@@ -218,22 +235,37 @@ export default function CalendarPage() {
           className="min-h-0 flex-1"
         >
           <div className="shrink-0">
-            <EventCalendarNav className="px-3 pt-3 md:px-4" />
-            <EventCalendarToolbar className="flex-wrap justify-end px-3 pb-3 md:px-4">
-              <ExternalCalendarSettingsDialog />
-              <AddCalendarEntryDialog
-                trigger={
-                  <Button
-                    size="icon"
-                    aria-label="New reminder"
-                    title="New reminder"
-                    className="rounded-full"
-                  >
-                    <Plus />
-                  </Button>
-                }
-              />
-            </EventCalendarToolbar>
+            <EventCalendarNav className="flex-col items-stretch gap-2 px-3 py-3 md:px-4">
+              <div className="flex items-center gap-1">
+                <EventCalendarNavToday />
+                <EventCalendarViewSwitcher />
+                <div className="flex items-center">
+                  <EventCalendarNavPrev />
+                  <EventCalendarNavNext />
+                </div>
+              </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <EventCalendarTitle className="text-base" />
+                <div className="min-w-0 flex-1" />
+                <EventCalendarToolbar>
+                  <Suspense fallback={<ExternalCalendarSettingsDialog />}>
+                    <ExternalCalendarSettingsLauncher />
+                  </Suspense>
+                  <AddCalendarEntryDialog
+                    trigger={
+                      <Button
+                        size="icon"
+                        aria-label="New reminder"
+                        title="New reminder"
+                        className="rounded-full"
+                      >
+                        <Plus />
+                      </Button>
+                    }
+                  />
+                </EventCalendarToolbar>
+              </div>
+            </EventCalendarNav>
           </div>
           <CalendarInviteStrip />
           <EventCalendarContent />

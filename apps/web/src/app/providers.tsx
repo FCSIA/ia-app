@@ -17,6 +17,7 @@ import { NavigationLoadingProvider } from '@/components/layout/navigation-loadin
 import { PushSubscriptionSync } from '@/components/notifications/push-subscription-sync';
 import { IaLoadingMark } from '@/components/ui/ia-loading-mark';
 import { ThemeFavicon } from '@/components/ui/ia-orbit-mark';
+import { Button } from '@/components/ui/button';
 import { api } from '~/apps/convex/src/_generated/api';
 
 /**
@@ -65,12 +66,10 @@ function AuthenticatedRouteBoundary({ children }: { children: React.ReactNode })
   const { isAuthenticated, isLoading } = useConvexAuth();
   const isPublicAuthRoute = pathname === '/login' || pathname === '/logout';
 
-  useEffect(() => {
-    if (!isPublicAuthRoute && !isLoading && !isAuthenticated) {
-      window.location.replace('/login');
-    }
-  }, [isAuthenticated, isLoading, isPublicAuthRoute]);
-
+  // The server proxy is the only redirect authority. It has the complete
+  // request cookie set, whereas a browser can temporarily hold a stale Convex
+  // JWT while Better Auth restores or clears its session. Redirecting from
+  // here creates a /dashboard → /login → /dashboard loop in that split state.
   if (isPublicAuthRoute) return children;
   if (isLoading || !isAuthenticated) return <AuthConnectionState />;
   return children;
@@ -93,10 +92,15 @@ function AuthConnectionState() {
       <div className="space-y-1">
         <p className="font-medium">Connecting to IA App…</p>
         {isSlow ? (
-          <p className="max-w-sm text-sm text-muted-foreground" role="status">
-            This is taking longer than expected. Check that this device can reach the app
-            backend, then reopen or refresh the app.
-          </p>
+          <>
+            <p className="max-w-sm text-sm text-muted-foreground" role="status">
+              This is taking longer than expected. Check that this device can reach the app
+              backend, then sign in again to refresh this device’s session.
+            </p>
+            <Button type="button" variant="tertiary" size="sm" onClick={() => window.location.replace('/logout')}>
+              Sign in again
+            </Button>
+          </>
         ) : null}
       </div>
     </main>

@@ -1048,13 +1048,13 @@ export default function ClubPeoplePage() {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex shrink-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-border/70 bg-muted/35 p-1.5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 lg:flex-row lg:items-center lg:justify-between">
             <Tabs
               value={visibleFilter}
               onValueChange={setFilter}
               className="min-w-0 sm:w-auto"
             >
-              <div className="min-w-0 overflow-x-auto pb-1">
+              <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <TabsList>
                   <TabItem value="all" label={`All ${stats.all}`} />
                   {club?.roles
@@ -1087,7 +1087,7 @@ export default function ClubPeoplePage() {
               </div>
             </Tabs>
 
-            <div className="flex w-full justify-end gap-2 sm:w-auto">
+            <div className="flex min-w-0 w-full items-center justify-end gap-2 sm:w-auto">
               {visibleFilter !== "requests" ? (
                 <PeopleFilterPopover
                   club={club}
@@ -1111,7 +1111,7 @@ export default function ClubPeoplePage() {
                   onValueChange={setSearch}
                   placeholder="Search people"
                   size="sm"
-                  className="w-full sm:w-64"
+                  className="min-w-0 flex-1 sm:w-64 sm:flex-none"
                 />
               ) : null}
               {club && canInvite ? (
@@ -1430,8 +1430,11 @@ function PersonRow({
         >
           <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
         </button>
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground">
+            {fullName(person)}
+          </p>
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           {isCurrentUser ? (
             <span
               className="inline-flex size-1.5 shrink-0 rounded-full bg-primary"
@@ -1440,9 +1443,6 @@ function PersonRow({
               title="You"
             />
           ) : null}
-          <p className="truncate text-sm font-semibold text-foreground">
-            {fullName(person)}
-          </p>
           {isFriend ? (
             <span
               className="inline-flex shrink-0 text-primary"
@@ -1456,7 +1456,7 @@ function PersonRow({
           {isSponsor ? (
             <Badge
               variant="solid"
-              className="bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 gap-1 px-1.5 py-0 h-5"
+              className="h-5 shrink-0 gap-1 border-primary/20 bg-primary/5 px-1.5 py-0 text-primary hover:bg-primary/10"
             >
               <ShieldCheck className="size-3" />
               Sponsor
@@ -1464,7 +1464,7 @@ function PersonRow({
           ) : person.roleName ? (
             <Badge
               variant="solid"
-              className="px-1.5 py-0 h-5 border-border/70 bg-muted/60 text-muted-foreground"
+              className="h-5 shrink-0 border-border/70 bg-muted/60 px-1.5 py-0 text-muted-foreground"
             >
               {person.roleName}
             </Badge>
@@ -1473,7 +1473,7 @@ function PersonRow({
             <Badge
               variant="solid"
               size="sm"
-              className="bg-muted/60 text-muted-foreground"
+              className="shrink-0 bg-muted/60 text-muted-foreground"
               title={unitMembershipLabel}
             >
               <GitBranch />
@@ -1484,7 +1484,7 @@ function PersonRow({
             <Badge
               variant="solid"
               size="sm"
-              className="bg-muted/60 text-muted-foreground"
+              className="shrink-0 bg-muted/60 text-muted-foreground"
               title={unitMembershipLabel}
               aria-label={`${otherUnitNames.length} more unit ${
                 otherUnitNames.length === 1 ? "membership" : "memberships"
@@ -1496,7 +1496,7 @@ function PersonRow({
         </div>
       </div>
       {showManage ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {canAssignRole ? <SetRoleDialog person={person} /> : null}
           {canManageUnits ? <UnitMembershipPopover person={person} /> : null}
           {canImpersonate ? (

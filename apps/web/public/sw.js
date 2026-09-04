@@ -1,5 +1,5 @@
 // Basic service worker for PWA install support
-const CACHE_NAME = 'ia-school-v4';
+const CACHE_NAME = 'ia-school-v5';
 const STATIC_ASSETS = ['/manifest.json', '/icons/ia-orbit-default-192.png'];
 
 /**
@@ -50,6 +50,12 @@ self.addEventListener('fetch', (event) => {
   }
   // API calls: always network
   if (event.request.url.includes('/api/')) {
+    return;
+  }
+  // Next.js chunks change with every local development rebuild. Let the
+  // browser fetch them normally instead of allowing a prior PWA cache entry
+  // to keep an installed app on an old client bundle.
+  if (new URL(event.request.url).pathname.startsWith('/_next/')) {
     return;
   }
   event.respondWith(
