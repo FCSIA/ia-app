@@ -12,6 +12,30 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.25 — 2026-09-04 (alpha)
+
+### Improved
+
+- **convex** — Regenerate api types for the new counter modules. ([`35777a00`](https://github.com/virajdas/ia-app/commit/35777a00))
+- **web** — Route the profile dialog through the query cache. ([`aa2d778f`](https://github.com/virajdas/ia-app/commit/aa2d778f))
+- **flex-friday** — Denormalize session counts. ([`b537fa18`](https://github.com/virajdas/ia-app/commit/b537fa18))
+- **web** — Prewarm tab queries on navigation intent. ([`16c632c8`](https://github.com/virajdas/ia-app/commit/16c632c8))
+- **web** — Switching tabs no longer reloads the page — announcements, clubs, events and the rest open straight away. ([`62de866f`](https://github.com/virajdas/ia-app/commit/62de866f))
+- **review** — Keep reply and club navigation reachable without gestures. ([`2add6bf3`](https://github.com/virajdas/ia-app/commit/2add6bf3))
+- **web** — The app now avoids stale PWA assets and offers a clear way to refresh a stuck sign-in session. ([`cfb118ea`](https://github.com/virajdas/ia-app/commit/cfb118ea))
+- **clubs** — Club people controls and roles are easier to use on touch devices. ([`be9b0d7e`](https://github.com/virajdas/ia-app/commit/be9b0d7e))
+- **calendar** — You can connect Canvas calendar feeds from the dashboard and calendar. ([`dfa672e4`](https://github.com/virajdas/ia-app/commit/dfa672e4))
+- **clubs** — You can jump from an inline reply to its original channel message. ([`0a5534a9`](https://github.com/virajdas/ia-app/commit/0a5534a9))
+- **web** — Search close controls now stay aligned with the search field. ([`0b13bba1`](https://github.com/virajdas/ia-app/commit/0b13bba1))
+- **clubs** — Club member profiles now show shared clubs and let eligible students send friend requests. ([`43fee957`](https://github.com/virajdas/ia-app/commit/43fee957))
+
+### Fixed
+
+- **convex** — Stop counting rows to render list queries. ([`cab9a6fb`](https://github.com/virajdas/ia-app/commit/cab9a6fb))
+- **calendar** — Tolerate non-student friend queries. ([`fdf17a47`](https://github.com/virajdas/ia-app/commit/fdf17a47))
+- **clubs** — Channel rows no longer grow when hover controls appear on touch-capable Windows devices. ([`240c1a9a`](https://github.com/virajdas/ia-app/commit/240c1a9a))
+- **web** — Search now opens as one clean panel without an extra frame on desktop or mobile. ([`3e78fc19`](https://github.com/virajdas/ia-app/commit/3e78fc19))
+
 ## v0.8.24 — 2026-09-04 (alpha)
 
 ### Added
