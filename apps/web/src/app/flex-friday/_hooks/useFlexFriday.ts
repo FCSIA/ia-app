@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo, useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';

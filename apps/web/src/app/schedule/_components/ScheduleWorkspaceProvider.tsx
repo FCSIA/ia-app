@@ -12,7 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { CourseSummary } from "@/components/courses/types";
 import type {
   ScheduleSearchResult,

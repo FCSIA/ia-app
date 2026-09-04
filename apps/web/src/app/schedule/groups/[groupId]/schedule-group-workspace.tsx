@@ -4,7 +4,7 @@ import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
-import { useConvexAuth, useMutation, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from '@/lib/convex-react';
 import {
   ArrowLeft,
   CalendarDays,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { pickDailySchoolMessage } from "@ia/fun-facts";
 import { hasRole, useCurrentUser } from "@/lib/auth";
 import { api } from "~/apps/convex/src/_generated/api";

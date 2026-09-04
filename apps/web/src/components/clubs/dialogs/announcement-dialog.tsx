@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Button } from '@/components/ui/button';

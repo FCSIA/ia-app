@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MessageSquareText, X } from 'lucide-react';
-import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, Panel } from '@/components/layout/page-frame';

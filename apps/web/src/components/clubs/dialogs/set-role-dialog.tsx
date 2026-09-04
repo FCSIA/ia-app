@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import Link from 'next/link';
 import { Plus, Settings, SlidersHorizontal } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';

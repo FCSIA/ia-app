@@ -3,7 +3,7 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import type { FunctionReturnType } from 'convex/server';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { Check, Link2, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { AppShell } from '@/components/layout/AppShell';

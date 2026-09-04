@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '~/apps/convex/src/_generated/api';

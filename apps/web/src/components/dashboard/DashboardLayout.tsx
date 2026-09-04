@@ -34,7 +34,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CanvasCalendarAnnouncement } from './CanvasCalendarAnnouncement';
-import { useMutation } from 'convex/react';
+import { useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import {
   WIDGETS,

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
@@ -78,23 +78,20 @@ export default function EventsPage() {
   const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
   const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
 
+  // Dates are formatted in the viewer's locale, so they can only be rendered
+  // after hydration. The Convex queries below do not wait on it — gating them
+  // on an effect cost a whole render pass before the tab could even ask.
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  const events = useQuery(api.events.events.list, hydrated && !!user ? {} : 'skip');
+  const events = useQuery(api.events.events.list, user ? {} : 'skip');
   const isLoading = events === undefined;
 
-  const myClubs = useQuery(
-    api.clubs.management.getMyClubs,
-    hydrated && !!user ? {} : 'skip',
-  );
+  const myClubs = useQuery(api.clubs.management.getMyClubs, user ? {} : 'skip');
 
   const pendingApprovals =
-    useQuery(
-      api.events.approvals.listPendingForSponsor,
-      hydrated && !!user ? {} : 'skip',
-    ) ?? [];
+    useQuery(api.events.approvals.listPendingForSponsor, user ? {} : 'skip') ?? [];
 
   const availableClubs = useMemo(
     () =>

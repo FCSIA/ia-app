@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import type { FunctionReturnType } from 'convex/server';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';

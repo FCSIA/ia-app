@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useRouter } from 'next/navigation';
-import { useMutation, usePaginatedQuery } from 'convex/react';
+import { useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { formatDistanceToNow } from 'date-fns';

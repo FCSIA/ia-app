@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation } from '@/lib/convex-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
 import { Elevated } from '@/lib/elevated';

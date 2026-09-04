@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { RefreshCw, Settings, Trash2 } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Button } from '@/components/ui/button';

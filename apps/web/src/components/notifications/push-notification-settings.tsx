@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BellOff, BellRing, Share } from 'lucide-react';
-import { useAction, useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { Button } from '@/components/ui/button';
 import {

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { FunctionReturnType } from 'convex/server';
 import { addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
-import { useQuery } from 'convex/react';
+import { useQuery } from '@/lib/convex-react';
 import { ArrowRight, ChevronLeft, ChevronRight, Clock3, MapPin } from 'lucide-react';
 
 import { Panel } from '@/components/layout/page-frame';

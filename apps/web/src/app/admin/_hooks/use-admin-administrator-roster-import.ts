@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAction } from 'convex/react';
+import { useAction } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCsv } from '../_lib/admin-utils';

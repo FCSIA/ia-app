@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { usePathname, useSearchParams } from "next/navigation";
 import { DayButton } from "react-day-picker";

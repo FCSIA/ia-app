@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { FunctionReturnType } from 'convex/server';
-import { useMutation, useQuery } from 'convex/react';
-import { endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from 'date-fns';
+import { useMutation, useQuery } from '@/lib/convex-react';
+import { format } from 'date-fns';
 import { MapPin, Plus } from 'lucide-react';
 
 import { AddCalendarEntryDialog } from '@/components/calendar/AddCalendarEntryDialog';
@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { defaultCalendarRange } from '@/lib/calendar-range';
 import { useToast } from '@/hooks/use-toast';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -53,14 +54,6 @@ const SOURCE_COLORS: Record<CalendarEntry['source'], string> = {
   FLEX_FRIDAY: 'var(--color-emerald-500)',
   EXTERNAL: 'var(--color-teal-500)',
 };
-
-function initialRange() {
-  const today = new Date();
-  return {
-    start: startOfWeek(startOfMonth(today)).getTime(),
-    end: endOfWeek(endOfMonth(today)).getTime(),
-  };
-}
 
 function CalendarInviteStrip() {
   const { toast } = useToast();
@@ -135,7 +128,7 @@ export default function CalendarPage() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<CalendarView>('month');
-  const [range, setRange] = useState(initialRange);
+  const [range, setRange] = useState(defaultCalendarRange);
   const [activeEntry, setActiveEntry] = useState<CalendarEntry | null>(null);
 
   useEffect(() => setMounted(true), []);

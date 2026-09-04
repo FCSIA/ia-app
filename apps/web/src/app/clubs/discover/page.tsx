@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { ArrowLeft, Plus, SearchX, UsersRound } from "lucide-react";
 
 import { api } from "~/apps/convex/src/_generated/api";

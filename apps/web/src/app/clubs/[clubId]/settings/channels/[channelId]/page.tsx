@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import { ChevronDown, CircleHelp, ShieldCheck } from "lucide-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";

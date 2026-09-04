@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAction, useMutation } from 'convex/react';
+import { useAction, useMutation } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { EditableAvatar } from '@/components/ui/editable-avatar';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';

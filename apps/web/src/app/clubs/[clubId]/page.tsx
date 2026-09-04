@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { Check, ChevronDown, Clock3, KeyRound, Megaphone, MessageSquareText, Minus, Search, UserPlus, Users } from 'lucide-react';
