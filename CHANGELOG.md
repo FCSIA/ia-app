@@ -12,6 +12,24 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.24 — 2026-09-04 (alpha)
+
+### Added
+
+- **clubs** — You can mention club roles and substructures in channels. ([`e0c9f6ff`](https://github.com/virajdas/ia-app/commit/e0c9f6ff))
+
+### Improved
+
+- **notifications** — Reading a chat or opening notifications now clears matching alerts automatically. ([`e2f182ff`](https://github.com/virajdas/ia-app/commit/e2f182ff))
+- **web** — Profile pictures, club logos, and club banners now use the same crop-and-adjust flow. ([`180bc650`](https://github.com/virajdas/ia-app/commit/180bc650))
+- **web** — Theme surfaces now stay legible across every appearance, and the browser icon follows your selected theme. ([`9a9bc4a1`](https://github.com/virajdas/ia-app/commit/9a9bc4a1))
+- **clubs** — Shared screenshots and photos now keep their original shape instead of being cropped. ([`01f05b54`](https://github.com/virajdas/ia-app/commit/01f05b54))
+- **admin** — Show student pathways in user table. ([`c53b3c31`](https://github.com/virajdas/ia-app/commit/c53b3c31))
+
+### Fixed
+
+- **clubs** — Club branding images now have direct edit controls, club names sit cleanly below their logo, and banner uploads work reliably. ([`0c8258af`](https://github.com/virajdas/ia-app/commit/0c8258af))
+
 ## v0.8.23 — 2026-09-02 (alpha)
 
 ### Added

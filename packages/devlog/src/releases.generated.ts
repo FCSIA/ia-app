@@ -7,6 +7,55 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.24",
+    "date": "2026-09-04",
+    "commit": "e0c9f6ff",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "You can mention club roles and substructures in channels.",
+        "commit": "e0c9f6ff"
+      },
+      {
+        "category": "Improved",
+        "scope": "notifications",
+        "summary": "Reading a chat or opening notifications now clears matching alerts automatically.",
+        "commit": "e2f182ff"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Profile pictures, club logos, and club banners now use the same crop-and-adjust flow.",
+        "commit": "180bc650"
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Theme surfaces now stay legible across every appearance, and the browser icon follows your selected theme.",
+        "commit": "9a9bc4a1"
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Shared screenshots and photos now keep their original shape instead of being cropped.",
+        "commit": "01f05b54"
+      },
+      {
+        "category": "Improved",
+        "scope": "admin",
+        "summary": "Show student pathways in user table.",
+        "commit": "c53b3c31"
+      },
+      {
+        "category": "Fixed",
+        "scope": "clubs",
+        "summary": "Club branding images now have direct edit controls, club names sit cleanly below their logo, and banner uploads work reliably.",
+        "commit": "0c8258af"
+      }
+    ]
+  },
+  {
     "version": "0.8.23",
     "date": "2026-09-02",
     "commit": "0669ac17",
