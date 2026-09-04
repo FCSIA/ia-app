@@ -60,6 +60,9 @@ interface DialogContentProps
   /** Controls the dialog-owned content inset. Use `none` when a composed
    * primitive owns its internal layout and must meet the dialog edge. */
   padding?: "default" | "none";
+  /** Classes applied to the dialog-owned close control when a composition
+   * needs to align it with an internal header. */
+  closeButtonClassName?: string;
   /** Portal target. When set, the overlay and panel render inside this element
    *  (positioned `absolute`) instead of covering the viewport (`fixed`). Pair
    *  with a `position: relative; overflow: hidden` container — and usually
@@ -76,6 +79,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
       children,
       size = "sm",
       padding = "default",
+      closeButtonClassName,
       container,
       mobilePosition = "center",
       ...props
@@ -160,7 +164,10 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
                 <Button
                   variant="ghost"
                   size="icon-lg"
-                  className="absolute right-1.5 top-1.5 sm:right-3 sm:top-3 sm:size-8"
+                  className={cn(
+                    "absolute right-1.5 top-1.5 sm:right-3 sm:top-3 sm:size-8",
+                    closeButtonClassName,
+                  )}
                 >
                   <XIcon />
                   <span className="sr-only">Close</span>
