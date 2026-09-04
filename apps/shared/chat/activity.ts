@@ -1,6 +1,7 @@
 type ChatActivityMessage = {
+  _id: string;
   createdAt: number | string;
-  latestReplyPreview?: { createdAt: number | string } | null;
+  latestReplyPreview?: { _id: string; createdAt: number | string } | null;
   replies?: readonly ChatActivityMessage[];
 };
 
@@ -9,21 +10,40 @@ function activityTimestamp(value: number | string) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+export function latestVisibleChatActivity(
+  messages: readonly ChatActivityMessage[] | undefined,
+): { messageId: string; occurredAt: number } | null {
+  if (!messages) return null;
+  let latest: { messageId: string; occurredAt: number } | null = null;
+  for (const message of messages) {
+    const candidates = [
+      {
+        messageId: message._id,
+        occurredAt: activityTimestamp(message.createdAt),
+      },
+      ...(message.latestReplyPreview
+        ? [
+            {
+              messageId: message.latestReplyPreview._id,
+              occurredAt: activityTimestamp(
+                message.latestReplyPreview.createdAt,
+              ),
+            },
+          ]
+        : []),
+      latestVisibleChatActivity(message.replies),
+    ];
+    for (const candidate of candidates) {
+      if (candidate && (!latest || candidate.occurredAt > latest.occurredAt))
+        latest = candidate;
+    }
+  }
+  return latest;
+}
+
 /** Latest visible post or reply, shared by the web and native read receipts. */
 export function latestChatActivityAt(
   messages: readonly ChatActivityMessage[] | undefined,
 ) {
-  if (!messages) return 0;
-  let latest = 0;
-  for (const message of messages) {
-    latest = Math.max(latest, activityTimestamp(message.createdAt));
-    if (message.latestReplyPreview) {
-      latest = Math.max(
-        latest,
-        activityTimestamp(message.latestReplyPreview.createdAt),
-      );
-    }
-    latest = Math.max(latest, latestChatActivityAt(message.replies));
-  }
-  return latest;
+  return latestVisibleChatActivity(messages)?.occurredAt ?? 0;
 }

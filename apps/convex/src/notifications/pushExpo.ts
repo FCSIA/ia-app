@@ -1,6 +1,16 @@
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "../_generated/server";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+} from "../../lib/currentUser";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { notificationCategoryValidator } from "../validators";
@@ -22,7 +32,10 @@ const nativeTokenPublicValidator = v.object({
 });
 
 function isExpoPushToken(token: string) {
-  return /^ExponentPushToken\[[A-Za-z0-9_-]+\]$/.test(token) || /^ExpoPushToken\[[A-Za-z0-9_-]+\]$/.test(token);
+  return (
+    /^ExponentPushToken\[[A-Za-z0-9_-]+\]$/.test(token) ||
+    /^ExpoPushToken\[[A-Za-z0-9_-]+\]$/.test(token)
+  );
 }
 
 export const listMine = query({
@@ -34,7 +47,9 @@ export const listMine = query({
 
     const rows = await ctx.db
       .query("notificationNativePushTokens")
-      .withIndex("by_userId_and_enabled", (q) => q.eq("userId", user._id).eq("enabled", true))
+      .withIndex("by_userId_and_enabled", (q) =>
+        q.eq("userId", user._id).eq("enabled", true),
+      )
       .take(20);
 
     return rows.map((row) => ({
@@ -66,7 +81,9 @@ export const registerToken = mutation({
     const now = Date.now();
     const existing = await ctx.db
       .query("notificationNativePushTokens")
-      .withIndex("by_userId_and_token", (q) => q.eq("userId", user._id).eq("token", args.token))
+      .withIndex("by_userId_and_token", (q) =>
+        q.eq("userId", user._id).eq("token", args.token),
+      )
       .unique();
 
     const patch = {
@@ -103,7 +120,9 @@ export const unregisterToken = mutation({
     const user = await getCurrentAppUser(ctx);
     const existing = await ctx.db
       .query("notificationNativePushTokens")
-      .withIndex("by_userId_and_token", (q) => q.eq("userId", user._id).eq("token", args.token))
+      .withIndex("by_userId_and_token", (q) =>
+        q.eq("userId", user._id).eq("token", args.token),
+      )
       .unique();
 
     if (existing) {
@@ -126,10 +145,14 @@ export const unregisterDevice = mutation({
     const user = await getCurrentAppUser(ctx);
     const tokens = await ctx.db
       .query("notificationNativePushTokens")
-      .withIndex("by_userId_and_enabled", (q) => q.eq("userId", user._id).eq("enabled", true))
+      .withIndex("by_userId_and_enabled", (q) =>
+        q.eq("userId", user._id).eq("enabled", true),
+      )
       .take(20);
 
-    for (const token of tokens.filter((row) => row.deviceId === args.deviceId)) {
+    for (const token of tokens.filter(
+      (row) => row.deviceId === args.deviceId,
+    )) {
       await ctx.db.patch(token._id, {
         enabled: false,
         updatedAt: Date.now(),
@@ -147,14 +170,20 @@ export const sendTestToMe = action({
   },
   returns: v.object({ sent: v.number() }),
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(internal.notifications.pushExpo.currentUserForTest, {});
+    const user = await ctx.runQuery(
+      internal.notifications.pushExpo.currentUserForTest,
+      {},
+    );
     if (!user) return { sent: 0 };
 
-    const targets: DeliveryTarget[] = await ctx.runQuery(internal.notifications.pushExpo.getDeliveryTargets, {
+    const targets: DeliveryTarget[] = await ctx.runQuery(
+      internal.notifications.pushExpo.getDeliveryTargets,
+      {
       userId: user._id,
       category: "SCHOOL_ANNOUNCEMENT",
       scopeKey: "global",
-    });
+      },
+    );
 
     await sendExpoMessages(
       targets.map((target) => ({
@@ -185,10 +214,12 @@ export const getDeliveryTargets = internalQuery({
     category: notificationCategoryValidator,
     scopeKey: v.string(),
   },
-  returns: v.array(v.object({
+  returns: v.array(
+    v.object({
     id: v.id("notificationNativePushTokens"),
     token: v.string(),
-  })),
+    }),
+  ),
   handler: async (ctx, args) => {
     const preference = await resolveNotificationPreference(ctx, args);
 
@@ -198,7 +229,9 @@ export const getDeliveryTargets = internalQuery({
 
     const tokens = await ctx.db
       .query("notificationNativePushTokens")
-      .withIndex("by_userId_and_enabled", (q) => q.eq("userId", args.userId).eq("enabled", true))
+      .withIndex("by_userId_and_enabled", (q) =>
+        q.eq("userId", args.userId).eq("enabled", true),
+      )
       .take(20);
 
     return tokens.map((token) => ({
@@ -234,40 +267,56 @@ export const recordSendResult = internalMutation({
 
 export const sendForDelivery = internalAction({
   args: {
-    userId: v.id("users"),
-    category: notificationCategoryValidator,
-    title: v.string(),
-    body: v.string(),
-    href: v.string(),
-    scopeKey: v.string(),
+    deliveryId: v.id("notificationDeliveries"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const targets: DeliveryTarget[] = await ctx.runQuery(internal.notifications.pushExpo.getDeliveryTargets, {
-      userId: args.userId,
-      category: args.category,
-      scopeKey: args.scopeKey,
-    });
+    const delivery = await ctx.runQuery(
+      internal.notifications.delivery.getUnreadDeliveryForPush,
+      {
+        deliveryId: args.deliveryId,
+      },
+    );
+    if (!delivery) return null;
+    const targets: DeliveryTarget[] = await ctx.runQuery(
+      internal.notifications.pushExpo.getDeliveryTargets,
+      {
+        userId: delivery.userId,
+        category: delivery.category,
+        scopeKey: delivery.scopeKey,
+      },
+    );
     if (targets.length === 0) return null;
 
     const results = await sendExpoMessages(
       targets.map((target) => ({
         to: target.token,
-        title: args.title,
-        body: args.body,
-        data: { href: args.href },
+        title: delivery.title,
+        body: delivery.body,
+        data: {
+          href: delivery.href,
+          deliveryId: args.deliveryId,
+          deliveryCreatedAt: delivery.deliveryCreatedAt,
+          channelId: delivery.channelId ?? undefined,
+          sourceCreatedAt: delivery.sourceCreatedAt ?? undefined,
+        },
       })),
     );
 
-    await Promise.all(targets.map(async (target, index) => {
+    await Promise.all(
+      targets.map(async (target, index) => {
       const result = results[index];
-      await ctx.runMutation(internal.notifications.pushExpo.recordSendResult, {
+        await ctx.runMutation(
+          internal.notifications.pushExpo.recordSendResult,
+          {
         id: target.id,
         success: result?.ok ?? false,
         error: result?.error,
         deactivate: result?.deactivate,
-      });
-    }));
+          },
+        );
+      }),
+    );
 
     return null;
   },
@@ -277,7 +326,13 @@ type ExpoMessage = {
   to: string;
   title: string;
   body: string;
-  data: { href: string };
+  data: {
+    href: string;
+    deliveryId?: Id<"notificationDeliveries">;
+    deliveryCreatedAt?: number;
+    channelId?: Id<"clubChannels">;
+    sourceCreatedAt?: number;
+  };
 };
 
 async function sendExpoMessages(messages: ExpoMessage[]) {
@@ -301,8 +356,12 @@ async function sendExpoMessages(messages: ExpoMessage[]) {
     }));
   }
 
-  const payload = await response.json() as {
-    data?: Array<{ status?: string; message?: string; details?: { error?: string } }>;
+  const payload = (await response.json()) as {
+    data?: Array<{
+      status?: string;
+      message?: string;
+      details?: { error?: string };
+    }>;
   };
 
   return messages.map((_, index) => {

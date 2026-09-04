@@ -1,4 +1,8 @@
 import { isIosDevice, isStandaloneDisplay } from '@/lib/pwa';
+import {
+  shouldDismissAcknowledgedNotification,
+  shouldDismissReadChannelNotification,
+} from './notification-dismissal';
 
 type PushSubscriptionPayload = {
   endpoint: string;
@@ -7,6 +11,52 @@ type PushSubscriptionPayload = {
     auth: string;
   };
 };
+
+/**
+ * Best-effort cleanup of operating-system notifications that the server has
+ * durably acknowledged. Browsers retain control of their notification center,
+ * so an unsupported API or failure must not affect the inbox read state.
+ */
+export async function dismissAcknowledgedWebNotifications(
+  cutoff: number,
+  acknowledgedDeliveryIds: ReadonlySet<string>,
+) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    if (typeof registration.getNotifications !== 'function') return;
+    const notifications = await registration.getNotifications();
+    for (const notification of notifications) {
+      if (shouldDismissAcknowledgedNotification(notification.data, cutoff, acknowledgedDeliveryIds)) {
+        notification.close();
+      }
+    }
+  } catch {
+    // The durable inbox mutation already succeeded. OS-tray cleanup is optional.
+  }
+}
+
+/** Best-effort operating-system cleanup after a channel receipt advances. */
+export async function dismissReadChannelWebNotifications(
+  channelId: string,
+  throughSourceCreatedAt: number,
+) {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    if (typeof registration.getNotifications !== 'function') return;
+    const notifications = await registration.getNotifications();
+    for (const notification of notifications) {
+      if (shouldDismissReadChannelNotification(notification.data, channelId, throughSourceCreatedAt)) {
+        notification.close();
+      }
+    }
+  } catch {
+    // Channel receipts are durable even when a browser retains its tray item.
+  }
+}
 
 export function browserSupportsPush() {
   return (

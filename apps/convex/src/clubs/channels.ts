@@ -1,5 +1,8 @@
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  paginationResultValidator,
+} from "convex/server";
 import { internal } from "../_generated/api";
 import {
   internalMutation,
@@ -8,7 +11,10 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+} from "../../lib/currentUser";
 import { channelValidator } from "./_lib";
 import {
   getClubContext,
@@ -67,7 +73,11 @@ import {
 
 type ChannelDbCtx = QueryCtx | MutationCtx;
 
-export function canChangePrivateChannelVisibility(input: { isSponsor: boolean; isAdmin: boolean; isExplicitMember: boolean }) {
+export function canChangePrivateChannelVisibility(input: {
+  isSponsor: boolean;
+  isAdmin: boolean;
+  isExplicitMember: boolean;
+}) {
   return input.isSponsor || input.isAdmin || input.isExplicitMember;
 }
 
@@ -224,7 +234,10 @@ async function resolveChannelMentionPlan(
     authorId: Id<"users">;
   },
 ): Promise<MentionPlan> {
-  assertCanMentionEveryone(input.tokens, input.context.permissions.mentionEveryone);
+  assertCanMentionEveryone(
+    input.tokens,
+    input.context.permissions.mentionEveryone,
+  );
   const audienceIds = new Set(input.channelAudienceIds);
 
   const rows: PlannedMention[] = [];
@@ -240,7 +253,8 @@ async function resolveChannelMentionPlan(
     );
     addBoundedMentionRecipients(recipientIds, readableIds);
     for (const userId of readableIds) {
-      if (kind === "USER" || !recipients.has(userId)) recipients.set(userId, kind);
+      if (kind === "USER" || !recipients.has(userId))
+        recipients.set(userId, kind);
     }
   };
 
@@ -261,7 +275,9 @@ async function resolveChannelMentionPlan(
           .take(MAX_MENTION_GROUP_ROWS),
         ctx.db
           .query("clubRoles")
-          .withIndex("by_clubId_and_position", (q) => q.eq("clubId", input.channel.clubId))
+          .withIndex("by_clubId_and_position", (q) =>
+            q.eq("clubId", input.channel.clubId),
+          )
           .take(100),
         ctx.db
           .query("clubSponsors")
@@ -402,7 +418,9 @@ export const create = mutation({
     ownerUnitId: v.optional(v.id("clubUnits")),
     accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
     accessUnitId: v.optional(v.id("clubUnits")),
-    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS"))),
+    postingPolicy: v.optional(
+      v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS")),
+    ),
     memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.id("clubChannels"),
@@ -425,14 +443,19 @@ export const create = mutation({
     for (const unitId of [args.ownerUnitId, args.accessUnitId]) {
       if (!unitId) continue;
       const unit = await ctx.db.get(unitId);
-      if (!unit || unit.clubId !== args.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
+      if (!unit || unit.clubId !== args.clubId || !unit.isActive)
+        throw new ConvexError("Club unit not found");
     }
     const memberIds = [...new Set(args.memberIds ?? [])];
     for (const memberId of memberIds) {
-      const membership = await ctx.db.query("clubMembers")
-        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId).eq("userId", memberId))
+      const membership = await ctx.db
+        .query("clubMembers")
+        .withIndex("by_clubId_and_userId", (q) =>
+          q.eq("clubId", args.clubId).eq("userId", memberId),
+        )
         .unique();
-      if (!membership) throw new ConvexError("Channel members must belong to the club");
+      if (!membership)
+        throw new ConvexError("Channel members must belong to the club");
     }
     const siblingChannels = await ctx.db
       .query("clubChannels")
@@ -444,7 +467,8 @@ export const create = mutation({
       (maximum, channel) => Math.max(maximum, (channel.position ?? -1) + 1),
       0,
     );
-    const restricted = accessRoleIds.length > 0 || !!args.accessUnitId || memberIds.length > 0;
+    const restricted =
+      accessRoleIds.length > 0 || !!args.accessUnitId || memberIds.length > 0;
     const channelId = await ctx.db.insert("clubChannels", {
       clubId: args.clubId,
       ownerUnitId: args.ownerUnitId,
@@ -490,9 +514,19 @@ export const setAutoCreateUnitChannels = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageChannels) throw new ConvexError("You do not have permission to manage channels");
-    await ctx.db.patch(args.clubId, { autoCreateUnitChannels: args.enabled, updatedAt: Date.now() });
-    await logAuditEvent(ctx, { actorId: user._id, action: "club.unit_channel_defaults_updated", entityType: "club", entityId: args.clubId, meta: { enabled: args.enabled } });
+    if (!context.canManageChannels)
+      throw new ConvexError("You do not have permission to manage channels");
+    await ctx.db.patch(args.clubId, {
+      autoCreateUnitChannels: args.enabled,
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: "club.unit_channel_defaults_updated",
+      entityType: "club",
+      entityId: args.clubId,
+      meta: { enabled: args.enabled },
+    });
     return null;
   },
 });
@@ -503,12 +537,27 @@ export const createMissingUnitChannels = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const context = await getClubContext(ctx, args.clubId, user);
-    if (!context.canManageChannels) throw new ConvexError("You do not have permission to manage channels");
+    if (!context.canManageChannels)
+      throw new ConvexError("You do not have permission to manage channels");
     const [units, channels] = await Promise.all([
-      ctx.db.query("clubUnits").withIndex("by_clubId_and_isActive_and_position", (q) => q.eq("clubId", args.clubId).eq("isActive", true)).take(250),
-      ctx.db.query("clubChannels").withIndex("by_clubId_and_visibility", (q) => q.eq("clubId", args.clubId)).take(500),
+      ctx.db
+        .query("clubUnits")
+        .withIndex("by_clubId_and_isActive_and_position", (q) =>
+          q.eq("clubId", args.clubId).eq("isActive", true),
+        )
+        .take(250),
+      ctx.db
+        .query("clubChannels")
+        .withIndex("by_clubId_and_visibility", (q) =>
+          q.eq("clubId", args.clubId),
+        )
+        .take(500),
     ]);
-    const covered = new Set(channels.map((channel) => channel.ownerUnitId).filter((id): id is Id<"clubUnits"> => !!id));
+    const covered = new Set(
+      channels
+        .map((channel) => channel.ownerUnitId)
+        .filter((id): id is Id<"clubUnits"> => !!id),
+    );
     const now = Date.now();
     let created = 0;
     for (const unit of units) {
@@ -530,7 +579,14 @@ export const createMissingUnitChannels = mutation({
       });
       created += 1;
     }
-    if (created) await logAuditEvent(ctx, { actorId: user._id, action: "club.unit_channels_created", entityType: "club", entityId: args.clubId, meta: { created } });
+    if (created)
+      await logAuditEvent(ctx, {
+        actorId: user._id,
+        action: "club.unit_channels_created",
+        entityType: "club",
+        entityId: args.clubId,
+        meta: { created },
+      });
     return created;
   },
 });
@@ -552,8 +608,11 @@ export const postMessage = mutation({
   returns: v.id("clubChannelMessages"),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const messageRate = await contentRateLimiter.limit(ctx, "messagesByUser", { key: user._id });
-    if (!messageRate.ok) throw new ConvexError("You are sending messages too quickly");
+    const messageRate = await contentRateLimiter.limit(ctx, "messagesByUser", {
+      key: user._id,
+    });
+    if (!messageRate.ok)
+      throw new ConvexError("You are sending messages too quickly");
     const channel = await ctx.db.get(args.channelId);
 
     if (!channel) throw new ConvexError("Channel not found");
@@ -576,7 +635,9 @@ export const postMessage = mutation({
       args.bodyMarkdown,
     );
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
-      throw new ConvexError("Inline images are not supported; attach the image instead");
+      throw new ConvexError(
+        "Inline images are not supported; attach the image instead",
+      );
     }
     assertChannelMessageBodyBounds(trimmedBody, bodyMarkdown, args.bodyRich);
     const attachmentUploadIds = args.attachments ?? [];
@@ -590,7 +651,9 @@ export const postMessage = mutation({
     }
 
     if (args.parentMessageId && args.replyToMessageId) {
-      throw new ConvexError("A message cannot be both a channel reply and a thread reply");
+      throw new ConvexError(
+        "A message cannot be both a channel reply and a thread reply",
+      );
     }
     if (args.parentMessageId) {
       const parent = await ctx.db.get(args.parentMessageId);
@@ -618,13 +681,20 @@ export const postMessage = mutation({
       }
     }
 
-    const mentionTokens = boundedPortableMentionTokens(trimmedBody, bodyMarkdown);
+    const mentionTokens = boundedPortableMentionTokens(
+      trimmedBody,
+      bodyMarkdown,
+    );
     const mentionPlan = mentionTokens.length
       ? await resolveChannelMentionPlan(ctx, {
         channel,
         context,
         tokens: mentionTokens,
-        channelAudienceIds: await getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_RECIPIENTS),
+          channelAudienceIds: await getChannelAudienceUserIds(
+            ctx,
+            channel,
+            MAX_CHANNEL_MENTION_RECIPIENTS,
+          ),
         authorId: user._id,
       })
       : { rows: [], recipients: new Map<Id<"users">, "USER" | "GROUP">() };
@@ -697,7 +767,10 @@ export const postMessage = mutation({
 });
 
 export const markRead = mutation({
-  args: { channelId: v.id("clubChannels") },
+  args: {
+    channelId: v.id("clubChannels"),
+    throughMessageId: v.id("clubChannelMessages"),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
@@ -707,15 +780,11 @@ export const markRead = mutation({
     const access = await getChannelAccess(ctx, channel, context, user._id);
     if (!access.canView) throw new ConvexError("Cannot view this channel");
 
-    const latestMessage = await ctx.db
-      .query("clubChannelMessages")
-      .withIndex("by_channelId_and_createdAt", (q) =>
-        q.eq("channelId", channel._id),
-      )
-      .order("desc")
-      .first();
-    if (!latestMessage) return null;
-    const lastReadAt = latestMessage._creationTime;
+    const throughMessage = await ctx.db.get(args.throughMessageId);
+    if (!throughMessage || throughMessage.channelId !== channel._id) {
+      throw new ConvexError("Read boundary not found in this channel");
+    }
+    const lastReadAt = throughMessage.createdAt;
     const receipt = await ctx.db
       .query("clubChannelReadReceipts")
       .withIndex("by_userId_and_channelId", (q) =>
@@ -723,8 +792,9 @@ export const markRead = mutation({
       )
       .unique();
     if (receipt) {
-      if (receipt.lastReadAt >= lastReadAt) return null;
-      await ctx.db.patch(receipt._id, { lastReadAt });
+      if (receipt.lastReadAt < lastReadAt) {
+        await ctx.db.patch(receipt._id, { lastReadAt });
+      }
     } else {
       await ctx.db.insert("clubChannelReadReceipts", {
         clubId: channel.clubId,
@@ -732,6 +802,70 @@ export const markRead = mutation({
         userId: user._id,
         lastReadAt,
       });
+    }
+    const cleared = await markChannelDeliveriesReadThrough(
+      ctx,
+      user._id,
+      channel._id,
+      lastReadAt,
+    );
+    if (cleared === CHANNEL_DELIVERY_READ_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.clubs.channels.markChannelDeliveriesReadContinuation,
+        {
+          userId: user._id,
+          channelId: channel._id,
+          throughCreatedAt: lastReadAt,
+        },
+      );
+    }
+    return null;
+  },
+});
+
+const CHANNEL_DELIVERY_READ_BATCH_SIZE = 100;
+
+async function markChannelDeliveriesReadThrough(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  channelId: Id<"clubChannels">,
+  throughCreatedAt: number,
+) {
+  const rows = await ctx.db
+    .query("notificationDeliveries")
+    .withIndex("by_userId_and_channelId_and_isRead_and_sourceCreatedAt", (q) =>
+      q
+        .eq("userId", userId)
+        .eq("channelId", channelId)
+        .eq("isRead", false)
+        .lte("sourceCreatedAt", throughCreatedAt),
+    )
+    .take(CHANNEL_DELIVERY_READ_BATCH_SIZE);
+  for (const row of rows) await ctx.db.patch(row._id, { isRead: true });
+  return rows.length;
+}
+
+export const markChannelDeliveriesReadContinuation = internalMutation({
+  args: {
+    userId: v.id("users"),
+    channelId: v.id("clubChannels"),
+    throughCreatedAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const cleared = await markChannelDeliveriesReadThrough(
+      ctx,
+      args.userId,
+      args.channelId,
+      args.throughCreatedAt,
+    );
+    if (cleared === CHANNEL_DELIVERY_READ_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.clubs.channels.markChannelDeliveriesReadContinuation,
+        args,
+      );
     }
     return null;
   },
@@ -773,7 +907,11 @@ export const deliverPostedMessageNotifications = internalMutation({
       messageId: message._id,
     };
     const preview = message.body || "New channel message.";
-    const audienceIds = await getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_RECIPIENTS);
+    const audienceIds = await getChannelAudienceUserIds(
+      ctx,
+      channel,
+      MAX_CHANNEL_MENTION_RECIPIENTS,
+    );
 
     await deliverMany(
       ctx,
@@ -791,6 +929,7 @@ export const deliverPostedMessageNotifications = internalMutation({
         body: preview,
         href,
         subject,
+        sourceCreatedAt: message.createdAt,
       },
     );
 
@@ -812,6 +951,7 @@ export const deliverPostedMessageNotifications = internalMutation({
           body: preview,
           href,
           subject,
+          sourceCreatedAt: message.createdAt,
         });
       }
     }
@@ -831,6 +971,7 @@ export const deliverPostedMessageNotifications = internalMutation({
         body: preview,
         href,
         subject,
+        sourceCreatedAt: message.createdAt,
       });
     }
 
@@ -908,10 +1049,16 @@ async function serializeMessage(
       .collect();
   const reactionMap = new Map<
     string,
-    { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
+    {
+      emoji: string;
+      count: number;
+      reactedByCurrentUser: boolean;
+      reactors: ReturnType<typeof toClubUserRef>[];
+    }
   >();
   for (const reaction of reactions) {
-    const emoji = normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
+    const emoji =
+      normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
     const reactor = await ctx.db.get(reaction.userId);
     const entry = reactionMap.get(emoji) ?? {
       emoji,
@@ -948,11 +1095,17 @@ async function serializeMessage(
   ).filter((r): r is SerializedClubMessage => !!r);
 
   let poll: SerializedClubMessage["poll"] = null;
-  if (!isDeleted && message.pollQuestion && Array.isArray(message.pollOptions)) {
+  if (
+    !isDeleted &&
+    message.pollQuestion &&
+    Array.isArray(message.pollOptions)
+  ) {
     const options = message.pollOptions as Array<{ id: string; label: string }>;
     const votes = await ctx.db
       .query("clubChannelMessagePollVotes")
-      .withIndex("by_messageId_and_optionId", (q) => q.eq("messageId", message._id))
+      .withIndex("by_messageId_and_optionId", (q) =>
+        q.eq("messageId", message._id),
+      )
       .collect();
     const voteCounts = new Map<string, number>();
     let votedByCurrentUser = false;
@@ -1024,9 +1177,10 @@ async function serializeMessageSummary(
   includeLatestReply: boolean,
   authorsById?: ReadonlyMap<Id<"users">, Doc<"users"> | null>,
 ) {
-  const author = authorsById === undefined
+  const author =
+    authorsById === undefined
     ? await ctx.db.get(message.authorId)
-    : authorsById.get(message.authorId) ?? null;
+      : (authorsById.get(message.authorId) ?? null);
   if (!author) return null;
   const isDeleted = !!message.deletedAt;
 
@@ -1042,10 +1196,16 @@ async function serializeMessageSummary(
   const reactionsTruncated = reactionRows.length > MAX_SUMMARY_REACTION_ROWS;
   const reactionMap = new Map<
     string,
-    { emoji: string; count: number; reactedByCurrentUser: boolean; reactors: ReturnType<typeof toClubUserRef>[] }
+    {
+      emoji: string;
+      count: number;
+      reactedByCurrentUser: boolean;
+      reactors: ReturnType<typeof toClubUserRef>[];
+    }
   >();
   for (const reaction of reactionRows.slice(0, MAX_SUMMARY_REACTION_ROWS)) {
-    const emoji = normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
+    const emoji =
+      normalizeClubChannelReaction(reaction.emoji) ?? reaction.emoji;
     const entry = reactionMap.get(emoji) ?? {
       emoji,
       count: 0,
@@ -1066,17 +1226,28 @@ async function serializeMessageSummary(
       )
       .order("desc")
       .take(MAX_SUMMARY_ATTACHMENTS + 1);
-  const attachmentsTruncated = attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
+  const attachmentsTruncated =
+    attachmentRowsNewest.length > MAX_SUMMARY_ATTACHMENTS;
   const attachments = chronologicalFromNewest(
     attachmentRowsNewest.slice(0, MAX_SUMMARY_ATTACHMENTS),
   );
 
-  let poll: (NonNullable<SerializedClubMessage["poll"]> & { votesTruncated?: boolean }) | null = null;
-  if (!isDeleted && message.pollQuestion && Array.isArray(message.pollOptions)) {
+  let poll:
+    | (NonNullable<SerializedClubMessage["poll"]> & {
+        votesTruncated?: boolean;
+      })
+    | null = null;
+  if (
+    !isDeleted &&
+    message.pollQuestion &&
+    Array.isArray(message.pollOptions)
+  ) {
     const options = message.pollOptions as Array<{ id: string; label: string }>;
     const voteRows = await ctx.db
       .query("clubChannelMessagePollVotes")
-      .withIndex("by_messageId_and_optionId", (q) => q.eq("messageId", message._id))
+      .withIndex("by_messageId_and_optionId", (q) =>
+        q.eq("messageId", message._id),
+      )
       .take(MAX_SUMMARY_POLL_VOTES + 1);
     const votesTruncated = voteRows.length > MAX_SUMMARY_POLL_VOTES;
     const votes = voteRows.slice(0, MAX_SUMMARY_POLL_VOTES);
@@ -1100,15 +1271,17 @@ async function serializeMessageSummary(
   }
 
   const latestReply = includeLatestReply
-    ? (
+    ? ((
       await ctx.db
         .query("clubChannelMessages")
         .withIndex("by_channelId_and_parentMessageId_and_createdAt", (q) =>
-          q.eq("channelId", message.channelId).eq("parentMessageId", message._id),
+            q
+              .eq("channelId", message.channelId)
+              .eq("parentMessageId", message._id),
         )
         .order("desc")
         .take(1)
-    )[0] ?? null
+      )[0] ?? null)
     : null;
 
   return {
@@ -1175,10 +1348,9 @@ async function loadMessageAuthors(
   );
   return new Map(
     await Promise.all(
-      authorIds.map(async (authorId) => [
-        authorId,
-        await ctx.db.get(authorId),
-      ] as const),
+      authorIds.map(
+        async (authorId) => [authorId, await ctx.db.get(authorId)] as const,
+      ),
     ),
   );
 }
@@ -1234,7 +1406,12 @@ export const getConversationContext = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return null;
 
     const { channel, context, access } = readable;
@@ -1276,12 +1453,21 @@ export const getMentionContext = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return null;
 
     const { channel, context } = readable;
     const [candidateUserIds, tags] = await Promise.all([
-      getChannelAudienceUserIds(ctx, channel, MAX_CHANNEL_MENTION_CONTEXT_MEMBERS),
+      getChannelAudienceUserIds(
+        ctx,
+        channel,
+        MAX_CHANNEL_MENTION_CONTEXT_MEMBERS,
+      ),
       ctx.db
         .query("clubTags")
         .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
@@ -1347,7 +1533,12 @@ export const getMessagePage = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyMessagePage(args.paginationOpts.cursor);
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
     const { channel } = readable;
 
@@ -1364,12 +1555,14 @@ export const getMessagePage = query({
     const authorsById = await loadMessageAuthors(ctx, result.page);
     const page = await Promise.all(
       result.page.map((message) =>
-        serializeMessageSummary(ctx, message, user._id, true, authorsById)
+        serializeMessageSummary(ctx, message, user._id, true, authorsById),
       ),
     );
     return {
       ...result,
-      page: page.filter((message): message is NonNullable<typeof message> => !!message),
+      page: page.filter(
+        (message): message is NonNullable<typeof message> => !!message,
+      ),
     };
   },
 });
@@ -1387,11 +1580,20 @@ export const listReactionUsers = query({
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return emptyMessagePage(args.paginationOpts.cursor);
 
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return emptyMessagePage(args.paginationOpts.cursor);
 
     const message = await ctx.db.get(args.messageId);
-    if (!message || message.channelId !== readable.channel._id || message.deletedAt) {
+    if (
+      !message ||
+      message.channelId !== readable.channel._id ||
+      message.deletedAt
+    ) {
       return emptyMessagePage(args.paginationOpts.cursor);
     }
 
@@ -1418,7 +1620,9 @@ export const listReactionUsers = query({
 
     return {
       ...reactions,
-      page: reactors.filter((reactor): reactor is NonNullable<typeof reactor> => reactor !== null),
+      page: reactors.filter(
+        (reactor): reactor is NonNullable<typeof reactor> => reactor !== null,
+      ),
     };
   },
 });
@@ -1452,13 +1656,7 @@ export const searchMessages = query({
     const authorsById = await loadMessageAuthors(ctx, matches);
     const serialized = await Promise.all(
       matches.map((message) =>
-        serializeMessageSummary(
-          ctx,
-          message,
-          user._id,
-          false,
-          authorsById,
-        ),
+        serializeMessageSummary(ctx, message, user._id, false, authorsById),
       ),
     );
     return serialized.filter(
@@ -1484,7 +1682,12 @@ export const getThread = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return null;
     const { channel } = readable;
     const requested = await ctx.db.get(args.messageId);
@@ -1500,28 +1703,18 @@ export const getThread = query({
       .order("desc")
       .take(MAX_THREAD_REPLIES + 1);
     const hasMoreReplies = replyRowsNewest.length > MAX_THREAD_REPLIES;
-    const replyRows = chronologicalFromNewest(replyRowsNewest.slice(0, MAX_THREAD_REPLIES));
+    const replyRows = chronologicalFromNewest(
+      replyRowsNewest.slice(0, MAX_THREAD_REPLIES),
+    );
     const authorsById = await loadMessageAuthors(ctx, [
       rootMessage,
       ...replyRows,
     ]);
     const [root, replies] = await Promise.all([
-      serializeMessageSummary(
-        ctx,
-        rootMessage,
-        user._id,
-        false,
-        authorsById,
-      ),
+      serializeMessageSummary(ctx, rootMessage, user._id, false, authorsById),
       Promise.all(
         replyRows.map((message) =>
-          serializeMessageSummary(
-            ctx,
-            message,
-            user._id,
-            false,
-            authorsById,
-          )
+          serializeMessageSummary(ctx, message, user._id, false, authorsById),
         ),
       ),
     ]);
@@ -1548,7 +1741,12 @@ export const getMessages = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
-    const readable = await getReadableChannel(ctx, user, args.clubId, args.channelId);
+    const readable = await getReadableChannel(
+      ctx,
+      user,
+      args.clubId,
+      args.channelId,
+    );
     if (!readable) return [];
     const { channel } = readable;
 
@@ -1579,7 +1777,9 @@ export const update = mutation({
     ownerUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
     accessRoleIds: v.optional(v.array(v.id("clubRoles"))),
     accessUnitId: v.optional(v.union(v.id("clubUnits"), v.null())),
-    postingPolicy: v.optional(v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS"))),
+    postingPolicy: v.optional(
+      v.union(v.literal("AUDIENCE"), v.literal("CLUB_MANAGERS")),
+    ),
     memberIds: v.optional(v.array(v.id("users"))),
   },
   returns: v.null(),
@@ -1588,50 +1788,69 @@ export const update = mutation({
     const channel = await ctx.db.get(args.channelId);
     if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.permissions.editChannels) throw new ConvexError("You do not have permission to edit channels");
+    if (!context.permissions.editChannels)
+      throw new ConvexError("You do not have permission to edit channels");
 
-    const accessRoleIds = [...new Set(args.accessRoleIds ?? channel.accessRoleIds ?? [])];
+    const accessRoleIds = [
+      ...new Set(args.accessRoleIds ?? channel.accessRoleIds ?? []),
+    ];
     for (const roleId of accessRoleIds) {
       const role = await ctx.db.get(roleId);
       if (!role || role.clubId !== channel.clubId) {
         throw new ConvexError("Club role not found");
       }
     }
-    const ownerUnitId = args.ownerUnitId === undefined
+    const ownerUnitId =
+      args.ownerUnitId === undefined
       ? channel.ownerUnitId
-      : args.ownerUnitId ?? undefined;
-    const accessUnitId = args.accessUnitId === undefined
+        : (args.ownerUnitId ?? undefined);
+    const accessUnitId =
+      args.accessUnitId === undefined
       ? channel.accessUnitId
-      : args.accessUnitId ?? undefined;
+        : (args.accessUnitId ?? undefined);
     for (const unitId of [ownerUnitId, accessUnitId]) {
       if (!unitId) continue;
       const unit = await ctx.db.get(unitId);
-      if (!unit || unit.clubId !== channel.clubId || !unit.isActive) throw new ConvexError("Club unit not found");
+      if (!unit || unit.clubId !== channel.clubId || !unit.isActive)
+        throw new ConvexError("Club unit not found");
     }
     if (args.memberIds !== undefined) {
       const memberIds = [...new Set(args.memberIds)];
       for (const memberId of memberIds) {
-        const membership = await ctx.db.query("clubMembers")
-          .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", channel.clubId).eq("userId", memberId))
+        const membership = await ctx.db
+          .query("clubMembers")
+          .withIndex("by_clubId_and_userId", (q) =>
+            q.eq("clubId", channel.clubId).eq("userId", memberId),
+          )
           .unique();
-        if (!membership) throw new ConvexError("Channel members must belong to the club");
+        if (!membership)
+          throw new ConvexError("Channel members must belong to the club");
       }
       const existing = await getChannelMemberships(ctx, channel._id);
       const wanted = new Set(memberIds);
-      for (const row of existing) if (!wanted.has(row.userId)) await ctx.db.delete(row._id);
+      for (const row of existing)
+        if (!wanted.has(row.userId)) await ctx.db.delete(row._id);
       for (const memberId of wanted) {
         if (!existing.some((row) => row.userId === memberId)) {
-          await ctx.db.insert("clubChannelMemberships", { channelId: channel._id, userId: memberId, createdAt: Date.now() });
+          await ctx.db.insert("clubChannelMemberships", {
+            channelId: channel._id,
+            userId: memberId,
+            createdAt: Date.now(),
+          });
         }
       }
     }
-    const explicitCount = args.memberIds === undefined
+    const explicitCount =
+      args.memberIds === undefined
       ? (await getChannelMemberships(ctx, channel._id)).length
       : new Set(args.memberIds).size;
-    const postingPolicy = args.postingPolicy ?? (
-      channel.postingPolicy === "CLUB_MANAGERS" ? "CLUB_MANAGERS" : "AUDIENCE"
-    );
-    const restricted = accessRoleIds.length > 0 || !!accessUnitId || explicitCount > 0;
+    const postingPolicy =
+      args.postingPolicy ??
+      (channel.postingPolicy === "CLUB_MANAGERS"
+        ? "CLUB_MANAGERS"
+        : "AUDIENCE");
+    const restricted =
+      accessRoleIds.length > 0 || !!accessUnitId || explicitCount > 0;
     const { channelId, memberIds: _memberIds, ...updates } = args;
     await ctx.db.patch(channelId, {
       ...updates,
@@ -1760,9 +1979,14 @@ export const remove = mutation({
     const channel = await ctx.db.get(args.channelId);
     if (!channel) throw new ConvexError("Channel not found");
     const context = await getClubContext(ctx, channel.clubId, user);
-    if (!context.permissions.deleteChannels) throw new ConvexError("You do not have permission to delete channels");
+    if (!context.permissions.deleteChannels)
+      throw new ConvexError("You do not have permission to delete channels");
     await ctx.db.delete(args.channelId);
-    await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedChannel, { channelId: args.channelId });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.clubs.channelDeletion.cleanupDeletedChannel,
+      { channelId: args.channelId },
+    );
     return null;
   },
 });
@@ -1776,13 +2000,22 @@ export const updateMessage = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message, channel } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel } = await assertMessageAccess(
+      ctx,
+      user,
+      args.messageId,
+    );
     if (message.authorId !== user._id) throw new ConvexError("Not authorized");
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
-    const { body, bodyMarkdown } = normalizePortableMessageBody(args.body, args.bodyMarkdown);
+    const { body, bodyMarkdown } = normalizePortableMessageBody(
+      args.body,
+      args.bodyMarkdown,
+    );
     if (!body) throw new ConvexError("Message cannot be empty");
     if (bodyMarkdown && hasInlineMarkdownImage(bodyMarkdown)) {
-      throw new ConvexError("Inline images are not supported; attach the image instead");
+      throw new ConvexError(
+        "Inline images are not supported; attach the image instead",
+      );
     }
     assertChannelMessageBodyBounds(body, bodyMarkdown, args.bodyRich);
     await ctx.db.patch(args.messageId, {
@@ -1826,7 +2059,10 @@ export const deleteMessage = mutation({
       user,
       args.messageId,
     );
-    if (message.authorId !== user._id && !context.permissions.moderateMessages) {
+    if (
+      message.authorId !== user._id &&
+      !context.permissions.moderateMessages
+    ) {
       throw new ConvexError("Not authorized");
     }
     if (message.deletedAt) {
@@ -1839,10 +2075,7 @@ export const deleteMessage = mutation({
     }
 
     const deletedAt = Date.now();
-    await ctx.db.patch(
-      message._id,
-      deletedChannelMessagePatch(deletedAt),
-    );
+    await ctx.db.patch(message._id, deletedChannelMessagePatch(deletedAt));
     await logAuditEvent(ctx, {
       actorId: user._id,
       action: "CLUB_CHANNEL_MESSAGE_DELETED",
@@ -1874,7 +2107,11 @@ export const toggleReaction = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message, channel } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, channel } = await assertMessageAccess(
+      ctx,
+      user,
+      args.messageId,
+    );
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
 
     const emoji = normalizeClubChannelReaction(args.emoji);
@@ -1896,7 +2133,9 @@ export const toggleReaction = mutation({
       )
     ).flat();
     if (existing.length) {
-      await Promise.all(existing.map((reaction) => ctx.db.delete(reaction._id)));
+      await Promise.all(
+        existing.map((reaction) => ctx.db.delete(reaction._id)),
+      );
       await logAuditEvent(ctx, {
         actorId: user._id,
         action: "CLUB_CHANNEL_MESSAGE_REACTION_REMOVED",
@@ -1981,7 +2220,11 @@ export const setPinned = mutation({
   args: { messageId: v.id("clubChannelMessages"), pinned: v.boolean() },
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const { message, context } = await assertMessageAccess(ctx, user, args.messageId);
+    const { message, context } = await assertMessageAccess(
+      ctx,
+      user,
+      args.messageId,
+    );
     if (message.deletedAt) throw new ConvexError("Message has been deleted");
     if (!context.permissions.pinMessages && message.authorId !== user._id) {
       throw new ConvexError("Not authorized");

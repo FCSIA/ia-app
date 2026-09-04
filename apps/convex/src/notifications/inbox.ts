@@ -1,11 +1,18 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "../_generated/server";
-import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import {
-  notificationValidator,
-  toNotification,
-} from "./_lib";
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+} from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import {
+  getCurrentAppUser,
+  getMaybeCurrentAppUser,
+} from "../../lib/currentUser";
+import { notificationValidator, toNotification } from "./_lib";
 
 export const list = query({
   args: {
@@ -25,7 +32,9 @@ export const list = query({
           )
       : ctx.db
           .query("notificationDeliveries")
-          .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", user._id));
+          .withIndex("by_userId_and_createdAt", (q) =>
+            q.eq("userId", user._id),
+          );
 
     const rows = await queryBase.order("desc").take(limit);
     return rows.map(toNotification);
@@ -41,7 +50,13 @@ export const listPage = query({
     page: v.array(notificationValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
-    pageStatus: v.optional(v.union(v.literal("SplitRecommended"), v.literal("SplitRequired"), v.null())),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRecommended"),
+        v.literal("SplitRequired"),
+        v.null(),
+      ),
+    ),
     splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
@@ -61,7 +76,9 @@ export const listPage = query({
           )
       : ctx.db
           .query("notificationDeliveries")
-          .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", user._id));
+          .withIndex("by_userId_and_createdAt", (q) =>
+            q.eq("userId", user._id),
+          );
 
     const result = await queryBase.order("desc").paginate(args.paginationOpts);
     return {
@@ -104,20 +121,60 @@ export const markRead = mutation({
   },
 });
 
-export const markAllRead = mutation({
+const inboxAcknowledgementBatchSize = 100;
+
+export const acknowledgeInbox = mutation({
   args: {},
-  returns: v.object({ success: v.boolean(), updated: v.number() }),
+  returns: v.object({
+    success: v.literal(true),
+    cutoff: v.number(),
+    updated: v.number(),
+  }),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
-    const rows = await ctx.db
-      .query("notificationDeliveries")
-      .withIndex("by_userId_and_isRead_and_createdAt", (q) =>
-        q.eq("userId", user._id).eq("isRead", false),
-      )
-      .take(100);
-    for (const row of rows) {
-      await ctx.db.patch(row._id, { isRead: true });
+    const cutoff = Date.now();
+    const updated = await acknowledgeInboxBatch(ctx, user._id, cutoff);
+    if (updated === inboxAcknowledgementBatchSize) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.inbox.acknowledgeInboxContinuation,
+        {
+          userId: user._id,
+          cutoff,
+        },
+      );
     }
-    return { success: true, updated: rows.length };
+    return { success: true as const, cutoff, updated };
+  },
+});
+
+async function acknowledgeInboxBatch(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  cutoff: number,
+) {
+  const rows = await ctx.db
+    .query("notificationDeliveries")
+    .withIndex("by_userId_and_isRead_and_createdAt", (q) =>
+      q.eq("userId", userId).eq("isRead", false).lte("createdAt", cutoff),
+    )
+    .take(inboxAcknowledgementBatchSize);
+  for (const row of rows) await ctx.db.patch(row._id, { isRead: true });
+  return rows.length;
+}
+
+export const acknowledgeInboxContinuation = internalMutation({
+  args: { userId: v.id("users"), cutoff: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const updated = await acknowledgeInboxBatch(ctx, args.userId, args.cutoff);
+    if (updated === inboxAcknowledgementBatchSize) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.inbox.acknowledgeInboxContinuation,
+        args,
+      );
+    }
+    return null;
   },
 });

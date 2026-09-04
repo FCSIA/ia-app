@@ -6,7 +6,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -58,7 +58,8 @@ import { normalizeReactionPayload } from "./quick-reactions";
 import { chatMessageLengthError } from "./chat-markdown";
 import type { ChatMentionSuggestion } from "./rich-chat-input";
 import { buildChatMentionSuggestions } from "./mention-suggestions";
-import { latestChatActivityAt } from "~/apps/shared/chat/activity";
+import { latestVisibleChatActivity } from "~/apps/shared/chat/activity";
+import { dismissPresentedChannelNotificationsThrough } from "@/lib/push";
 
 type ClubChatScreenProps = {
   clubId: string;
@@ -127,8 +128,8 @@ export function ClubChatScreen({
         : ([...(results as ChatMessage[])].reverse() as ChatMessage[]),
     [paginationStatus, results],
   );
-  const latestVisibleActivityAt = useMemo(
-    () => latestChatActivityAt(messages),
+  const latestVisibleActivity = useMemo(
+    () => latestVisibleChatActivity(messages),
     [messages],
   );
   const thread = rawThread as ChatThread | null | undefined;
@@ -182,6 +183,14 @@ export function ClubChatScreen({
   }, [channelId, clubId]);
   const lastMarkedActivityRef = useRef(0);
   const lastReadAttemptAtRef = useRef(0);
+  const [isRouteFocused, setIsRouteFocused] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsRouteFocused(true);
+      return () => setIsRouteFocused(false);
+    }, []),
+  );
 
   useEffect(() => {
     lastMarkedActivityRef.current = 0;
@@ -189,22 +198,30 @@ export function ClubChatScreen({
   }, [channelId]);
 
   useEffect(() => {
-    if (threadRootId || !latestVisibleActivityAt) return;
+    if (threadRootId || !isRouteFocused || !latestVisibleActivity) return;
 
     const markVisibleActivityRead = () => {
       if (AppState.currentState !== "active") return;
-      if (latestVisibleActivityAt <= lastMarkedActivityRef.current) return;
+      if (latestVisibleActivity.occurredAt <= lastMarkedActivityRef.current) return;
 
       const previousActivity = lastMarkedActivityRef.current;
-      lastMarkedActivityRef.current = latestVisibleActivityAt;
+      lastMarkedActivityRef.current = latestVisibleActivity.occurredAt;
       lastReadAttemptAtRef.current = Date.now();
       void markChannelRead({
         channelId: channelId as Id<"clubChannels">,
-      }).catch(() => {
-        if (lastMarkedActivityRef.current === latestVisibleActivityAt) {
-          lastMarkedActivityRef.current = previousActivity;
-        }
-      });
+        throughMessageId: latestVisibleActivity.messageId as Id<"clubChannelMessages">,
+      })
+        .then(() =>
+          dismissPresentedChannelNotificationsThrough({
+            channelId,
+            throughCreatedAt: latestVisibleActivity.occurredAt,
+          }),
+        )
+        .catch(() => {
+          if (lastMarkedActivityRef.current === latestVisibleActivity.occurredAt) {
+            lastMarkedActivityRef.current = previousActivity;
+          }
+        });
     };
     const delay = Math.max(
       0,
@@ -218,7 +235,7 @@ export function ClubChatScreen({
       clearTimeout(timeout);
       subscription.remove();
     };
-  }, [channelId, latestVisibleActivityAt, markChannelRead, threadRootId]);
+  }, [channelId, isRouteFocused, latestVisibleActivity, markChannelRead, threadRootId]);
   const threadRoot = threadRootId
     ? thread === undefined
       ? undefined

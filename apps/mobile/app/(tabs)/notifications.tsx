@@ -1,13 +1,15 @@
-import { RefreshControl, View } from "react-native";
-import { useState } from "react";
+import { AppState, RefreshControl, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { useMutation, useQuery } from "convex/react";
 import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { PressableScale, Txt, useToast } from "@/components/ui";
+import { PressableScale, Txt } from "@/components/ui";
 import { relativeTime } from "@/lib/format";
 import { openAppHref } from "@/lib/deep-links";
+import { dismissPresentedNotificationsThrough } from "@/lib/push";
 import { radii, spacing } from "@/lib/tokens";
 import { useTheme } from "@/lib/theme";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -30,24 +32,76 @@ const NOTIFICATION_CATEGORY_LABELS: Record<string, string> = {
 export default function NotificationsScreen() {
   const notifications = useQuery(api.notifications.inbox.list, { limit: 50 });
   const markRead = useMutation(api.notifications.inbox.markRead);
-  const { showToast } = useToast();
+  // `acknowledgeInbox` is deliberately server-batched against a fixed cutoff;
+  // a device must never clear an alert that arrived after it opened the inbox.
+  const acknowledgeInbox = useMutation(api.notifications.inbox.acknowledgeInbox);
   const { color } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isActive, setIsActive] = useState(AppState.currentState === "active");
+  const acknowledgedUnreadKeyRef = useRef<string | null>(null);
+  const acknowledgedThisFocusRef = useRef(false);
+  const acknowledgingRef = useRef(false);
+  const [acknowledgementRevision, setAcknowledgementRevision] = useState(0);
   const unread = (notifications ?? []).filter((item: any) => !item.isRead);
   const earlier = (notifications ?? []).filter((item: any) => item.isRead);
+  const unreadKey = unread.map((item: any) => item.id).join(",");
+
+  useFocusEffect(
+    useCallback(() => {
+      acknowledgedUnreadKeyRef.current = null;
+      acknowledgedThisFocusRef.current = false;
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, []),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      setIsActive(state === "active");
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused || !isActive || notifications === undefined) {
+      return;
+    }
+    if (!unreadKey && acknowledgedThisFocusRef.current) return;
+    if (acknowledgedUnreadKeyRef.current === unreadKey) return;
+    if (acknowledgingRef.current) return;
+    acknowledgedUnreadKeyRef.current = unreadKey;
+    acknowledgingRef.current = true;
+
+    let cancelled = false;
+    let acknowledged = false;
+    void acknowledgeInbox({})
+      .then(async ({ cutoff }) => {
+        acknowledged = true;
+        acknowledgedThisFocusRef.current = true;
+        if (!cancelled) {
+          await dismissPresentedNotificationsThrough(cutoff);
+        }
+      })
+      .catch(() => {
+        acknowledgedUnreadKeyRef.current = null;
+        // The inbox remains visibly unread and a later focus/data update can
+        // retry. Automatic acknowledgement should not interrupt browsing.
+      })
+      .finally(() => {
+        acknowledgingRef.current = false;
+        if (!cancelled && acknowledged) {
+          setAcknowledgementRevision((value) => value + 1);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [acknowledgeInbox, acknowledgementRevision, isActive, isFocused, notifications, unreadKey]);
 
   function openNotification(item: any) {
     if (!item.isRead) void markRead({ ids: [item.id] });
     openAppHref(item.href);
-  }
-
-  async function markAllNew() {
-    try {
-      await markRead({ ids: unread.map((item: any) => item.id) });
-      showToast({ title: "All caught up", tone: "success" });
-    } catch {
-      showToast({ title: "Notifications didn't update", body: "Try again.", tone: "warning" });
-    }
   }
 
   return (
@@ -72,7 +126,6 @@ export default function NotificationsScreen() {
                 title="New"
                 items={unread}
                 onOpen={openNotification}
-                onMarkAllRead={() => void markAllNew()}
               />
             ) : null}
             <NotificationSection title={unread.length ? "Earlier" : undefined} items={earlier} onOpen={openNotification} />
@@ -87,12 +140,10 @@ function NotificationSection({
   title,
   items,
   onOpen,
-  onMarkAllRead,
 }: {
   title?: string;
   items: any[];
   onOpen: (item: any) => void;
-  onMarkAllRead?: () => void;
 }) {
   if (!items.length) return null;
 
@@ -101,15 +152,6 @@ function NotificationSection({
       {title ? (
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <Txt variant="section">{title}</Txt>
-          {onMarkAllRead ? (
-            <PressableScale
-              accessibilityLabel="Mark all new notifications read"
-              onPress={onMarkAllRead}
-              style={{ minHeight: 44, justifyContent: "center" }}
-            >
-              <Txt variant="label" tone="primary">Mark all read</Txt>
-            </PressableScale>
-          ) : null}
         </View>
       ) : null}
       {items.map((item) => (

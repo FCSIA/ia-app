@@ -75,7 +75,8 @@ import { useClubId, useRouteChannelId } from '@/app/clubs/club-route';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import type { ClubChannelMessage } from '@/components/clubs/types';
-import { latestChatActivityAt } from '~/apps/shared/chat/activity';
+import { latestVisibleChatActivity } from '~/apps/shared/chat/activity';
+import { dismissReadChannelWebNotifications } from '@/lib/push-notifications';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
 import {
@@ -1271,8 +1272,8 @@ export function ChannelWorkspace() {
       ),
     [messageResults],
   );
-  const latestVisibleActivityAt = useMemo(
-    () => latestChatActivityAt(messages),
+  const latestVisibleActivity = useMemo(
+    () => latestVisibleChatActivity(messages),
     [messages],
   );
   const selectedThreadResult = useQuery(
@@ -1322,20 +1323,25 @@ export function ChannelWorkspace() {
   }, [channelId]);
 
   useEffect(() => {
-    if (!latestVisibleActivityAt) return;
+    if (!latestVisibleActivity) return;
 
     const markVisibleActivityRead = () => {
       if (document.visibilityState !== 'visible') return;
-      if (latestVisibleActivityAt <= lastMarkedActivityRef.current) return;
+      if (latestVisibleActivity.occurredAt <= lastMarkedActivityRef.current) return;
 
       const previousActivity = lastMarkedActivityRef.current;
-      lastMarkedActivityRef.current = latestVisibleActivityAt;
+      lastMarkedActivityRef.current = latestVisibleActivity.occurredAt;
       lastReadAttemptAtRef.current = Date.now();
-      void markChannelRead({ channelId }).catch(() => {
-        if (lastMarkedActivityRef.current === latestVisibleActivityAt) {
-          lastMarkedActivityRef.current = previousActivity;
-        }
-      });
+      void markChannelRead({
+        channelId,
+        throughMessageId: latestVisibleActivity.messageId as Id<'clubChannelMessages'>,
+      })
+        .then(() => dismissReadChannelWebNotifications(channelId, latestVisibleActivity.occurredAt))
+        .catch(() => {
+          if (lastMarkedActivityRef.current === latestVisibleActivity.occurredAt) {
+            lastMarkedActivityRef.current = previousActivity;
+          }
+        });
     };
     const delay = Math.max(
       0,
@@ -1350,7 +1356,7 @@ export function ChannelWorkspace() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [channelId, latestVisibleActivityAt, markChannelRead]);
+  }, [channelId, latestVisibleActivity, markChannelRead]);
 
   const submitMessage = async ({
     body,

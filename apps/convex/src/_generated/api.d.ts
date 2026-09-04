@@ -79,6 +79,7 @@ import type * as notifications__subscriptionPruning from "../notifications/_subs
 import type * as notifications_delivery from "../notifications/delivery.js";
 import type * as notifications_deliveryPreference from "../notifications/deliveryPreference.js";
 import type * as notifications_inbox from "../notifications/inbox.js";
+import type * as notifications_migrations from "../notifications/migrations.js";
 import type * as notifications_preferences from "../notifications/preferences.js";
 import type * as notifications_push from "../notifications/push.js";
 import type * as notifications_pushExpo from "../notifications/pushExpo.js";
@@ -197,6 +198,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/delivery": typeof notifications_delivery;
   "notifications/deliveryPreference": typeof notifications_deliveryPreference;
   "notifications/inbox": typeof notifications_inbox;
+  "notifications/migrations": typeof notifications_migrations;
   "notifications/preferences": typeof notifications_preferences;
   "notifications/push": typeof notifications_push;
   "notifications/pushExpo": typeof notifications_pushExpo;

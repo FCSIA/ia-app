@@ -150,6 +150,11 @@ export const schema = defineSchema({
 
   notificationDeliveries: defineTable({
     userId: v.id("users"),
+    // Widen-first: channel deliveries written before receipt reconciliation do
+    // not have these fields. Readers treat those legacy rows conservatively
+    // until the notification migration has completed.
+    channelId: v.optional(v.id("clubChannels")),
+    sourceCreatedAt: v.optional(v.number()),
     category: notificationCategoryValidator,
     title: v.string(),
     body: v.string(),
@@ -208,6 +213,14 @@ export const schema = defineSchema({
       "userId",
       "isRead",
       "createdAt",
+    ])
+    // For a production rollout, introduce this index as staged in the widen
+    // release, wait for backfill, then enable the receipt-reconciliation code.
+    .index("by_userId_and_channelId_and_isRead_and_sourceCreatedAt", [
+      "userId",
+      "channelId",
+      "isRead",
+      "sourceCreatedAt",
     ]),
 
   notificationPreferences: defineTable({
@@ -997,8 +1010,15 @@ export const schema = defineSchema({
     respondedAt: v.optional(v.number()),
   })
     .index("by_calendarEntryId", ["calendarEntryId"])
-    .index("by_calendarEntryId_and_recipientId", ["calendarEntryId", "recipientId"])
-    .index("by_recipientId_and_status_and_createdAt", ["recipientId", "status", "createdAt"]),
+    .index("by_calendarEntryId_and_recipientId", [
+      "calendarEntryId",
+      "recipientId",
+    ])
+    .index("by_recipientId_and_status_and_createdAt", [
+      "recipientId",
+      "status",
+      "createdAt",
+    ]),
 
   externalCalendarSubscriptions: defineTable({
     userId: v.id("users"),
@@ -1029,7 +1049,10 @@ export const schema = defineSchema({
   })
     .index("by_subscriptionId_and_externalId", ["subscriptionId", "externalId"])
     .index("by_userId_and_startAt", ["userId", "startAt"])
-    .index("by_subscriptionId_and_lastSeenAt", ["subscriptionId", "lastSeenAt"]),
+    .index("by_subscriptionId_and_lastSeenAt", [
+      "subscriptionId",
+      "lastSeenAt",
+    ]),
 
   flexFridays: defineTable({
     date: v.number(),

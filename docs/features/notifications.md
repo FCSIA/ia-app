@@ -222,6 +222,25 @@ when the recipient has an active subscription and a push-enabled preference.
 Unread count is currently a bounded read suitable for alpha/demo data. Use a
 counter-backed design before production-scale exact counts.
 
+Inbox and chat read state are not yet converged. Opening the notification inbox
+still requires a manual read action, and reading a club channel advances its
+channel receipt without clearing related notification deliveries. The planned
+behavior is:
+
+- acknowledge the inbox automatically only while its loaded view is foregrounded;
+- reconcile message, mention, and thread-delivery rows through the last visible
+  channel message;
+- make delayed notification fanout and push jobs recheck that read boundary so
+  a read message does not alert later; and
+- process bulk acknowledgement in bounded batches with an entry-time cutoff.
+
+Browser and native notification-center cleanup is best effort and follows a
+successful durable acknowledgement. Web can close matching service-worker
+notifications when the payload carries a delivery ID; Expo can dismiss the
+app's presented notifications and clear its launcher badge, although Android
+launcher badge support varies. Native cold-start notification responses also
+need explicit startup handling before tap routing is considered complete.
+
 Browsers may throttle or drop push events, and users can revoke notification
 permission outside the app. Keep in-app deliveries as the durable source of
 truth.

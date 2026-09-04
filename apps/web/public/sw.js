@@ -84,6 +84,10 @@ function notificationOptions(payload) {
     data: {
       url: payload.url || '/notifications',
       category: payload.category,
+      deliveryId: payload.deliveryId,
+      deliveryCreatedAt: payload.deliveryCreatedAt,
+      channelId: payload.channelId,
+      sourceCreatedAt: payload.sourceCreatedAt,
     },
     tag,
     renotify: true,
