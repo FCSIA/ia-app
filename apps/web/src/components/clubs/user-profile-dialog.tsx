@@ -3,6 +3,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { ClubMark } from '@/components/clubs/club-mark';
+import { useClubEntryHref } from '@/components/clubs/use-club-entry-href';
+import { Card, CardGroup } from '@/components/ui/card';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import {
@@ -46,6 +50,7 @@ export function UserProfileDialog({
   onSendFriendRequest,
 }: UserProfileDialogProps) {
   const name = fullName(person);
+  const clubEntryHref = useClubEntryHref();
   const mutualClubs = useQuery(
     api.clubs.detail.getMutualClubs,
     open && !isCurrentUser ? { personId: person._id } : 'skip',
@@ -86,19 +91,21 @@ export function UserProfileDialog({
         </div>
 
         {canOfferFriendRequest && onSendFriendRequest ? (
-          <div className="mt-4 border-t border-border/60 pt-4">
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              className="w-full"
-              leadingIcon={UserPlus}
-              disabled={friendRequestPending}
-              loading={friendRequestPending}
-              onClick={() => onSendFriendRequest(person._id)}
-            >
-              Add friend
-            </Button>
+          <div className="mt-4 flex justify-center border-t border-border/60 pt-4">
+            <Tooltip content="Add friend">
+              <Button
+                type="button"
+                variant="primary"
+                size="icon-sm"
+                aria-label={`Add ${name} as a friend`}
+                disabled={friendRequestPending}
+                loading={friendRequestPending}
+                onClick={() => onSendFriendRequest(person._id)}
+              >
+                <UserPlus />
+                <span className="sr-only">Add friend</span>
+              </Button>
+            </Tooltip>
           </div>
         ) : friendshipStatus === 'REQUEST_SENT' ? (
           <p className="mt-4 border-t border-border/60 pt-4 text-center text-xs text-muted-foreground">Friend request sent</p>
@@ -115,14 +122,20 @@ export function UserProfileDialog({
             <h3 id="mutual-clubs-heading" className="text-xs font-semibold text-foreground">
               Mutual clubs
             </h3>
-            <ul className="mt-2 space-y-1.5">
+            <CardGroup orientation="inline" className="mt-2">
               {mutualClubs.map((club) => (
-                <li key={club._id} className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
-                  <span className="truncate">{club.name}</span>
-                </li>
+                <Card
+                  key={club._id}
+                  href={clubEntryHref(club._id)}
+                  label={`Open ${club.name}`}
+                  onClick={() => onOpenChange(false)}
+                  className="min-h-11 gap-2 rounded-none bg-transparent py-1.5 pl-2 pr-3"
+                >
+                  <ClubMark club={club} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{club.name}</span>
+                </Card>
               ))}
-            </ul>
+            </CardGroup>
           </section>
         ) : null}
       </DialogContent>
