@@ -16,7 +16,6 @@ export type ImportedScheduleRow = {
 
 const PERIOD_WITH_LABEL = /\b(?:period|per\.?|p)\s*#?\s*(\d{1,2})\b/i;
 const LEADING_PERIOD = /^\s*(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:period|[-|])\s*(.*)$/i;
-const LEADING_NUMBER = /^\s*(\d{1,2})\s+([^:]{3,})$/;
 const IGNORED_LINE = /^(?:schedule|calendar|term|quarter|semester|teacher|room|attendance|grades?|today|day|week|agenda|no scheduled course)$/i;
 const DETAIL_LINE = /^(?:teacher|instructor|room|staff|start|end|time)\b/i;
 const WEEKDAY_LINE = /^(?:mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i;
@@ -102,6 +101,26 @@ function bestCourseMatch(candidates: string[], courses: CourseSummary[]) {
   return best;
 }
 
+function cleanLineDetails(value: string) {
+  return value
+    .replace(/\b(?:teacher|instructor|staff|room|start|end):\s*[^,\n]+(?:,\s*[^,\n]+)*/gi, '')
+    .replace(/\b\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?/gi, '')
+    .replace(/\b(?:term\s*\d|quarter\s*\d|sem(?:ester)?\s*\d)\b/gi, '')
+    .replace(/[()[\]{}|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isDetailOrJunk(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.length < 2) return true;
+  if (/^(?:teacher|instructor|room|staff|start|end|time)\b/i.test(trimmed)) return true;
+  if (/^\d{1,2}:\d{2}\s*(?:am|pm)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:am|pm)?)?$/i.test(trimmed)) return true;
+  if (/^(?:mon|tue|wed|thu|fri|sat|sun)(?:sday|day|nesday|rsday)?\b/i.test(trimmed)) return true;
+  if (/^(?:schedule|calendar|term|quarter|semester|attendance|grades?|today|day|week|agenda|no scheduled course)$/i.test(trimmed)) return true;
+  return false;
+}
+
 export function parseInfiniteCampusSchedule(
   text: string,
   courses: CourseSummary[],
@@ -109,43 +128,62 @@ export function parseInfiniteCampusSchedule(
   const lines: string[] = [];
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.replace(/\s+/g, ' ').trim();
-    if (line) lines.push(line);
+    if (line && !isDetailOrJunk(line)) lines.push(line);
   }
   const grouped = new Map<number, string[]>();
   let currentPeriod: number | null = null;
 
+  const LEADING_NUMBER = /^(\d{1,2})\b(?:\s*[-.)|]\s*|\s+)(.*)$/;
+  const STANDALONE_NUMBER = /^(\d{1,2})$/;
+
   for (const line of lines) {
     const labeledMatch = line.match(PERIOD_WITH_LABEL);
     const leadingMatch = line.match(LEADING_PERIOD) ?? line.match(LEADING_NUMBER);
-    const period = Number(labeledMatch?.[1] ?? leadingMatch?.[1] ?? 0);
-    if (period >= 1 && period <= 12) {
-      currentPeriod = period;
-      const remainder = line
-        .replace(PERIOD_WITH_LABEL, '')
-        .replace(LEADING_PERIOD, '$2')
-        .replace(LEADING_NUMBER, '$2')
-        .replace(/^\s*[-:|]+\s*/, '')
-        .trim();
-      const meaningfulRemainder = meaningfulLine(remainder);
-      if (!grouped.has(period)) grouped.set(period, []);
-      if (meaningfulRemainder) grouped.get(period)?.push(meaningfulRemainder);
-      continue;
+    const standaloneMatch = line.match(STANDALONE_NUMBER);
+
+    if (labeledMatch || leadingMatch) {
+      const period = Number(labeledMatch?.[1] ?? leadingMatch?.[1] ?? 0);
+      if (period >= 1 && period <= 12) {
+        currentPeriod = period;
+        const remainderRaw = line
+          .replace(PERIOD_WITH_LABEL, '')
+          .replace(LEADING_PERIOD, '$2')
+          .replace(LEADING_NUMBER, '$2')
+          .replace(/^\s*[-:|]+\s*/, '')
+          .trim();
+        const cleanedRemainder = cleanLineDetails(remainderRaw);
+        const meaningfulRemainder = meaningfulLine(cleanedRemainder);
+        if (!grouped.has(period)) grouped.set(period, []);
+        if (meaningfulRemainder) grouped.get(period)?.push(meaningfulRemainder);
+        continue;
+      }
+    } else if (standaloneMatch) {
+      const period = Number(standaloneMatch[1]);
+      if (period >= 1 && period <= 12) {
+        currentPeriod = period;
+        if (!grouped.has(period)) grouped.set(period, []);
+        continue;
+      }
     }
 
-    const candidate = meaningfulLine(line);
-    if (currentPeriod && candidate) grouped.get(currentPeriod)?.push(candidate);
+    const cleaned = cleanLineDetails(line);
+    const candidate = meaningfulLine(cleaned);
+    if (currentPeriod && candidate) {
+      grouped.get(currentPeriod)?.push(candidate);
+    }
   }
 
   if (grouped.size === 0) {
     const seen = new Set<string>();
     const rows: OcrScheduleRow[] = [];
     for (const line of lines) {
-      const match = bestCourseMatch([line], courses);
+      const cleaned = cleanLineDetails(line);
+      const match = bestCourseMatch([cleaned || line], courses);
       if (!match || match.confidence < 0.72 || seen.has(match.course.id)) continue;
       seen.add(match.course.id);
       rows.push({
         periodNumber: rows.length + 1,
-        sourceText: line,
+        sourceText: cleaned || line,
         className: match.course.title,
         matchedCourse: match.course,
         confidence: match.confidence,
@@ -158,9 +196,10 @@ export function parseInfiniteCampusSchedule(
   const rows: OcrScheduleRow[] = [];
   const groupedEntries = Array.from(grouped.entries()).sort(([left], [right]) => left - right);
   for (const [periodNumber, values] of groupedEntries) {
-    const candidates = values.length ? [...values, values.join(' ')] : [];
+    const filteredValues = values.filter((v) => v.length >= 3);
+    const candidates = filteredValues.length ? [...filteredValues, filteredValues.join(' ')] : [];
     const match = bestCourseMatch(candidates, courses);
-    const fallbackName = values[0] ?? `Period ${periodNumber}`;
+    const fallbackName = filteredValues[0] ?? `Period ${periodNumber}`;
     const matchedCourse = match && match.confidence >= 0.56 ? match.course : null;
     const row = {
       periodNumber,

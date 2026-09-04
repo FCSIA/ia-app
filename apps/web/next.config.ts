@@ -29,7 +29,7 @@ const contentSecurityPolicy = [
   `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' blob: 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' blob: 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');

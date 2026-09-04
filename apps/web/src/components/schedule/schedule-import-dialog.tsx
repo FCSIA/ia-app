@@ -52,6 +52,37 @@ export function ScheduleImportDialog({
     setScanning(false);
   };
 
+async function prepareImageForOcr(file: File): Promise<Blob | File> {
+  if (typeof window === 'undefined') return file;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const padding = 40;
+      canvas.width = img.width + padding * 2;
+      canvas.height = img.height + padding * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, padding, padding);
+      canvas.toBlob((blob) => {
+        resolve(blob ?? file);
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
   const scan = async () => {
     if (!file) return;
     if (file.size > 12 * 1024 * 1024) {
@@ -64,10 +95,11 @@ export function ScheduleImportDialog({
     setError(null);
     setProgress(0);
     try {
+      const preparedImage = await prepareImageForOcr(file);
       const { createWorker, PSM } = await import('tesseract.js');
       const worker = await createWorker('eng', 1, {
         workerPath: '/tesseract/worker.min.js',
-        corePath: '/tesseract/tesseract-core.wasm.js',
+        corePath: '/tesseract',
         langPath: '/tesseract',
         workerBlobURL: false,
         logger: (message) => {
@@ -82,7 +114,7 @@ export function ScheduleImportDialog({
           tessedit_pageseg_mode: PSM.AUTO,
           preserve_interword_spaces: '1',
         });
-        const result = await worker.recognize(file);
+        const result = await worker.recognize(preparedImage);
         const parsed = parseInfiniteCampusSchedule(result.data.text, courses);
         if (!parsed.length) {
           setError('No period and course pairs were found. Try a sharper screenshot of Infinite Campus Term view.');
@@ -95,10 +127,9 @@ export function ScheduleImportDialog({
     } catch (scanError) {
       console.error('OCR scan failed:', scanError);
       setError(
-        'Error details: ' + 
-        (scanError instanceof Error ? scanError.message : '') + 
-        ' | Raw: ' + String(scanError) + 
-        ' | JSON: ' + JSON.stringify(scanError)
+        scanError instanceof Error && scanError.message
+          ? scanError.message
+          : 'Could not scan this image. Please check your image or try another screenshot.'
       );
     } finally {
       setScanning(false);
