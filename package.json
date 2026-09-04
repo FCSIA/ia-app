@@ -25,6 +25,7 @@
     "devlog:preview": "node scripts/devlog.mjs preview",
     "devlog:cut": "node scripts/devlog.mjs cut",
     "fluid:update": "node scripts/update-fluid-components.mjs",
+    "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {

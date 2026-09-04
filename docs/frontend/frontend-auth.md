@@ -57,6 +57,12 @@ await authClient.signIn.username({
 Students and staff do not self-register. Admin workflows create accounts and
 issue/reset passwords.
 
+The desktop visual beside the form rotates through pre-dithered campus photos
+(`apps/web/src/app/login/login-images.ts`). Entries are tagged `day`
+(07:00-19:00 local) or `night`, advance every 8 seconds with a crossfade, and
+pause for reduced motion or hidden tabs. Regenerate artwork after adding a
+photo with `pnpm login:dither`.
+
 ## Current User
 
 Use `useCurrentUser()` for UI gating:
