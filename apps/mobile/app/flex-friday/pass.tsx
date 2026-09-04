@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { Check, CircleDashed, MapPin, School } from "lucide-react-native";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Screen } from "@/components/screen";

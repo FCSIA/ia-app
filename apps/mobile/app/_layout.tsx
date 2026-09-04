@@ -3,6 +3,7 @@ import "../global.css";
 
 import { useEffect } from "react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { ConvexQueryCacheProvider } from "@/components/convex-query-cache-provider";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -78,17 +79,19 @@ export default function Layout() {
       >
         <SafeAreaProvider>
           <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-            <ThemeProvider>
-              <BottomSheetModalProvider>
-                <ToastProvider>
-                  <AppErrorBoundary>
-                    <AppLifecycle />
-                    <PasswordResetGate />
-                    <RootNavigator />
-                  </AppErrorBoundary>
-                </ToastProvider>
-              </BottomSheetModalProvider>
-            </ThemeProvider>
+            <ConvexQueryCacheProvider>
+              <ThemeProvider>
+                <BottomSheetModalProvider>
+                  <ToastProvider>
+                    <AppErrorBoundary>
+                      <AppLifecycle />
+                      <PasswordResetGate />
+                      <RootNavigator />
+                    </AppErrorBoundary>
+                  </ToastProvider>
+                </BottomSheetModalProvider>
+              </ThemeProvider>
+            </ConvexQueryCacheProvider>
           </ConvexBetterAuthProvider>
         </SafeAreaProvider>
       </KeyboardProvider>

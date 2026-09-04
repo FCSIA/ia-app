@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
 import { Redirect } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react-native";
 import { Screen } from "@/components/screen";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { Check, ChevronRight, Plus } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
