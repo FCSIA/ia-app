@@ -33,7 +33,7 @@ export function ImpersonationBanner() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-50 mx-auto flex w-fit max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-100 px-3 py-2 text-sm text-amber-950 shadow-lg dark:bg-amber-950 dark:text-amber-100">
+    <div className="fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] z-50 mx-auto flex w-fit max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-100 px-3 py-2 text-sm text-amber-950 shadow-lg dark:bg-amber-950 dark:text-amber-100 lg:bottom-4">
       <span className="min-w-0">You’re viewing the app as another user.</span>
       <Button
         type="button"
