@@ -1087,7 +1087,7 @@ function ChannelRow({
       className={cn(
         "group/channel gap-1.5 rounded-md px-2 text-[13px]",
         rowClassName,
-        active || channel.hasUnreadMessages
+        channel.hasUnreadMessages
           ? "font-semibold text-foreground"
           : "font-medium text-muted-foreground",
       )}
