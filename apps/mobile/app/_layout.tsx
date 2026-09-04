@@ -51,7 +51,7 @@ function PasswordResetGate() {
   const user = useLiveCurrentUser();
   const router = useRouter();
   const segments = useSegments();
-  const onPasswordPage = segments[0] === "change-password";
+  const onPasswordPage = (segments[0] as string) === "change-password";
 
   useEffect(() => {
     if (!user) return;

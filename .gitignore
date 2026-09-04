@@ -18,7 +18,9 @@ out
 android
 ios
 
-# Environment variables
+# Environment variables & sensitive data
+ia-app-data/
+*.csv
 .env
 *.env
 .env.*
