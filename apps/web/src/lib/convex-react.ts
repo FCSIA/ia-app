@@ -13,19 +13,12 @@
  * frame, while the socket keeps the value fresh in the background.
  *
  * Import `useQuery` from here rather than from `convex/react`; everything else
- * `convex/react` exports is re-exported unchanged.
+ * `convex/react` exports is re-exported unchanged. The provider that owns the
+ * cache lives in `@/components/layout/convex-query-cache-provider`.
  */
 
+import { createContext, useContext, useEffect, useMemo } from 'react';
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
-import {
-  useConvex,
   useQuery as useConvexQuery,
   type ConvexReactClient,
   type OptionalRestArgsOrSkip,
@@ -36,9 +29,9 @@ import { convexToJson, type Value } from 'convex/values';
 export * from 'convex/react';
 
 /** How long an unused subscription is held before it is dropped. */
-const DEFAULT_IDLE_MS = 5 * 60 * 1000;
+export const DEFAULT_IDLE_MS = 5 * 60 * 1000;
 /** Upper bound on idle subscriptions, so long sessions cannot grow unbounded. */
-const DEFAULT_MAX_IDLE = 40;
+export const DEFAULT_MAX_IDLE = 40;
 
 type AnyQuery = FunctionReference<'query'>;
 type QueryArgs = Record<string, Value>;
@@ -61,7 +54,7 @@ export function keepAliveKey(query: AnyQuery, args: QueryArgs = {}): string {
   return `${getFunctionName(query)}|${JSON.stringify(convexToJson(args))}`;
 }
 
-class QueryKeepAlive {
+class KeepAliveCache {
   private readonly entries = new Map<string, CacheEntry>();
 
   constructor(
@@ -99,6 +92,25 @@ class QueryKeepAlive {
     };
   }
 
+  /**
+   * Start a query now and let it go idle immediately, so it lives for one idle
+   * window and then unsubscribes itself.
+   *
+   * This is the bounded form used for navigation intent: pointing at a tab pays
+   * for that tab's data for a few minutes, rather than every session holding
+   * every tab's subscription open for as long as it is signed in.
+   */
+  prewarm(entries: readonly KeepAliveEntry[]) {
+    for (const entry of entries) {
+      const release = this.retain(
+        keepAliveKey(entry.query, entry.args),
+        entry.query,
+        entry.args ?? {},
+      );
+      release();
+    }
+  }
+
   private release(key: string) {
     const entry = this.entries.get(key);
     if (!entry) return;
@@ -128,7 +140,14 @@ class QueryKeepAlive {
     entry.unsubscribe();
   }
 
-  dispose() {
+  /**
+   * Drop every subscription, held ones included.
+   *
+   * Called when the cache is torn down and when authentication ends: nothing
+   * cached under one identity may outlive it, and the protected tree that held
+   * those queries has unmounted by then anyway.
+   */
+  clear() {
     for (const entry of this.entries.values()) {
       if (entry.timer) clearTimeout(entry.timer);
       entry.unsubscribe();
@@ -137,23 +156,24 @@ class QueryKeepAlive {
   }
 }
 
-const KeepAliveContext = createContext<QueryKeepAlive | null>(null);
+/** The cache instance type; construct one with `createQueryKeepAlive`. */
+export type QueryKeepAlive = KeepAliveCache;
+
+export function createQueryKeepAlive(
+  client: ConvexReactClient,
+  idleMs = DEFAULT_IDLE_MS,
+  maxIdle = DEFAULT_MAX_IDLE,
+): QueryKeepAlive {
+  return new KeepAliveCache(client, idleMs, maxIdle);
+}
+
+export const QueryKeepAliveContext = createContext<QueryKeepAlive | null>(null);
 
 const NO_ENTRIES: readonly KeepAliveEntry[] = [];
 
-export function ConvexQueryCacheProvider({
-  children,
-  idleMs = DEFAULT_IDLE_MS,
-  maxIdleQueries = DEFAULT_MAX_IDLE,
-}: {
-  children: ReactNode;
-  idleMs?: number;
-  maxIdleQueries?: number;
-}) {
-  const client = useConvex();
-  const [cache] = useState(() => new QueryKeepAlive(client, idleMs, maxIdleQueries));
-  useEffect(() => () => cache.dispose(), [cache]);
-  return <KeepAliveContext.Provider value={cache}>{children}</KeepAliveContext.Provider>;
+/** The session's keep-alive cache, or null outside the provider. */
+export function useQueryKeepAlive() {
+  return useContext(QueryKeepAliveContext);
 }
 
 /**
@@ -163,22 +183,26 @@ export function ConvexQueryCacheProvider({
  * released, so a role-dependent list does not churn the socket.
  */
 export function useKeepAliveQueries(entries: readonly KeepAliveEntry[]) {
-  const cache = useContext(KeepAliveContext);
-  const latest = useRef(entries);
-  latest.current = entries;
+  const cache = useQueryKeepAlive();
 
   const signature = entries
     .map((entry) => keepAliveKey(entry.query, entry.args))
     .join('\n');
 
+  // Entries that serialize to the same signature are interchangeable, so the
+  // effect can hold one array for as long as the signature holds. Memoizing is
+  // what lets the effect read a committed value instead of a ref written during
+  // render, which concurrent React may discard.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stable = useMemo(() => entries, [signature]);
+
   useEffect(() => {
     if (!cache) return;
-    const releases = latest.current.map((entry) =>
+    const releases = stable.map((entry) =>
       cache.retain(keepAliveKey(entry.query, entry.args), entry.query, entry.args ?? {}),
     );
     return () => releases.forEach((release) => release());
-    // `signature` stands in for the entry list: equal keys mean equal subscriptions.
-  }, [cache, signature]);
+  }, [cache, stable]);
 }
 
 /**

@@ -13,7 +13,7 @@ const migrations = new Migrations<DataModel>(components.migrations);
  * the numbers are correct either way — this backfill is what lets an admin open
  * the clubs tab without reading the whole membership table.
  *
- *   npx convex run clubs/migrations:backfillClubCounts
+ *   direnv exec . pnpm --filter cvx exec convex run clubs/migrations:backfillClubCounts
  */
 export const backfillClubCounts = migrations.define({
   table: "clubs",

@@ -92,14 +92,24 @@ each tab used to open on a skeleton even when nothing had changed. Holding the
 subscription means a returning route reads the value out of the client store on
 its first frame while the socket keeps it fresh.
 
-`ConvexWarmup`, mounted once inside the authenticated boundary, does the same
-thing up front for the small, argument-stable queries the main tabs need, so a
-tab is warm even on its first visit. That list lives in
-`apps/web/src/components/layout/convex-warmup.tsx`. Keep it short: anything
-expensive, paginated, or keyed by a value the user picks belongs to the route
-that needs it, where the keep-alive cache already covers repeat visits. When a
-warmed query takes arguments the page also computes, derive both from one
-helper — different arguments are different subscriptions, and the tab would open
+`ConvexQueryCacheProvider` owns that cache. It sits above the authenticated
+boundary so the cache survives route changes, and clears itself when
+authentication ends — nothing read as one person may outlive that identity.
+
+A tab's *first* visit is warmed by intent rather than up front:
+`apps/web/src/lib/route-prewarm.ts` maps a route to the queries it mounts with,
+and the navigation links start them on `pointerenter` and `focus`. Those
+subscriptions go idle immediately, so they expire on their own after one idle
+window.
+
+Resist the temptation to warm these queries for the whole session instead. A
+session-long subscription to a shared list means every write to it re-runs the
+query for every signed-in device, including the ones that never open that tab —
+the cost scales with how many people are logged in rather than with who is
+actually looking. Intent keeps it proportional.
+
+When a prewarmed query takes arguments the route also computes, derive both from
+one helper. Different arguments are a different subscription, and the tab opens
 cold again.
 
 ## Client Components

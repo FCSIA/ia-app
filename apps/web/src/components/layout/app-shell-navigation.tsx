@@ -31,6 +31,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNavIntent, usePrewarmRoute } from "@/lib/route-prewarm";
 
 export type MobileTabId =
   | "announcements"
@@ -108,12 +109,14 @@ function NavIcon({
   badge?: ReactNode;
 }) {
   const { icon: Icon, label, href } = item;
+  const intent = useNavIntent(href);
 
   return (
     <Tooltip side="right" sideOffset={10} content={label}>
       <Link
         href={href}
         prefetch={true}
+        {...intent}
         aria-label={label}
         className={cn(
           "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
@@ -146,11 +149,13 @@ function MobileNavLink({
   badge?: ReactNode;
 }) {
   const { icon: Icon, label, href } = item;
+  const intent = useNavIntent(href);
 
   return (
     <Link
       href={href}
       prefetch={true}
+      {...intent}
       className={cn(
         "flex min-h-12 touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-[background-color,color,transform] active:scale-[0.985]",
         active
@@ -338,6 +343,7 @@ function AppShellMobileTabBar({
 }: AppShellNavigationProps & { onOpenMenu: () => void }) {
   const reduceMotion = useReducedMotion();
   const { getHref } = useMobileTabMemory();
+  const prewarm = usePrewarmRoute();
   const items = getMobileTabItems(props);
   const directItems = items.filter((item) => item.href !== "#more");
   const moreActive = !directItems.some((item) => isActive(props.pathname, item.href));
@@ -404,6 +410,8 @@ function AppShellMobileTabBar({
             key={item.href}
             href={href}
             prefetch
+            onPointerEnter={() => prewarm(href)}
+            onFocus={() => prewarm(href)}
             className={className}
             aria-label={item.label}
             title={item.label}
