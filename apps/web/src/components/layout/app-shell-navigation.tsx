@@ -1,10 +1,22 @@
-import type { ReactNode, Ref } from "react";
+"use client";
+
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+  type ReactNode,
+  type Ref,
+} from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Bell,
   CalendarRange,
   ClipboardList,
+  Ellipsis,
   Home,
   MessageSquareText,
   Menu,
@@ -31,6 +43,13 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  DropdownContent,
+  DropdownLabel,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@/components/ui/dropdown";
+import { MenuItem } from "@/components/ui/menu-item";
 
 export type MobileTabId =
   | "announcements"
@@ -80,6 +99,85 @@ type AppShellNavigationProps = {
   showWrapped: boolean;
   mobileTabLayout?: string[];
 };
+
+const NAV_ICON_SIZE = 44;
+const NAV_ICON_GAP = 6;
+const COMPACT_RAIL_HEIGHT = 208;
+const NORMAL_RAIL_FIXED_HEIGHT = 156;
+const COMPACT_RAIL_FIXED_HEIGHT = 68;
+
+/**
+ * Returns the number of non-profile destinations that can remain in the
+ * desktop rail. Browser zoom changes the rail's CSS-pixel height, so this
+ * intentionally measures available height instead of relying on viewport
+ * breakpoint guesses.
+ */
+export function getDesktopNavigationCapacity({
+  railHeight,
+  itemCount,
+}: {
+  railHeight: number;
+  itemCount: number;
+}) {
+  if (!Number.isFinite(railHeight) || railHeight <= 0 || itemCount <= 0) {
+    return 0;
+  }
+
+  const fixedHeight =
+    railHeight <= COMPACT_RAIL_HEIGHT
+      ? COMPACT_RAIL_FIXED_HEIGHT
+      : NORMAL_RAIL_FIXED_HEIGHT;
+  const slotHeight = NAV_ICON_SIZE + NAV_ICON_GAP;
+  const capacity = Math.floor(
+    (railHeight - fixedHeight + NAV_ICON_GAP) / slotHeight,
+  );
+
+  return Math.max(0, Math.min(itemCount, capacity));
+}
+
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+function useDesktopNavigationCapacity(
+  railRef: RefObject<HTMLElement | null>,
+  itemCount: number,
+) {
+  const [capacity, setCapacity] = useState(itemCount);
+
+  useIsomorphicLayoutEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const syncCapacity = () => {
+      setCapacity(
+        desktopQuery.matches
+          ? getDesktopNavigationCapacity({
+              railHeight: rail.clientHeight,
+              itemCount,
+            })
+          : itemCount,
+      );
+    };
+
+    syncCapacity();
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncCapacity);
+    resizeObserver?.observe(rail);
+    desktopQuery.addEventListener("change", syncCapacity);
+    window.addEventListener("resize", syncCapacity);
+
+    return () => {
+      resizeObserver?.disconnect();
+      desktopQuery.removeEventListener("change", syncCapacity);
+      window.removeEventListener("resize", syncCapacity);
+    };
+  }, [itemCount, railRef]);
+
+  return capacity;
+}
 
 function getNavigationItems({
   showSchedule,
@@ -171,16 +269,42 @@ function MobileNavLink({
 
 function AppShellDesktopNavigation(props: AppShellNavigationProps) {
   const primary = getNavigationItems(props);
+  const router = useRouter();
+  const railRef = useRef<HTMLElement>(null);
+  const profile = accountNav.find((item) => item.href === "/profile")!;
+  const overflowCandidates = [
+    ...primary,
+    ...accountNav.filter((item) => item.href !== profile.href),
+    ...(props.showAdmin ? adminNav : []),
+  ];
+  const capacity = useDesktopNavigationCapacity(
+    railRef,
+    overflowCandidates.length,
+  );
+  const hasOverflow = capacity < overflowCandidates.length;
+  // The ellipsis occupies one of the available control slots when anything
+  // moves into it, so reserve that slot before choosing direct destinations.
+  const directItems = hasOverflow
+    ? overflowCandidates.slice(0, Math.max(0, capacity - 1))
+    : overflowCandidates;
+  const overflowItems = overflowCandidates.slice(directItems.length);
+  const overflowActive = overflowItems.some((item) =>
+    isActive(props.pathname, item.href),
+  );
 
   return (
     <aside
-      className="sticky top-0 z-40 hidden h-screen w-[72px] shrink-0 flex-col items-center bg-sidebar py-6 text-sidebar-foreground lg:flex"
+      ref={railRef}
+      className="sticky top-0 z-40 hidden h-[100dvh] w-[72px] shrink-0 flex-col items-center overflow-hidden bg-sidebar py-3 text-sidebar-foreground lg:flex [@media(max-height:13rem)]:py-2"
       aria-label="Primary navigation"
     >
-      <AppLogo className="size-11" />
+      <AppLogo className="size-11 [@media(max-height:13rem)]:hidden" />
 
-      <div className="mt-4 flex min-h-0 flex-1 flex-col items-center gap-1.5 px-0">
-        {primary.map((item) => (
+      <nav
+        className="mt-3 flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-hidden px-0 [@media(max-height:13rem)]:mt-0"
+        aria-label="Primary navigation destinations"
+      >
+        {directItems.map((item) => (
           <NavIcon
             key={item.href}
             item={item}
@@ -190,30 +314,81 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
             }
           />
         ))}
-      </div>
+      </nav>
 
-      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-3">
-        {accountNav.map((item) => (
-          <NavIcon
-            key={item.href}
-            item={item}
-            active={isActive(props.pathname, item.href)}
-            badge={
-              item.href === "/notifications" ? props.unreadBadge : undefined
-            }
+      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-2">
+        {hasOverflow ? (
+          <DesktopNavigationOverflow
+            items={overflowItems}
+            active={overflowActive}
+            pathname={props.pathname}
+            unreadBadge={props.unreadBadge}
+            onNavigate={(href) => router.push(href)}
           />
-        ))}
-        {props.showAdmin
-          ? adminNav.map((item) => (
-              <NavIcon
-                key={item.href}
-                item={item}
-                active={isActive(props.pathname, item.href)}
-              />
-            ))
-          : null}
+        ) : null}
+        <NavIcon item={profile} active={isActive(props.pathname, profile.href)} />
       </div>
     </aside>
+  );
+}
+
+function DesktopNavigationOverflow({
+  items,
+  active,
+  pathname,
+  unreadBadge,
+  onNavigate,
+}: {
+  items: NavItem[];
+  active: boolean;
+  pathname: string;
+  unreadBadge?: string;
+  onNavigate: (href: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <Tooltip side="right" sideOffset={10} content="More navigation">
+        <DropdownTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Open more navigation"
+              className={cn(
+                "group relative flex size-11 shrink-0 items-center justify-center rounded-full outline-none transition-[background-color,color,box-shadow] duration-150 focus-visible:ring-1 focus-visible:ring-[#6B97FF]",
+                active
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <Ellipsis
+                className="size-5 transition-[stroke-width] duration-100 group-hover:stroke-[2.25]"
+                strokeWidth={active ? 2.25 : 1.75}
+              />
+              {unreadBadge && items.some((item) => item.href === "/notifications") ? (
+                <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                  {unreadBadge}
+                </span>
+              ) : null}
+            </button>
+          }
+        />
+      </Tooltip>
+      <DropdownContent side="right" align="end" className="w-56">
+        <DropdownLabel>More navigation</DropdownLabel>
+        {items.map((item, index) => (
+          <MenuItem
+            key={item.href}
+            index={index}
+            icon={item.icon}
+            label={item.label}
+            onSelect={() => onNavigate(item.href)}
+            className={cn(
+              isActive(pathname, item.href) && "bg-active",
+            )}
+          />
+        ))}
+      </DropdownContent>
+    </DropdownMenu>
   );
 }
 
