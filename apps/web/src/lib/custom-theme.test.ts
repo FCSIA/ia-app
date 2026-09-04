@@ -15,8 +15,8 @@ describe('custom theme contrast validation', () => {
     const colors = { background: '#ffffff', foreground: '#eeeeee' } as const;
 
     expect(validateCustomColors(colors)).toMatchObject({
-      background: expect.stringContaining('4.5:1'),
-      foreground: expect.stringContaining('4.5:1'),
+      background: expect.stringContaining('3:1'),
+      foreground: expect.stringContaining('3:1'),
     });
     expect(buildCustomThemeRule(colors)).toBeNull();
   });
