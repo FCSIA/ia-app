@@ -19,6 +19,7 @@ import { MenuItem } from "@/components/ui/menu-item";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
+import { cn } from "@/lib/utils";
 
 export type ChannelSearchControl = {
   channelName: string;
@@ -30,6 +31,7 @@ export type SearchScope = "everything" | "channel";
 
 type AppShellHeaderProps = {
   headerSlot?: ReactNode;
+  className?: string;
   channelSearch?: ChannelSearchControl;
   searchScope: SearchScope;
   commandHint: boolean;
@@ -139,6 +141,7 @@ function GlobalSearch({
 
 function AppShellHeader({
   headerSlot,
+  className,
   channelSearch,
   searchScope,
   commandHint,
@@ -149,7 +152,13 @@ function AppShellHeader({
   onLogout,
 }: AppShellHeaderProps) {
   return (
-    <header className={`app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6 lg:px-8 ${CARD_SURFACE_FOREGROUND}`}>
+    <header
+      className={cn(
+        "app-main-header sticky top-0 z-20 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center gap-3 border-b bg-card/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:px-6 lg:px-8",
+        CARD_SURFACE_FOREGROUND,
+        className,
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {headerSlot ?? <div className="min-w-0 flex-1" />}
       </div>

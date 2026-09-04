@@ -164,6 +164,7 @@ type ClubWorkspaceProps = {
   contentClassName?: string;
   scrollOwner?: "workspace" | "content";
   channelSearch?: ChannelSearchControl;
+  hideMobileHeader?: boolean;
 };
 
 export function ClubWorkspace({
@@ -177,6 +178,7 @@ export function ClubWorkspace({
   contentClassName,
   scrollOwner = "workspace",
   channelSearch,
+  hideMobileHeader = false,
 }: ClubWorkspaceProps) {
   const pathname = usePathname() ?? "";
   const clubId = useClubId();
@@ -451,6 +453,7 @@ export function ClubWorkspace({
     return (
       <AppShell
         headerSlot={headerSlot}
+        headerClassName={hideMobileHeader ? "hidden md:flex" : undefined}
         mainClassName={FLUSH_MAIN_CLASS}
         pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
         viewportMode="visual"
@@ -487,6 +490,7 @@ export function ClubWorkspace({
   return (
     <AppShell
       headerSlot={headerSlot}
+      headerClassName={hideMobileHeader ? "hidden md:flex" : undefined}
       mainClassName={FLUSH_MAIN_CLASS}
       pageTransitionClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       channelSearch={channelSearch}
@@ -504,7 +508,10 @@ export function ClubWorkspace({
           aria-hidden={!mobileNavigationOpen}
           inert={!mobileNavigationOpen}
           className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] top-[calc(4rem+env(safe-area-inset-top))] z-30 bg-card md:hidden",
+            "fixed inset-x-0 bottom-[calc(3.5rem+max(1rem,env(safe-area-inset-bottom)))] z-30 bg-card md:hidden",
+            hideMobileHeader
+              ? "top-[env(safe-area-inset-top)]"
+              : "top-[calc(4rem+env(safe-area-inset-top))]",
             CARD_SURFACE_FOREGROUND,
             mobileNavigationOpen ? "pointer-events-auto" : "pointer-events-none",
           )}

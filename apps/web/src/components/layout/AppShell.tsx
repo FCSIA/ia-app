@@ -40,6 +40,7 @@ export function AppShell({
   headerSlot,
   mainClassName,
   pageTransitionClassName,
+  headerClassName,
   channelSearch,
   onMobileSwipeRight,
   mobileNavigationSwipeOptions,
@@ -49,6 +50,7 @@ export function AppShell({
   headerSlot?: ReactNode;
   mainClassName?: string;
   pageTransitionClassName?: string;
+  headerClassName?: string;
   channelSearch?: ChannelSearchControl;
   onMobileSwipeRight?: () => void;
   mobileNavigationSwipeOptions?: MobileNavigationSwipeOptions;
@@ -198,6 +200,7 @@ export function AppShell({
         >
           <AppShellHeader
             headerSlot={headerSlot}
+            className={headerClassName}
             channelSearch={channelSearch}
             searchScope={searchScope}
             commandHint={commandHint}

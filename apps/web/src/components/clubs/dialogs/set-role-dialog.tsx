@@ -145,7 +145,7 @@ function SetRoleDialogContent({ person }: { person: ClubDirectoryEntry }) {
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="pointer-events-auto size-7"
+                    className="pointer-events-auto size-7 any-pointer-coarse:size-11"
                     aria-label={`Rename ${role.name}`}
                     onClick={() => openEditor({ mode: 'rename', roleId: role._id, name: role.name })}
                   >
