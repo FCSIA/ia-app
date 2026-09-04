@@ -745,6 +745,7 @@ export default function ClubPeoplePage() {
   );
   const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
 
   const [filter, setFilter] = useState(() =>
     searchParams?.get("tab") === "requests" ? "requests" : "all",
@@ -761,6 +762,7 @@ export default function ClubPeoplePage() {
     api.clubs.invitations.respondToJoinRequest,
   );
   const initializeRoles = useMutation(api.clubs.management.initializeRoles);
+  const sendFriendRequest = useMutation(api.schedule.friends.sendRequest);
 
   const canAssignRoles = !!club?.viewer.permissions.assignRoles;
   const canManageStructure = !!club?.viewer.permissions.manageClubStructure;
@@ -1009,6 +1011,25 @@ export default function ClubPeoplePage() {
     }
   }
 
+  async function handleSendFriendRequest(friendId: string) {
+    if (friendRequestPendingId) return;
+    setFriendRequestPendingId(friendId);
+    try {
+      await sendFriendRequest({ friendId: friendId as Id<"users"> });
+      toast({ title: "Friend request sent" });
+    } catch (error) {
+      toast({
+        title:
+          error instanceof Error
+            ? error.message
+            : "Failed to send friend request",
+        variant: "destructive",
+      });
+    } finally {
+      setFriendRequestPendingId(null);
+    }
+  }
+
   const title = (
     <div className="min-w-0">
       <h1 className="truncate text-base font-semibold text-foreground">
@@ -1136,6 +1157,12 @@ export default function ClubPeoplePage() {
                               friendshipStatusByUserId.get(person._id) ===
                               "FRIENDS"
                             }
+                            canSendFriendRequest={
+                              friendshipStatusByUserId.get(person._id) === "NONE"
+                            }
+                            friendshipStatus={friendshipStatusByUserId.get(person._id)}
+                            friendRequestPending={friendRequestPendingId === person._id}
+                            onSendFriendRequest={handleSendFriendRequest}
                             canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                             canManageUnits={canManageStructure && person.kind === "MEMBER"}
                             canRemove={canRemoveMembers && person.kind === "MEMBER"}
@@ -1257,6 +1284,12 @@ export default function ClubPeoplePage() {
                       isFriend={
                         friendshipStatusByUserId.get(person._id) === "FRIENDS"
                       }
+                      canSendFriendRequest={
+                        friendshipStatusByUserId.get(person._id) === "NONE"
+                      }
+                      friendshipStatus={friendshipStatusByUserId.get(person._id)}
+                      friendRequestPending={friendRequestPendingId === person._id}
+                      onSendFriendRequest={handleSendFriendRequest}
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                       canManageUnits={
                         canManageStructure && person.kind === "MEMBER"
@@ -1358,6 +1391,10 @@ function PersonRow({
   canManageUnits,
   canRemove,
   canImpersonate,
+  canSendFriendRequest,
+  friendshipStatus,
+  friendRequestPending,
+  onSendFriendRequest,
   onRemove,
 }: {
   person: ClubDirectoryEntry;
@@ -1367,6 +1404,10 @@ function PersonRow({
   canManageUnits: boolean;
   canRemove: boolean;
   canImpersonate: boolean;
+  canSendFriendRequest: boolean;
+  friendshipStatus?: "NONE" | "REQUEST_SENT" | "REQUEST_RECEIVED" | "FRIENDS";
+  friendRequestPending: boolean;
+  onSendFriendRequest: (userId: string) => void;
   onRemove: (person: ClubDirectoryEntry) => void;
 }) {
   const showManage =
@@ -1486,6 +1527,10 @@ function PersonRow({
         unitNames={person.unitNames}
         kind={person.kind}
         isCurrentUser={isCurrentUser}
+        canSendFriendRequest={canSendFriendRequest}
+        friendshipStatus={friendshipStatus}
+        friendRequestPending={friendRequestPending}
+        onSendFriendRequest={onSendFriendRequest}
       />
     </>
   );

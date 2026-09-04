@@ -144,6 +144,15 @@ const workspaceActivityValidator = v.union(
   v.null(),
 );
 
+const mutualClubValidator = v.object({
+  _id: v.id("clubs"),
+  name: v.string(),
+  logoUrl: v.union(v.string(), v.null()),
+});
+
+const MAX_MUTUAL_CLUBS = 12;
+const MAX_CLUB_AFFILIATIONS = 100;
+
 export const get = query({
   args: { clubId: v.id("clubs") },
   returns: clubDetailValidator,
@@ -528,6 +537,61 @@ export const getWorkspaceNavigation = query({
       })),
       myClubs,
     };
+  },
+});
+
+/** Active clubs both the viewer and this person belong to or sponsor. */
+export const getMutualClubs = query({
+  args: { personId: v.id("users") },
+  returns: v.array(mutualClubValidator),
+  handler: async (ctx, args) => {
+    const viewer = await getCurrentAppUser(ctx);
+    if (args.personId === viewer._id) return [];
+
+    const [person, viewerMemberships, personMemberships, viewerSponsorships, personSponsorships] =
+      await Promise.all([
+        ctx.db.get(args.personId),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", viewer._id))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubMembers")
+          .withIndex("by_userId_and_joinedAt", (q) => q.eq("userId", args.personId))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubSponsors")
+          .withIndex("by_userId_and_clubId", (q) => q.eq("userId", viewer._id))
+          .take(MAX_CLUB_AFFILIATIONS),
+        ctx.db
+          .query("clubSponsors")
+          .withIndex("by_userId_and_clubId", (q) => q.eq("userId", args.personId))
+          .take(MAX_CLUB_AFFILIATIONS),
+      ]);
+    if (!person?.isActive) return [];
+
+    const viewerClubIds = new Set([
+      ...viewerMemberships.map((membership) => membership.clubId),
+      ...viewerSponsorships.map((sponsorship) => sponsorship.clubId),
+    ]);
+    const mutualClubIds = Array.from(
+      new Set([
+        ...personMemberships.map((membership) => membership.clubId),
+        ...personSponsorships.map((sponsorship) => sponsorship.clubId),
+      ]),
+    )
+      .filter((clubId) => viewerClubIds.has(clubId))
+      .slice(0, MAX_MUTUAL_CLUBS);
+
+    const clubs = await Promise.all(mutualClubIds.map((clubId) => ctx.db.get(clubId)));
+    return clubs
+      .filter((club): club is NonNullable<typeof club> => Boolean(club?.isActive))
+      .map((club) => ({
+        _id: club._id,
+        name: club.name,
+        logoUrl: club.logoUrl ?? null,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
   },
 });
 

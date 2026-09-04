@@ -3,6 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { useQuery } from 'convex/react';
+import { api } from '~/apps/convex/src/_generated/api';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +46,10 @@ export function UserProfileDialog({
   onSendFriendRequest,
 }: UserProfileDialogProps) {
   const name = fullName(person);
+  const mutualClubs = useQuery(
+    api.clubs.detail.getMutualClubs,
+    open && !isCurrentUser ? { personId: person._id } : 'skip',
+  );
   const isStudent = person.roles?.some((r) => ['STUDENT', 'STUDENT_LEADER', 'STUDENT_ADMIN'].includes(r));
   const canOfferFriendRequest =
     canSendFriendRequest && !isCurrentUser && isStudent && friendshipStatus === 'NONE';
@@ -102,6 +108,22 @@ export function UserProfileDialog({
           <p className="mt-4 border-t border-border/60 pt-4 text-center text-xs text-amber-700 dark:text-amber-300">
             They sent you a friend request
           </p>
+        ) : null}
+
+        {mutualClubs && mutualClubs.length > 0 ? (
+          <section className="mt-4 border-t border-border/60 pt-4" aria-labelledby="mutual-clubs-heading">
+            <h3 id="mutual-clubs-heading" className="text-xs font-semibold text-foreground">
+              Mutual clubs
+            </h3>
+            <ul className="mt-2 space-y-1.5">
+              {mutualClubs.map((club) => (
+                <li key={club._id} className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                  <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span className="truncate">{club.name}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
       </DialogContent>
     </Dialog>
