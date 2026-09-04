@@ -413,7 +413,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden">
+            <aside className={cn("h-full min-h-0 overflow-hidden border-l border-border/50 bg-surface-2 shadow-surface-1", CARD_SURFACE_FOREGROUND)}>
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -438,7 +438,7 @@ export function ClubWorkspace({
             </ScrollArea>
           )}
           {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
+            <aside className={cn("hidden w-80 shrink-0 overflow-hidden border-l border-border/50 bg-surface-2 shadow-surface-1 xl:block", CARD_SURFACE_FOREGROUND)}>
               {rightPane}
             </aside>
           ) : null}
@@ -578,7 +578,7 @@ export function ClubWorkspace({
               maxSize="32%"
               style={{ overflow: "hidden" }}
             >
-              <aside className="h-full min-h-0 bg-muted/45">
+              <aside className={cn("h-full min-h-0 border-r border-border/50 bg-surface-2 shadow-surface-1", CARD_SURFACE_FOREGROUND)}>
                 {desktopNavigation}
               </aside>
             </ResizablePanel>
@@ -594,7 +594,7 @@ export function ClubWorkspace({
           </ResizablePanelGroup>
         ) : (
           <>
-            <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
+            <aside className={cn("hidden w-60 shrink-0 border-r border-border/50 bg-surface-2 shadow-surface-1 md:block", CARD_SURFACE_FOREGROUND)}>
               {desktopNavigation}
             </aside>
             {workspaceContent}
@@ -682,7 +682,7 @@ function ClubRail({
   return (
     <nav
       aria-label="Your clubs"
-      className="flex w-16 shrink-0 flex-col items-center border-r border-border/70 bg-muted/45 py-2"
+      className={cn("flex w-16 shrink-0 flex-col items-center border-r border-border/70 bg-surface-2 py-2", CARD_SURFACE_FOREGROUND)}
     >
       <ScrollArea className="min-h-0 w-full flex-1">
         <div className="flex flex-col items-center gap-2 px-2">

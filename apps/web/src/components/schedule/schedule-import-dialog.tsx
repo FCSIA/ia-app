@@ -66,6 +66,10 @@ export function ScheduleImportDialog({
     try {
       const { createWorker, PSM } = await import('tesseract.js');
       const worker = await createWorker('eng', 1, {
+        workerPath: '/tesseract/worker.min.js',
+        corePath: '/tesseract/tesseract-core.wasm.js',
+        langPath: '/tesseract',
+        workerBlobURL: false,
         logger: (message) => {
           setStatus(message.status.replace(/_/g, ' '));
           if (typeof message.progress === 'number') {
@@ -89,7 +93,13 @@ export function ScheduleImportDialog({
         await worker.terminate();
       }
     } catch (scanError) {
-      setError(scanError instanceof Error ? scanError.message : 'Could not scan this image.');
+      console.error('OCR scan failed:', scanError);
+      setError(
+        'Error details: ' + 
+        (scanError instanceof Error ? scanError.message : '') + 
+        ' | Raw: ' + String(scanError) + 
+        ' | JSON: ' + JSON.stringify(scanError)
+      );
     } finally {
       setScanning(false);
     }

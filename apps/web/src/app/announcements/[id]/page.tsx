@@ -227,7 +227,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card>
+        <Card className={`bg-surface-2 border border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
           <CardHeader className="gap-5 bg-muted/20 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (

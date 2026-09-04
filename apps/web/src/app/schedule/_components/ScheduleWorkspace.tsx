@@ -12,6 +12,7 @@ import { PageFrame } from "@/components/layout/page-frame";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { TabItem, TabPanel, Tabs, TabsList } from "@/components/ui/tabs";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { FriendSchedulesPanel } from "./FriendSchedulesPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
@@ -49,7 +50,7 @@ export function ScheduleWorkspace() {
       <PageFrame className="gap-5">
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
           {canEditOwnSchedule ? (
-            <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
+            <header className={`flex flex-col gap-4 rounded-2xl bg-surface-2 p-4 shadow-surface-1 border border-border/50 ${CARD_SURFACE_FOREGROUND}`}>
               <ScheduleStatusBar />
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

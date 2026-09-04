@@ -8,7 +8,7 @@ function origin(value: string | undefined) {
 const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
 const websocketUrl = convexUrl?.replace(/^http/, 'ws');
-const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl, 'https://cdn.jsdelivr.net', 'https://unpkg.com', 'https://tessdata.projectnaptha.com'].filter(Boolean).join(' ');
 const imageSources = [
   "'self'",
   'data:',
@@ -29,8 +29,8 @@ const contentSecurityPolicy = [
   `img-src ${imageSources}`,
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
-  "worker-src 'self' blob:",
+  `script-src 'self' blob: 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  "worker-src 'self' blob: https://cdn.jsdelivr.net https://unpkg.com",
   ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
 

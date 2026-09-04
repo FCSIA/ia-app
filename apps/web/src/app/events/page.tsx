@@ -20,12 +20,14 @@ import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { filterBySearchQuery } from '@/lib/search';
 
 
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
   const isAdmin = hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const isAuthor = event.authorId === user?.id || event.authorId === user?._id;
 
   return (
-    <Card className="hover:-translate-y-0.5 transition-all duration-200">
+    <Card className={`bg-surface-2 border border-border/50 shadow-surface-1 hover:-translate-y-0.5 transition-all duration-200 ${CARD_SURFACE_FOREGROUND}`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -214,28 +216,30 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Events</h1>
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className={`rounded-2xl bg-surface-2 p-5 shadow-surface-1 border border-border/50 space-y-4 ${CARD_SURFACE_FOREGROUND}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Events</h1>
+            </div>
+            {canCreate && (
+              <Button onClick={() => setShowNew(true)} leadingIcon={Plus}>
+                New Event
+              </Button>
+            )}
           </div>
-          {canCreate && (
-            <Button onClick={() => setShowNew(true)} leadingIcon={Plus}>
-              New Event
-            </Button>
-          )}
-        </div>
 
-        <div className="mb-6">
-          <SearchInput
-            value={search}
-            onValueChange={setSearch}
-            placeholder="Search events by title, location, or club..."
-          />
+          <div>
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              placeholder="Search events by title, location, or club..."
+            />
+          </div>
         </div>
 
         {showNew && canCreate && (
-          <Card className="mb-6">
+          <Card className={`mb-6 bg-surface-2 border border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <CardHeader className="pb-3 border-b mb-4">
               <CardTitle className="text-lg">Create Event</CardTitle>
             </CardHeader>
@@ -323,7 +327,7 @@ export default function EventsPage() {
         )}
 
         {!hasResults && isSearching ? (
-          <Card className="text-center py-16 border-dashed">
+          <Card className={`text-center py-16 border-dashed bg-surface-2 border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
             <p className="font-medium">No events match your search</p>
             <p className="text-sm text-muted-foreground mt-1">Try a different title, location, or club name.</p>
@@ -348,7 +352,7 @@ export default function EventsPage() {
               <h2 className="font-semibold text-muted-foreground mb-4 text-sm uppercase tracking-wider">Upcoming Events</h2>
               {isLoading ? <p className="text-muted-foreground text-sm">Loading…</p> :
                 filteredUpcoming.length === 0 ? (
-                  <Card className="text-center py-12 border-dashed">
+                  <Card className={`text-center py-12 border-dashed bg-surface-2 border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
                     <CardContent className="pt-6">
                       <p className="text-muted-foreground">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
                     </CardContent>

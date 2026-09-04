@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
 import { TabPanel } from "@/components/ui/tabs";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
 export function MySchedulePanel() {
@@ -39,7 +40,7 @@ export function MySchedulePanel() {
   if (!isEditing) {
     return (
       <TabPanel value="my" className="mt-5">
-        <section className="max-w-2xl">
+        <section className={`max-w-2xl rounded-2xl bg-surface-2 p-4 shadow-surface-1 border border-border/50 ${CARD_SURFACE_FOREGROUND}`}>
           <header className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-foreground">My schedule</h2>
             <Button
@@ -80,7 +81,7 @@ export function MySchedulePanel() {
           </div>
         ) : null}
 
-        <section className="min-w-0">
+        <section className={`min-w-0 rounded-2xl bg-surface-2 p-5 shadow-surface-1 border border-border/50 ${CARD_SURFACE_FOREGROUND}`}>
           <header className="flex min-w-0 items-center justify-between gap-3 border-b border-border/50 pb-3">
             <h2 className="text-base font-semibold text-foreground">Classes</h2>
             <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto">

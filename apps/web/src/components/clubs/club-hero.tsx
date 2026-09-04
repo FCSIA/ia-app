@@ -197,7 +197,7 @@ export function ClubHero({
 
   return (
     <>
-      <section className={cn("overflow-hidden rounded-lg border border-border/70 bg-card", CARD_SURFACE_FOREGROUND)}>
+      <section className={cn("overflow-hidden rounded-2xl border border-border/50 bg-surface-2 shadow-surface-1", CARD_SURFACE_FOREGROUND)}>
         <div
           className={cn(
             "group/banner relative h-24 w-full bg-gradient-to-br from-primary/30 via-primary/10 to-muted",

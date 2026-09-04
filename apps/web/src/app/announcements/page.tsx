@@ -26,6 +26,7 @@ import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announcements/announcement-card';
 import { matchesSearchQuery } from '@/lib/search';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
 import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
@@ -275,33 +276,34 @@ export default function AnnouncementsPage() {
         </h1>
       }
     >
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="min-w-0 overflow-x-auto">
-            <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
-              <TabsList aria-label="Announcement view">
-                <TabItem value="active" label="Active" icon={Inbox} />
-                <TabItem value="archived" label="Archived" icon={Archive} />
-              </TabsList>
-            </Tabs>
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className={`rounded-2xl bg-surface-2 p-5 shadow-surface-1 border border-border/50 space-y-4 ${CARD_SURFACE_FOREGROUND}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 overflow-x-auto">
+              <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
+                <TabsList aria-label="Announcement view">
+                  <TabItem value="active" label="Active" icon={Inbox} />
+                  <TabItem value="archived" label="Archived" icon={Archive} />
+                </TabsList>
+              </Tabs>
+            </div>
+            {canPost ? (
+              <Button
+                size="sm"
+                leadingIcon={Plus}
+                onClick={() => {
+                  setShowArchived(false);
+                  setShowNew(true);
+                }}
+              >
+                New
+              </Button>
+            ) : null}
           </div>
-          {canPost ? (
-            <Button
-              size="sm"
-              leadingIcon={Plus}
-              onClick={() => {
-                setShowArchived(false);
-                setShowNew(true);
-              }}
-            >
-              New
-            </Button>
-          ) : null}
-        </div>
 
-        <div className="mb-5 flex items-center gap-2">
-          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" />
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <div className="flex items-center gap-2">
+            <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" />
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
               <Button variant="tertiary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
                 Filters
@@ -446,6 +448,7 @@ export default function AnnouncementsPage() {
             </PopoverContent>
           </Popover>
         </div>
+      </div>
 
         <Dialog open={showNew} onOpenChange={setShowNew}>
           <DialogContent size="lg" className="max-h-[min(48rem,calc(100vh-2rem))] overflow-y-auto">
@@ -550,9 +553,6 @@ export default function AnnouncementsPage() {
                       ) : null}
                     </PopoverContent>
                   </Popover>
-                  {audienceMode === 'TARGETED' && form.targetGrades.length === 0 && form.targetMajorPathways.length === 0 && form.targetMinorPathways.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Choose at least one grade or pathway.</p>
-                  ) : null}
                 </div>
 
                 <div>
@@ -621,11 +621,11 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : !data?.length ? (
-          <Card className="border-dashed py-16 text-center">
+          <Card className={`border-dashed py-16 text-center bg-surface-2 border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <CardContent className="pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
           </Card>
         ) : filtered.length === 0 ? (
-          <Card className="border-dashed py-16 text-center">
+          <Card className={`border-dashed py-16 text-center bg-surface-2 border-border/50 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}>
             <CardContent className="pt-6">
               <p className="text-muted-foreground">No announcements match your filters.</p>
               <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
