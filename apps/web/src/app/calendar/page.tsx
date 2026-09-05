@@ -27,6 +27,7 @@ import type {
   CalendarEvent,
   CalendarView,
   EventCalendarRangeInfo,
+  EventCalendarSlotDraft,
 } from '@/components/reui/event-calendar/event-calendar-types';
 import { Button } from '@/components/ui/button';
 import {
@@ -130,6 +131,7 @@ export default function CalendarPage() {
   const [view, setView] = useState<CalendarView>('month');
   const [range, setRange] = useState(defaultCalendarRange);
   const [activeEntry, setActiveEntry] = useState<CalendarEntry | null>(null);
+  const [createSlot, setCreateSlot] = useState<EventCalendarSlotDraft | null>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -219,8 +221,12 @@ export default function CalendarPage() {
           onViewChange={setView}
           views={availableViews}
           loading={entries === undefined}
-          interactions={{ drag: false, resize: false, selectSlot: false }}
+          interactions={{ drag: false, resize: false, selectSlot: isMobile }}
+          slotDuration={isMobile ? 60 : undefined}
           onRangeChange={handleRangeChange}
+          onSelectSlot={(slot) => {
+            if (!slot.allDay && isMobile) setCreateSlot(slot);
+          }}
           onEventClick={(occurrence) => setActiveEntry(occurrence.event.data ?? null)}
           eventTooltip={!isMobile}
           enableShortcuts={!isMobile}
@@ -275,6 +281,16 @@ export default function CalendarPage() {
           }}
         />
       ) : null}
+
+      <AddCalendarEntryDialog
+        initialDate={createSlot?.start}
+        durationMinutes={60}
+        open={createSlot !== null}
+        onOpenChange={(open) => {
+          if (!open) setCreateSlot(null);
+        }}
+        trigger={null}
+      />
 
       <Dialog
         open={externalEntry !== null}

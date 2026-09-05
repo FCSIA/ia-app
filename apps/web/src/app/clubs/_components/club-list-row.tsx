@@ -4,46 +4,13 @@ import type { ReactNode } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useClubEntryHref } from "@/components/clubs/use-club-entry-href";
+import { ClubMark } from "@/components/clubs/club-mark";
 import type { ClubSummary } from "@/components/clubs/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, type CardProps } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-function resolveMediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith("http")) return url;
-  return url;
-}
-
-export function ClubMark({
-  club,
-  size,
-}: {
-  club: { name: string; logoUrl?: string | null };
-  size: "sm" | "md";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden bg-primary/10 font-bold text-primary",
-        size === "sm"
-          ? "size-8 rounded-md text-xs"
-          : "size-11 rounded-lg text-sm",
-      )}
-    >
-      {club.logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={resolveMediaUrl(club.logoUrl)}
-          alt={club.name}
-          className="size-full object-cover"
-        />
-      ) : (
-        club.name.charAt(0).toUpperCase()
-      )}
-    </div>
-  );
-}
+export { ClubMark } from "@/components/clubs/club-mark";
 
 export function ClubListRow({
   club,

@@ -69,6 +69,7 @@ same change.
 - [[roles-and-permissions]] — All 8 user roles and what they can do
 - [[environment]] — Every environment variable explained
 - [[commands]] — All dev commands and what they do
+- [[worktrees]] — Fast, isolated checkouts for small fixes and reviews
 - [[versioning]] — Version scheme, release cutting, and the in-app devlog
 
 ## Database

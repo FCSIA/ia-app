@@ -656,7 +656,7 @@ const ColorInput = forwardRef<HTMLInputElement, ColorInputProps>(
           inputMode={inputMode}
           aria-label={ariaLabel}
           className={cn(
-            "flex-1 min-w-0 bg-transparent text-foreground text-[13px] any-pointer-coarse:text-base outline-none tabular-nums",
+            "flex-1 min-w-0 bg-transparent text-foreground text-[13px] pointer-coarse:text-base outline-none tabular-nums",
             align === "center" && "text-center",
             align === "right" && "text-right",
             inputClassName

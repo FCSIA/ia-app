@@ -230,7 +230,7 @@ const InputField = forwardRef<HTMLDivElement, InputFieldProps>(
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder={placeholder}
-            className="w-full bg-transparent text-[13px] any-pointer-coarse:text-base text-foreground placeholder:text-muted-foreground outline-none font-[inherit]"
+            className="w-full bg-transparent text-[13px] pointer-coarse:text-base text-foreground placeholder:text-muted-foreground outline-none font-[inherit]"
             style={{ fontVariationSettings: fontWeights.normal }}
             {...props}
           />

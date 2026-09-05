@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useFixedBottomVisualViewportOffset } from "@/components/ui/use-fixed-bottom-visual-viewport"
 
 const Sheet = SheetPrimitive.Root
 
@@ -60,50 +61,58 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, overlayClassName, safeArea = true, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay className={overlayClassName} />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(
-        sheetVariants({ side }),
-        className,
-        safeArea && side === "top" && "pt-[env(safe-area-inset-top)]",
-        safeArea && side === "bottom" && "pb-[env(safe-area-inset-bottom)]",
-        safeArea && side === "left" &&
-          "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
-        safeArea && side === "right" &&
-          "pb-[env(safe-area-inset-bottom)] sm:pt-[env(safe-area-inset-top)]",
-      )}
-      onPointerDownOutside={(e) => {
-        if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
-          e.preventDefault();
-        }
-        props.onPointerDownOutside?.(e);
-      }}
-      onInteractOutside={(e) => {
-        if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
-          e.preventDefault();
-        }
-        props.onInteractOutside?.(e);
-      }}
-      {...props}
-    >
-      <SheetPrimitive.Close
+>(({ side = "right", className, children, overlayClassName, safeArea = true, ...props }, ref) => {
+  const contentRef = useFixedBottomVisualViewportOffset(
+    ref,
+    side === "bottom" || side === "right",
+  )
+
+  return (
+    <SheetPortal>
+      <SheetOverlay className={overlayClassName} />
+      <SheetPrimitive.Content
+        ref={contentRef}
         className={cn(
-          "absolute right-[calc(.5rem+env(safe-area-inset-right))] z-10 flex size-11 touch-manipulation items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm ring-offset-background transition-[background-color,color,transform] hover:bg-hover hover:text-foreground active:scale-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none",
-          side === "left"
-            ? "top-[calc(.5rem+env(safe-area-inset-top))]"
-            : "top-2 sm:top-[calc(.5rem+env(safe-area-inset-top))]",
+          sheetVariants({ side }),
+          "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
+          className,
+          safeArea && side === "top" && "pt-[env(safe-area-inset-top)]",
+          safeArea && side === "bottom" && "pb-[env(safe-area-inset-bottom)]",
+          safeArea && side === "left" &&
+            "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+          safeArea && side === "right" &&
+            "pb-[env(safe-area-inset-bottom)] sm:pt-[env(safe-area-inset-top)]",
         )}
+        onPointerDownOutside={(e) => {
+          if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+          props.onPointerDownOutside?.(e);
+        }}
+        onInteractOutside={(e) => {
+          if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+          props.onInteractOutside?.(e);
+        }}
+        {...props}
       >
-        <X className="size-5" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-      {children}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+        <SheetPrimitive.Close
+          className={cn(
+            "absolute right-[calc(.5rem+env(safe-area-inset-right))] z-10 flex size-11 touch-manipulation items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm ring-offset-background transition-[background-color,color,transform] hover:bg-hover hover:text-foreground active:scale-95 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none",
+            side === "left"
+              ? "top-[calc(.5rem+env(safe-area-inset-top))]"
+              : "top-2 sm:top-[calc(.5rem+env(safe-area-inset-top))]",
+          )}
+        >
+          <X className="size-5" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+        {children}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

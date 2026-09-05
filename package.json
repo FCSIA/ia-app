@@ -15,6 +15,7 @@
     "db:generate": "pnpm --filter cvx codegen",
     "db:studio": "pnpm --filter cvx exec convex dashboard",
     "setup:convex-local": "node scripts/setup-convex-local.mjs",
+    "worktree:bootstrap": "node scripts/bootstrap-worktree.mjs",
     "mobile:ios": "pnpm --filter mobile ios",
     "mobile:ios:refresh": "bash scripts/refresh-ios-personal-build.sh",
     "mobile:android": "pnpm --filter mobile android",
@@ -25,6 +26,7 @@
     "devlog:preview": "node scripts/devlog.mjs preview",
     "devlog:cut": "node scripts/devlog.mjs cut",
     "fluid:update": "node scripts/update-fluid-components.mjs",
+    "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"
   },
   "devDependencies": {

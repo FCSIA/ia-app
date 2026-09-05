@@ -38,10 +38,13 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 ## Worktrees And Deployment Selection
 
-`apps/convex/.env.local` selects a stateful backend. Never copy it between
-worktrees: doing so makes separate code branches deploy to and write data into
-the same Convex deployment. Stop any `pnpm dev` or `pnpm cvx:dev` watcher using
-that deployment before changing a worktree's selection.
+`pnpm worktree:bootstrap` links the primary worktree's local Convex state and
+all local client environment files by default. This makes `pnpm dev` work in a
+new worktree without a second install or backend setup, but both worktrees then
+share the same local data and deployment selection. Run only one Convex watcher
+against that backend at a time. Use `--isolated-convex` for a separate local
+deployment, or `--no-convex` to leave backend configuration untouched. See
+[Git worktrees](worktrees.md) for configuration and opt-out options.
 
 For ordinary worktree development, initialize each worktree's own local backend:
 

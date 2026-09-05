@@ -1067,8 +1067,8 @@ function ChannelRow({
   const active = channel._id === activeChannelId;
   const rowClassName =
     density === "mobile"
-      ? "min-h-9 any-pointer-coarse:min-h-11"
-      : "min-h-8 any-pointer-coarse:min-h-11";
+      ? "min-h-9 pointer-coarse:min-h-11"
+      : "min-h-8 pointer-coarse:min-h-11";
   const secondaryControlClassName =
     density === "mobile"
       ? "flex"
@@ -1087,7 +1087,7 @@ function ChannelRow({
       className={cn(
         "group/channel gap-1.5 rounded-md px-2 text-[13px]",
         rowClassName,
-        active || channel.hasUnreadMessages
+        channel.hasUnreadMessages
           ? "font-semibold text-foreground"
           : "font-medium text-muted-foreground",
       )}

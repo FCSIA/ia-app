@@ -12,7 +12,7 @@ import type { ClubDetail } from '@/components/clubs/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { AnnouncementDialog } from '@/components/clubs/dialogs/announcement-dialog';
-import { ClubAvatar } from '@/components/clubs/club-avatar';
+import { ClubProfileAvatar } from '@/components/clubs/club-profile-avatar';
 import { ClubHero } from '@/components/clubs/club-hero';
 import { fullName } from '@/components/clubs/types';
 import { AnnouncementCard } from '@/components/announcements/announcement-card';
@@ -183,7 +183,7 @@ function RoleRoster({ club }: { club: ClubDetail }) {
       <div className="space-y-1.5">
         {members.map((member) => (
           <div key={member._id} className="flex items-center gap-2.5">
-            <ClubAvatar person={member} className="size-8" fallbackClassName="text-[10px]" />
+            <ClubProfileAvatar person={member} className="size-8" fallbackClassName="text-[10px]" />
             <p className="min-w-0 truncate text-sm font-medium">{fullName(member)}</p>
           </div>
         ))}
@@ -312,7 +312,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <div className="grid gap-2 sm:grid-cols-2">
                 {club.sponsors.map((sponsor) => (
                   <div key={sponsor.userId} className="flex items-center gap-2.5 py-1.5">
-                    <ClubAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
+                    <ClubProfileAvatar person={sponsor.user} className="size-9" fallbackClassName="text-xs" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{fullName(sponsor.user)}</p>
                     </div>
@@ -333,7 +333,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
               <div className="grid gap-2 sm:grid-cols-2">
                 {members.map((member) => (
                   <div key={member.userId} className="flex items-center gap-2.5 py-1.5">
-                    <ClubAvatar person={member.user} className="size-9" fallbackClassName="text-xs" />
+                    <ClubProfileAvatar person={member.user} className="size-9" fallbackClassName="text-xs" />
                     <p className="min-w-0 truncate text-sm font-semibold text-foreground">{fullName(member.user)}</p>
                   </div>
                 ))}
@@ -433,7 +433,7 @@ export default function ClubOverviewPage() {
           <div className="space-y-1.5">
             {club.sponsors.map((sponsor) => (
               <div key={sponsor.userId} className="flex items-center gap-2.5">
-                <ClubAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
+                <ClubProfileAvatar person={sponsor.user} className="size-8" fallbackClassName="text-[10px]" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{fullName(sponsor.user)}</p>
                 </div>

@@ -18,6 +18,7 @@ import { useShape } from "@/lib/shape-context";
 import { SurfaceProvider, useSurface } from "@/lib/surface-context";
 import { surfaceClasses } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
+import { useFixedBottomVisualViewportOffset } from "@/components/ui/use-fixed-bottom-visual-viewport";
 
 const DIALOG_OFFSET = 4;
 
@@ -93,6 +94,13 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
     const dialogLevel = Math.min(substrate + DIALOG_OFFSET, 8);
     const [mounted, setMounted] = useState(false);
     const reduceMotion = useReducedMotion();
+    // We remove the framer-motion x/y transforms and use tailwind classes for
+    // position so we can use sm: variants for desktop/mobile differences.
+    const isMobileTop = mobilePosition === "top";
+    const contentRef = useFixedBottomVisualViewportOffset(
+      ref,
+      !container && !isMobileTop,
+    );
 
     useEffect(() => {
       if (open) setMounted(true);
@@ -115,11 +123,6 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
 
     if (!mounted) return null;
 
-    // Responsive positioning logic
-    // We remove the framer-motion x/y transforms and use tailwind classes for position
-    // so we can use sm: variants for desktop/mobile differences.
-    const isMobileTop = mobilePosition === "top";
-
     return (
       <DialogPrimitive.Portal forceMount container={container ?? undefined}>
         <DialogPrimitive.Overlay asChild forceMount>
@@ -133,11 +136,12 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             transition={reduceMotion ? { duration: 0 } : open ? spring.slow : spring.slow.exit}
           />
         </DialogPrimitive.Overlay>
-        <DialogPrimitive.Content ref={ref} asChild forceMount {...props}>
+        <DialogPrimitive.Content ref={contentRef} asChild forceMount {...props}>
           <motion.div
             className={cn(
               container ? "absolute" : "fixed",
               "z-50",
+              "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
               isMobileTop
                 ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
                 : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",

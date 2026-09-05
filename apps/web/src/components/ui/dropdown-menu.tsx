@@ -123,7 +123,7 @@ const DropdownMenuItem = React.forwardRef<
     <DropdownMenuPrimitive.Item
       ref={ref}
       className={cn(
-        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center gap-2 px-2.5 py-2 text-sm outline-none transition-[background-color,color,font-variation-settings] duration-100 any-pointer-coarse:min-h-11 focus:bg-accent/70 focus:text-accent-foreground data-[highlighted]:bg-accent/70 data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent/70 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center gap-2 px-2.5 py-2 text-sm outline-none transition-[background-color,color,font-variation-settings] duration-100 pointer-coarse:min-h-11 focus:bg-accent/70 focus:text-accent-foreground data-[highlighted]:bg-accent/70 data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent/70 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
         shape.item,
         inset && "pl-8",
         className
@@ -144,7 +144,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     <DropdownMenuPrimitive.CheckboxItem
       ref={ref}
       className={cn(
-        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none transition-colors any-pointer-coarse:min-h-11 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none transition-colors pointer-coarse:min-h-11 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         shape.item,
         className
       )}
@@ -173,7 +173,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     <DropdownMenuPrimitive.RadioItem
       ref={ref}
       className={cn(
-        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none transition-colors any-pointer-coarse:min-h-11 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex min-h-9 touch-manipulation cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none transition-colors pointer-coarse:min-h-11 focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         shape.item,
         className
       )}
