@@ -8,6 +8,7 @@ const args = process.argv.slice(2).filter((arg, index) => arg !== "--" || index 
 const envPaths = [];
 let source;
 let linkDependencies = true;
+let setupConvex = true;
 let replaceSymlinks = false;
 let dryRun = false;
 
@@ -20,6 +21,7 @@ Options:
   --from <path>            Source worktree (default: Git's primary worktree)
   --env <relative-path>    Link a local environment file; may be repeated
   --no-dependencies        Do not link node_modules directories
+  --no-convex              Do not create this worktree's isolated local backend
   --replace-symlinks       Repoint existing symlinks (never replaces files)
   --dry-run                Print changes without making them
   --help                   Show this help
@@ -46,6 +48,10 @@ for (let index = 0; index < args.length; index += 1) {
   }
   if (arg === "--no-dependencies") {
     linkDependencies = false;
+    continue;
+  }
+  if (arg === "--no-convex") {
+    setupConvex = false;
     continue;
   }
   if (arg === "--replace-symlinks") {
@@ -85,6 +91,19 @@ const toRelativePath = (value) => {
   }
   return relative(root, destination);
 };
+
+const requestedEnvPaths = envPaths.map(toRelativePath);
+if (requestedEnvPaths.includes("apps/convex/.env.local")) {
+  throw new Error("apps/convex/.env.local selects a Convex deployment and cannot be shared between worktrees.");
+}
+if (
+  setupConvex &&
+  requestedEnvPaths.some((path) =>
+    ["apps/web/.env.local", "apps/mobile/.env.local"].includes(path),
+  )
+) {
+  throw new Error("Local Convex setup writes web and mobile environment files. Use --no-convex to share either file.");
+}
 
 const link = (relativePath) => {
   const sourcePath = join(sourceRoot, relativePath);
@@ -137,10 +156,22 @@ if (linkDependencies) {
   for (const path of dependencyPaths) link(path);
 }
 
-for (const requestedPath of envPaths) {
-  const path = toRelativePath(requestedPath);
-  if (path === "apps/convex/.env.local") {
-    throw new Error("apps/convex/.env.local selects a Convex deployment and cannot be shared between worktrees.");
-  }
+for (const path of requestedEnvPaths) {
   link(path);
+}
+
+if (setupConvex) {
+  if (dryRun) {
+    console.log("Would create/select this worktree's isolated local Convex backend.");
+  } else {
+    if (!existsSync(join(root, "node_modules", "convex"))) {
+      throw new Error("Local Convex setup requires dependencies. Run pnpm install or omit --no-dependencies.");
+    }
+    const result = spawnSync(process.execPath, [join(root, "scripts", "setup-convex-local.mjs")], {
+      cwd: root,
+      stdio: "inherit",
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) process.exit(result.status ?? 1);
+  }
 }

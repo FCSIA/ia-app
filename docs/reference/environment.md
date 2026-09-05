@@ -43,12 +43,15 @@ worktrees: doing so makes separate code branches deploy to and write data into
 the same Convex deployment. Stop any `pnpm dev` or `pnpm cvx:dev` watcher using
 that deployment before changing a worktree's selection.
 
-A UI-only worktree may explicitly link `.env.local`, `apps/web/.env.local`, or
-`apps/mobile/.env.local` from another checkout with
-`pnpm worktree:bootstrap -- --env <path>`. Those links share every change to
-the file, including client URLs; do not run setup or sync commands that write a
-linked file. `apps/convex/.env.local` is intentionally never linkable. See
-[Git worktrees](worktrees.md) for configuration and opt-out options.
+`pnpm worktree:bootstrap` creates/selects a separate local Convex backend for
+each worktree and writes that backend's URLs to worktree-local web and mobile
+files, so `pnpm dev` is safe to use after bootstrap. A UI-only worktree can
+instead pass `--no-convex` and explicitly link `.env.local`,
+`apps/web/.env.local`, or `apps/mobile/.env.local` from another checkout.
+Those links share every change to the file, including client URLs; do not run
+setup or sync commands that write a linked file. `apps/convex/.env.local` is
+intentionally never linkable. See [Git worktrees](worktrees.md) for
+configuration and opt-out options.
 
 For ordinary worktree development, initialize each worktree's own local backend:
 

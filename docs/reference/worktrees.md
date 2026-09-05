@@ -9,7 +9,7 @@ tags: [reference, development, worktrees]
 Git worktrees let a developer keep a small fix or review open without changing
 their main checkout. Each worktree has its own Git branch and generated state.
 
-## Create and bootstrap a UI worktree
+## Create and bootstrap a worktree
 
 From the primary checkout:
 
@@ -20,17 +20,29 @@ pnpm worktree:bootstrap
 ```
 
 The bootstrap command links the root and workspace `node_modules` directories
-from Git's primary worktree. It does not run an install, link environment files,
-or link build output. Use `pnpm --filter web dev` for a web-only UI change.
+from Git's primary worktree, creates/selects an isolated local Convex backend,
+and syncs that backend's URLs into worktree-local web and mobile environment
+files. It does not link environment files or build output. After it completes,
+start the full local app with:
+
+```bash
+pnpm dev
+```
 
 ## Optional shared local configuration
 
-Environment files are deliberately opt-in. Link only files whose shared values
-you need:
+Environment files are deliberately opt-in. The root `.env.local` can be shared
+alongside the isolated backend:
 
 ```bash
-pnpm worktree:bootstrap -- \
-  --env .env.local \
+pnpm worktree:bootstrap -- --env .env.local
+```
+
+For a short-lived UI-only worktree that reuses a running backend, opt out of
+local Convex setup and link only the client files you need:
+
+```bash
+pnpm worktree:bootstrap -- --no-convex \
   --env apps/web/.env.local \
   --env apps/mobile/.env.local
 ```
@@ -51,17 +63,19 @@ pnpm setup:convex-local
 
 Do not run `pnpm setup:convex-local`, `pnpm sync:convex-env`, or a Convex
 watcher from a worktree whose web or mobile environment file is linked: those
-commands write client URLs and would modify the source worktree's file. Remove
-the link and initialize the worktree's own local backend first.
+commands write client URLs and would modify the source worktree's file. The
+bootstrap command rejects those linked files unless `--no-convex` is provided.
+Remove the link and initialize the worktree's own local backend first.
 
 ## Customize or opt out
 
-Pass `--no-dependencies` when you want a separate install. Repeat `--env` to
-select exactly the local files to share; omitting it shares no environment
-files. Choose another source checkout with `--from <path>`, preview work with
-`--dry-run`, and repoint only an existing symlink with `--replace-symlinks`.
-The command never replaces a real file, so remove or rename a local file before
-linking it.
+Pass `--no-dependencies` when you want a separate install; run `pnpm install`
+before local Convex setup in that case. Pass `--no-convex` for a UI-only
+worktree. Repeat `--env` to select exactly the local files to share; omitting
+it shares no environment files. Choose another source checkout with
+`--from <path>`, preview work with `--dry-run`, and repoint only an existing
+symlink with `--replace-symlinks`. The command never replaces a real file, so
+remove or rename a local file before linking it.
 
 Keep build output and caches local to each worktree: `.next`, `.turbo`, Expo
 state, coverage, and generated artifacts must not be linked. When dependencies

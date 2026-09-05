@@ -15,7 +15,7 @@ tags: [commands, development]
 | `pnpm --filter web dev` | Start only the Next.js web app                            |
 | `pnpm lint`             | Lint all workspaces                                       |
 | `pnpm build`            | Build all workspaces                                      |
-| `pnpm worktree:bootstrap -- [options]` | Link selected local setup from the primary worktree; see [Git worktrees](worktrees.md) |
+| `pnpm worktree:bootstrap -- [options]` | Link reusable dependencies and initialize an isolated local Convex backend; see [Git worktrees](worktrees.md) |
 | `pnpm test`             | Run test suites                                           |
 
 ## Release log
