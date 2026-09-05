@@ -22,7 +22,7 @@
 // Palette intent: day maps luminance onto ember brown -> cream so every photo
 // shares the existing orange cast; night maps onto deep ink -> moonlit blue.
 // Luminance is quantized into stepped levels with an 8x8 Bayer threshold
-// (2x2 source pixels per cell), so the dot pattern survives downscaling to
+// (3x3 source pixels per cell), so the dot pattern survives downscaling to
 // login display sizes. Bump the ?v= query in login-images.ts whenever the
 // outputs are regenerated, otherwise browsers and the Next image cache keep
 // serving the previous bytes under the same filename.
@@ -51,9 +51,9 @@ const DAY = {
   gamma: [0.8, 1.15, 1.5],
   levels: 4,
   spread: 1.0,
-  // 2x2 source pixels per threshold cell: the dots stay visible after
+  // 3x3 source pixels per threshold cell: the dots stay visible after
   // downscaling to login display sizes instead of averaging away.
-  cell: 2,
+  cell: 3,
   exposure: 1.12,
 };
 
@@ -63,7 +63,7 @@ const NIGHT = {
   gamma: [0.9, 1.05, 1.0],
   levels: 4,
   spread: 1.0,
-  cell: 2,
+  cell: 3,
   exposure: 0.55,
 };
 
