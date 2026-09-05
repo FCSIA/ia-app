@@ -7,6 +7,63 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.26",
+    "date": "2026-09-05",
+    "title": "Mobile layout and navigation polish",
+    "commit": "6d8970b6",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "mobile",
+        "summary": "Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner.",
+        "commit": "a1987cd8",
+        "pr": 120
+      },
+      {
+        "category": "Fixed",
+        "scope": "mobile",
+        "summary": "Mobile navigation, forms, sheets, and the impersonation notice stay accessible above the keyboard and tab bar.",
+        "commit": "6d8970b6",
+        "pr": 118
+      },
+      {
+        "category": "Added",
+        "scope": "calendar",
+        "summary": "Hold an empty time on the mobile calendar to start a one-hour reminder, with date and time controls that fit narrow screens.",
+        "commit": "6d8970b6",
+        "pr": 118
+      },
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Member profiles make shared clubs and friend actions clearer, and Club People controls stay usable at normal desktop zoom.",
+        "commit": "6d8970b6",
+        "pr": 118
+      },
+      {
+        "category": "Improved",
+        "scope": "web",
+        "summary": "Desktop navigation adapts to short windows, while touchscreen-capable computers keep compact desktop controls.",
+        "commit": "6d8970b6",
+        "pr": 118
+      },
+      {
+        "category": "Improved",
+        "scope": "login",
+        "summary": "Sign-in now uses a themed dithered campus image that stays consistent for your browser session.",
+        "commit": "6d8970b6",
+        "pr": 118
+      },
+      {
+        "category": "Internal",
+        "scope": "tooling",
+        "summary": "Add reusable local-worktree setup, Convex state, dependency, ignore, and documentation support.",
+        "commit": "6d8970b6",
+        "pr": 118
+      }
+    ]
+  },
+  {
     "version": "0.8.25",
     "date": "2026-09-04",
     "commit": "35777a00",

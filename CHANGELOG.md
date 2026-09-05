@@ -12,6 +12,29 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.26 — 2026-09-05 (alpha)
+
+**Mobile layout and navigation polish**
+
+### Added
+
+- **calendar** — Hold an empty time on the mobile calendar to start a one-hour reminder, with date and time controls that fit narrow screens. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+
+### Improved
+
+- **mobile** — Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner. ([#120](https://github.com/virajdas/ia-app/pull/120), [`a1987cd8`](https://github.com/virajdas/ia-app/commit/a1987cd8))
+- **clubs** — Member profiles make shared clubs and friend actions clearer, and Club People controls stay usable at normal desktop zoom. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+- **web** — Desktop navigation adapts to short windows, while touchscreen-capable computers keep compact desktop controls. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+- **login** — Sign-in now uses a themed dithered campus image that stays consistent for your browser session. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+
+### Fixed
+
+- **mobile** — Mobile navigation, forms, sheets, and the impersonation notice stay accessible above the keyboard and tab bar. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+
+### Internal
+
+- **tooling** — Add reusable local-worktree setup, Convex state, dependency, ignore, and documentation support. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+
 ## v0.8.25 — 2026-09-04 (alpha)
 
 ### Improved
