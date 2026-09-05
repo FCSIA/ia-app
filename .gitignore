@@ -1,5 +1,6 @@
 # Convex local dev
 \\
+apps/convex/.convex/
 
 # Dependencies
 node_modules
