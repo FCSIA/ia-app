@@ -44,6 +44,22 @@ Use the same LAN address when opening the web app on the device, for example
 `http://10.0.0.231:3000`. Reset to loopback for desktop-only work with
 `pnpm sync:convex-env -- --host 127.0.0.1`.
 
+### LAN devices
+
+The shared backend defaults to loopback URLs, which work only on the Mac running
+the local backend. To use the app from another device on the same network, set
+the development Mac's current LAN IPv4 address, then restart `pnpm dev`:
+
+```bash
+pnpm sync:convex-env -- --host <LAN IPv4>
+pnpm dev
+```
+
+Because shared worktrees link the same Convex and client environment files,
+this updates the primary worktree too. Use the same LAN address when opening
+the web app on the device, for example `http://10.0.0.231:3000`. Reset to
+loopback for desktop-only work with `pnpm sync:convex-env -- --host 127.0.0.1`.
+
 ## Optional and isolated configuration
 
 Use `--shared-convex` only for a short-lived UI task that explicitly needs the
