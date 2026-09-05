@@ -187,8 +187,8 @@ export function EditCalendarEntryDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Date
               </Label>
@@ -198,7 +198,7 @@ export function EditCalendarEntryDialog({
                 buttonClassName="rounded-2xl h-12 border-foreground/5 bg-foreground/[0.02]"
               />
             </div>
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="time" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                 Time
               </Label>

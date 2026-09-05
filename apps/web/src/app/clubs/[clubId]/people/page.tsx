@@ -1048,7 +1048,7 @@ export default function ClubPeoplePage() {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-border/70 bg-muted/35 p-1.5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-border/70 bg-muted/35 p-1.5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 xl:flex-row xl:items-center xl:justify-between">
             <Tabs
               value={visibleFilter}
               onValueChange={setFilter}
