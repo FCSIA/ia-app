@@ -40,6 +40,6 @@
     "pnpm": ">=9.0.0"
   },
   "dependencies": {
-    "convex": "1.43.0"
+    "convex": "1.45.0"
   }
 }
