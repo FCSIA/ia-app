@@ -9,6 +9,7 @@ const app = defineApp({
     AUTH_ALLOW_ANY_LOCAL_WEB_HOST: v.optional(v.string()),
     BETTER_AUTH_TRUSTED_ORIGINS: v.optional(v.string()),
     BETTER_AUTH_MAINTENANCE_SECRET: v.string(),
+    GOOGLE_VISION_SERVICE_ACCOUNT_JSON: v.optional(v.string()),
   },
 });
 

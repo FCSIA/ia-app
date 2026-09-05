@@ -12,11 +12,11 @@ development.
 
 ## Local Files
 
-| File                     | Purpose                                                      |
-| ------------------------ | ------------------------------------------------------------ |
-| `.env`                   | Local root defaults                                          |
-| `.env.example`           | Template for local defaults                                  |
-| `apps/convex/.env.local` | Worktree-local Convex selection and URLs written by the Convex CLI |
+| File                     | Purpose                                                               |
+| ------------------------ | --------------------------------------------------------------------- |
+| `.env`                   | Local root defaults                                                   |
+| `.env.example`           | Template for local defaults                                           |
+| `apps/convex/.env.local` | Worktree-local Convex selection and URLs written by the Convex CLI    |
 | `apps/web/.env.local`    | Local web-only public values such as Convex URLs and VAPID public key |
 
 ## Convex Variables
@@ -120,6 +120,21 @@ it does not undo database I/O or other usage already metered this month.
 Runtime secrets such as Better Auth credentials belong in the Convex deployment
 environment. Demo seed/reset does not use `BOOTSTRAP_SECRET`; invoke the
 internal `bootstrap:resetAndSeed` function through the Convex CLI or Dashboard.
+
+### Google Cloud Vision schedule import
+
+Schedule image import requires a Google Cloud service account with the Cloud
+Vision API enabled. Store the complete service-account JSON as the deployment
+secret `GOOGLE_VISION_SERVICE_ACCOUNT_JSON`; never add it to `.env`, a client
+bundle, or git. The action exchanges its signed JWT for a short-lived OAuth token
+and sends image bytes directly to the Google Vision API.
+
+```bash
+direnv exec . pnpm --filter cvx exec convex env set GOOGLE_VISION_SERVICE_ACCOUNT_JSON "$(cat service-account.json)"
+```
+
+Run this only after selecting the intended non-production or production
+deployment and obtaining the appropriate data-processing approval.
 
 ## Web Push
 

@@ -99,6 +99,7 @@ import type * as schedule_friends from "../schedule/friends.js";
 import type * as schedule_groupComparison from "../schedule/groupComparison.js";
 import type * as schedule_groupPolicy from "../schedule/groupPolicy.js";
 import type * as schedule_groups from "../schedule/groups.js";
+import type * as schedule_importOcr from "../schedule/importOcr.js";
 import type * as schedule_migrations from "../schedule/migrations.js";
 import type * as schedule_scheduleChangeNotifications from "../schedule/scheduleChangeNotifications.js";
 import type * as schedule_seed from "../schedule/seed.js";
@@ -223,6 +224,7 @@ declare const fullApi: ApiFromModules<{
   "schedule/groupComparison": typeof schedule_groupComparison;
   "schedule/groupPolicy": typeof schedule_groupPolicy;
   "schedule/groups": typeof schedule_groups;
+  "schedule/importOcr": typeof schedule_importOcr;
   "schedule/migrations": typeof schedule_migrations;
   "schedule/scheduleChangeNotifications": typeof schedule_scheduleChangeNotifications;
   "schedule/seed": typeof schedule_seed;

@@ -894,6 +894,7 @@ export const schema = defineSchema({
       v.literal("USER_IMAGE"),
       v.literal("FEEDBACK_IMAGE"),
       v.literal("ANNOUNCEMENT_IMAGE"),
+      v.literal("SCHEDULE_OCR"),
     ),
     storageId: v.optional(v.id("_storage")),
     createdAt: v.number(),

@@ -28,6 +28,7 @@ type Env = {
   readonly AUTH_ALLOW_ANY_LOCAL_WEB_HOST: string | undefined;
   readonly BETTER_AUTH_MAINTENANCE_SECRET: string;
   readonly BETTER_AUTH_TRUSTED_ORIGINS: string | undefined;
+  readonly GOOGLE_VISION_SERVICE_ACCOUNT_JSON: string | undefined;
 };
 
 /**

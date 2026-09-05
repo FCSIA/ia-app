@@ -13,7 +13,7 @@ and special-day plans without rewriting student course choices.
 ## What It Does
 
 - Students manage classes from an actual school date instead of a Monday–Friday selector strip, with a manual class-name option when a class is not in the catalog.
-- Students can upload an Infinite Campus Schedule Term screenshot. Browser-local OCR proposes period/course matches for review, then applies the reviewed canonical periods to every school weekday before the normal save step.
+- Students can upload an Infinite Campus Schedule Term screenshot or photo. The app temporarily stages it in authenticated Convex storage, sends its bytes to Google Cloud Vision for OCR, then deletes the staged image whether OCR succeeds or fails. The review table requires every class to have a unique, explicitly confirmed canonical period before it can apply to every school weekday.
 - Every student selects exactly one lunch assignment: Period 4 or Period 5. A selected lunch period cannot also contain a class on any weekday.
 - Students can inspect the resolved schedule for a date, including reordered or shortened periods, custom blocks, omitted periods, and special-day labels.
 - Students choose public/private schedule visibility.
@@ -48,12 +48,12 @@ details remain unavailable until an administrator finishes setup.
 
 Within the configured range, dates resolve as follows:
 
-| Date | No explicit assignment | Explicit assignment |
-| --- | --- | --- |
-| Monday–Thursday | Required default template | Linked template or unlinked custom plan |
-| Friday | Unassigned | Linked template or unlinked custom plan |
-| Saturday–Sunday | Not a school date | Assignments are rejected |
-| Outside the academic year | Not a school date | Assignments are rejected |
+| Date                      | No explicit assignment    | Explicit assignment                     |
+| ------------------------- | ------------------------- | --------------------------------------- |
+| Monday–Thursday           | Required default template | Linked template or unlinked custom plan |
+| Friday                    | Unassigned                | Linked template or unlinked custom plan |
+| Saturday–Sunday           | Not a school date         | Assignments are rejected                |
+| Outside the academic year | Not a school date         | Assignments are rejected                |
 
 After setup, the admin workspace keeps a full month calendar visible. Compact status dots and a visible legend identify inherited defaults, unassigned Fridays, linked/custom assignments, and no-school days without putting status sentences inside day cells. Shared Fluid tooltips provide the exact date state and explain inheritance and linkage.
 
@@ -63,6 +63,7 @@ After setup, the admin workspace keeps a full month calendar visible. Compact st
 - Web page: `apps/web/src/app/schedule/page.tsx`
 - Schedule components: `apps/web/src/components/schedule/`
 - OCR parser: `apps/web/src/lib/schedule-ocr.ts`
+- Google Vision adapter: `apps/convex/src/schedule/importOcr.ts`
 - Seed fixtures: `apps/convex/seed-data/schedule.ts`
 
 ## Convex Surface
@@ -100,6 +101,7 @@ After setup, the admin workspace keeps a full month calendar visible. Compact st
 - `api.schedule.blocks.updateBlock`
 - `api.schedule.blocks.deleteBlock`
 - `internal.schedule.seed.seedFromStaticData`
+- `api.schedule.importOcr.scanImage`
 
 ## Data Model
 
@@ -145,6 +147,17 @@ assignments. Friend schedule visibility depends on accepted friendship and
 the owner's public/private setting. Comparison groups are owner-private: members
 do not gain access to one another, and every group read rechecks active-student,
 accepted-friendship, and current schedule-visibility state.
+
+## Schedule Image Import
+
+Schedule OCR accepts PNG, JPEG, and WebP images up to 10 MB. It is limited to
+eight scans per student per hour. Images are not retained after the OCR action;
+the feature stores neither image bytes nor OCR text in application tables.
+Google Cloud Vision receives the image solely to perform OCR. Deployment owners
+must configure the `GOOGLE_VISION_SERVICE_ACCOUNT_JSON` secret with a
+least-privilege service account that has Cloud Vision access. The import UI must
+not be enabled in a deployment until its Google Cloud data-processing terms have
+been approved.
 
 Friend links are bearer capabilities. The server generates a 256-bit URL-safe
 secret, stores only its SHA-256 digest, expires it after seven days, bounds use
