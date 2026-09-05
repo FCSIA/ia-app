@@ -20,62 +20,50 @@ pnpm worktree:bootstrap
 ```
 
 The bootstrap command links the root and workspace `node_modules` directories
-from Git's primary worktree, creates/selects an isolated local Convex backend,
-and syncs that backend's URLs into worktree-local web and mobile environment
-files. It does not link environment files or build output. After it completes,
-start the full local app with:
+and local environment files, including the primary worktree's local Convex
+configuration and data. After it completes, start the full local app with:
 
 ```bash
 pnpm dev
 ```
 
-## Optional shared local configuration
+> [!WARNING]
+> The default configuration shares one stateful local Convex backend. Run only
+> one `pnpm dev` or `pnpm cvx:dev` watcher against it at a time. Stop the other
+> worktree's watcher before starting this one; otherwise two branches can deploy
+> incompatible schema/function code to the same local data.
 
-Environment files are deliberately opt-in. The root `.env.local` can be shared
-alongside the isolated backend:
+## Optional and isolated configuration
 
-```bash
-pnpm worktree:bootstrap -- --env .env.local
-```
-
-For a short-lived UI-only worktree that reuses a running backend, opt out of
-local Convex setup and link only the client files you need:
-
-```bash
-pnpm worktree:bootstrap -- --no-convex \
-  --env apps/web/.env.local \
-  --env apps/mobile/.env.local
-```
-
-`apps/web/.env.local` and `apps/mobile/.env.local` include the client URLs for
-the source worktree's selected backend. This is useful for a short-lived UI-only
-worktree when that backend watcher is already running. Changes made to a linked
-file change the source worktree too.
-
-Never link `apps/convex/.env.local`. It selects a stateful Convex deployment,
-and sharing it can make two branches write to the same data or deploy to the
-same backend. The bootstrap command rejects that path. A worktree that needs
-backend development must keep its own file and run:
+Use `--isolated-convex` when the worktree needs its own local data and backend.
+It creates/selects that isolated backend and writes worktree-local web and
+mobile URLs:
 
 ```bash
-pnpm setup:convex-local
+pnpm worktree:bootstrap -- --isolated-convex
 ```
 
-Do not run `pnpm setup:convex-local`, `pnpm sync:convex-env`, or a Convex
-watcher from a worktree whose web or mobile environment file is linked: those
-commands write client URLs and would modify the source worktree's file. The
-bootstrap command rejects those linked files unless `--no-convex` is provided.
-Remove the link and initialize the worktree's own local backend first.
+Pass `--no-convex` when neither shared nor isolated backend setup is wanted.
+In that mode, environment files are opt-in:
+
+```bash
+pnpm worktree:bootstrap -- --no-convex --env .env.local
+```
+
+The shared default links `.env.local`, all client environment files,
+`apps/convex/.env.local`, and the local Convex state. Changes to any of those
+files or backend data affect the primary worktree too. Do not run
+`pnpm setup:convex-local` or `pnpm sync:convex-env` while using shared
+configuration: use `--isolated-convex` first.
 
 ## Customize or opt out
 
 Pass `--no-dependencies` when you want a separate install; run `pnpm install`
-before local Convex setup in that case. Pass `--no-convex` for a UI-only
-worktree. Repeat `--env` to select exactly the local files to share; omitting
-it shares no environment files. Choose another source checkout with
-`--from <path>`, preview work with `--dry-run`, and repoint only an existing
-symlink with `--replace-symlinks`. The command never replaces a real file, so
-remove or rename a local file before linking it.
+before `--isolated-convex` setup in that case. Repeat `--env` to link additional
+local files. Choose another source checkout with `--from <path>`, preview work
+with `--dry-run`, and repoint only an existing symlink with
+`--replace-symlinks`. The command never replaces a real file, so remove or
+rename a local file before linking it.
 
 Keep build output and caches local to each worktree: `.next`, `.turbo`, Expo
 state, coverage, and generated artifacts must not be linked. When dependencies

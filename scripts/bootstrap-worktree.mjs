@@ -8,7 +8,7 @@ const args = process.argv.slice(2).filter((arg, index) => arg !== "--" || index 
 const envPaths = [];
 let source;
 let linkDependencies = true;
-let setupConvex = true;
+let convexMode = "shared";
 let replaceSymlinks = false;
 let dryRun = false;
 
@@ -21,13 +21,15 @@ Options:
   --from <path>            Source worktree (default: Git's primary worktree)
   --env <relative-path>    Link a local environment file; may be repeated
   --no-dependencies        Do not link node_modules directories
-  --no-convex              Do not create this worktree's isolated local backend
+  --isolated-convex        Create a separate local Convex backend for this worktree
+  --no-convex              Do not configure a Convex backend
   --replace-symlinks       Repoint existing symlinks (never replaces files)
   --dry-run                Print changes without making them
   --help                   Show this help
 
-apps/convex/.env.local is intentionally not linkable: it selects a stateful
-Convex deployment and must remain worktree-local.`);
+By default, the primary worktree's local Convex configuration is linked. Stop
+its Convex watcher before running one in this worktree. Use --isolated-convex
+to create a separate backend instead.`);
 };
 
 for (let index = 0; index < args.length; index += 1) {
@@ -50,8 +52,12 @@ for (let index = 0; index < args.length; index += 1) {
     linkDependencies = false;
     continue;
   }
+  if (arg === "--isolated-convex") {
+    convexMode = "isolated";
+    continue;
+  }
   if (arg === "--no-convex") {
-    setupConvex = false;
+    convexMode = "none";
     continue;
   }
   if (arg === "--replace-symlinks") {
@@ -92,17 +98,24 @@ const toRelativePath = (value) => {
   return relative(root, destination);
 };
 
+const sharedLocalPaths = [
+  ".env.local",
+  "apps/convex/.env.local",
+  "apps/convex/.convex/local/default",
+  "apps/web/.env.local",
+  "apps/mobile/.env.local",
+];
+const sharedBackendPaths = sharedLocalPaths.filter((path) => path !== ".env.local");
 const requestedEnvPaths = envPaths.map(toRelativePath);
-if (requestedEnvPaths.includes("apps/convex/.env.local")) {
-  throw new Error("apps/convex/.env.local selects a Convex deployment and cannot be shared between worktrees.");
+if (convexMode === "isolated" && requestedEnvPaths.some((path) => sharedBackendPaths.includes(path))) {
+  throw new Error("An isolated backend cannot share local Convex environment or state files.");
 }
-if (
-  setupConvex &&
-  requestedEnvPaths.some((path) =>
-    ["apps/web/.env.local", "apps/mobile/.env.local"].includes(path),
-  )
-) {
-  throw new Error("Local Convex setup writes web and mobile environment files. Use --no-convex to share either file.");
+if (convexMode === "shared") {
+  for (const path of ["apps/convex/.env.local", "apps/convex/.convex/local/default"]) {
+    if (!existsSync(join(sourceRoot, path))) {
+      throw new Error(`Source worktree is missing ${path}. Use --isolated-convex instead.`);
+    }
+  }
 }
 
 const link = (relativePath) => {
@@ -156,11 +169,14 @@ if (linkDependencies) {
   for (const path of dependencyPaths) link(path);
 }
 
-for (const path of requestedEnvPaths) {
+const localPaths = convexMode === "shared"
+  ? [...new Set([...sharedLocalPaths, ...requestedEnvPaths])]
+  : requestedEnvPaths;
+for (const path of localPaths) {
   link(path);
 }
 
-if (setupConvex) {
+if (convexMode === "isolated") {
   if (dryRun) {
     console.log("Would create/select this worktree's isolated local Convex backend.");
   } else {
