@@ -1,6 +1,7 @@
 # Convex local dev
 \\
 apps/convex/.convex/
+.worktree-bootstrap.json
 
 # Dependencies
 node_modules

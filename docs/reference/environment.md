@@ -38,13 +38,13 @@ NEXT_PUBLIC_CONVEX_SITE_URL=https://...
 
 ## Worktrees And Deployment Selection
 
-`pnpm worktree:bootstrap` links the primary worktree's local Convex state and
-all local client environment files by default. This makes `pnpm dev` work in a
-new worktree without a second install or backend setup, but both worktrees then
-share the same local data and deployment selection. Run only one Convex watcher
-against that backend at a time. Use `--isolated-convex` for a separate local
-deployment, or `--no-convex` to leave backend configuration untouched. See
-[Git worktrees](worktrees.md) for configuration and opt-out options.
+`pnpm worktree:bootstrap` creates/selects an isolated local Convex backend by
+default, so `pnpm dev` is safe to use after bootstrap. Use `--shared-convex`
+only for an explicit short-lived UI task. Shared mode links the primary
+worktree's local state and makes `pnpm dev` start only the web server, avoiding
+a second Convex watcher. Use `--no-convex` to leave backend configuration
+untouched. See [Git worktrees](worktrees.md) for configuration and opt-out
+options.
 
 For ordinary worktree development, initialize each worktree's own local backend:
 

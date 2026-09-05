@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "scripts": {
-    "dev": "turbo run dev --filter=web --filter=cvx",
+    "dev": "node scripts/dev.mjs",
     "dev:mobile": "pnpm --filter mobile dev",
     "dev:mobile:tunnel": "pnpm --filter mobile dev:client:tunnel",
     "build": "turbo run build",
