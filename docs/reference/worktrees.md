@@ -20,8 +20,8 @@ pnpm worktree:bootstrap
 ```
 
 The bootstrap command installs local `node_modules` directories from pnpm's
-shared package store, then links local environment files, including the primary
-worktree's local Convex configuration and data. It does not symlink
+shared package store and creates/selects an isolated local Convex backend. It
+does not symlink
 `node_modules`: Turbopack rejects dependency symlinks that point outside the
 worktree. After it completes, start the full local app with:
 
@@ -29,21 +29,35 @@ worktree. After it completes, start the full local app with:
 pnpm dev
 ```
 
-> [!WARNING]
-> The default configuration shares one stateful local Convex backend. Run only
-> one `pnpm dev` or `pnpm cvx:dev` watcher against it at a time. Stop the other
-> worktree's watcher before starting this one; otherwise two branches can deploy
-> incompatible schema/function code to the same local data.
+### LAN devices
+
+The isolated backend defaults to loopback URLs, which work only on the Mac running
+the local backend. To use the app from another device on the same network, set
+the development Mac's current LAN IPv4 address, then restart `pnpm dev`:
+
+```bash
+pnpm sync:convex-env -- --host <LAN IPv4>
+pnpm dev
+```
+
+Use the same LAN address when opening the web app on the device, for example
+`http://10.0.0.231:3000`. Reset to loopback for desktop-only work with
+`pnpm sync:convex-env -- --host 127.0.0.1`.
 
 ## Optional and isolated configuration
 
-Use `--isolated-convex` when the worktree needs its own local data and backend.
-It creates/selects that isolated backend and writes worktree-local web and
-mobile URLs:
+Use `--shared-convex` only for a short-lived UI task that explicitly needs the
+primary worktree's local data and backend:
 
 ```bash
-pnpm worktree:bootstrap -- --isolated-convex
+pnpm worktree:bootstrap -- --shared-convex
 ```
+
+Shared mode links `.env.local`, client environment files,
+`apps/convex/.env.local`, and local Convex state. It also makes `pnpm dev`
+start only the web server, so it cannot start a second Convex watcher. Start
+the Convex watcher from the primary worktree first. Changes to linked files,
+backend data, and deployed functions affect the primary worktree too.
 
 Pass `--no-convex` when neither shared nor isolated backend setup is wanted.
 In that mode, environment files are opt-in:
@@ -52,11 +66,8 @@ In that mode, environment files are opt-in:
 pnpm worktree:bootstrap -- --no-convex --env .env.local
 ```
 
-The shared default links `.env.local`, all client environment files,
-`apps/convex/.env.local`, and the local Convex state. Changes to any of those
-files or backend data affect the primary worktree too. Do not run
-`pnpm setup:convex-local` or `pnpm sync:convex-env` while using shared
-configuration: use `--isolated-convex` first.
+Do not run `pnpm setup:convex-local` or `pnpm sync:convex-env` while using
+shared configuration: rerun bootstrap without `--shared-convex` first.
 
 ## Customize or opt out
 

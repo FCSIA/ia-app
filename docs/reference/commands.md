@@ -15,7 +15,7 @@ tags: [commands, development]
 | `pnpm --filter web dev` | Start only the Next.js web app                            |
 | `pnpm lint`             | Lint all workspaces                                       |
 | `pnpm build`            | Build all workspaces                                      |
-| `pnpm worktree:bootstrap -- [options]` | Link reusable dependencies and local Convex state; use `--isolated-convex` for a separate backend; see [Git worktrees](worktrees.md) |
+| `pnpm worktree:bootstrap -- [options]` | Install local dependencies and initialize an isolated local backend; use `--shared-convex` only for explicit UI work; see [Git worktrees](worktrees.md) |
 | `pnpm test`             | Run test suites                                           |
 
 ## Release log
