@@ -1,6 +1,6 @@
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Section, Txt } from "@/components/ui";

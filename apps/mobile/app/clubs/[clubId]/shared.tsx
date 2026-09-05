@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "@/lib/convex-react";
 import { FileText, FolderOpen, ImageIcon, Search } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";

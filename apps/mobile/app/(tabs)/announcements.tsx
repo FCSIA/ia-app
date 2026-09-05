@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { RefreshControl, View } from "react-native";
 import { Search, X } from "lucide-react-native";
-import { useQuery } from "convex/react";
+import { useQuery } from "@/lib/convex-react";
 import { AppHeader } from "@/components/app-header";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
