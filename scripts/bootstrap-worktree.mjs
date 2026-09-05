@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, realpathSync, readdirSync, symlinkSync, unlinkSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, realpathSync, symlinkSync, unlinkSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -20,7 +20,7 @@ Link reusable local setup from the primary worktree into this worktree.
 Options:
   --from <path>            Source worktree (default: Git's primary worktree)
   --env <relative-path>    Link a local environment file; may be repeated
-  --no-dependencies        Do not link node_modules directories
+  --no-dependencies        Do not install local node_modules directories
   --isolated-convex        Create a separate local Convex backend for this worktree
   --no-convex              Do not configure a Convex backend
   --replace-symlinks       Repoint existing symlinks (never replaces files)
@@ -155,18 +155,44 @@ const link = (relativePath) => {
   }
 };
 
-if (linkDependencies) {
-  const dependencyPaths = ["node_modules"];
-  for (const parent of ["apps", "packages"]) {
-    const parentPath = join(root, parent);
-    if (!existsSync(parentPath)) continue;
-    for (const entry of readdirSync(parentPath, { withFileTypes: true })) {
-      if (entry.isDirectory() && existsSync(join(parentPath, entry.name, "package.json"))) {
-        dependencyPaths.push(join(parent, entry.name, "node_modules"));
-      }
+const removeSourceNodeModulesLink = (relativePath) => {
+  const destinationPath = join(root, relativePath);
+  const sourcePath = join(sourceRoot, relativePath);
+  try {
+    if (
+      lstatSync(destinationPath).isSymbolicLink() &&
+      realpathSync(destinationPath) === realpathSync(sourcePath)
+    ) {
+      if (!dryRun) unlinkSync(destinationPath);
+      console.log(`${dryRun ? "Would remove" : "Removed"} unsupported shared ${relativePath} symlink.`);
     }
+  } catch {
+    // A missing dependency directory is expected before the local install.
   }
-  for (const path of dependencyPaths) link(path);
+};
+
+if (linkDependencies) {
+  for (const path of [
+    "node_modules",
+    "apps/convex/node_modules",
+    "apps/mobile/node_modules",
+    "apps/web/node_modules",
+    "packages/design-tokens/node_modules",
+    "packages/devlog/node_modules",
+    "packages/fun-facts/node_modules",
+  ]) {
+    removeSourceNodeModulesLink(path);
+  }
+  if (dryRun) {
+    console.log("Would install local node_modules from pnpm's shared package store.");
+  } else {
+    const result = spawnSync("pnpm", ["install", "--offline", "--frozen-lockfile"], {
+      cwd: root,
+      stdio: "inherit",
+    });
+    if (result.error) throw result.error;
+    if (result.status !== 0) process.exit(result.status ?? 1);
+  }
 }
 
 const localPaths = convexMode === "shared"

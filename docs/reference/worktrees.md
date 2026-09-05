@@ -19,9 +19,11 @@ cd ../ia-app-button-spacing
 pnpm worktree:bootstrap
 ```
 
-The bootstrap command links the root and workspace `node_modules` directories
-and local environment files, including the primary worktree's local Convex
-configuration and data. After it completes, start the full local app with:
+The bootstrap command installs local `node_modules` directories from pnpm's
+shared package store, then links local environment files, including the primary
+worktree's local Convex configuration and data. It does not symlink
+`node_modules`: Turbopack rejects dependency symlinks that point outside the
+worktree. After it completes, start the full local app with:
 
 ```bash
 pnpm dev
@@ -58,10 +60,10 @@ configuration: use `--isolated-convex` first.
 
 ## Customize or opt out
 
-Pass `--no-dependencies` when you want a separate install; run `pnpm install`
-before `--isolated-convex` setup in that case. Repeat `--env` to link additional
-local files. Choose another source checkout with `--from <path>`, preview work
-with `--dry-run`, and repoint only an existing symlink with
+Pass `--no-dependencies` to skip the local dependency install; run
+`pnpm install` before starting the app in that case. Repeat `--env` to link
+additional local files. Choose another source checkout with `--from <path>`,
+preview work with `--dry-run`, and repoint only an existing symlink with
 `--replace-symlinks`. The command never replaces a real file, so remove or
 rename a local file before linking it.
 
