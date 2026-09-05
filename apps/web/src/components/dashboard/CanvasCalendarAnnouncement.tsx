@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarPlus } from 'lucide-react';
+import { ArrowRight, CalendarPlus, X } from 'lucide-react';
 import {
   Card,
   CardDescription,
@@ -50,10 +50,10 @@ export function CanvasCalendarAnnouncement() {
 
   return (
     <CardGroup orientation="inline" border="outlined" proximityHover={false}>
-      <Card dismissible onDismiss={dismiss} className="bg-primary/10 pr-10">
+      <Card className="bg-primary/10">
         <span
           className={cn(
-            'ml-4 inline-flex size-8 shrink-0 items-center justify-center bg-primary/15 text-primary',
+            'inline-flex size-8 shrink-0 items-center justify-center bg-primary/15 text-primary',
             shape.bg
           )}
         >
@@ -66,9 +66,20 @@ export function CanvasCalendarAnnouncement() {
             Sync assignment due dates straight into your calendar.
           </CardDescription>
         </CardHeader>
-        <CardFooter>
-          <Button asChild size="sm">
-            <Link href="/calendar?connect=canvas">Check it out</Link>
+        <CardFooter className="pr-2">
+          <Button asChild size="icon-sm" aria-label="Connect your Canvas calendar">
+            <Link href="/calendar?connect=canvas">
+              <ArrowRight />
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Dismiss Canvas calendar announcement"
+            onClick={dismiss}
+          >
+            <X />
           </Button>
         </CardFooter>
       </Card>
