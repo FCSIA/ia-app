@@ -12,6 +12,16 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.26 — 2026-09-05 (alpha)
+
+### Improved
+
+- **mobile** — Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner. ([#120](https://github.com/virajdas/ia-app/pull/120), [`a1987cd8`](https://github.com/virajdas/ia-app/commit/a1987cd8))
+
+### Fixed
+
+- Sign-in now keeps one randomly selected dithered campus image for the browser session and tints it with the active theme. ([#118](https://github.com/virajdas/ia-app/pull/118), [`6d8970b6`](https://github.com/virajdas/ia-app/commit/6d8970b6))
+
 ## v0.8.25 — 2026-09-04 (alpha)
 
 ### Improved

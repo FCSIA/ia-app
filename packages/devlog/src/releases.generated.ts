@@ -7,6 +7,26 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.26",
+    "date": "2026-09-05",
+    "commit": "6d8970b6",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "mobile",
+        "summary": "Reopening a club, event or course no longer reloads it, and tabs open on their data instead of a spinner.",
+        "commit": "a1987cd8",
+        "pr": 120
+      },
+      {
+        "category": "Fixed",
+        "summary": "Sign-in now keeps one randomly selected dithered campus image for the browser session and tints it with the active theme.",
+        "commit": "6d8970b6",
+        "pr": 118
+      }
+    ]
+  },
+  {
     "version": "0.8.25",
     "date": "2026-09-04",
     "commit": "35777a00",
