@@ -6,82 +6,8 @@ import { api } from '~/apps/convex/src/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { downloadCsv } from '../_lib/admin-utils';
 import type { AdminTabId } from './use-admin-tab';
-import type { StudentImportResult } from '../_lib/types';
-import type { FunctionArgs } from 'convex/server';
-
-type StudentImportRow = FunctionArgs<typeof api.users.admin.importStudents>['rows'][number];
-
-function normalizeHeader(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function parseCsvLine(line: string) {
-  const cells: string[] = [];
-  let current = '';
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-    if (char === '"' && quoted && next === '"') {
-      current += '"';
-      index += 1;
-    } else if (char === '"') {
-      quoted = !quoted;
-    } else if (char === ',' && !quoted) {
-      cells.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  cells.push(current.trim());
-  return cells;
-}
-
-function pick(row: Record<string, string>, ...keys: string[]) {
-  for (const key of keys) {
-    const value = row[normalizeHeader(key)];
-    if (value) return value;
-  }
-  return undefined;
-}
-
-function parsePathway(value?: string) {
-  if (!value) return undefined;
-  const normalized = normalizeHeader(value);
-  const map: Record<string, StudentImportRow['major']> = {
-    it: 'INFORMATION_TECHNOLOGY',
-    informationtechnology: 'INFORMATION_TECHNOLOGY',
-    healthscience: 'HEALTH_SCIENCE',
-    engineering: 'ENGINEERING',
-    stem: 'ENGINEERING',
-    business: 'INFORMATION_TECHNOLOGY',
-    arts: 'HEALTH_SCIENCE',
-  };
-  return map[normalized];
-}
-
-function parseStudentCsv(text: string): StudentImportRow[] {
-  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
-  if (lines.length < 2) return [];
-  const headers = parseCsvLine(lines[0]!).map(normalizeHeader);
-
-  return lines.slice(1).map((line) => {
-    const cells = parseCsvLine(line);
-    const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? '']));
-    const gradeValue = pick(row, 'grade level', 'grade_level', 'gradeLevel', 'grade');
-    const gradeLevel = gradeValue ? Number.parseInt(gradeValue, 10) : undefined;
-    return {
-      uniqueId: pick(row, 'student id', 'student_id', 'studentId', 'unique id', 'unique_id', 'id') ?? '',
-      firstName: pick(row, 'first name', 'first_name', 'firstName', 'first') ?? '',
-      lastName: pick(row, 'last name', 'last_name', 'lastName', 'last') ?? '',
-      email: pick(row, 'email', 'student email'),
-      gradeLevel: Number.isInteger(gradeLevel) ? gradeLevel : undefined,
-      major: parsePathway(pick(row, 'major pathway', 'major_pathway', 'majorPathway', 'pathway', 'major')),
-      minor: parsePathway(pick(row, 'minor pathway', 'minor_pathway', 'minorPathway', 'minor')),
-    };
-  });
-}
+import type { StudentBulkUpdateResult, StudentImportResult } from '../_lib/types';
+import { parseStudentBulkUpdateCsv, parseStudentImportCsv } from '../_lib/student-roster-csv';
 
 export function useAdminScheduleImport(activeTab: AdminTabId) {
   const { toast } = useToast();
@@ -89,9 +15,12 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
   const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
   const [studentCsvInputKey, setStudentCsvInputKey] = useState(0);
   const [lastStudentImport, setLastStudentImport] = useState<StudentImportResult | null>(null);
+  const [lastStudentUpdate, setLastStudentUpdate] = useState<StudentBulkUpdateResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const importStudents = useAction(api.users.admin.importStudents);
+  const updateStudents = useAction(api.users.admin.updateStudents);
   const exportRows = useQuery(api.users.admin.exportStudents, activeTab === 'schedule' ? {} : 'skip') ?? [];
 
   const importStudentsMutation = {
@@ -100,7 +29,7 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
       if (!studentCsvFile) throw new Error('Select a CSV file first');
       setIsImporting(true);
       try {
-        const rows = parseStudentCsv(await studentCsvFile.text());
+        const rows = parseStudentImportCsv(await studentCsvFile.text());
         const data = await importStudents({ rows });
         setLastStudentImport(data);
         setStudentCsvFile(null);
@@ -118,6 +47,22 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
         setIsImporting(false);
       }
     },
+  };
+
+  const bulkUpdateStudents = async () => {
+    if (!studentCsvFile) return;
+    setIsUpdating(true);
+    try {
+      const data = await updateStudents({ rows: parseStudentBulkUpdateCsv(await studentCsvFile.text()) });
+      setLastStudentUpdate(data);
+      setStudentCsvFile(null);
+      setStudentCsvInputKey((current) => current + 1);
+      toast({ title: `Updated ${data.updated} students`, description: `${data.skipped} skipped` });
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : 'Bulk update failed', variant: 'destructive' });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const exportStudentsMutation = {
@@ -170,6 +115,9 @@ export function useAdminScheduleImport(activeTab: AdminTabId) {
     isExporting: exportStudentsMutation.isPending,
     onExport: () => exportStudentsMutation.mutate(),
     lastStudentImport,
+    isUpdating,
+    onBulkUpdate: () => void bulkUpdateStudents(),
+    lastStudentUpdate,
     onExportGeneratedPasswords: exportGeneratedPasswords,
   };
 }

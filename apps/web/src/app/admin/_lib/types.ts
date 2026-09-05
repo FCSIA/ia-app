@@ -13,6 +13,12 @@ export type StudentImportResult = {
 
 export type AdministratorImportResult = StudentImportResult;
 
+export type StudentBulkUpdateResult = {
+  updated: number;
+  skipped: number;
+  errors: string[];
+};
+
 export type AuditActorScope = 'ALL' | 'USER' | 'SYSTEM';
 
 export type AuditEventRecord = {
