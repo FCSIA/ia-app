@@ -106,26 +106,31 @@ const NAV_ICON_GAP = 6;
 const COMPACT_RAIL_HEIGHT = 208;
 const NORMAL_RAIL_FIXED_HEIGHT = 156;
 const COMPACT_RAIL_FIXED_HEIGHT = 68;
+const PINNED_AUXILIARY_FIXED_HEIGHT = 332;
 
 /**
- * Returns the number of non-profile destinations that can remain in the
+ * Returns the number of overflow-eligible destinations that can remain in the
  * desktop rail. Browser zoom changes the rail's CSS-pixel height, so this
  * intentionally measures available height instead of relying on viewport
- * breakpoint guesses.
+ * breakpoint guesses. A rail tall enough to pin auxiliary controls reserves
+ * their full height before allocating primary destinations.
  */
 export function getDesktopNavigationCapacity({
   railHeight,
   itemCount,
+  reserveAuxiliaryControls = false,
 }: {
   railHeight: number;
   itemCount: number;
+  reserveAuxiliaryControls?: boolean;
 }) {
   if (!Number.isFinite(railHeight) || railHeight <= 0 || itemCount <= 0) {
     return 0;
   }
 
-  const fixedHeight =
-    railHeight <= COMPACT_RAIL_HEIGHT
+  const fixedHeight = reserveAuxiliaryControls
+    ? PINNED_AUXILIARY_FIXED_HEIGHT
+    : railHeight <= COMPACT_RAIL_HEIGHT
       ? COMPACT_RAIL_FIXED_HEIGHT
       : NORMAL_RAIL_FIXED_HEIGHT;
   const slotHeight = NAV_ICON_SIZE + NAV_ICON_GAP;
@@ -139,11 +144,10 @@ export function getDesktopNavigationCapacity({
 const useIsomorphicLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-function useDesktopNavigationCapacity(
+function useDesktopNavigationRailHeight(
   railRef: RefObject<HTMLElement | null>,
-  itemCount: number,
 ) {
-  const [capacity, setCapacity] = useState(itemCount);
+  const [railHeight, setRailHeight] = useState<number | null>(null);
 
   useIsomorphicLayoutEffect(() => {
     const rail = railRef.current;
@@ -151,14 +155,7 @@ function useDesktopNavigationCapacity(
 
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
     const syncCapacity = () => {
-      setCapacity(
-        desktopQuery.matches
-          ? getDesktopNavigationCapacity({
-              railHeight: rail.clientHeight,
-              itemCount,
-            })
-          : itemCount,
-      );
+      setRailHeight(desktopQuery.matches ? rail.clientHeight : null);
     };
 
     syncCapacity();
@@ -175,9 +172,9 @@ function useDesktopNavigationCapacity(
       desktopQuery.removeEventListener("change", syncCapacity);
       window.removeEventListener("resize", syncCapacity);
     };
-  }, [itemCount, railRef]);
+  }, [railRef]);
 
-  return capacity;
+  return railHeight;
 }
 
 function getNavigationItems({
@@ -276,16 +273,24 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
   const primary = getNavigationItems(props);
   const router = useRouter();
   const railRef = useRef<HTMLElement>(null);
+  const railHeight = useDesktopNavigationRailHeight(railRef);
   const profile = accountNav.find((item) => item.href === "/profile")!;
-  const overflowCandidates = [
-    ...primary,
+  const auxiliaryItems = [
     ...accountNav.filter((item) => item.href !== profile.href),
     ...(props.showAdmin ? adminNav : []),
   ];
-  const capacity = useDesktopNavigationCapacity(
-    railRef,
-    overflowCandidates.length,
-  );
+  const pinAuxiliaryControls =
+    railHeight !== null && railHeight >= PINNED_AUXILIARY_FIXED_HEIGHT;
+  const overflowCandidates = pinAuxiliaryControls
+    ? primary
+    : [...primary, ...auxiliaryItems];
+  const capacity = railHeight === null
+    ? overflowCandidates.length
+    : getDesktopNavigationCapacity({
+        railHeight,
+        itemCount: overflowCandidates.length,
+        reserveAuxiliaryControls: pinAuxiliaryControls,
+      });
   const hasOverflow = capacity < overflowCandidates.length;
   // The ellipsis occupies one of the available control slots when anything
   // moves into it, so reserve that slot before choosing direct destinations.
@@ -331,6 +336,16 @@ function AppShellDesktopNavigation(props: AppShellNavigationProps) {
             onNavigate={(href) => router.push(href)}
           />
         ) : null}
+        {pinAuxiliaryControls
+          ? auxiliaryItems.map((item) => (
+              <NavIcon
+                key={item.href}
+                item={item}
+                active={isActive(props.pathname, item.href)}
+                badge={item.href === "/notifications" ? props.unreadBadge : undefined}
+              />
+            ))
+          : null}
         <NavIcon item={profile} active={isActive(props.pathname, profile.href)} />
       </div>
     </aside>
