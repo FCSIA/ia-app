@@ -3,7 +3,7 @@ import type { Id } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
-import { getClubContext } from "./access";
+import { getClubContext, getViewerContext } from "./access";
 
 const MAX_GROUPS = 100;
 const MAX_GROUP_RULES = 100;
@@ -82,7 +82,10 @@ export const list = query({
   returns: v.object({ canManage: v.boolean(), groups: v.array(groupSummaryValidator) }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
+    // A live query can outlast a membership change. Keep the authorization
+    // boundary intact, but settle that stale subscription to an empty result
+    // instead of surfacing a client error.
+    const context = await getViewerContext(ctx, args.clubId, user);
     if (!context.canAccessWorkspace) return { canManage: false, groups: [] };
     const groups = await ctx.db.query("clubPeopleGroups")
       .withIndex("by_clubId_and_position", (q) => q.eq("clubId", args.clubId))

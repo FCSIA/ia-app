@@ -6,7 +6,7 @@ import { getCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { clubUnitJoinPolicyValidator } from "../validators";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
-import { getClubContext } from "./access";
+import { getClubContext, getViewerContext } from "./access";
 import {
   MAX_CLUB_UNITS,
   MAX_CLUB_UNIT_DESCRIPTION_LENGTH,
@@ -154,7 +154,11 @@ export const list = query({
   }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const context = await getClubContext(ctx, args.clubId, user);
+    // A live query can outlast a membership change. Keep the authorization
+    // boundary intact, but settle that stale subscription to an empty result
+    // instead of surfacing a client error.
+    const context = await getViewerContext(ctx, args.clubId, user);
+    if (!context.canAccessWorkspace) return { canManage: false, units: [] };
     const [units, viewerMemberships] = await Promise.all([
       ctx.db
         .query("clubUnits")
