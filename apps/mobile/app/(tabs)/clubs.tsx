@@ -2,11 +2,11 @@ import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@/lib/convex-react";
-import { Check, ChevronRight, Plus } from "lucide-react-native";
+import { Check, ChevronRight, Plus, UsersRound } from "lucide-react-native";
 import { AppHeader } from "@/components/app-header";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Avatar, IconButton, PressableScale, Txt } from "@/components/ui";
+import { Avatar, Button, Empty, IconButton, PressableScale, Txt } from "@/components/ui";
 import { CreateClubSheet } from "@/features/clubs/club-management-create-sheet";
 import { hasRole, useLiveCurrentUser } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -22,13 +22,17 @@ export default function ClubsScreen() {
     hasAdministrativeClubAccess ? "skip" : {},
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const canCreate = !!user && hasRole(user, "ADMIN", "SUPER_ADMIN", "SUPPORT_STAFF", "TEACHER");
   const memberIds = new Set((mine?.memberOf ?? []).map((club: any) => club._id));
   const sponsorIds = new Set((mine?.sponsoring ?? []).map((club: any) => club._id));
-  const clubsReady =
-    all === undefined || (!hasAdministrativeClubAccess && mine === undefined)
-      ? undefined
-      : all;
+  const myClubs = [
+    ...(mine?.memberOf ?? []),
+    ...(mine?.sponsoring ?? []).filter((club: any) => !memberIds.has(club._id)),
+  ];
+  const otherClubs = (all ?? []).filter(
+    (club: any) => !memberIds.has(club._id) && !sponsorIds.has(club._id),
+  );
 
   return (
     <Screen
@@ -48,39 +52,64 @@ export default function ClubsScreen() {
         />
       }
     >
-      <DataBoundary data={clubsReady} emptyTitle="No clubs yet">
-        {(clubs) => {
-          const joinedClubs = clubs.filter((club: any) => memberIds.has(club._id));
-          const sponsoredOnlyClubs = clubs.filter(
-            (club: any) => !memberIds.has(club._id) && sponsorIds.has(club._id),
-          );
-          const myClubs = [...joinedClubs, ...sponsoredOnlyClubs];
-          const otherClubs = clubs.filter(
-            (club: any) => !memberIds.has(club._id) && !sponsorIds.has(club._id),
-          );
+      {hasAdministrativeClubAccess ? (
+        <DataBoundary data={all} emptyTitle="No clubs yet">
+          {(clubs) => (
+            <ClubGroup
+              title="All clubs"
+              clubs={clubs}
+              memberIds={memberIds}
+              sponsorIds={sponsorIds}
+            />
+          )}
+        </DataBoundary>
+      ) : mine === undefined ? (
+        <DataBoundary data={undefined}>{() => null}</DataBoundary>
+      ) : (
+        <View style={{ width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.xl }}>
+          {myClubs.length ? (
+            <ClubGroup
+              title="Your clubs"
+              clubs={myClubs}
+              memberIds={memberIds}
+              sponsorIds={sponsorIds}
+            />
+          ) : (
+            <Empty
+              title="You haven’t joined a club yet"
+              body="Browse the directory to find clubs you can join."
+              icon={UsersRound}
+              action={
+                <Button
+                  title="Discover clubs"
+                  icon={ChevronRight}
+                  onPress={() => setDirectoryOpen(true)}
+                />
+              }
+            />
+          )}
 
-          return (
-            <View style={{ width: "100%", maxWidth: 720, alignSelf: "center", gap: spacing.xl }}>
-              {myClubs.length ? (
+          {directoryOpen ? (
+            <DataBoundary data={all} emptyTitle="No clubs available yet">
+              {(clubs) => (
                 <ClubGroup
-                  title="My clubs"
-                  clubs={myClubs}
+                  title="Discover clubs"
+                  clubs={clubs.filter((club: any) => !memberIds.has(club._id) && !sponsorIds.has(club._id))}
                   memberIds={memberIds}
                   sponsorIds={sponsorIds}
                 />
-              ) : null}
-              {otherClubs.length ? (
-                <ClubGroup
-                  title={myClubs.length ? "Other clubs" : "All clubs"}
-                  clubs={otherClubs}
-                  memberIds={memberIds}
-                  sponsorIds={sponsorIds}
-                />
-              ) : null}
-            </View>
-          );
-        }}
-      </DataBoundary>
+              )}
+            </DataBoundary>
+          ) : myClubs.length > 0 && otherClubs.length > 0 ? (
+            <Button
+              title="Discover more clubs"
+              variant="secondary"
+              icon={ChevronRight}
+              onPress={() => setDirectoryOpen(true)}
+            />
+          ) : null}
+        </View>
+      )}
       {canCreate ? <CreateClubSheet open={createOpen} onClose={() => setCreateOpen(false)} /> : null}
     </Screen>
   );
