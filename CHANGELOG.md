@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.28 — 2026-09-08 (alpha)
+
+### Improved
+
+- **convex** — Club screens no longer show an error after your club access changes. ([`dd411f1f`](https://github.com/virajdas/ia-app/commit/dd411f1f))
+
 ## v0.8.27 — 2026-09-08 (alpha)
 
 ### Added

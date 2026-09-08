@@ -7,6 +7,19 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.28",
+    "date": "2026-09-08",
+    "commit": "dd411f1f",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "convex",
+        "summary": "Club screens no longer show an error after your club access changes.",
+        "commit": "dd411f1f"
+      }
+    ]
+  },
+  {
     "version": "0.8.27",
     "date": "2026-09-08",
     "commit": "dc07b4b3",
