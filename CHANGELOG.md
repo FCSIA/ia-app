@@ -12,6 +12,25 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.27 — 2026-09-08 (alpha)
+
+### Added
+
+- **mobile** — The Clubs tab now explains when you have not joined a club and lets you open the club directory. ([`dc07b4b3`](https://github.com/virajdas/ia-app/commit/dc07b4b3))
+- **schedule** — Schedule picture import now reads images with Google Vision and requires you to confirm each period before applying it. ([`ec21813f`](https://github.com/virajdas/ia-app/commit/ec21813f))
+
+### Improved
+
+- **login** — Sign-in campus artwork now has a subtly more visible dither pattern. ([`9fcc8ee7`](https://github.com/virajdas/ia-app/commit/9fcc8ee7))
+- **dashboard** — Canvas calendar prompt has clearer connect and dismiss controls. ([`e8007af1`](https://github.com/virajdas/ia-app/commit/e8007af1))
+- **tooling** — Bump convex to 1.45.0. ([`57922eb9`](https://github.com/virajdas/ia-app/commit/57922eb9))
+- **web** — Notifications, feedback, and Admin Panel stay at the bottom of the desktop sidebar when space allows. ([`8d193a35`](https://github.com/virajdas/ia-app/commit/8d193a35))
+- **tooling** — Harden worktree bootstrap modes. ([`4841d245`](https://github.com/virajdas/ia-app/commit/4841d245))
+
+### Internal
+
+- Explain LAN worktree configuration. ([`fc5efd63`](https://github.com/virajdas/ia-app/commit/fc5efd63))
+
 ## v0.8.26 — 2026-09-05 (alpha)
 
 ### Improved
