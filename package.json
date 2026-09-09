@@ -25,6 +25,7 @@
     "devlog:generate": "node scripts/devlog.mjs generate",
     "devlog:preview": "node scripts/devlog.mjs preview",
     "devlog:cut": "node scripts/devlog.mjs cut",
+    "release:ship": "node scripts/release-ship.mjs",
     "fluid:update": "node scripts/update-fluid-components.mjs",
     "login:dither": "node scripts/dither-login-images.mjs",
     "sync:convex-env": "node scripts/sync-convex-env.mjs"

@@ -45,12 +45,26 @@ CI. Contributor Validation runs that check on every pull request.
 
 ## Cutting a release
 
-A production deploy uses an approved immutable release tag. First, cut the
-release data from `main`, commit the generated `CHANGELOG.md` and devlog files,
-and merge those changes through the normal protected-branch pull-request flow.
-After the release commit is in `main`, a designated maintainer creates and
-pushes its `v<version>` tag. That tag starts `Production Deploy`
-(`.github/workflows/prod.yml`).
+A production deploy uses an approved immutable release tag. The release commit
+is kept on purpose: the deployed bundle reads its version and devlog entries
+from the generated files, and the deploy workflow requires the tag to match
+the latest approved devlog version. `release:ship` runs the whole flow in one
+step so there is no separate manual version-bump commit to write.
+
+From an up-to-date `main` checkout:
+
+```bash
+pnpm devlog:preview
+pnpm release:ship -- --title="Calendar-first schedules"
+```
+
+This cuts the release data, commits `CHANGELOG.md` and `packages/devlog` as
+`release: v<version>`, creates the annotated `v<version>` tag, and pushes both.
+Pushing the tag starts `Production Deploy` (`.github/workflows/prod.yml`).
+Pass `--minor` for a milestone worth naming, `--yes` to skip the push
+confirmation, `--no-push` to stop after the local commit and tag, and `--sign`
+for a GPG-signed tag. Batch fixes into one release instead of cutting one
+release per commit.
 
 The workflow is read-only. Before installing dependencies or using deployment
 secrets, it checks that the tag has the `vMAJOR.MINOR.PATCH` form, its commit is
@@ -60,22 +74,13 @@ cannot create a release commit, move `main`, or bypass branch protection. A
 failed deploy leaves the already-approved release commit and tag in place so it
 can be safely retried.
 
-To see what the next release would contain, without writing anything:
-
-```bash
-pnpm devlog:preview
-```
-
-To prepare one for review from an up-to-date `main` checkout:
-
-```bash
-pnpm devlog:cut --minor --title="Calendar-first schedules"
-```
-
-Commit `CHANGELOG.md` and `packages/devlog`, open a pull request, and wait for
-the usual approval and validation. Once it is merged, create `v<version>` on
-that release commit and push the tag to begin deployment. To retry an approved
-release, manually dispatch the workflow with that existing tag name.
+If a direct push to `main` is rejected (branch protection), ship through a
+pull request instead: run with `--no-push`, push the release commit on a
+`release/cd-<version>` branch, merge it, then move the tag to the merged
+commit and push the tag. The manual fallback is `pnpm devlog:cut`, commit
+`CHANGELOG.md` and `packages/devlog`, open a pull request, and tag after the
+merge. To retry an approved release, manually dispatch the workflow with that
+existing tag name.
 
 ## How commits become entries
 

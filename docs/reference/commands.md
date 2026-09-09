@@ -26,6 +26,7 @@ tags: [commands, development]
 | `pnpm devlog:preview`  | Show the release the current commits would produce             |
 | `pnpm devlog:generate` | Regenerate both outputs after editing `releases.json` by hand  |
 | `pnpm devlog:cut`      | Cut the next version locally (`--minor`, `--patch`, `--set=`)  |
+| `pnpm release:ship`    | Cut, commit, tag, and push the next release in one step         |
 
 See [versioning and the devlog](versioning.md) for the version scheme and how
 commit subjects become changelog entries.
