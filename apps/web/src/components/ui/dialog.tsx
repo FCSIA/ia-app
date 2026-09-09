@@ -141,10 +141,16 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
             className={cn(
               container ? "absolute" : "fixed",
               "z-50",
-              "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:0_0]",
+              // Mobile keeps the visual-viewport keyboard offset via the
+              // individual `translate` property so it composes with
+              // framer-motion's `transform: scale()`. Desktop centers with a
+              // single `translate` value — a separate `sm:[translate:0_0]`
+              // reset would override the centering and park the panel's
+              // top-left at the viewport center.
+              "[translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] sm:[translate:-50%_-50%]",
               isMobileTop
-                ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2"
-                : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2",
+                ? "inset-x-2 top-[calc(.5rem+env(safe-area-inset-top))] w-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)]"
+                : "inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] w-auto sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:w-[calc(100%-2rem)]",
               surfaceClasses(dialogLevel),
               "max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain focus:outline-none",
               padding === "default" && "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6",

@@ -41,7 +41,12 @@ const AlertDialogContent = React.forwardRef<
       <AlertDialogPrimitive.Content
         ref={contentRef}
         className={cn(
-          "fixed inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] z-50 grid max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-auto gap-4 overflow-y-auto overscroll-contain rounded-2xl border bg-background p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-lg [translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 motion-reduce:animate-none sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:[translate:0_0] sm:p-6 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+          // Mobile bottom sheet keeps the visual-viewport keyboard offset via
+          // the individual `translate` property so it composes with the
+          // transform-based slide/zoom entrance. Desktop centers with a single
+          // `translate` value; `sm:[translate:0_0]` alone would leave
+          // left/top at 50% with no negative offset.
+          "fixed inset-x-2 bottom-[calc(.5rem+env(safe-area-inset-bottom))] z-50 grid max-h-[calc(100dvh-1rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-auto gap-4 overflow-y-auto overscroll-contain rounded-2xl border bg-background p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-lg [translate:0_var(--app-fixed-bottom-visual-viewport-offset,0px)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:slide-in-from-bottom-4 motion-reduce:animate-none sm:bottom-auto sm:left-[50%] sm:right-auto sm:top-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:[translate:-50%_-50%] sm:p-6 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
           className
         )}
         {...props}
