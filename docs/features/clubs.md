@@ -20,8 +20,10 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   global command palette.
 - Collects files and images previously shared in each readable channel.
 - Supports direct member adds by sponsors, admins, and club roles with the
-  membership-invite permission, plus invites, bulk CSV invites, open joins,
-  manager-approved join requests, invite-only clubs, and join codes.
+  membership-invite permission, including an idempotent bulk unique-ID CSV
+  upload that leaves existing members unchanged. Also supports invitations,
+  open joins, manager-approved join requests, invite-only clubs, and join
+  codes.
 - Lets club managers create reusable roles, assign them to members, rename
   them, remove them, and configure their permissions. Role removal explicitly
   confirms any affected channel rules and warns when a channel will become
@@ -94,6 +96,7 @@ invites or adds people.
 - `api.clubs.invitations.respondToJoinRequest`
 - `api.clubs.invitations.sendInvite`
 - `api.clubs.invitations.addMemberDirectly`
+- `api.clubs.invitations.bulkAddMembers`
 - `api.clubs.invitations.bulkInvite`
 - `api.clubs.invitations.respondToInvite`
 - `api.clubs.invitations.generateJoinCode`

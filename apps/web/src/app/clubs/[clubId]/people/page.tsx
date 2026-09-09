@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { useMutation, useQuery } from "@/lib/convex-react";
+import { useAction, useMutation, useQuery } from "@/lib/convex-react";
 import type { FunctionReturnType } from "convex/server";
 import {
   Check,
@@ -95,6 +95,21 @@ type StudentResult = FunctionReturnType<
   typeof api.clubs.invitations.searchInviteCandidates
 >[number];
 
+type BulkUploadResult =
+  | {
+      kind: "invites";
+      invited: number;
+      skipped: number;
+      errors: string[];
+    }
+  | {
+      kind: "members";
+      added: number;
+      alreadyMember: number;
+      skipped: number;
+      errors: string[];
+    };
+
 type UnitAssignmentPreview = {
   line: number;
   name: string;
@@ -126,11 +141,7 @@ function ManagePeopleDialog({
   const [selected, setSelected] = useState<StudentResult | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvKey, setCsvKey] = useState(0);
-  const [result, setResult] = useState<{
-    invited: number;
-    skipped: number;
-    errors: string[];
-  } | null>(null);
+  const [result, setResult] = useState<BulkUploadResult | null>(null);
   const origin = useSyncExternalStore(
     subscribeToOrigin,
     getClientOrigin,
@@ -154,6 +165,7 @@ function ManagePeopleDialog({
     api.clubs.invitations.addMemberDirectly,
   );
   const bulkInvite = useMutation(api.clubs.invitations.bulkInvite);
+  const bulkAddMembers = useAction(api.clubs.invitations.bulkAddMembers);
   const [csvPending, setCsvPending] = useState(false);
   const [memberActionPending, setMemberActionPending] = useState(false);
 
@@ -187,19 +199,28 @@ function ManagePeopleDialog({
     }
   };
 
-  const handleCsvUpload = async () => {
+  const handleCsvUpload = async (mode: "add" | "invite") => {
     if (!csvFile) return;
     setCsvPending(true);
     try {
       const uniqueIds = parseInviteCsv(await csvFile.text());
-      const response = await bulkInvite({ clubId, uniqueIds });
-      setResult(response);
+      if (mode === "add") {
+        const response = await bulkAddMembers({ clubId, uniqueIds });
+        setResult({ kind: "members", ...response });
+        toast({
+          title: "Students added",
+          description: `${response.added} added, ${response.alreadyMember} already in club, ${response.skipped} skipped`,
+        });
+      } else {
+        const response = await bulkInvite({ clubId, uniqueIds });
+        setResult({ kind: "invites", ...response });
+        toast({
+          title: "CSV processed",
+          description: `${response.invited} invited, ${response.skipped} skipped`,
+        });
+      }
       setCsvFile(null);
       setCsvKey((key) => key + 1);
-      toast({
-        title: "CSV processed",
-        description: `${response.invited} invited, ${response.skipped} skipped`,
-      });
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : "Failed to import CSV",
@@ -396,8 +417,9 @@ function ManagePeopleDialog({
               <div className="space-y-1">
                 <Label htmlFor="invite-csv">Unique ID CSV upload</Label>
                 <p className="text-xs text-muted-foreground">
-                  Use one student unique ID per row. To assign students to club
-                  units, use Import units on the People page instead.
+                  Use one student unique ID per row. Add students immediately
+                  to leave existing members unchanged, or send invitations.
+                  Assign houses, rooms, and roles afterward with Import units.
                 </p>
               </div>
               <Input
@@ -409,18 +431,30 @@ function ManagePeopleDialog({
                   setCsvFile(event.target.files?.[0] || null)
                 }
               />
-              <Button
-                variant="tertiary"
-                leadingIcon={Upload}
-                disabled={!csvFile || csvPending}
-                onClick={() => void handleCsvUpload()}
-              >
-                {csvPending ? "Uploading..." : "Invite by unique ID"}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  leadingIcon={UserRoundCheck}
+                  disabled={!csvFile || csvPending}
+                  loading={csvPending}
+                  onClick={() => void handleCsvUpload("add")}
+                >
+                  Add members now
+                </Button>
+                <Button
+                  variant="tertiary"
+                  leadingIcon={Upload}
+                  disabled={!csvFile || csvPending}
+                  onClick={() => void handleCsvUpload("invite")}
+                >
+                  Send invitations
+                </Button>
+              </div>
               {result ? (
                 <div className="rounded-md bg-muted/30 p-3 text-sm">
                   <p className="font-medium">
-                    {result.invited} invited · {result.skipped} skipped
+                    {result.kind === "members"
+                      ? `${result.added} added · ${result.alreadyMember} already in club · ${result.skipped} skipped`
+                      : `${result.invited} invited · ${result.skipped} skipped`}
                   </p>
                   {result.errors.slice(0, 5).map((error) => (
                     <p
