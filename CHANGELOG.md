@@ -12,6 +12,12 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.29 — 2026-09-09 (alpha)
+
+### Fixed
+
+- **web** — Dialogs and confirmations are centered again on desktop while staying above the keyboard on mobile. ([`ff628442`](https://github.com/virajdas/ia-app/commit/ff628442))
+
 ## v0.8.28 — 2026-09-08 (alpha)
 
 ### Improved

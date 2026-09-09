@@ -7,6 +7,19 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.29",
+    "date": "2026-09-09",
+    "commit": "ff628442",
+    "changes": [
+      {
+        "category": "Fixed",
+        "scope": "web",
+        "summary": "Dialogs and confirmations are centered again on desktop while staying above the keyboard on mobile.",
+        "commit": "ff628442"
+      }
+    ]
+  },
+  {
     "version": "0.8.28",
     "date": "2026-09-08",
     "commit": "dd411f1f",
