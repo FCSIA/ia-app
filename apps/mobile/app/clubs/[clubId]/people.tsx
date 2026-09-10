@@ -81,7 +81,14 @@ export default function ClubPeopleScreen() {
                         clubId: clubId as any,
                         recipientUniqueId: inviteId.trim(),
                       })
-                        .then(() => {
+                        .then((result) => {
+                          if (result.kind === "memberLimitReached") {
+                            Alert.alert(
+                              "Club is full",
+                              "Open a member spot before adding another student.",
+                            );
+                            return;
+                          }
                           setInviteId("");
                           Alert.alert("Student added to club");
                         })
@@ -245,20 +252,29 @@ export default function ClubPeopleScreen() {
                           title="Approve"
                           size="sm"
                           style={{ flex: 1 }}
-                          onPress={() =>
-                            respondToJoinRequest({
+                          onPress={() => {
+                            void respondToJoinRequest({
                               clubId: clubId as any,
                               requestId: request._id,
                               accept: true,
-                            }).catch((error) =>
-                              Alert.alert(
-                                "Could not approve",
-                                error instanceof Error
-                                  ? error.message
-                                  : "Try again.",
-                              ),
-                            )
-                          }
+                            })
+                              .then((result) => {
+                                if (result.kind === "memberLimitReached") {
+                                  Alert.alert(
+                                    "Club is full",
+                                    "A member spot must open before this request can be approved.",
+                                  );
+                                }
+                              })
+                              .catch((error) =>
+                                Alert.alert(
+                                  "Could not approve",
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Try again.",
+                                ),
+                              );
+                          }}
                         />
                         <Button
                           title="Decline"

@@ -35,8 +35,10 @@ const buttonVariants = cva(
         sm: "h-7 px-3 text-[12px] gap-1 pointer-coarse:min-h-11",
         md: "h-8 px-4 text-[13px] gap-1.5 pointer-coarse:min-h-11",
         lg: "h-9 px-5 text-[14px] gap-1.5 pointer-coarse:min-h-11",
-        "icon-compact": "h-7 w-7 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
-        "icon-sm": "h-8 w-8 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        "icon-compact":
+          "h-7 w-7 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
+        "icon-sm":
+          "h-8 w-8 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-3.5 [&_svg]:w-3.5",
         icon: "h-9 w-9 p-0 pointer-coarse:h-11 pointer-coarse:w-11 [&_svg]:h-4 [&_svg]:w-4",
         "icon-lg": "h-11 w-11 p-0 [&_svg]:h-5 [&_svg]:w-5",
       },
@@ -154,21 +156,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               </span>
               <span className="absolute inset-0 flex items-center justify-center">
                 <svg
-                  className={spinnerSizeClass}
+                  className={cn(
+                    spinnerSizeClass,
+                    "animate-spin motion-reduce:animate-none",
+                  )}
                   viewBox="0 0 24 24"
                   fill="none"
+                  aria-hidden="true"
                 >
-                  <path
-                    d="M 12 12 C 14 8.5 19 8.5 19 12 C 19 15.5 14 15.5 12 12 C 10 8.5 5 8.5 5 12 C 5 15.5 10 15.5 12 12 Z"
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="8"
                     stroke="currentColor"
                     strokeWidth="1.125"
                     strokeLinecap="round"
                     pathLength="100"
-                    style={{
-                      strokeDasharray: "15 85",
-                      animation:
-                        "spinner-move 2s linear infinite, spinner-dash 4s ease-in-out infinite",
-                    }}
+                    strokeDasharray="32 68"
                   />
                 </svg>
               </span>
@@ -222,6 +226,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         // asChild roots (e.g. an anchor) don't take the disabled attribute —
         // Slot would spread it onto the element as invalid HTML.
         disabled={asChildElement ? undefined : disabled || loading}
+        aria-busy={loading || undefined}
         style={style}
         {...props}
       >

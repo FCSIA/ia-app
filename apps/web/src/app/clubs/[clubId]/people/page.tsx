@@ -107,6 +107,7 @@ type BulkUploadResult =
       kind: "members";
       added: number;
       alreadyMember: number;
+      memberLimitReached: number;
       skipped: number;
       errors: string[];
     };
@@ -175,10 +176,18 @@ function ManagePeopleDialog({
     setMemberActionPending(true);
     try {
       if (action === "add") {
-        await addMemberDirectly({
+        const result = await addMemberDirectly({
           clubId,
           recipientUniqueId: selected.uniqueId,
         });
+        if (result.kind === "memberLimitReached") {
+          toast({
+            title: "Club is full",
+            description: "Open a member spot before adding another student.",
+            variant: "destructive",
+          });
+          return;
+        }
       } else {
         await sendInvite({ clubId, recipientUniqueId: selected.uniqueId });
       }
@@ -209,8 +218,17 @@ function ManagePeopleDialog({
         const response = await bulkAddMembers({ clubId, uniqueIds });
         setResult({ kind: "members", ...response });
         toast({
-          title: "Students added",
-          description: `${response.added} added, ${response.alreadyMember} already in club, ${response.skipped} skipped`,
+          title:
+            response.memberLimitReached > 0
+              ? "Club member limit reached"
+              : "Students added",
+          description:
+            response.memberLimitReached > 0
+              ? `${response.added} added. ${response.memberLimitReached} could not be added because the club is full.`
+              : `${response.added} added, ${response.alreadyMember} already in club, ${response.skipped} skipped`,
+          ...(response.memberLimitReached > 0
+            ? { variant: "destructive" as const }
+            : {}),
         });
       } else {
         const response = await bulkInvite({ clubId, uniqueIds });
@@ -418,9 +436,9 @@ function ManagePeopleDialog({
               <div className="space-y-1">
                 <Label htmlFor="invite-csv">Unique ID CSV upload</Label>
                 <p className="text-xs text-muted-foreground">
-                  Use one student unique ID per row. Add students immediately
-                  to leave existing members unchanged, or send invitations.
-                  Assign houses, rooms, and roles afterward with Import units.
+                  Use one student unique ID per row. Add students immediately to
+                  leave existing members unchanged, or send invitations. Assign
+                  houses, rooms, and roles afterward with Import units.
                 </p>
               </div>
               <Input
@@ -457,6 +475,16 @@ function ManagePeopleDialog({
                       ? `${result.added} added · ${result.alreadyMember} already in club · ${result.skipped} skipped`
                       : `${result.invited} invited · ${result.skipped} skipped`}
                   </p>
+                  {result.kind === "members" &&
+                  result.memberLimitReached > 0 ? (
+                    <p className="mt-2 rounded-md border border-destructive/25 bg-destructive/5 px-2 py-1.5 text-xs text-destructive">
+                      {`The club is full. ${result.memberLimitReached} ${
+                        result.memberLimitReached === 1
+                          ? "student was"
+                          : "students were"
+                      } not added.`}
+                    </p>
+                  ) : null}
                   {result.errors.slice(0, 5).map((error) => (
                     <p
                       key={error}
@@ -562,7 +590,10 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                     : null;
           return {
             ...row,
-            memberId: issue === "Skipped — not a club member" ? null : members[0]?._id ?? null,
+            memberId:
+              issue === "Skipped — not a club member"
+                ? null
+                : (members[0]?._id ?? null),
             unitId: issue || !row.unit ? null : units[0]._id,
             issue,
             skipped: issue === "Skipped — not a club member",
@@ -625,11 +656,14 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
     >
       <Button
         type="button"
-        size="icon"
+        size="sm"
+        variant="tertiary"
+        leadingIcon={UserPen}
         onClick={() => setOpen(true)}
         aria-label="Import unit assignments"
+        title="Import unit assignments"
       >
-        <UserPen className="size-4" />
+        Import units
       </Button>
 
       <DialogContent size="lg" className="sm:max-w-3xl">
@@ -697,7 +731,8 @@ function BulkUnitAssignmentDialog({ club }: { club: ClubDetail }) {
                   </p>
                 ) : previewSummary.skipped.length ? (
                   <p className="text-muted-foreground">
-                    {previewSummary.skipped.length} not in this club will be skipped
+                    {previewSummary.skipped.length} not in this club will be
+                    skipped
                   </p>
                 ) : null}
               </div>
@@ -780,7 +815,9 @@ export default function ClubPeoplePage() {
   );
   const [isRemoving, setIsRemoving] = useState(false);
   const [requestInFlight, setRequestInFlight] = useState<string | null>(null);
-  const [friendRequestPendingId, setFriendRequestPendingId] = useState<string | null>(null);
+  const [friendRequestPendingId, setFriendRequestPendingId] = useState<
+    string | null
+  >(null);
 
   const [filter, setFilter] = useState(() =>
     searchParams?.get("tab") === "requests" ? "requests" : "all",
@@ -855,7 +892,8 @@ export default function ClubPeoplePage() {
     const validIds = new Set(club.roles.map((r) => r._id));
     setSelectedRoleIds((prev) => {
       const next = new Set([...prev].filter((id) => validIds.has(id)));
-      if (next.size === prev.size && [...next].every((id) => prev.has(id))) return prev;
+      if (next.size === prev.size && [...next].every((id) => prev.has(id)))
+        return prev;
       return next;
     });
   }, [club]);
@@ -911,9 +949,10 @@ export default function ClubPeoplePage() {
 
   const matchesSelectedSubstructure = (person: ClubDirectoryEntry) =>
     !selectedUnitIds ||
-    ((((person as unknown as { unitIds?: Id<"clubUnits">[] }).unitIds ?? []) as Id<"clubUnits">[]).some((id) =>
-      selectedUnitIds.has(id),
-    ));
+    (
+      ((person as unknown as { unitIds?: Id<"clubUnits">[] }).unitIds ??
+        []) as Id<"clubUnits">[]
+    ).some((id) => selectedUnitIds.has(id));
 
   const matchesSelectedRoles = (person: ClubDirectoryEntry) =>
     selectedRoleIds.size === 0 ||
@@ -951,11 +990,20 @@ export default function ClubPeoplePage() {
     }
 
     return result;
-  }, [deferredSearch, directory, visibleFilter, selectedUnitIds, selectedRoleIds, kindFilter]);
+  }, [
+    deferredSearch,
+    directory,
+    visibleFilter,
+    selectedUnitIds,
+    selectedRoleIds,
+    kindFilter,
+  ]);
 
   const groupPeople = useMemo(() => {
     const memberIds = new Set(groupMemberIds?.memberIds ?? []);
-    let result = (directory ?? []).filter((person) => memberIds.has(person._id));
+    let result = (directory ?? []).filter((person) =>
+      memberIds.has(person._id),
+    );
     if (selectedUnitIds) {
       result = result.filter(matchesSelectedSubstructure);
     }
@@ -966,7 +1014,14 @@ export default function ClubPeoplePage() {
       result = result.filter(matchesKindFilter);
     }
     return filterBySearchQuery(result, deferredSearch, peopleSearchValues);
-  }, [deferredSearch, directory, groupMemberIds?.memberIds, selectedUnitIds, selectedRoleIds, kindFilter]);
+  }, [
+    deferredSearch,
+    directory,
+    groupMemberIds?.memberIds,
+    selectedUnitIds,
+    selectedRoleIds,
+    kindFilter,
+  ]);
 
   const visiblePeople = visibleFilter.startsWith("group:")
     ? groupPeople
@@ -1002,7 +1057,16 @@ export default function ClubPeoplePage() {
   ) {
     setRequestInFlight(requestId);
     try {
-      await respondToJoinRequest({ clubId, requestId, accept });
+      const result = await respondToJoinRequest({ clubId, requestId, accept });
+      if (result.kind === "memberLimitReached") {
+        toast({
+          title: "Club is full",
+          description:
+            "A member spot must open before this request can be approved.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: accept ? "Join request approved" : "Join request declined",
       });
@@ -1074,11 +1138,11 @@ export default function ClubPeoplePage() {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex shrink-0 flex-col gap-2 rounded-xl border border-border/70 bg-muted/35 p-1.5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex shrink-0 flex-col gap-3">
             <Tabs
               value={visibleFilter}
               onValueChange={setFilter}
-              className="min-w-0 sm:w-auto"
+              className="min-w-0 w-full"
             >
               <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <TabsList>
@@ -1113,7 +1177,7 @@ export default function ClubPeoplePage() {
               </div>
             </Tabs>
 
-            <div className="flex min-w-0 w-full items-center justify-end gap-2 sm:w-auto">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               {visibleFilter !== "requests" ? (
                 <PeopleFilterPopover
                   club={club}
@@ -1137,18 +1201,19 @@ export default function ClubPeoplePage() {
                   onValueChange={setSearch}
                   placeholder="Search people, roles, or units"
                   size="sm"
-                  className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+                  className="order-last w-full sm:order-none sm:min-w-56 sm:flex-1"
                 />
               ) : null}
               {club && canInvite ? (
                 <Button
                   type="button"
-                  size="icon"
+                  size="sm"
+                  leadingIcon={UserPlus}
                   onClick={() => setManageOpen(true)}
                   aria-label="Add members"
                   title="Add members"
                 >
-                  <UserPlus className="size-4" />
+                  Add members
                 </Button>
               ) : null}
               {club && canManageStructure ? (
@@ -1157,7 +1222,9 @@ export default function ClubPeoplePage() {
             </div>
           </div>
 
-          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card ${CARD_SURFACE_FOREGROUND}`}>
+          <div
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card ${CARD_SURFACE_FOREGROUND}`}
+          >
             {visibleFilter.startsWith("group:") ? (
               selectedGroup ? (
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -1167,7 +1234,8 @@ export default function ClubPeoplePage() {
                         {selectedGroup.name}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {selectedGroup.description || "People matching this group’s rules"}
+                        {selectedGroup.description ||
+                          "People matching this group’s rules"}
                       </p>
                     </div>
                   </div>
@@ -1184,20 +1252,32 @@ export default function ClubPeoplePage() {
                               "FRIENDS"
                             }
                             canSendFriendRequest={
-                              friendshipStatusByUserId.get(person._id) === "NONE"
+                              friendshipStatusByUserId.get(person._id) ===
+                              "NONE"
                             }
-                            friendshipStatus={friendshipStatusByUserId.get(person._id)}
-                            friendRequestPending={friendRequestPendingId === person._id}
+                            friendshipStatus={friendshipStatusByUserId.get(
+                              person._id,
+                            )}
+                            friendRequestPending={
+                              friendRequestPendingId === person._id
+                            }
                             onSendFriendRequest={handleSendFriendRequest}
-                            canAssignRole={canAssignRoles && person.kind === "MEMBER"}
-                            canManageUnits={canManageStructure && person.kind === "MEMBER"}
-                            canRemove={canRemoveMembers && person.kind === "MEMBER"}
+                            canAssignRole={
+                              canAssignRoles && person.kind === "MEMBER"
+                            }
+                            canManageUnits={
+                              canManageStructure && person.kind === "MEMBER"
+                            }
+                            canRemove={
+                              canRemoveMembers && person.kind === "MEMBER"
+                            }
                             canImpersonate={Boolean(
                               user &&
-                                hasRole(user, "SUPER_ADMIN") &&
-                                !person.roles.some(
-                                  (role) => role === "ADMIN" || role === "SUPER_ADMIN",
-                                ),
+                              hasRole(user, "SUPER_ADMIN") &&
+                              !person.roles.some(
+                                (role) =>
+                                  role === "ADMIN" || role === "SUPER_ADMIN",
+                              ),
                             )}
                             onRemove={setRemoveTarget}
                           />
@@ -1236,9 +1316,12 @@ export default function ClubPeoplePage() {
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 text-center">
                   <UsersRound className="mb-2 size-5 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold text-foreground">No people groups yet</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    No people groups yet
+                  </h3>
                   <p className="mt-1 max-w-72 text-xs text-muted-foreground">
-                    Create a group to organize people independently from roles and units.
+                    Create a group to organize people independently from roles
+                    and units.
                   </p>
                 </div>
               )
@@ -1313,8 +1396,12 @@ export default function ClubPeoplePage() {
                       canSendFriendRequest={
                         friendshipStatusByUserId.get(person._id) === "NONE"
                       }
-                      friendshipStatus={friendshipStatusByUserId.get(person._id)}
-                      friendRequestPending={friendRequestPendingId === person._id}
+                      friendshipStatus={friendshipStatusByUserId.get(
+                        person._id,
+                      )}
+                      friendRequestPending={
+                        friendRequestPendingId === person._id
+                      }
                       onSendFriendRequest={handleSendFriendRequest}
                       canAssignRole={canAssignRoles && person.kind === "MEMBER"}
                       canManageUnits={
@@ -1454,96 +1541,100 @@ function PersonRow({
           onClick={() => setProfileOpen(true)}
           className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
         >
-          <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
+          <ClubAvatar
+            person={person}
+            className="size-9"
+            fallbackClassName="text-[11px]"
+          />
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">
             {fullName(person)}
           </p>
           <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          {isCurrentUser ? (
-            <span
-              className="inline-flex size-1.5 shrink-0 rounded-full bg-primary"
-              role="img"
-              aria-label="You"
-              title="You"
-            />
-          ) : null}
-          {isFriend ? (
-            <span
-              className="inline-flex shrink-0 text-primary"
-              role="img"
-              aria-label="Friend"
-              title="Friend"
-            >
-              <UserRoundCheck className="size-3.5" aria-hidden />
-            </span>
-          ) : null}
-          {isSponsor ? (
-            <Badge
-              variant="solid"
-              className="h-5 shrink-0 gap-1 border-primary/20 bg-primary/5 px-1.5 py-0 text-primary hover:bg-primary/10"
-            >
-              <ShieldCheck className="size-3" />
-              Sponsor
-            </Badge>
-          ) : person.roleName ? (
-            <Badge
-              variant="solid"
-              className="h-5 shrink-0 border-border/70 bg-muted/60 px-1.5 py-0 text-muted-foreground"
-            >
-              {person.roleName}
-            </Badge>
-          ) : null}
-          {primaryUnitName ? (
-            <Badge
-              variant="solid"
-              size="sm"
-              className="shrink-0 bg-muted/60 text-muted-foreground"
-              title={unitMembershipLabel}
-            >
-              <GitBranch />
-              {primaryUnitName}
-            </Badge>
-          ) : null}
-          {otherUnitNames.length ? (
-            <Badge
-              variant="solid"
-              size="sm"
-              className="shrink-0 bg-muted/60 text-muted-foreground"
-              title={unitMembershipLabel}
-              aria-label={`${otherUnitNames.length} more unit ${
-                otherUnitNames.length === 1 ? "membership" : "memberships"
-              }`}
-            >
-              +{otherUnitNames.length}
-            </Badge>
-          ) : null}
+            {isCurrentUser ? (
+              <span
+                className="inline-flex size-1.5 shrink-0 rounded-full bg-primary"
+                role="img"
+                aria-label="You"
+                title="You"
+              />
+            ) : null}
+            {isFriend ? (
+              <span
+                className="inline-flex shrink-0 text-primary"
+                role="img"
+                aria-label="Friend"
+                title="Friend"
+              >
+                <UserRoundCheck className="size-3.5" aria-hidden />
+              </span>
+            ) : null}
+            {isSponsor ? (
+              <Badge
+                variant="solid"
+                className="h-5 shrink-0 gap-1 border-primary/20 bg-primary/5 px-1.5 py-0 text-primary hover:bg-primary/10"
+              >
+                <ShieldCheck className="size-3" />
+                Sponsor
+              </Badge>
+            ) : person.roleName ? (
+              <Badge
+                variant="solid"
+                className="h-5 shrink-0 border-border/70 bg-muted/60 px-1.5 py-0 text-muted-foreground"
+              >
+                {person.roleName}
+              </Badge>
+            ) : null}
+            {primaryUnitName ? (
+              <Badge
+                variant="solid"
+                size="sm"
+                className="shrink-0 bg-muted/60 text-muted-foreground"
+                title={unitMembershipLabel}
+              >
+                <GitBranch />
+                {primaryUnitName}
+              </Badge>
+            ) : null}
+            {otherUnitNames.length ? (
+              <Badge
+                variant="solid"
+                size="sm"
+                className="shrink-0 bg-muted/60 text-muted-foreground"
+                title={unitMembershipLabel}
+                aria-label={`${otherUnitNames.length} more unit ${
+                  otherUnitNames.length === 1 ? "membership" : "memberships"
+                }`}
+              >
+                +{otherUnitNames.length}
+              </Badge>
+            ) : null}
+          </div>
         </div>
-      </div>
-      {showManage ? (
-        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-          {canAssignRole ? <SetRoleDialog person={person} /> : null}
-          {canManageUnits ? <UnitMembershipPopover person={person} /> : null}
-          {canImpersonate ? (
-            <ImpersonateUserAction
-              userId={person._id}
-              name={fullName(person)}
-            />
-          ) : null}
-          {canRemove ? (
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label={`Remove ${fullName(person)} from club`}
-              onClick={() => onRemove(person)}
-            >
-              <UserMinus className="size-4" />
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+        {showManage ? (
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            {canAssignRole ? <SetRoleDialog person={person} /> : null}
+            {canManageUnits ? <UnitMembershipPopover person={person} /> : null}
+            {canImpersonate ? (
+              <ImpersonateUserAction
+                userId={person._id}
+                name={fullName(person)}
+              />
+            ) : null}
+            {canRemove ? (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={`Remove ${fullName(person)} from club`}
+                onClick={() => onRemove(person)}
+              >
+                <UserMinus className="size-4" />
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <UserProfileDialog
         open={profileOpen}
