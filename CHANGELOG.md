@@ -12,6 +12,17 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.30 — 2026-09-10 (alpha)
+
+### Added
+
+- **clubs** — Add idempotent bulk enrollment. ([`a5788285`](https://github.com/virajdas/ia-app/commit/a5788285))
+
+### Internal
+
+- Name release:ship as the standard deploy path. ([`193992a9`](https://github.com/virajdas/ia-app/commit/193992a9))
+- **release** — Add one-command release:ship. ([`88bee80c`](https://github.com/virajdas/ia-app/commit/88bee80c))
+
 ## v0.8.29 — 2026-09-09 (alpha)
 
 ### Fixed

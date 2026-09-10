@@ -7,6 +7,30 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.30",
+    "date": "2026-09-10",
+    "commit": "391970bd",
+    "changes": [
+      {
+        "category": "Added",
+        "scope": "clubs",
+        "summary": "Add idempotent bulk enrollment.",
+        "commit": "a5788285"
+      },
+      {
+        "category": "Internal",
+        "summary": "Name release:ship as the standard deploy path.",
+        "commit": "193992a9"
+      },
+      {
+        "category": "Internal",
+        "scope": "release",
+        "summary": "Add one-command release:ship.",
+        "commit": "88bee80c"
+      }
+    ]
+  },
+  {
     "version": "0.8.29",
     "date": "2026-09-09",
     "commit": "ff628442",
