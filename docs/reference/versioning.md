@@ -135,3 +135,22 @@ The build stamp comes from `NEXT_PUBLIC_APP_COMMIT`, which `next.config.ts`
 fills from `VERCEL_GIT_COMMIT_SHA` or the value the deploy workflow passes with
 `--build-env`. It is empty in local development, and the stamp falls back to the
 version alone.
+
+## Verifying a deployed build
+
+Every web deployment exposes a small unauthenticated JSON marker at `/_meta`.
+It is deliberately not linked in the product UI, but it is not secret: it only
+returns the service name, release version/channel, display release, and the
+seven-character build commit when one was stamped at build time. It must never
+include configuration, deployment URLs, account data, or other secrets.
+
+The response is explicitly non-cacheable, so an agent or operator can check a
+deployment after a release without signing in or loading the application:
+
+```bash
+curl --fail --silent --show-error https://app.example.edu/_meta
+```
+
+Compare `version` and `build` with the intended release tag and commit. A local
+development build reports `build: null`; that is expected and is not evidence
+of a production deployment.
