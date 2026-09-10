@@ -90,6 +90,7 @@ import { hasRole, useCurrentUser } from "@/lib/auth";
 import { ImpersonateUserAction } from "@/components/auth/impersonate-user-action";
 import { useToast } from "@/hooks/use-toast";
 import { filterBySearchQuery } from "@/lib/search";
+import { peopleSearchValues } from "@/lib/club-directory-search";
 
 type StudentResult = FunctionReturnType<
   typeof api.clubs.invitations.searchInviteCandidates
@@ -928,12 +929,7 @@ export default function ClubPeoplePage() {
     let result = filterBySearchQuery(
       directory ?? [],
       deferredSearch,
-      (person) => [
-        fullName(person),
-        person.uniqueId,
-        person.kind,
-        person.roleName,
-      ],
+      peopleSearchValues,
     );
 
     if (selectedUnitIds) {
@@ -969,11 +965,7 @@ export default function ClubPeoplePage() {
     if (kindFilter !== "all") {
       result = result.filter(matchesKindFilter);
     }
-    return filterBySearchQuery(
-      result,
-      deferredSearch,
-      (person) => [fullName(person), person.uniqueId, person.roleName],
-    );
+    return filterBySearchQuery(result, deferredSearch, peopleSearchValues);
   }, [deferredSearch, directory, groupMemberIds?.memberIds, selectedUnitIds, selectedRoleIds, kindFilter]);
 
   const visiblePeople = visibleFilter.startsWith("group:")
@@ -1143,7 +1135,7 @@ export default function ClubPeoplePage() {
                 <SearchInput
                   value={search}
                   onValueChange={setSearch}
-                  placeholder="Search people"
+                  placeholder="Search people, roles, or units"
                   size="sm"
                   className="min-w-0 flex-1 sm:w-64 sm:flex-none"
                 />

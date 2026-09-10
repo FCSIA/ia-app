@@ -18,6 +18,8 @@ join requests, join codes, tags, nested internal structure, and a workspace UI.
   its conversation.
 - Lets signed-in users find people and every club channel they can read from the
   global command palette.
+- Lets club members search the People directory by name, student ID, member or
+  sponsor type, club role, and assigned unit/substructure name.
 - Collects files and images previously shared in each readable channel.
 - Supports direct member adds by sponsors, admins, and club roles with the
   membership-invite permission, including an idempotent bulk unique-ID CSV
