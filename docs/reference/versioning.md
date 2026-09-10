@@ -51,7 +51,8 @@ from the generated files, and the deploy workflow requires the tag to match
 the latest approved devlog version. `release:ship` runs the whole flow in one
 step so there is no separate manual version-bump commit to write.
 
-From an up-to-date `main` checkout:
+An authorized maintainer can run this only from an exact, up-to-date `main`
+checkout (all product changes must already be pushed and approved):
 
 ```bash
 pnpm devlog:preview
@@ -78,11 +79,11 @@ can be safely retried.
 
 If a direct push to `main` is rejected (branch protection), ship through a
 pull request instead: run with `--no-push`, push the release commit on a
-`release/cd-<version>` branch, merge it, then move the tag to the merged
-commit and push the tag. The manual fallback is `pnpm devlog:cut`, commit
-`CHANGELOG.md` and `packages/devlog`, open a pull request, and tag after the
-merge. To retry an approved release, manually dispatch the workflow with that
-existing tag name.
+`release/cd-<version>` branch, merge it, delete the local tag, then create and
+push the tag on the merged `main` commit. The manual fallback is
+`pnpm devlog:cut`, commit `CHANGELOG.md` and `packages/devlog`, open a pull
+request, and tag after the merge. To retry an approved release, manually
+dispatch the workflow with that existing tag name.
 
 ## How commits become entries
 

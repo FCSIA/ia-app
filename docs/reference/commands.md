@@ -47,9 +47,10 @@ pnpm dlx localtunnel --port 3000 --subdomain ia-app-dev
 
 [`.github/workflows/prod.yml`](../../.github/workflows/prod.yml) deploys an
 existing `vMAJOR.MINOR.PATCH` tag whose commit has already merged into `main`.
-Ship with `pnpm release:ship` (see [versioning and the devlog](versioning.md));
-if a direct push to `main` is rejected, prepare the release commit through a
-normal PR instead and push the matching tag after the merge. Manual dispatch
+An authorized maintainer can ship an exact, approved `main` checkout with
+`pnpm release:ship` (see [versioning and the devlog](versioning.md)). If a
+direct push to `main` is rejected, prepare the release commit through a normal
+PR instead and create the matching tag only after the merge. Manual dispatch
 only retries an existing validated tag; the workflow never writes to `main`.
 
 Production URL: `https://ia-app-alpha.vercel.app`

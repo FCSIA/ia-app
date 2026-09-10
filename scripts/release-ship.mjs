@@ -105,6 +105,23 @@ function runNode(scriptArgs) {
   return result.status ?? 1;
 }
 
+function previewRelease(cutArgs) {
+  try {
+    const output = execFileSync(process.execPath, [devlogScript, "preview", ...cutArgs], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    const [json] = output.split("\n\n", 1);
+    const release = JSON.parse(json);
+    if (!/^\d+\.\d+\.\d+$/.test(release.version ?? "")) {
+      fail("preview did not produce a MAJOR.MINOR.PATCH version.");
+    }
+    return release;
+  } catch (error) {
+    fail(`could not preview the release: ${error.message}`);
+  }
+}
+
 function confirm(question) {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
@@ -221,6 +238,9 @@ if (!branch) fail("not on a branch (detached HEAD). Check out `main` first.");
 if (branch !== "main" && !allowBranch) {
   fail(`on branch "${branch}", not "main". Cut releases from an up-to-date \`main\` checkout, or pass --allow-branch.`);
 }
+if (branch !== "main" && push) {
+  fail(`on branch "${branch}". Production Deploy only accepts tags on main; use --no-push, merge the release commit, then tag the merged main commit.`);
+}
 
 const dirtyReleasePaths = gitCapture(["status", "--porcelain", "--", ...RELEASE_PATHS]);
 if (dirtyReleasePaths === null) fail("not a git worktree, or git is unavailable.");
@@ -238,27 +258,34 @@ if (gitCapture(["status", "--porcelain"]) !== "") {
   );
 }
 
+// Do not use `git fetch <remote> main` here: with an explicit refspec Git can
+// update only FETCH_HEAD and leave <remote>/main stale. ls-remote gives the
+// server's current main SHA without writing any local refs (including in a
+// dry run).
+let remoteMain;
 if (fetch) {
-  const fetched = git(["fetch", remote, "main", "--quiet"]);
-  if (fetched !== 0) {
-    process.stdout.write(
-      `release:ship: warning: could not fetch ${remote}/main; continuing without the freshness check.\n`,
-    );
+  remoteMain = gitCapture(["ls-remote", remote, "refs/heads/main"])
+    ?.trim()
+    .split(/\s+/)[0];
+  if (!/^[0-9a-f]{40}$/i.test(remoteMain ?? "")) {
+    fail(`could not resolve ${remote}/main. Refusing to ship without the freshness check; use --no-fetch only when you have verified the local tracking ref.`);
   }
+} else {
+  remoteMain = gitCapture(["rev-parse", "-q", "--verify", `${remote}/main`]);
 }
 
-const remoteMain = gitCapture(["rev-parse", "-q", "--verify", `${remote}/main`]);
 if (remoteMain) {
-  const behind = Number.parseInt(gitCapture(["rev-list", "--count", `HEAD..${remote}/main`]) ?? "0", 10);
-  const ahead = Number.parseInt(gitCapture(["rev-list", "--count", `${remote}/main..HEAD`]) ?? "0", 10);
+  const [ahead = 0, behind = 0] = (gitCapture(["rev-list", "--left-right", "--count", `HEAD...${remoteMain}`]) ?? "0\t0")
+    .split(/\s+/)
+    .map(Number);
   if (Number.isFinite(behind) && behind > 0) {
     fail(`local ${branch} is ${behind} commit(s) behind ${remote}/main. Pull first, then re-run.`);
   }
-  if (Number.isFinite(ahead) && ahead > 0) {
-    process.stdout.write(`release:ship: note: ${ahead} local commit(s) not yet on ${remote}/main will ship in this release.\n`);
+  if (branch === "main" && Number.isFinite(ahead) && ahead > 0) {
+    fail(`local main has ${ahead} unpushed commit(s). Push and approve those changes before cutting a release; release:ship only adds the generated release commit to current ${remote}/main.`);
   }
 } else {
-  process.stdout.write(`release:ship: note: no ${remote}/main ref found; skipping the freshness check.\n`);
+  process.stdout.write(`release:ship: note: no local ${remote}/main ref found; skipping the freshness check because --no-fetch was requested.\n`);
 }
 
 // ----------------------------------------------------------------------- cut
@@ -268,6 +295,15 @@ if (dryRun) {
   if (status !== 0) process.exit(status);
   process.stdout.write("\nrelease:ship: dry run — nothing written. Without --dry-run this would: cut, commit, tag, and push.\n");
   process.exit(0);
+}
+
+const preview = previewRelease(cutArgs);
+const anticipatedTag = `v${preview.version}`;
+if (gitCapture(["rev-parse", "-q", "--verify", `refs/tags/${anticipatedTag}`])) {
+  fail(`tag ${anticipatedTag} already exists locally. Refusing before changing release files.`);
+}
+if (push && gitCapture(["ls-remote", "--tags", remote, `refs/tags/${anticipatedTag}`])) {
+  fail(`tag ${anticipatedTag} already exists on ${remote}. Refusing before changing release files.`);
 }
 
 const versionBefore = currentVersion();
@@ -280,6 +316,9 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 }
 if (version === versionBefore) {
   fail(`releases.json still at v${version} after cut; refusing to commit an empty release.`);
+}
+if (version !== preview.version) {
+  fail(`cut produced v${version}, but the preflight preview was v${preview.version}; refusing to commit.`);
 }
 
 const checkStatus = runNode([devlogScript, "check"]);
@@ -302,10 +341,6 @@ if (git(["commit", "-m", subject]) !== 0) {
 }
 
 // ----------------------------------------------------------------------- tag
-
-if (gitCapture(["rev-parse", "-q", "--verify", `refs/tags/${tag}`])) {
-  fail(`tag ${tag} already exists. The release commit is local — delete it or move the tag deliberately, then re-run.`);
-}
 const tagArgs = sign ? ["tag", "-s", "-m", subject, tag] : ["tag", "-a", "-m", subject, tag];
 if (git(tagArgs) !== 0) {
   fail(`git tag ${tag} failed. The release commit is local — inspect with \`git status\` and retry.`);
