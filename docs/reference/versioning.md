@@ -58,8 +58,10 @@ pnpm devlog:preview
 pnpm release:ship -- --title="Calendar-first schedules"
 ```
 
-This cuts the release data, commits `CHANGELOG.md` and `packages/devlog` as
-`release: v<version>`, creates the annotated `v<version>` tag, and pushes both.
+Preview first (`--dry-run` on the ship command itself shows the same without
+writing anything). This cuts the release data, commits `CHANGELOG.md` and
+`packages/devlog` as `release: v<version>`, creates the annotated `v<version>`
+tag, and pushes both.
 Pushing the tag starts `Production Deploy` (`.github/workflows/prod.yml`).
 Pass `--minor` for a milestone worth naming, `--yes` to skip the push
 confirmation, `--no-push` to stop after the local commit and tag, and `--sign`
