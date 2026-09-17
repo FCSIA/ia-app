@@ -53,7 +53,7 @@ direct push to `main` is rejected, prepare the release commit through a normal
 PR instead and create the matching tag only after the merge. Manual dispatch
 only retries an existing validated tag; the workflow never writes to `main`.
 
-Production URL: `https://ia-app-alpha.vercel.app`
+Production URL: `https://app.fcsia.com`
 
 Manual deploy from the repo root:
 

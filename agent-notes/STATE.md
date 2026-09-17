@@ -162,6 +162,11 @@
 
 ### Frontend and Routing
 
+- The official production web origin is `https://app.fcsia.com`. It is attached
+  to Vercel Production, and Convex production `elated-anaconda-301` has
+  `SITE_URL`, `NEXT_PUBLIC_SITE_URL`, and `BETTER_AUTH_TRUSTED_ORIGINS` set to
+  that origin. The unauthenticated `/api/auth/get-session` endpoint responds
+  successfully from the new domain.
 - Web authentication now stays on the browser's current origin, so local LAN
   addresses and development tunnels retain the session cookie. The web auth
   proxy rejects cross-origin POSTs; arbitrary forwarded hosts are accepted only

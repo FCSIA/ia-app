@@ -88,6 +88,7 @@ export const configuredAuthHostnames = Array.from(
       "localhost",
       "127.0.0.1",
       "10.0.2.2",
+      "app.fcsia.com",
       "ia-app-alpha.vercel.app",
       allowAnyLocalWebHost ? "*" : undefined,
     ].filter((host): host is string => Boolean(host)),

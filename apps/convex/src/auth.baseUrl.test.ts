@@ -37,7 +37,7 @@ describe("Better Auth base URL resolution", () => {
     expect((authBaseURL as { fallback: string }).fallback.length).toBeGreaterThan(0);
   });
 
-  test.each(["ia-app-alpha.vercel.app", "localhost", "127.0.0.1"])(
+  test.each(["app.fcsia.com", "ia-app-alpha.vercel.app", "localhost", "127.0.0.1"])(
     "allows %s as a public auth host",
     (host) => {
       expect(configuredAuthHostnames).toContain(host);
