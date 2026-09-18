@@ -20,6 +20,7 @@ const userProfileFields = {
   email: docs.users.fields.email,
   isActive: docs.users.fields.isActive,
   avatarUrl: docs.users.fields.avatarUrl,
+  isDeveloper: docs.users.fields.isDeveloper,
 };
 
 export const userSelfProfileValidator = v.object({
@@ -53,6 +54,7 @@ export function toUserSelfProfile(user: Doc<"users">) {
     use24HourTime: user.use24HourTime ?? false,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
+    isDeveloper: user.isDeveloper,
   };
 }
 
@@ -69,6 +71,7 @@ export function toAdminUserProfile(user: Doc<"users">) {
     email: user.email,
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
+    isDeveloper: user.isDeveloper,
   };
 }
 

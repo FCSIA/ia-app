@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, KeyRound, Trash2, UserCheck, UserX } from 'l
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { DataTablePanel, dataTableClasses } from '@/components/data/data-table-panel';
 import { SearchInput } from '@/components/ui/search';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
@@ -223,6 +224,7 @@ function UserTableSection({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
   status,
   canLoadPrevious,
   pageIndex,
@@ -250,6 +252,7 @@ function UserTableSection({
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
   status: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted';
   canLoadPrevious: boolean;
   pageIndex: number;
@@ -423,7 +426,10 @@ function UserTableSection({
                   />
                 </TableCell>
                 <TableCell className={`${d.cell} min-w-0 overflow-hidden`}>
-                  <span className="block truncate font-medium leading-tight">{user.firstName} {user.lastName}</span>
+                  <span className="flex min-w-0 items-center gap-1 font-medium leading-tight">
+                    <span className="truncate">{user.firstName} {user.lastName}</span>
+                    <DeveloperBadge user={user} size={13} />
+                  </span>
                 </TableCell>
                 <TableCell className={d.cell}>
                   <span className="text-muted-foreground">{user.gradeLevel || '-'}</span>
@@ -453,6 +459,7 @@ function UserTableSection({
                       isSuperAdmin={isSuperAdmin}
                       isPending={isAssignRolesPending}
                       onAssignRoles={onAssignRoles}
+                      onSetDeveloper={onSetDeveloper}
                     />
                     {canResetPassword(user) && user._id !== currentUserId ? (
                       <ResetPasswordAction
@@ -533,6 +540,7 @@ export function AdminUsersTab({
   isResetPasswordPending,
   isAssignRolesPending,
   onAssignRoles,
+  onSetDeveloper,
 }: {
   search: string;
   onSearchChange: (value: string) => void;
@@ -563,6 +571,7 @@ export function AdminUsersTab({
   isResetPasswordPending: boolean;
   isAssignRolesPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -601,6 +610,7 @@ export function AdminUsersTab({
             isDeleteUsersPending={isDeleteUsersPending}
             isResetPasswordPending={isResetPasswordPending}
             isAssignRolesPending={isAssignRolesPending}
+            onSetDeveloper={onSetDeveloper}
             onAssignRoles={onAssignRoles}
             status={status}
             canLoadPrevious={canLoadPrevious}

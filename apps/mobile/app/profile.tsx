@@ -15,6 +15,7 @@ import { clearOfflineCache } from "@/lib/offline-cache";
 import { useCurrentUser } from "@/lib/auth";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, ListRow, Section, Sheet, TextField, Txt, useToast } from "@/components/ui";
+import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { warning } from "@/lib/haptics";
 import { spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -110,7 +111,12 @@ export default function ProfileScreen() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
         <Avatar uri={user?.avatarUrl} name={fullName} size={72} />
         <View style={{ flex: 1, gap: spacing.xs }}>
-          <Txt variant="title">{fullName || "Innovation Academy"}</Txt>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Txt variant="title" style={{ flexShrink: 1 }} numberOfLines={1}>
+              {fullName || "Innovation Academy"}
+            </Txt>
+            <DeveloperBadge user={user} size={16} />
+          </View>
         </View>
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>

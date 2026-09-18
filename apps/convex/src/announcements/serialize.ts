@@ -77,7 +77,12 @@ export async function serializeAnnouncement(
     isBookmarked: !!bookmark,
     isPinned,
     author: author
-      ? { _id: author._id, firstName: author.firstName, lastName: author.lastName }
+      ? {
+          _id: author._id,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          isDeveloper: author.isDeveloper,
+        }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
     commentCount,
@@ -115,7 +120,12 @@ async function serializeComment(
   return {
     ...comment,
     author: author
-      ? { _id: author._id, firstName: author.firstName, lastName: author.lastName }
+      ? {
+          _id: author._id,
+          firstName: author.firstName,
+          lastName: author.lastName,
+          isDeveloper: author.isDeveloper,
+        }
       : null,
   };
 }

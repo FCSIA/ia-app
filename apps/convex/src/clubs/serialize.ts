@@ -22,6 +22,7 @@ export const clubUserRefValidator = v.object({
   lastName: v.string(),
   roles: v.array(v.string()),
   avatarUrl: v.union(v.string(), v.null()),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 export const clubViewerStateValidator = v.object({
@@ -95,6 +96,7 @@ export function toClubUserRef(user: Doc<"users">) {
     lastName: user.lastName,
     roles: user.roles,
     avatarUrl: user.avatarUrl ?? null,
+    isDeveloper: user.isDeveloper,
   };
 }
 

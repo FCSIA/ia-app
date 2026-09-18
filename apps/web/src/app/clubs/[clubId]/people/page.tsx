@@ -32,6 +32,7 @@ import type { ClubDetail, ClubDirectoryEntry } from "@/components/clubs/types";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
 import { ClubWorkspace } from "@/components/clubs/club-workspace";
 import { ClubAvatar } from "@/components/clubs/club-avatar";
+import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { UserProfileDialog } from "@/components/clubs/user-profile-dialog";
 import { SetRoleDialog } from "@/components/clubs/dialogs/set-role-dialog";
@@ -1465,8 +1466,9 @@ function PersonRow({
           <ClubAvatar person={person} className="size-9" fallbackClassName="text-[11px]" />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {fullName(person)}
+          <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground">
+            <span className="truncate">{fullName(person)}</span>
+            <DeveloperBadge user={person} size={13} />
           </p>
           <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
           {isCurrentUser ? (

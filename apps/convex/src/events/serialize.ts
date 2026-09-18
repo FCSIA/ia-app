@@ -4,7 +4,12 @@ import { v } from "convex/values";
 import { createDocLoader, type DocLoader } from "../../lib/docLoader";
 import { eventApprovalValidator, eventValidator } from "./_lib";
 
-const personValidator = v.object({ _id: v.id("users"), firstName: v.string(), lastName: v.string() });
+const personValidator = v.object({
+  _id: v.id("users"),
+  firstName: v.string(),
+  lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
+});
 export const serializedEventValidator = v.object({
   _id: v.id("events"), _creationTime: v.number(), ...eventValidator,
   createdAt: v.number(), updatedAt: v.number(),
@@ -36,6 +41,7 @@ export async function serializeEvent(
           _id: author._id,
           firstName: author.firstName,
           lastName: author.lastName,
+          isDeveloper: author.isDeveloper,
         }
       : null,
     club: club ? { _id: club._id, name: club.name } : null,
@@ -60,6 +66,7 @@ export async function serializeEventDetail(ctx: QueryCtx, event: Doc<"events">) 
               _id: sponsor._id,
               firstName: sponsor.firstName,
               lastName: sponsor.lastName,
+              isDeveloper: sponsor.isDeveloper,
             }
           : null,
       };

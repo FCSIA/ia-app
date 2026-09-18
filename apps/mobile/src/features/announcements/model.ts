@@ -3,6 +3,7 @@ export type AnnouncementFilter = "all" | "unread" | "saved";
 type AnnouncementAuthor = {
   firstName?: string | null;
   lastName?: string | null;
+  isDeveloper?: boolean | null;
 };
 
 type AnnouncementClub = {

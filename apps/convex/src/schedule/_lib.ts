@@ -88,6 +88,7 @@ export const scheduleFriendUserValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
 });
 
 export const scheduleFriendValidator = v.object({
@@ -117,6 +118,7 @@ export const scheduleSearchResultValidator = v.object({
   uniqueId: v.string(),
   firstName: v.string(),
   lastName: v.string(),
+  isDeveloper: v.optional(v.boolean()),
   friendshipStatus: v.union(
     v.literal("NONE"),
     v.literal("REQUEST_SENT"),
@@ -229,6 +231,7 @@ export function serializeUser(user: Doc<"users">) {
     uniqueId: user.uniqueId,
     firstName: user.firstName,
     lastName: user.lastName,
+    isDeveloper: user.isDeveloper,
   };
 }
 

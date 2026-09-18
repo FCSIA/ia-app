@@ -6,6 +6,7 @@ import { Ellipsis, Ticket, Trash2, UserPlus } from "lucide-react-native";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
 import { Avatar, Button, IconButton, TextField, Txt } from "@/components/ui";
+import { DeveloperBadge } from "@/components/ui/developer-badge";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -332,9 +333,12 @@ export default function ClubPeopleScreen() {
                       >
                         <Avatar uri={person.avatarUrl} name={name} size={42} />
                         <View style={{ flex: 1, gap: spacing.xs }}>
-                          <Txt style={{ fontWeight: "700" }} numberOfLines={1}>
-                            {name}
-                          </Txt>
+                          <View style={{ flexDirection: "row", alignItems: "center" }}>
+                            <Txt style={{ fontWeight: "700", flexShrink: 1 }} numberOfLines={1}>
+                              {name}
+                            </Txt>
+                            <DeveloperBadge user={person} />
+                          </View>
                           <Txt variant="caption" tone="muted" numberOfLines={1}>
                             {role}
                           </Txt>

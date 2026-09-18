@@ -74,6 +74,9 @@ export const schema = defineSchema({
     isStudentAdmin: v.boolean(),
     isOtherRole: v.boolean(),
     canReviewFeedback: v.optional(v.boolean()),
+    // Developer designation: shows a wrench badge beside the user's name.
+    // Only editable via `users.admin.setDeveloper` (SUPER_ADMIN).
+    isDeveloper: v.optional(v.boolean()),
     isActive: v.boolean(),
     mustResetPassword: v.boolean(),
     dashboardLayout: v.array(v.string()),

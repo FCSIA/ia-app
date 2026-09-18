@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevlogList } from '@/components/devlog/devlog-list';
@@ -179,8 +180,9 @@ export function ProfileSidebar({
         <div className="flex items-start gap-4">
           {user ? <ProfileAvatarEditor user={user} /> : null}
           <div className="min-w-0 flex-1 pt-0.5">
-            <CardTitle className="truncate text-xl font-semibold leading-tight">
-              {displayName}
+            <CardTitle className="flex min-w-0 items-center gap-1.5 text-xl font-semibold leading-tight">
+              <span className="truncate">{displayName}</span>
+              <DeveloperBadge user={user} size={16} />
             </CardTitle>
             {user?.roles?.length ? (
               <CardDescription className="mt-2 text-sm leading-5">

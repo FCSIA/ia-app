@@ -946,7 +946,12 @@ export const listMyInvites = query({
   returns: v.array(v.object({
     _id: v.id("clubInvites"),
     club: v.object({ _id: v.id("clubs"), name: v.string(), description: v.union(v.string(), v.null()) }),
-    sender: v.object({ _id: v.id("users"), firstName: v.string(), lastName: v.string() }),
+    sender: v.object({
+      _id: v.id("users"),
+      firstName: v.string(),
+      lastName: v.string(),
+      isDeveloper: v.optional(v.boolean()),
+    }),
   })),
   handler: async (ctx) => {
     const user = await getMaybeCurrentAppUser(ctx);
@@ -978,6 +983,7 @@ export const listMyInvites = query({
             _id: sender._id,
             firstName: sender.firstName,
             lastName: sender.lastName,
+            isDeveloper: sender.isDeveloper,
           },
         };
       }),

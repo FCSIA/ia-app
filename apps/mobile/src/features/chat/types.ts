@@ -5,6 +5,7 @@ export type ChatUser = {
   firstName?: string | null;
   lastName?: string | null;
   avatarUrl?: string | null;
+  isDeveloper?: boolean | null;
 };
 
 export type ChatAttachment = {
