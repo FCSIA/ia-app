@@ -4,6 +4,18 @@ import { isAuthenticated } from '@/lib/auth-server';
 import { fetchAuthQuery } from '@/lib/auth-server';
 import { api } from '~/apps/convex/src/_generated/api';
 
+const LEGACY_WEB_HOSTNAME = 'ia-app-alpha.vercel.app';
+const PUBLIC_UTILITY_ROUTES = new Set(['/moved', '/pwa-setup']);
+
+function requestHostname(request: NextRequest) {
+  const host =
+    request.headers.get('host') ??
+    request.headers.get('x-forwarded-host') ??
+    request.nextUrl.hostname;
+
+  return host.split(',')[0]?.trim().replace(/:\d+$/, '').toLowerCase();
+}
+
 /**
  * Next.js 16 Proxy (formerly Middleware)
  * Handles server-side routing logic like authentication redirects.
@@ -11,6 +23,24 @@ import { api } from '~/apps/convex/src/_generated/api';
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Keep the former production hostname as a lightweight migration notice.
+  if (
+    requestHostname(request) === LEGACY_WEB_HOSTNAME &&
+    pathname !== '/moved'
+  ) {
+    return NextResponse.redirect(new URL('/moved', request.url));
+  }
+
+  if (PUBLIC_UTILITY_ROUTES.has(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set(
+      'X-Robots-Tag',
+      pathname === '/pwa-setup' ? 'noindex, nofollow' : 'noindex, follow',
+    );
+    return response;
+  }
+
   const isAuth = await isAuthenticated();
   const currentUser = isAuth
     ? await fetchAuthQuery(api.users.me.me, {}).catch(() => null)
@@ -73,6 +103,19 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Intercept application requests on the former production hostname,
+    // including stale clients making API requests.
+    {
+      source:
+        '/((?!_next/static|_next/image|favicon.ico|favicon-dark.ico|icons|sw.js).*)',
+      has: [
+        {
+          type: 'header',
+          key: 'host',
+          value: 'ia-app-alpha\\.vercel\\.app',
+        },
+      ],
+    },
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
