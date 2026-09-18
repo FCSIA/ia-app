@@ -16,10 +16,10 @@
   "dependencies": {
     "@better-auth/expo": "^1.6.22",
     "@convex-dev/better-auth": "0.12.2",
-    "@convex-dev/migrations": "0.3.4",
-    "@convex-dev/rate-limiter": "^0.3.2",
+    "@convex-dev/migrations": "0.3.6",
+    "@convex-dev/rate-limiter": "0.4.0",
     "better-auth": "1.6.22",
-    "convex": "1.45.0",
+    "convex": "1.46.0",
     "ical.js": "2.2.1",
     "web-push": "^3.6.7"
   },
@@ -27,7 +27,7 @@
     "@edge-runtime/vm": "^5.0.0",
     "@types/web-push": "^3.6.4",
     "auth": "1.6.22",
-    "convex-test": "0.0.53",
+    "convex-test": "0.0.59",
     "edge-runtime": "4.0.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.9"
