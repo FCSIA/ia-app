@@ -298,6 +298,7 @@ export const clubChannelReactionValidator = v.union(
   v.literal("CELEBRATE"),
   v.literal("EYES"),
   v.literal("DONE"),
+  v.literal("SKULL"),
 );
 
 export type ClubChannelReaction = Infer<typeof clubChannelReactionValidator>;
@@ -312,12 +313,14 @@ export const clubChannelReactionInputValidator = v.union(
   v.literal("CELEBRATE"),
   v.literal("EYES"),
   v.literal("DONE"),
+  v.literal("SKULL"),
   v.literal("👍"),
   v.literal("❤️"),
   v.literal("🔥"),
   v.literal("🎉"),
   v.literal("👀"),
   v.literal("✅"),
+  v.literal("💀"),
 );
 
 export type ClubChannelReactionInput = Infer<
