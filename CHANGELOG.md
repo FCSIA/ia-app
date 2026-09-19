@@ -12,6 +12,24 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.31 — 2026-09-19 (alpha)
+
+### Added
+
+- **users** — Add developer designation with wrench badge. ([#123](https://github.com/virajdas/ia-app/pull/123), [`3b56c48b`](https://github.com/virajdas/ia-app/commit/3b56c48b))
+
+### Improved
+
+- **tooling** — Upgrade convex stack. ([`c83f5b7b`](https://github.com/virajdas/ia-app/commit/c83f5b7b))
+- **web** — The old IA App address now points students to app.fcsia.com and includes device-specific Home Screen setup help. ([`6b491e28`](https://github.com/virajdas/ia-app/commit/6b491e28))
+- **auth** — The IA app now recognizes app.fcsia.com as its official sign-in address. ([`6734a5ca`](https://github.com/virajdas/ia-app/commit/6734a5ca))
+- **clubs** — Club member imports now finish even when a club reaches capacity, with clear results for skipped students. ([`eb66865f`](https://github.com/virajdas/ia-app/commit/eb66865f))
+- **clubs** — People search now matches role and unit labels. ([`4355524e`](https://github.com/virajdas/ia-app/commit/4355524e))
+
+### Fixed
+
+- **clubs** — Club chat interaction updates now build correctly. ([`e2ee1ec9`](https://github.com/virajdas/ia-app/commit/e2ee1ec9))
+
 ## v0.8.30 — 2026-09-10 (alpha)
 
 ### Added

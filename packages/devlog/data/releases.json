@@ -2,6 +2,56 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.31",
+      "date": "2026-09-19",
+      "commit": "e2ee1ec9",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "users",
+          "summary": "Add developer designation with wrench badge.",
+          "commit": "3b56c48b",
+          "pr": 123
+        },
+        {
+          "category": "Improved",
+          "scope": "tooling",
+          "summary": "Upgrade convex stack.",
+          "commit": "c83f5b7b"
+        },
+        {
+          "category": "Improved",
+          "scope": "web",
+          "summary": "The old IA App address now points students to app.fcsia.com and includes device-specific Home Screen setup help.",
+          "commit": "6b491e28"
+        },
+        {
+          "category": "Improved",
+          "scope": "auth",
+          "summary": "The IA app now recognizes app.fcsia.com as its official sign-in address.",
+          "commit": "6734a5ca"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "Club member imports now finish even when a club reaches capacity, with clear results for skipped students.",
+          "commit": "eb66865f"
+        },
+        {
+          "category": "Improved",
+          "scope": "clubs",
+          "summary": "People search now matches role and unit labels.",
+          "commit": "4355524e"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "Club chat interaction updates now build correctly.",
+          "commit": "e2ee1ec9"
+        }
+      ]
+    },
+    {
       "version": "0.8.30",
       "date": "2026-09-10",
       "commit": "391970bd",
