@@ -153,6 +153,7 @@ const QUICK_REACTIONS = [
   { value: 'CELEBRATE', label: '🎉', name: 'Celebrate' },
   { value: 'EYES', label: '👀', name: 'Watching' },
   { value: 'DONE', label: '✅', name: 'Done' },
+  { value: 'SKULL', label: '💀', name: 'Skull' },
 ] as const;
 
 const REACTION_LABELS = Object.fromEntries(

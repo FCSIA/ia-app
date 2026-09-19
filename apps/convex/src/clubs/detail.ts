@@ -153,6 +153,18 @@ const mutualClubValidator = v.object({
 const MAX_MUTUAL_CLUBS = 12;
 const MAX_CLUB_AFFILIATIONS = 100;
 
+/**
+ * Read receipts and channel message ordering both use the application-created
+ * timestamp. Do not compare a receipt to Convex's later document creation
+ * timestamp: a message read through its own boundary would remain unread.
+ */
+export function hasUnreadChannelActivity(
+  latestMessage: Pick<Doc<"clubChannelMessages">, "createdAt"> | null,
+  lastReadAt: number,
+) {
+  return latestMessage !== null && latestMessage.createdAt > lastReadAt;
+}
+
 export const get = query({
   args: { clubId: v.id("clubs") },
   returns: clubDetailValidator,
@@ -641,14 +653,14 @@ export const getWorkspaceActivity = query({
             )
             .order("desc")
             .first();
-          const lastMessageAt = latestMessage?._creationTime ?? null;
+          const lastMessageAt = latestMessage?.createdAt ?? null;
           return {
             channelId: channel._id,
             lastMessageAt,
-            hasUnreadMessages:
-              lastMessageAt !== null &&
-              lastMessageAt >
-                (lastReadAtByChannelId.get(channel._id) ?? 0),
+            hasUnreadMessages: hasUnreadChannelActivity(
+              latestMessage,
+              lastReadAtByChannelId.get(channel._id) ?? 0,
+            ),
           };
         }),
       ),

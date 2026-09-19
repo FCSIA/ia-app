@@ -11,6 +11,8 @@ describe("chat reaction boundary", () => {
     expect(normalizeReactionPayload("🔥")).toBe("FIRE");
     expect(reactionDefinition("HEART")?.glyph).toBe("❤️");
     expect(reactionDefinition("❤️")?.payload).toBe("HEART");
+    expect(normalizeReactionPayload("💀")).toBe("SKULL");
+    expect(reactionDefinition("SKULL")?.glyph).toBe("💀");
     expect(normalizeReactionPayload("not-a-reaction")).toBeNull();
   });
 
