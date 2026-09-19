@@ -111,6 +111,7 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
   const assignRoles = useMutation(api.users.admin.assignRoles);
   const resetPassword = useMutation(api.users.admin.resetPassword);
   const deleteUsers = useMutation(api.users.admin.deleteUsers);
+  const setDeveloper = useMutation(api.users.admin.setDeveloper);
 
   const runUserMutation = async <T, TResult = boolean>(
     action: () => Promise<T>,
@@ -212,6 +213,12 @@ export function useAdminUsers(activeTab: AdminTabId, initialSearch = '') {
     isDeleteUsersPending: isUserMutationPending,
     isResetPasswordPending: isUserMutationPending,
     isSuperAdmin,
+    isSetDeveloperPending: isUserMutationPending,
+    onSetDeveloper: (payload: { _id: string; enabled: boolean }) =>
+      void runUserMutation(
+        () => setDeveloper({ userId: payload._id as Id<'users'>, enabled: payload.enabled }),
+        payload.enabled ? 'Developer badge granted' : 'Developer badge removed',
+      ),
     isAssignRolesPending: isUserMutationPending,
     onAssignRoles: (payload: { _id: string; roles: string[] }) =>
       void runUserMutation(

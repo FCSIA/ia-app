@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -43,6 +44,7 @@ export type AnnouncementCardRecord = {
     _id?: string;
     firstName?: string | null;
     lastName?: string | null;
+    isDeveloper?: boolean | null;
   } | null;
   club?: {
     _id: string;
@@ -140,7 +142,9 @@ export function AnnouncementCard({
             <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{announcement.body}</p>
 
             <p className={cn('mt-2 text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
-              {authorName || 'Unknown author'} ·{' '}
+              {authorName || 'Unknown author'}
+              <DeveloperBadge user={announcement.author} size={12} className="mx-1" />
+              {' '}·{' '}
               {formatDistanceToNow(new Date(announcement.createdAt), {
                 addSuffix: true,
               })}

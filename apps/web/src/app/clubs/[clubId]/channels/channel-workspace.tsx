@@ -105,6 +105,7 @@ import {
   AttachmentTrigger,
 } from '@/components/ui/attachment';
 import { Badge } from '@/components/ui/badge';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -383,6 +384,7 @@ function PinnedMessagesButton({
                         <span className="truncate text-sm font-semibold">
                           {fullName(message.author)}
                         </span>
+                        <DeveloperBadge user={message.author} size={13} />
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {formatChatTimestamp(message.createdAt)}
                         </span>
@@ -462,7 +464,10 @@ function MessageAuthorPreview({
           <div className="flex items-start gap-3">
             <ClubAvatar person={author} className="size-12" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+              <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground">
+                <span className="truncate">{name}</span>
+                <DeveloperBadge user={author} size={13} />
+              </p>
               {roleLabels.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {roleLabels.map((role) => (
@@ -915,8 +920,9 @@ function MessageRow({
       <MessageContent className="gap-0">
         {!groupedWithPrevious ? (
           <MessageHeader className="gap-2 px-0 text-[13px]">
-            <span className="text-[13px] font-semibold text-foreground">
+            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground">
               {fullName(message.author)}
+              <DeveloperBadge user={message.author} size={13} />
             </span>
             <span className="text-xs text-muted-foreground">
               {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
@@ -1775,7 +1781,10 @@ export function ChannelWorkspace() {
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
           </p>
-          <p className="truncate text-sm font-medium">{fullName(selectedThread.author)}</p>
+          <p className="flex min-w-0 items-center gap-1 text-sm font-medium">
+            <span className="truncate">{fullName(selectedThread.author)}</span>
+            <DeveloperBadge user={selectedThread.author} size={13} />
+          </p>
         </div>
         <Button
           variant="ghost"

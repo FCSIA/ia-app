@@ -19,13 +19,16 @@ import {
 import { fullName, formatClubRole } from '@/components/clubs/types';
 import type { ClubUserRef } from '@/components/clubs/types';
 import { UserPlus } from 'lucide-react';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 
 type FriendshipStatus = 'NONE' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'FRIENDS';
 
 type UserProfileDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  person: Pick<ClubUserRef, '_id' | 'firstName' | 'lastName' | 'avatarUrl' | 'uniqueId' | 'roles'>;
+  person: Pick<ClubUserRef, '_id' | 'firstName' | 'lastName' | 'avatarUrl' | 'uniqueId' | 'roles'> & {
+    isDeveloper?: boolean | null;
+  };
   roleName?: string | null;
   unitNames?: string[];
   kind?: string | null;
@@ -92,7 +95,10 @@ export function UserProfileDialog({
           <div className="flex min-w-0 items-center gap-3">
             <ClubAvatar person={person} className="size-14 rounded-xl" fallbackClassName="rounded-xl text-sm" />
             <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate">{name}</DialogTitle>
+              <DialogTitle className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{name}</span>
+                <DeveloperBadge user={person} size={15} />
+              </DialogTitle>
               <DialogDescription className="mt-0.5 truncate">{metadata.join(' · ')}</DialogDescription>
             </div>
             {canOfferFriendRequest && onSendFriendRequest ? (

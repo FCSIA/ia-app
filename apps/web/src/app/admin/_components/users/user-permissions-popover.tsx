@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,6 +16,8 @@ type UserPermissionsPopoverProps = {
   isSuperAdmin: boolean;
   isPending: boolean;
   onAssignRoles: (payload: { _id: string; roles: string[] }) => void;
+  /** Super-admin-only: grant/revoke the developer (wrench) badge. */
+  onSetDeveloper?: (payload: { _id: string; enabled: boolean }) => void;
 };
 
 export function UserPermissionsPopover({
@@ -23,6 +25,7 @@ export function UserPermissionsPopover({
   isSuperAdmin,
   isPending,
   onAssignRoles,
+  onSetDeveloper,
 }: UserPermissionsPopoverProps) {
   const roles = getUserRoles(user);
   const roleSet = new Set(roles);
@@ -82,6 +85,32 @@ export function UserPermissionsPopover({
             );
           })}
         </CheckboxGroup>
+        {isSuperAdmin && onSetDeveloper ? (
+          <div className="mt-2 border-t border-border/60 pt-2">
+            <p className="mb-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+              <Wrench className="size-3 text-primary" aria-hidden />
+              Designation
+            </p>
+            <CheckboxGroup
+              checkedIndices={new Set(user.isDeveloper ? [0] : [])}
+              aria-label={`Developer designation for ${fullName}`}
+              aria-disabled={isPending || undefined}
+              className="w-full gap-0"
+            >
+              <CheckboxItem
+                index={0}
+                label="Developer"
+                checked={!!user.isDeveloper}
+                disabled={isPending}
+                onToggle={() => {
+                  if (isPending) return;
+                  onSetDeveloper({ _id: user._id, enabled: !user.isDeveloper });
+                }}
+                className="h-8 py-0"
+              />
+            </CheckboxGroup>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

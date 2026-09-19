@@ -930,6 +930,42 @@ export const setFeedbackReviewer = mutation({
   },
 });
 
+/**
+ * Grants or revokes the developer designation (wrench badge). Only a
+ * SUPER_ADMIN may change it; the flag is never accepted from any self-service
+ * mutation, so regular users cannot set it on themselves.
+ */
+export const setDeveloper = mutation({
+  args: {
+    userId: v.id("users"),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const actor = await getCurrentAppUser(ctx);
+    requireAnyRole(actor, ["SUPER_ADMIN"]);
+
+    const target = await ctx.db.get(args.userId);
+    if (!target) throw new ConvexError("User not found.");
+    if (target.isDeveloper === true && args.enabled) return null;
+    if (!target.isDeveloper && !args.enabled) return null;
+
+    await ctx.db.patch(target._id, {
+      isDeveloper: args.enabled,
+      updatedAt: Date.now(),
+    });
+    await logAuditEvent(ctx, {
+      actorId: actor._id,
+      action: "USER_DEVELOPER_STATUS_UPDATED",
+      entityType: "User",
+      entityId: target._id,
+      meta: { enabled: args.enabled },
+    });
+
+    return null;
+  },
+});
+
 export const activate = mutation({
   args: {
     userId: v.id("users"),

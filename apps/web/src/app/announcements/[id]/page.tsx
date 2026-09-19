@@ -15,6 +15,7 @@ import {
   type AnnouncementCardRecord,
 } from '@/components/announcements/announcement-card';
 import { Badge } from '@/components/ui/badge';
+import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
 import { AnnouncementMedia } from '@/components/announcements/announcement-media';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ type AnnouncementDetail = AnnouncementCardRecord & {
       _id?: string;
       firstName?: string | null;
       lastName?: string | null;
+      isDeveloper?: boolean | null;
     } | null;
   }>;
 };
@@ -251,7 +253,10 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             <div className="space-y-3">
               <CardTitle className="text-2xl leading-tight tracking-tight text-foreground sm:text-3xl">{announcement.title}</CardTitle>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                <span>Posted by {authorName}</span>
+                <span className="inline-flex items-center gap-1">
+                  Posted by {authorName}
+                  <DeveloperBadge user={announcement.author} size={12} />
+                </span>
                 <span>
                   {formatDistanceToNow(new Date(announcement.createdAt), {
                     addSuffix: true,
@@ -307,7 +312,10 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">{formatName(entry.author)}</p>
+                            <p className="flex min-w-0 items-center gap-1 text-sm font-medium text-foreground">
+                              <span className="truncate">{formatName(entry.author)}</span>
+                              <DeveloperBadge user={entry.author} size={12} />
+                            </p>
                             <p className="text-xs text-muted-foreground">{format(new Date(entry.createdAt), 'EEE, MMM d · h:mm a')}</p>
                           </div>
 

@@ -63,6 +63,7 @@ export type AdminUserRecord = {
   email?: string;
   avatarUrl?: string;
   isActive?: boolean;
+  isDeveloper?: boolean;
 };
 
 export type AdminUserRoleGroup = 'students' | 'teachers' | 'other' | 'student-admin' | 'all';
