@@ -142,7 +142,7 @@ export function ImpersonationBanner() {
           const delta = movement[event.key as keyof typeof movement];
           if (!delta) return;
           event.preventDefault();
-          nudge(...delta);
+          nudge(delta[0], delta[1]);
         }}
       >
         <GripVertical aria-hidden />
