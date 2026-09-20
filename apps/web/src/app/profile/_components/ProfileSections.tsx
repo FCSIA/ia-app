@@ -180,10 +180,12 @@ export function ProfileSidebar({
         <div className="flex items-start gap-4">
           {user ? <ProfileAvatarEditor user={user} /> : null}
           <div className="min-w-0 flex-1 pt-0.5">
-            <CardTitle className="flex min-w-0 items-center gap-1.5 text-xl font-semibold leading-tight">
-              <span className="truncate">{displayName}</span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <CardTitle className="min-w-0 truncate text-xl font-semibold leading-tight">
+                {displayName}
+              </CardTitle>
               <DeveloperBadge user={user} size={16} />
-            </CardTitle>
+            </div>
             {user?.roles?.length ? (
               <CardDescription className="mt-2 text-sm leading-5">
                 {user.roles.map(friendlyRole).join(' · ')}
