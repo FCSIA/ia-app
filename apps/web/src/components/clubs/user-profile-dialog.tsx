@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useRef } from 'react';
-import { BookOpen, Building2, LockKeyhole, UserPlus, UsersRound } from 'lucide-react';
+import { BookOpen, Building2, UserPlus, UsersRound } from 'lucide-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import { useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
@@ -172,7 +172,13 @@ export function UserProfileContent({
       {!isCurrentUser ? (
         <>
           <Separator />
-          <div className={cn('grid grid-cols-3 gap-2', isPreview ? 'px-3 py-3' : 'py-4')}>
+          <div
+            className={cn(
+              'grid gap-2',
+              classes.length > 0 ? 'grid-cols-3' : 'grid-cols-2',
+              isPreview ? 'px-3 py-3' : 'py-4',
+            )}
+          >
             <ProfileStat
               icon={UsersRound}
               label="Mutual friends"
@@ -185,7 +191,9 @@ export function UserProfileContent({
               value={mutualClubs?.length ?? 0}
               loading={clubsLoading}
             />
-            <ProfileStat icon={BookOpen} label="Shared classes" value={classes.length} loading={profileLoading} />
+            {classes.length > 0 ? (
+              <ProfileStat icon={BookOpen} label="Classes in common" value={classes.length} loading={profileLoading} />
+            ) : null}
           </div>
         </>
       ) : null}
@@ -219,15 +227,14 @@ export function UserProfileContent({
       {profileContext?.scheduleVisibility === 'SHARED' && visibleClasses.length > 0 ? (
         <section className={cn(isPreview ? 'px-3 pb-3' : 'pb-4')} aria-labelledby={`${headingId}-classes`}>
           <h3 id={`${headingId}-classes`} className="text-xs font-semibold text-foreground">
-            Classes
+            Classes in common
           </h3>
           <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {visibleClasses.map((course) => (
               <div
-                key={`${course.periodNumber}-${course.className}`}
+                key={course.className}
                 className="flex min-w-0 items-center gap-2 rounded-md bg-muted/35 px-2.5 py-2"
               >
-                <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">P{course.periodNumber}</span>
                 <span className="truncate text-xs text-foreground">{course.className}</span>
               </div>
             ))}
@@ -238,11 +245,6 @@ export function UserProfileContent({
             </p>
           ) : null}
         </section>
-      ) : profileContext?.scheduleVisibility === 'PRIVATE' ? (
-        <div className={cn('flex items-center gap-2 text-xs text-muted-foreground', isPreview ? 'px-3 pb-3' : 'pb-4')}>
-          <LockKeyhole className="size-3.5 shrink-0" aria-hidden="true" />
-          Their class schedule is private.
-        </div>
       ) : null}
 
       {visibleClubs.length > 0 ? (

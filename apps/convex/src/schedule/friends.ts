@@ -25,7 +25,6 @@ const profileFriendValidator = v.object({
 
 const profileClassValidator = v.object({
   className: v.string(),
-  periodNumber: v.number(),
 });
 
 const profileContextValidator = v.union(
@@ -66,24 +65,46 @@ const MAX_PROFILE_CLASSES = 8;
 
 type ProfileClassEntry = {
   className: string;
-  periodNumber: number;
 };
 
-export function summarizeProfileClasses(entries: ProfileClassEntry[]) {
+type ProfileClassSourceEntry = ProfileClassEntry & {
+  courseId?: string | null;
+};
+
+function normalizedClassName(className: string) {
+  return className.trim().replace(/\s+/g, " ");
+}
+
+export function findMutualProfileClasses(
+  viewerEntries: ProfileClassSourceEntry[],
+  personEntries: ProfileClassSourceEntry[],
+) {
+  const viewerCourseIds = new Set<string>();
+  const viewerClassNames = new Set<string>();
+  const viewerUnlinkedClassNames = new Set<string>();
+  for (const entry of viewerEntries) {
+    const className = normalizedClassName(entry.className);
+    if (!className) continue;
+    const nameKey = className.toLocaleLowerCase();
+    viewerClassNames.add(nameKey);
+    if (entry.courseId) viewerCourseIds.add(entry.courseId);
+    else viewerUnlinkedClassNames.add(nameKey);
+  }
+
   const classes = new Map<string, ProfileClassEntry>();
-  for (const entry of entries) {
+  for (const entry of personEntries) {
     const className = entry.className.trim().replace(/\s+/g, " ");
     if (!className) continue;
-    const key = `${entry.periodNumber}:${className.toLocaleLowerCase()}`;
-    if (!classes.has(key))
-      classes.set(key, { className, periodNumber: entry.periodNumber });
+    const nameKey = className.toLocaleLowerCase();
+    const isMutual = entry.courseId
+      ? viewerCourseIds.has(entry.courseId) || viewerUnlinkedClassNames.has(nameKey)
+      : viewerClassNames.has(nameKey);
+    if (!isMutual) continue;
+    const key = entry.courseId ? `course:${entry.courseId}` : `name:${nameKey}`;
+    if (!classes.has(key)) classes.set(key, { className });
   }
   return [...classes.values()]
-    .sort(
-      (left, right) =>
-        left.periodNumber - right.periodNumber ||
-        left.className.localeCompare(right.className),
-    )
+    .sort((left, right) => left.className.localeCompare(right.className))
     .slice(0, MAX_PROFILE_CLASSES);
 }
 
@@ -211,25 +232,39 @@ export const getProfileContext = query({
 
     let scheduleVisibility = "FRIENDS_ONLY" as
       "FRIENDS_ONLY" | "NONE" | "PRIVATE" | "SHARED";
-    let classes: ReturnType<typeof summarizeProfileClasses> = [];
+    let classes: ReturnType<typeof findMutualProfileClasses> = [];
     if (friendshipStatus === "FRIENDS") {
-      const schedule = await ctx.db
-        .query("studentSchedules")
-        .withIndex("by_userId", (q) => q.eq("userId", person._id))
-        .unique();
-      if (!schedule) {
+      const [viewerSchedule, personSchedule] = await Promise.all([
+        ctx.db
+          .query("studentSchedules")
+          .withIndex("by_userId", (q) => q.eq("userId", viewer._id))
+          .unique(),
+        ctx.db
+          .query("studentSchedules")
+          .withIndex("by_userId", (q) => q.eq("userId", person._id))
+          .unique(),
+      ]);
+      if (!personSchedule || !viewerSchedule) {
         scheduleVisibility = "NONE";
-      } else if (!schedule.isPublic) {
+      } else if (!personSchedule.isPublic) {
         scheduleVisibility = "PRIVATE";
       } else {
         scheduleVisibility = "SHARED";
-        const entries = await ctx.db
-          .query("studentScheduleEntries")
-          .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
-            q.eq("scheduleId", schedule._id),
-          )
-          .take(60);
-        classes = summarizeProfileClasses(entries);
+        const [viewerEntries, personEntries] = await Promise.all([
+          ctx.db
+            .query("studentScheduleEntries")
+            .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
+              q.eq("scheduleId", viewerSchedule._id),
+            )
+            .take(60),
+          ctx.db
+            .query("studentScheduleEntries")
+            .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
+              q.eq("scheduleId", personSchedule._id),
+            )
+            .take(60),
+        ]);
+        classes = findMutualProfileClasses(viewerEntries, personEntries);
       }
     }
 
