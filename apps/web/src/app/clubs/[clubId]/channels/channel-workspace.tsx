@@ -26,7 +26,6 @@ import {
   Trash2,
   AlertTriangle,
   Flag,
-  UserPlus,
   X,
 } from 'lucide-react';
 import {
@@ -89,12 +88,12 @@ import {
 } from '@/components/clubs/channel-visibility';
 import { ClubWorkspace } from '@/components/clubs/club-workspace';
 import { ClubAvatar } from '@/components/clubs/club-avatar';
-import { UserProfileDialog } from '@/components/clubs/user-profile-dialog';
+import { UserProfileContent, UserProfileDialog } from '@/components/clubs/user-profile-dialog';
 import {
   MentionBody,
   type ClubChannelMessageRichBody,
 } from '@/components/clubs/mention-body';
-import { formatClubRole, fullName } from '@/components/clubs/types';
+import { fullName } from '@/components/clubs/types';
 import {
   Attachment,
   AttachmentContent,
@@ -412,6 +411,7 @@ function PinnedMessagesButton({
 function MessageAuthorPreview({
   author,
   compact,
+  triggerVariant = 'avatar',
   currentUserId,
   canSendFriendRequest,
   friendshipStatus,
@@ -420,6 +420,7 @@ function MessageAuthorPreview({
 }: {
   author: ClubChannelMessage['author'];
   compact: boolean;
+  triggerVariant?: 'avatar' | 'name';
   currentUserId?: string;
   canSendFriendRequest: boolean;
   friendshipStatus?: FriendshipStatus;
@@ -428,79 +429,63 @@ function MessageAuthorPreview({
 }) {
   const name = fullName(author);
   const isCurrentUser = author._id === currentUserId;
-  const isStudentProfile = hasStudentScheduleRole(author.roles);
-  const roleLabels = author.roles?.slice(0, 3).map((role) => formatClubRole(role) ?? role) ?? [];
   const isPending = friendRequestPendingId === author._id;
-  const canOfferFriendRequest =
-    canSendFriendRequest &&
-    !isCurrentUser &&
-    isStudentProfile &&
-    friendshipStatus === 'NONE';
   const [profileOpen, setProfileOpen] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
+
+  const trigger =
+    triggerVariant === 'name' ? (
+      <button
+        type="button"
+        aria-label={`View ${name} profile`}
+        className="inline-flex min-w-0 items-center gap-1 rounded-sm py-0.5 text-[13px] font-semibold text-foreground outline-none hover:underline hover:underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        onClick={() => {
+          setHoverOpen(false);
+          setProfileOpen(true);
+        }}
+      >
+        <span className="truncate">{name}</span>
+        <DeveloperBadge user={author} size={13} />
+      </button>
+    ) : (
+      <button
+        type="button"
+        aria-label={`View ${name} profile`}
+        className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+        onClick={() => {
+          setHoverOpen(false);
+          setProfileOpen(true);
+        }}
+      >
+        <ClubAvatar
+          person={author}
+          className={compact ? 'size-7' : 'size-9'}
+          fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
+        />
+      </button>
+    );
 
   return (
     <>
-      <HoverCard openDelay={150} closeDelay={100}>
-        <HoverCardTrigger asChild>
-          <button
-            type="button"
-            aria-label={`View ${name} profile`}
-            className="shrink-0 rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
-            onClick={() => setProfileOpen(true)}
-          >
-            <ClubAvatar
-              person={author}
-              className={compact ? 'size-7' : 'size-9'}
-              fallbackClassName={compact ? 'text-[10px]' : 'text-[11px]'}
-            />
-          </button>
-        </HoverCardTrigger>
+      <HoverCard open={hoverOpen} onOpenChange={setHoverOpen} openDelay={150} closeDelay={100}>
+        <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
         <HoverCardContent
-          side="left"
+          side={triggerVariant === 'avatar' ? 'left' : 'top'}
           align="start"
           sideOffset={8}
           collisionPadding={12}
-          className="w-64 rounded-lg p-3"
+          className="w-[min(23rem,calc(100vw-1.5rem))] rounded-lg p-0"
         >
-          <div className="flex items-start gap-3">
-            <ClubAvatar person={author} className="size-12" />
-            <div className="min-w-0 flex-1">
-              <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground">
-                <span className="truncate">{name}</span>
-                <DeveloperBadge user={author} size={13} />
-              </p>
-              {roleLabels.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {roleLabels.map((role) => (
-                    <Badge key={role} variant="solid" className="h-5 text-[10px]">
-                      {role}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-            <span className="text-xs text-muted-foreground">
-              {isCurrentUser ? 'This is you' : isStudentProfile ? 'Student IA profile' : 'Public IA profile'}
-            </span>
-            {canOfferFriendRequest ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="tertiary"
-                leadingIcon={UserPlus}
-                disabled={isPending}
-                loading={isPending}
-                onClick={() => onSendFriendRequest(author._id)}
-              >
-                Add friend
-              </Button>
-            ) : null}
-          </div>
-          <p className="mt-2 text-[11px] leading-4 text-muted-foreground [@media(pointer:coarse)]:block hidden">
-            Tap avatar again for full profile
-          </p>
+          <UserProfileContent
+            active={hoverOpen}
+            person={author}
+            isCurrentUser={isCurrentUser}
+            canSendFriendRequest={canSendFriendRequest}
+            friendshipStatus={friendshipStatus}
+            friendRequestPending={isPending}
+            onSendFriendRequest={onSendFriendRequest}
+            variant="preview"
+          />
         </HoverCardContent>
       </HoverCard>
       <UserProfileDialog
@@ -921,10 +906,16 @@ function MessageRow({
       <MessageContent className="gap-0">
         {!groupedWithPrevious ? (
           <MessageHeader className="gap-2 px-0 text-[13px]">
-            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-foreground">
-              {fullName(message.author)}
-              <DeveloperBadge user={message.author} size={13} />
-            </span>
+            <MessageAuthorPreview
+              author={message.author}
+              compact={dense}
+              triggerVariant="name"
+              currentUserId={currentUserId}
+              canSendFriendRequest={canSendFriendRequest}
+              friendshipStatus={friendshipStatus}
+              friendRequestPendingId={friendRequestPendingId}
+              onSendFriendRequest={onSendFriendRequest}
+            />
             <span className="text-xs text-muted-foreground">
               {isSending ? 'Sending…' : formatChatTimestamp(message.createdAt)}
             </span>

@@ -16,6 +16,39 @@ import {
 } from "./_lib";
 import { logAuditEvent } from "../audit/_lib";
 
+const profileFriendValidator = v.object({
+  _id: v.id("users"),
+  firstName: v.string(),
+  lastName: v.string(),
+  avatarUrl: v.union(v.string(), v.null()),
+});
+
+const profileClassValidator = v.object({
+  className: v.string(),
+  periodNumber: v.number(),
+});
+
+const profileContextValidator = v.union(
+  v.object({
+    friendshipStatus: v.union(
+      v.literal("NONE"),
+      v.literal("REQUEST_SENT"),
+      v.literal("REQUEST_RECEIVED"),
+      v.literal("FRIENDS"),
+    ),
+    mutualFriendCount: v.number(),
+    mutualFriends: v.array(profileFriendValidator),
+    scheduleVisibility: v.union(
+      v.literal("FRIENDS_ONLY"),
+      v.literal("NONE"),
+      v.literal("PRIVATE"),
+      v.literal("SHARED"),
+    ),
+    classes: v.array(profileClassValidator),
+  }),
+  v.null(),
+);
+
 const scheduleFriendshipStateValidator = v.object({
   userId: v.id("users"),
   status: v.union(
@@ -27,6 +60,56 @@ const scheduleFriendshipStateValidator = v.object({
 });
 
 const MAX_FRIENDSHIP_STATE_TARGETS = 100;
+const MAX_PROFILE_FRIENDSHIPS = 100;
+const MAX_PROFILE_MUTUAL_FRIENDS = 4;
+const MAX_PROFILE_CLASSES = 8;
+
+type ProfileClassEntry = {
+  className: string;
+  periodNumber: number;
+};
+
+export function summarizeProfileClasses(entries: ProfileClassEntry[]) {
+  const classes = new Map<string, ProfileClassEntry>();
+  for (const entry of entries) {
+    const className = entry.className.trim().replace(/\s+/g, " ");
+    if (!className) continue;
+    const key = `${entry.periodNumber}:${className.toLocaleLowerCase()}`;
+    if (!classes.has(key))
+      classes.set(key, { className, periodNumber: entry.periodNumber });
+  }
+  return [...classes.values()]
+    .sort(
+      (left, right) =>
+        left.periodNumber - right.periodNumber ||
+        left.className.localeCompare(right.className),
+    )
+    .slice(0, MAX_PROFILE_CLASSES);
+}
+
+async function acceptedFriendIds(
+  ctx: Parameters<typeof getFriendshipBetween>[0],
+  userId: Parameters<typeof getFriendshipBetween>[1],
+) {
+  const [outgoing, incoming] = await Promise.all([
+    ctx.db
+      .query("studentScheduleFriends")
+      .withIndex("by_requesterId_and_status_and_acceptedAt", (q) =>
+        q.eq("requesterId", userId).eq("status", "ACCEPTED"),
+      )
+      .take(MAX_PROFILE_FRIENDSHIPS),
+    ctx.db
+      .query("studentScheduleFriends")
+      .withIndex("by_addresseeId_and_status_and_acceptedAt", (q) =>
+        q.eq("addresseeId", userId).eq("status", "ACCEPTED"),
+      )
+      .take(MAX_PROFILE_FRIENDSHIPS),
+  ]);
+  return new Set([
+    ...outgoing.map((friendship) => friendship.addresseeId),
+    ...incoming.map((friendship) => friendship.requesterId),
+  ]);
+}
 
 export const search = query({
   args: {
@@ -87,6 +170,83 @@ export const getStatuses = query({
         ),
       })),
     );
+  },
+});
+
+/** Relationship-aware profile details for people already visible in club chat. */
+export const getProfileContext = query({
+  args: { personId: v.id("users") },
+  returns: profileContextValidator,
+  handler: async (ctx, args) => {
+    const viewer = await getCurrentAppUser(ctx);
+    if (args.personId === viewer._id) return null;
+
+    const person = await ctx.db.get(args.personId);
+    if (!person?.isActive || !isStudentUser(person) || !isStudentUser(viewer))
+      return null;
+
+    const friendship = await getFriendshipBetween(ctx, viewer._id, person._id);
+    const friendshipStatus = getScheduleFriendshipStatus(
+      friendship,
+      viewer._id,
+    );
+    const [viewerFriendIds, personFriendIds] = await Promise.all([
+      acceptedFriendIds(ctx, viewer._id),
+      acceptedFriendIds(ctx, person._id),
+    ]);
+    const mutualFriendIds = [...personFriendIds]
+      .filter((friendId) => viewerFriendIds.has(friendId))
+      .slice(0, MAX_PROFILE_FRIENDSHIPS);
+    const mutualFriendUsers = (
+      await Promise.all(mutualFriendIds.map((friendId) => ctx.db.get(friendId)))
+    )
+      .filter((friend): friend is NonNullable<typeof friend> =>
+        Boolean(friend?.isActive),
+      )
+      .sort(
+        (left, right) =>
+          left.lastName.localeCompare(right.lastName) ||
+          left.firstName.localeCompare(right.firstName),
+      );
+
+    let scheduleVisibility = "FRIENDS_ONLY" as
+      "FRIENDS_ONLY" | "NONE" | "PRIVATE" | "SHARED";
+    let classes: ReturnType<typeof summarizeProfileClasses> = [];
+    if (friendshipStatus === "FRIENDS") {
+      const schedule = await ctx.db
+        .query("studentSchedules")
+        .withIndex("by_userId", (q) => q.eq("userId", person._id))
+        .unique();
+      if (!schedule) {
+        scheduleVisibility = "NONE";
+      } else if (!schedule.isPublic) {
+        scheduleVisibility = "PRIVATE";
+      } else {
+        scheduleVisibility = "SHARED";
+        const entries = await ctx.db
+          .query("studentScheduleEntries")
+          .withIndex("by_scheduleId_and_weekday_and_periodNumber", (q) =>
+            q.eq("scheduleId", schedule._id),
+          )
+          .take(60);
+        classes = summarizeProfileClasses(entries);
+      }
+    }
+
+    return {
+      friendshipStatus,
+      mutualFriendCount: mutualFriendUsers.length,
+      mutualFriends: mutualFriendUsers
+        .slice(0, MAX_PROFILE_MUTUAL_FRIENDS)
+        .map((friend) => ({
+          _id: friend._id,
+          firstName: friend.firstName,
+          lastName: friend.lastName,
+          avatarUrl: friend.avatarUrl ?? null,
+        })),
+      scheduleVisibility,
+      classes,
+    };
   },
 });
 
