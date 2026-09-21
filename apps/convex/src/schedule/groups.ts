@@ -10,6 +10,7 @@ import {
   requireStudentUser,
   serializeScheduleForUser,
   serializeUser,
+  scheduleFriendUserValidator,
   studentScheduleRecordValidator,
   studentVisibility,
 } from "./_lib";
@@ -23,13 +24,6 @@ import { canAddAcceptedFriendToGroup, isScheduleGroupOwner } from "./groupPolicy
 const MAX_GROUPS = 20;
 const MAX_GROUP_MEMBERS = 20;
 
-const userValidator = v.object({
-  _id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
-});
-
 const groupSummaryValidator = v.object({
   id: v.id("studentScheduleGroups"),
   name: v.string(),
@@ -40,7 +34,7 @@ const groupSummaryValidator = v.object({
 
 const groupMemberValidator = v.object({
   id: v.id("studentScheduleGroupMembers"),
-  user: userValidator,
+  user: scheduleFriendUserValidator,
   friendshipActive: v.boolean(),
   visibility: v.union(v.literal("PUBLIC"), v.literal("PRIVATE"), v.literal("NONE")),
   schedule: v.union(studentScheduleRecordValidator, v.null()),
@@ -144,7 +138,7 @@ export const listMine = query({
 
 export const listEligibleFriends = query({
   args: {},
-  returns: v.array(userValidator),
+  returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     requireStudentUser(user);
@@ -167,7 +161,7 @@ export const get = query({
   returns: v.union(
     v.object({
       group: groupSummaryValidator,
-      owner: userValidator,
+      owner: scheduleFriendUserValidator,
       ownerSchedule: v.union(studentScheduleRecordValidator, v.null()),
       members: v.array(groupMemberValidator),
       clusters: v.array(sharedClassClusterValidator),

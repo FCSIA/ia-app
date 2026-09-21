@@ -13,6 +13,7 @@ import {
   isStudentUser,
   requireStudentUser,
   serializeUser,
+  scheduleFriendUserValidator,
 } from "../schedule/_lib";
 import {
   canRespondToCalendarInvite,
@@ -31,14 +32,7 @@ const calendarEntryOutputValidator = v.object({
   ...calendarEntryValidator,
   createdAt: v.number(),
   inviteId: v.optional(v.id("calendarInvites")),
-  sharedBy: v.optional(
-    v.object({
-      _id: v.id("users"),
-      uniqueId: v.string(),
-      firstName: v.string(),
-      lastName: v.string(),
-    }),
-  ),
+  sharedBy: v.optional(scheduleFriendUserValidator),
 });
 const externalCalendarEntryOutputValidator = v.object({
   _id: v.id("externalCalendarEvents"),
@@ -80,12 +74,7 @@ const calendarInviteOutputValidator = v.object({
   status: v.union(v.literal("PENDING"), v.literal("ACCEPTED"), v.literal("DECLINED")),
   createdAt: v.number(),
   entry: calendarEntryOutputValidator,
-  sender: v.object({
-    _id: v.id("users"),
-    uniqueId: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-  }),
+  sender: scheduleFriendUserValidator,
 });
 
 async function acceptedFriendIds(ctx: Parameters<typeof getFriendshipBetween>[0], userId: Parameters<typeof getFriendshipBetween>[1]) {
@@ -196,14 +185,7 @@ export const list = query({
 
 export const listEligibleFriends = query({
   args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("users"),
-      uniqueId: v.string(),
-      firstName: v.string(),
-      lastName: v.string(),
-    }),
-  ),
+  returns: v.array(scheduleFriendUserValidator),
   handler: async (ctx) => {
     const user = await getCurrentAppUser(ctx);
     if (!isStudentUser(user)) return [];
