@@ -16,6 +16,7 @@ import { toUserSelfProfile, userSelfProfileValidator } from "./_lib";
 import { claimUploadIntent } from "../uploads/uploadIntents";
 import { assertSafeStoredFile } from "../uploads/fileSignatures";
 import { recordUploadUsage } from "../uploads/quota";
+import { normalizeDashboardLayout } from "./dashboardLayout";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
 const mobileTabValidator = v.union(
@@ -58,7 +59,7 @@ export const updateDashboardLayout = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     await ctx.db.patch(user._id, {
-      dashboardLayout: args.layout,
+      dashboardLayout: normalizeDashboardLayout(args.layout),
       updatedAt: Date.now(),
     });
 
