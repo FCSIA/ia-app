@@ -464,6 +464,10 @@ export const schema = defineSchema({
     authorId: v.id("users"),
     title: v.string(),
     body: v.string(),
+    // Optional for compatibility with existing plain-text announcements.
+    // New announcements retain a plain-text summary in `body` for search and
+    // notifications, while this canonical source drives formatted rendering.
+    bodyMarkdown: v.optional(v.string()),
     targetType: v.union(
       v.literal("SCHOOL_WIDE"),
       v.literal("GRADE"),

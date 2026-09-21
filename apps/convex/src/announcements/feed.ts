@@ -170,6 +170,7 @@ export const create = mutation({
   args: {
     title: v.string(),
     body: v.string(),
+    bodyMarkdown: v.optional(v.string()),
     targetType: v.union(
       v.literal("SCHOOL_WIDE"),
       v.literal("GRADE"),
@@ -203,6 +204,13 @@ export const create = mutation({
       "Announcement body",
       MAX_ANNOUNCEMENT_BODY_CHARACTERS,
     );
+    const bodyMarkdown = args.bodyMarkdown
+      ? normalizeBoundedText(
+          args.bodyMarkdown,
+          "Announcement Markdown",
+          MAX_ANNOUNCEMENT_BODY_CHARACTERS,
+        )
+      : undefined;
     const embedUrls = normalizeAnnouncementEmbedUrls(args.embedUrls);
     const canPostGlobally = canPostGlobalAnnouncements(user.roles);
     const clubContext = args.clubId && !canPostGlobally
@@ -239,6 +247,7 @@ export const create = mutation({
       authorId: user._id,
       title,
       body,
+      bodyMarkdown,
       targetType: args.targetType,
       targetGrade: args.targetGrade,
       targetGrades: args.targetGrades,

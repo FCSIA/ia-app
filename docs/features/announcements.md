@@ -20,6 +20,8 @@ a club, inside club workflows.
 - Supports pending approval for some club-scoped posts.
 - Supports up to three signed PNG, JPEG, GIF, or WebP image uploads per post,
   plus up to three HTTPS link embeds rendered as safe outbound cards.
+- Authors can use the visual editor for common formatting or switch to Markdown
+  for links, lists, tables, code blocks, and other supported Markdown.
 
 ## Source Files
 

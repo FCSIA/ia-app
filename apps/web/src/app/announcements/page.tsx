@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
-import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { CheckboxGroup, CheckboxItem } from '@/components/ui/checkbox-group';
 import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
@@ -32,6 +31,7 @@ import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
+import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 
 const PATHWAY_OPTIONS = [
@@ -42,7 +42,6 @@ const PATHWAY_OPTIONS = [
 
 const GRADE_OPTIONS = [9, 10, 11, 12];
 const MAX_ANNOUNCEMENT_TITLE_CHARACTERS = 160;
-const MAX_ANNOUNCEMENT_BODY_CHARACTERS = 10_000;
 
 const ANNOUNCEMENT_SCOPE_LABELS: Record<string, string> = {
   ...ANNOUNCEMENT_TAG_LABELS,
@@ -75,6 +74,7 @@ export default function AnnouncementsPage() {
   const [form, setForm] = useState({
     title: '',
     body: '',
+    bodyMarkdown: '',
     targetType: 'SCHOOL_WIDE',
     targetGrades: [] as number[],
     targetMajorPathways: [] as string[],
@@ -204,6 +204,7 @@ export default function AnnouncementsPage() {
       await createAnnouncement({
         title: form.title,
         body: form.body,
+        bodyMarkdown: form.bodyMarkdown.trim() || undefined,
         targetType: form.targetType as 'SCHOOL_WIDE' | 'GRADE' | 'PATHWAY' | 'CLUB' | 'INTERSECTION',
         allowComments: form.allowComments,
         isAdminGeneral: form.isAdminGeneral,
@@ -219,7 +220,7 @@ export default function AnnouncementsPage() {
       setImages([]);
       setEmbedUrls([]);
       setForm({
-        title: '', body: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
+        title: '', body: '', bodyMarkdown: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
         allowComments: false, isAdminGeneral: false, promoted: false, expiresAt: '',
       });
       setAudienceMode('SCHOOL_WIDE');
@@ -456,13 +457,10 @@ export default function AnnouncementsPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input placeholder="Title" maxLength={MAX_ANNOUNCEMENT_TITLE_CHARACTERS} value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-                <Textarea
-                  className="min-h-[120px] resize-y"
-                  placeholder="Write your announcement..."
-                  maxLength={MAX_ANNOUNCEMENT_BODY_CHARACTERS}
-                  value={form.body}
-                  onChange={(event) => setForm({ ...form, body: event.target.value })}
-                  required
+                <AnnouncementEditor
+                  value={form.bodyMarkdown || form.body}
+                  disabled={createPending}
+                  onChange={(body, bodyMarkdown) => setForm({ ...form, body, bodyMarkdown })}
                 />
                 <AnnouncementMediaInput
                   images={images}
