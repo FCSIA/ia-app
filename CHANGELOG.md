@@ -12,6 +12,16 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.33 — 2026-09-21 (alpha)
+
+### Improved
+
+- **clubs** — Finding people and club tools is easier on a phone with a clearer layout. ([`53ab8c80`](https://github.com/virajdas/ia-app/commit/53ab8c80))
+
+### Fixed
+
+- **clubs** — Chat profile cards now show only classes you have in common. ([`72de06fb`](https://github.com/virajdas/ia-app/commit/72de06fb))
+
 ## v0.8.32 — 2026-09-20 (alpha)
 
 ### Improved

@@ -7,6 +7,25 @@ export const RELEASE_CHANNEL: ReleaseChannel = 'alpha';
 
 export const RELEASES: readonly Release[] = [
   {
+    "version": "0.8.33",
+    "date": "2026-09-21",
+    "commit": "53ab8c80",
+    "changes": [
+      {
+        "category": "Improved",
+        "scope": "clubs",
+        "summary": "Finding people and club tools is easier on a phone with a clearer layout.",
+        "commit": "53ab8c80"
+      },
+      {
+        "category": "Fixed",
+        "scope": "clubs",
+        "summary": "Chat profile cards now show only classes you have in common.",
+        "commit": "72de06fb"
+      }
+    ]
+  },
+  {
     "version": "0.8.32",
     "date": "2026-09-20",
     "commit": "885d5570",
