@@ -29,7 +29,8 @@ a club, inside club workflows.
 
 ## Convex Surface
 
-- `api.announcements.feed.list`
+- `api.announcements.feed.listPage` (cursor-paginated; accepts archived, unread, and saved filters)
+- `api.announcements.feed.list` (bounded compatibility list for compact consumers)
 - `api.announcements.feed.get`
 - `api.announcements.feed.create`
 - `api.announcements.feed.approve`

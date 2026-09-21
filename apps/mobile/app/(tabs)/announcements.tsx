@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { RefreshControl, View } from "react-native";
 import { Search, X } from "lucide-react-native";
-import { useQuery } from "@/lib/convex-react";
+import { usePaginatedQuery } from "@/lib/convex-react";
 import { AppHeader } from "@/components/app-header";
 import { AnnouncementCard } from "@/components/announcement-card";
 import { DataBoundary } from "@/components/data-boundary";
 import { Screen } from "@/components/screen";
-import { Empty, IconButton, SegmentedControl, TextField } from "@/components/ui";
+import { Button, Empty, IconButton, SegmentedControl, TextField } from "@/components/ui";
 import {
   filterAnnouncements,
   type AnnouncementFilter,
@@ -19,7 +19,7 @@ export default function AnnouncementsScreen() {
   const [filter, setFilter] = useState<AnnouncementFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const announcements = useQuery(api.announcements.feed.list, {});
+  const { results: announcements, status, loadMore } = usePaginatedQuery(api.announcements.feed.listPage, { bookmarkedOnly: filter === "saved" || undefined, unreadOnly: filter === "unread" || undefined }, { initialNumItems: 30 });
   const filtered = useMemo(
     () => filterAnnouncements(announcements ?? [], filter, searchQuery),
     [announcements, filter, searchQuery],
@@ -97,7 +97,7 @@ export default function AnnouncementsScreen() {
           { label: "Saved", value: "saved" },
         ]}
       />
-      <DataBoundary data={announcements} emptyTitle={filterEmptyTitle}>
+      <DataBoundary data={status === "LoadingFirstPage" ? undefined : true}>
         {() =>
           filtered.length ? (
             <View style={{ gap: spacing.xs }}>
@@ -114,6 +114,7 @@ export default function AnnouncementsScreen() {
           )
         }
       </DataBoundary>
+      {status === "CanLoadMore" || status === "LoadingMore" ? <View style={{ paddingTop: spacing.md }}><Button title={announcements.length ? "Load more" : "Check older announcements"} variant="ghost" loading={status === "LoadingMore"} disabled={status !== "CanLoadMore"} onPress={() => loadMore(30)} /></View> : null}
     </Screen>
   );
 }

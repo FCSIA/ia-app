@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useAction, useMutation, useQuery } from '@/lib/convex-react';
+import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
@@ -109,10 +109,9 @@ export default function AnnouncementsPage() {
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
-  const data = useQuery(api.announcements.feed.list, {
-    archived: showArchived,
-  });
-  const isLoading = data === undefined;
+  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: showArchived, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined }, { initialNumItems: 30 });
+  const isLoading = feedStatus === 'LoadingFirstPage';
+  const canLoadMore = feedStatus === 'CanLoadMore' || feedStatus === 'LoadingMore';
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
@@ -620,7 +619,7 @@ export default function AnnouncementsPage() {
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
-        ) : !data?.length ? (
+        ) : data.length === 0 && feedStatus === 'Exhausted' ? (
           <Card className="border-dashed py-16 text-center">
             <CardContent className="pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
           </Card>
@@ -631,6 +630,7 @@ export default function AnnouncementsPage() {
               <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
                 Clear filters
               </Button>
+              {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
             </CardContent>
           </Card>
         ) : (
@@ -729,6 +729,7 @@ export default function AnnouncementsPage() {
                 );
               })}
             </CardGroup>
+            {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
       </div>
