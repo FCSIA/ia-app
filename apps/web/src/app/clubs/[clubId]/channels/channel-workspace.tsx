@@ -14,8 +14,6 @@ function formatChatTimestamp(value: number | string | Date) {
 import { useAction, useMutation, usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import {
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   History,
   MessageSquareText,
@@ -112,7 +110,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  type CarouselApi,
+  CarouselNext,
+  CarouselPrevious,
 } from '@/components/ui/carousel';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -322,37 +321,12 @@ function MessageAttachmentGallery({
 }: {
   attachments: ClubChannelMessageAttachment[];
 }) {
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    if (!carouselApi) return;
-
-    const updateActiveAttachment = () => {
-      setActiveIndex(carouselApi.selectedScrollSnap());
-    };
-
-    updateActiveAttachment();
-    carouselApi.on('select', updateActiveAttachment);
-    carouselApi.on('reInit', updateActiveAttachment);
-
-    return () => {
-      carouselApi.off('select', updateActiveAttachment);
-      carouselApi.off('reInit', updateActiveAttachment);
-    };
-  }, [carouselApi]);
-
-  useEffect(() => {
-    setActiveIndex((index) => Math.min(index, attachments.length - 1));
-  }, [attachments.length]);
-
   return (
     <section className="mt-2 max-w-full" aria-label={`${attachments.length} message attachments`}>
       <Carousel
-        setApi={setCarouselApi}
         opts={{ align: 'start', containScroll: 'trimSnaps' }}
         className="max-w-full"
-        aria-label={`Attachment ${activeIndex + 1} of ${attachments.length}`}
+        aria-label="Message attachments"
       >
         <CarouselContent className="ml-0">
           {attachments.map((attachment, index) => (
@@ -366,68 +340,9 @@ function MessageAttachmentGallery({
           ))}
         </CarouselContent>
 
-        <div className="pointer-events-none absolute inset-x-2 top-1/2 z-20 flex -translate-y-1/2 items-center justify-between">
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="pointer-events-auto rounded-full shadow-lg ring-1 ring-border/80 backdrop-blur-md"
-            aria-label="Previous attachment"
-            disabled={activeIndex === 0}
-            onClick={() => carouselApi?.scrollPrev()}
-          >
-            <ChevronLeft className="size-5! stroke-[2.5]" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="pointer-events-auto rounded-full shadow-lg ring-1 ring-border/80 backdrop-blur-md"
-            aria-label="Next attachment"
-            disabled={activeIndex === attachments.length - 1}
-            onClick={() => carouselApi?.scrollNext()}
-          >
-            <ChevronRight className="size-5! stroke-[2.5]" aria-hidden="true" />
-          </Button>
-        </div>
+        <CarouselPrevious aria-label="Previous attachment" />
+        <CarouselNext aria-label="Next attachment" />
       </Carousel>
-
-      <div className="mt-2 flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-          {attachments.map((attachment, index) => {
-            const isImage = isImageAttachment(attachment);
-            const isActive = index === activeIndex;
-
-            return (
-              <button
-                key={attachment._id}
-                type="button"
-                className={cn(
-                  'relative size-10 shrink-0 overflow-hidden rounded-md border bg-muted outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  isActive ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-foreground/40',
-                )}
-                aria-label={`Show attachment ${index + 1}: ${attachment.fileName}`}
-                aria-current={isActive ? 'true' : undefined}
-                onClick={() => carouselApi?.scrollTo(index)}
-              >
-                {isImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={attachment.fileUrl}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <FileText className="m-auto size-4 text-muted-foreground" aria-hidden="true" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground" aria-live="polite">
-          {activeIndex + 1} / {attachments.length}
-        </span>
-      </div>
     </section>
   );
 }
