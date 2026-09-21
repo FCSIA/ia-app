@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import { mutation, query, type QueryCtx } from "../_generated/server";
 import { getCurrentAppUser, getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { announcementAudience, deliverMany } from "../notifications/delivery";
@@ -33,16 +35,38 @@ function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: 
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
 }
 
-export const list = query({
+export const listPage = query({
   args: {
     archived: v.optional(v.boolean()),
+    bookmarkedOnly: v.optional(v.boolean()),
     clubId: v.optional(v.id("clubs")),
     unreadOnly: v.optional(v.boolean()),
+    paginationOpts: paginationOptsValidator,
   },
+  returns: paginationResultValidator(announcementListItemValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
+    return listForUser(ctx, args, user);
+  },
+});
+
+export const list = query({
+  args: { archived: v.optional(v.boolean()), clubId: v.optional(v.id("clubs")), unreadOnly: v.optional(v.boolean()) },
   returns: v.array(announcementListItemValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
+    // Compact consumers still use this compatibility endpoint. Keep its
+    // previous 500-record window so records removed after authorization and
+    // status filtering do not erase an otherwise available feed.
+    return (await listForUser(ctx, { ...args, paginationOpts: { cursor: null, numItems: 500 } }, user)).page;
+  },
+});
+
+type FeedListArgs = { archived?: boolean; bookmarkedOnly?: boolean; clubId?: Id<"clubs">; unreadOnly?: boolean; paginationOpts: { cursor: string | null; numItems: number; endCursor?: string | null; maximumRowsRead?: number; maximumBytesRead?: number; id?: number } };
+
+export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"users">) {
     const now = Date.now();
 
     const viewer = await getViewerAudience(ctx, user._id);
@@ -50,17 +74,17 @@ export const list = query({
     const elevated = isElevatedReader(user.roles);
     const archived = args.archived ?? false;
 
-    let announcements = args.clubId
+    const result = args.clubId
       ? await ctx.db
           .query("announcements")
           .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
           .order("desc")
-          .take(500)
+          .paginate(args.paginationOpts)
       : await ctx.db
           .query("announcements")
           .withIndex("by_createdAt")
           .order("desc")
-          .take(500);
+          .paginate(args.paginationOpts);
 
     if (args.clubId) {
       const clubId = args.clubId;
@@ -76,7 +100,7 @@ export const list = query({
       }
     }
 
-    announcements = announcements.filter((ann) => {
+    const announcements = result.page.filter((ann) => {
       if (isEffectivelyExpired(ann, now)) {
         return archived;
       }
@@ -106,13 +130,8 @@ export const list = query({
 
     const serialized = await serializeAnnouncements(ctx, announcements, user._id);
 
-    if (!args.unreadOnly) {
-      return serialized;
-    }
-
-    return serialized.filter((ann) => !ann.isRead);
-  },
-});
+    return { ...result, page: serialized.filter((ann) => !args.unreadOnly || !ann.isRead).filter((ann) => !args.bookmarkedOnly || ann.isBookmarked) };
+}
 
 export const get = query({
   args: { announcementId: v.id("announcements") },
