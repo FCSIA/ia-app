@@ -57,7 +57,10 @@ export const list = query({
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return [];
-    return (await listForUser(ctx, { ...args, paginationOpts: { cursor: null, numItems: 50 } }, user)).page;
+    // Compact consumers still use this compatibility endpoint. Keep its
+    // previous 500-record window so records removed after authorization and
+    // status filtering do not erase an otherwise available feed.
+    return (await listForUser(ctx, { ...args, paginationOpts: { cursor: null, numItems: 500 } }, user)).page;
   },
 });
 

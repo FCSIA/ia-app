@@ -101,3 +101,30 @@ describe('announcement feed pagination', () => {
     expect(savedFirst.page.map((announcement) => announcement.title)).toEqual(['announcement-4']);
   });
 });
+
+it('keeps compatible-feed results when newer records are filtered out', async () => {
+  const { t, user } = await fixture();
+  await t.run(async (ctx) => {
+    for (let index = 6; index <= 55; index++) {
+      await ctx.db.insert('announcements', {
+        authorId: user._id,
+        title: `archived-${index}`,
+        body: 'Archived fixture',
+        targetType: 'SCHOOL_WIDE',
+        targetGrades: [],
+        targetMajorPathways: [],
+        targetMinorPathways: [],
+        status: 'ARCHIVED',
+        allowComments: false,
+        isAdminGeneral: false,
+        commentCount: 0,
+        createdAt: index,
+        updatedAt: index,
+      });
+    }
+  });
+  const result = await t.run((ctx) =>
+    listForUser(ctx, { paginationOpts: { cursor: null, numItems: 500 } }, user),
+  );
+  expect(result.page.map((item) => item.title)).toContain('announcement-5');
+});
