@@ -1178,23 +1178,25 @@ export default function ClubPeoplePage() {
               </div>
             </Tabs>
 
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
               {visibleFilter !== "requests" ? (
-                <PeopleFilterPopover
-                  club={club}
-                  hierarchy={hierarchy}
-                  selectedUnitId={selectedUnitId}
-                  onSelectedUnitIdChange={setSelectedUnitId}
-                  selectedRoleIds={selectedRoleIds}
-                  onSelectedRoleIdsChange={setSelectedRoleIds}
-                  kindFilter={kindFilter}
-                  onKindFilterChange={setKindFilter}
-                  onClear={() => {
-                    setSelectedUnitId(null);
-                    setSelectedRoleIds(new Set());
-                    setKindFilter("all");
-                  }}
-                />
+                <div className="order-3 flex min-w-0 sm:order-none">
+                  <PeopleFilterPopover
+                    club={club}
+                    hierarchy={hierarchy}
+                    selectedUnitId={selectedUnitId}
+                    onSelectedUnitIdChange={setSelectedUnitId}
+                    selectedRoleIds={selectedRoleIds}
+                    onSelectedRoleIdsChange={setSelectedRoleIds}
+                    kindFilter={kindFilter}
+                    onKindFilterChange={setKindFilter}
+                    onClear={() => {
+                      setSelectedUnitId(null);
+                      setSelectedRoleIds(new Set());
+                      setKindFilter("all");
+                    }}
+                  />
+                </div>
               ) : null}
               {visibleFilter !== "requests" ? (
                 <SearchInput
@@ -1202,7 +1204,7 @@ export default function ClubPeoplePage() {
                   onValueChange={setSearch}
                   placeholder="Search people, roles, or units"
                   size="sm"
-                  className="order-last w-full sm:order-none sm:min-w-56 sm:flex-1"
+                  className="order-1 col-span-2 w-full sm:order-none sm:min-w-56 sm:flex-1"
                 />
               ) : null}
               {club && canInvite ? (
@@ -1213,12 +1215,15 @@ export default function ClubPeoplePage() {
                   onClick={() => setManageOpen(true)}
                   aria-label="Add members"
                   title="Add members"
+                  className="order-2 col-span-2 w-full sm:order-none sm:w-auto"
                 >
                   Add members
                 </Button>
               ) : null}
               {club && canManageStructure ? (
-                <BulkUnitAssignmentDialog club={club} />
+                <div className="order-3 flex min-w-0 sm:order-none">
+                  <BulkUnitAssignmentDialog club={club} />
+                </div>
               ) : null}
             </div>
           </div>
