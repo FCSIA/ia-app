@@ -126,10 +126,10 @@ export function Panel({
   return (
     <section
       className={cn(
-        'flex flex-col rounded-3xl border',
+        'flex flex-col rounded-3xl border transition-all duration-300 hover:shadow-lg',
         tone === 'accent'
-          ? 'border-transparent bg-accent'
-          : cn('bg-card', CARD_SURFACE_FOREGROUND),
+          ? 'border-accent-foreground/20 bg-gradient-to-br from-accent/90 via-accent/50 to-background/80 backdrop-blur-xl'
+          : 'border-border/50 bg-gradient-to-br from-card/90 via-card/50 to-background/80 backdrop-blur-xl',
         className,
       )}
     >
@@ -137,7 +137,9 @@ export function Panel({
         <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             {title ? (
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                {title}
+              </h3>
             ) : null}
             {description ? (
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>

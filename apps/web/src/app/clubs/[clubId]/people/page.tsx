@@ -43,6 +43,7 @@ import { fullName } from "@/components/clubs/types";
 import { IaQrCode } from "@/components/ui/ia-qr-code";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardGroup, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1138,9 +1139,12 @@ export default function ClubPeoplePage() {
       contentClassName="flex flex-col overflow-hidden"
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex shrink-0 flex-col gap-3">
-            <Tabs
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+            <Card className="bg-transparent">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex shrink-0 flex-col gap-3">
+                  <Tabs
               value={visibleFilter}
               onValueChange={setFilter}
               className="min-w-0 w-full"
@@ -1227,9 +1231,12 @@ export default function ClubPeoplePage() {
               ) : null}
             </div>
           </div>
+        </CardContent>
+        </Card>
+        </CardGroup>
 
-          <div
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-card ${CARD_SURFACE_FOREGROUND}`}
+        <div
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-background/80 backdrop-blur-sm ${CARD_SURFACE_FOREGROUND}`}
           >
             {visibleFilter.startsWith("group:") ? (
               selectedGroup ? (

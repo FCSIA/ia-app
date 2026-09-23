@@ -5,6 +5,7 @@ import { Archive, Inbox, CheckCircle2 } from 'lucide-react';
 import type { Doc, Id } from '~/apps/convex/src/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardGroup } from '@/components/ui/card';
 import { SearchInput } from '@/components/ui/search';
 import { TabItem, TabPanel, Tabs, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
@@ -137,19 +138,21 @@ function FeedbackList({
   }
 
   return (
-    <div className="divide-y rounded-lg border">
+    <CardGroup border="outlined" className="overflow-hidden divide-y divide-border/40">
       {reports.map((report) => (
-        <div key={report._id} className="p-3 transition-colors hover:bg-muted/30">
+        <Card key={report._id} className="p-4 transition-all duration-200 hover:bg-muted/30 hover:shadow-sm">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
-            <div className="min-w-0">
-              <Badge
-                size="sm"
-                variant="solid"
-                color={report.status === 'PENDING' ? 'amber' : report.status === 'RESOLVED' ? 'emerald' : 'gray'}
-              >
-                {report.status}
-              </Badge>
-              <p className="mt-2 text-sm font-medium text-foreground">{report.reason}</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Badge
+                  size="sm"
+                  variant="solid"
+                  color={report.status === 'PENDING' ? 'amber' : report.status === 'RESOLVED' ? 'emerald' : 'gray'}
+                >
+                  {report.status}
+                </Badge>
+                <p className="text-sm font-medium text-foreground">{report.reason}</p>
+              </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 By {report.submitter?.firstName} {report.submitter?.lastName}
                 {' · '}
@@ -164,7 +167,7 @@ function FeedbackList({
                       href={image.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="block size-20 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="block size-20 overflow-hidden rounded-lg border border-border/40 bg-muted transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <img
                         src={image.url}
@@ -199,9 +202,9 @@ function FeedbackList({
               </div>
             ) : null}
           </div>
-        </div>
+        </Card>
       ))}
-    </div>
+    </CardGroup>
   );
 }
 
@@ -230,32 +233,37 @@ function FeedbackResponses({
   }
 
   return (
-    <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-      {report.responses.map((response) => (
-        <div key={response._id} className="rounded-md bg-muted/50 px-3 py-2 text-sm">
-          <p className="text-xs font-medium text-muted-foreground">
-            {response.author.firstName} {response.author.lastName}
-          </p>
-          <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
+    <CardGroup border="outlined" className="mt-4 overflow-hidden bg-muted/20 rounded-xl">
+      <Card className="p-4">
+        <div className="space-y-3">
+          {report.responses.map((response) => (
+            <div key={response._id} className="rounded-lg bg-background p-3 border border-border/40">
+              <p className="text-xs font-medium text-muted-foreground">
+                {response.author.firstName} {response.author.lastName}
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-foreground">{response.body}</p>
+            </div>
+          ))}
+          <form className="space-y-3 pt-3 border-t border-border/40" onSubmit={handleSubmit}>
+            <Textarea
+              aria-label={`Respond to feedback from ${report.submitter?.firstName ?? 'submitter'}`}
+              placeholder="Write a response for the submitter..."
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              maxLength={1_000}
+              rows={3}
+              disabled={isSending}
+              className="border-border/60 focus:border-primary focus:ring-primary/20"
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">The submitter can read this response but cannot reply.</p>
+              <Button type="submit" size="sm" loading={isSending} disabled={!trimmedBody}>
+                Send response
+              </Button>
+            </div>
+          </form>
         </div>
-      ))}
-      <form className="space-y-2" onSubmit={handleSubmit}>
-        <Textarea
-          aria-label={`Respond to feedback from ${report.submitter?.firstName ?? 'submitter'}`}
-          placeholder="Write a response for the submitter..."
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          maxLength={1_000}
-          rows={3}
-          disabled={isSending}
-        />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">The submitter can read this response but cannot reply.</p>
-          <Button type="submit" size="sm" loading={isSending} disabled={!trimmedBody}>
-            Send response
-          </Button>
-        </div>
-      </form>
-    </div>
+      </Card>
+    </CardGroup>
   );
 }

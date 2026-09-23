@@ -7,6 +7,7 @@ import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageFrame, Panel } from '@/components/layout/page-frame';
+import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { FileInput } from '@/components/ui/file-input';
@@ -118,19 +119,30 @@ export default function ReportPage() {
   return (
     <AppShell>
       <PageFrame className="max-w-2xl">
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <MessageSquareText className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Send a thought, feature request, improvement idea, or concern. ANYTHING! Don&apos;t like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
-            </p>
-          </div>
-        </div>
+        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+          <Card className="bg-transparent">
+            <CardContent className="px-4 py-4 md:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <MessageSquareText className="size-5" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Send a thought, feature request, improvement idea, or concern. ANYTHING! Don&apos;t like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </CardGroup>
 
-        <Panel title="What would you like to share?" tone="accent">
+        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+          <Card className="bg-transparent">
+            <CardHeader className="pb-3 border-b border-border/40 mb-4">
+              <CardTitle className="text-lg font-semibold text-foreground">What would you like to share?</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <Textarea
               aria-label="Share your feedback"
@@ -185,9 +197,16 @@ export default function ReportPage() {
               , with this feedback.
             </p>
           </form>
-        </Panel>
+            </CardContent>
+          </Card>
+        </CardGroup>
 
-        <Panel title="Your feedback">
+        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+          <Card className="bg-transparent">
+            <CardHeader className="pb-3 border-b border-border/40 mb-4">
+              <CardTitle className="text-lg font-semibold text-foreground">Your feedback</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
           {myFeedback.length === 0 ? (
             <p className="text-sm text-muted-foreground">Your submitted feedback and staff responses will appear here.</p>
           ) : (
@@ -214,7 +233,9 @@ export default function ReportPage() {
             </div>
           )}
           <p className="mt-3 text-xs text-muted-foreground">Staff responses are one-way; submit a new feedback item for anything else.</p>
-        </Panel>
+            </CardContent>
+          </Card>
+        </CardGroup>
       </PageFrame>
     </AppShell>
   );

@@ -618,28 +618,31 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
         ) : data.length === 0 && feedStatus === 'Exhausted' ? (
-          <Card className="border-dashed py-16 text-center">
-            <CardContent className="pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
-          </Card>
+          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
+            <Card className="bg-transparent">
+              <CardContent className="text-center py-16 pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
+            </Card>
+          </CardGroup>
         ) : filtered.length === 0 ? (
-          <Card className="border-dashed py-16 text-center">
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">No announcements match your filters.</p>
-              <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
-                Clear filters
-              </Button>
-              {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
-            </CardContent>
-          </Card>
+          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
+            <Card className="bg-transparent">
+              <CardContent className="pt-6 text-center py-16">
+                <p className="text-muted-foreground">No announcements match your filters.</p>
+                <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+                {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
+              </CardContent>
+            </Card>
+          </CardGroup>
         ) : (
-          <div className="space-y-4">
-            {hasActiveFilters ? (
+          <div className="space-y-6">
+            {hasActiveFilters && (
               <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} of {data.length} announcement
-                {data.length === 1 ? '' : 's'}
+                {filtered.length} of {data.length} announcement{data.length === 1 ? '' : 's'}
               </p>
-            ) : null}
-            <CardGroup>
+            )}
+            <div className="space-y-4">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
@@ -726,7 +729,7 @@ export default function AnnouncementsPage() {
                   />
                 );
               })}
-            </CardGroup>
+            </div>
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
