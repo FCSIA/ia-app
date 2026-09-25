@@ -35,7 +35,7 @@ export async function serializeAnnouncement(
   sharedScope?: SerializeScope,
 ) {
   const scope = scopeFor(ctx, sharedScope);
-  const [author, club, read, bookmark, images] = await Promise.all([
+  const [author, club, read, bookmark, pin, images] = await Promise.all([
     scope.loader.get(ann.authorId),
     ann.clubId ? scope.loader.get(ann.clubId) : Promise.resolve(null),
     ctx.db
@@ -46,6 +46,12 @@ export async function serializeAnnouncement(
       .first(),
     ctx.db
       .query("announcementBookmarks")
+      .withIndex("by_announcementId_and_userId", (q) =>
+        q.eq("announcementId", ann._id).eq("userId", userId),
+      )
+      .first(),
+    ctx.db
+      .query("announcementPins")
       .withIndex("by_announcementId_and_userId", (q) =>
         q.eq("announcementId", ann._id).eq("userId", userId),
       )
@@ -68,14 +74,15 @@ export async function serializeAnnouncement(
         .collect()
     ).length;
 
-  const isPinned = !!ann.promotedUntil && ann.promotedUntil > Date.now();
+  const isPromoted = !!ann.promotedUntil && ann.promotedUntil > Date.now();
 
   return {
     ...ann,
     isRead: !!read,
     readAt: read?.readAt,
     isBookmarked: !!bookmark,
-    isPinned,
+    isPinned: !!pin,
+    isPromoted,
     author: author
       ? {
           _id: author._id,

@@ -335,7 +335,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-5 sm:py-8">
-      <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+      <CardGroup border="outlined" className="overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <section className="space-y-5">
@@ -393,7 +393,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                       ) : null}
                     </div>
                   </div>
-                  <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">
+                  <p className="max-w-3xl text-[15px] leading-6 text-foreground/70">
                     {club.overview || club.description || "No club description yet."}
                   </p>
                 </div>
@@ -450,7 +450,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 mb-6">
+      <CardGroup border="outlined" className="mb-6 overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
         <Card className="bg-transparent">
           <CardHeader className="pb-3 border-b border-border/40 mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -490,7 +490,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+      <CardGroup border="outlined" className="overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <div className="space-y-6">

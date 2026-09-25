@@ -8,6 +8,7 @@ export const announcementListItemValidator = docs.announcements.extend({
   readAt: v.optional(v.number()),
   isBookmarked: v.boolean(),
   isPinned: v.boolean(),
+  isPromoted: v.boolean(),
   author: v.union(
     v.object({
       _id: v.id("users"),

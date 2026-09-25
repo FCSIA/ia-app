@@ -39,7 +39,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 
   return (
     <CardGroup border="outlined" className={cn(
-      'overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 transition-all duration-200',
+      'overflow-hidden bg-background/90 backdrop-blur-xl border-border/70 shadow-lg transition-all duration-200',
       'hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30'
     )}>
       <Card className="bg-transparent">
@@ -59,7 +59,7 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
                   {event.title}
                 </h3>
               </Link>
-              <div className="flex flex-wrap items-center gap-3 mt-2.5 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-3 mt-2.5 text-xs text-foreground/70">
                 <span className="flex items-center gap-1.5">
                   <Calendar size={12} className="shrink-0" />
                   {hydrated ? format(new Date(event.startAt), 'EEE, MMM d · h:mm a') : '—'}
@@ -234,7 +234,12 @@ export default function EventsPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className={cn(
+        'relative isolate mx-auto max-w-3xl space-y-6',
+        'before:pointer-events-none before:absolute before:-inset-3 before:-z-10',
+        'before:rounded-2xl before:border before:border-border/70 before:bg-background/82',
+        'before:shadow-lg before:backdrop-blur-xl sm:before:-inset-5',
+      )}>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Events</h1>
           {canCreate && (
@@ -398,7 +403,7 @@ export default function EventsPage() {
                 <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
                   <Card className="bg-transparent">
                     <CardContent className="text-center py-12">
-                      <p className="text-muted-foreground">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
+                      <p className="text-foreground/70">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>
                     </CardContent>
                   </Card>
                 </CardGroup>

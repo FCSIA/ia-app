@@ -533,6 +533,14 @@ export const schema = defineSchema({
     .index("by_userId", ["userId"])
     .index("by_announcementId_and_userId", ["announcementId", "userId"]),
 
+  announcementPins: defineTable({
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_announcementId_and_userId", ["announcementId", "userId"]),
+
   clubs: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

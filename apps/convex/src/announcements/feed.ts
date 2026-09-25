@@ -35,6 +35,12 @@ function isEffectivelyExpired(ann: { status: string; expiresAt?: number }, now: 
   return ann.status === "ACTIVE" && !!ann.expiresAt && ann.expiresAt <= now;
 }
 
+export const ANNOUNCEMENT_PAST_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function isPastByAge(ann: { createdAt: number }, now: number) {
+  return ann.createdAt <= now - ANNOUNCEMENT_PAST_AGE_MS;
+}
+
 export const listPage = query({
   args: {
     archived: v.optional(v.boolean()),
@@ -68,6 +74,7 @@ type FeedListArgs = { archived?: boolean; bookmarkedOnly?: boolean; clubId?: Id<
 
 export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"users">) {
     const now = Date.now();
+    const pastCutoff = now - ANNOUNCEMENT_PAST_AGE_MS;
 
     const viewer = await getViewerAudience(ctx, user._id);
     const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
@@ -78,11 +85,31 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
       ? await ctx.db
           .query("announcements")
           .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
+          .filter((q) =>
+            archived
+              ? q.or(
+                  q.lte(q.field("createdAt"), pastCutoff),
+                  q.eq(q.field("status"), "EXPIRED"),
+                  q.eq(q.field("status"), "ARCHIVED"),
+                  q.eq(q.field("status"), "REJECTED"),
+                )
+              : q.gt(q.field("createdAt"), pastCutoff),
+          )
           .order("desc")
           .paginate(args.paginationOpts)
       : await ctx.db
           .query("announcements")
           .withIndex("by_createdAt")
+          .filter((q) =>
+            archived
+              ? q.or(
+                  q.lte(q.field("createdAt"), pastCutoff),
+                  q.eq(q.field("status"), "EXPIRED"),
+                  q.eq(q.field("status"), "ARCHIVED"),
+                  q.eq(q.field("status"), "REJECTED"),
+                )
+              : q.gt(q.field("createdAt"), pastCutoff),
+          )
           .order("desc")
           .paginate(args.paginationOpts);
 
@@ -101,15 +128,25 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
     }
 
     const announcements = result.page.filter((ann) => {
-      if (isEffectivelyExpired(ann, now)) {
-        return archived;
-      }
       if (archived) {
-        return ["EXPIRED", "ARCHIVED", "REJECTED"].includes(ann.status);
+        const belongsInPast =
+          isPastByAge(ann, now) ||
+          isEffectivelyExpired(ann, now) ||
+          ["EXPIRED", "ARCHIVED", "REJECTED"].includes(ann.status);
+        if (!belongsInPast) return false;
+        if (elevated) return true;
+        if (
+          ann.authorId === user._id &&
+          ["PENDING_APPROVAL", "REJECTED"].includes(ann.status)
+        ) {
+          return true;
+        }
+        return canViewAnnouncement(ann, user._id, user.roles, accessibleClubIds, viewer);
       }
+      if (isPastByAge(ann, now) || isEffectivelyExpired(ann, now)) return false;
       if (elevated) {
         return (
-          (ann.status === "ACTIVE" && !isEffectivelyExpired(ann, now)) ||
+          ann.status === "ACTIVE" ||
           ann.status === "PENDING_APPROVAL" ||
           (ann.authorId === user._id &&
             ["PENDING_APPROVAL", "REJECTED"].includes(ann.status))
@@ -123,7 +160,6 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
       }
       return (
         ann.status === "ACTIVE" &&
-        !isEffectivelyExpired(ann, now) &&
         canViewAnnouncement(ann, user._id, user.roles, accessibleClubIds, viewer)
       );
     });

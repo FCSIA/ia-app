@@ -7,7 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, ChevronDown, Inbox, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +27,7 @@ import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announce
 import { matchesSearchQuery } from '@/lib/search';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
-import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
@@ -56,7 +56,7 @@ type ClubFilterOption = {
 export default function AnnouncementsPage() {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const [showArchived, setShowArchived] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -106,17 +106,30 @@ export default function AnnouncementsPage() {
   };
 
   const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
+  const canPin = !!user;
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
-  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: showArchived, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined }, { initialNumItems: 30 });
+  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: false, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined }, { initialNumItems: 30 });
+  const {
+    results: pastAnnouncements,
+    status: pastFeedStatus,
+    loadMore: loadMorePastAnnouncements,
+  } = usePaginatedQuery(
+    api.announcements.feed.listPage,
+    { archived: true },
+    { initialNumItems: 20 },
+  );
   const isLoading = feedStatus === 'LoadingFirstPage';
   const canLoadMore = feedStatus === 'CanLoadMore' || feedStatus === 'LoadingMore';
+  const canLoadMorePast = pastFeedStatus === 'CanLoadMore' || pastFeedStatus === 'LoadingMore';
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeAnnouncementImage = useAction(api.uploads.files.finalizeAnnouncementImage);
   const archiveAnnouncement = useMutation(api.announcements.engagement.archive);
+  const pinAnnouncement = useMutation(api.announcements.engagement.pin);
+  const unpinAnnouncement = useMutation(api.announcements.engagement.unpin);
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
   const approveAnnouncement = useMutation(api.announcements.feed.approve);
@@ -179,8 +192,35 @@ export default function AnnouncementsPage() {
         announcement.author?.lastName,
         announcement.club?.name,
       ]);
+    }).sort((left: any, right: any) => {
+      if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
+      if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
   }, [activeTag, data, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
+
+  const newestAnnouncementId = useMemo(() => {
+    const activeAnnouncements = data.filter((announcement: any) => announcement.status === 'ACTIVE');
+    return activeAnnouncements.reduce<any | null>((latest, announcement) => {
+      if (!latest) return announcement;
+      return new Date(announcement.createdAt).getTime() > new Date(latest.createdAt).getTime()
+        ? announcement
+        : latest;
+    }, null)?._id ?? null;
+  }, [data]);
+
+  const filteredPastAnnouncements = useMemo(() => {
+    const normalizedSearch = deferredSearch.trim().toLowerCase();
+    return pastAnnouncements.filter((announcement: any) =>
+      matchesSearchQuery(normalizedSearch, [
+        announcement.title,
+        announcement.body,
+        announcement.author?.firstName,
+        announcement.author?.lastName,
+        announcement.club?.name,
+      ]),
+    );
+  }, [deferredSearch, pastAnnouncements]);
 
   const [createPending, setCreatePending] = useState(false);
   const [reviewPending, setReviewPending] = useState<{
@@ -277,20 +317,12 @@ export default function AnnouncementsPage() {
     >
       <div className="mx-auto max-w-4xl">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="min-w-0 overflow-x-auto">
-            <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
-              <TabsList aria-label="Announcement view">
-                <TabItem value="active" label="Active" icon={Inbox} />
-                <TabItem value="archived" label="Archived" icon={Archive} />
-              </TabsList>
-            </Tabs>
-          </div>
+          <p className="text-sm font-medium text-muted-foreground">Pinned first, then newest</p>
           {canPost ? (
             <Button
               size="sm"
               leadingIcon={Plus}
               onClick={() => {
-                setShowArchived(false);
                 setShowNew(true);
               }}
             >
@@ -620,7 +652,7 @@ export default function AnnouncementsPage() {
         ) : data.length === 0 && feedStatus === 'Exhausted' ? (
           <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
             <Card className="bg-transparent">
-              <CardContent className="text-center py-16 pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
+              <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
             </Card>
           </CardGroup>
         ) : filtered.length === 0 ? (
@@ -653,6 +685,7 @@ export default function AnnouncementsPage() {
                   <AnnouncementCard
                     key={announcement._id}
                     announcement={announcement}
+                    className={!announcement.isRead && announcement._id === newestAnnouncementId ? 'border-l-2 border-l-primary' : undefined}
                     canArchive={canArchiveAnnouncement}
                     onArchive={(id: string) => {
                       void archiveAnnouncement({
@@ -672,6 +705,19 @@ export default function AnnouncementsPage() {
                         announcementId: entry._id as Id<'announcements'>,
                       }).catch(() => undefined);
                     }}
+                    onPinToggle={canPin ? (entry) => {
+                      const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
+                      void toggle({
+                        announcementId: entry._id as Id<'announcements'>,
+                      })
+                        .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
+                        .catch((error: unknown) =>
+                          toast({
+                            title: error instanceof Error ? error.message : 'Could not update pin',
+                            variant: 'destructive',
+                          }),
+                        );
+                    } : undefined}
                     footer={
                       announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
@@ -733,6 +779,62 @@ export default function AnnouncementsPage() {
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
+
+        <Collapsible open={pastOpen} onOpenChange={setPastOpen} className="mt-8">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left backdrop-blur-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Archive className="size-4 text-muted-foreground" aria-hidden />
+                Past Announcements
+                {pastFeedStatus !== 'LoadingFirstPage' ? (
+                  <Badge size="sm" color="gray">{pastAnnouncements.length}</Badge>
+                ) : null}
+              </span>
+              <ChevronDown
+                className={`size-4 text-muted-foreground transition-transform ${pastOpen ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            {pastFeedStatus === 'LoadingFirstPage' ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
+            ) : filteredPastAnnouncements.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                No past announcements.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredPastAnnouncements.map((announcement: any) => (
+                  <AnnouncementCard
+                    key={announcement._id}
+                    announcement={announcement}
+                    onBookmarkToggle={(entry) => {
+                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                      void toggle({
+                        announcementId: entry._id as Id<'announcements'>,
+                      }).catch(() => undefined);
+                    }}
+                  />
+                ))}
+                {canLoadMorePast ? (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="tertiary"
+                      disabled={pastFeedStatus !== 'CanLoadMore'}
+                      onClick={() => loadMorePastAnnouncements(20)}
+                    >
+                      {pastFeedStatus === 'LoadingMore' ? 'Loading...' : 'Load more past announcements'}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </AppShell>
   );

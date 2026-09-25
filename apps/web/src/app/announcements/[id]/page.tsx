@@ -232,8 +232,8 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card>
-          <CardHeader className="gap-5 bg-muted/20 pb-5">
+        <Card className="overflow-hidden rounded-2xl border border-white/15 bg-background/90 text-foreground shadow-2xl backdrop-blur-xl">
+          <CardHeader className="gap-5 border-b border-white/10 bg-background/35 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (
                 <Badge variant="solid" color="red" className={ANNOUNCEMENT_BADGE_TEXT_CLASS}>
@@ -271,7 +271,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 pt-0">
+          <CardContent className="space-y-4 bg-background/70 pt-6">
             {announcement.status === 'EXPIRED' ? (
               <p className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <Clock3 className="size-4" />

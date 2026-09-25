@@ -17,7 +17,7 @@ export function LoadingFact({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-3 text-left text-muted-foreground',
+        'flex min-w-0 items-center gap-3 text-left text-foreground/75',
         compact ? 'text-xs' : 'text-sm',
         className,
       )}

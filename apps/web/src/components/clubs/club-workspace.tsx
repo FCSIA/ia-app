@@ -413,7 +413,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden">
+            <aside className="h-full min-h-0 overflow-hidden border-l border-border/60 bg-background/65 backdrop-blur-xl">
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -438,7 +438,7 @@ export function ClubWorkspace({
             </ScrollArea>
           )}
           {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-hidden border-l xl:block">
+            <aside className="hidden w-80 shrink-0 overflow-hidden border-l border-border/60 bg-background/65 backdrop-blur-xl xl:block">
               {rightPane}
             </aside>
           ) : null}
@@ -578,7 +578,7 @@ export function ClubWorkspace({
               maxSize="32%"
               style={{ overflow: "hidden" }}
             >
-              <aside className="h-full min-h-0 bg-muted/45">
+              <aside className="h-full min-h-0 border-r border-border/60 bg-background/65 backdrop-blur-xl">
                 {desktopNavigation}
               </aside>
             </ResizablePanel>
@@ -594,7 +594,7 @@ export function ClubWorkspace({
           </ResizablePanelGroup>
         ) : (
           <>
-            <aside className="hidden w-60 shrink-0 border-r bg-muted/45 md:block">
+            <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-background/65 backdrop-blur-xl md:block">
               {desktopNavigation}
             </aside>
             {workspaceContent}
@@ -900,7 +900,7 @@ function ClubNavigationPanel({
                   className={cn(
                     "gap-2 rounded-md px-2 text-sm font-medium",
                     rowClassName,
-                    active ? "text-foreground" : "text-muted-foreground",
+                    active ? "text-foreground" : "text-foreground/70",
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -914,7 +914,7 @@ function ClubNavigationPanel({
 
           <section aria-labelledby={`channels-${density}`}>
             <div className="flex h-7 items-center justify-between pl-2 pr-1">
-              <div className="flex items-center gap-1 text-muted-foreground">
+              <div className="flex items-center gap-1 text-foreground/70">
                 <h2
                   id={`channels-${density}`}
                   className="text-[11px] font-bold uppercase tracking-wide"
@@ -977,7 +977,7 @@ function ClubNavigationPanel({
         <Link
           href="/clubs"
           onClick={onNavigate}
-          className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-muted-foreground hover:bg-hover hover:text-foreground"
+          className="flex min-h-11 shrink-0 items-center gap-2 border-t border-border/70 px-4 text-xs font-medium text-foreground/75 hover:bg-hover hover:text-foreground"
         >
           <Compass className="size-4" />
           Browse clubs

@@ -22,7 +22,14 @@ export function AnnouncementsWidget() {
     useQuery(api.announcements.feed.list, { unreadOnly: true }) ?? [];
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
-  const unreadAnnouncements = announcementsData.slice(0, 5);
+  const newestAnnouncementId = announcementsData[0]?._id ?? null;
+  const unreadAnnouncements = [...announcementsData]
+    .sort((left, right) => {
+      if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
+      if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
+      return right.createdAt - left.createdAt;
+    })
+    .slice(0, 5);
 
   return (
     <Panel
@@ -45,7 +52,7 @@ export function AnnouncementsWidget() {
               key={announcement._id}
               href={`/announcements/${announcement._id}`}
               label={`Open announcement: ${announcement.title}`}
-              className="border-l-2 border-l-primary"
+              className={announcement._id === newestAnnouncementId ? 'border-l-2 border-l-primary' : undefined}
             >
               <CardHeader>
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -113,7 +120,7 @@ export function AnnouncementsWidget() {
           ) : null}
         </div>
       ) : (
-        <div className="border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+        <div className="border border-dashed border-border/70 bg-background/45 px-4 py-8 text-sm text-foreground/70">
           No unread announcements.
         </div>
       )}

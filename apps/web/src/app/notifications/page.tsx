@@ -191,14 +191,15 @@ export default function NotificationsPage() {
               </TabsList>
             </div>
             <TabPanel value="inbox" className="mt-5">
-              <div>
+              <div className="rounded-2xl border border-white/15 bg-background/80 p-4 shadow-2xl backdrop-blur-xl sm:p-5">
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
                       value={search}
                       onValueChange={setSearch}
                       placeholder="Search notifications..."
-                      className="w-full sm:max-w-md"
+                      className="w-full"
+                      inputClassName="border-white/15 bg-background/85 text-foreground shadow-sm backdrop-blur-xl placeholder:text-muted-foreground focus-visible:bg-background/95"
                     />
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
@@ -309,7 +310,9 @@ export default function NotificationsPage() {
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
-              <NotificationSettingsPanel />
+              <div className="rounded-2xl border border-white/15 bg-background/80 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+                <NotificationSettingsPanel />
+              </div>
             </TabPanel>
           </Tabs>
         </div>

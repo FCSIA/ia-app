@@ -49,7 +49,7 @@ export function ScheduleWorkspace() {
       <PageFrame className="gap-5">
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
           {canEditOwnSchedule ? (
-            <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
+            <header className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-background/85 p-4 shadow-xl backdrop-blur-xl">
               <ScheduleStatusBar />
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

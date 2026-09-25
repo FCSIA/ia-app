@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin } from 'lucide-react';
+import { Archive, Bookmark, BookmarkCheck, Clock, MessageCircle, Pin, PinOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ export type AnnouncementCardRecord = {
   isAdminGeneral?: boolean;
   isBookmarked?: boolean;
   isPinned?: boolean;
+  isPromoted?: boolean;
   allowComments?: boolean;
   status: string;
   targetType: string;
@@ -65,6 +66,7 @@ type AnnouncementCardProps = {
   index?: number;
   onArchive?: (announcementId: string) => void;
   onBookmarkToggle?: (announcement: AnnouncementCardRecord) => void;
+  onPinToggle?: (announcement: AnnouncementCardRecord) => void;
 };
 
 export function AnnouncementCard({
@@ -76,6 +78,7 @@ export function AnnouncementCard({
   index,
   onArchive,
   onBookmarkToggle,
+  onPinToggle,
 }: AnnouncementCardProps) {
   const authorName = [announcement.author?.firstName, announcement.author?.lastName].filter(Boolean).join(' ');
 
@@ -116,6 +119,11 @@ export function AnnouncementCard({
                   <Badge variant="solid" color="amber" size="sm" className="gap-1">
                     <Pin size={10} />
                     Pinned
+                  </Badge>
+                ) : null}
+                {announcement.isPromoted ? (
+                  <Badge variant="solid" color="amber" size="sm">
+                    Promoted
                   </Badge>
                 ) : null}
                 {announcement.isBookmarked ? (
@@ -187,6 +195,18 @@ export function AnnouncementCard({
                     aria-label={announcement.isBookmarked ? 'Remove bookmark' : 'Bookmark'}
                   >
                     {announcement.isBookmarked ? <BookmarkCheck /> : <Bookmark />}
+                  </Button>
+                </Tooltip>
+              ) : null}
+              {onPinToggle && announcement.status === 'ACTIVE' ? (
+                <Tooltip content={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onPinToggle(announcement)}
+                    aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
+                  >
+                    {announcement.isPinned ? <PinOff /> : <Pin />}
                   </Button>
                 </Tooltip>
               ) : null}

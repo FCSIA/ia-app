@@ -10,6 +10,7 @@ const modules = import.meta.glob('../**/*.*s');
 
 async function fixture() {
   const t = convexTest(schema, modules);
+  const now = Date.now();
   const user = await t.run(async (ctx) => {
     const authorId = await ctx.db.insert('users', {
       uniqueId: 'TEACHER-1',
@@ -41,8 +42,8 @@ async function fixture() {
         allowComments: false,
         isAdminGeneral: false,
         commentCount: 0,
-        createdAt: index,
-        updatedAt: index,
+        createdAt: now + index,
+        updatedAt: now + index,
       });
     }
 
@@ -55,7 +56,7 @@ async function page(
   t: ReturnType<typeof convexTest>,
   user: Doc<'users'>,
   cursor: string | null,
-  filters: { unreadOnly?: boolean; bookmarkedOnly?: boolean } = {},
+  filters: { archived?: boolean; unreadOnly?: boolean; bookmarkedOnly?: boolean } = {},
 ) {
   return t.run((ctx) => listForUser(ctx, { ...filters, paginationOpts: { cursor, numItems: 2 } }, user));
 }
@@ -100,11 +101,56 @@ describe('announcement feed pagination', () => {
     expect(unreadSecond.page.map((announcement) => announcement.title)).toEqual(['announcement-3', 'announcement-2']);
     expect(savedFirst.page.map((announcement) => announcement.title)).toEqual(['announcement-4']);
   });
+
+  it('serializes pins as personal state for the current user', async () => {
+    const { t, user } = await fixture();
+    await t.run(async (ctx) => {
+      const announcement = await ctx.db.query('announcements').withIndex('by_createdAt').order('desc').first();
+      await ctx.db.insert('announcementPins', {
+        announcementId: announcement!._id,
+        userId: user._id,
+        createdAt: 5,
+      });
+    });
+
+    const first = await page(t, user, null);
+
+    expect(first.page[0]?.isPinned).toBe(true);
+    expect(first.page[1]?.isPinned).toBe(false);
+  });
+
+  it('moves active announcements older than two weeks into the past feed', async () => {
+    const { t, user } = await fixture();
+    const oldAnnouncementId = await t.run((ctx) =>
+      ctx.db.insert('announcements', {
+        authorId: user._id,
+        title: 'two-weeks-old',
+        body: 'This belongs in Past Announcements.',
+        targetType: 'SCHOOL_WIDE',
+        targetGrades: [],
+        targetMajorPathways: [],
+        targetMinorPathways: [],
+        status: 'ACTIVE',
+        allowComments: false,
+        isAdminGeneral: false,
+        commentCount: 0,
+        createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
+        updatedAt: Date.now(),
+      }),
+    );
+
+    const active = await page(t, user, null);
+    const past = await page(t, user, null, { archived: true });
+
+    expect(active.page.some((announcement) => announcement._id === oldAnnouncementId)).toBe(false);
+    expect(past.page.some((announcement) => announcement._id === oldAnnouncementId)).toBe(true);
+  });
 });
 
 it('keeps compatible-feed results when newer records are filtered out', async () => {
   const { t, user } = await fixture();
   await t.run(async (ctx) => {
+    const now = Date.now();
     for (let index = 6; index <= 55; index++) {
       await ctx.db.insert('announcements', {
         authorId: user._id,
@@ -118,8 +164,8 @@ it('keeps compatible-feed results when newer records are filtered out', async ()
         allowComments: false,
         isAdminGeneral: false,
         commentCount: 0,
-        createdAt: index,
-        updatedAt: index,
+        createdAt: now + index,
+        updatedAt: now + index,
       });
     }
   });

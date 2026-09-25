@@ -6,7 +6,7 @@ import { MessageSquareText, X } from 'lucide-react';
 import { useAction, useMutation, useQuery } from '@/lib/convex-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AppShell } from '@/components/layout/AppShell';
-import { PageFrame, Panel } from '@/components/layout/page-frame';
+import { PageFrame } from '@/components/layout/page-frame';
 import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -119,7 +119,7 @@ export default function ReportPage() {
   return (
     <AppShell>
       <PageFrame className="max-w-2xl">
-        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
           <Card className="bg-transparent">
             <CardContent className="px-4 py-4 md:p-6">
               <div className="flex items-start gap-3">
@@ -128,7 +128,7 @@ export default function ReportPage() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-foreground">Share feedback</h1>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 text-sm leading-6 text-foreground/85">
                     Send a thought, feature request, improvement idea, or concern. ANYTHING! Don&apos;t like a particular look for some icon? Want a feature for your particular club? Let us know!! Website maintainers will be quick to respond to your concerns.
                   </p>
                 </div>
@@ -137,7 +137,7 @@ export default function ReportPage() {
           </Card>
         </CardGroup>
 
-        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <CardTitle className="text-lg font-semibold text-foreground">What would you like to share?</CardTitle>
@@ -151,6 +151,7 @@ export default function ReportPage() {
               onChange={(event) => setMessage(event.target.value)}
               maxLength={MAX_FEEDBACK_CHARACTERS}
               rows={7}
+              className="border-border/80 bg-background/75 text-foreground placeholder:text-foreground/65 focus-visible:bg-background/90"
             />
             <div className="space-y-2">
               {images.length > 0 ? (
@@ -179,17 +180,17 @@ export default function ReportPage() {
                 disabled={images.length >= MAX_FEEDBACK_IMAGES || isSubmitting}
                 onFileSelect={addImage}
               />
-              <p className="text-xs text-muted-foreground">Up to 3 images, 5 MB each. PNG, JPEG, GIF, or WebP.</p>
+              <p className="text-xs text-foreground/80">Up to 3 images, 5 MB each. PNG, JPEG, GIF, or WebP.</p>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs font-medium text-foreground/80">
                 {message.length}/{MAX_FEEDBACK_CHARACTERS}
               </p>
               <Button type="submit" disabled={!trimmedMessage || isSubmitting} loading={isSubmitting}>
                 Send feedback
               </Button>
             </div>
-            <p className="text-xs leading-5 text-muted-foreground">
+            <p className="text-xs leading-5 text-foreground/80">
               We&apos;ll include your app version,{' '}
               <Link href="/profile?section=whats-new" className="font-medium text-foreground underline underline-offset-4">
                 {formatVersion(APP_VERSION, RELEASE_CHANNEL)}
@@ -201,14 +202,14 @@ export default function ReportPage() {
           </Card>
         </CardGroup>
 
-        <CardGroup border="outlined" className="overflow-hidden bg-background/60 backdrop-blur-sm border-border/50 transition-shadow duration-200 hover:shadow-md">
+        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <CardTitle className="text-lg font-semibold text-foreground">Your feedback</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4">
           {myFeedback.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Your submitted feedback and staff responses will appear here.</p>
+            <p className="text-sm text-foreground/85">Your submitted feedback and staff responses will appear here.</p>
           ) : (
             <div className="divide-y rounded-lg border">
               {myFeedback.map((feedback) => (
@@ -232,7 +233,7 @@ export default function ReportPage() {
               ))}
             </div>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">Staff responses are one-way; submit a new feedback item for anything else.</p>
+          <p className="mt-3 text-xs text-foreground/80">Staff responses are one-way; submit a new feedback item for anything else.</p>
             </CardContent>
           </Card>
         </CardGroup>

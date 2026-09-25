@@ -121,6 +121,55 @@ export const unbookmark = mutation({
   },
 });
 
+export const pin = mutation({
+  args: { announcementId: v.id("announcements") },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const ann = await ctx.db.get(args.announcementId);
+    if (!ann) throw new ConvexError("Announcement not found");
+    await assertAnnouncementAccess(ctx, ann, user._id, user.roles);
+    if (ann.status !== "ACTIVE") {
+      throw new ConvexError("Only active announcements can be pinned");
+    }
+
+    const existing = await ctx.db
+      .query("announcementPins")
+      .withIndex("by_announcementId_and_userId", (q) =>
+        q.eq("announcementId", args.announcementId).eq("userId", user._id),
+      )
+      .first();
+
+    if (!existing) {
+      await ctx.db.insert("announcementPins", {
+        announcementId: args.announcementId,
+        userId: user._id,
+        createdAt: Date.now(),
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+export const unpin = mutation({
+  args: { announcementId: v.id("announcements") },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    const existing = await ctx.db
+      .query("announcementPins")
+      .withIndex("by_announcementId_and_userId", (q) =>
+        q.eq("announcementId", args.announcementId).eq("userId", user._id),
+      )
+      .first();
+
+    if (existing) await ctx.db.delete(existing._id);
+
+    return { success: true };
+  },
+});
+
 export const archive = mutation({
   args: { announcementId: v.id("announcements") },
   returns: v.object({ success: v.boolean() }),
