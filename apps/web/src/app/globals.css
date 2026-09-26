@@ -389,6 +389,19 @@
     backdrop-filter: blur(8px);
   }
 
+  /* The shell already frosts the wallpaper once. Keep the channel timeline
+     and thread clear of opaque cards; tint only their fixed controls. */
+  .custom[data-custom-wallpaper] .channel-chat-surface,
+  .custom[data-custom-wallpaper] .channel-thread-surface {
+    background-color: transparent !important;
+  }
+
+  .custom[data-custom-wallpaper] .channel-context-toolbar,
+  .custom[data-custom-wallpaper] .channel-composer-dock,
+  .custom[data-custom-wallpaper] .channel-thread-dock {
+    background-color: hsl(var(--card) / 0.48) !important;
+  }
+
   .custom[data-custom-wallpaper] aside[aria-label="Primary navigation"] {
     background-color: hsl(var(--sidebar) / 0.72) !important;
     backdrop-filter: blur(12px);

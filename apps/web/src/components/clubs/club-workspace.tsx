@@ -413,7 +413,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-card">
+            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-card channel-thread-surface">
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -438,7 +438,10 @@ export function ClubWorkspace({
             </ScrollArea>
           )}
           {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-hidden border-l border-border bg-card xl:block">
+            <aside className={cn(
+              "hidden w-80 shrink-0 overflow-hidden border-l border-border bg-card xl:block",
+              resizableRightPane && "channel-thread-surface",
+            )}>
               {rightPane}
             </aside>
           ) : null}
