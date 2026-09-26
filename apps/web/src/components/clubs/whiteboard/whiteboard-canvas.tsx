@@ -187,10 +187,12 @@ export default function WhiteboardCanvas({
       pending.map((element) => [element.id, syncedVersions.current.get(element.id)]),
     );
     for (const element of pending) syncedVersions.current.set(element.id, element.version);
+    let saved = false;
     try {
       for (const chunk of chunkWhiteboardElements(pending.map((element) => JSON.stringify(element)))) {
         await saveElements({ boardId, elements: chunk });
       }
+      saved = true;
       syncStateRef.current?.('saved');
       scheduleThumbnail();
     } catch (error) {
@@ -208,8 +210,9 @@ export default function WhiteboardCanvas({
     } finally {
       flushing.current = false;
     }
-    // Edits made while this save was in flight go out in the next flush.
-    if (!flushTimer.current) {
+    // Edits made while this save was in flight go out in the next flush. After
+    // a failure, wait for the next edit instead of retrying in a loop.
+    if (saved && !flushTimer.current) {
       flushTimer.current = setTimeout(() => void flushRef.current(), FLUSH_INTERVAL_MS);
     }
   }, [boardId, excalidrawAPI, readOnly, saveElements, scheduleThumbnail, toast]);
