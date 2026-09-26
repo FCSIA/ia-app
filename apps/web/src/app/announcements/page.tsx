@@ -1,6 +1,6 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useReducer, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
@@ -55,38 +55,95 @@ type ClubFilterOption = {
   name: string;
 };
 
+type FeedFilters = {
+  activeTag: string | null;
+  selectedClubIds: string[];
+  readFilter: 'all' | 'unread' | 'read';
+  savedFilter: 'all' | 'saved' | 'pinned';
+  selectedGrades: number[];
+  selectedMajorPathways: string[];
+  selectedMinorPathways: string[];
+};
+
+const defaultFeedFilters: FeedFilters = {
+  activeTag: null,
+  selectedClubIds: [],
+  readFilter: 'all',
+  savedFilter: 'all',
+  selectedGrades: [],
+  selectedMajorPathways: [],
+  selectedMinorPathways: [],
+};
+
+type FeedFiltersUpdate = Partial<FeedFilters> | 'reset' | ((state: FeedFilters) => Partial<FeedFilters>);
+
+function feedFiltersReducer(state: FeedFilters, update: FeedFiltersUpdate): FeedFilters {
+  if (update === 'reset') return defaultFeedFilters;
+  const patch = typeof update === 'function' ? update(state) : update;
+  return { ...state, ...patch };
+}
+
+function toggleFilterValue<T>(values: T[], value: T): T[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+const defaultAnnouncementForm = {
+  title: '',
+  body: '',
+  bodyMarkdown: '',
+  targetType: 'SCHOOL_WIDE',
+  targetGrades: [] as number[],
+  targetMajorPathways: [] as string[],
+  targetMinorPathways: [] as string[],
+  allowComments: false,
+  isAdminGeneral: false,
+  promoted: false,
+  expiresAt: '',
+};
+
+type ComposerState = {
+  showNew: boolean;
+  audienceMode: 'SCHOOL_WIDE' | 'TARGETED';
+  images: File[];
+  embedUrls: string[];
+  form: typeof defaultAnnouncementForm;
+  createPending: boolean;
+};
+
+const defaultComposerState: ComposerState = {
+  showNew: false,
+  audienceMode: 'SCHOOL_WIDE',
+  images: [],
+  embedUrls: [],
+  form: defaultAnnouncementForm,
+  createPending: false,
+};
+
+function composerReducer(state: ComposerState, patch: Partial<ComposerState>): ComposerState {
+  return { ...state, ...patch };
+}
+
 export default function AnnouncementsPage() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const [pastOpen, setPastOpen] = useState(false);
   const feedNow = useAnnouncementFeedClock(3_600_000);
-  const [showNew, setShowNew] = useState(false);
+  const [composer, dispatchComposer] = useReducer(composerReducer, defaultComposerState);
+  const { showNew, audienceMode, images, embedUrls, form, createPending } = composer;
+  const setShowNew = (showNew: boolean) => dispatchComposer({ showNew });
+  const setAudienceMode = (audienceMode: ComposerState['audienceMode']) => dispatchComposer({ audienceMode });
+  const setImages = (images: File[]) => dispatchComposer({ images });
+  const setEmbedUrls = (embedUrls: string[]) => dispatchComposer({ embedUrls });
+  const setForm = (form: ComposerState['form']) => dispatchComposer({ form });
+  const setCreatePending = (createPending: boolean) => dispatchComposer({ createPending });
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
-  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
-  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'pinned'>('all');
-  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
-  const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
-  const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
+  const [filters, dispatchFilters] = useReducer(feedFiltersReducer, defaultFeedFilters);
+  const {
+    activeTag, selectedClubIds, readFilter, savedFilter, selectedGrades,
+    selectedMajorPathways, selectedMinorPathways,
+  } = filters;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [audienceMode, setAudienceMode] = useState<'SCHOOL_WIDE' | 'TARGETED'>('SCHOOL_WIDE');
-  const [images, setImages] = useState<File[]>([]);
-  const [embedUrls, setEmbedUrls] = useState<string[]>([]);
-  const [form, setForm] = useState({
-    title: '',
-    body: '',
-    bodyMarkdown: '',
-    targetType: 'SCHOOL_WIDE',
-    targetGrades: [] as number[],
-    targetMajorPathways: [] as string[],
-    targetMinorPathways: [] as string[],
-    allowComments: false,
-    isAdminGeneral: false,
-    promoted: false,
-    expiresAt: '',
-  });
 
   const updateTargeting = (partial: Partial<typeof form>) => {
     const next = { ...form, ...partial };
@@ -272,7 +329,6 @@ export default function AnnouncementsPage() {
     );
   }, [deferredSearch, pastAllAnnouncements]);
 
-  const [createPending, setCreatePending] = useState(false);
   const [reviewPending, setReviewPending] = useState<{
     id: string;
     action: 'approve' | 'reject';
@@ -309,10 +365,7 @@ export default function AnnouncementsPage() {
       setShowNew(false);
       setImages([]);
       setEmbedUrls([]);
-      setForm({
-        title: '', body: '', bodyMarkdown: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
-        allowComments: false, isAdminGeneral: false, promoted: false, expiresAt: '',
-      });
+      setForm(defaultAnnouncementForm);
       setAudienceMode('SCHOOL_WIDE');
       toast({ title: 'Announcement created' });
     } catch (error) {
@@ -338,13 +391,7 @@ export default function AnnouncementsPage() {
   };
 
   const resetFacetFilters = () => {
-    setActiveTag(null);
-    setSelectedClubIds([]);
-    setReadFilter('all');
-    setSavedFilter('all');
-    setSelectedGrades([]);
-    setSelectedMajorPathways([]);
-    setSelectedMinorPathways([]);
+    dispatchFilters('reset');
   };
 
   const activeFilterCount = [
@@ -414,7 +461,7 @@ export default function AnnouncementsPage() {
                 <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Read state</FieldLegend>
-                  <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} orientation="horizontal" className="w-full flex-wrap">
+                  <RadioGroup value={readFilter} onValueChange={(value) => dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'unread', 'read'].map((value, index) => (
                       <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
@@ -423,7 +470,7 @@ export default function AnnouncementsPage() {
 
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Saved state</FieldLegend>
-                  <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} orientation="horizontal" className="w-full flex-wrap">
+                  <RadioGroup value={savedFilter} onValueChange={(value) => dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'saved', 'pinned'].map((value, index) => (
                       <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
@@ -433,7 +480,7 @@ export default function AnnouncementsPage() {
                 {availableTags.length > 0 ? (
                   <FieldSet className="min-w-0 gap-0">
                     <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} orientation="horizontal" className="w-full flex-wrap">
+                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => dispatchFilters({ activeTag: value === 'all' ? null : value })} orientation="horizontal" className="w-full flex-wrap">
                       {['all', ...availableTags].map((tag, index) => (
                         <RadioItem
                           key={tag}
@@ -459,9 +506,7 @@ export default function AnnouncementsPage() {
                         index={index}
                         label={`Grade ${grade}`}
                         checked={selectedGrades.includes(grade)}
-                        onToggle={() =>
-                          setSelectedGrades((current) => (current.includes(grade) ? current.filter((value) => value !== grade) : [...current, grade]))
-                        }
+                        onToggle={() => dispatchFilters((current) => ({ selectedGrades: toggleFilterValue(current.selectedGrades, grade) }))}
                       />
                     ))}
                   </CheckboxGroup>
@@ -471,14 +516,14 @@ export default function AnnouncementsPage() {
                   {
                     label: 'Major pathway',
                     selected: selectedMajorPathways,
-                    setSelected: setSelectedMajorPathways,
+                    key: 'selectedMajorPathways' as const,
                   },
                   {
                     label: 'Minor pathway',
                     selected: selectedMinorPathways,
-                    setSelected: setSelectedMinorPathways,
+                    key: 'selectedMinorPathways' as const,
                   },
-                ].map(({ label, selected, setSelected }) => (
+                ].map(({ label, selected, key }) => (
                   <FieldSet key={label} className="min-w-0 gap-0">
                     <FieldLegend variant="label">{label}</FieldLegend>
                     <CheckboxGroup
@@ -491,11 +536,7 @@ export default function AnnouncementsPage() {
                           index={index}
                           label={pathway.label}
                           checked={selected.includes(pathway.value)}
-                          onToggle={() =>
-                            setSelected((current) =>
-                              current.includes(pathway.value) ? current.filter((value) => value !== pathway.value) : [...current, pathway.value],
-                            )
-                          }
+                          onToggle={() => dispatchFilters((current) => ({ [key]: toggleFilterValue(current[key], pathway.value) }))}
                         />
                       ))}
                     </CheckboxGroup>
@@ -515,9 +556,7 @@ export default function AnnouncementsPage() {
                           index={index}
                           label={club.name}
                           checked={selectedClubIds.includes(club.id)}
-                          onToggle={() =>
-                            setSelectedClubIds((current) => (current.includes(club.id) ? current.filter((value) => value !== club.id) : [...current, club.id]))
-                          }
+                          onToggle={() => dispatchFilters((current) => ({ selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id) }))}
                         />
                       ))}
                     </CheckboxGroup>
