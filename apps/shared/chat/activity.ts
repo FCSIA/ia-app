@@ -34,14 +34,17 @@ export function latestVisibleChatActivity(
       latestVisibleChatActivity(message.replies),
     ];
     for (const candidate of candidates) {
-      if (candidate && (!latest || candidate.occurredAt > latest.occurredAt))
+      // Optimistic IDs are local placeholders, not valid Convex document IDs.
+      // Consider saved replies even when their parent is still optimistic.
+      if (candidate && !candidate.messageId.startsWith("optimistic:") &&
+          (!latest || candidate.occurredAt > latest.occurredAt))
         latest = candidate;
     }
   }
   return latest;
 }
 
-/** Latest visible post or reply, shared by the web and native read receipts. */
+/** Latest saved visible post or reply, shared by web and native read receipts. */
 export function latestChatActivityAt(
   messages: readonly ChatActivityMessage[] | undefined,
 ) {

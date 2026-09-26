@@ -427,6 +427,12 @@
   controls pass; native device, theme, and reduced-motion visual review remain
   pending. Only the isolated local
   deployment was updated; shared and production deployments were not changed.
+  Convex runtime follow-up: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both clients.
+  Saved reply boundaries still advance receipts. Local sending no longer logs the
+  error; backend typecheck passes. A repeated esbuild warning refers to the parent
+  `../tsconfig.json` outside this repo extending unavailable Astro configuration;
+  no backend function compilation failure is associated with it.
 
 - Custom-theme surface follow-up: card and popup foreground scopes are now
   consistent across schedule, notification, shell, club, admin, and shared UI
