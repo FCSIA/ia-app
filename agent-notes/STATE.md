@@ -400,6 +400,10 @@
 
 ### Verification (latest)
 
+- Chat read receipts: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both
+  clients. Saved reply boundaries still advance receipts.
+
 - Custom-theme surface follow-up: card and popup foreground scopes are now
   consistent across schedule, notification, shell, club, admin, and shared UI
   surfaces. Web TypeScript, lint, production build, focused surface/palette
