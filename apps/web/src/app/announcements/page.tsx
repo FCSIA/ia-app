@@ -59,7 +59,7 @@ export default function AnnouncementsPage() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const [pastOpen, setPastOpen] = useState(false);
-  const feedNow = useAnnouncementFeedClock();
+  const feedNow = useAnnouncementFeedClock(3_600_000);
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);

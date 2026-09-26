@@ -27,6 +27,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
 type AnnouncementDetail = AnnouncementCardRecord & {
   bodyMarkdown?: string | null;
@@ -142,6 +143,7 @@ function AnnouncementDetailSkeleton() {
 
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const announcementNow = useAnnouncementFeedClock(3_600_000);
   const user = useCurrentUser();
   const { toast } = useToast();
   const [comment, setComment] = useState('');
@@ -157,7 +159,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
-    now: Math.floor(Date.now() / 86_400_000) * 86_400_000,
+    now: announcementNow,
   });
   const isLoading = detail === undefined;
   const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;

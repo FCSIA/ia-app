@@ -20,7 +20,7 @@ export default function AnnouncementsScreen() {
   const [filter, setFilter] = useState<AnnouncementFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const now = useAnnouncementFeedClock();
+  const now = useAnnouncementFeedClock(3_600_000);
   const { results: announcements, status, loadMore } = usePaginatedQuery(api.announcements.feed.listPage, { bookmarkedOnly: filter === "saved" || undefined, unreadOnly: filter === "unread" || undefined, now }, { initialNumItems: 30 });
   const filtered = useMemo(
     () => filterAnnouncements(announcements ?? [], filter, searchQuery),

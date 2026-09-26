@@ -13,10 +13,12 @@ import { success } from "@/lib/haptics";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { useAnnouncementFeedClock } from "@/features/announcements/use-announcement-feed-clock";
 
 export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any, now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } : "skip");
+  const announcementNow = useAnnouncementFeedClock(3_600_000);
+  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any, now: announcementNow } : "skip");
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
   const bookmark = useMutation(api.announcements.engagement.bookmark);
