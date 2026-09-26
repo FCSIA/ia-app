@@ -101,7 +101,7 @@ export function AnnouncementCard({
       index={index}
       href={`/announcements/${announcement._id}`}
       label={`Open announcement: ${announcement.title}`}
-      className={cn('relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
+      className={cn('announcement-card relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
     >
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3 sm:gap-4">

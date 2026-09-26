@@ -38,8 +38,10 @@ function CustomThemeBootstrap() {
         '--custom-bg-image',
         `url("${user.customBackgroundUrl}")`,
       );
+      document.documentElement.dataset.customWallpaper = 'true';
     } else {
       document.documentElement.style.removeProperty('--custom-bg-image');
+      delete document.documentElement.dataset.customWallpaper;
     }
   }, [theme, user?.customBackgroundUrl]);
 

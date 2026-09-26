@@ -25,7 +25,7 @@ export function AdminShell({
 }: AdminShellProps) {
   return (
     <div className={cn(
-      "grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]",
+      "admin-shell grid h-full min-h-0 w-full flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,1fr)_auto] lg:grid-rows-[auto_minmax(0,1fr)]",
       "lg:p-6 p-4"
     )}>
       <div className="relative z-10 lg:col-start-1 lg:row-start-1">

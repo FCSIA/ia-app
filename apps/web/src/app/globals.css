@@ -355,8 +355,7 @@
   /* Custom-theme background: the user-uploaded image sits behind every
      surface. The image URL is injected as a CSS variable by the client
      bootstrap script (apps/web/src/app/providers.tsx). */
-  .custom body,
-  .custom .app-root {
+  .custom[data-custom-wallpaper] .app-root {
     background-image: var(--custom-bg-image, none);
     background-size: cover;
     background-position: center;
@@ -364,26 +363,42 @@
   }
 
   @supports (-webkit-touch-callout: none) {
-    .custom body,
-    .custom .app-root {
+    .custom[data-custom-wallpaper] .app-root {
       background-attachment: scroll;
     }
   }
 
-  /* Under the Custom theme, shell surfaces are transparent so the wallpaper
-     shows through. Real cards/panels keep their solid `--card` background. */
-  .custom .app-root,
-  .custom .app-main-surface {
+  /* Only a Custom theme with an uploaded image needs a translucent shell.
+     Frost the main surface once, rather than filtering every feed row. */
+  .custom[data-custom-wallpaper] .app-root {
     background-color: transparent !important;
   }
 
-  .custom .app-main-header {
-    background-color: hsl(var(--card) / 0.55) !important;
+  .custom[data-custom-wallpaper] .app-main-surface {
+    background-color: hsl(var(--background) / 0.82) !important;
+    backdrop-filter: blur(8px);
   }
 
-  .custom aside[aria-label="Primary navigation"] {
+  .custom[data-custom-wallpaper] .app-main-header {
+    background-color: hsl(var(--card) / 0.88) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  .custom[data-custom-wallpaper] .app-mobile-tabbar {
+    background-color: hsl(var(--card) / 0.88) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  .custom[data-custom-wallpaper] aside[aria-label="Primary navigation"] {
     background-color: hsl(var(--sidebar) / 0.72) !important;
     backdrop-filter: blur(12px);
+  }
+
+  .custom[data-custom-wallpaper] .admin-shell,
+  .custom[data-custom-wallpaper] .announcement-card {
+    background-color: hsl(var(--card) / 0.52);
+    outline: 1px solid hsl(var(--border) / 0.7);
+    outline-offset: -1px;
   }
 
   .dark {
