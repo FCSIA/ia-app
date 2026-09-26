@@ -506,8 +506,10 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])
+    .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
     .index("by_clubId", ["clubId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
 
   comments: defineTable({
     announcementId: v.id("announcements"),

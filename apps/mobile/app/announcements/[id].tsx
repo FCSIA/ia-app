@@ -16,7 +16,7 @@ import { api } from "~/apps/convex/src/_generated/api";
 
 export default function AnnouncementDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any } : "skip");
+  const detail = useQuery(api.announcements.feed.get, id ? { announcementId: id as any, now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } : "skip");
   const markRead = useMutation(api.announcements.engagement.markRead);
   const markUnread = useMutation(api.announcements.engagement.markUnread);
   const bookmark = useMutation(api.announcements.engagement.bookmark);

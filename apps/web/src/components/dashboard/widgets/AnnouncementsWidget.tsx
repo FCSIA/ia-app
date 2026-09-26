@@ -16,14 +16,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardFooter, CardGroup, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AnnouncementReadToggle } from '@/components/announcements/announcement-read-toggle';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
 
 export function AnnouncementsWidget() {
+  const now = useAnnouncementFeedClock();
   const announcementsData =
-    useQuery(api.announcements.feed.list, { unreadOnly: true }) ?? [];
+    useQuery(api.announcements.feed.list, { unreadOnly: true, now }) ?? [];
+  const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now }) ?? [];
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
   const newestAnnouncementId = announcementsData[0]?._id ?? null;
-  const unreadAnnouncements = [...announcementsData]
+  const pinnedIds = new Set(pinnedAnnouncements.map((announcement) => announcement._id));
+  const unreadAnnouncements = [...pinnedAnnouncements.filter((announcement) => !announcement.isRead), ...announcementsData.filter((announcement) => !pinnedIds.has(announcement._id))]
     .sort((left, right) => {
       if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
       if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;

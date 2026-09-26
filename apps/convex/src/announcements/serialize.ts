@@ -32,6 +32,7 @@ export async function serializeAnnouncement(
   ctx: QueryCtx,
   ann: Doc<"announcements">,
   userId: Id<"users">,
+  now: number,
   sharedScope?: SerializeScope,
 ) {
   const scope = scopeFor(ctx, sharedScope);
@@ -74,7 +75,7 @@ export async function serializeAnnouncement(
         .collect()
     ).length;
 
-  const isPromoted = !!ann.promotedUntil && ann.promotedUntil > Date.now();
+  const isPromoted = !!ann.promotedUntil && ann.promotedUntil > now;
 
   return {
     ...ann,
@@ -111,10 +112,11 @@ export async function serializeAnnouncements(
   ctx: QueryCtx,
   announcements: Doc<"announcements">[],
   userId: Id<"users">,
+  now: number,
 ) {
   const scope = scopeFor(ctx);
   return Promise.all(
-    announcements.map((ann) => serializeAnnouncement(ctx, ann, userId, scope)),
+    announcements.map((ann) => serializeAnnouncement(ctx, ann, userId, now, scope)),
   );
 }
 

@@ -4,7 +4,7 @@ import { convexTest } from 'convex-test';
 import { describe, expect, it } from 'vitest';
 import type { Doc } from '../_generated/dataModel';
 import schema from '../schema';
-import { listForUser } from './feed';
+import { listForUser, listPinnedForUser } from './feed';
 
 const modules = import.meta.glob('../**/*.*s');
 
@@ -56,9 +56,9 @@ async function page(
   t: ReturnType<typeof convexTest>,
   user: Doc<'users'>,
   cursor: string | null,
-  filters: { archived?: boolean; unreadOnly?: boolean; bookmarkedOnly?: boolean } = {},
+  filters: { archived?: boolean; unreadOnly?: boolean; bookmarkedOnly?: boolean; now?: number } = {},
 ) {
-  return t.run((ctx) => listForUser(ctx, { ...filters, paginationOpts: { cursor, numItems: 2 } }, user));
+  return t.run((ctx) => listForUser(ctx, { ...filters, now: filters.now ?? Date.now(), paginationOpts: { cursor, numItems: 2 } }, user));
 }
 
 describe('announcement feed pagination', () => {
@@ -145,6 +145,124 @@ describe('announcement feed pagination', () => {
     expect(active.page.some((announcement) => announcement._id === oldAnnouncementId)).toBe(false);
     expect(past.page.some((announcement) => announcement._id === oldAnnouncementId)).toBe(true);
   });
+
+  it('moves an announcement across the age boundary as the client cutoff advances', async () => {
+    const { t, user } = await fixture();
+    const now = Date.now();
+    const announcementId = await t.run((ctx) => ctx.db.insert('announcements', {
+      authorId: user._id,
+      title: 'age-boundary',
+      body: 'Moves with the client supplied cutoff.',
+      targetType: 'SCHOOL_WIDE',
+      targetGrades: [],
+      targetMajorPathways: [],
+      targetMinorPathways: [],
+      status: 'ACTIVE',
+      allowComments: false,
+      isAdminGeneral: false,
+      commentCount: 0,
+      createdAt: now - 14 * 24 * 60 * 60 * 1000 + 1,
+      updatedAt: now,
+    }));
+    await t.run((ctx) => ctx.db.insert('announcementPins', { announcementId, userId: user._id, createdAt: now }));
+    const before = await t.run((ctx) => listForUser(ctx, { now, paginationOpts: { cursor: null, numItems: 20 } }, user));
+    const after = await t.run((ctx) => listForUser(ctx, { archived: true, now: now + 2, paginationOpts: { cursor: null, numItems: 20 } }, user));
+    const activePins = await t.run((ctx) => listPinnedForUser(ctx, user, now + 2));
+    expect(before.page.some((item) => item._id === announcementId)).toBe(true);
+    expect(after.page.some((item) => item._id === announcementId)).toBe(true);
+    expect(activePins.some((item) => item._id === announcementId)).toBe(false);
+  });
+
+  it('finds a personal pin beyond the compatibility feed window', async () => {
+    const { t, user } = await fixture();
+    const now = Date.now();
+    const targetId = await t.run(async (ctx) => {
+      let oldestId = '' as Doc<'announcements'>['_id'];
+      for (let index = 0; index < 520; index += 1) {
+        const announcementId = await ctx.db.insert('announcements', {
+          authorId: user._id,
+          title: `deep-${index}`,
+          body: 'Deep pinned result.',
+          targetType: 'SCHOOL_WIDE',
+          targetGrades: [],
+          targetMajorPathways: [],
+          targetMinorPathways: [],
+          status: 'ACTIVE',
+          allowComments: false,
+          isAdminGeneral: false,
+          commentCount: 0,
+          createdAt: now + index,
+          updatedAt: now + index,
+        });
+        if (index === 0) oldestId = announcementId;
+      }
+      await ctx.db.insert('announcementPins', { announcementId: oldestId, userId: user._id, createdAt: now });
+      return oldestId;
+    });
+    const pins = await t.run((ctx) => listPinnedForUser(ctx, user, now));
+    expect(pins.map((item) => item._id)).toContain(targetId);
+  });
+
+  it('does not reveal a pin when the current audience cannot view it', async () => {
+    const { t, user } = await fixture();
+    const outsider = await t.run(async (ctx) => {
+      const outsiderId = await ctx.db.insert('users', {
+        uniqueId: 'STUDENT-10',
+        firstName: 'Grace',
+        lastName: 'Hopper',
+        roles: ['STUDENT'],
+        isStudent: true,
+        isTeacherStaff: false,
+        isStudentAdmin: false,
+        isOtherRole: false,
+        isActive: true,
+        mustResetPassword: false,
+        gradeLevel: 10,
+        dashboardLayout: [],
+        searchText: 'grace hopper',
+        createdAt: 0,
+        updatedAt: 0,
+      });
+      const announcementId = await ctx.db.insert('announcements', {
+        authorId: user._id,
+        title: 'grade-nine-only',
+        body: 'Should remain private to another grade.',
+        targetType: 'GRADE',
+        targetGrade: 9,
+        targetGrades: [9],
+        targetMajorPathways: [],
+        targetMinorPathways: [],
+        status: 'ACTIVE',
+        allowComments: false,
+        isAdminGeneral: false,
+        commentCount: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      await ctx.db.insert('announcementPins', { announcementId, userId: outsiderId, createdAt: Date.now() });
+      return (await ctx.db.get(outsiderId))!;
+    });
+    const pins = await t.run((ctx) => listPinnedForUser(ctx, outsider, Date.now()));
+    expect(pins).toEqual([]);
+  });
+
+  it('indexes recently archived statuses and active expirations into Past', async () => {
+    const { t, user } = await fixture();
+    const now = Date.now();
+    const recentIds = await t.run(async (ctx) => {
+      const archivedId = await ctx.db.insert('announcements', {
+        authorId: user._id, title: 'recently-archived', body: 'Past by status.', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [], status: 'ARCHIVED', allowComments: false, isAdminGeneral: false, createdAt: now - 100, updatedAt: now,
+      });
+      const expiredId = await ctx.db.insert('announcements', {
+        authorId: user._id, title: 'recently-expired', body: 'Past by expiresAt.', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [], status: 'ACTIVE', allowComments: false, isAdminGeneral: false, expiresAt: now - 1, createdAt: now - 100, updatedAt: now,
+      });
+      const archived = await ctx.db.query('announcements').withIndex('by_status_and_createdAt', (q) => q.eq('status', 'ARCHIVED').gt('createdAt', now - 14 * 24 * 60 * 60 * 1000)).collect();
+      const expired = await ctx.db.query('announcements').withIndex('by_status_and_createdAt', (q) => q.eq('status', 'ACTIVE').gt('createdAt', now - 14 * 24 * 60 * 60 * 1000)).filter((q) => q.lte(q.field('expiresAt'), now)).collect();
+      return { archivedIds: archived.map((item) => item._id), expiredIds: expired.map((item) => item._id), expected: [archivedId, expiredId] };
+    });
+    expect(recentIds.archivedIds).toContain(recentIds.expected[0]);
+    expect(recentIds.expiredIds).toContain(recentIds.expected[1]);
+  });
 });
 
 it('keeps compatible-feed results when newer records are filtered out', async () => {
@@ -170,7 +288,7 @@ it('keeps compatible-feed results when newer records are filtered out', async ()
     }
   });
   const result = await t.run((ctx) =>
-    listForUser(ctx, { paginationOpts: { cursor: null, numItems: 500 } }, user),
+    listForUser(ctx, { now: Date.now(), paginationOpts: { cursor: null, numItems: 500 } }, user),
   );
   expect(result.page.map((item) => item.title)).toContain('announcement-5');
 });

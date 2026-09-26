@@ -37,6 +37,8 @@ a club, inside club workflows.
 
 - `api.announcements.feed.listPage` (cursor-paginated; accepts archived, unread, and saved filters)
 - `api.announcements.feed.list` (bounded compatibility list for compact consumers)
+- `api.announcements.feed.listPinnedPage` (cursor-paginated personal pins)
+- `api.announcements.feed.listPastStatusPage` (cursor-paginated recent archived, rejected, and expired records)
 - `api.announcements.feed.get`
 - `api.announcements.feed.create`
 - `api.announcements.feed.approve`

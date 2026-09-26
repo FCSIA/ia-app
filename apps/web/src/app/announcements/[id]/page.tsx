@@ -157,6 +157,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
 
   const detail = useQuery(api.announcements.feed.get, {
     announcementId: id as Id<'announcements'>,
+    now: Math.floor(Date.now() / 86_400_000) * 86_400_000,
   });
   const isLoading = detail === undefined;
   const announcement: AnnouncementDetail | null = detail ? { ...detail.announcement, comments: detail.comments } : null;
@@ -232,7 +233,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           </Button>
         </div>
 
-        <Card className="overflow-hidden rounded-2xl border border-white/15 bg-background/90 text-foreground shadow-2xl backdrop-blur-xl">
+        <Card className={`overflow-hidden rounded-2xl border bg-card ${CARD_SURFACE_FOREGROUND}`}>
           <CardHeader className="gap-5 border-b border-white/10 bg-background/35 pb-5">
             <div className="flex flex-wrap items-center gap-2">
               {announcement.isAdminGeneral ? (

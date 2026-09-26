@@ -47,6 +47,7 @@ export const listPage = query({
     bookmarkedOnly: v.optional(v.boolean()),
     clubId: v.optional(v.id("clubs")),
     unreadOnly: v.optional(v.boolean()),
+    now: v.number(),
     paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(announcementListItemValidator),
@@ -58,7 +59,7 @@ export const listPage = query({
 });
 
 export const list = query({
-  args: { archived: v.optional(v.boolean()), clubId: v.optional(v.id("clubs")), unreadOnly: v.optional(v.boolean()) },
+  args: { archived: v.optional(v.boolean()), clubId: v.optional(v.id("clubs")), unreadOnly: v.optional(v.boolean()), now: v.number() },
   returns: v.array(announcementListItemValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
@@ -70,10 +71,118 @@ export const list = query({
   },
 });
 
-type FeedListArgs = { archived?: boolean; bookmarkedOnly?: boolean; clubId?: Id<"clubs">; unreadOnly?: boolean; paginationOpts: { cursor: string | null; numItems: number; endCursor?: string | null; maximumRowsRead?: number; maximumBytesRead?: number; id?: number } };
+export const listPinned = query({
+  args: { now: v.number(), limit: v.optional(v.number()) },
+  returns: v.array(announcementListItemValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return [];
+    return listPinnedForUser(ctx, user, args.now, args.limit);
+  },
+});
+
+export const listPinnedPage = query({
+  args: {
+    now: v.number(),
+    bookmarkedOnly: v.optional(v.boolean()),
+    readOnly: v.optional(v.boolean()),
+    unreadOnly: v.optional(v.boolean()),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: paginationResultValidator(announcementListItemValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
+    const result = await ctx.db.query("announcementPins")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .paginate(args.paginationOpts);
+    const viewer = await getViewerAudience(ctx, user._id);
+    const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
+    const announcements: Doc<"announcements">[] = [];
+    for (const pin of result.page) {
+      const announcement = await ctx.db.get(pin.announcementId);
+      if (!announcement || announcement.status !== "ACTIVE" || isEffectivelyExpired(announcement, args.now) || isPastByAge(announcement, args.now)) continue;
+      if (canViewAnnouncement(announcement, user._id, user.roles, accessibleClubIds, viewer)) announcements.push(announcement);
+    }
+    const serialized = await serializeAnnouncements(ctx, announcements, user._id, args.now);
+    return {
+      ...result,
+      page: serialized.filter((announcement) =>
+        (!args.bookmarkedOnly || announcement.isBookmarked) &&
+        (!args.readOnly || announcement.isRead) &&
+        (!args.unreadOnly || !announcement.isRead),
+      ),
+    };
+  },
+});
+
+export const listPastStatusPage = query({
+  args: {
+    status: v.union(v.literal("ACTIVE"), v.literal("EXPIRED"), v.literal("ARCHIVED"), v.literal("REJECTED")),
+    clubId: v.optional(v.id("clubs")),
+    now: v.number(),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: paginationResultValidator(announcementListItemValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
+    const result = args.status === "ACTIVE"
+      // The createdAt prefix confines expiration checks to the recent 14-day
+      // feed window. An expiresAt-only range would also walk every historical
+      // expired ACTIVE row, which the age-based Past stream already covers.
+      ? await ctx.db.query("announcements")
+          .withIndex("by_status_and_createdAt", (q) => q.eq("status", "ACTIVE").gt("createdAt", args.now - ANNOUNCEMENT_PAST_AGE_MS))
+          .filter((q) => q.lte(q.field("expiresAt"), args.now))
+          .order("desc")
+          .paginate(args.paginationOpts)
+      : await ctx.db.query("announcements")
+          .withIndex("by_status_and_createdAt", (q) => q.eq("status", args.status).gt("createdAt", args.now - ANNOUNCEMENT_PAST_AGE_MS))
+          .order("desc")
+          .paginate(args.paginationOpts);
+    const viewer = await getViewerAudience(ctx, user._id);
+    const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
+    const elevated = isElevatedReader(user.roles);
+    if (args.clubId) {
+      const isSponsor = await ctx.db.query("clubSponsors")
+        .withIndex("by_clubId_and_userId", (q) => q.eq("clubId", args.clubId!).eq("userId", user._id))
+        .first();
+      if (!accessibleClubIds.includes(args.clubId) && !isSponsor && !elevated) throw new ConvexError("Not a club member");
+    }
+    const visible = result.page.filter((announcement) => {
+      if (args.clubId && announcement.clubId !== args.clubId) return false;
+      return elevated || announcement.authorId === user._id || canViewAnnouncement(announcement, user._id, user.roles, accessibleClubIds, viewer);
+    });
+    return { ...result, page: await serializeAnnouncements(ctx, visible, user._id, args.now) };
+  },
+});
+
+export async function listPinnedForUser(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  now: number,
+  limit = 100,
+) {
+    const viewer = await getViewerAudience(ctx, user._id);
+    const accessibleClubIds = await getAccessibleClubIds(ctx, user._id);
+    const pins = await ctx.db.query("announcementPins")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(Math.max(1, Math.min(limit, 500)));
+    const announcements: Doc<"announcements">[] = [];
+    for (const pin of pins) {
+      const announcement = await ctx.db.get(pin.announcementId);
+      if (!announcement || announcement.status !== "ACTIVE" || isEffectivelyExpired(announcement, now) || isPastByAge(announcement, now)) continue;
+      if (canViewAnnouncement(announcement, user._id, user.roles, accessibleClubIds, viewer)) announcements.push(announcement);
+    }
+    return serializeAnnouncements(ctx, announcements, user._id, now);
+}
+
+type FeedListArgs = { archived?: boolean; bookmarkedOnly?: boolean; clubId?: Id<"clubs">; unreadOnly?: boolean; now: number; paginationOpts: { cursor: string | null; numItems: number; endCursor?: string | null; maximumRowsRead?: number; maximumBytesRead?: number; id?: number } };
 
 export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"users">) {
-    const now = Date.now();
+    const now = args.now;
     const pastCutoff = now - ANNOUNCEMENT_PAST_AGE_MS;
 
     const viewer = await getViewerAudience(ctx, user._id);
@@ -82,36 +191,18 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
     const archived = args.archived ?? false;
 
     const result = args.clubId
-      ? await ctx.db
-          .query("announcements")
-          .withIndex("by_clubId", (q) => q.eq("clubId", args.clubId))
-          .filter((q) =>
-            archived
-              ? q.or(
-                  q.lte(q.field("createdAt"), pastCutoff),
-                  q.eq(q.field("status"), "EXPIRED"),
-                  q.eq(q.field("status"), "ARCHIVED"),
-                  q.eq(q.field("status"), "REJECTED"),
-                )
-              : q.gt(q.field("createdAt"), pastCutoff),
-          )
-          .order("desc")
-          .paginate(args.paginationOpts)
-      : await ctx.db
-          .query("announcements")
-          .withIndex("by_createdAt")
-          .filter((q) =>
-            archived
-              ? q.or(
-                  q.lte(q.field("createdAt"), pastCutoff),
-                  q.eq(q.field("status"), "EXPIRED"),
-                  q.eq(q.field("status"), "ARCHIVED"),
-                  q.eq(q.field("status"), "REJECTED"),
-                )
-              : q.gt(q.field("createdAt"), pastCutoff),
-          )
-          .order("desc")
-          .paginate(args.paginationOpts);
+      ? archived
+        ? await ctx.db.query("announcements").withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", args.clubId!).lte("createdAt", pastCutoff)).order("desc").paginate(args.paginationOpts)
+        : await ctx.db.query("announcements").withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", args.clubId!).gt("createdAt", pastCutoff))
+            .filter((q) => q.or(q.eq(q.field("status"), "ACTIVE"), q.eq(q.field("status"), "PENDING_APPROVAL"), q.and(q.eq(q.field("status"), "REJECTED"), q.eq(q.field("authorId"), user._id))))
+            .filter((q) => q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
+            .order("desc").paginate(args.paginationOpts)
+      : archived
+        ? await ctx.db.query("announcements").withIndex("by_createdAt", (q) => q.lte("createdAt", pastCutoff)).order("desc").paginate(args.paginationOpts)
+        : await ctx.db.query("announcements").withIndex("by_createdAt", (q) => q.gt("createdAt", pastCutoff))
+            .filter((q) => q.or(q.eq(q.field("status"), "ACTIVE"), q.eq(q.field("status"), "PENDING_APPROVAL"), q.and(q.eq(q.field("status"), "REJECTED"), q.eq(q.field("authorId"), user._id))))
+            .filter((q) => q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
+            .order("desc").paginate(args.paginationOpts);
 
     if (args.clubId) {
       const clubId = args.clubId;
@@ -164,13 +255,13 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
       );
     });
 
-    const serialized = await serializeAnnouncements(ctx, announcements, user._id);
+    const serialized = await serializeAnnouncements(ctx, announcements, user._id, now);
 
     return { ...result, page: serialized.filter((ann) => !args.unreadOnly || !ann.isRead).filter((ann) => !args.bookmarkedOnly || ann.isBookmarked) };
 }
 
 export const get = query({
-  args: { announcementId: v.id("announcements") },
+  args: { announcementId: v.id("announcements"), now: v.number() },
   returns: v.union(
     v.object({
       announcement: announcementListItemValidator,
@@ -196,7 +287,7 @@ export const get = query({
       .collect();
 
     return {
-      announcement: await serializeAnnouncement(ctx, ann, user._id),
+      announcement: await serializeAnnouncement(ctx, ann, user._id, args.now),
       comments: await serializeComments(ctx, comments),
     };
   },

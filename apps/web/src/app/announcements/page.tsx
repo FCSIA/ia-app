@@ -33,6 +33,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -57,6 +59,7 @@ export default function AnnouncementsPage() {
   const user = useCurrentUser();
   const { toast } = useToast();
   const [pastOpen, setPastOpen] = useState(false);
+  const feedNow = useAnnouncementFeedClock();
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
@@ -110,19 +113,66 @@ export default function AnnouncementsPage() {
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
-  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: false, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined }, { initialNumItems: 30 });
+  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: false, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined, now: feedNow }, { initialNumItems: 30 });
+  const { results: pinnedData, status: pinnedStatus, loadMore: loadMorePins } = usePaginatedQuery(
+    api.announcements.feed.listPinnedPage,
+    {
+      now: feedNow,
+      bookmarkedOnly: savedFilter === 'saved' || undefined,
+      readOnly: readFilter === 'read' || undefined,
+      unreadOnly: readFilter === 'unread' || undefined,
+    },
+    { initialNumItems: 30 },
+  );
+  const dataWithPins = useMemo(() => {
+    const feedIds = new Set(data.map((announcement) => announcement._id));
+    return [...pinnedData.filter((announcement) => !feedIds.has(announcement._id)), ...data];
+  }, [data, pinnedData]);
   const {
     results: pastAnnouncements,
     status: pastFeedStatus,
     loadMore: loadMorePastAnnouncements,
   } = usePaginatedQuery(
     api.announcements.feed.listPage,
-    { archived: true },
+    pastOpen ? { archived: true, now: feedNow } : 'skip',
     { initialNumItems: 20 },
   );
-  const isLoading = feedStatus === 'LoadingFirstPage';
+  const { results: recentExpired, status: expiredStatus, loadMore: loadMoreExpired } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'EXPIRED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentArchived, status: archivedStatus, loadMore: loadMoreArchived } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'ARCHIVED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentRejected, status: rejectedStatus, loadMore: loadMoreRejected } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'REJECTED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentlyExpired, status: recentlyExpiredStatus, loadMore: loadMoreRecentlyExpired } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'ACTIVE', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const pastStatusPages = [
+    { status: recentlyExpiredStatus, loadMore: loadMoreRecentlyExpired },
+    { status: expiredStatus, loadMore: loadMoreExpired },
+    { status: archivedStatus, loadMore: loadMoreArchived },
+    { status: rejectedStatus, loadMore: loadMoreRejected },
+  ];
+  const pastAllAnnouncements = useMemo(() => {
+    const byId = new Map<string, any>();
+    for (const item of [...pastAnnouncements, ...recentExpired, ...recentArchived, ...recentRejected, ...recentlyExpired]) byId.set(item._id, item);
+    return [...byId.values()].sort((left, right) => right.createdAt - left.createdAt);
+  }, [pastAnnouncements, recentExpired, recentArchived, recentRejected, recentlyExpired]);
+  const isLoading = feedStatus === 'LoadingFirstPage' || pinnedStatus === 'LoadingFirstPage';
   const canLoadMore = feedStatus === 'CanLoadMore' || feedStatus === 'LoadingMore';
-  const canLoadMorePast = pastFeedStatus === 'CanLoadMore' || pastFeedStatus === 'LoadingMore';
+  const canLoadMorePast = pastFeedStatus === 'CanLoadMore' || pastFeedStatus === 'LoadingMore' || pastStatusPages.some(({ status }) => status === 'CanLoadMore' || status === 'LoadingMore');
+  const canLoadPastNow = pastFeedStatus === 'CanLoadMore' || pastStatusPages.some(({ status }) => status === 'CanLoadMore');
+  const isLoadingMorePast = pastFeedStatus === 'LoadingMore' || pastStatusPages.some(({ status }) => status === 'LoadingMore');
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
@@ -136,17 +186,17 @@ export default function AnnouncementsPage() {
   const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
   const availableTags = useMemo(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
     const tags = new Set<string>();
-    data.forEach((announcement: any) => tags.add(announcement.targetType));
+    dataWithPins.forEach((announcement: any) => tags.add(announcement.targetType));
     return Array.from(tags).sort();
-  }, [data]);
+  }, [dataWithPins]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
     const clubsById = new Map<string, ClubFilterOption>();
 
-    data.forEach((announcement: any) => {
+    dataWithPins.forEach((announcement: any) => {
       if (announcement.club?._id && announcement.club?.name) {
         clubsById.set(announcement.club._id, {
           id: announcement.club._id,
@@ -156,13 +206,13 @@ export default function AnnouncementsPage() {
     });
 
     return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
-  }, [data]);
+  }, [dataWithPins]);
 
   const filtered = useMemo(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
 
     const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return data.filter((announcement: any) => {
+    return dataWithPins.filter((announcement: any) => {
       if (activeTag && announcement.targetType !== activeTag) return false;
       if (readFilter === 'unread' && announcement.isRead) return false;
       if (readFilter === 'read' && !announcement.isRead) return false;
@@ -197,21 +247,21 @@ export default function AnnouncementsPage() {
       if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
-  }, [activeTag, data, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
+  }, [activeTag, dataWithPins, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
 
   const newestAnnouncementId = useMemo(() => {
-    const activeAnnouncements = data.filter((announcement: any) => announcement.status === 'ACTIVE');
+    const activeAnnouncements = dataWithPins.filter((announcement: any) => announcement.status === 'ACTIVE');
     return activeAnnouncements.reduce<any | null>((latest, announcement) => {
       if (!latest) return announcement;
       return new Date(announcement.createdAt).getTime() > new Date(latest.createdAt).getTime()
         ? announcement
         : latest;
     }, null)?._id ?? null;
-  }, [data]);
+  }, [dataWithPins]);
 
   const filteredPastAnnouncements = useMemo(() => {
     const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return pastAnnouncements.filter((announcement: any) =>
+    return pastAllAnnouncements.filter((announcement: any) =>
       matchesSearchQuery(normalizedSearch, [
         announcement.title,
         announcement.body,
@@ -220,7 +270,7 @@ export default function AnnouncementsPage() {
         announcement.club?.name,
       ]),
     );
-  }, [deferredSearch, pastAnnouncements]);
+  }, [deferredSearch, pastAllAnnouncements]);
 
   const [createPending, setCreatePending] = useState(false);
   const [reviewPending, setReviewPending] = useState<{
@@ -649,14 +699,14 @@ export default function AnnouncementsPage() {
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
-        ) : data.length === 0 && feedStatus === 'Exhausted' ? (
-          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
+        ) : dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
+          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
             <Card className="bg-transparent">
               <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
             </Card>
           </CardGroup>
         ) : filtered.length === 0 ? (
-          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
+          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
             <Card className="bg-transparent">
               <CardContent className="pt-6 text-center py-16">
                 <p className="text-muted-foreground">No announcements match your filters.</p>
@@ -664,14 +714,22 @@ export default function AnnouncementsPage() {
                   Clear filters
                 </Button>
                 {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
+                {pinnedStatus === 'CanLoadMore' ? <Button variant="tertiary" size="sm" className="mt-2" onClick={() => loadMorePins(30)}>Load more pinned announcements</Button> : null}
               </CardContent>
             </Card>
           </CardGroup>
         ) : (
           <div className="space-y-6">
+            {pinnedStatus === 'CanLoadMore' || pinnedStatus === 'LoadingMore' ? (
+              <div className="flex justify-center">
+                <Button variant="tertiary" disabled={pinnedStatus !== 'CanLoadMore'} onClick={() => loadMorePins(30)}>
+                  {pinnedStatus === 'LoadingMore' ? 'Loading pinned…' : 'Load more pinned announcements'}
+                </Button>
+              </div>
+            ) : null}
             {hasActiveFilters && (
               <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} of {data.length} announcement{data.length === 1 ? '' : 's'}
+                {filtered.length} of {dataWithPins.length} announcement{dataWithPins.length === 1 ? '' : 's'}
               </p>
             )}
             <div className="space-y-4">
@@ -784,13 +842,13 @@ export default function AnnouncementsPage() {
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/80 px-4 py-3 text-left backdrop-blur-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left text-card-foreground transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Archive className="size-4 text-muted-foreground" aria-hidden />
                 Past Announcements
                 {pastFeedStatus !== 'LoadingFirstPage' ? (
-                  <Badge size="sm" color="gray">{pastAnnouncements.length}</Badge>
+                  <Badge size="sm" color="gray">{pastAllAnnouncements.length}</Badge>
                 ) : null}
               </span>
               <ChevronDown
@@ -800,11 +858,17 @@ export default function AnnouncementsPage() {
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-4">
-            {pastFeedStatus === 'LoadingFirstPage' ? (
+            {pastFeedStatus === 'LoadingFirstPage' || expiredStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
             ) : filteredPastAnnouncements.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
                 No past announcements.
+                {canLoadMorePast ? (
+                  <div className="mt-3 flex justify-center"><Button variant="tertiary" disabled={!canLoadPastNow || isLoadingMorePast} onClick={() => {
+                    if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
+                    for (const stream of pastStatusPages) if (stream.status === 'CanLoadMore') stream.loadMore(20);
+                  }}>Load more past announcements</Button></div>
+                ) : null}
               </div>
             ) : (
               <div className="space-y-4">
@@ -824,10 +888,13 @@ export default function AnnouncementsPage() {
                   <div className="flex justify-center">
                     <Button
                       variant="tertiary"
-                      disabled={pastFeedStatus !== 'CanLoadMore'}
-                      onClick={() => loadMorePastAnnouncements(20)}
+                      disabled={!canLoadPastNow || isLoadingMorePast}
+                      onClick={() => {
+                        if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
+                        for (const stream of pastStatusPages) if (stream.status === 'CanLoadMore') stream.loadMore(20);
+                      }}
                     >
-                      {pastFeedStatus === 'LoadingMore' ? 'Loading...' : 'Load more past announcements'}
+                      {isLoadingMorePast ? 'Loading...' : 'Load more past announcements'}
                     </Button>
                   </div>
                 ) : null}
