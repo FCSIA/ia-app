@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
   Archive,
@@ -130,9 +130,6 @@ export function WhiteboardBoardView({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const canvas = useRef<WhiteboardCanvasHandle | null>(null);
-  const handleReady = useCallback((handle: WhiteboardCanvasHandle) => {
-    canvas.current = handle;
-  }, []);
 
   if (board === undefined) {
     return (
@@ -236,7 +233,7 @@ export function WhiteboardBoardView({
           readOnly={archived}
           theme={DARK_THEMES.has(resolvedTheme ?? '') ? 'dark' : 'light'}
           onSyncStateChange={setSyncState}
-          onReady={handleReady}
+          handleRef={canvas}
         />
       </div>
 

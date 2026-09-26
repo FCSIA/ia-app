@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { History, RotateCcw } from 'lucide-react';
 import { useMutation, usePaginatedQuery, useQuery } from '@/lib/convex-react';
@@ -92,9 +92,11 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
   const currentSeq = versions[0]?.toSeq ?? null;
   const selected = versions.find((version) => version.toSeq === selectedSeq) ?? versions[0] ?? null;
 
-  useEffect(() => {
-    if (!open) setSelectedSeq(null);
-  }, [open]);
+  // Reopening the sheet starts from the current version.
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setSelectedSeq(null);
+    onOpenChange(next);
+  };
 
   const preview = useQuery(
     api.clubs.whiteboards.getVersion,
@@ -127,7 +129,7 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="flex h-full w-full flex-col gap-4 overflow-hidden sm:max-w-md">
         <SheetHeader className="shrink-0">
           <SheetTitle>Version history</SheetTitle>

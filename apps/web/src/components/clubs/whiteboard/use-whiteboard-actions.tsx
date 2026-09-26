@@ -104,9 +104,11 @@ export function useWhiteboardActions(channelId: Id<'clubChannels'>) {
           title: `${board.title} (copy)`,
           duplicatedFromBoardId: board._id,
         });
-        for (const chunk of chunkWhiteboardElements(elements)) {
-          await saveElements({ boardId: copyId, elements: chunk });
-        }
+        await Promise.all(
+          chunkWhiteboardElements(elements).map((chunk) =>
+            saveElements({ boardId: copyId, elements: chunk }),
+          ),
+        );
         toast({ title: `Duplicated “${board.title}”` });
         openBoard(copyId);
       } catch (error) {
