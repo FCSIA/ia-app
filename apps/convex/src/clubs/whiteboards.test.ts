@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -9,7 +9,9 @@ import schema from "../schema";
 import { NO_CLUB_PERMISSIONS } from "./rolePermissions";
 import {
   createWhiteboard,
+  getWhiteboardCounts,
   getWhiteboardSnapshot,
+  listArchivedWhiteboards,
   listChannelWhiteboards,
   listWhiteboardChanges,
   renameWhiteboard,
@@ -19,6 +21,8 @@ import {
 } from "./whiteboards";
 
 const modules = import.meta.glob("/src/**/*.*s");
+
+afterEach(() => vi.useRealTimers());
 
 const shape = (
   id: string,
@@ -225,25 +229,22 @@ describe("club channel whiteboards", () => {
           .collect()
       ).map((row) => row.action);
       return {
-        list: list!.map((board) => ({
+        list: list!.boards.map((board) => ({
           title: board.title,
           elements: board.elementCount,
-          archived: board.archivedAt !== null,
           updatedBy: board.updatedByName,
         })),
+        archivedCount: list!.archivedCount,
+        counts: await getWhiteboardCounts(ctx, s.channelId),
         archivedError,
         afterUnarchive: afterUnarchive.accepted,
         actions,
       };
     });
 
-    expect(result.list).toHaveLength(2);
-    expect(result.list).toEqual(
-      expect.arrayContaining([
-        { title: "First", elements: 1, archived: true, updatedBy: "MEMBER User" },
-        { title: "Renamed", elements: 2, archived: false, updatedBy: "OTHER User" },
-      ]),
-    );
+    expect(result.list).toEqual([{ title: "Renamed", elements: 2, updatedBy: "OTHER User" }]);
+    expect(result.archivedCount).toBe(1);
+    expect(result.counts).toEqual({ active: 2, archived: 0 });
     expect(result.archivedError).toMatch(/archived/);
     expect(result.afterUnarchive).toBe(1);
     expect(result.actions).toEqual([
@@ -253,6 +254,75 @@ describe("club channel whiteboards", () => {
       "CLUB_WHITEBOARD_UNARCHIVED",
       "CLUB_WHITEBOARD_EDITED",
     ]);
+  });
+
+  test("limits active boards exactly while archived boards are unlimited and paged", async () => {
+    const t = convexTest(schema, modules);
+    const { channelId, memberId, firstArchived } = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      // Fill the channel, archive a batch, and refill: the archive can grow
+      // past the active limit without affecting it.
+      const archivedIds = [];
+      for (let round = 0; round < 3; round += 1) {
+        const ids = [];
+        for (let index = 0; index < 60; index += 1) {
+          ids.push(
+            await createWhiteboard(ctx, s.member, s.channelId, { title: `R${round}-${index}` }),
+          );
+        }
+        for (const id of ids) {
+          await setWhiteboardArchived(ctx, s.member, id, true);
+          archivedIds.push(id);
+        }
+      }
+      for (let index = 0; index < 100; index += 1) {
+        await createWhiteboard(ctx, s.member, s.channelId, { title: `Active ${index}` });
+      }
+      return { channelId: s.channelId, memberId: s.member._id, firstArchived: archivedIds[0]! };
+    });
+
+    const result = await t.run(async (ctx) => {
+      const member = (await ctx.db.get(memberId))!;
+      const errors: string[] = [];
+      for (const attempt of [
+        () => createWhiteboard(ctx, member, channelId),
+        () => setWhiteboardArchived(ctx, member, firstArchived, false),
+      ]) {
+        try {
+          await attempt();
+        } catch (error) {
+          errors.push(String(error));
+        }
+      }
+      const list = await listChannelWhiteboards(ctx, member, channelId, 0);
+      return { errors, list, counts: await getWhiteboardCounts(ctx, channelId) };
+    });
+    expect(result.errors).toHaveLength(2);
+    for (const error of result.errors) expect(error).toMatch(/100 active whiteboards/);
+    expect(result.counts).toEqual({ active: 100, archived: 180 });
+    expect(result.list!.boards).toHaveLength(100);
+    expect(result.list!.boards.every((board) => board.archivedAt === null)).toBe(true);
+    expect(result.list!.archivedCount).toBe(180);
+
+    // Every archived board is reachable by paging, and only archived boards.
+    const seen = new Set<string>();
+    let cursor: string | null = null;
+    for (;;) {
+      const page: { page: Array<{ _id: string; archivedAt: number | null }>; isDone: boolean; continueCursor: string } =
+        await t.run(async (ctx) =>
+          listArchivedWhiteboards(ctx, (await ctx.db.get(memberId))!, channelId, {
+            numItems: 50,
+            cursor,
+          }),
+        );
+      for (const board of page.page) {
+        expect(board.archivedAt).not.toBeNull();
+        seen.add(board._id);
+      }
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(seen.size).toBe(180);
   });
 
   test("follows changes by sequence and resolves concurrent versions", async () => {
@@ -412,35 +482,50 @@ describe("club channel whiteboards", () => {
     expect(result.badSeq).toMatch(/does not exist/);
   });
 
-  test("channel deletion clears live state but keeps reviewable history", async () => {
+  test("channel deletion clears every board's live state but keeps reviewable history", async () => {
+    vi.useFakeTimers();
     const t = convexTest(schema, modules);
-    const { boardId, channelId } = await t.run(async (ctx) => {
+    const { activeId, archivedId, channelId } = await t.run(async (ctx) => {
       const s = await seed(ctx);
-      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
-      await saveWhiteboardElements(ctx, s.member, boardId, [shape("a", 1), shape("b", 1)]);
+      const activeId = await createWhiteboard(ctx, s.member, s.channelId);
+      await saveWhiteboardElements(ctx, s.member, activeId, [shape("a", 1), shape("b", 1)]);
+      const archivedId = await createWhiteboard(ctx, s.member, s.channelId);
+      await saveWhiteboardElements(ctx, s.member, archivedId, [shape("c", 1)]);
+      await setWhiteboardArchived(ctx, s.member, archivedId, true);
       await ctx.db.delete(s.channelId);
-      return { boardId, channelId: s.channelId };
+      return { activeId, archivedId, channelId: s.channelId };
     });
     await t.mutation(internal.clubs.whiteboards.cleanupChannelWhiteboard, { channelId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     const result = await t.run(async (ctx) => {
-      const elements = await ctx.db
-        .query("clubWhiteboardElements")
-        .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
-        .collect();
-      const snapshot = await getWhiteboardSnapshot(ctx, boardId, 2);
-      const board = await ctx.db.get(boardId);
+      const remaining = await Promise.all(
+        [activeId, archivedId].map((boardId) =>
+          ctx.db
+            .query("clubWhiteboardElements")
+            .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
+            .collect(),
+        ),
+      );
+      const boards = await Promise.all([ctx.db.get(activeId), ctx.db.get(archivedId)]);
+      const snapshot = await getWhiteboardSnapshot(ctx, activeId, 2);
       return {
-        elements: elements.length,
-        live: board?.liveElementCount,
-        archived: !!board?.archivedAt,
+        remaining: remaining.map((rows) => rows.length),
+        boards: boards.map((board) => ({
+          archived: board?.isArchived,
+          live: board?.liveElementCount,
+        })),
+        counts: await getWhiteboardCounts(ctx, channelId),
         snapshotCount: snapshot?.elements.length,
         channelName: snapshot?.channelName,
       };
     });
     expect(result).toEqual({
-      elements: 0,
-      live: 0,
-      archived: true,
+      remaining: [0, 0],
+      boards: [
+        { archived: true, live: 0 },
+        { archived: true, live: 0 },
+      ],
+      counts: { active: 0, archived: 2 },
       snapshotCount: 2,
       channelName: null,
     });

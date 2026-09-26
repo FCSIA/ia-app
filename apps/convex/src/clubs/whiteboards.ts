@@ -1,5 +1,9 @@
 import { ConvexError, v } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import {
+  paginationOptsValidator,
+  paginationResultValidator,
+  type PaginationOptions,
+} from "convex/server";
 import { internal } from "../_generated/api";
 import {
   internalMutation,
@@ -92,7 +96,7 @@ async function requireEditableBoard(
 ) {
   const resolved = await getWhiteboardForUser(ctx, user, boardId);
   if (!resolved) throw new ConvexError("Not authorized");
-  if (resolved.board.archivedAt) {
+  if (resolved.board.isArchived) {
     throw new ConvexError("This whiteboard is archived. Restore it to keep editing.");
   }
   return resolved;
@@ -118,6 +122,36 @@ async function userNames(ctx: WhiteboardDbCtx, ids: Array<Id<"users"> | undefine
 
 // ── Board lifecycle ─────────────────────────────────────────────────────
 
+const ACTIVE_LIMIT_MESSAGE = `A channel can have ${MAX_BOARDS_PER_CHANNEL} active whiteboards. Archive one first.`;
+
+export async function getWhiteboardCounts(
+  ctx: WhiteboardDbCtx,
+  channelId: Id<"clubChannels">,
+) {
+  const row = await ctx.db
+    .query("clubWhiteboardChannelCounts")
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+    .unique();
+  return { active: row?.active ?? 0, archived: row?.archived ?? 0 };
+}
+
+async function adjustWhiteboardCounts(
+  ctx: MutationCtx,
+  channelId: Id<"clubChannels">,
+  delta: { active?: number; archived?: number },
+) {
+  const row = await ctx.db
+    .query("clubWhiteboardChannelCounts")
+    .withIndex("by_channelId", (q) => q.eq("channelId", channelId))
+    .unique();
+  const next = {
+    active: Math.max(0, (row?.active ?? 0) + (delta.active ?? 0)),
+    archived: Math.max(0, (row?.archived ?? 0) + (delta.archived ?? 0)),
+  };
+  if (row) await ctx.db.patch(row._id, next);
+  else await ctx.db.insert("clubWhiteboardChannelCounts", { channelId, ...next });
+}
+
 export async function createWhiteboard(
   ctx: MutationCtx,
   user: Doc<"users">,
@@ -126,13 +160,8 @@ export async function createWhiteboard(
 ) {
   const resolved = await getWhiteboardChannel(ctx, user, channelId);
   if (!resolved) throw new ConvexError("Not authorized");
-  const existing = await ctx.db
-    .query("clubWhiteboards")
-    .withIndex("by_channelId_and_updatedAt", (q) => q.eq("channelId", channelId))
-    .take(MAX_BOARDS_PER_CHANNEL + 1);
-  if (existing.filter((board) => !board.archivedAt).length >= MAX_BOARDS_PER_CHANNEL) {
-    throw new ConvexError("This channel has too many whiteboards. Archive one first.");
-  }
+  const counts = await getWhiteboardCounts(ctx, channelId);
+  if (counts.active >= MAX_BOARDS_PER_CHANNEL) throw new ConvexError(ACTIVE_LIMIT_MESSAGE);
   if (input.duplicatedFromBoardId) {
     const source = await ctx.db.get(input.duplicatedFromBoardId);
     if (!source || source.channelId !== channelId) {
@@ -151,7 +180,9 @@ export async function createWhiteboard(
     createdAt: now,
     updatedAt: now,
     updatedById: user._id,
+    isArchived: false,
   });
+  await adjustWhiteboardCounts(ctx, channelId, { active: 1 });
   if (input.duplicatedFromBoardId) {
     // A copy starts with the source's preview until someone edits it.
     const thumbnail = await ctx.db
@@ -217,10 +248,19 @@ export async function setWhiteboardArchived(
   const resolved = await getWhiteboardForUser(ctx, user, boardId);
   if (!resolved) throw new ConvexError("Not authorized");
   const { board } = resolved;
-  if (!!board.archivedAt === archived) return null;
+  if (board.isArchived === archived) return null;
+  if (!archived) {
+    const counts = await getWhiteboardCounts(ctx, board.channelId);
+    if (counts.active >= MAX_BOARDS_PER_CHANNEL) throw new ConvexError(ACTIVE_LIMIT_MESSAGE);
+  }
   await ctx.db.patch(board._id, {
+    isArchived: archived,
     archivedAt: archived ? Date.now() : undefined,
     archivedById: archived ? user._id : undefined,
+  });
+  await adjustWhiteboardCounts(ctx, board.channelId, {
+    active: archived ? -1 : 1,
+    archived: archived ? 1 : -1,
   });
   await logAuditEvent(ctx, {
     actorId: user._id,
@@ -544,26 +584,18 @@ const boardSummaryValidator = v.object({
   activeViewerCount: v.number(),
 });
 
-export async function listChannelWhiteboards(
+async function toBoardSummaries(
   ctx: QueryCtx,
-  user: Doc<"users">,
-  channelId: Id<"clubChannels">,
-  activeSince: number,
+  boards: Doc<"clubWhiteboards">[],
+  activeSince: number | null,
 ) {
-  const resolved = await getWhiteboardChannel(ctx, user, channelId);
-  if (!resolved) return null;
-  const boards = await ctx.db
-    .query("clubWhiteboards")
-    .withIndex("by_channelId_and_updatedAt", (q) => q.eq("channelId", channelId))
-    .order("desc")
-    .take(MAX_BOARDS_PER_CHANNEL * 2);
   const names = await userNames(
     ctx,
     boards.flatMap((board) => [board.createdById, board.updatedById]),
   );
   const viewerCounts = await Promise.all(
     boards.map(async (board) => {
-      if (board.archivedAt) return 0;
+      if (board.isArchived || activeSince === null) return 0;
       const cursors = await ctx.db
         .query("clubWhiteboardCursors")
         .withIndex("by_boardId_and_updatedAt", (q) =>
@@ -586,17 +618,83 @@ export async function listChannelWhiteboards(
   }));
 }
 
+/**
+ * Active boards (at most the per-channel limit, newest activity first) and
+ * exact counts. Archived boards are paged separately by `listArchived`.
+ */
+export async function listChannelWhiteboards(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+  activeSince: number,
+) {
+  const resolved = await getWhiteboardChannel(ctx, user, channelId);
+  if (!resolved) return null;
+  const [boards, counts] = await Promise.all([
+    ctx.db
+      .query("clubWhiteboards")
+      .withIndex("by_channelId_and_isArchived_and_updatedAt", (q) =>
+        q.eq("channelId", channelId).eq("isArchived", false),
+      )
+      .order("desc")
+      .take(MAX_BOARDS_PER_CHANNEL),
+    getWhiteboardCounts(ctx, channelId),
+  ]);
+  return {
+    boards: await toBoardSummaries(ctx, boards, activeSince),
+    archivedCount: counts.archived,
+    activeLimit: MAX_BOARDS_PER_CHANNEL,
+  };
+}
+
 export const listForChannel = query({
   args: {
     channelId: v.id("clubChannels"),
     // Supplied by the client (rounded) because queries must not read the clock.
     activeSince: v.number(),
   },
-  returns: v.union(v.array(boardSummaryValidator), v.null()),
+  returns: v.union(
+    v.object({
+      boards: v.array(boardSummaryValidator),
+      archivedCount: v.number(),
+      activeLimit: v.number(),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return null;
     return await listChannelWhiteboards(ctx, user, args.channelId, args.activeSince);
+  },
+});
+
+/** Every archived board, most recently edited first, one page at a time. */
+export async function listArchivedWhiteboards(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+  paginationOpts: PaginationOptions,
+) {
+  if (!(await getWhiteboardChannel(ctx, user, channelId))) {
+    return { page: [], isDone: true, continueCursor: "" };
+  }
+  const result = await ctx.db
+    .query("clubWhiteboards")
+    .withIndex("by_channelId_and_isArchived_and_updatedAt", (q) =>
+      q.eq("channelId", channelId).eq("isArchived", true),
+    )
+    .order("desc")
+    .paginate(paginationOpts);
+  return { ...result, page: await toBoardSummaries(ctx, result.page, null) };
+}
+
+export const listArchived = query({
+  args: { channelId: v.id("clubChannels"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(boardSummaryValidator),
+  handler: async (ctx, args) => {
+    const user = await getMaybeCurrentAppUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
+    return await listArchivedWhiteboards(ctx, user, args.channelId, args.paginationOpts);
   },
 });
 
@@ -949,54 +1047,83 @@ export const leave = mutation({
 
 // ── Channel deletion ────────────────────────────────────────────────────
 
+/** Deletes one bounded batch of a board's live state; true when finished. */
+async function clearBoardLiveState(ctx: MutationCtx, boardId: Id<"clubWhiteboards">) {
+  const [elements, cursors, thumbnails] = await Promise.all([
+    ctx.db
+      .query("clubWhiteboardElements")
+      .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
+      .take(CLEANUP_BATCH_SIZE),
+    ctx.db
+      .query("clubWhiteboardCursors")
+      .withIndex("by_boardId_and_userId", (q) => q.eq("boardId", boardId))
+      .take(CLEANUP_BATCH_SIZE),
+    ctx.db
+      .query("clubWhiteboardThumbnails")
+      .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+      .take(1),
+  ]);
+  for (const row of [...elements, ...cursors, ...thumbnails]) {
+    await ctx.db.delete(row._id);
+  }
+  return elements.length < CLEANUP_BATCH_SIZE && cursors.length < CLEANUP_BATCH_SIZE;
+}
+
 /**
- * Clears a deleted channel's live board state in bounded batches. Board rows,
- * edit history, revisions, and audit rows are retained so staff can still
- * review what was drawn after the channel is gone.
+ * Clears a deleted channel's live board state one board and one bounded batch
+ * per run: active boards are cleared and archived first, then archived boards
+ * are paged through without limit. Board rows, element history, revisions, and
+ * audit rows are retained so staff can still review what was drawn.
  */
 export const cleanupChannelWhiteboard = internalMutation({
-  args: { channelId: v.id("clubChannels") },
+  args: {
+    channelId: v.id("clubChannels"),
+    archivedCursor: v.optional(v.union(v.string(), v.null())),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const boards = await ctx.db
+    const next = (archivedCursor?: string | null) =>
+      ctx.scheduler.runAfter(0, internal.clubs.whiteboards.cleanupChannelWhiteboard, {
+        channelId: args.channelId,
+        archivedCursor,
+      });
+
+    const active = await ctx.db
       .query("clubWhiteboards")
-      .withIndex("by_channelId_and_updatedAt", (q) => q.eq("channelId", args.channelId))
-      .take(MAX_BOARDS_PER_CHANNEL * 2);
-    let budget = CLEANUP_BATCH_SIZE;
-    for (const board of boards) {
-      const [elements, cursors, thumbnails] = await Promise.all([
-        ctx.db
-          .query("clubWhiteboardElements")
-          .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", board._id))
-          .take(budget),
-        ctx.db
-          .query("clubWhiteboardCursors")
-          .withIndex("by_boardId_and_userId", (q) => q.eq("boardId", board._id))
-          .take(budget),
-        ctx.db
-          .query("clubWhiteboardThumbnails")
-          .withIndex("by_boardId", (q) => q.eq("boardId", board._id))
-          .take(1),
-      ]);
-      for (const row of [...elements, ...cursors, ...thumbnails]) {
-        await ctx.db.delete(row._id);
-      }
-      budget -= elements.length + cursors.length;
-      if (budget <= 0) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.clubs.whiteboards.cleanupChannelWhiteboard,
-          args,
-        );
-        return null;
-      }
-      if (board.liveElementCount !== 0 || !board.archivedAt) {
-        await ctx.db.patch(board._id, {
+      .withIndex("by_channelId_and_isArchived_and_updatedAt", (q) =>
+        q.eq("channelId", args.channelId).eq("isArchived", false),
+      )
+      .first();
+    if (active) {
+      if (await clearBoardLiveState(ctx, active._id)) {
+        await ctx.db.patch(active._id, {
+          isArchived: true,
+          archivedAt: Date.now(),
           liveElementCount: 0,
-          archivedAt: board.archivedAt ?? Date.now(),
         });
+        await adjustWhiteboardCounts(ctx, args.channelId, { active: -1, archived: 1 });
       }
+      await next(null);
+      return null;
     }
+
+    const archived = await ctx.db
+      .query("clubWhiteboards")
+      .withIndex("by_channelId_and_isArchived_and_updatedAt", (q) =>
+        q.eq("channelId", args.channelId).eq("isArchived", true),
+      )
+      .order("desc")
+      .paginate({ numItems: 1, cursor: args.archivedCursor ?? null });
+    const board = archived.page[0];
+    if (!board) return null;
+    if (!(await clearBoardLiveState(ctx, board._id))) {
+      await next(args.archivedCursor ?? null);
+      return null;
+    }
+    if (board.liveElementCount !== 0) {
+      await ctx.db.patch(board._id, { liveElementCount: 0 });
+    }
+    if (!archived.isDone) await next(archived.continueCursor);
     return null;
   },
 });

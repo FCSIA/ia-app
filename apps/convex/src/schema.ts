@@ -772,9 +772,25 @@ export const schema = defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     updatedById: v.optional(v.id("users")),
+    // Indexed so active and archived boards are read separately; archived
+    // boards are unlimited and must never crowd active ones out of a query.
+    isArchived: v.boolean(),
     archivedAt: v.optional(v.number()),
     archivedById: v.optional(v.id("users")),
-  }).index("by_channelId_and_updatedAt", ["channelId", "updatedAt"]),
+  }).index("by_channelId_and_isArchived_and_updatedAt", [
+    "channelId",
+    "isArchived",
+    "updatedAt",
+  ]),
+
+  // Exact per-channel board counts, maintained by every create, archive,
+  // unarchive, and channel cleanup. Enforces the active-board limit and labels
+  // the unbounded archive without scanning it.
+  clubWhiteboardChannelCounts: defineTable({
+    channelId: v.id("clubChannels"),
+    active: v.number(),
+    archived: v.number(),
+  }).index("by_channelId", ["channelId"]),
 
   // Member-facing version history. Consecutive saves by the same person are
   // coalesced into one revision (like document editors), while the audit log

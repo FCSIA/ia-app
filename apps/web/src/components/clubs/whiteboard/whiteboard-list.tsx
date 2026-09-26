@@ -14,7 +14,7 @@ import {
   PencilRuler,
   Search,
 } from 'lucide-react';
-import { useQuery } from '@/lib/convex-react';
+import { usePaginatedQuery, useQuery } from '@/lib/convex-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -40,7 +40,6 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
-import { cn } from '@/lib/utils';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { cursorActiveSince } from './whiteboard-sync';
@@ -188,6 +187,88 @@ function RenameDialog({
   );
 }
 
+const ARCHIVE_PAGE_SIZE = 20;
+
+/**
+ * The archive is unbounded, so it loads only when opened and then a page at a
+ * time. The count comes from the server's exact tally, not loaded rows.
+ */
+function ArchivedBoards({
+  channelId,
+  count,
+  search,
+  actions,
+  onRename,
+}: {
+  channelId: Id<'clubChannels'>;
+  count: number;
+  search: string;
+  actions: ReturnType<typeof useWhiteboardActions>;
+  onRename: (board: WhiteboardSummary) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { openBoard } = useWhiteboardRoute();
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.clubs.whiteboards.listArchived,
+    open ? { channelId } : 'skip',
+    { initialNumItems: ARCHIVE_PAGE_SIZE },
+  );
+  const needle = search.trim().toLowerCase();
+  const shown = needle
+    ? results.filter((board) => board.title.toLowerCase().includes(needle))
+    : results;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="group/archived -ml-2 w-fit">
+          <ChevronRight className="size-3.5 transition-transform group-data-[state=open]/archived:rotate-90" />
+          Archived ({count})
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {status === 'LoadingFirstPage' ? (
+          <div className="flex justify-center py-4">
+            <Spinner className="size-4" />
+          </div>
+        ) : shown.length === 0 ? (
+          <p className="py-4 text-sm text-muted-foreground">
+            {needle ? `No loaded archived whiteboards match “${search}”.` : 'Nothing archived.'}
+          </p>
+        ) : (
+          <CardGroup orientation="inline" className="mt-2" aria-label="Archived whiteboards">
+            {shown.map((board) => (
+              <Card key={board._id} onClick={() => openBoard(board._id)} label={`Open ${board.title}`}>
+                <div className="min-w-0 flex-1 py-2.5">
+                  <p className="truncate text-sm font-medium text-foreground">{board.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Archived {formatDistanceToNowStrict(board.archivedAt ?? board.updatedAt, { addSuffix: true })}
+                  </p>
+                </div>
+                <div className="relative z-30 pr-2">
+                  <BoardMenu board={board} onRename={() => onRename(board)} actions={actions} />
+                </div>
+              </Card>
+            ))}
+          </CardGroup>
+        )}
+        {status === 'CanLoadMore' || status === 'LoadingMore' ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1"
+            loading={status === 'LoadingMore'}
+            onClick={() => loadMore(ARCHIVE_PAGE_SIZE)}
+          >
+            Show more archived ({Math.max(0, count - results.length)} more)
+          </Button>
+        ) : null}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export function WhiteboardList({
   channelId,
   channelName,
@@ -200,15 +281,14 @@ export function WhiteboardList({
     const timer = setInterval(() => setActiveSince(cursorActiveSince(Date.now())), 10_000);
     return () => clearInterval(timer);
   }, []);
-  const latestBoards = useQuery(api.clubs.whiteboards.listForChannel, { channelId, activeSince });
+  const latest = useQuery(api.clubs.whiteboards.listForChannel, { channelId, activeSince });
   // The presence window advances every ten seconds; keep showing the last
   // result while the next one loads instead of flashing the loading state.
-  const [shownBoards, setShownBoards] = useState<{ channelId: string; boards: typeof latestBoards }>();
-  if (latestBoards !== undefined && shownBoards?.boards !== latestBoards) {
-    setShownBoards({ channelId, boards: latestBoards });
+  const [shown, setShown] = useState<{ channelId: string; value: typeof latest }>();
+  if (latest !== undefined && shown?.value !== latest) {
+    setShown({ channelId, value: latest });
   }
-  const boards =
-    latestBoards ?? (shownBoards?.channelId === channelId ? shownBoards.boards : undefined);
+  const listing = latest ?? (shown?.channelId === channelId ? shown.value : undefined);
   const actions = useWhiteboardActions(channelId);
   const { openBoard } = useWhiteboardRoute();
   const { ref, columns } = useColumns();
@@ -216,16 +296,12 @@ export function WhiteboardList({
   const [renaming, setRenaming] = useState<WhiteboardSummary | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const { active, archived } = useMemo(() => {
+  const active = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const matches = (boards ?? []).filter(
+    return (listing?.boards ?? []).filter(
       (board) => !needle || board.title.toLowerCase().includes(needle),
     );
-    return {
-      active: matches.filter((board) => board.archivedAt === null),
-      archived: matches.filter((board) => board.archivedAt !== null),
-    };
-  }, [boards, search]);
+  }, [listing, search]);
 
   const create = async () => {
     setCreating(true);
@@ -233,7 +309,7 @@ export function WhiteboardList({
     setCreating(false);
   };
 
-  if (boards === undefined) {
+  if (listing === undefined) {
     return (
       <div className="flex size-full items-center justify-center gap-2 text-sm text-muted-foreground">
         <Spinner className="size-4" />
@@ -241,7 +317,7 @@ export function WhiteboardList({
       </div>
     );
   }
-  if (boards === null) {
+  if (listing === null) {
     return (
       <div className="flex size-full items-center justify-center p-6 text-sm text-muted-foreground">
         Whiteboards are unavailable in this channel.
@@ -249,7 +325,20 @@ export function WhiteboardList({
     );
   }
 
-  const totalActive = boards.filter((board) => board.archivedAt === null).length;
+  const totalActive = listing.boards.length;
+  const atLimit = totalActive >= listing.activeLimit;
+  const newButton = (size: 'sm' | 'md') => (
+    <Button
+      type="button"
+      size={size}
+      leadingIcon={Plus}
+      loading={creating}
+      disabled={atLimit}
+      onClick={() => void create()}
+    >
+      New whiteboard
+    </Button>
+  );
 
   return (
     <ScrollArea className="size-full">
@@ -258,10 +347,12 @@ export function WhiteboardList({
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-foreground">Whiteboards</h2>
             <p className="text-xs text-muted-foreground">
-              Everyone in #{channelName} can open, draw on, and restore these boards.
+              {atLimit
+                ? `This channel has the maximum of ${listing.activeLimit} active whiteboards. Archive one to start another.`
+                : `Everyone in #${channelName} can open, draw on, and restore these boards.`}
             </p>
           </div>
-          {boards.length >= SEARCH_THRESHOLD ? (
+          {totalActive + listing.archivedCount >= SEARCH_THRESHOLD ? (
             <div className="relative w-full sm:w-56">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -273,11 +364,7 @@ export function WhiteboardList({
               />
             </div>
           ) : null}
-          {totalActive > 0 ? (
-            <Button type="button" size="sm" leadingIcon={Plus} loading={creating} onClick={() => void create()}>
-              New whiteboard
-            </Button>
-          ) : null}
+          {totalActive > 0 ? newButton('sm') : null}
         </div>
 
         {totalActive === 0 ? (
@@ -286,21 +373,19 @@ export function WhiteboardList({
               <EmptyMedia variant="icon">
                 <PencilRuler />
               </EmptyMedia>
-              <EmptyTitle>{boards.length > 0 ? 'Every whiteboard is archived' : 'No whiteboards yet'}</EmptyTitle>
+              <EmptyTitle>
+                {listing.archivedCount > 0 ? 'Every whiteboard is archived' : 'No whiteboards yet'}
+              </EmptyTitle>
               <EmptyDescription>
-                {boards.length > 0
+                {listing.archivedCount > 0
                   ? 'Restore one from Archived below, or start a fresh board.'
                   : `Sketch plans, diagrams, and ideas together. Changes save automatically and everyone in #${channelName} sees them live.`}
               </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-              <Button type="button" leadingIcon={Plus} loading={creating} onClick={() => void create()}>
-                New whiteboard
-              </Button>
-            </EmptyContent>
+            <EmptyContent>{newButton('md')}</EmptyContent>
           </Empty>
         ) : active.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No whiteboards match “{search}”.</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">No active whiteboards match “{search}”.</p>
         ) : (
           <CardGroup columns={columns} separated border="outlined" aria-label="Whiteboards">
             {active.map((board) => (
@@ -326,32 +411,14 @@ export function WhiteboardList({
           </CardGroup>
         )}
 
-        {archived.length > 0 ? (
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="group/archived -ml-2 w-fit">
-                <ChevronRight className="size-3.5 transition-transform group-data-[state=open]/archived:rotate-90" />
-                Archived ({archived.length})
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardGroup orientation="inline" className={cn('mt-2')} aria-label="Archived whiteboards">
-                {archived.map((board) => (
-                  <Card key={board._id} onClick={() => openBoard(board._id)} label={`Open ${board.title}`}>
-                    <div className="min-w-0 flex-1 py-2.5">
-                      <p className="truncate text-sm font-medium text-foreground">{board.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        Archived {formatDistanceToNowStrict(board.archivedAt!, { addSuffix: true })}
-                      </p>
-                    </div>
-                    <div className="relative z-30 pr-2">
-                      <BoardMenu board={board} onRename={() => setRenaming(board)} actions={actions} />
-                    </div>
-                  </Card>
-                ))}
-              </CardGroup>
-            </CollapsibleContent>
-          </Collapsible>
+        {listing.archivedCount > 0 ? (
+          <ArchivedBoards
+            channelId={channelId}
+            count={listing.archivedCount}
+            search={search}
+            actions={actions}
+            onRename={setRenaming}
+          />
         ) : null}
       </div>
       <RenameDialog

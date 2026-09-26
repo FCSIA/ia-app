@@ -26,9 +26,12 @@ entirely in Convex. No third-party service receives board content.
   person (removals always get their own entry, so there is a restore point just
   before anything was erased). Any version can be previewed and restored;
   restoring is itself a new version, so it can be undone the same way.
-- Archiving hides a board and makes it read-only. Archived boards stay listed
-  under **Archived** and can be restored by anyone in the channel. Nothing is
-  hard-deleted.
+- Archiving hides a board and makes it read-only. Archived boards stay under
+  **Archived**, which loads on demand a page at a time, and anyone in the
+  channel can restore them. Nothing is hard-deleted.
+- A channel can have up to 100 active boards. The archive is unlimited and
+  never counts toward that limit; restoring a board is refused while the
+  channel is at the limit.
 - Excalidraw's own menu exports PNG and SVG.
 - Images, embeds, and iframes are rejected until they have reviewed storage and
   an allowlist; element links are limited to `http(s):` and `mailto:`.
@@ -48,7 +51,8 @@ entirely in Convex. No third-party service receives board content.
 
 | Table | Purpose |
 | --- | --- |
-| `clubWhiteboards` | Board per channel: title, `seq` logical clock, live element count, archive state. |
+| `clubWhiteboards` | Board per channel: title, `seq` logical clock, live element count, `isArchived` (indexed with channel and last edit so active and archived boards are read separately). |
+| `clubWhiteboardChannelCounts` | Exact active and archived board counts per channel, updated by create, archive, unarchive, and cleanup. |
 | `clubWhiteboardElements` | Latest state of each element (JSON), indexed by board and `seq`. |
 | `clubWhiteboardHistory` | Append-only record of every accepted element write. |
 | `clubWhiteboardRevisions` | Member-facing version history (coalesced saves and restores). |
@@ -88,14 +92,16 @@ from the retained history.
 
 ## Retention
 
-Deleting a channel clears its boards' live elements, cursors, and previews, and
-archives the boards. Board rows, element history, revisions, and audit rows are
+Deleting a channel clears every board's live elements, cursors, and previews,
+one bounded batch per scheduled run, and archives the active boards. Board rows, element history, revisions, and audit rows are
 kept so staff can still review what was drawn.
 
 ## Known Limits
 
 - Mobile (Expo) has no whiteboard view yet.
-- Boards hold up to 5,000 live elements; a channel holds up to 100 active boards.
+- Boards hold up to 5,000 live elements; a channel holds up to 100 active
+  boards and any number of archived boards.
+- Search filters active boards and the archived boards loaded so far.
 - Restoring a version is limited to boards whose history fits one transaction
   (about 10,000 writes to scan and 3,000 changes to apply).
 - Cursor presence is polled from a small Convex table rather than a websocket
