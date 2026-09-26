@@ -5,7 +5,8 @@ import { internal } from "../_generated/api";
 import { getCurrentAppUser } from "../../lib/currentUser";
 import { getClubContext, type ClubContext } from "../clubs/access";
 import { assertSafeStoredFile } from "./fileSignatures";
-import { uploadRateLimiter } from "../rateLimits";
+import { chatGifRateLimiter, uploadRateLimiter } from "../rateLimits";
+import { chatGifLink, tenorGifFromHtml } from "../../../shared/chat/gifs";
 import { recordUploadUsage } from "./quota";
 import {
   STAGED_CHAT_ATTACHMENT_TTL_MS,
@@ -28,6 +29,70 @@ import {
 } from "./announcementImages";
 
 export { validateChatAttachmentMetadata } from "./chatAttachments";
+
+export const authorizeGifPreview = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const user = await getCurrentAppUser(ctx);
+    const rate = await chatGifRateLimiter.limit(ctx, "previewsByUser", { key: user._id });
+    if (!rate.ok) throw new ConvexError("Too many GIF previews. Try again later.");
+    return null;
+  },
+});
+
+/** Resolves a public Tenor share page; never fetches an arbitrary client URL. */
+export const resolveChatGifLink = action({
+  args: { url: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args): Promise<string | null> => {
+    await ctx.runMutation(internal.uploads.files.authorizeGifPreview, {});
+    const link = args.url.length <= 2048 ? chatGifLink(args.url) : null;
+    if (!link) return null;
+    if (link.mediaUrl) return link.mediaUrl;
+    try {
+      const response = await fetchTenorGifPage(link.url);
+      if (!response) return null;
+      if (!response.ok || !response.headers.get("content-type")?.includes("text/html")) return null;
+      const reader = response.body?.getReader();
+      if (!reader) return null;
+      const decoder = new TextDecoder();
+      let html = "";
+      let bytes = 0;
+      try {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          bytes += chunk.value.byteLength;
+          if (bytes > 512 * 1024) return null;
+          html += decoder.decode(chunk.value, { stream: true });
+          const media = tenorGifFromHtml(html);
+          if (media) return media;
+        }
+        return tenorGifFromHtml(html + decoder.decode());
+      } finally {
+        await reader.cancel();
+      }
+    } catch {
+      return null;
+    }
+  },
+});
+
+export async function fetchTenorGifPage(value: string): Promise<Response | null> {
+  let link = chatGifLink(value);
+  const signal = AbortSignal.timeout(5000);
+  for (let redirects = 0; redirects <= 2; redirects++) {
+    if (!link || link.mediaUrl) return null;
+    const response = await fetch(link.url, { redirect: "manual", signal, headers: { Accept: "text/html" } });
+    if (response.status < 300 || response.status >= 400) return response;
+    const location = response.headers.get("location");
+    await response.body?.cancel();
+    if (!location) return null;
+    link = chatGifLink(new URL(location, link.url).toString());
+  }
+  return null;
+}
 
 async function validateStoredUpload(ctx: ActionCtx, args: { uploadIntentId: Id<"uploadIntents">; storageId: Id<"_storage">; purpose: "CHAT_ATTACHMENT" | "CLUB_IMAGE" | "FEEDBACK_IMAGE" | "ANNOUNCEMENT_IMAGE"; fallbackMimeType?: string }) {
   const prepared = await ctx.runMutation(

@@ -42,6 +42,10 @@ export const uploadRateLimiter = new RateLimiter(components.rateLimiter, {
   urlsByUser: { kind: "fixed window", rate: 20, period: MINUTE },
 });
 
+export const chatGifRateLimiter = new RateLimiter(components.rateLimiter, {
+  previewsByUser: { kind: "fixed window", rate: 60, period: MINUTE },
+});
+
 export const scheduleOcrRateLimiter = new RateLimiter(components.rateLimiter, {
   scansByUser: { kind: "fixed window", rate: 8, period: HOUR },
 });

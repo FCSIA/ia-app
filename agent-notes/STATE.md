@@ -400,6 +400,17 @@
 
 ### Verification (latest)
 
+- Issue #126 GIF support on `codex/chat-gif-support`: uploaded GIFs and pasted
+  direct HTTPS/GIPHY/Tenor links use paused previews with explicit playback on
+  web and mobile; the integrated picker is deferred. Web TypeScript, lint
+  (existing warnings), production build, and focused upload/access/deletion and
+  mobile attachment tests pass. Isolated web component QA verified still
+  previews, playback, keyboard pause, and unavailable media; its temporary route
+  was removed. Signed-in send/delete QA is blocked by the offline local backend.
+  Mobile TypeScript is blocked by the existing root Convex 1.46.0 versus mobile
+  1.43.0 dependency mismatch in optimistic chat. Native playback and responsive,
+  theme, and reduced-motion visual review remain pending. No deployment changed.
+
 - Custom-theme surface follow-up: card and popup foreground scopes are now
   consistent across schedule, notification, shell, club, admin, and shared UI
   surfaces. Web TypeScript, lint, production build, focused surface/palette

@@ -132,6 +132,30 @@ uses Plate for rich marks and structured mentions, while read-only timelines use
 Person mentions show the member's name while their portable `user://` link
 keeps the stable school unique ID used for backend resolution.
 
+### Chat GIFs
+
+Chat accepts uploaded GIFs through the existing file picker (up to five files,
+10 MB each), preserving the original animation. Web and mobile also preview
+pasted HTTPS `.gif` URLs and GIPHY/Tenor share links, including Markdown links.
+Previews are deduplicated and limited to five per message; code examples stay
+text. There is no integrated GIF search or picker.
+
+GIFs start paused and provide explicit Play/Pause and Open controls. Enabling
+reduced motion stops playback; users can opt in again with Play. Unavailable
+media keeps an Open link. External previews contact the media host; web omits
+the referrer. The web image policy permits HTTPS media, while scripts, frames,
+and connection origins retain their existing restrictions.
+
+Tenor share pages are resolved by an authenticated, rate-limited Convex action
+with a five-second timeout, a 512 KB response limit, and at most two redirects
+within validated Tenor share URLs. Only Tenor CDN GIF URLs are returned; provider
+HTML and scripts are never rendered. GIPHY links use their public media URL.
+Provider failures fall back to the original link without blocking the message.
+
+Pasted GIFs remain in the message body, so channel permissions, edits, deletion,
+and moderation apply to the message as usual. Uploads retain the existing
+signature validation, ownership, staged-upload, and storage-cleanup rules.
+
 ### Arbitrary hierarchy contract
 
 `clubUnits` is an adjacency-list tree scoped to one club. `parentUnitId` is

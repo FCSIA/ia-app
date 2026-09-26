@@ -141,6 +141,8 @@ import {
 } from '@/components/ui/empty';
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
+import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
+import { isGifAttachment } from '~/apps/shared/chat/gifs';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -260,6 +262,10 @@ function MessageAttachmentCard({
   const href = attachment.fileUrl;
   const isImage = isImageAttachment(attachment);
 
+  if (isGifAttachment(attachment)) {
+    return <ChatGif key={href} src={href} href={href} name={attachment.fileName} />;
+  }
+
   return (
     <Attachment
       size="sm"
@@ -349,16 +355,19 @@ function MessageAttachmentGallery({
 
 function MessageBody({ message }: { message: ClubChannelMessage }) {
   return (
-    <MentionBody
-      body={message.body}
-      bodyMarkdown={message.bodyMarkdown}
-      bodyRich={
-        Array.isArray(message.bodyRich)
-          ? (message.bodyRich as ClubChannelMessageRichBody)
-          : null
-      }
-      className="!text-[13px] !leading-normal"
-    />
+    <>
+      <MentionBody
+        body={message.body}
+        bodyMarkdown={message.bodyMarkdown}
+        bodyRich={
+          Array.isArray(message.bodyRich)
+            ? (message.bodyRich as ClubChannelMessageRichBody)
+            : null
+        }
+        className="!text-[13px] !leading-normal"
+      />
+      <ChatGifLinks text={message.bodyMarkdown || message.body} />
+    </>
   );
 }
 

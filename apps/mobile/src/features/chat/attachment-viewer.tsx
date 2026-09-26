@@ -6,6 +6,8 @@ import * as Sharing from "expo-sharing";
 import { ExternalLink, FileText, Share2 } from "lucide-react-native";
 import { Button, Sheet, Txt, useToast } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
+import { ChatGif } from "./chat-gif";
+import { isGifAttachment } from "~/apps/shared/chat/gifs";
 import { radii, spacing } from "@/lib/tokens";
 import {
   attachmentCacheFileName,
@@ -151,7 +153,9 @@ export function AttachmentViewer({
     >
       {attachment ? (
         <>
-          {image && canUseAttachment && !imageFailed ? (
+          {isGifAttachment(attachment) && canUseAttachment ? (
+            <ChatGif key={attachment._id} src={safeUrl} href={safeUrl!} name={attachment.fileName} />
+          ) : image && canUseAttachment && !imageFailed ? (
             <View
               style={{
                 height: 280,

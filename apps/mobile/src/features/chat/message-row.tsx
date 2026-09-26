@@ -35,6 +35,8 @@ import {
   reactionDefinition,
 } from "./quick-reactions";
 import { RichMessageBody } from "./rich-message-body";
+import { ChatGif, ChatGifLinks } from "./chat-gif";
+import { isGifAttachment } from "~/apps/shared/chat/gifs";
 import {
   resistedReplySwipeDistance,
   shouldTriggerSwipeReply,
@@ -309,6 +311,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                   />
                 ) : null}
 
+                <ChatGifLinks text={message.bodyMarkdown || message.body} />
+
                 {message.attachments?.length ? (
                   <View style={{ paddingTop: spacing.xs, gap: spacing.sm }}>
                     <View
@@ -320,7 +324,9 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                     >
                       {message.attachments
                         .filter(isImageAttachment)
-                        .map((attachment, index, imageAttachments) => (
+                        .map((attachment, index, imageAttachments) => isGifAttachment(attachment) ? (
+                          <ChatGif key={attachment._id} src={attachment.fileUrl} href={attachment.fileUrl} name={attachment.fileName} />
+                        ) : (
                           <PressableScale
                             key={attachment._id}
                             accessibilityLabel={`Open image ${attachment.fileName}`}

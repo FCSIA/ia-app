@@ -13,6 +13,7 @@ const imageSources = [
   "'self'",
   'data:',
   'blob:',
+  'https:',
   convexUrl,
   convexSiteUrl,
   'https://*.convex.cloud',
