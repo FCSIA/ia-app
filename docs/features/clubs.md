@@ -55,6 +55,8 @@ code after the app confirms the viewer is already a club member.
   outward through the structure tree without coupling placement to access.
 - Supports channel messages, replies, reactions, polls, pins, attachments, and
   mention/tag metadata.
+- Gives every channel collaborative [whiteboards](whiteboards.md) that all
+  channel readers can use.
 
 ## Source Files
 

@@ -756,6 +756,95 @@ export const schema = defineSchema({
     .index("by_userId_and_clubId", ["userId", "clubId"])
     .index("by_userId_and_channelId", ["userId", "channelId"]),
 
+  // Named whiteboards owned by a channel. Access always follows the channel.
+  // `seq` is a per-board logical clock: every accepted element write takes the
+  // next value, so clients can follow changes with an ordered "after seq N"
+  // subscription instead of re-reading the whole board. Wall-clock time
+  // cannot serve that purpose because concurrent mutations may commit out of
+  // timestamp order. Archiving hides a board; nothing is ever hard-deleted.
+  clubWhiteboards: defineTable({
+    clubId: v.id("clubs"),
+    channelId: v.id("clubChannels"),
+    title: v.string(),
+    seq: v.number(),
+    liveElementCount: v.number(),
+    createdById: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    updatedById: v.optional(v.id("users")),
+    archivedAt: v.optional(v.number()),
+    archivedById: v.optional(v.id("users")),
+  }).index("by_channelId_and_updatedAt", ["channelId", "updatedAt"]),
+
+  // Member-facing version history. Consecutive saves by the same person are
+  // coalesced into one revision (like document editors), while the audit log
+  // keeps every individual save.
+  clubWhiteboardRevisions: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    actorId: v.id("users"),
+    kind: v.union(v.literal("EDIT"), v.literal("RESTORE")),
+    fromSeq: v.number(),
+    toSeq: v.number(),
+    created: v.number(),
+    updated: v.number(),
+    deleted: v.number(),
+    restored: v.number(),
+    restoredToSeq: v.optional(v.number()),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_boardId_and_toSeq", ["boardId", "toSeq"]),
+
+  // Small preview image per board, kept apart from the board row so list
+  // subscriptions never re-read image bytes when someone draws.
+  clubWhiteboardThumbnails: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    dataUrl: v.string(),
+    updatedAt: v.number(),
+  }).index("by_boardId", ["boardId"]),
+
+  // Latest state of each Excalidraw element. `data` is the element's JSON so
+  // arbitrary editor fields never collide with Convex field-name rules.
+  clubWhiteboardElements: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    elementId: v.string(),
+    seq: v.number(),
+    version: v.number(),
+    versionNonce: v.number(),
+    isDeleted: v.boolean(),
+    data: v.string(),
+    updatedById: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_boardId_and_elementId", ["boardId", "elementId"])
+    .index("by_boardId_and_seq", ["boardId", "seq"]),
+
+  // Append-only record of every accepted element write, retained for
+  // moderation so staff can reconstruct the board as of any audited edit.
+  clubWhiteboardHistory: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    seq: v.number(),
+    elementId: v.string(),
+    isDeleted: v.boolean(),
+    data: v.string(),
+    actorId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_boardId_and_seq", ["boardId", "seq"]),
+
+  // High-churn pointer positions, kept apart from the board row so cursor
+  // movement never invalidates element or board subscriptions.
+  clubWhiteboardCursors: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    userId: v.id("users"),
+    // Absent until the viewer's pointer enters the canvas; the row alone
+    // still marks them as present on the board.
+    x: v.optional(v.number()),
+    y: v.optional(v.number()),
+    button: v.union(v.literal("up"), v.literal("down")),
+    updatedAt: v.number(),
+  })
+    .index("by_boardId_and_userId", ["boardId", "userId"])
+    .index("by_boardId_and_updatedAt", ["boardId", "updatedAt"]),
+
   clubTags: defineTable({
     clubId: v.id("clubs"),
     name: v.string(),

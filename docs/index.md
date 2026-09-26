@@ -101,6 +101,7 @@ same change.
 - [Schedule](features/schedule.md)
 - [Uploads](features/uploads.md)
 - [Users and admin](features/users-admin.md)
+- [Whiteboards](features/whiteboards.md)
 - [Wrapped](features/wrapped.md)
 
 ## Product Reference

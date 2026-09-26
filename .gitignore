@@ -98,3 +98,6 @@ apps/web/next-env.d.ts
 # data
 .data
 .worktrees/
+
+# Generated from @excalidraw/excalidraw by scripts/copy-excalidraw-assets.mjs
+apps/web/public/excalidraw-assets/
