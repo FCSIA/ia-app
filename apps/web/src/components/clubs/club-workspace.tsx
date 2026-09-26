@@ -413,7 +413,7 @@ export function ClubWorkspace({
             maxSize="45%"
             style={{ overflow: "hidden" }}
           >
-            <aside className="h-full min-h-0 overflow-hidden border-l border-border/60 bg-background/65 backdrop-blur-xl">
+            <aside className="h-full min-h-0 overflow-hidden border-l border-border bg-card">
               {rightPane}
             </aside>
           </ResizablePanel>
@@ -438,7 +438,7 @@ export function ClubWorkspace({
             </ScrollArea>
           )}
           {rightPane ? (
-            <aside className="hidden w-80 shrink-0 overflow-hidden border-l border-border/60 bg-background/65 backdrop-blur-xl xl:block">
+            <aside className="hidden w-80 shrink-0 overflow-hidden border-l border-border bg-card xl:block">
               {rightPane}
             </aside>
           ) : null}
@@ -578,7 +578,7 @@ export function ClubWorkspace({
               maxSize="32%"
               style={{ overflow: "hidden" }}
             >
-              <aside className="h-full min-h-0 border-r border-border/60 bg-background/65 backdrop-blur-xl">
+              <aside className="h-full min-h-0 border-r border-border bg-card">
                 {desktopNavigation}
               </aside>
             </ResizablePanel>
@@ -594,7 +594,7 @@ export function ClubWorkspace({
           </ResizablePanelGroup>
         ) : (
           <>
-            <aside className="hidden w-60 shrink-0 border-r border-border/60 bg-background/65 backdrop-blur-xl md:block">
+            <aside className="hidden w-60 shrink-0 border-r border-border bg-card md:block">
               {desktopNavigation}
             </aside>
             {workspaceContent}

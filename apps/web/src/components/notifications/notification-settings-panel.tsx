@@ -85,7 +85,7 @@ export function NotificationSettingsPanel() {
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Choose which school-wide updates reach your inbox.</p>
         </div>
-        <Elevated offset={1} className="overflow-hidden rounded-xl border border-border/60 bg-background/55">
+        <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
           {globalSettings.map((setting) => {
             const Icon = CATEGORY_ICONS[setting.key];
             const preference = preferences?.find(
@@ -198,7 +198,7 @@ function ClubNotificationChannels({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Elevated offset={1} className="overflow-hidden rounded-xl border border-border/60 bg-background/55">
+      <Elevated offset={1} className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex min-w-0 items-center gap-2 bg-surface-3/80 px-3 py-2.5">
           <CollapsibleTrigger asChild>
             <button

@@ -34,6 +34,8 @@ import { ClubProfileAvatar } from "@/components/clubs/club-profile-avatar";
 import { ClubHero } from "@/components/clubs/club-hero";
 import { fullName } from "@/components/clubs/types";
 import { AnnouncementCard } from "@/components/announcements/announcement-card";
+import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
 import { Card, CardGroup, CardHeader, CardContent } from "@/components/ui/card";
 import {
@@ -335,13 +337,13 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 py-5 sm:py-8">
-      <CardGroup border="outlined" className="overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <section className="space-y-5">
               {(bannerUrl || club.accentColor) && (
                 <div
-                  className="h-24 w-full rounded-lg bg-gradient-to-br from-primary/30 via-primary/10 to-muted sm:h-32"
+                  className="h-24 w-full rounded-lg bg-muted sm:h-32"
                   style={
                     bannerUrl
                       ? {
@@ -450,7 +452,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className="mb-6 overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
+      <CardGroup border="outlined" className={`mb-6 overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
         <Card className="bg-transparent">
           <CardHeader className="pb-3 border-b border-border/40 mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -464,7 +466,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                 {club.sponsors.map((sponsor) => (
                   <div
                     key={sponsor.userId}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/40 hover:bg-background/80 hover:border-primary/30 transition-all duration-200"
+                    className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
                   >
                     <ClubProfileAvatar
                       person={sponsor.user}
@@ -490,7 +492,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
         </Card>
       </CardGroup>
 
-      <CardGroup border="outlined" className="overflow-hidden border-border/70 bg-background/90 shadow-lg backdrop-blur-xl">
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
         <Card className="bg-transparent">
           <CardContent className="p-5 sm:p-6">
             <div className="space-y-6">
@@ -509,7 +511,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
                       {members.map((member) => (
                         <div
                           key={member.userId}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/40 hover:bg-background/80 hover:border-primary/30 transition-all duration-200"
+                          className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
                         >
                           <ClubProfileAvatar
                             person={member.user}
@@ -534,6 +536,7 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
 }
 
 export default function ClubOverviewPage() {
+  const announcementNow = useAnnouncementFeedClock();
   const clubId = useClubId();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
@@ -617,7 +620,7 @@ export default function ClubOverviewPage() {
     useQuery(
       api.announcements.feed.list,
       club?.viewer.canAccessWorkspace
-        ? { clubId: clubId as Id<"clubs"> }
+        ? { clubId: clubId as Id<"clubs">, now: announcementNow }
         : "skip",
     ) ?? [];
 
@@ -697,7 +700,7 @@ export default function ClubOverviewPage() {
   return (
     <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
           <Card className="bg-transparent">
             <CardContent className="p-0">
               <ClubHero
@@ -708,7 +711,7 @@ export default function ClubOverviewPage() {
           </Card>
         </CardGroup>
 
-        <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">

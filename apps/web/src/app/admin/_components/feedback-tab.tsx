@@ -140,7 +140,7 @@ function FeedbackList({
   return (
     <CardGroup border="outlined" className="overflow-hidden divide-y divide-border/40">
       {reports.map((report) => (
-        <Card key={report._id} className="p-4 transition-all duration-200 hover:bg-muted/30 hover:shadow-sm">
+        <Card key={report._id} className="p-4 transition-colors hover:bg-muted/30">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

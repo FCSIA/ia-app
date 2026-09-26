@@ -126,10 +126,10 @@ export function Panel({
   return (
     <section
       className={cn(
-        'flex flex-col rounded-3xl border shadow-xl transition-all duration-300 hover:shadow-2xl',
+        'flex flex-col rounded-3xl border',
         tone === 'accent'
-          ? 'border-accent-foreground/20 bg-gradient-to-br from-accent/90 via-accent/50 to-background/80 backdrop-blur-xl'
-          : 'border-border/70 bg-gradient-to-br from-card/95 via-card/80 to-background/90 backdrop-blur-xl',
+          ? 'border-transparent bg-accent'
+          : cn('bg-card', CARD_SURFACE_FOREGROUND),
         className,
       )}
     >

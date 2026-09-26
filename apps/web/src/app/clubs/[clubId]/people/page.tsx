@@ -1140,7 +1140,7 @@ export default function ClubPeoplePage() {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col p-3 sm:p-4">
         <div className="flex min-h-0 flex-1 flex-col gap-4">
-          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
             <Card className="bg-transparent">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex shrink-0 flex-col gap-3">
@@ -1236,7 +1236,7 @@ export default function ClubPeoplePage() {
         </CardGroup>
 
         <div
-            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/70 bg-background/80 backdrop-blur-sm ${CARD_SURFACE_FOREGROUND}`}
+            className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
           >
             {visibleFilter.startsWith("group:") ? (
               selectedGroup ? (

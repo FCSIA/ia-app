@@ -9,7 +9,7 @@ import { hasRole, useCurrentUser } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, MapPin, Clock, Check, X, AlertCircle, Search, Calendar } from 'lucide-react';
+import { Plus, MapPin, Check, X, AlertCircle, Search, Calendar } from 'lucide-react';
 import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
@@ -39,8 +40,8 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 
   return (
     <CardGroup border="outlined" className={cn(
-      'overflow-hidden bg-background/90 backdrop-blur-xl border-border/70 shadow-lg transition-all duration-200',
-      'hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30'
+      'overflow-hidden border-border bg-card',
+      CARD_SURFACE_FOREGROUND,
     )}>
       <Card className="bg-transparent">
         <CardContent className="p-4 sm:p-5">
@@ -237,8 +238,7 @@ export default function EventsPage() {
       <div className={cn(
         'relative isolate mx-auto max-w-3xl space-y-6',
         'before:pointer-events-none before:absolute before:-inset-3 before:-z-10',
-        'before:rounded-2xl before:border before:border-border/70 before:bg-background/82',
-        'before:shadow-lg before:backdrop-blur-xl sm:before:-inset-5',
+        'before:rounded-2xl before:border before:border-border before:bg-card',
       )}>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Events</h1>
@@ -253,11 +253,11 @@ export default function EventsPage() {
           value={search}
           onValueChange={setSearch}
           placeholder="Search events by title, location, or club..."
-          className="bg-background/80 backdrop-blur-sm border-border/60 focus:border-primary focus:ring-primary/20 focus:bg-background transition-all duration-200"
+          className="bg-background border-border focus:border-primary focus:ring-primary/20"
         />
 
         {showNew && canCreate && (
-          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 transition-shadow duration-200 hover:shadow-md">
+          <CardGroup border="outlined" className={cn('overflow-hidden bg-card border-border', CARD_SURFACE_FOREGROUND)}>
             <Card className="bg-transparent">
               <CardHeader className="pb-3 border-b border-border/40 mb-4">
                 <CardTitle className="text-lg font-semibold">Create Event</CardTitle>
@@ -335,7 +335,7 @@ export default function EventsPage() {
                           <Button
                             type="button"
                             variant={selectedClubId ? 'tertiary' : 'primary'}
-                            className="rounded-full transition-all duration-150"
+                            className="rounded-full transition-colors duration-150"
                             onClick={() => setForm({ ...form, clubId: '' })}
                           >
                             General
@@ -346,7 +346,7 @@ export default function EventsPage() {
                             key={club._id}
                             type="button"
                             variant={selectedClubId === club._id ? 'primary' : 'tertiary'}
-                            className="rounded-full transition-all duration-150"
+                            className="rounded-full transition-colors duration-150"
                             onClick={() => setForm({ ...form, clubId: club._id })}
                           >
                             {club.name}
@@ -370,7 +370,7 @@ export default function EventsPage() {
         )}
 
         {!hasResults && isSearching ? (
-          <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60">
+          <CardGroup border="outlined" className={cn('overflow-hidden bg-card border-border', CARD_SURFACE_FOREGROUND)}>
             <Card className="bg-transparent">
               <CardContent className="text-center py-16">
                 <Search size={40} className="mx-auto mb-3 opacity-30 text-muted-foreground" />
@@ -400,7 +400,7 @@ export default function EventsPage() {
               {isLoading ? (
                 <p className="text-muted-foreground text-sm">Loading…</p>
               ) : filteredUpcoming.length === 0 ? (
-                <CardGroup border="outlined" className="overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 border-dashed">
+          <CardGroup border="outlined" className={cn('overflow-hidden bg-card border-border border-dashed', CARD_SURFACE_FOREGROUND)}>
                   <Card className="bg-transparent">
                     <CardContent className="text-center py-12">
                       <p className="text-foreground/70">{isSearching ? 'No upcoming events match search' : 'No upcoming events'}</p>

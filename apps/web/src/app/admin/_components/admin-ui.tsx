@@ -22,7 +22,7 @@ export function AdminPanel({
   contentClassName,
 }: AdminPanelProps) {
   return (
-    <CardGroup border="outlined" className={cn('overflow-hidden transition-shadow duration-200 hover:shadow-md', className)}>
+    <CardGroup border="outlined" className={cn('overflow-hidden', className)}>
       <Card>
         <CardHeader className="flex flex-col gap-3 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40">
           <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
@@ -44,7 +44,7 @@ type AdminMetricProps = {
 export function AdminMetric({ label, value, detail, compact }: AdminMetricProps) {
   return (
     <CardGroup border="outlined" className="overflow-hidden">
-      <Card className="bg-gradient-to-br from-muted/30 to-muted/10 p-4 transition-all duration-200 hover:shadow-lg hover:scale-[1.01]">
+      <Card className="bg-muted/20 p-4">
         <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         <p className={cn('mt-2 font-bold text-foreground', compact ? 'text-lg' : 'text-3xl')}>
           {value}
@@ -79,9 +79,9 @@ export function AdminNotice({
     <CardGroup border="outlined" className="overflow-hidden">
       <Card
         className={cn(
-          'flex flex-col items-center justify-center px-6 py-10 text-center transition-all duration-200',
-          isDanger && 'bg-gradient-to-br from-destructive/5 to-destructive/10 border-destructive/20',
-          isSuccess && 'bg-gradient-to-br from-emerald/5 to-emerald/10 border-emerald/20',
+          'flex flex-col items-center justify-center px-6 py-10 text-center',
+          isDanger && 'bg-destructive/5 border-destructive/20',
+          isSuccess && 'bg-emerald/5 border-emerald/20',
           !isDanger && !isSuccess && 'bg-muted/20 border-border/40',
           className,
         )}

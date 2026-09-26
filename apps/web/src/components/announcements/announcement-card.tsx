@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import type { BadgeColor } from '@/components/ui/badge';
 import { DeveloperBadge } from '@/components/ui/developer-badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardGroup, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -97,15 +97,12 @@ export function AnnouncementCard({
   const targetColor = ANNOUNCEMENT_TAG_BADGE_COLORS[announcement.targetType] ?? 'gray';
 
   return (
-    <CardGroup
-      border="outlined"
-      className={cn(
-        'overflow-hidden bg-background/80 backdrop-blur-sm border-border/60 transition-all duration-200',
-        'hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30',
-        className
-      )}
+    <Card
+      index={index}
+      href={`/announcements/${announcement._id}`}
+      label={`Open announcement: ${announcement.title}`}
+      className={cn('relative', !announcement.isRead && 'border-l-2 border-l-primary', className)}
     >
-      <Card className="bg-transparent" index={index} href={`/announcements/${announcement._id}`} label={`Open announcement: ${announcement.title}`}>
         <CardContent className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="min-w-0 flex-1">
@@ -222,7 +219,6 @@ export function AnnouncementCard({
 
           {footer ? <div className="mt-4">{footer}</div> : null}
         </CardContent>
-      </Card>
-    </CardGroup>
+    </Card>
   );
 }

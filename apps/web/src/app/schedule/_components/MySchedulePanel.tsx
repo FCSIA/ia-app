@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioItem } from "@/components/ui/radio-group";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { TabPanel } from "@/components/ui/tabs";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 
@@ -39,7 +40,7 @@ export function MySchedulePanel() {
   if (!isEditing) {
     return (
       <TabPanel value="my" className="mt-5">
-        <section className="max-w-2xl rounded-2xl border border-border/70 bg-background/85 p-4 shadow-xl backdrop-blur-xl">
+        <section className={`max-w-2xl rounded-2xl border border-border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
           <header className="mb-3 flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-foreground">My schedule</h2>
             <Button

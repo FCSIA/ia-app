@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { api } from '~/apps/convex/src/_generated/api';
 import { APP_VERSION, RELEASE_CHANNEL, formatVersion } from '@ia/devlog';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const MAX_FEEDBACK_CHARACTERS = 1_000;
 const MAX_FEEDBACK_IMAGES = 3;
@@ -119,7 +120,7 @@ export default function ReportPage() {
   return (
     <AppShell>
       <PageFrame className="max-w-2xl">
-        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
+        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
           <Card className="bg-transparent">
             <CardContent className="px-4 py-4 md:p-6">
               <div className="flex items-start gap-3">
@@ -137,7 +138,7 @@ export default function ReportPage() {
           </Card>
         </CardGroup>
 
-        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
+        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <CardTitle className="text-lg font-semibold text-foreground">What would you like to share?</CardTitle>
@@ -202,7 +203,7 @@ export default function ReportPage() {
           </Card>
         </CardGroup>
 
-        <CardGroup border="outlined" className="overflow-hidden border-border/80 bg-background/95 shadow-xl backdrop-blur-xl transition-shadow duration-200 hover:shadow-2xl">
+        <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
           <Card className="bg-transparent">
             <CardHeader className="pb-3 border-b border-border/40 mb-4">
               <CardTitle className="text-lg font-semibold text-foreground">Your feedback</CardTitle>

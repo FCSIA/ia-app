@@ -20,6 +20,7 @@ import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notifi
 import { cn } from '@/lib/utils';
 import { Elevated } from '@/lib/elevated';
 import { dismissAcknowledgedWebNotifications } from '@/lib/push-notifications';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
@@ -191,7 +192,7 @@ export default function NotificationsPage() {
               </TabsList>
             </div>
             <TabPanel value="inbox" className="mt-5">
-              <div className="rounded-2xl border border-white/15 bg-background/80 p-4 shadow-2xl backdrop-blur-xl sm:p-5">
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${CARD_SURFACE_FOREGROUND}`}>
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
@@ -199,7 +200,7 @@ export default function NotificationsPage() {
                       onValueChange={setSearch}
                       placeholder="Search notifications..."
                       className="w-full"
-                      inputClassName="border-white/15 bg-background/85 text-foreground shadow-sm backdrop-blur-xl placeholder:text-muted-foreground focus-visible:bg-background/95"
+                      inputClassName="border-border bg-background text-foreground placeholder:text-muted-foreground"
                     />
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
@@ -310,7 +311,7 @@ export default function NotificationsPage() {
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
-              <div className="rounded-2xl border border-white/15 bg-background/80 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-6 ${CARD_SURFACE_FOREGROUND}`}>
                 <NotificationSettingsPanel />
               </div>
             </TabPanel>
