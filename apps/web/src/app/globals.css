@@ -401,6 +401,10 @@
     outline-offset: -1px;
   }
 
+  .custom[data-custom-wallpaper] .announcement-card {
+    outline-color: hsl(var(--foreground) / 0.3);
+  }
+
   .dark {
     /* Near-black backdrop like the reference */
     --background: 150 8% 4%;
