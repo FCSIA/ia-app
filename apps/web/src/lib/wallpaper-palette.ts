@@ -40,10 +40,12 @@ export function paletteFromPixels(data: Uint8ClampedArray): string[] {
     bucket.b += b * weight;
   }
 
-  const ranked = buckets
-    .map((bucket, index) => ({ ...bucket, index }))
-    .filter((bucket) => bucket.weight > 0)
-    .sort((a, b) => b.weight - a.weight || a.index - b.index);
+  const ranked: Array<(typeof buckets)[number] & { index: number }> = [];
+  for (let index = 0; index < buckets.length; index++) {
+    const bucket = buckets[index];
+    if (bucket.weight > 0) ranked.push({ ...bucket, index });
+  }
+  ranked.sort((a, b) => b.weight - a.weight || a.index - b.index);
 
   const selected: typeof ranked = [];
   for (const bucket of ranked) {
@@ -65,24 +67,18 @@ export function paletteFromPixels(data: Uint8ClampedArray): string[] {
 }
 
 export async function paletteFromImage(file: Blob): Promise<string[]> {
-  const url = URL.createObjectURL(file);
+  const image = await createImageBitmap(file);
   try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error('Could not read image colors'));
-      element.src = url;
-    });
-    const scale = Math.min(1, 64 / Math.max(image.naturalWidth, image.naturalHeight));
+    const scale = Math.min(1, 64 / Math.max(image.width, image.height));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return [];
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     return paletteFromPixels(context.getImageData(0, 0, canvas.width, canvas.height).data);
   } finally {
-    URL.revokeObjectURL(url);
+    image.close();
   }
 }
 
