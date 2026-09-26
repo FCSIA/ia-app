@@ -7,7 +7,7 @@ import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, ArrowDownWideNarrow, Check, ChevronDown, ChevronRight, Pin, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -413,25 +413,6 @@ export default function AnnouncementsPage() {
       }
     >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5" aria-label="Feed order: pinned announcements, then newest">
-            <Badge color="amber" size="lg"><Pin aria-hidden="true" />Pinned</Badge>
-            <ChevronRight size={12} aria-hidden="true" className="text-muted-foreground" />
-            <Badge color="blue" size="lg"><ArrowDownWideNarrow aria-hidden="true" />Newest</Badge>
-          </div>
-          {canPost ? (
-            <Button
-              size="sm"
-              leadingIcon={Plus}
-              onClick={() => {
-                setShowNew(true);
-              }}
-            >
-              New
-            </Button>
-          ) : null}
-        </div>
-
         <div className="mb-5 flex items-center gap-2">
           <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" inputClassName="bg-background" />
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -570,6 +551,17 @@ export default function AnnouncementsPage() {
               </div>
             </PopoverContent>
           </Popover>
+          {canPost ? (
+            <Button
+              size="sm"
+              leadingIcon={Plus}
+              onClick={() => {
+                setShowNew(true);
+              }}
+            >
+              New
+            </Button>
+          ) : null}
         </div>
 
         <Dialog open={showNew} onOpenChange={setShowNew}>
