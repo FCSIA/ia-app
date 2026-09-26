@@ -263,6 +263,32 @@ describe('announcement feed pagination', () => {
     expect(recentIds.archivedIds).toContain(recentIds.expected[0]);
     expect(recentIds.expiredIds).toContain(recentIds.expected[1]);
   });
+
+  it('keeps a pending approval visible to its author after its proposed expiry', async () => {
+    const { t, user } = await fixture();
+    const now = Date.now();
+    const announcementId = await t.run((ctx) => ctx.db.insert('announcements', {
+      authorId: user._id,
+      title: 'pending-with-expiry',
+      body: 'Still needs approval.',
+      targetType: 'SCHOOL_WIDE',
+      targetGrades: [],
+      targetMajorPathways: [],
+      targetMinorPathways: [],
+      status: 'PENDING_APPROVAL',
+      allowComments: false,
+      isAdminGeneral: false,
+      expiresAt: now - 1,
+      createdAt: now - 100,
+      updatedAt: now,
+    }));
+
+    const active = await t.run((ctx) => listForUser(ctx, {
+      now,
+      paginationOpts: { cursor: null, numItems: 20 },
+    }, user));
+    expect(active.page.some((item) => item._id === announcementId)).toBe(true);
+  });
 });
 
 it('keeps compatible-feed results when newer records are filtered out', async () => {

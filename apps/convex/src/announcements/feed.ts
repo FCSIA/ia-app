@@ -47,19 +47,19 @@ export const listPage = query({
     bookmarkedOnly: v.optional(v.boolean()),
     clubId: v.optional(v.id("clubs")),
     unreadOnly: v.optional(v.boolean()),
-    now: v.number(),
+    now: v.optional(v.number()),
     paginationOpts: paginationOptsValidator,
   },
   returns: paginationResultValidator(announcementListItemValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
     if (!user) return { page: [], isDone: true, continueCursor: args.paginationOpts.cursor ?? "" };
-    return listForUser(ctx, args, user);
+    return listForUser(ctx, { ...args, now: args.now ?? Date.now() }, user);
   },
 });
 
 export const list = query({
-  args: { archived: v.optional(v.boolean()), clubId: v.optional(v.id("clubs")), unreadOnly: v.optional(v.boolean()), now: v.number() },
+  args: { archived: v.optional(v.boolean()), clubId: v.optional(v.id("clubs")), unreadOnly: v.optional(v.boolean()), now: v.optional(v.number()) },
   returns: v.array(announcementListItemValidator),
   handler: async (ctx, args) => {
     const user = await getMaybeCurrentAppUser(ctx);
@@ -67,7 +67,7 @@ export const list = query({
     // Compact consumers still use this compatibility endpoint. Keep its
     // previous 500-record window so records removed after authorization and
     // status filtering do not erase an otherwise available feed.
-    return (await listForUser(ctx, { ...args, paginationOpts: { cursor: null, numItems: 500 } }, user)).page;
+    return (await listForUser(ctx, { ...args, now: args.now ?? Date.now(), paginationOpts: { cursor: null, numItems: 500 } }, user)).page;
   },
 });
 
@@ -195,13 +195,13 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
         ? await ctx.db.query("announcements").withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", args.clubId!).lte("createdAt", pastCutoff)).order("desc").paginate(args.paginationOpts)
         : await ctx.db.query("announcements").withIndex("by_clubId_and_createdAt", (q) => q.eq("clubId", args.clubId!).gt("createdAt", pastCutoff))
             .filter((q) => q.or(q.eq(q.field("status"), "ACTIVE"), q.eq(q.field("status"), "PENDING_APPROVAL"), q.and(q.eq(q.field("status"), "REJECTED"), q.eq(q.field("authorId"), user._id))))
-            .filter((q) => q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
+            .filter((q) => q.or(q.neq(q.field("status"), "ACTIVE"), q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
             .order("desc").paginate(args.paginationOpts)
       : archived
         ? await ctx.db.query("announcements").withIndex("by_createdAt", (q) => q.lte("createdAt", pastCutoff)).order("desc").paginate(args.paginationOpts)
         : await ctx.db.query("announcements").withIndex("by_createdAt", (q) => q.gt("createdAt", pastCutoff))
             .filter((q) => q.or(q.eq(q.field("status"), "ACTIVE"), q.eq(q.field("status"), "PENDING_APPROVAL"), q.and(q.eq(q.field("status"), "REJECTED"), q.eq(q.field("authorId"), user._id))))
-            .filter((q) => q.or(q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
+            .filter((q) => q.or(q.neq(q.field("status"), "ACTIVE"), q.eq(q.field("expiresAt"), undefined), q.gt(q.field("expiresAt"), now)))
             .order("desc").paginate(args.paginationOpts);
 
     if (args.clubId) {
@@ -261,7 +261,7 @@ export async function listForUser(ctx: QueryCtx, args: FeedListArgs, user: Doc<"
 }
 
 export const get = query({
-  args: { announcementId: v.id("announcements"), now: v.number() },
+  args: { announcementId: v.id("announcements"), now: v.optional(v.number()) },
   returns: v.union(
     v.object({
       announcement: announcementListItemValidator,
@@ -287,7 +287,7 @@ export const get = query({
       .collect();
 
     return {
-      announcement: await serializeAnnouncement(ctx, ann, user._id, args.now),
+      announcement: await serializeAnnouncement(ctx, ann, user._id, args.now ?? Date.now()),
       comments: await serializeComments(ctx, comments),
     };
   },
