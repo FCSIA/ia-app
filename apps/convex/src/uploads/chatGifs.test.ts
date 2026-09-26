@@ -3,6 +3,7 @@ import { fetchTenorGifPage } from "./files";
 import {
   chatGifLink,
   extractChatGifLinks,
+  hideChatGifLinks,
   isGifAttachment,
   tenorGifFromHtml,
 } from "../../../shared/chat/gifs";
@@ -11,6 +12,22 @@ import { validateChatAttachmentMetadata } from "./chatAttachments";
 
 describe("chat GIFs", () => {
   afterEach(() => vi.unstubAllGlobals());
+  test("hides previewed URLs while preserving captions, code and unpreviewed links", () => {
+    const url = "https://c.tenor.com/lzbdb_9VJM0AAAAC/tenor.gif";
+    expect(hideChatGifLinks(`Nice!\n<${url}>`)).toBe("Nice!");
+    expect(hideChatGifLinks(`Nice [reaction](${url}) today`)).toBe("Nice  today");
+    expect(hideChatGifLinks(`${url}.`)).toBe(".");
+    expect(hideChatGifLinks(`\`${url}\` https://example.com`)).toBe(`\`${url}\` https://example.com`);
+    const urls = Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.gif`);
+    expect(hideChatGifLinks(urls.join("\n"))).toBe(urls[5]);
+  });
+  test("previews rich-text GIF URLs with escaped underscores while excluding code", () => {
+    const url = "https://c.tenor.com/lzbdb_9VJM0AAAAC/tenor.gif";
+    const escaped = url.replaceAll("_", "\\_");
+    expect(extractChatGifLinks(`<${url}>`)).toEqual([{ url, mediaUrl: url }]);
+    expect(extractChatGifLinks(escaped)).toEqual([{ url, mediaUrl: url }]);
+    expect(extractChatGifLinks(`\`${escaped}\``)).toEqual([]);
+  });
   test("never follows provider redirects to another host or local network", async () => {
     for (const target of [
       "http://127.0.0.1/secret",

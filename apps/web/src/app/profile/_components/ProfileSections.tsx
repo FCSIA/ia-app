@@ -26,6 +26,7 @@ import { RadioGroup, RadioItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useGifAutoplay } from '@/hooks/use-gif-autoplay';
 import type { AppUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
@@ -502,6 +503,8 @@ export function AppearanceCard({
   savingTimeFormat,
   onUse24HourTimeChange,
 }: AppearanceCardProps) {
+  const { autoplay, setAutoplay } = useGifAutoplay();
+  const { toast } = useToast();
   return (
     <SettingsCard
       icon={Palette}
@@ -525,6 +528,16 @@ export function AppearanceCard({
       </RadioGroup>
 
       {theme === 'custom' ? <CustomThemeEditor /> : null}
+
+      <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Autoplay GIFs</p>
+          <p className="text-xs text-muted-foreground">Play animations automatically in this browser. Turn off to start paused. Reduced motion starts paused; use each animation’s play button.</p>
+        </div>
+        <Switch checked={autoplay} aria-label="Autoplay GIFs" onCheckedChange={(next) => {
+          try { setAutoplay(next); } catch { toast({ title: 'Could not save playback preference', variant: 'destructive' }); }
+        }} />
+      </div>
 
       <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-3">
         <div>

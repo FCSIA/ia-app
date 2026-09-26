@@ -66,13 +66,37 @@ export function chatGifLink(value: string): ChatGifLink | null {
 /** Bounded previews of pasted URLs and Markdown links, excluding code examples. */
 export function extractChatGifLinks(text: string): ChatGifLink[] {
   const links = new Map<string, ChatGifLink>();
-  const prose = text.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`/g, "");
+  const prose = text
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`/g, "")
+    // Older rich-text messages escaped Markdown punctuation inside bare URLs.
+    .replace(/\\([_*~])/g, "$1");
   for (const match of prose.matchAll(/https:\/\/[^\s<>"\[\]\\]+/gi)) {
     const link = chatGifLink(match[0].replace(/[),.!?;:]+$/, ""));
     if (link) links.set(link.mediaUrl ?? link.url, link);
     if (links.size === 5) break;
   }
   return [...links.values()];
+}
+
+/** Hide only URLs represented by bounded previews; keep prose and code intact. */
+export function hideChatGifLinks(text: string, source = text): string {
+  const previews = extractChatGifLinks(source);
+  const hidden = (value: string) => {
+    const link = chatGifLink(value.replace(/\\([_*~])/g, "$1"));
+    return link && previews.some((preview) =>
+      (preview.mediaUrl ?? preview.url) === (link.mediaUrl ?? link.url));
+  };
+  return text.split(/(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)/g)
+    .map((part, index) => index % 2 ? part : part
+      .replace(/\[([^\]\n]*)\]\((https:\/\/[^\s]+)\)/gi,
+        (match, _label: string, url: string) => hidden(url) ? "" : match)
+      .replace(/<(https:\/\/[^\s<>]+)>/gi,
+        (match, url: string) => hidden(url) ? "" : match)
+      .replace(/https:\/\/[^\s<>"\[\]]+/gi, (match) => {
+        const url = match.replace(/[),.!?;:]+$/, "");
+        return hidden(url) ? match.slice(url.length) : match;
+      }))
+    .join("").trim();
 }
 
 /** Only accept GIF media from Tenor's exact CDN hosts, never provider HTML. */

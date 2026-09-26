@@ -3,7 +3,9 @@ import { AppState, View } from "react-native";
 import { Image } from "expo-image";
 import { useReducedMotion } from "react-native-reanimated";
 import { Pause, Play } from "lucide-react-native";
-import { IconButton, Txt } from "@/components/ui";
+import { IconButton, Txt, PressableScale, Sheet, ListRow, useToast } from "@/components/ui";
+import * as Clipboard from "expo-clipboard";
+import { useGifAutoplay } from "@/lib/gif-playback";
 import { useReduceMotion } from "@/lib/motion";
 import { spacing } from "@/lib/tokens";
 import { useAction } from "@/lib/convex-react";
@@ -47,6 +49,7 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
     <ChatGif
       key={media ?? link.url}
       src={media}
+      copyUrl={link.url}
       name="GIF"
       pending={!link.mediaUrl && resolved?.url !== link.url}
     />
@@ -57,15 +60,20 @@ export function ChatGif({
   src,
   name,
   pending = false,
+  copyUrl,
 }: {
   src: string | null;
   name: string;
   pending?: boolean;
+  copyUrl?: string;
 }) {
+  const { autoplay } = useGifAutoplay();
+  const { showToast } = useToast();
+  const [menuOpen, setMenuOpen] = useState(false);
   const image = useRef<Image>(null);
   const reduceMotion = useReduceMotion();
   const initialReduceMotion = useReducedMotion();
-  const [playing, setPlaying] = useState(!initialReduceMotion);
+  const [playing, setPlaying] = useState(autoplay && !initialReduceMotion);
   const [ready, setReady] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(1);
   const [failed, setFailed] = useState(false);
@@ -83,13 +91,20 @@ export function ChatGif({
     if (reduceMotion) changePlayback(false);
   }, [reduceMotion, changePlayback]);
   useEffect(() => {
+    changePlayback(autoplay && !initialReduceMotion);
+  }, [autoplay, initialReduceMotion, changePlayback]);
+  useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") changePlayback(false);
     });
     return () => subscription.remove();
   }, [changePlayback]);
   return (
-    <View
+    <>
+    <PressableScale
+      accessibilityLabel={name}
+      haptic={false}
+      onLongPress={(event) => { event.stopPropagation(); setMenuOpen(true); }}
       style={{
         width: Math.min(440, 220 * aspectRatio),
         maxWidth: "100%",
@@ -138,6 +153,15 @@ export function ChatGif({
           />
         ) : null}
       </View>
-    </View>
+    </PressableScale>
+    <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Animation">
+      <ListRow title="Copy GIF URL" onPress={() => {
+        void Clipboard.setStringAsync(copyUrl || src || '').then(() => {
+          setMenuOpen(false);
+          showToast({ title: 'URL copied', tone: 'success' });
+        }).catch(() => { showToast({ title: 'Could not copy URL', tone: 'warning' }); });
+      }} />
+    </Sheet>
+    </>
   );
 }

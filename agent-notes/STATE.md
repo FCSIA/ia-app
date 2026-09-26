@@ -401,8 +401,11 @@
 ### Verification (latest)
 
 - Issue #126 GIF support on `codex/chat-gif-support`: uploaded GIFs and pasted
-  direct HTTPS/GIPHY/Tenor links use paused previews with explicit playback on
-  web and mobile; the integrated picker is deferred. Web TypeScript, lint
+  direct HTTPS/GIPHY/Tenor links autoplay, with a compact corner play/pause control on
+  web and mobile. The approved picker now searches a fixed catalog of nine
+  existing online Tenor reaction GIFs; it contains no generated media or open
+  provider search. Selection appends a media link to the draft. Open GIF controls
+  are removed. Web and mobile TypeScript, lint
   (existing warnings), production build, and focused upload/access/deletion and
   mobile attachment tests pass. Isolated web component QA verified still
   previews, playback, keyboard pause, and unavailable media; its temporary route
@@ -411,9 +414,18 @@
   Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
   images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
   remains pending.
-  Mobile TypeScript is blocked by the existing root Convex 1.46.0 versus mobile
-  1.43.0 dependency mismatch in optimistic chat. Native playback and responsive,
-  theme, and reduced-motion visual review remain pending. Only the isolated local
+  A clean frozen install with pinned pnpm 10.29.3 repaired the stale mobile
+  Convex version; mobile TypeScript now passes. All catalog media loaded during
+  a temporary content review, and that temporary page was removed. Picker flow
+  QA resumed after the user reopened localhost: library display, search, selection,
+  and preserving existing draft text pass. Reduced-motion users start paused;
+  normal playback is automatic. Filename/status chrome and previewed URL text are
+  removed. Right-click/long-press menus copy the original URL; web clipboard QA
+  passes. Appearance includes a persisted browser/device autoplay preference;
+  web persistence and immediate updates across open chats pass. The regression
+  suites pass 20 tests, and React Doctor has no new findings. Mobile-width playback
+  controls pass; native device, theme, and reduced-motion visual review remain
+  pending. Only the isolated local
   deployment was updated; shared and production deployments were not changed.
 
 - Custom-theme surface follow-up: card and popup foreground scopes are now

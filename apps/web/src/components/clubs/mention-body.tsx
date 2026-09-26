@@ -5,6 +5,7 @@ import type { Value } from 'platejs';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
+import { extractChatGifLinks, hideChatGifLinks } from '~/apps/shared/chat/gifs';
 
 export type ClubChannelMessageRichBody = Value;
 
@@ -65,6 +66,14 @@ function escapeMarkdownText(text: string) {
   return text.replace(/([\\`*_[\]~])/g, '\\$1');
 }
 
+function serializeMarkdownProse(text: string) {
+  return text.split(/(https?:\/\/[^\s<>]+)/gi).map((part) =>
+    /^https?:\/\//i.test(part)
+      ? `<${part}>`
+      : escapeMarkdownText(part),
+  ).join('');
+}
+
 const inlineMarkdownLinkPattern =
   /\[([^\]\n]+)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/gi;
 
@@ -77,7 +86,7 @@ function serializeMarkdownText(text: string) {
     if (index === undefined) continue;
 
     const [source, label, href] = match;
-    markdown += escapeMarkdownText(text.slice(cursor, index));
+    markdown += serializeMarkdownProse(text.slice(cursor, index));
 
     const safeHref = allowedMessageHref(href);
     markdown += safeHref
@@ -86,7 +95,7 @@ function serializeMarkdownText(text: string) {
     cursor = index + source.length;
   }
 
-  return markdown + escapeMarkdownText(text.slice(cursor));
+  return markdown + serializeMarkdownProse(text.slice(cursor));
 }
 
 function serializeNodeMarkdown(node: RichTextNode): string {
@@ -228,10 +237,17 @@ function allowedMessageHref(href?: string) {
 }
 
 function messageUrlTransform(url: string) {
-  return allowedMessageHref(url) ?? '';
+  return allowedMessageHref(url.replace(/(?:\\|%5c)([_*~])/gi, '$1')) ?? '';
 }
 
 export function MentionBody({ body, bodyMarkdown, bodyRich, className }: MentionBodyProps) {
+  const source = bodyMarkdown || body;
+  if (extractChatGifLinks(source).length) {
+    bodyMarkdown = hideChatGifLinks(bodyMarkdown || serializeClubChannelMessageMarkdown(
+      normalizeClubChannelMessageBody(bodyRich, body) as Value,
+    ), source);
+    if (!bodyMarkdown.trim()) return null;
+  }
   if (bodyMarkdown?.trim()) {
     return (
       <div

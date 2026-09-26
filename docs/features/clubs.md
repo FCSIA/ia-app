@@ -147,10 +147,14 @@ review the complete clip before adding or replacing an entry. Selecting a GIF
 adds its external media URL to the draft, preserving existing text and mentions.
 
 GIFs render without a filename/status card or Open link. A compact icon button
-in the lower-right corner controls playback. GIFs autoplay by default. Users with
+in the lower-right corner controls playback. Previewed links are hidden from the
+message text; surrounding prose and code examples remain. Right-click or long-press
+the animation to copy its URL. GIFs autoplay by default. Appearance settings let
+users disable autoplay for this browser/device, starting animations paused while
+keeping each play button available. Playback preferences persist locally. Users with
 reduced motion enabled start with a paused preview. Enabling
 reduced motion stops playback; users can opt in again with Play. Unavailable
-media shows an unavailable state; pasted links remain in the message text.
+media shows an unavailable state; its URL remains available in the context menu.
 External previews contact the media host; web omits
 the referrer. The web image policy permits HTTPS media, while scripts, frames,
 and connection origins retain their existing restrictions.
@@ -159,7 +163,8 @@ Tenor share pages are resolved by an authenticated, rate-limited Convex action
 with a five-second timeout, a 512 KB response limit, and at most two redirects
 within validated Tenor share URLs. Only Tenor CDN GIF URLs are returned; provider
 HTML and scripts are never rendered. GIPHY links use their public media URL.
-Provider failures fall back to the original link without blocking the message.
+Provider failures show an unavailable state without blocking the message; the
+original link can still be copied from the context menu.
 
 Pasted GIFs remain in the message body, so channel permissions, edits, deletion,
 and moderation apply to the message as usual. Uploads retain the existing

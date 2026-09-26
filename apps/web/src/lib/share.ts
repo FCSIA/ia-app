@@ -22,7 +22,7 @@ function copyWithExecCommand(value: string) {
   }
 }
 
-async function copyShareUrl(url: string) {
+export async function copyShareUrl(url: string) {
   try {
     await navigator.clipboard.writeText(url);
     return;
