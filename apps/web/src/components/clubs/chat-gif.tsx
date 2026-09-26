@@ -52,7 +52,6 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
     <ChatGif
       key={media ?? link.url}
       src={media}
-      href={link.url}
       name="GIF"
       pending={!link.mediaUrl && resolved?.url !== link.url}
     />
@@ -62,12 +61,10 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
 /** GIFs are opt-in motion: an offscreen image supplies a still canvas preview. */
 export function ChatGif({
   src,
-  href,
   name,
   pending = false,
 }: {
   src: string | null;
-  href: string;
   name: string;
   pending?: boolean;
 }) {
@@ -159,11 +156,6 @@ export function ChatGif({
             {playing ? "Pause" : "Play"}
           </Button>
         ) : null}
-        <Button asChild size="sm" variant="ghost">
-          <a href={href} target="_blank" rel="noreferrer noopener">
-            Open GIF
-          </a>
-        </Button>
       </div>
     </Attachment>
   );

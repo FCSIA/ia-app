@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Linking, View } from "react-native";
+import { AppState, View } from "react-native";
 import { Image } from "expo-image";
 import { Pause, Play } from "lucide-react-native";
 import { Button, Txt } from "@/components/ui";
@@ -47,7 +47,6 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
     <ChatGif
       key={media ?? link.url}
       src={media}
-      href={link.url}
       name="GIF"
       pending={!link.mediaUrl && resolved?.url !== link.url}
     />
@@ -56,12 +55,10 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
 
 export function ChatGif({
   src,
-  href,
   name,
   pending = false,
 }: {
   src: string | null;
-  href: string;
   name: string;
   pending?: boolean;
 }) {
@@ -137,14 +134,6 @@ export function ChatGif({
             onPress={() => changePlayback(!playing)}
           />
         ) : null}
-        <Button
-          size="sm"
-          variant="ghost"
-          title="Open GIF"
-          onPress={() => {
-            void Linking.openURL(href).catch(() => setFailed(true));
-          }}
-        />
       </View>
     </View>
   );

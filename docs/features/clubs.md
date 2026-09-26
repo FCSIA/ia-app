@@ -138,11 +138,18 @@ Chat accepts uploaded GIFs through the existing file picker (up to five files,
 10 MB each), preserving the original animation. Web and mobile also preview
 pasted HTTPS `.gif` URLs and GIPHY/Tenor share links, including Markdown links.
 Previews are deduplicated and limited to five per message; code examples stay
-text. There is no integrated GIF search or picker.
+text. Web and native composers also offer a searchable, fixed collection of
+nine existing online reaction GIFs (SpongeBob, Pikachu, Homer, Spider-Man,
+typing cat, Kermit, Jim, Leonardo applause, and Pedro raccoon). The collection
+contains no generated media and exposes no provider-wide search. Each entry in
+`apps/shared/chat/school-gifs.ts` retains its source page and static thumbnail;
+review the complete clip before adding or replacing an entry. Selecting a GIF
+adds its external media URL to the draft, preserving existing text and mentions.
 
-GIFs start paused and provide explicit Play/Pause and Open controls. Enabling
+GIFs start paused and provide explicit Play/Pause controls. Enabling
 reduced motion stops playback; users can opt in again with Play. Unavailable
-media keeps an Open link. External previews contact the media host; web omits
+media shows an unavailable state; pasted links remain in the message text.
+External previews contact the media host; web omits
 the referrer. The web image policy permits HTTPS media, while scripts, frames,
 and connection origins retain their existing restrictions.
 

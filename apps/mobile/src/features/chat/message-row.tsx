@@ -341,7 +341,6 @@ export const ChatMessageRow = memo(function ChatMessageRow({
                           <ChatGif
                             key={attachment._id}
                             src={attachment.fileUrl}
-                            href={attachment.fileUrl}
                             name={attachment.fileName}
                           />
                         ) : (

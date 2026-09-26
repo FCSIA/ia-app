@@ -263,7 +263,7 @@ function MessageAttachmentCard({
   const isImage = isImageAttachment(attachment);
 
   if (isGifAttachment(attachment)) {
-    return <ChatGif key={href} src={href} href={href} name={attachment.fileName} />;
+    return <ChatGif key={href} src={href} name={attachment.fileName} />;
   }
 
   return (

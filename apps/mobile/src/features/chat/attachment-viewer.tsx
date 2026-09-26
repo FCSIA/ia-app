@@ -154,7 +154,7 @@ export function AttachmentViewer({
       {attachment ? (
         <>
           {isGifAttachment(attachment) && canUseAttachment ? (
-            <ChatGif key={attachment._id} src={safeUrl} href={safeUrl!} name={attachment.fileName} />
+            <ChatGif key={attachment._id} src={safeUrl} name={attachment.fileName} />
           ) : image && canUseAttachment && !imageFailed ? (
             <View
               style={{
