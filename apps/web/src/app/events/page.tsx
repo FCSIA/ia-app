@@ -1,14 +1,9 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { useMutation, useQuery } from '@/lib/convex-react';
-import { api } from '~/apps/convex/src/_generated/api';
-import type { Id } from '~/apps/convex/src/_generated/dataModel';
-import { hasRole, useCurrentUser } from '@/lib/auth';
+import { hasRole } from '@/lib/auth';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { useToast } from '@/hooks/use-toast';
 import { Plus, MapPin, Check, X, AlertCircle, Search, Calendar } from 'lucide-react';
 import { Card, CardGroup, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,9 +12,9 @@ import { Input } from '@/components/ui/input';
 import { SearchInput } from '@/components/ui/search';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
-import { filterBySearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
 import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
+import { useEventsPage } from './use-events-page';
 
 
 function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any) {
@@ -98,140 +93,12 @@ function EventCard({ event, onApprove, onReject, onCancel, user, hydrated }: any
 }
 
 export default function EventsPage() {
-  const user = useCurrentUser();
-  const [hydrated, setHydrated] = useState(false);
-  const { toast } = useToast();
-  const [showNew, setShowNew] = useState(false);
-  const [search, setSearch] = useState('');
-  const deferredSearch = useDeferredValue(search);
-  const [form, setForm] = useState({ title: '', description: '', location: '', startAt: '', endAt: '', clubId: '' });
-  const canCreateGeneral = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF');
-
-  useEffect(() => { setHydrated(true); }, []);
-
-  const events = useQuery(api.events.events.list, user ? {} : 'skip');
-  const isLoading = events === undefined;
-
-  const myClubs = useQuery(api.clubs.management.getMyClubs, user ? {} : 'skip');
-
-  const pendingApprovals =
-    useQuery(api.events.approvals.listPendingForSponsor, user ? {} : 'skip') ?? [];
-
-  const availableClubs = useMemo(
-    () =>
-      [
-        ...((myClubs?.memberOf || []).filter(
-          (club) => club.role === 'LEADER' || club.role === 'SPONSOR',
-        )),
-        ...(myClubs?.sponsoring || []),
-      ].filter(
-        (club, index, list) =>
-          list.findIndex((item) => item._id === club._id) === index,
-      ),
-    [myClubs],
-  );
-
-  const canCreate = hydrated && !!user && (canCreateGeneral || availableClubs.length > 0);
-  const selectedClubId =
-    form.clubId || (!canCreateGeneral ? (availableClubs[0]?._id ?? '') : '');
-
-  const createEvent = useMutation(api.events.events.create);
-  const approveEvent = useMutation(api.events.approvals.approveEvent);
-  const rejectEvent = useMutation(api.events.approvals.rejectEvent);
-  const cancelEvent = useMutation(api.events.events.cancel);
-
-  const [createPending, setCreatePending] = useState(false);
-
-  const handleCreate = async () => {
-    if (!form.startAt) {
-      toast({ title: 'Start date is required', variant: 'destructive' });
-      return;
-    }
-    if (!canCreateGeneral && !selectedClubId) {
-      toast({ title: 'Choose a club for this event', variant: 'destructive' });
-      return;
-    }
-    setCreatePending(true);
-    try {
-      await createEvent({
-        title: form.title,
-        description: form.description || undefined,
-        location: form.location || undefined,
-        startAt: new Date(form.startAt).getTime(),
-        endAt: form.endAt ? new Date(form.endAt).getTime() : undefined,
-        clubId: selectedClubId ? (selectedClubId as Id<'clubs'>) : undefined,
-      });
-      setShowNew(false);
-      toast({ title: 'Event created' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed',
-        variant: 'destructive',
-      });
-    } finally {
-      setCreatePending(false);
-    }
-  };
-
-  const handleApprove = async (eventId: Id<'events'>) => {
-    try {
-      await approveEvent({ eventId });
-      toast({ title: 'Approved' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleReject = async (eventId: Id<'events'>) => {
-    try {
-      await rejectEvent({ eventId });
-      toast({ title: 'Rejected' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCancel = async (eventId: Id<'events'>) => {
-    try {
-      await cancelEvent({ eventId });
-      toast({ title: 'Cancelled' });
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const now = hydrated ? new Date() : null;
-  const eventList = events ?? [];
-  const upcoming = eventList.filter((e) => e.status === 'PUBLISHED' && (!now || e.startAt >= now.getTime()));
-  const pending = pendingApprovals;
-  const past = now
-    ? eventList.filter((e) => e.status === 'PUBLISHED' && e.startAt < now.getTime())
-    : [];
-
-  const filterEvents = (list: any[]) => {
-    return filterBySearchQuery(list, deferredSearch, (event) => [
-      event.title,
-      event.description,
-      event.location,
-      event.club?.name,
-    ]);
-  };
-
-  const filteredUpcoming = useMemo(() => filterEvents(upcoming), [upcoming, deferredSearch]);
-  const filteredPending = useMemo(() => filterEvents(pending), [pending, deferredSearch]);
-  const filteredPast = useMemo(() => filterEvents(past), [past, deferredSearch]);
-
-  const hasResults = filteredUpcoming.length > 0 || filteredPending.length > 0 || filteredPast.length > 0;
-  const isSearching = deferredSearch.trim() !== '';
+  const {
+    user, hydrated, toast, showNew, setShowNew, search, setSearch, form, setForm,
+    canCreateGeneral, canCreate, availableClubs, selectedClubId, createPending,
+    handleCreate, handleApprove, handleReject, handleCancel, isLoading,
+    filteredUpcoming, filteredPending, filteredPast, hasResults, isSearching,
+  } = useEventsPage();
 
   return (
     <AppShell>
