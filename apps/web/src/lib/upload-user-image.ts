@@ -15,6 +15,7 @@ type SaveUserImage<TResult> = (args: {
   storageId: Id<'_storage'>;
   mimeType: string;
   size: number;
+  wallpaperPalette?: string[];
 }) => Promise<TResult>;
 
 export async function uploadUserImage<TResult>(
@@ -22,6 +23,7 @@ export async function uploadUserImage<TResult>(
   saveUserImage: SaveUserImage<TResult>,
   kind: ImageCompressPreset,
   file: File,
+  wallpaperPalette?: string[],
 ): Promise<TResult> {
   const compressed = await compressImageForUpload(file, kind);
   const { storageId, uploadIntentId } = await uploadFileToConvex(convex, compressed);
@@ -31,5 +33,6 @@ export async function uploadUserImage<TResult>(
     storageId,
     mimeType: compressed.type,
     size: compressed.size,
+    ...(kind === 'background' ? { wallpaperPalette } : {}),
   });
 }

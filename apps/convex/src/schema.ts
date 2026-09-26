@@ -86,6 +86,8 @@ export const schema = defineSchema({
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),
     customBackgroundStorageId: v.optional(v.id("_storage")),
+    customBackgroundPalette: v.optional(v.array(v.string())),
+    customBackgroundTint: v.optional(v.string()),
     searchText: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),

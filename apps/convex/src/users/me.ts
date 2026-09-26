@@ -19,6 +19,15 @@ import { recordUploadUsage } from "../uploads/quota";
 import { normalizeDashboardLayout } from "./dashboardLayout";
 
 const userImageKindValidator = v.union(v.literal("avatar"), v.literal("background"));
+const wallpaperColorPattern = /^#[0-9a-f]{6}$/;
+
+function validWallpaperPalette(palette: string[], allowEmpty = false): boolean {
+  return (allowEmpty || palette.length > 0) &&
+    palette.length <= 3 &&
+    new Set(palette).size === palette.length &&
+    palette.every((color) => wallpaperColorPattern.test(color));
+}
+
 const mobileTabValidator = v.union(
   v.literal("announcements"),
   v.literal("clubs"),
@@ -126,9 +135,13 @@ export const saveUserImageMutation = internalMutation({
     storageId: v.id("_storage"),
     mimeType: v.string(),
     size: v.number(),
+    wallpaperPalette: v.optional(v.array(v.string())),
   },
   returns: userSelfProfileValidator,
   handler: async (ctx, args) => {
+    if (args.kind === "background" && !validWallpaperPalette(args.wallpaperPalette ?? [], true)) {
+      throw new ConvexError("Invalid wallpaper colors");
+    }
     const user = await getCurrentAppUser(ctx);
     await claimUploadIntent(ctx, {
       uploadIntentId: args.uploadIntentId,
@@ -175,10 +188,13 @@ export const saveUserImageMutation = internalMutation({
         updatedAt: Date.now(),
       });
     } else {
+      const palette = args.wallpaperPalette ?? [];
       await deleteStoredFile(ctx, user.customBackgroundStorageId);
       await ctx.db.patch(user._id, {
         customBackgroundUrl: url,
         customBackgroundStorageId: args.storageId,
+        customBackgroundPalette: palette,
+        customBackgroundTint: palette[0],
         updatedAt: Date.now(),
       });
     }
@@ -192,7 +208,7 @@ export const saveUserImageMutation = internalMutation({
 });
 
 export const saveUserImage = action({
-  args: { kind: userImageKindValidator, uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), mimeType: v.string(), size: v.number() },
+  args: { kind: userImageKindValidator, uploadIntentId: v.id("uploadIntents"), storageId: v.id("_storage"), mimeType: v.string(), size: v.number(), wallpaperPalette: v.optional(v.array(v.string())) },
   returns: userSelfProfileValidator,
   handler: async (ctx, args): Promise<ReturnType<typeof toUserSelfProfile>> => {
     const prepared = await ctx.runMutation(internal.uploads.uploadIntents.prepareUploadValidation, { uploadIntentId: args.uploadIntentId, storageId: args.storageId, purpose: "USER_IMAGE" });
@@ -231,6 +247,8 @@ export const clearUserImage = mutation({
       await ctx.db.patch(user._id, {
         customBackgroundUrl: undefined,
         customBackgroundStorageId: undefined,
+        customBackgroundPalette: undefined,
+        customBackgroundTint: undefined,
         updatedAt: Date.now(),
       });
     }
@@ -240,5 +258,38 @@ export const clearUserImage = mutation({
       throw new ConvexError("User not found.");
     }
     return toUserSelfProfile(updated);
+  },
+});
+
+export const setCustomBackgroundPalette = mutation({
+  args: { palette: v.array(v.string()), expectedUrl: v.string() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, { palette, expectedUrl }) => {
+    const user = await getCurrentAppUser(ctx);
+    if (!user.customBackgroundStorageId || user.customBackgroundUrl !== expectedUrl) {
+      throw new ConvexError("Background image changed");
+    }
+    if (!validWallpaperPalette(palette)) {
+      throw new ConvexError("Invalid wallpaper colors");
+    }
+    await ctx.db.patch(user._id, {
+      customBackgroundPalette: palette,
+      customBackgroundTint: palette[0],
+      updatedAt: Date.now(),
+    });
+    return toUserSelfProfile({ ...user, customBackgroundPalette: palette, customBackgroundTint: palette[0] });
+  },
+});
+
+export const setCustomBackgroundTint = mutation({
+  args: { tint: v.string() },
+  returns: userSelfProfileValidator,
+  handler: async (ctx, { tint }) => {
+    const user = await getCurrentAppUser(ctx);
+    if (!user.customBackgroundStorageId || !user.customBackgroundPalette?.includes(tint)) {
+      throw new ConvexError("Choose a color from this image");
+    }
+    await ctx.db.patch(user._id, { customBackgroundTint: tint, updatedAt: Date.now() });
+    return toUserSelfProfile({ ...user, customBackgroundTint: tint });
   },
 });

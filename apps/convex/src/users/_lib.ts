@@ -31,6 +31,8 @@ export const userSelfProfileValidator = v.object({
   mobileTabLayout: docs.users.fields.mobileTabLayout,
   use24HourTime: docs.users.fields.use24HourTime,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
+  customBackgroundPalette: docs.users.fields.customBackgroundPalette,
+  customBackgroundTint: docs.users.fields.customBackgroundTint,
 });
 
 export const adminUserProfileValidator = v.object(userProfileFields);
@@ -54,6 +56,8 @@ export function toUserSelfProfile(user: Doc<"users">) {
     use24HourTime: user.use24HourTime ?? false,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
+    customBackgroundPalette: user.customBackgroundPalette,
+    customBackgroundTint: user.customBackgroundTint,
     isDeveloper: user.isDeveloper,
   };
 }
