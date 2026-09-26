@@ -750,6 +750,18 @@
     0 48px 48px -24px var(--dm-drop), 0 96px 96px -48px var(--dm-drop);
 }
 
+/* Wallpaper already supplies visual texture. Tint raised surfaces with the
+   chosen accent instead of building a stack of neutral gray panels. */
+.custom[data-custom-wallpaper] {
+  --surface-2: color-mix(in oklab, hsl(var(--card)) 97%, hsl(var(--primary)) 3%);
+  --surface-3: color-mix(in oklab, hsl(var(--card)) 94%, hsl(var(--primary)) 6%);
+  --surface-4: color-mix(in oklab, hsl(var(--card)) 91%, hsl(var(--primary)) 9%);
+  --surface-5: color-mix(in oklab, hsl(var(--card)) 88%, hsl(var(--primary)) 12%);
+  --surface-6: color-mix(in oklab, hsl(var(--card)) 85%, hsl(var(--primary)) 15%);
+  --surface-7: color-mix(in oklab, hsl(var(--card)) 82%, hsl(var(--primary)) 18%);
+  --surface-8: color-mix(in oklab, hsl(var(--card)) 79%, hsl(var(--primary)) 21%);
+}
+
 .high-contrast {
   --surface-1: #000;
   --surface-2: #080808;
