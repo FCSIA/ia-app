@@ -47,9 +47,17 @@ export function chatGifLink(value: string): ChatGifLink | null {
         mediaUrl: `https://media.giphy.com/media/${id}/giphy.gif`,
       };
     }
-    return /\.gif$/i.test(url.pathname)
-      ? { url: url.toString(), mediaUrl: url.toString() }
+    if (!/\.gif$/i.test(url.pathname)) return null;
+    // Tenor's /m/ endpoint serves an HTML viewer to browser requests.
+    const viewerId = /^(?:media\d*|c)\.tenor\.com$/.test(url.hostname)
+      ? url.pathname.match(/^\/m\/([a-zA-Z0-9_-]+)\//)?.[1]
       : null;
+    return {
+      url: url.toString(),
+      mediaUrl: viewerId
+        ? `https://c.tenor.com/${viewerId}/tenor.gif`
+        : url.toString(),
+    };
   } catch {
     return null;
   }

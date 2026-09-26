@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Linking, View } from "react-native";
 import { Image } from "expo-image";
 import { Pause, Play } from "lucide-react-native";
@@ -11,9 +11,13 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
 
 export function ChatGifLinks({ text }: { text: string }) {
-  return extractChatGifLinks(text).map((link) => (
-    <LinkedChatGif key={link.url} link={link} />
-  ));
+  return (
+    <>
+      {extractChatGifLinks(text).map((link) => (
+        <LinkedChatGif key={link.url} link={link} />
+      ))}
+    </>
+  );
 }
 
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
@@ -67,25 +71,25 @@ export function ChatGif({
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!ready) return;
-    const operation = playing
+  const changePlayback = useCallback((next: boolean) => {
+    const operation = next
       ? image.current?.startAnimating()
       : image.current?.stopAnimating();
+    setPlaying(next);
     void operation?.catch(() => {
       setPlaying(false);
       setFailed(true);
     });
-  }, [playing, ready]);
+  }, []);
   useEffect(() => {
-    if (reduceMotion) setPlaying(false);
-  }, [reduceMotion]);
+    if (reduceMotion) changePlayback(false);
+  }, [reduceMotion, changePlayback]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") setPlaying(false);
+      if (state !== "active") changePlayback(false);
     });
     return () => subscription.remove();
-  }, []);
+  }, [changePlayback]);
   return (
     <View
       style={{
@@ -130,7 +134,7 @@ export function ChatGif({
             icon={playing ? Pause : Play}
             accessibilityLabel={`${playing ? "Pause" : "Play"} ${name}`}
             disabled={!ready}
-            onPress={() => setPlaying(!playing)}
+            onPress={() => changePlayback(!playing)}
           />
         ) : null}
         <Button

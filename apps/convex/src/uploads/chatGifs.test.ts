@@ -129,6 +129,11 @@ describe("chat GIFs", () => {
   test("only takes GIF media from the exact Tenor CDN", () => {
     expect(
       tenorGifFromHtml(
+        '<meta content="https://media1.tenor.com/m/-TrfpCkpqToAAAAC/giga-chad-kes.gif">',
+      ),
+    ).toBe("https://c.tenor.com/-TrfpCkpqToAAAAC/tenor.gif");
+    expect(
+      tenorGifFromHtml(
         '<meta property="og:image" content="https://media.tenor.com/abc/hello.gif">',
       ),
     ).toBe("https://media.tenor.com/abc/hello.gif");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useReducedMotion } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,13 @@ import { api } from "~/apps/convex/src/_generated/api";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
 
 export function ChatGifLinks({ text }: { text: string }) {
-  return extractChatGifLinks(text).map((link) => (
-    <LinkedChatGif key={link.url} link={link} />
-  ));
+  return (
+    <>
+      {extractChatGifLinks(text).map((link) => (
+        <LinkedChatGif key={link.url} link={link} />
+      ))}
+    </>
+  );
 }
 
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
@@ -88,14 +93,6 @@ export function ChatGif({
       ?.drawImage(source, 0, 0, target.width, target.height);
   }, []);
   useEffect(() => {
-    const source = image.current;
-    if (!source?.complete) return;
-    if (source.naturalWidth) {
-      drawStill();
-      setReady(true);
-    } else setFailed(true);
-  }, [src, drawStill]);
-  useEffect(() => {
     if (reduceMotion) setPlaying(false);
   }, [reduceMotion]);
   return (
@@ -105,19 +102,24 @@ export function ChatGif({
     >
       {src && !failed ? (
         <div className="max-w-full">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
+            unoptimized
+            loading="eager"
+            width={840}
+            height={640}
             ref={image}
             src={src}
             alt={name}
             referrerPolicy="no-referrer"
             hidden={!playing}
-            className="max-h-80 max-w-full object-contain"
+            className="h-auto w-auto max-h-80 max-w-full object-contain"
             onLoad={() => {
               drawStill();
               setReady(true);
             }}
-            onError={() => setFailed(true)}
+            onError={() => {
+              setFailed(true);
+            }}
           />
           <canvas
             ref={canvas}

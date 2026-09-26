@@ -406,10 +406,15 @@
   (existing warnings), production build, and focused upload/access/deletion and
   mobile attachment tests pass. Isolated web component QA verified still
   previews, playback, keyboard pause, and unavailable media; its temporary route
-  was removed. Signed-in send/delete QA is blocked by the offline local backend.
+  was removed. Signed-in local send, Tenor resolution, playback, and keyboard
+  pause now pass at localhost:3000; the isolated backend runs on 3210/3211.
+  Tenor viewer URLs normalize to direct media, and the PWA worker leaves external
+  images to the browser. React Doctor 0.9.8 reports no new findings. Delete QA
+  remains pending.
   Mobile TypeScript is blocked by the existing root Convex 1.46.0 versus mobile
   1.43.0 dependency mismatch in optimistic chat. Native playback and responsive,
-  theme, and reduced-motion visual review remain pending. No deployment changed.
+  theme, and reduced-motion visual review remain pending. Only the isolated local
+  deployment was updated; shared and production deployments were not changed.
 
 - Custom-theme surface follow-up: card and popup foreground scopes are now
   consistent across schedule, notification, shell, club, admin, and shared UI
