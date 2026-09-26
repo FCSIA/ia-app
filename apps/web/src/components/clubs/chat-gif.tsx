@@ -5,12 +5,6 @@ import Image from "next/image";
 import { useReducedMotion } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Attachment,
-  AttachmentContent,
-  AttachmentTitle,
-  AttachmentDescription,
-} from "@/components/ui/attachment";
 import { useAction } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
@@ -58,7 +52,7 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
   );
 }
 
-/** GIFs are opt-in motion: an offscreen image supplies a still canvas preview. */
+/** GIFs autoplay unless reduced motion is enabled; the canvas supports pausing. */
 export function ChatGif({
   src,
   name,
@@ -71,7 +65,8 @@ export function ChatGif({
   const canvas = useRef<HTMLCanvasElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const reduceMotion = useReducedMotion();
-  const [playing, setPlaying] = useState(false);
+  const [playbackChoice, setPlaying] = useState<boolean | null>(null);
+  const playing = playbackChoice ?? reduceMotion === false;
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const drawStill = useCallback(() => {
@@ -93,10 +88,7 @@ export function ChatGif({
     if (reduceMotion) setPlaying(false);
   }, [reduceMotion]);
   return (
-    <Attachment
-      orientation="vertical"
-      className="my-2 w-fit! max-w-full has-data-[slot=attachment-content]:w-full"
-    >
+    <div className="relative my-2 w-fit max-w-full">
       {src && !failed ? (
         <div className="max-w-full">
           <Image
@@ -127,36 +119,30 @@ export function ChatGif({
           />
         </div>
       ) : null}
-      <AttachmentContent>
-        <AttachmentTitle>{name}</AttachmentTitle>
-        <AttachmentDescription>
-          {pending || (src && !ready && !failed)
-            ? "Loading GIF…"
-            : failed || !src
-              ? "GIF preview unavailable"
-              : playing
-                ? "Playing GIF"
-                : "GIF paused"}
-        </AttachmentDescription>
-      </AttachmentContent>
-      <div className="flex flex-wrap gap-2">
-        {src && !failed ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!ready}
-            leadingIcon={playing ? Pause : Play}
-            aria-label={`${playing ? "Pause" : "Play"} ${name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (playing) drawStill();
-              setPlaying(!playing);
-            }}
-          >
-            {playing ? "Pause" : "Play"}
-          </Button>
-        ) : null}
-      </div>
-    </Attachment>
+      {pending || (src && !ready && !failed) ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          Loading…
+        </p>
+      ) : failed || !src ? (
+        <p role="status" className="text-xs text-muted-foreground">
+          Animation unavailable
+        </p>
+      ) : null}
+      {src && !failed ? (
+        <Button
+          size="icon-compact"
+          variant="secondary"
+          className="absolute bottom-2 right-2"
+          disabled={!ready}
+          leadingIcon={playing ? Pause : Play}
+          aria-label={`${playing ? "Pause" : "Play"} ${name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (playing) drawStill();
+            setPlaying(!playing);
+          }}
+        />
+      ) : null}
+    </div>
   );
 }

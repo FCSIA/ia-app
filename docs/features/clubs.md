@@ -146,7 +146,9 @@ contains no generated media and exposes no provider-wide search. Each entry in
 review the complete clip before adding or replacing an entry. Selecting a GIF
 adds its external media URL to the draft, preserving existing text and mentions.
 
-GIFs start paused and provide explicit Play/Pause controls. Enabling
+GIFs render without a filename/status card or Open link. A compact icon button
+in the lower-right corner controls playback. GIFs autoplay by default. Users with
+reduced motion enabled start with a paused preview. Enabling
 reduced motion stops playback; users can opt in again with Play. Unavailable
 media shows an unavailable state; pasted links remain in the message text.
 External previews contact the media host; web omits

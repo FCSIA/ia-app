@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, View } from "react-native";
 import { Image } from "expo-image";
+import { useReducedMotion } from "react-native-reanimated";
 import { Pause, Play } from "lucide-react-native";
-import { Button, Txt } from "@/components/ui";
-import { useTheme } from "@/lib/theme";
+import { IconButton, Txt } from "@/components/ui";
 import { useReduceMotion } from "@/lib/motion";
 import { spacing } from "@/lib/tokens";
 import { useAction } from "@/lib/convex-react";
@@ -63,10 +63,11 @@ export function ChatGif({
   pending?: boolean;
 }) {
   const image = useRef<Image>(null);
-  const { color } = useTheme();
   const reduceMotion = useReduceMotion();
-  const [playing, setPlaying] = useState(false);
+  const initialReduceMotion = useReducedMotion();
+  const [playing, setPlaying] = useState(!initialReduceMotion);
   const [ready, setReady] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(1);
   const [failed, setFailed] = useState(false);
   const changePlayback = useCallback((next: boolean) => {
     const operation = next
@@ -90,10 +91,8 @@ export function ChatGif({
   return (
     <View
       style={{
-        width: "100%",
-        maxWidth: 440,
-        gap: spacing.xs,
-        paddingTop: spacing.xs,
+        width: Math.min(440, 220 * aspectRatio),
+        maxWidth: "100%",
       }}
     >
       {src && !failed ? (
@@ -101,35 +100,39 @@ export function ChatGif({
           ref={image}
           source={{ uri: src }}
           alt={name}
-          autoplay={false}
+          autoplay={playing}
           contentFit="contain"
           cachePolicy="memory-disk"
-          onLoad={() => setReady(true)}
+          onLoad={({ source }) => {
+            if (source.width > 0 && source.height > 0) {
+              setAspectRatio(source.width / source.height);
+            }
+            setReady(true);
+          }}
           onError={() => setFailed(true)}
           style={{
             width: "100%",
-            height: 220,
-            backgroundColor: color("muted"),
+            aspectRatio,
           }}
         />
       ) : null}
-      <Txt variant="caption" tone="muted">
-        {pending || (src && !ready && !failed)
-          ? "Loading GIF…"
-          : failed || !src
-            ? "GIF preview unavailable"
-            : playing
-              ? "Playing GIF"
-              : "GIF paused"}
-      </Txt>
-      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+      {pending || (src && !ready && !failed) ? (
+        <Txt variant="caption" tone="muted">
+          Loading…
+        </Txt>
+      ) : failed || !src ? (
+        <Txt variant="caption" tone="muted">
+          Animation unavailable
+        </Txt>
+      ) : null}
+      <View
+        style={{ position: "absolute", bottom: spacing.xs, right: spacing.xs }}
+      >
         {src && !failed ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            title={playing ? "Pause" : "Play"}
+          <IconButton
+            size="xs"
             icon={playing ? Pause : Play}
-            accessibilityLabel={`${playing ? "Pause" : "Play"} ${name}`}
+            label={`${playing ? "Pause" : "Play"} ${name}`}
             disabled={!ready}
             onPress={() => changePlayback(!playing)}
           />

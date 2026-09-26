@@ -33,7 +33,8 @@ export function SchoolGifPicker({
         <DialogHeader>
           <DialogTitle>Choose a GIF</DialogTitle>
           <DialogDescription>
-            Reaction GIFs from Tenor, selected for school. Choose one to add to your message.
+            Reaction GIFs from Tenor, selected for school. Choose one to add to
+            your message.
           </DialogDescription>
         </DialogHeader>
         <Command surface="inherit">

@@ -29,7 +29,8 @@ export function SchoolGifPicker({
     >
       <View style={{ gap: spacing.sm }}>
         <Txt variant="caption" tone="muted">
-          Reaction GIFs from Tenor, selected for school. Choose one to add to your message.
+          Reaction GIFs from Tenor, selected for school. Choose one to add to
+          your message.
         </Txt>
         <TextField
           accessibilityLabel="Search school GIFs"
