@@ -131,7 +131,10 @@ const config: ExpoConfig = {
   },
 };
 
-export default withPlugins(config, [
-  ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
-  notificationsPlugin,
-]);
+// Static plugins resolve relative to `_internal.projectRoot`, which Expo only
+// provides to the dynamic config function, so apply them inside it.
+export default ({ config: context }: { config: Partial<ExpoConfig> }) =>
+  withPlugins({ ...config, _internal: context._internal }, [
+    ...(personalTeamBuild ? [withoutPaidAppleCapabilities] : []),
+    notificationsPlugin,
+  ]);
