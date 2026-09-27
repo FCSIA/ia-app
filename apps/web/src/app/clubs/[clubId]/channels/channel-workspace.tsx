@@ -1112,7 +1112,7 @@ function MessageRow({
                       </Button>
                     </Tooltip>
                   ) : null}
-                  {!compact ? (
+                  {!compact && !isTouchPrimary ? (
                     <Tooltip content="Open thread">
                       <Button
                         variant="ghost"
@@ -1193,7 +1193,7 @@ function MessageRow({
               </>
             ) : null}
 
-            {!compact && message.hasReplies ? (
+            {!compact && !isTouchPrimary && message.hasReplies ? (
               <button
                 type="button"
                 className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 w-fit"
