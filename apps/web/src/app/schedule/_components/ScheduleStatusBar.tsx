@@ -22,7 +22,7 @@ export function ScheduleStatusBar() {
     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       <Clock3 className="size-4 shrink-0 text-primary" aria-hidden="true" />
       <div className="flex min-w-0 items-baseline gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/70">
           Now
         </span>
         {currentStatus.currentEntry?.course ? (
@@ -39,11 +39,11 @@ export function ScheduleStatusBar() {
         )}
       </div>
       <ArrowRight
-        className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+        className="hidden size-3.5 shrink-0 text-foreground/60 sm:block"
         aria-hidden="true"
       />
       <div className="hidden min-w-0 items-baseline gap-2 sm:flex">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/70">
           Next
         </span>
         {nextEntry?.course ? (
@@ -54,7 +54,7 @@ export function ScheduleStatusBar() {
             {nextLabel}
           </Link>
         ) : (
-          <span className="truncate text-muted-foreground">{nextLabel}</span>
+          <span className="truncate text-foreground/75">{nextLabel}</span>
         )}
       </div>
     </div>

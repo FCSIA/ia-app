@@ -38,10 +38,18 @@ function CustomThemeBootstrap() {
         '--custom-bg-image',
         `url("${user.customBackgroundUrl}")`,
       );
+      document.documentElement.dataset.customWallpaper = 'true';
+      if (user.customBackgroundTint && /^#[0-9a-f]{6}$/i.test(user.customBackgroundTint)) {
+        document.documentElement.style.setProperty('--custom-wallpaper-tint', user.customBackgroundTint);
+      } else {
+        document.documentElement.style.removeProperty('--custom-wallpaper-tint');
+      }
     } else {
       document.documentElement.style.removeProperty('--custom-bg-image');
+      document.documentElement.style.removeProperty('--custom-wallpaper-tint');
+      delete document.documentElement.dataset.customWallpaper;
     }
-  }, [theme, user?.customBackgroundUrl]);
+  }, [theme, user?.customBackgroundUrl, user?.customBackgroundTint]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

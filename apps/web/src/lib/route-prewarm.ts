@@ -38,7 +38,7 @@ import { schoolDateKey } from '@/lib/school-date';
 function queriesForRoute(pathname: string, user: AppUser): KeepAliveEntry[] {
   switch (pathname) {
     case '/announcements':
-      return [{ query: api.announcements.feed.list, args: { archived: false } }];
+      return [{ query: api.announcements.feed.list, args: { archived: false, now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } }];
 
     case '/clubs':
       return isSuperAdmin(user)

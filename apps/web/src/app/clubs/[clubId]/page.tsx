@@ -34,8 +34,10 @@ import { ClubProfileAvatar } from "@/components/clubs/club-profile-avatar";
 import { ClubHero } from "@/components/clubs/club-hero";
 import { fullName } from "@/components/clubs/types";
 import { AnnouncementCard } from "@/components/announcements/announcement-card";
+import { useAnnouncementFeedClock } from "@/components/announcements/use-announcement-feed-clock";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { Button } from "@/components/ui/button";
-import { CardGroup } from "@/components/ui/card";
+import { Card, CardGroup, CardHeader, CardContent } from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -334,185 +336,207 @@ function PublicClubOverview({ club }: { club: ClubDetail }) {
   const logoUrl = club.logoUrl;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8 py-5 sm:py-8">
-      <section className="space-y-5">
-        {(bannerUrl || club.accentColor) && (
-          <div
-            className="h-24 w-full rounded-lg bg-gradient-to-br from-primary/30 via-primary/10 to-muted sm:h-32"
-            style={
-              bannerUrl
-                ? {
-                    backgroundImage: `url(${bannerUrl})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }
-                : club.accentColor
-                  ? {
-                      background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)`,
-                    }
-                  : undefined
-            }
-          />
-        )}
-        <div
-          className={`space-y-5 ${bannerUrl || club.accentColor ? "-mt-12 px-4 sm:-mt-16 sm:px-6" : ""}`}
-        >
-          {logoUrl && (
-            <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoUrl}
-                alt={club.name}
-                className="size-full object-cover"
-              />
-            </div>
-          )}
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                {club.name}
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <Badge variant="solid">
-                  {club.joinPolicy === "OPEN"
-                    ? "Open"
-                    : club.joinPolicy === "REQUEST"
-                      ? "Approval"
-                      : "Invite only"}
-                </Badge>
-                {club.memberLimit != null ? (
-                  <Badge variant="solid" color={isFull ? "red" : "amber"}>
-                    {isFull ? "Full" : "Limited"}
-                  </Badge>
-                ) : null}
-                {club.viewer.hasPendingJoinRequest ? (
-                  <Badge variant="solid">Request pending</Badge>
-                ) : null}
-              </div>
-            </div>
-            <p className="max-w-3xl text-[15px] leading-6 text-muted-foreground">
-              {club.overview || club.description || "No club description yet."}
-            </p>
-          </div>
-          <MemberLimitMeter club={club} />
-          <div className="flex flex-wrap items-center gap-2">
-            {club.joinPolicy === "OPEN" ? (
-              <Button
-                leadingIcon={UserPlus}
-                onClick={() => {
-                  void joinOpenClub({ clubId }).then((result) =>
-                    toast(
-                      result.kind === "memberLimitReached"
+    <div className="mx-auto w-full max-w-4xl space-y-6 py-5 sm:py-8">
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardContent className="p-5 sm:p-6">
+            <section className="space-y-5">
+              {(bannerUrl || club.accentColor) && (
+                <div
+                  className="h-24 w-full rounded-lg bg-muted sm:h-32"
+                  style={
+                    bannerUrl
+                      ? {
+                          backgroundImage: `url(${bannerUrl})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        }
+                      : club.accentColor
                         ? {
-                            title: "Club is full",
-                            description:
-                              "A member spot must open before you can join.",
-                            variant: "destructive",
+                            background: `linear-gradient(135deg, ${club.accentColor}, ${club.accentColor}33)`,
                           }
-                        : {
-                            title:
-                              result.kind === "alreadyMember"
-                                ? "Already a member"
-                                : "Joined club",
-                          },
-                    ),
-                  );
-                }}
-                disabled={isFull}
+                        : undefined
+                  }
+                />
+              )}
+              <div
+                className={`space-y-5 ${bannerUrl || club.accentColor ? "-mt-12 px-4 sm:-mt-16 sm:px-6" : ""}`}
               >
-                {isFull ? "Club is full" : "Join club"}
-              </Button>
-            ) : club.joinPolicy === "REQUEST" ? (
-              <Button
-                leadingIcon={UserPlus}
-                onClick={() =>
-                  void requestToJoin({ clubId }).then(() =>
-                    toast({ title: "Join request sent" }),
-                  )
-                }
-                disabled={isFull || club.viewer.hasPendingJoinRequest}
-              >
-                {isFull
-                  ? "Club is full"
-                  : club.viewer.hasPendingJoinRequest
-                    ? "Request pending"
-                    : "Request to join"}
-              </Button>
-            ) : null}
-            <RedeemJoinCodePanel club={club} />
-          </div>
-        </div>
-      </section>
+                {logoUrl && (
+                  <div className="size-16 overflow-hidden rounded-lg border-4 border-background bg-muted sm:size-20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={logoUrl}
+                      alt={club.name}
+                      className="size-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                      {club.name}
+                    </h1>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="solid">
+                        {club.joinPolicy === "OPEN"
+                          ? "Open"
+                          : club.joinPolicy === "REQUEST"
+                            ? "Approval"
+                            : "Invite only"}
+                      </Badge>
+                      {club.memberLimit != null ? (
+                        <Badge variant="solid" color={isFull ? "red" : "amber"}>
+                          {isFull ? "Full" : "Limited"}
+                        </Badge>
+                      ) : null}
+                      {club.viewer.hasPendingJoinRequest ? (
+                        <Badge variant="solid">Request pending</Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="max-w-3xl text-[15px] leading-6 text-foreground/70">
+                    {club.overview || club.description || "No club description yet."}
+                  </p>
+                </div>
+                <MemberLimitMeter club={club} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {club.joinPolicy === "OPEN" ? (
+                    <Button
+                      leadingIcon={UserPlus}
+                      onClick={() => {
+                        void joinOpenClub({ clubId }).then((result) =>
+                          toast(
+                            result.kind === "memberLimitReached"
+                              ? {
+                                  title: "Club is full",
+                                  description:
+                                    "A member spot must open before you can join.",
+                                  variant: "destructive",
+                                }
+                              : {
+                                  title:
+                                    result.kind === "alreadyMember"
+                                      ? "Already a member"
+                                      : "Joined club",
+                                },
+                          ),
+                        );
+                      }}
+                      disabled={isFull}
+                    >
+                      {isFull ? "Club is full" : "Join club"}
+                    </Button>
+                  ) : club.joinPolicy === "REQUEST" ? (
+                    <Button
+                      leadingIcon={UserPlus}
+                      onClick={() =>
+                        void requestToJoin({ clubId }).then(() =>
+                          toast({ title: "Join request sent" }),
+                        )
+                      }
+                      disabled={isFull || club.viewer.hasPendingJoinRequest}
+                    >
+                      {isFull
+                        ? "Club is full"
+                        : club.viewer.hasPendingJoinRequest
+                          ? "Request pending"
+                          : "Request to join"}
+                    </Button>
+                  ) : null}
+                  <RedeemJoinCodePanel club={club} />
+                </div>
+              </div>
+            </section>
+          </CardContent>
+        </Card>
+      </CardGroup>
 
-      <div className="space-y-6 border-t border-border/60 pt-5">
-        <section className="min-w-0">
-          <div className="mb-3">
+      <CardGroup border="outlined" className={`mb-6 overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardHeader className="pb-3 border-b border-border/40 mb-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <KeyRound className="size-4 text-primary" />
               Sponsors
             </h2>
-          </div>
-          {club.sponsors.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {club.sponsors.map((sponsor) => (
-                <div
-                  key={sponsor.userId}
-                  className="flex items-center gap-2.5 py-1.5"
-                >
-                  <ClubProfileAvatar
-                    person={sponsor.user}
-                    className="size-9"
-                    fallbackClassName="text-xs"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {fullName(sponsor.user)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-3 text-sm text-muted-foreground">
-              No sponsors assigned yet.
-            </p>
-          )}
-        </section>
-
-        {club.roles.map((role) => {
-          const members = club.leaders.filter(
-            (leader) => leader.roleId === role._id,
-          );
-          if (members.length === 0) return null;
-          return (
-            <section key={role._id} className="min-w-0">
-              <h2 className="mb-3 text-sm font-semibold">{role.name}</h2>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {members.map((member) => (
+          </CardHeader>
+          <CardContent>
+            {club.sponsors.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {club.sponsors.map((sponsor) => (
                   <div
-                    key={member.userId}
-                    className="flex items-center gap-2.5 py-1.5"
+                    key={sponsor.userId}
+                    className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
                   >
                     <ClubProfileAvatar
-                      person={member.user}
-                      className="size-9"
-                      fallbackClassName="text-xs"
+                      person={sponsor.user}
+                      className="size-10 shrink-0"
+                      fallbackClassName="text-sm"
                     />
-                    <p className="min-w-0 truncate text-sm font-semibold text-foreground">
-                      {fullName(member.user)}
-                    </p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {fullName(sponsor.user)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Club Sponsor</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </section>
-          );
-        })}
-      </div>
+            ) : (
+              <div className="text-center py-6">
+                <Users className="mx-auto size-8 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">No sponsors assigned yet.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </CardGroup>
+
+      <CardGroup border="outlined" className={`overflow-hidden border-border bg-card ${CARD_SURFACE_FOREGROUND}`}>
+        <Card className="bg-transparent">
+          <CardContent className="p-5 sm:p-6">
+            <div className="space-y-6">
+              {club.roles.map((role) => {
+                const members = club.leaders.filter(
+                  (leader) => leader.roleId === role._id,
+                );
+                if (members.length === 0) return null;
+                return (
+                  <section key={role._id} className="min-w-0">
+                    <h2 className="mb-3 text-sm font-semibold flex items-center gap-2">
+                      <Users className="size-4 text-muted-foreground" />
+                      {role.name}
+                    </h2>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {members.map((member) => (
+                        <div
+                          key={member.userId}
+                          className={`flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-hover hover:border-primary/30 ${CARD_SURFACE_FOREGROUND}`}
+                        >
+                          <ClubProfileAvatar
+                            person={member.user}
+                            className="size-10 shrink-0"
+                            fallbackClassName="text-sm"
+                          />
+                          <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+                            {fullName(member.user)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </CardGroup>
     </div>
   );
 }
 
 export default function ClubOverviewPage() {
+  const announcementNow = useAnnouncementFeedClock();
   const clubId = useClubId();
   const searchParams = useSearchParams();
   const user = useCurrentUser();
@@ -596,7 +620,7 @@ export default function ClubOverviewPage() {
     useQuery(
       api.announcements.feed.list,
       club?.viewer.canAccessWorkspace
-        ? { clubId: clubId as Id<"clubs"> }
+        ? { clubId: clubId as Id<"clubs">, now: announcementNow }
         : "skip",
     ) ?? [];
 
@@ -676,91 +700,102 @@ export default function ClubOverviewPage() {
   return (
     <ClubWorkspace title={title} rightPane={rightPane}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-3 sm:p-4">
-        <ClubHero
-          club={club}
-          canEdit={club.viewer.permissions.manageClubSettings}
-        />
-
-        <section className="space-y-2">
-          <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2">
-              <Megaphone className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Announcements</h2>
-            </div>
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              {deferredSearch && (
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {filteredAnnouncements.length} of {announcements.length}
-                </span>
-              )}
-              {canPost && (
-                <Button
-                  size="sm"
-                  leadingIcon={Megaphone}
-                  onClick={() => setAnnounceOpen(true)}
-                >
-                  {canPostDirectAnnouncement
-                    ? "Post announcement"
-                    : "Propose announcement"}
-                </Button>
-              )}
-              <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search announcements"
-                size="sm"
-                className="w-full sm:w-60"
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
+          <Card className="bg-transparent">
+            <CardContent className="p-0">
+              <ClubHero
+                club={club}
+                canEdit={club.viewer.permissions.manageClubSettings}
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        </CardGroup>
 
-          {filteredAnnouncements.length > 0 ? (
-            <CardGroup>
-              {filteredAnnouncements.map((announcement) => (
-                <AnnouncementCard
-                  key={announcement._id}
-                  announcement={{
-                    ...(announcement as any),
-                    isRead: (announcement as any).isRead ?? true,
-                    targetType: (announcement as any).targetType ?? "CLUB",
-                    status: (announcement as any).status ?? "ACTIVE",
-                    isAdminGeneral:
-                      (announcement as any).isAdminGeneral ?? false,
-                  }}
-                  compact
-                />
-              ))}
-            </CardGroup>
-          ) : (
-            <Empty className="rounded-lg border bg-muted/20">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  {deferredSearch ? <Search /> : <MessageSquareText />}
-                </EmptyMedia>
-                <EmptyTitle>
-                  {deferredSearch ? "No matches found" : "No announcements yet"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {deferredSearch
-                    ? "Try a different search term."
-                    : canPost
-                      ? "Post the first update."
-                      : "Check back later."}
-                </EmptyDescription>
-              </EmptyHeader>
-              {deferredSearch && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearch("")}
-                  className="mt-2 font-semibold text-accent-500"
-                >
-                  Clear search
-                </Button>
+        <CardGroup border="outlined" className={`overflow-hidden bg-card border-border ${CARD_SURFACE_FOREGROUND}`}>
+          <Card className="bg-transparent">
+            <CardHeader className="pb-3 border-b border-border/40 mb-4">
+              <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="size-4 text-primary" />
+                  <h2 className="text-base font-semibold">Announcements</h2>
+                </div>
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  {deferredSearch && (
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {filteredAnnouncements.length} of {announcements.length}
+                    </span>
+                  )}
+                  {canPost && (
+                    <Button
+                      size="sm"
+                      leadingIcon={Megaphone}
+                      onClick={() => setAnnounceOpen(true)}
+                    >
+                      {canPostDirectAnnouncement
+                        ? "Post announcement"
+                        : "Propose announcement"}
+                    </Button>
+                  )}
+                  <SearchInput
+                    value={search}
+                    onValueChange={setSearch}
+                    placeholder="Search announcements"
+                    size="sm"
+                    className="w-full sm:w-60 border-border/60 focus:border-primary focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredAnnouncements.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredAnnouncements.map((announcement) => (
+                    <AnnouncementCard
+                      key={announcement._id}
+                      announcement={{
+                        ...(announcement as any),
+                        isRead: (announcement as any).isRead ?? true,
+                        targetType: (announcement as any).targetType ?? "CLUB",
+                        status: (announcement as any).status ?? "ACTIVE",
+                        isAdminGeneral:
+                          (announcement as any).isAdminGeneral ?? false,
+                      }}
+                      compact
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Empty className="rounded-lg border bg-muted/20 py-12">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      {deferredSearch ? <Search /> : <MessageSquareText />}
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {deferredSearch ? "No matches found" : "No announcements yet"}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {deferredSearch
+                        ? "Try a different search term."
+                        : canPost
+                          ? "Post the first update."
+                          : "Check back later."}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  {deferredSearch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearch("")}
+                      className="mt-2 font-semibold text-accent-500"
+                    >
+                      Clear search
+                    </Button>
+                  )}
+                </Empty>
               )}
-            </Empty>
-          )}
-        </section>
+            </CardContent>
+          </Card>
+        </CardGroup>
       </div>
 
       <AnnouncementDialog

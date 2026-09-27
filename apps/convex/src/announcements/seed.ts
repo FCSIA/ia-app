@@ -24,6 +24,9 @@ export const run = internalMutation({
     const lastWeek = now - oneWeek;
 
     if (args.reset) {
+      const oldPins = await ctx.db.query("announcementPins").take(5000);
+      for (const pin of oldPins) await ctx.db.delete(pin._id);
+
       const oldBookmarks = await ctx.db
         .query("announcementBookmarks")
         .take(5000);
