@@ -11,11 +11,15 @@ a club, inside club workflows.
 
 ## What It Does
 
-- Lists announcements visible to the current user.
+- Lists announcements visible to the current user, with their personal pins
+  first, promoted posts second, and remaining posts ordered newest-first.
+- Automatically places announcements more than 14 days old in the collapsed
+  Past Announcements section without changing their stored publication status.
 - Searches the visible feed by title, body, author, club, grade, and pathway
   while preserving the all, unread, and saved filters.
 - Supports detail pages, comments, read/unread state, bookmarks, archives, and
-  promoted/pinned announcements.
+  personal pin/unpin actions. Archived and expired posts stay collapsed
+  under Past Announcements until requested.
 - Supports school-wide, grade, pathway, club, and intersection targeting.
 - Supports pending approval for some club-scoped posts.
 - Supports up to three signed PNG, JPEG, GIF, or WebP image uploads per post,
@@ -33,6 +37,8 @@ a club, inside club workflows.
 
 - `api.announcements.feed.listPage` (cursor-paginated; accepts archived, unread, and saved filters)
 - `api.announcements.feed.list` (bounded compatibility list for compact consumers)
+- `api.announcements.feed.listPinnedPage` (cursor-paginated personal pins)
+- `api.announcements.feed.listPastStatusPage` (cursor-paginated recent archived, rejected, and expired records)
 - `api.announcements.feed.get`
 - `api.announcements.feed.create`
 - `api.announcements.feed.approve`
@@ -44,6 +50,8 @@ a club, inside club workflows.
 - `api.announcements.engagement.markUnread`
 - `api.announcements.engagement.bookmark`
 - `api.announcements.engagement.unbookmark`
+- `api.announcements.engagement.pin`
+- `api.announcements.engagement.unpin`
 - `api.announcements.engagement.archive`
 
 ## Data Model
@@ -53,8 +61,9 @@ a club, inside club workflows.
 - `comments`
 - `announcementReads`
 - `announcementBookmarks`
+- `announcementPins`
 
-Targeting fields live on the announcement document. Read and bookmark state are
+Targeting fields live on the announcement document. Read, bookmark, and pin state are
 separate child tables so they can grow per user without bloating the
 announcement document. Image uploads are staged as user-owned records, checked
 against storage metadata and file signatures, then consumed into
@@ -65,8 +74,9 @@ markup is not accepted; embeds are validated HTTPS URLs and open externally.
 
 Teachers and admins can create announcements. Global announcement approval is
 limited to admin/support roles; club-scoped pending announcements can also be
-approved or rejected by that club's sponsors. Comment and archive permissions
-are enforced inside the Convex mutations.
+approved or rejected by that club's sponsors. Any user who can view an active
+announcement can pin or unpin it for their own feed. Comment and archive permissions are enforced inside the Convex
+mutations.
 
 ## Side Effects
 

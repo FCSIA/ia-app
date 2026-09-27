@@ -1,13 +1,13 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useReducer, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAction, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { hasRole, useCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Archive, Check, ChevronDown, Inbox, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Archive, Check, ChevronDown, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { Card, CardContent, CardGroup } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,12 +27,14 @@ import { ANNOUNCEMENT_TAG_LABELS, AnnouncementCard } from '@/components/announce
 import { matchesSearchQuery } from '@/lib/search';
 import { Label } from '@/components/ui/label';
 import { FieldLegend, FieldSet } from '@/components/ui/field';
-import { TabItem, Tabs, TabsList } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AnnouncementMediaInput } from '@/components/announcements/announcement-media';
 import { AnnouncementEditor } from '@/components/announcements/announcement-editor';
 import { uploadFileToConvex } from '@/lib/convex-upload';
+import { useAnnouncementFeedClock } from '@/components/announcements/use-announcement-feed-clock';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 
 const PATHWAY_OPTIONS = [
   { value: 'INFORMATION_TECHNOLOGY', label: 'Information Technology' },
@@ -53,37 +55,95 @@ type ClubFilterOption = {
   name: string;
 };
 
+type FeedFilters = {
+  activeTag: string | null;
+  selectedClubIds: string[];
+  readFilter: 'all' | 'unread' | 'read';
+  savedFilter: 'all' | 'saved' | 'pinned';
+  selectedGrades: number[];
+  selectedMajorPathways: string[];
+  selectedMinorPathways: string[];
+};
+
+const defaultFeedFilters: FeedFilters = {
+  activeTag: null,
+  selectedClubIds: [],
+  readFilter: 'all',
+  savedFilter: 'all',
+  selectedGrades: [],
+  selectedMajorPathways: [],
+  selectedMinorPathways: [],
+};
+
+type FeedFiltersUpdate = Partial<FeedFilters> | 'reset' | ((state: FeedFilters) => Partial<FeedFilters>);
+
+function feedFiltersReducer(state: FeedFilters, update: FeedFiltersUpdate): FeedFilters {
+  if (update === 'reset') return defaultFeedFilters;
+  const patch = typeof update === 'function' ? update(state) : update;
+  return { ...state, ...patch };
+}
+
+function toggleFilterValue<T>(values: T[], value: T): T[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+const defaultAnnouncementForm = {
+  title: '',
+  body: '',
+  bodyMarkdown: '',
+  targetType: 'SCHOOL_WIDE',
+  targetGrades: [] as number[],
+  targetMajorPathways: [] as string[],
+  targetMinorPathways: [] as string[],
+  allowComments: false,
+  isAdminGeneral: false,
+  promoted: false,
+  expiresAt: '',
+};
+
+type ComposerState = {
+  showNew: boolean;
+  audienceMode: 'SCHOOL_WIDE' | 'TARGETED';
+  images: File[];
+  embedUrls: string[];
+  form: typeof defaultAnnouncementForm;
+  createPending: boolean;
+};
+
+const defaultComposerState: ComposerState = {
+  showNew: false,
+  audienceMode: 'SCHOOL_WIDE',
+  images: [],
+  embedUrls: [],
+  form: defaultAnnouncementForm,
+  createPending: false,
+};
+
+function composerReducer(state: ComposerState, patch: Partial<ComposerState>): ComposerState {
+  return { ...state, ...patch };
+}
+
 export default function AnnouncementsPage() {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const [showArchived, setShowArchived] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [pastOpen, setPastOpen] = useState(false);
+  const feedNow = useAnnouncementFeedClock(3_600_000);
+  const [composer, dispatchComposer] = useReducer(composerReducer, defaultComposerState);
+  const { showNew, audienceMode, images, embedUrls, form, createPending } = composer;
+  const setShowNew = (showNew: boolean) => dispatchComposer({ showNew });
+  const setAudienceMode = (audienceMode: ComposerState['audienceMode']) => dispatchComposer({ audienceMode });
+  const setImages = (images: File[]) => dispatchComposer({ images });
+  const setEmbedUrls = (embedUrls: string[]) => dispatchComposer({ embedUrls });
+  const setForm = (form: ComposerState['form']) => dispatchComposer({ form });
+  const setCreatePending = (createPending: boolean) => dispatchComposer({ createPending });
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [selectedClubIds, setSelectedClubIds] = useState<string[]>([]);
-  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
-  const [savedFilter, setSavedFilter] = useState<'all' | 'saved' | 'pinned'>('all');
-  const [selectedGrades, setSelectedGrades] = useState<number[]>([]);
-  const [selectedMajorPathways, setSelectedMajorPathways] = useState<string[]>([]);
-  const [selectedMinorPathways, setSelectedMinorPathways] = useState<string[]>([]);
+  const [filters, dispatchFilters] = useReducer(feedFiltersReducer, defaultFeedFilters);
+  const {
+    activeTag, selectedClubIds, readFilter, savedFilter, selectedGrades,
+    selectedMajorPathways, selectedMinorPathways,
+  } = filters;
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [audienceMode, setAudienceMode] = useState<'SCHOOL_WIDE' | 'TARGETED'>('SCHOOL_WIDE');
-  const [images, setImages] = useState<File[]>([]);
-  const [embedUrls, setEmbedUrls] = useState<string[]>([]);
-  const [form, setForm] = useState({
-    title: '',
-    body: '',
-    bodyMarkdown: '',
-    targetType: 'SCHOOL_WIDE',
-    targetGrades: [] as number[],
-    targetMajorPathways: [] as string[],
-    targetMinorPathways: [] as string[],
-    allowComments: false,
-    isAdminGeneral: false,
-    promoted: false,
-    expiresAt: '',
-  });
 
   const updateTargeting = (partial: Partial<typeof form>) => {
     const next = { ...form, ...partial };
@@ -106,34 +166,94 @@ export default function AnnouncementsPage() {
   };
 
   const canPost = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER', 'STUDENT_ADMIN');
+  const canPin = !!user;
   const canArchiveAny = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN');
   const canApproveAnnouncements = !!user && hasRole(user, 'ADMIN', 'SUPER_ADMIN', 'TEACHER');
 
-  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: showArchived, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined }, { initialNumItems: 30 });
-  const isLoading = feedStatus === 'LoadingFirstPage';
+  const { results: data, status: feedStatus, loadMore: loadMoreAnnouncements } = usePaginatedQuery(api.announcements.feed.listPage, { archived: false, bookmarkedOnly: savedFilter === 'saved' || undefined, unreadOnly: readFilter === 'unread' || undefined, now: feedNow }, { initialNumItems: 30 });
+  const { results: pinnedData, status: pinnedStatus, loadMore: loadMorePins } = usePaginatedQuery(
+    api.announcements.feed.listPinnedPage,
+    {
+      now: feedNow,
+      bookmarkedOnly: savedFilter === 'saved' || undefined,
+      readOnly: readFilter === 'read' || undefined,
+      unreadOnly: readFilter === 'unread' || undefined,
+    },
+    { initialNumItems: 30 },
+  );
+  const dataWithPins = useMemo(() => {
+    const feedIds = new Set(data.map((announcement) => announcement._id));
+    return [...pinnedData.filter((announcement) => !feedIds.has(announcement._id)), ...data];
+  }, [data, pinnedData]);
+  const {
+    results: pastAnnouncements,
+    status: pastFeedStatus,
+    loadMore: loadMorePastAnnouncements,
+  } = usePaginatedQuery(
+    api.announcements.feed.listPage,
+    pastOpen ? { archived: true, now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentExpired, status: expiredStatus, loadMore: loadMoreExpired } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'EXPIRED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentArchived, status: archivedStatus, loadMore: loadMoreArchived } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'ARCHIVED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentRejected, status: rejectedStatus, loadMore: loadMoreRejected } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'REJECTED', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const { results: recentlyExpired, status: recentlyExpiredStatus, loadMore: loadMoreRecentlyExpired } = usePaginatedQuery(
+    api.announcements.feed.listPastStatusPage,
+    pastOpen ? { status: 'ACTIVE', now: feedNow } : 'skip',
+    { initialNumItems: 20 },
+  );
+  const pastStatusPages = [
+    { status: recentlyExpiredStatus, loadMore: loadMoreRecentlyExpired },
+    { status: expiredStatus, loadMore: loadMoreExpired },
+    { status: archivedStatus, loadMore: loadMoreArchived },
+    { status: rejectedStatus, loadMore: loadMoreRejected },
+  ];
+  const pastAllAnnouncements = useMemo(() => {
+    const byId = new Map<string, any>();
+    for (const item of [...pastAnnouncements, ...recentExpired, ...recentArchived, ...recentRejected, ...recentlyExpired]) byId.set(item._id, item);
+    return [...byId.values()].sort((left, right) => right.createdAt - left.createdAt);
+  }, [pastAnnouncements, recentExpired, recentArchived, recentRejected, recentlyExpired]);
+  const isLoading = feedStatus === 'LoadingFirstPage' || pinnedStatus === 'LoadingFirstPage';
   const canLoadMore = feedStatus === 'CanLoadMore' || feedStatus === 'LoadingMore';
+  const canLoadMorePast = pastFeedStatus === 'CanLoadMore' || pastFeedStatus === 'LoadingMore' || pastStatusPages.some(({ status }) => status === 'CanLoadMore' || status === 'LoadingMore');
+  const canLoadPastNow = pastFeedStatus === 'CanLoadMore' || pastStatusPages.some(({ status }) => status === 'CanLoadMore');
+  const isLoadingMorePast = pastFeedStatus === 'LoadingMore' || pastStatusPages.some(({ status }) => status === 'LoadingMore');
 
   const createAnnouncement = useMutation(api.announcements.feed.create);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const finalizeAnnouncementImage = useAction(api.uploads.files.finalizeAnnouncementImage);
   const archiveAnnouncement = useMutation(api.announcements.engagement.archive);
+  const pinAnnouncement = useMutation(api.announcements.engagement.pin);
+  const unpinAnnouncement = useMutation(api.announcements.engagement.unpin);
   const bookmarkAnnouncement = useMutation(api.announcements.engagement.bookmark);
   const unbookmarkAnnouncement = useMutation(api.announcements.engagement.unbookmark);
   const approveAnnouncement = useMutation(api.announcements.feed.approve);
   const rejectAnnouncement = useMutation(api.announcements.feed.reject);
 
   const availableTags = useMemo(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
     const tags = new Set<string>();
-    data.forEach((announcement: any) => tags.add(announcement.targetType));
+    dataWithPins.forEach((announcement: any) => tags.add(announcement.targetType));
     return Array.from(tags).sort();
-  }, [data]);
+  }, [dataWithPins]);
 
   const availableClubs = useMemo<ClubFilterOption[]>(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
     const clubsById = new Map<string, ClubFilterOption>();
 
-    data.forEach((announcement: any) => {
+    dataWithPins.forEach((announcement: any) => {
       if (announcement.club?._id && announcement.club?.name) {
         clubsById.set(announcement.club._id, {
           id: announcement.club._id,
@@ -143,13 +263,13 @@ export default function AnnouncementsPage() {
     });
 
     return Array.from(clubsById.values()).sort((left, right) => left.name.localeCompare(right.name));
-  }, [data]);
+  }, [dataWithPins]);
 
   const filtered = useMemo(() => {
-    if (!data) return [];
+    if (!dataWithPins) return [];
 
     const normalizedSearch = deferredSearch.trim().toLowerCase();
-    return data.filter((announcement: any) => {
+    return dataWithPins.filter((announcement: any) => {
       if (activeTag && announcement.targetType !== activeTag) return false;
       if (readFilter === 'unread' && announcement.isRead) return false;
       if (readFilter === 'read' && !announcement.isRead) return false;
@@ -179,10 +299,36 @@ export default function AnnouncementsPage() {
         announcement.author?.lastName,
         announcement.club?.name,
       ]);
+    }).sort((left: any, right: any) => {
+      if (left.isPinned !== right.isPinned) return left.isPinned ? -1 : 1;
+      if (left.isPromoted !== right.isPromoted) return left.isPromoted ? -1 : 1;
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
-  }, [activeTag, data, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
+  }, [activeTag, dataWithPins, deferredSearch, readFilter, savedFilter, selectedClubIds, selectedGrades, selectedMajorPathways, selectedMinorPathways]);
 
-  const [createPending, setCreatePending] = useState(false);
+  const newestAnnouncementId = useMemo(() => {
+    const activeAnnouncements = dataWithPins.filter((announcement: any) => announcement.status === 'ACTIVE');
+    return activeAnnouncements.reduce<any | null>((latest, announcement) => {
+      if (!latest) return announcement;
+      return new Date(announcement.createdAt).getTime() > new Date(latest.createdAt).getTime()
+        ? announcement
+        : latest;
+    }, null)?._id ?? null;
+  }, [dataWithPins]);
+
+  const filteredPastAnnouncements = useMemo(() => {
+    const normalizedSearch = deferredSearch.trim().toLowerCase();
+    return pastAllAnnouncements.filter((announcement: any) =>
+      matchesSearchQuery(normalizedSearch, [
+        announcement.title,
+        announcement.body,
+        announcement.author?.firstName,
+        announcement.author?.lastName,
+        announcement.club?.name,
+      ]),
+    );
+  }, [deferredSearch, pastAllAnnouncements]);
+
   const [reviewPending, setReviewPending] = useState<{
     id: string;
     action: 'approve' | 'reject';
@@ -219,10 +365,7 @@ export default function AnnouncementsPage() {
       setShowNew(false);
       setImages([]);
       setEmbedUrls([]);
-      setForm({
-        title: '', body: '', bodyMarkdown: '', targetType: 'SCHOOL_WIDE', targetGrades: [], targetMajorPathways: [], targetMinorPathways: [],
-        allowComments: false, isAdminGeneral: false, promoted: false, expiresAt: '',
-      });
+      setForm(defaultAnnouncementForm);
       setAudienceMode('SCHOOL_WIDE');
       toast({ title: 'Announcement created' });
     } catch (error) {
@@ -248,13 +391,7 @@ export default function AnnouncementsPage() {
   };
 
   const resetFacetFilters = () => {
-    setActiveTag(null);
-    setSelectedClubIds([]);
-    setReadFilter('all');
-    setSavedFilter('all');
-    setSelectedGrades([]);
-    setSelectedMajorPathways([]);
-    setSelectedMinorPathways([]);
+    dispatchFilters('reset');
   };
 
   const activeFilterCount = [
@@ -276,34 +413,11 @@ export default function AnnouncementsPage() {
       }
     >
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <div className="min-w-0 overflow-x-auto">
-            <Tabs value={showArchived ? 'archived' : 'active'} onValueChange={(value) => setShowArchived(value === 'archived')}>
-              <TabsList aria-label="Announcement view">
-                <TabItem value="active" label="Active" icon={Inbox} />
-                <TabItem value="archived" label="Archived" icon={Archive} />
-              </TabsList>
-            </Tabs>
-          </div>
-          {canPost ? (
-            <Button
-              size="sm"
-              leadingIcon={Plus}
-              onClick={() => {
-                setShowArchived(false);
-                setShowNew(true);
-              }}
-            >
-              New
-            </Button>
-          ) : null}
-        </div>
-
         <div className="mb-5 flex items-center gap-2">
-          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" />
+          <SearchInput value={search} onValueChange={setSearch} placeholder="Search announcements" size="sm" className="min-w-0 flex-1" inputClassName="bg-background" />
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Button variant="tertiary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
+              <Button variant="secondary" leadingIcon={SlidersHorizontal} active={filtersOpen}>
                 Filters
                 {activeFilterCount > 0 ? (
                   <Badge size="sm" color="blue">
@@ -332,7 +446,7 @@ export default function AnnouncementsPage() {
                 <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Read state</FieldLegend>
-                  <RadioGroup value={readFilter} onValueChange={(value) => setReadFilter(value as 'all' | 'unread' | 'read')} orientation="horizontal" className="w-full flex-wrap">
+                  <RadioGroup value={readFilter} onValueChange={(value) => dispatchFilters({ readFilter: value as FeedFilters['readFilter'] })} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'unread', 'read'].map((value, index) => (
                       <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'unread' ? 'Unread' : 'Read'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
@@ -341,7 +455,7 @@ export default function AnnouncementsPage() {
 
                 <FieldSet className="min-w-0 gap-0">
                   <FieldLegend variant="label">Saved state</FieldLegend>
-                  <RadioGroup value={savedFilter} onValueChange={(value) => setSavedFilter(value as 'all' | 'saved' | 'pinned')} orientation="horizontal" className="w-full flex-wrap">
+                  <RadioGroup value={savedFilter} onValueChange={(value) => dispatchFilters({ savedFilter: value as FeedFilters['savedFilter'] })} orientation="horizontal" className="w-full flex-wrap">
                     {['all', 'saved', 'pinned'].map((value, index) => (
                       <RadioItem key={value} index={index} value={value} label={value === 'all' ? 'Any' : value === 'saved' ? 'Saved' : 'Pinned'} className="min-w-[calc(50%-0.125rem)] flex-1" />
                     ))}
@@ -351,7 +465,7 @@ export default function AnnouncementsPage() {
                 {availableTags.length > 0 ? (
                   <FieldSet className="min-w-0 gap-0">
                     <FieldLegend variant="label">Audience scope</FieldLegend>
-                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => setActiveTag(value === 'all' ? null : value)} orientation="horizontal" className="w-full flex-wrap">
+                    <RadioGroup value={activeTag ?? 'all'} onValueChange={(value) => dispatchFilters({ activeTag: value === 'all' ? null : value })} orientation="horizontal" className="w-full flex-wrap">
                       {['all', ...availableTags].map((tag, index) => (
                         <RadioItem
                           key={tag}
@@ -377,9 +491,7 @@ export default function AnnouncementsPage() {
                         index={index}
                         label={`Grade ${grade}`}
                         checked={selectedGrades.includes(grade)}
-                        onToggle={() =>
-                          setSelectedGrades((current) => (current.includes(grade) ? current.filter((value) => value !== grade) : [...current, grade]))
-                        }
+                        onToggle={() => dispatchFilters((current) => ({ selectedGrades: toggleFilterValue(current.selectedGrades, grade) }))}
                       />
                     ))}
                   </CheckboxGroup>
@@ -389,14 +501,14 @@ export default function AnnouncementsPage() {
                   {
                     label: 'Major pathway',
                     selected: selectedMajorPathways,
-                    setSelected: setSelectedMajorPathways,
+                    key: 'selectedMajorPathways' as const,
                   },
                   {
                     label: 'Minor pathway',
                     selected: selectedMinorPathways,
-                    setSelected: setSelectedMinorPathways,
+                    key: 'selectedMinorPathways' as const,
                   },
-                ].map(({ label, selected, setSelected }) => (
+                ].map(({ label, selected, key }) => (
                   <FieldSet key={label} className="min-w-0 gap-0">
                     <FieldLegend variant="label">{label}</FieldLegend>
                     <CheckboxGroup
@@ -409,11 +521,7 @@ export default function AnnouncementsPage() {
                           index={index}
                           label={pathway.label}
                           checked={selected.includes(pathway.value)}
-                          onToggle={() =>
-                            setSelected((current) =>
-                              current.includes(pathway.value) ? current.filter((value) => value !== pathway.value) : [...current, pathway.value],
-                            )
-                          }
+                          onToggle={() => dispatchFilters((current) => ({ [key]: toggleFilterValue(current[key], pathway.value) }))}
                         />
                       ))}
                     </CheckboxGroup>
@@ -433,9 +541,7 @@ export default function AnnouncementsPage() {
                           index={index}
                           label={club.name}
                           checked={selectedClubIds.includes(club.id)}
-                          onToggle={() =>
-                            setSelectedClubIds((current) => (current.includes(club.id) ? current.filter((value) => value !== club.id) : [...current, club.id]))
-                          }
+                          onToggle={() => dispatchFilters((current) => ({ selectedClubIds: toggleFilterValue(current.selectedClubIds, club.id) }))}
                         />
                       ))}
                     </CheckboxGroup>
@@ -445,6 +551,17 @@ export default function AnnouncementsPage() {
               </div>
             </PopoverContent>
           </Popover>
+          {canPost ? (
+            <Button
+              size="sm"
+              leadingIcon={Plus}
+              onClick={() => {
+                setShowNew(true);
+              }}
+            >
+              New
+            </Button>
+          ) : null}
         </div>
 
         <Dialog open={showNew} onOpenChange={setShowNew}>
@@ -617,29 +734,40 @@ export default function AnnouncementsPage() {
 
         {isLoading ? (
           <div className="py-12 text-center text-muted-foreground">Loading…</div>
-        ) : data.length === 0 && feedStatus === 'Exhausted' ? (
-          <Card className="border-dashed py-16 text-center">
-            <CardContent className="pt-6">{showArchived ? 'No archived announcements' : 'No announcements yet'}</CardContent>
-          </Card>
+        ) : dataWithPins.length === 0 && feedStatus === 'Exhausted' && pinnedStatus === 'Exhausted' ? (
+          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
+            <Card className="bg-transparent">
+              <CardContent className="text-center py-16 pt-6">No announcements yet</CardContent>
+            </Card>
+          </CardGroup>
         ) : filtered.length === 0 ? (
-          <Card className="border-dashed py-16 text-center">
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">No announcements match your filters.</p>
-              <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
-                Clear filters
-              </Button>
-              {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
-            </CardContent>
-          </Card>
+          <CardGroup border="outlined" className={`overflow-hidden bg-card border-border border-dashed ${CARD_SURFACE_FOREGROUND}`}>
+            <Card className="bg-transparent">
+              <CardContent className="pt-6 text-center py-16">
+                <p className="text-muted-foreground">No announcements match your filters.</p>
+                <Button variant="ghost" size="sm" className="mt-2" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+                {canLoadMore ? <Button variant="tertiary" size="sm" className="mt-2" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button> : null}
+                {pinnedStatus === 'CanLoadMore' ? <Button variant="tertiary" size="sm" className="mt-2" onClick={() => loadMorePins(30)}>Load more pinned announcements</Button> : null}
+              </CardContent>
+            </Card>
+          </CardGroup>
         ) : (
-          <div className="space-y-4">
-            {hasActiveFilters ? (
-              <p className="px-1 text-xs text-muted-foreground">
-                {filtered.length} of {data.length} announcement
-                {data.length === 1 ? '' : 's'}
-              </p>
+          <div className="space-y-6">
+            {pinnedStatus === 'CanLoadMore' || pinnedStatus === 'LoadingMore' ? (
+              <div className="flex justify-center">
+                <Button variant="tertiary" disabled={pinnedStatus !== 'CanLoadMore'} onClick={() => loadMorePins(30)}>
+                  {pinnedStatus === 'LoadingMore' ? 'Loading pinned…' : 'Load more pinned announcements'}
+                </Button>
+              </div>
             ) : null}
-            <CardGroup>
+            {hasActiveFilters && (
+              <p className="px-1 text-xs text-muted-foreground">
+                {filtered.length} of {dataWithPins.length} announcement{dataWithPins.length === 1 ? '' : 's'}
+              </p>
+            )}
+            <div className="space-y-4">
               {(filtered as any[]).map((announcement) => {
                 const canArchiveAnnouncement = canArchiveAny || announcement.author?._id === user?._id;
                 const announcementId = announcement._id as Id<'announcements'>;
@@ -650,6 +778,7 @@ export default function AnnouncementsPage() {
                   <AnnouncementCard
                     key={announcement._id}
                     announcement={announcement}
+                    className={!announcement.isRead && announcement._id === newestAnnouncementId ? 'border-l-2 border-l-primary' : undefined}
                     canArchive={canArchiveAnnouncement}
                     onArchive={(id: string) => {
                       void archiveAnnouncement({
@@ -669,6 +798,19 @@ export default function AnnouncementsPage() {
                         announcementId: entry._id as Id<'announcements'>,
                       }).catch(() => undefined);
                     }}
+                    onPinToggle={canPin ? (entry) => {
+                      const toggle = entry.isPinned ? unpinAnnouncement : pinAnnouncement;
+                      void toggle({
+                        announcementId: entry._id as Id<'announcements'>,
+                      })
+                        .then(() => toast({ title: entry.isPinned ? 'Announcement unpinned' : 'Announcement pinned' }))
+                        .catch((error: unknown) =>
+                          toast({
+                            title: error instanceof Error ? error.message : 'Could not update pin',
+                            variant: 'destructive',
+                          }),
+                        );
+                    } : undefined}
                     footer={
                       announcement.status === 'PENDING_APPROVAL' && canApproveAnnouncements ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 p-2">
@@ -726,10 +868,75 @@ export default function AnnouncementsPage() {
                   />
                 );
               })}
-            </CardGroup>
+            </div>
             {canLoadMore ? <div className="flex justify-center"><Button variant="tertiary" disabled={feedStatus !== 'CanLoadMore'} onClick={() => loadMoreAnnouncements(30)}>{feedStatus === 'LoadingMore' ? 'Loading...' : 'Load more'}</Button></div> : null}
           </div>
         )}
+
+        <Collapsible open={pastOpen} onOpenChange={setPastOpen} className="mt-8">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left text-card-foreground transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Archive className="size-4 text-muted-foreground" aria-hidden />
+                Past Announcements
+                {pastFeedStatus !== 'LoadingFirstPage' ? (
+                  <Badge size="sm" color="gray">{pastAllAnnouncements.length}</Badge>
+                ) : null}
+              </span>
+              <ChevronDown
+                className={`size-4 text-muted-foreground transition-transform ${pastOpen ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            {pastFeedStatus === 'LoadingFirstPage' || expiredStatus === 'LoadingFirstPage' || archivedStatus === 'LoadingFirstPage' || rejectedStatus === 'LoadingFirstPage' || recentlyExpiredStatus === 'LoadingFirstPage' ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Loading past announcements…</p>
+            ) : filteredPastAnnouncements.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                No past announcements.
+                {canLoadMorePast ? (
+                  <div className="mt-3 flex justify-center"><Button variant="tertiary" disabled={!canLoadPastNow || isLoadingMorePast} onClick={() => {
+                    if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
+                    for (const stream of pastStatusPages) if (stream.status === 'CanLoadMore') stream.loadMore(20);
+                  }}>Load more past announcements</Button></div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredPastAnnouncements.map((announcement: any) => (
+                  <AnnouncementCard
+                    key={announcement._id}
+                    announcement={announcement}
+                    onBookmarkToggle={(entry) => {
+                      const toggle = entry.isBookmarked ? unbookmarkAnnouncement : bookmarkAnnouncement;
+                      void toggle({
+                        announcementId: entry._id as Id<'announcements'>,
+                      }).catch(() => undefined);
+                    }}
+                  />
+                ))}
+                {canLoadMorePast ? (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="tertiary"
+                      disabled={!canLoadPastNow || isLoadingMorePast}
+                      onClick={() => {
+                        if (pastFeedStatus === 'CanLoadMore') loadMorePastAnnouncements(20);
+                        for (const stream of pastStatusPages) if (stream.status === 'CanLoadMore') stream.loadMore(20);
+                      }}
+                    >
+                      {isLoadingMorePast ? 'Loading...' : 'Load more past announcements'}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </AppShell>
   );

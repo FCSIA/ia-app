@@ -1862,7 +1862,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className={cn("shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
+      <div className={cn("channel-thread-dock shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
@@ -1897,7 +1897,7 @@ export function ChannelWorkspace() {
         title: 'Thread',
         onClose: () => setSelectedThreadId(null),
       }}
-      contentClassName={cn("relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
+      contentClassName={cn("channel-chat-surface relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
       scrollOwner="content"
       channelSearch={{
         channelName: channel.name,

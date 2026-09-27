@@ -546,7 +546,7 @@ function AppShellMobileTabBar({
     <nav
       ref={tabBarRef}
       aria-label="Primary mobile navigation"
-      className={cn("app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card/95 px-1 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden", CARD_SURFACE_FOREGROUND)}
+      className={cn("app-mobile-tabbar fixed inset-x-0 bottom-0 z-40 grid border-t border-border/70 bg-card px-1 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden", CARD_SURFACE_FOREGROUND)}
       style={{
         gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
         transform: 'translateY(var(--app-mobile-tabbar-viewport-offset, 0px))',

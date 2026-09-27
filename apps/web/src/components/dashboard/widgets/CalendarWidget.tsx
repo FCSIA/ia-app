@@ -135,7 +135,7 @@ export function CalendarWidget() {
           <p className="text-sm font-semibold text-foreground">
             {format(selectedDay, 'EEEE, MMMM d')}
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-foreground/70">
             {selectedDayEvents.length === 0
               ? 'Nothing scheduled for this day.'
               : `${selectedDayEvents.length} calendar item${selectedDayEvents.length === 1 ? '' : 's'}`}
@@ -147,7 +147,7 @@ export function CalendarWidget() {
             {selectedDayEvents.slice(0, 3).map((entry) => (
               <div key={entry._id} className="py-3 first:pt-0 last:pb-0">
                 <p className="text-sm font-semibold text-foreground">{entry.title}</p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-foreground/70">
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="size-3.5" />
                     {format(new Date(entry.startAt), 'h:mm a')}
