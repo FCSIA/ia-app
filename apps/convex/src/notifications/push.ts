@@ -10,6 +10,7 @@ import {
   maxSubscriptionsPerDevice,
   subscriptionsReplacedOnDevice,
 } from "./_pushDevices";
+import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
 import { subscriptionsToRetire } from "./_subscriptionPruning";
 import {
   preferenceAllowsPush,
@@ -108,6 +109,23 @@ async function retireReplacedDeviceSubscriptions(
   }
 }
 
+/** Stop delivering to an endpoint for every account except the one now using it. */
+async function releaseEndpointFromOtherAccounts(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  endpoint: string,
+  now: number,
+) {
+  const rows = await ctx.db
+    .query("notificationPushSubscriptions")
+    .withIndex("by_endpoint", (q) => q.eq("endpoint", endpoint))
+    .take(maxAccountsPerPushTarget);
+
+  for (const row of rowsHeldByOtherAccounts(rows, userId)) {
+    await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
+  }
+}
+
 export const upsertSubscription = mutation({
   args: {
     subscription: pushSubscriptionValidator,
@@ -150,6 +168,7 @@ export const upsertSubscription = mutation({
       });
     }
 
+    await releaseEndpointFromOtherAccounts(ctx, user._id, args.subscription.endpoint, now);
     if (args.deviceId !== undefined) {
       await retireReplacedDeviceSubscriptions(
         ctx,

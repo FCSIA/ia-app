@@ -243,6 +243,18 @@ without having opted out. `unclaimedSubscriptions` counts enabled endpoints that
 no device has reported holding. Until every live device has launched once with
 this code, that includes working devices as well as dead endpoints.
 
+### Shared devices
+
+A web push endpoint or native push token identifies one browser or app install,
+so it delivers only for the account that registered it most recently. Registering
+it disables any other account's row for the same endpoint or token; otherwise
+signing a second account into a shared device kept delivering the first
+account's notifications there. Signing out on the web releases the browser's
+endpoint for that account while the session is still valid. The browser keeps
+its subscription for whoever signs in next. A session that merely expires keeps
+receiving push, since users who don't open the app for a week still expect
+notifications.
+
 The service worker is registered at app startup by `ServiceWorkerRegistrar`.
 This is also what makes the app installable on Android, since Chrome requires
 an active worker with a fetch handler before offering the install prompt.

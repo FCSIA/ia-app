@@ -18,6 +18,7 @@ import {
   preferenceAllowsPush,
   resolveNotificationPreference,
 } from "./deliveryPreference";
+import { maxAccountsPerPushTarget, rowsHeldByOtherAccounts } from "./_pushOwnership";
 
 const nativePlatformValidator = v.union(v.literal("ios"), v.literal("android"));
 
@@ -105,6 +106,14 @@ export const registerToken = mutation({
         ...patch,
         createdAt: now,
       });
+    }
+
+    const tokenRows = await ctx.db
+      .query("notificationNativePushTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .take(maxAccountsPerPushTarget);
+    for (const row of rowsHeldByOtherAccounts(tokenRows, user._id)) {
+      await ctx.db.patch(row._id, { enabled: false, updatedAt: now });
     }
 
     return { success: true };
