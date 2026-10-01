@@ -7,9 +7,6 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
-  Hash,
-  LockKeyhole,
-  Megaphone,
   Search,
   Settings2,
   UsersRound,
@@ -26,6 +23,7 @@ import {
   Txt,
 } from "@/components/ui";
 import { CreateEventSheet } from "@/features/calendar/create-event-sheet";
+import { channelVisibilityIcon } from "@/features/clubs/channel-visibility";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
@@ -519,12 +517,4 @@ function WorkspaceIconAction({
       <Icon size={19} color={color("foreground")} strokeWidth={2} />
     </PressableScale>
   );
-}
-
-function channelVisibilityIcon(
-  visibility: "PUBLIC" | "PRIVATE" | "MEMBER_READONLY",
-) {
-  if (visibility === "PRIVATE") return LockKeyhole;
-  if (visibility === "MEMBER_READONLY") return Megaphone;
-  return Hash;
 }
