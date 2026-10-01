@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { pickNavigationLoadingFact } from "@ia/fun-facts";
 import { Button, LoadingFact, TextField, Txt } from "@/components/ui";
@@ -30,16 +30,9 @@ export default function LoginScreen() {
 
   // After a sign-out in the same app run, the refetch Better Auth fires on
   // sign-in often never updates `useSession()`, so Convex never receives a
-  // token. Asking the session store directly picks the new cookie up.
-  const refetchSession = () => void session.refetch();
-
-  // Navigate only once Convex has picked up the new session. Replacing to the
-  // tabs earlier lets their auth guard see the stale signed-out state and
-  // bounce back here mid-transition, which crashes Fabric on Android. This
-  // still navigates if the session arrives after the timeout below.
-  useEffect(() => {
-    if (signedInAs && auth.isAuthenticated) router.replace("/dashboard" as never);
-  }, [auth.isAuthenticated, signedInAs]);
+  // token. Asking the session store directly picks the new cookie up. The
+  // store's `refetch` is stable across renders.
+  const refetchSession = session.refetch;
 
   useEffect(() => {
     if (!pickupAttempt || auth.isAuthenticated) return;
@@ -58,13 +51,13 @@ export default function LoginScreen() {
     if (!sessionSettledEmpty) return;
     if (sessionRetriesRef.current >= MAX_SESSION_REFETCHES) return;
     sessionRetriesRef.current += 1;
-    refetchSession();
-  }, [sessionSettledEmpty]);
+    void refetchSession();
+  }, [refetchSession, sessionSettledEmpty]);
 
   function awaitSessionPickup() {
     sessionRetriesRef.current = 0;
-    refetchSession();
-    // Stay in the loading state until the effect above navigates.
+    void refetchSession();
+    // Stay in the loading state until the redirect below takes over.
     setPickupAttempt((attempt) => attempt + 1);
   }
 
@@ -97,6 +90,12 @@ export default function LoginScreen() {
       Alert.alert("Unable to sign in", "Check your connection and try again.");
     }
   }
+
+  // Leave only once Convex has picked up the new session. Replacing to the
+  // tabs earlier lets their auth guard see the stale signed-out state and
+  // bounce back here mid-transition, which crashes Fabric on Android. This
+  // still redirects if the session arrives after the pickup timeout.
+  if (signedInAs && auth.isAuthenticated) return <Redirect href="/dashboard" />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }}>
