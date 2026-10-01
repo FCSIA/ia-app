@@ -932,6 +932,15 @@ export const schema = defineSchema({
     .index("by_uploadIntentId", ["uploadIntentId"])
     .index("by_uploaderId_and_createdAt", ["uploaderId", "createdAt"]),
 
+  // Tenor share pages resolved to their GIF media, so each pasted link is
+  // fetched once rather than by every viewer. Unresolvable links are retried
+  // after an hour.
+  chatGifLinkResolutions: defineTable({
+    url: v.string(),
+    mediaUrl: v.union(v.string(), v.null()),
+    resolvedAt: v.number(),
+  }).index("by_url", ["url"]),
+
   clubChannelMessageReactions: defineTable({
     messageId: v.id("clubChannelMessages"),
     userId: v.id("users"),

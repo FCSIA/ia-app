@@ -12,18 +12,38 @@ export function isGifAttachment(file: {
   );
 }
 
+/**
+ * GIF media CDNs that previews may load. Every viewer's device fetches a
+ * previewed GIF automatically, so an open list would let whoever posts a link
+ * log the IP address of everyone who reads it. Keep in sync with the web
+ * `img-src` policy in apps/web/next.config.ts.
+ */
+const GIF_MEDIA_HOST = /^(?:(?:media\d*|i)\.giphy\.com|(?:media\d*|c)\.tenor\.com)$/;
+
+/** URLs a message's "Copy GIF URL" action offers: previewed links, then uploads. */
+export function messageGifUrls(message: {
+  body: string;
+  bodyMarkdown?: string | null;
+  attachments?: ReadonlyArray<{
+    fileName: string;
+    fileUrl: string;
+    mimeType?: string | null;
+  }> | null;
+}) {
+  return [
+    ...extractChatGifLinks(message.bodyMarkdown || message.body).map(
+      (link) => link.url,
+    ),
+    ...(message.attachments ?? [])
+      .filter(isGifAttachment)
+      .map((attachment) => attachment.fileUrl),
+  ];
+}
+
 export function chatGifLink(value: string): ChatGifLink | null {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || url.port)
-      return null;
-    // Do not automatically contact local network addresses through message previews.
-    if (
-      !url.hostname.includes(".") ||
-      url.hostname.startsWith("[") ||
-      /^\d{1,3}(?:\.\d{1,3}){3}$/.test(url.hostname) ||
-      url.hostname.endsWith(".local")
-    )
       return null;
     if (url.hostname === "tenor.com" || url.hostname === "www.tenor.com") {
       if (
@@ -47,7 +67,8 @@ export function chatGifLink(value: string): ChatGifLink | null {
         mediaUrl: `https://media.giphy.com/media/${id}/giphy.gif`,
       };
     }
-    if (!/\.gif$/i.test(url.pathname)) return null;
+    if (!GIF_MEDIA_HOST.test(url.hostname) || !/\.gif$/i.test(url.pathname))
+      return null;
     // Tenor's /m/ endpoint serves an HTML viewer to browser requests.
     const viewerId = /^(?:media\d*|c)\.tenor\.com$/.test(url.hostname)
       ? url.pathname.match(/^\/m\/([a-zA-Z0-9_-]+)\//)?.[1]

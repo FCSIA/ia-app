@@ -3,8 +3,7 @@ import { AppState, View } from "react-native";
 import { Image } from "expo-image";
 import { useReducedMotion } from "react-native-reanimated";
 import { Pause, Play } from "lucide-react-native";
-import { IconButton, Txt, PressableScale, Sheet, ListRow, useToast } from "@/components/ui";
-import * as Clipboard from "expo-clipboard";
+import { IconButton, Txt } from "@/components/ui";
 import { useGifAutoplay } from "@/lib/gif-playback";
 import { useReduceMotion } from "@/lib/motion";
 import { spacing } from "@/lib/tokens";
@@ -22,6 +21,32 @@ export function ChatGifLinks({ text }: { text: string }) {
   );
 }
 
+/**
+ * Share links resolved this session. Remounting a message (scrolling, channel
+ * switches) reuses the result instead of asking the server again.
+ */
+const resolvedShareLinks = new Map<string, Promise<string | null>>();
+const MAX_RESOLVED_SHARE_LINKS = 200;
+
+function resolveShareLink(
+  resolve: (args: { url: string }) => Promise<string | null>,
+  url: string,
+) {
+  let pending = resolvedShareLinks.get(url);
+  if (!pending) {
+    pending = resolve({ url }).catch((error: unknown) => {
+      // Failures (rate limits, offline) are retried on the next mount.
+      resolvedShareLinks.delete(url);
+      throw error;
+    });
+    resolvedShareLinks.set(url, pending);
+    if (resolvedShareLinks.size > MAX_RESOLVED_SHARE_LINKS) {
+      resolvedShareLinks.delete(resolvedShareLinks.keys().next().value!);
+    }
+  }
+  return pending;
+}
+
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
   const resolve = useAction(api.uploads.files.resolveChatGifLink);
   const [resolved, setResolved] = useState<{
@@ -31,7 +56,7 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
   useEffect(() => {
     if (link.mediaUrl) return;
     let active = true;
-    void resolve({ url: link.url }).then(
+    void resolveShareLink(resolve, link.url).then(
       (media) => {
         if (active) setResolved({ url: link.url, media });
       },
@@ -49,44 +74,47 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
     <ChatGif
       key={media ?? link.url}
       src={media}
-      copyUrl={link.url}
       name="GIF"
       pending={!link.mediaUrl && resolved?.url !== link.url}
     />
   );
 }
 
+/**
+ * Long-pressing a GIF opens the message's own actions (which include Copy GIF
+ * URL), so the GIF never competes with the message for the gesture.
+ */
 export function ChatGif({
   src,
   name,
   pending = false,
-  copyUrl,
 }: {
   src: string | null;
   name: string;
   pending?: boolean;
-  copyUrl?: string;
 }) {
   const { autoplay } = useGifAutoplay();
-  const { showToast } = useToast();
-  const [menuOpen, setMenuOpen] = useState(false);
   const image = useRef<Image>(null);
   const reduceMotion = useReduceMotion();
   const initialReduceMotion = useReducedMotion();
   const [playing, setPlaying] = useState(autoplay && !initialReduceMotion);
   const [ready, setReady] = useState(false);
+  const readyRef = useRef(false);
   const [aspectRatio, setAspectRatio] = useState(1);
   const [failed, setFailed] = useState(false);
+  // True while playback is paused only because the app is in the background.
+  const pausedForBackground = useRef(false);
   const changePlayback = useCallback((next: boolean) => {
+    setPlaying(next);
+    // Before the first frame loads, the `autoplay` prop alone decides.
+    if (!readyRef.current) return;
     const operation = next
       ? image.current?.startAnimating()
       : image.current?.stopAnimating();
-    setPlaying(next);
-    void operation?.catch(() => {
-      setPlaying(false);
-      setFailed(true);
-    });
+    void operation?.catch(() => setPlaying(false));
   }, []);
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
   useEffect(() => {
     if (reduceMotion) changePlayback(false);
   }, [reduceMotion, changePlayback]);
@@ -95,16 +123,21 @@ export function ChatGif({
   }, [autoplay, initialReduceMotion, changePlayback]);
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") changePlayback(false);
+      if (state !== "active") {
+        if (playingRef.current) {
+          pausedForBackground.current = true;
+          changePlayback(false);
+        }
+      } else if (pausedForBackground.current) {
+        pausedForBackground.current = false;
+        changePlayback(true);
+      }
     });
     return () => subscription.remove();
   }, [changePlayback]);
   return (
-    <>
-    <PressableScale
+    <View
       accessibilityLabel={name}
-      haptic={false}
-      onLongPress={(event) => { event.stopPropagation(); setMenuOpen(true); }}
       style={{
         width: Math.min(440, 220 * aspectRatio),
         maxWidth: "100%",
@@ -122,6 +155,7 @@ export function ChatGif({
             if (source.width > 0 && source.height > 0) {
               setAspectRatio(source.width / source.height);
             }
+            readyRef.current = true;
             setReady(true);
           }}
           onError={() => setFailed(true)}
@@ -149,19 +183,13 @@ export function ChatGif({
             icon={playing ? Pause : Play}
             label={`${playing ? "Pause" : "Play"} ${name}`}
             disabled={!ready}
-            onPress={() => changePlayback(!playing)}
+            onPress={() => {
+              pausedForBackground.current = false;
+              changePlayback(!playing);
+            }}
           />
         ) : null}
       </View>
-    </PressableScale>
-    <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Animation">
-      <ListRow title="Copy GIF URL" onPress={() => {
-        void Clipboard.setStringAsync(copyUrl || src || '').then(() => {
-          setMenuOpen(false);
-          showToast({ title: 'URL copied', tone: 'success' });
-        }).catch(() => { showToast({ title: 'Could not copy URL', tone: 'warning' }); });
-      }} />
-    </Sheet>
-    </>
+    </View>
   );
 }

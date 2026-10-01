@@ -1,7 +1,9 @@
 import { View } from "react-native";
 import { format } from "date-fns";
+import * as Clipboard from "expo-clipboard";
 import {
   Flag,
+  Link2,
   MessageCircle,
   Pencil,
   Pin,
@@ -9,7 +11,8 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react-native";
-import { Avatar, PressableScale, Sheet, Txt } from "@/components/ui";
+import { Avatar, PressableScale, Sheet, Txt, useToast } from "@/components/ui";
+import { messageGifUrls } from "~/apps/shared/chat/gifs";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import {
@@ -54,7 +57,18 @@ export function MessageActionsSheet({
   onToggleReaction,
 }: MessageActionsSheetProps) {
   const { color } = useTheme();
+  const { showToast } = useToast();
   const mine = !!message && message.authorId === currentUserId;
+  const gifUrls = message ? messageGifUrls(message) : [];
+  const copyGifUrl = (url: string) => {
+    void Clipboard.setStringAsync(url).then(
+      () => {
+        onClose();
+        showToast({ title: "GIF URL copied", tone: "success" });
+      },
+      () => showToast({ title: "Could not copy the GIF URL", tone: "warning" }),
+    );
+  };
   const canPinMessage = mine || canPinMessages;
   const canDeleteMessage = mine || canModerateMessages;
   const disabled =
@@ -194,6 +208,15 @@ export function MessageActionsSheet({
                 onPress={() => onTogglePin(message)}
               />
             ) : null}
+            {gifUrls.map((url, index) => (
+              <ActionRow
+                key={`${index}:${url}`}
+                icon={Link2}
+                label={gifUrls.length === 1 ? "Copy GIF URL" : `Copy GIF ${index + 1} URL`}
+                disabled={false}
+                onPress={() => copyGifUrl(url)}
+              />
+            ))}
             <ActionRow
               icon={Flag}
               label="Report message"

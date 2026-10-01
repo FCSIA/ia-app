@@ -18,7 +18,7 @@ describe("chat GIFs", () => {
     expect(hideChatGifLinks(`Nice [reaction](${url}) today`)).toBe("Nice  today");
     expect(hideChatGifLinks(`${url}.`)).toBe(".");
     expect(hideChatGifLinks(`\`${url}\` https://example.com`)).toBe(`\`${url}\` https://example.com`);
-    const urls = Array.from({ length: 6 }, (_, index) => `https://example.com/${index}.gif`);
+    const urls = Array.from({ length: 6 }, (_, index) => `https://media.tenor.com/${index}/tenor.gif`);
     expect(hideChatGifLinks(urls.join("\n"))).toBe(urls[5]);
   });
   test("previews rich-text GIF URLs with escaped underscores while excluding code", () => {
@@ -57,9 +57,8 @@ describe("chat GIFs", () => {
       )
       .mockResolvedValueOnce(new Response("ok", { status: 200 }));
     vi.stubGlobal("fetch", request);
-    expect((await fetchTenorGifPage("https://tenor.com/abc.gif"))?.status).toBe(
-      200,
-    );
+    const page = await fetchTenorGifPage("https://tenor.com/abc.gif");
+    expect(page instanceof Response ? page.status : page).toBe(200);
     expect(request.mock.calls[1][0]).toBe(
       "https://tenor.com/view/hello-gif-123",
     );
@@ -98,8 +97,8 @@ describe("chat GIFs", () => {
   });
   test("recognizes direct media and GIPHY/Tenor share URLs", () => {
     expect(
-      chatGifLink("https://example.com/dance.GIF?token=abc")?.mediaUrl,
-    ).toContain("dance.GIF?token=abc");
+      chatGifLink("https://media2.giphy.com/media/AbC123/dance.GIF?cid=abc")?.mediaUrl,
+    ).toContain("dance.GIF?cid=abc");
     expect(
       chatGifLink("https://giphy.com/gifs/hello-world-AbC123")?.mediaUrl,
     ).toBe("https://media.giphy.com/media/AbC123/giphy.gif");
@@ -119,6 +118,9 @@ describe("chat GIFs", () => {
       "https://127.0.0.1/a.gif",
       "https://10.1.2.3/a.gif",
       "https://u:p@example.com/a.gif",
+      "https://example.com/a.gif",
+      "https://router.127.0.0.1.nip.io/a.gif",
+      "https://media.tenor.com.evil.test/a.gif",
       "https://tenor.com:444/view/a-123",
       "https://tenor.com.evil.test/view/hello-123",
       "https://example.com/page.html",
@@ -127,18 +129,18 @@ describe("chat GIFs", () => {
   });
   test("deduplicates previews, excludes code, and preserves surrounding prose", () => {
     const text =
-      "Look: https://example.com/a.gif. [again](https://example.com/a.gif) `https://example.com/code.gif`\n```\nhttps://example.com/fenced.gif\n```";
+      "Look: https://media.tenor.com/a/tenor.gif. [again](https://media.tenor.com/a/tenor.gif) `https://media.tenor.com/code/tenor.gif`\n```\nhttps://media.tenor.com/fenced/tenor.gif\n```";
     expect(extractChatGifLinks(text)).toEqual([
       {
-        url: "https://example.com/a.gif",
-        mediaUrl: "https://example.com/a.gif",
+        url: "https://media.tenor.com/a/tenor.gif",
+        mediaUrl: "https://media.tenor.com/a/tenor.gif",
       },
     ]);
     expect(
       extractChatGifLinks(
         Array.from(
           { length: 10 },
-          (_, i) => `https://example.com/${i}.gif`,
+          (_, i) => `https://media.giphy.com/media/${i}/giphy.gif`,
         ).join(" "),
       ),
     ).toHaveLength(5);

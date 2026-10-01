@@ -16,6 +16,7 @@ import {
   BarChart3,
   FileText,
   History,
+  Link2,
   MessageSquareText,
   MoreHorizontal,
   Pencil,
@@ -145,7 +146,8 @@ import {
 import { ChannelNotificationSettings } from '@/components/notifications/channel-notification-settings';
 import { uploadFileToConvex } from '@/lib/convex-upload';
 import { ChatGif, ChatGifLinks } from '@/components/clubs/chat-gif';
-import { isGifAttachment } from '~/apps/shared/chat/gifs';
+import { isGifAttachment, messageGifUrls } from '~/apps/shared/chat/gifs';
+import { copyShareUrl } from '@/lib/share';
 import { useCurrentUser } from '@/lib/auth';
 import { filterBySearchQuery, normalizeSearchQuery } from '@/lib/search';
 import { cn } from '@/lib/utils';
@@ -856,6 +858,15 @@ function MessageRow({
   groupedWithPrevious?: boolean;
 }) {
   const isTouchPrimary = useTouchPrimary();
+  const { toast } = useToast();
+  // Previewed GIF links and GIF uploads, copied from the message's own menu.
+  const gifUrls = message.isDeleted ? [] : messageGifUrls(message);
+  const copyGifUrl = (url: string) => {
+    void copyShareUrl(url).then(
+      () => toast({ title: 'GIF URL copied' }),
+      () => toast({ title: 'Could not copy the GIF URL', variant: 'destructive' }),
+    );
+  };
   // Thread replies are always compact; on touch-primary devices every row
   // uses the compact rhythm so more of the conversation fits above the
   // keyboard. Type sizes stay untouched — the win is spacing, not legibility.
@@ -1311,6 +1322,28 @@ function MessageRow({
               {message.isPinned ? <PinOff /> : <Pin />}
               {message.isPinned ? 'Unpin' : 'Pin'}
             </ContextMenuItem>
+          ) : null}
+          {gifUrls.length === 1 ? (
+            <ContextMenuItem onSelect={() => copyGifUrl(gifUrls[0]!)}>
+              <Link2 />
+              Copy GIF URL
+            </ContextMenuItem>
+          ) : gifUrls.length > 1 ? (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                <Link2 />
+                Copy GIF URL
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-36">
+                <ContextMenuGroup>
+                  {gifUrls.map((url, index) => (
+                    <ContextMenuItem key={`${index}:${url}`} onSelect={() => copyGifUrl(url)}>
+                      GIF {index + 1}
+                    </ContextMenuItem>
+                  ))}
+                </ContextMenuGroup>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
           ) : null}
         </ContextMenuGroup>
         {isAuthor || canModerateMessages ? <ContextMenuSeparator /> : null}

@@ -5,10 +5,7 @@ import Image from "next/image";
 import { useReducedMotion } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem } from "@/components/ui/context-menu";
-import { useToast } from "@/hooks/use-toast";
 import { useGifAutoplay } from "@/hooks/use-gif-autoplay";
-import { copyShareUrl } from "@/lib/share";
 import { useAction } from "@/lib/convex-react";
 import { api } from "~/apps/convex/src/_generated/api";
 import { extractChatGifLinks, type ChatGifLink } from "~/apps/shared/chat/gifs";
@@ -23,6 +20,32 @@ export function ChatGifLinks({ text }: { text: string }) {
   );
 }
 
+/**
+ * Share links resolved this session. Remounting a message (scrolling, channel
+ * switches) reuses the result instead of asking the server again.
+ */
+const resolvedShareLinks = new Map<string, Promise<string | null>>();
+const MAX_RESOLVED_SHARE_LINKS = 200;
+
+function resolveShareLink(
+  resolve: (args: { url: string }) => Promise<string | null>,
+  url: string,
+) {
+  let pending = resolvedShareLinks.get(url);
+  if (!pending) {
+    pending = resolve({ url }).catch((error: unknown) => {
+      // Failures (rate limits, offline) are retried on the next mount.
+      resolvedShareLinks.delete(url);
+      throw error;
+    });
+    resolvedShareLinks.set(url, pending);
+    if (resolvedShareLinks.size > MAX_RESOLVED_SHARE_LINKS) {
+      resolvedShareLinks.delete(resolvedShareLinks.keys().next().value!);
+    }
+  }
+  return pending;
+}
+
 function LinkedChatGif({ link }: { link: ChatGifLink }) {
   const resolve = useAction(api.uploads.files.resolveChatGifLink);
   const [resolved, setResolved] = useState<{
@@ -32,7 +55,7 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
   useEffect(() => {
     if (link.mediaUrl) return;
     let active = true;
-    void resolve({ url: link.url }).then(
+    void resolveShareLink(resolve, link.url).then(
       (media) => {
         if (active) setResolved({ url: link.url, media });
       },
@@ -50,26 +73,26 @@ function LinkedChatGif({ link }: { link: ChatGifLink }) {
     <ChatGif
       key={media ?? link.url}
       src={media}
-      copyUrl={link.url}
       name="GIF"
       pending={!link.mediaUrl && resolved?.url !== link.url}
     />
   );
 }
 
-/** GIFs autoplay unless reduced motion is enabled; the canvas supports pausing. */
+/**
+ * GIFs autoplay unless reduced motion is enabled; the canvas supports pausing.
+ * Copying a GIF's URL lives in the message's own context menu, so a GIF never
+ * opens a second menu over the message actions.
+ */
 export function ChatGif({
   src,
   name,
   pending = false,
-  copyUrl,
 }: {
   src: string | null;
   name: string;
   pending?: boolean;
-  copyUrl?: string;
 }) {
-  const { toast } = useToast();
   const { autoplay } = useGifAutoplay();
   const canvas = useRef<HTMLCanvasElement>(null);
   const image = useRef<HTMLImageElement>(null);
@@ -98,8 +121,6 @@ export function ChatGif({
   }, [reduceMotion]);
   useEffect(() => { setPlaying(null); }, [autoplay]);
   return (
-    <ContextMenu>
-    <ContextMenuTrigger asChild>
     <div className="relative my-2 w-fit max-w-full">
       {src && !failed ? (
         <div className="max-w-full">
@@ -157,14 +178,5 @@ export function ChatGif({
         </Button>
       ) : null}
     </div>
-    </ContextMenuTrigger>
-    <ContextMenuContent>
-      <ContextMenuItem disabled={!(copyUrl || src)} onSelect={() => {
-        void copyShareUrl(copyUrl || src || '').then(() => {
-          toast({ title: 'URL copied' });
-        }).catch(() => { toast({ title: 'Could not copy URL', variant: 'destructive' }); });
-      }}>Copy GIF URL</ContextMenuItem>
-    </ContextMenuContent>
-    </ContextMenu>
   );
 }
