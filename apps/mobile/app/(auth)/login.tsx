@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { pickNavigationLoadingFact } from "@ia/fun-facts";
 import { Button, LoadingFact, TextField, Txt } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
+import { useConvexAuth } from "@/lib/convex-react";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { iaOrbitForTheme } from "@/components/ui/ia-orbit";
+
+const SESSION_PICKUP_TIMEOUT_MS = 10_000;
+const MAX_SESSION_REFETCHES = 3;
 
 export default function LoginScreen() {
   const { color, name } = useTheme();
@@ -15,28 +19,83 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingFact, setLoadingFact] = useState(pickNavigationLoadingFact);
+  // The school ID whose sign-in the server accepted, and a counter that
+  // restarts the wait each time this screen asks Convex to pick it up.
+  const [signedInAs, setSignedInAs] = useState<string | null>(null);
+  const [pickupAttempt, setPickupAttempt] = useState(0);
+  const auth = useConvexAuth();
+  const session = authClient.useSession();
+  const sessionRetriesRef = useRef(0);
   const canSubmit = !!uniqueId.trim() && !!password;
+
+  // After a sign-out in the same app run, the refetch Better Auth fires on
+  // sign-in often never updates `useSession()`, so Convex never receives a
+  // token. Asking the session store directly picks the new cookie up. The
+  // store's `refetch` is stable across renders.
+  const refetchSession = session.refetch;
+
+  useEffect(() => {
+    if (!pickupAttempt || auth.isAuthenticated) return;
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      Alert.alert("Unable to sign in", "Your account didn’t finish loading. Try again.");
+    }, SESSION_PICKUP_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [auth.isAuthenticated, pickupAttempt]);
+
+  // If a refetch still settles without a session, ask again a few times
+  // before the timeout above gives up.
+  const sessionSettledEmpty =
+    !!signedInAs && !session.isPending && !session.isRefetching && !session.data;
+  useEffect(() => {
+    if (!sessionSettledEmpty) return;
+    if (sessionRetriesRef.current >= MAX_SESSION_REFETCHES) return;
+    sessionRetriesRef.current += 1;
+    void refetchSession();
+  }, [refetchSession, sessionSettledEmpty]);
+
+  function awaitSessionPickup() {
+    sessionRetriesRef.current = 0;
+    void refetchSession();
+    // Stay in the loading state until the redirect below takes over.
+    setPickupAttempt((attempt) => attempt + 1);
+  }
 
   async function signIn() {
     if (!canSubmit || loading) return;
+    const username = uniqueId.trim().toUpperCase();
     setLoadingFact(pickNavigationLoadingFact());
     setLoading(true);
+    // The server already accepted this account and only the pickup timed out:
+    // wait for that session again instead of creating a second one.
+    if (signedInAs === username) {
+      awaitSessionPickup();
+      return;
+    }
     try {
       const result = await authClient.signIn.username({
-        username: uniqueId.trim().toUpperCase(),
+        username,
         password,
       } as any);
       if (result.error) {
+        setLoading(false);
         Alert.alert("Unable to sign in", result.error.message ?? "Check your ID and password.");
         return;
       }
-      router.replace("/dashboard" as never);
+      // The new session cookie is stored once signIn resolves.
+      setSignedInAs(username);
+      awaitSessionPickup();
     } catch {
-      Alert.alert("Unable to sign in", "Check your connection and try again.");
-    } finally {
       setLoading(false);
+      Alert.alert("Unable to sign in", "Check your connection and try again.");
     }
   }
+
+  // Leave only once Convex has picked up the new session. Replacing to the
+  // tabs earlier lets their auth guard see the stale signed-out state and
+  // bounce back here mid-transition, which crashes Fabric on Android. This
+  // still redirects if the session arrives after the pickup timeout.
+  if (signedInAs && auth.isAuthenticated) return <Redirect href="/dashboard" />;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: color("background") }}>

@@ -403,8 +403,11 @@
 
 ### Verification (latest)
 
+- Chat read receipts: shared read-boundary selection excludes optimistic
+  message IDs, preventing `markRead` argument validation failures on both
+  clients. Saved reply boundaries still advance receipts.
 - Issue #126 GIF support on `codex/chat-gif-support`: uploaded GIFs and pasted
-  direct HTTPS/GIPHY/Tenor links autoplay, with a compact corner play/pause control on
+  GIPHY/Tenor links (previews load only from their media CDNs) autoplay, with a compact corner play/pause control on
   web and mobile. The approved picker now searches a fixed catalog of nine
   existing online Tenor reaction GIFs; it contains no generated media or open
   provider search. Selection appends a media link to the draft. Open GIF controls
@@ -423,8 +426,8 @@
   QA resumed after the user reopened localhost: library display, search, selection,
   and preserving existing draft text pass. Reduced-motion users start paused;
   normal playback is automatic. Filename/status chrome and previewed URL text are
-  removed. Right-click/long-press menus copy the original URL; web clipboard QA
-  passes. Appearance includes a persisted browser/device autoplay preference;
+  removed. Copy GIF URL lives in each message's own context menu (web) and actions
+  sheet (mobile), so GIFs never open a second menu; web clipboard QA passes. Appearance includes a persisted browser/device autoplay preference;
   web persistence and immediate updates across open chats pass. The regression
   suites pass 20 tests, and React Doctor has no new findings. Mobile-width playback
   controls pass; native device, theme, and reduced-motion visual review remain

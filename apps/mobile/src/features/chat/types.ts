@@ -99,6 +99,12 @@ export type ClubMentionContext = {
     slug: string;
     name: string;
   }>;
+  groups: Array<{
+    token: string;
+    label: string;
+    detail: string;
+    kind: "role" | "unit";
+  }>;
 };
 
 export type QuickReaction = ClubChannelReaction;
