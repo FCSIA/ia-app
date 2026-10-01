@@ -62,10 +62,9 @@ const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
 // Reaches this machine without being one of its addresses.
 const ANDROID_EMULATOR_HOST = '10.0.2.2';
 const NO_LAN_MESSAGE = [
-  'This machine has no LAN IPv4 address other devices can reach. An IPv6-only',
-  'network such as a phone hotspot gives none. Join the same Wi-Fi as the device,',
-  'use the iOS Simulator (loopback) or Android emulator (--android), or use a named',
-  'cloud dev deployment (docs/reference/environment.md).',
+  'No IPv4 address a phone can reach. iPhone hotspots give the Mac none.',
+  'Fix: install Tailscale on the Mac and phone, or share a Wi-Fi network.',
+  'Simulators work without either: `pnpm dev`.',
 ].join('\n');
 
 /** This machine's IPv4 addresses that other devices on its network can reach. */
@@ -79,12 +78,16 @@ function lanIPv4Addresses() {
     .filter((address) => !address.startsWith('169.254.') && !/^192\.0\.0\.[0-7]$/.test(address));
 }
 
-/** The address a phone on the same network should use, private ranges first. */
+/**
+ * The address a phone should use: a shared network's private address first,
+ * then Tailscale's (100.64.0.0/10), which reaches the phone on any network.
+ */
 function preferredLanIPv4() {
   const addresses = lanIPv4Addresses();
   const isPrivate = (address) =>
     /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(address);
-  return addresses.find(isPrivate) ?? addresses[0] ?? null;
+  const isTailscale = (address) => /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(address);
+  return addresses.find(isPrivate) ?? addresses.find(isTailscale) ?? null;
 }
 
 const hostOf = (value) => {
@@ -173,7 +176,7 @@ console.log(`Synced Convex env to apps/mobile/.env.local`);
 console.log(`  EXPO_PUBLIC_CONVEX_URL=${clientUrl(convexUrl, mobileHost)}`);
 console.log(`  EXPO_PUBLIC_CONVEX_SITE_URL=${clientUrl(convexSiteUrl, mobileHost)}`);
 if (!mobileHost && !webHost && /127\.0\.0\.1|localhost/.test(convexUrl)) {
-  console.log('Tip: run `pnpm sync:convex-env -- --android` for Android emulator, or `pnpm sync:convex-env -- --host auto` for a physical-device client on this Wi-Fi.');
+  console.log('Tip: `pnpm dev:phone` points a physical phone at this machine.');
 }
 
 if (mobileHost) {

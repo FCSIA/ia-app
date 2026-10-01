@@ -69,45 +69,36 @@ Convex local; the repo shell provides Node 24.
 
 ### Physical-device clients
 
-A loopback URL such as `http://127.0.0.1:3210` points back to the phone when it
-is used by a mobile browser, installed web app, or native client. For a device
-on the same Wi-Fi, rewrite only the public client URLs to the development
-machine's LAN address, then restart the web development server:
-
 ```bash
-pnpm sync:convex-env -- --host auto
-pnpm dev
+pnpm dev:phone
 ```
 
-`--host auto` picks this machine's current LAN IPv4 address (pass
-`--host <LAN IPv4>` to choose one). The server-side Convex URLs remain on
-loopback. The rewritten public URLs are used by the web PWA, the Expo client,
-and the desktop browser alike, so a phone and the desktop can test at the same
-time against one backend. An HTTPS frontend tunnel cannot connect to a local
-HTTP Convex backend because browsers block mixed content; use the named cloud
-development deployment flow below for HTTPS tunnels.
+Points the web and mobile clients at this machine's network address, then
+starts `pnpm dev`. The phone and the desktop browser can test at the same time.
 
-The selected LAN host is retained for later environment syncs. When the machine
-changes networks, `pnpm dev` notices that the saved address is no longer its
-own and re-points the clients to the current LAN address, or to loopback when
-there is none, instead of timing out at the old address (a
-`ConnectTimeoutError` to port `3211`). For desktop-only work, reset the public
-URLs to loopback explicitly:
+| Setup | Works |
+| --- | --- |
+| Mac and phone on the same Wi-Fi | Yes |
+| Mac on the phone's hotspot | Needs Tailscale |
+| Phone on cellular, Mac elsewhere | Needs Tailscale |
+| iOS Simulator | Yes, with plain `pnpm dev` |
+| Android emulator | Run `pnpm sync:convex-env -- --android`, then `pnpm dev` |
+
+Tailscale: install it on the Mac and the phone and sign both in to the same
+account. `pnpm dev:phone` then uses the Mac's Tailscale address when there is
+no shared Wi-Fi.
+
+After a network change, `pnpm dev` re-points the clients automatically. To go
+back to desktop-only:
 
 ```bash
 pnpm sync:convex-env -- --host 127.0.0.1
-pnpm dev
 ```
 
-Some networks give the machine no address other devices can reach. A phone
-hotspot on an IPv6-only carrier network, for example, leaves macOS with only
-`192.0.0.2`, and `--host auto` then refuses. On such a network, test the native
-app in the iOS Simulator (loopback works for it and the desktop browser
-together) or the Android emulator (`--android`), join a shared Wi-Fi, or use a
-named cloud dev deployment.
+HTTPS tunnels need a named cloud dev deployment (below).
 
-Both cases require the local Convex watcher started by `pnpm dev`; a connection
-refused or timeout on local ports can also mean that watcher is not running.
+A refused or timed-out connection on ports 3210/3211 usually means `pnpm dev`
+is not running.
 
 For a feature that needs a public URL, off-LAN mobile-device access, webhooks,
 an HTTPS tunnel, or a shared dashboard, create a named cloud dev deployment
