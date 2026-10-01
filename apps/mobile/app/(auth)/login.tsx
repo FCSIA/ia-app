@@ -13,49 +13,47 @@ import { iaOrbitForTheme } from "@/components/ui/ia-orbit";
 const SESSION_PICKUP_TIMEOUT_MS = 10_000;
 const MAX_SESSION_REFETCHES = 3;
 
-/**
- * Refetches through the session atom itself. After a sign-out in the same app
- * run, the `$sessionSignal` refetch that Better Auth fires on sign-in often
- * never updates `useSession()`, so Convex never receives a token.
- */
-function refetchSession() {
-  const state = authClient.$store.atoms.session.get();
-  void state.refetch();
-}
-
 export default function LoginScreen() {
   const { color, name } = useTheme();
   const [uniqueId, setUniqueId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingFact, setLoadingFact] = useState(pickNavigationLoadingFact);
-  const [signedIn, setSignedIn] = useState(false);
+  // The school ID whose sign-in the server accepted, and a counter that
+  // restarts the wait each time this screen asks Convex to pick it up.
+  const [signedInAs, setSignedInAs] = useState<string | null>(null);
+  const [pickupAttempt, setPickupAttempt] = useState(0);
   const auth = useConvexAuth();
   const session = authClient.useSession();
   const sessionRetriesRef = useRef(0);
   const canSubmit = !!uniqueId.trim() && !!password;
 
+  // After a sign-out in the same app run, the refetch Better Auth fires on
+  // sign-in often never updates `useSession()`, so Convex never receives a
+  // token. Asking the session store directly picks the new cookie up.
+  const refetchSession = () => void session.refetch();
+
   // Navigate only once Convex has picked up the new session. Replacing to the
   // tabs earlier lets their auth guard see the stale signed-out state and
-  // bounce back here mid-transition, which crashes Fabric on Android.
+  // bounce back here mid-transition, which crashes Fabric on Android. This
+  // still navigates if the session arrives after the timeout below.
   useEffect(() => {
-    if (!signedIn) return;
-    if (auth.isAuthenticated) {
-      router.replace("/dashboard" as never);
-      return;
-    }
+    if (signedInAs && auth.isAuthenticated) router.replace("/dashboard" as never);
+  }, [auth.isAuthenticated, signedInAs]);
+
+  useEffect(() => {
+    if (!pickupAttempt || auth.isAuthenticated) return;
     const timeout = setTimeout(() => {
-      setSignedIn(false);
       setLoading(false);
       Alert.alert("Unable to sign in", "Your account didn’t finish loading. Try again.");
     }, SESSION_PICKUP_TIMEOUT_MS);
     return () => clearTimeout(timeout);
-  }, [auth.isAuthenticated, signedIn]);
+  }, [auth.isAuthenticated, pickupAttempt]);
 
   // If a refetch still settles without a session, ask again a few times
   // before the timeout above gives up.
   const sessionSettledEmpty =
-    signedIn && !session.isPending && !session.isRefetching && !session.data;
+    !!signedInAs && !session.isPending && !session.isRefetching && !session.data;
   useEffect(() => {
     if (!sessionSettledEmpty) return;
     if (sessionRetriesRef.current >= MAX_SESSION_REFETCHES) return;
@@ -63,13 +61,27 @@ export default function LoginScreen() {
     refetchSession();
   }, [sessionSettledEmpty]);
 
+  function awaitSessionPickup() {
+    sessionRetriesRef.current = 0;
+    refetchSession();
+    // Stay in the loading state until the effect above navigates.
+    setPickupAttempt((attempt) => attempt + 1);
+  }
+
   async function signIn() {
     if (!canSubmit || loading) return;
+    const username = uniqueId.trim().toUpperCase();
     setLoadingFact(pickNavigationLoadingFact());
     setLoading(true);
+    // The server already accepted this account and only the pickup timed out:
+    // wait for that session again instead of creating a second one.
+    if (signedInAs === username) {
+      awaitSessionPickup();
+      return;
+    }
     try {
       const result = await authClient.signIn.username({
-        username: uniqueId.trim().toUpperCase(),
+        username,
         password,
       } as any);
       if (result.error) {
@@ -78,10 +90,8 @@ export default function LoginScreen() {
         return;
       }
       // The new session cookie is stored once signIn resolves.
-      sessionRetriesRef.current = 0;
-      refetchSession();
-      // Stay in the loading state until the effect above navigates.
-      setSignedIn(true);
+      setSignedInAs(username);
+      awaitSessionPickup();
     } catch {
       setLoading(false);
       Alert.alert("Unable to sign in", "Check your connection and try again.");

@@ -1,19 +1,16 @@
+import { useState } from "react";
 import { View } from "react-native";
-import {
-  Check,
-  Hash,
-  LockKeyhole,
-  Megaphone,
-  type LucideIcon,
-} from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import { PressableScale, Sheet, Skeleton, Txt } from "@/components/ui";
+import {
+  channelVisibilityIcon,
+  type ChannelVisibility,
+} from "@/features/clubs/channel-visibility";
 import { useQuery } from "@/lib/convex-react";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
 import type { Id } from "~/apps/convex/src/_generated/dataModel";
-
-type ChannelVisibility = "PUBLIC" | "PRIVATE" | "MEMBER_READONLY";
 
 type SwitcherChannel = {
   _id: string;
@@ -38,9 +35,14 @@ export function ChannelSwitcherSheet({
 }: ChannelSwitcherSheetProps) {
   // Same source and order as the club screen's channel list. The club screen
   // usually sits beneath this route, so the subscription is already warm.
+  // When it isn't (a chat opened from a notification), the query starts on
+  // first open and stays subscribed until the chat closes, so reopening the
+  // picker never repeats that load.
+  const [requested, setRequested] = useState(open);
+  if (open && !requested) setRequested(true);
   const club = useQuery(
     api.clubs.detail.get,
-    open ? { clubId: clubId as Id<"clubs"> } : "skip",
+    requested ? { clubId: clubId as Id<"clubs"> } : "skip",
   );
   const channels =
     club === undefined
@@ -131,10 +133,4 @@ function ChannelRow({
       ) : null}
     </PressableScale>
   );
-}
-
-function channelVisibilityIcon(visibility: ChannelVisibility): LucideIcon {
-  if (visibility === "PRIVATE") return LockKeyhole;
-  if (visibility === "MEMBER_READONLY") return Megaphone;
-  return Hash;
 }
