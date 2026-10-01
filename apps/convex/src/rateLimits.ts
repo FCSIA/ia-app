@@ -61,4 +61,17 @@ export const contentRateLimiter = new RateLimiter(components.rateLimiter, {
     period: MINUTE,
     capacity: 5,
   },
+  // Whiteboard clients flush completed strokes and moves in small batches.
+  whiteboardSavesByUser: {
+    kind: "token bucket",
+    rate: 120,
+    period: MINUTE,
+    capacity: 40,
+  },
+  whiteboardManagementByUser: {
+    kind: "token bucket",
+    rate: 30,
+    period: 10 * MINUTE,
+    capacity: 10,
+  },
 });

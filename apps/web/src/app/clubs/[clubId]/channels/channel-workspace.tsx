@@ -1,7 +1,7 @@
 'use client';
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format, isSameDay, isSameYear } from 'date-fns';
 
 function formatChatTimestamp(value: number | string | Date) {
@@ -67,6 +67,8 @@ import {
 } from '@/components/ui/context-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
+import { TabsSubtle, TabsSubtleItem } from '@/components/ui/tabs-subtle';
+import { ChannelWhiteboard } from '@/components/clubs/whiteboard/channel-whiteboard';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import type { AppRole } from '~/apps/convex/lib/roles';
@@ -1333,6 +1335,19 @@ export function ChannelWorkspace() {
   const isMobile = useIsMobile();
   const isTouchPrimary = useTouchPrimary();
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // The view lives in the URL so audit links and shares can open the board.
+  const whiteboardRequested = searchParams?.get('view') === 'whiteboard';
+  const setChannelView = (view: 'chat' | 'whiteboard') => {
+    const next = new URLSearchParams(searchParams?.toString());
+    next.delete('board');
+    if (view === 'whiteboard') next.set('view', 'whiteboard');
+    else next.delete('view');
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : (pathname ?? ''), { scroll: false });
+  };
 
   const [rootComposerResetKey, setRootComposerResetKey] = useState(0);
   const [replyComposerResetKey, setReplyComposerResetKey] = useState(0);
@@ -1376,6 +1391,9 @@ export function ChannelWorkspace() {
     clubId,
     channelId,
   });
+  // Clubs can turn whiteboards off; a stale whiteboard link then shows chat.
+  const whiteboardsEnabled = conversationContext?.whiteboardsEnabled ?? false;
+  const showWhiteboard = whiteboardRequested && whiteboardsEnabled;
   const mentionContext = useQuery(
     api.clubs.channels.getMentionContext,
     mentionContextRequested ? { clubId, channelId } : 'skip',
@@ -1470,7 +1488,9 @@ export function ChannelWorkspace() {
   }, [channelId]);
 
   useEffect(() => {
-    if (!latestVisibleActivity || !unreadBoundary) return;
+    // Messages only count as read while the chat is on screen, not while the
+    // channel's Whiteboards tab covers it.
+    if (!latestVisibleActivity || !unreadBoundary || showWhiteboard) return;
 
     const markVisibleActivityRead = () => {
       if (document.visibilityState !== 'visible') return;
@@ -1503,7 +1523,7 @@ export function ChannelWorkspace() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [channelId, latestVisibleActivity, markChannelRead, unreadBoundary]);
+  }, [channelId, latestVisibleActivity, markChannelRead, showWhiteboard, unreadBoundary]);
 
   const submitMessage = async ({
     body,
@@ -1844,7 +1864,7 @@ export function ChannelWorkspace() {
 
   const rightPane = selectedThread ? (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-12 xl:pr-3">
+      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
@@ -1857,7 +1877,7 @@ export function ChannelWorkspace() {
         <Button
           variant="ghost"
           size="icon-sm"
-          className="hidden size-7 xl:inline-flex"
+          className="size-7"
           aria-label="Close thread"
           onClick={() => setSelectedThreadId(null)}
         >
@@ -1938,19 +1958,36 @@ export function ChannelWorkspace() {
         />
         <div className={cn("channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5", CARD_SURFACE_FOREGROUND)}>
           <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
+            {whiteboardsEnabled ? (
+              <TabsSubtle
+                selectedIndex={showWhiteboard ? 1 : 0}
+                onSelect={(index) => setChannelView(index === 1 ? 'whiteboard' : 'chat')}
+                className="mr-1"
+              >
+                <TabsSubtleItem index={0} label="Chat" className="py-1" />
+                <TabsSubtleItem index={1} label="Whiteboards" className="py-1" />
+              </TabsSubtle>
+            ) : null}
             <ChannelNotificationSettings
               key={channelId}
               clubId={clubId}
               channelId={channelId}
               channelName={channel.name}
             />
-            <PinnedMessagesButton
-              messages={pinnedMessages}
-              onClearSearch={() => setSearch('')}
-            />
+            {showWhiteboard ? null : (
+              <PinnedMessagesButton
+                messages={pinnedMessages}
+                onClearSearch={() => setSearch('')}
+              />
+            )}
           </div>
         </div>
 
+        {showWhiteboard ? (
+          <div className="min-h-0 flex-1">
+            <ChannelWhiteboard key={channelId} channelId={channelId} channelName={channel.name} />
+          </div>
+        ) : (
         <MessageScroller className="min-h-0 flex-1">
           <MessageScrollerViewport preserveScrollOnPrepend>
             <MessageScrollerContent
@@ -2019,8 +2056,10 @@ export function ChannelWorkspace() {
           </MessageScrollerViewport>
           <MessageScrollerButton />
         </MessageScroller>
+        )}
       </MessageScrollerProvider>
 
+      {showWhiteboard ? null : (
       <div className={cn("channel-composer-dock shrink-0 border-t bg-card px-2 pb-2 pt-1.5", CARD_SURFACE_FOREGROUND)}>
         <div className="mx-auto max-w-4xl">
           {canPost ? (
@@ -2077,6 +2116,7 @@ export function ChannelWorkspace() {
           )}
         </div>
       </div>
+      )}
       <Dialog
         open={!!reportingMessageId}
         onOpenChange={(open) => {

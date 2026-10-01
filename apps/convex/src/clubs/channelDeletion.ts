@@ -110,7 +110,9 @@ export const cleanupDeletedChannel = internalMutation({
     }
     if (messages.length === 50 || memberships.length === 100) {
       await ctx.scheduler.runAfter(0, internal.clubs.channelDeletion.cleanupDeletedChannel, args);
+      return null;
     }
+    await ctx.scheduler.runAfter(0, internal.clubs.whiteboards.cleanupChannelWhiteboard, args);
     return null;
   },
 });

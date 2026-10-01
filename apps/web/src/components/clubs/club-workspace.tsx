@@ -550,7 +550,8 @@ export function ClubWorkspace({
           <SheetContent
             side="right"
             className={cn(
-              "w-full max-w-none border-l bg-card p-0 sm:w-[26rem] xl:hidden",
+              // The pane brings its own close control in its header.
+              "w-full max-w-none border-l bg-card p-0 pb-[env(safe-area-inset-bottom)] sm:w-[26rem] sm:pt-[env(safe-area-inset-top)] xl:hidden [&>button]:hidden",
               CARD_SURFACE_FOREGROUND,
             )}
           >
