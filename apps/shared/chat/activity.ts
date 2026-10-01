@@ -34,7 +34,13 @@ export function latestVisibleChatActivity(
       latestVisibleChatActivity(message.replies),
     ];
     for (const candidate of candidates) {
-      if (candidate && (!latest || candidate.occurredAt > latest.occurredAt))
+      // Pending rows (including optimistic reply previews) are client-only.
+      // Read receipts must wait for the server to replace them with real IDs.
+      if (
+        candidate &&
+        !candidate.messageId.startsWith("optimistic:") &&
+        (!latest || candidate.occurredAt > latest.occurredAt)
+      )
         latest = candidate;
     }
   }
