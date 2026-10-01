@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { History, RotateCcw } from 'lucide-react';
-import { useMutation, usePaginatedQuery, useQuery } from '@/lib/convex-react';
+import type { FunctionReturnType } from 'convex/server';
+import { useConvex, useMutation, usePaginatedQuery } from '@/lib/convex-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardGroup } from '@/components/ui/card';
@@ -98,10 +99,33 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
     onOpenChange(next);
   };
 
-  const preview = useQuery(
-    api.clubs.whiteboards.getVersion,
-    open && selected ? { boardId: board._id, atSeq: selected.toSeq } : 'skip',
-  );
+  // A version's preview is fetched once rather than subscribed to: a live
+  // subscription would rebuild the snapshot after every stroke anyone draws.
+  const convex = useConvex();
+  const previewKey = open && selected ? `${board._id}:${selected.toSeq}` : null;
+  const [loadedPreview, setLoadedPreview] = useState<{
+    key: string;
+    snapshot: FunctionReturnType<typeof api.clubs.whiteboards.getVersion>;
+  } | null>(null);
+  const previewSeq = selected?.toSeq ?? null;
+  useEffect(() => {
+    if (!previewKey || previewSeq === null) return;
+    let active = true;
+    convex
+      .query(api.clubs.whiteboards.getVersion, { boardId: board._id, atSeq: previewSeq })
+      .then(
+        (snapshot) => {
+          if (active) setLoadedPreview({ key: previewKey, snapshot });
+        },
+        () => {
+          if (active) setLoadedPreview({ key: previewKey, snapshot: null });
+        },
+      );
+    return () => {
+      active = false;
+    };
+  }, [board._id, convex, previewKey, previewSeq]);
+  const preview = loadedPreview?.key === previewKey ? loadedPreview.snapshot : undefined;
 
   const [restoring, setRestoring] = useState(false);
   const isCurrent = selected?.toSeq === currentSeq;
@@ -143,11 +167,18 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
               <Spinner className="size-4" />
             </div>
           ) : preview ? (
-            <WhiteboardSnapshotImage
-              elements={preview.elements}
-              label={`${board.title}, ${selected ? when(selected.at) : ''}`}
-              className="aspect-[4/3] w-full"
-            />
+            <>
+              <WhiteboardSnapshotImage
+                elements={preview.elements}
+                label={`${board.title}, ${selected ? when(selected.at) : ''}`}
+                className="aspect-[4/3] w-full"
+              />
+              {preview.truncated ? (
+                <p className="text-xs text-muted-foreground">
+                  This version is too large to preview completely.
+                </p>
+              ) : null}
+            </>
           ) : null}
           <Button
             type="button"

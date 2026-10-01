@@ -41,9 +41,10 @@ const FLUSH_INTERVAL_MS = 250;
 
 export type WhiteboardSyncState = 'saved' | 'saving' | 'error';
 
-/** Imperative handle the board view uses for duplicate and preview refresh. */
+/** Imperative handle the board view uses before duplicating or archiving. */
 export type WhiteboardCanvasHandle = {
-  getElementsJson: () => string[];
+  /** Resolves once every local edit has been sent (or failed to send). */
+  flush: () => Promise<void>;
   refreshThumbnail: () => void;
 };
 
@@ -79,6 +80,10 @@ export default function WhiteboardCanvas({
   const lastAppState = useRef<AppState | null>(null);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushing = useRef(false);
+  const inFlight = useRef<Promise<void> | null>(null);
+  // Shapes the server refused because the board was full, by the version
+  // sent. They are retried with the next save that erases something.
+  const heldForSpace = useRef(new Map<string, number>());
   const warnedUnsupported = useRef(false);
   const syncStateRef = useRef(onSyncStateChange);
   useEffect(() => {
@@ -91,11 +96,17 @@ export default function WhiteboardCanvas({
   useImperativeHandle(
     handleRef,
     () => ({
-      getElementsJson: () =>
-        (excalidrawAPI?.getSceneElements() ?? []).map((element) => JSON.stringify(element)),
+      flush: async () => {
+        if (flushTimer.current) {
+          clearTimeout(flushTimer.current);
+          flushTimer.current = null;
+        }
+        await inFlight.current;
+        await flushRef.current();
+      },
       refreshThumbnail: scheduleThumbnail,
     }),
-    [excalidrawAPI, scheduleThumbnail],
+    [scheduleThumbnail],
   );
 
   const applyRemote = useCallback(
@@ -105,16 +116,28 @@ export default function WhiteboardCanvas({
         changes.map((change) => JSON.parse(change.data) as ExcalidrawElement),
         null,
       ) as unknown as RemoteExcalidrawElement[];
+      const scene = reconcileElements(
+        excalidrawAPI.getSceneElementsIncludingDeleted(),
+        remote,
+        excalidrawAPI.getAppState(),
+      );
+      const kept = new Map(scene.map((element) => [element.id, element]));
       for (const element of remote) {
+        // Only remote versions the scene adopted count as received. A local
+        // edit that wins a version tie (lower nonce) must still be sent.
+        const local = kept.get(element.id);
+        if (
+          !local ||
+          local.version !== element.version ||
+          local.versionNonce !== element.versionNonce
+        ) {
+          continue;
+        }
         const known = syncedVersions.current.get(element.id) ?? 0;
         if (element.version > known) syncedVersions.current.set(element.id, element.version);
       }
       excalidrawAPI.updateScene({
-        elements: reconcileElements(
-          excalidrawAPI.getSceneElementsIncludingDeleted(),
-          remote,
-          excalidrawAPI.getAppState(),
-        ),
+        elements: scene,
         captureUpdate: CaptureUpdateAction.NEVER,
       });
     },
@@ -125,13 +148,24 @@ export default function WhiteboardCanvas({
   const flush = useCallback(async () => {
     flushTimer.current = null;
     if (!excalidrawAPI || flushing.current || readOnly) return;
+    const scene = excalidrawAPI.getSceneElementsIncludingDeleted();
     const pending = pendingWhiteboardElements(
-      excalidrawAPI.getSceneElementsIncludingDeleted(),
+      scene,
       lastAppState.current ?? excalidrawAPI.getAppState(),
       syncedVersions.current,
       SUPPORTED_TYPES,
     );
     if (pending.length === 0) return;
+    // Erasing frees space, so shapes refused for a full board go along again.
+    if (heldForSpace.current.size > 0 && pending.some((element) => element.isDeleted)) {
+      const pendingIds = new Set(pending.map((element) => element.id));
+      for (const element of scene) {
+        if (heldForSpace.current.has(element.id) && !pendingIds.has(element.id)) {
+          pending.push(element);
+        }
+      }
+      heldForSpace.current.clear();
+    }
 
     flushing.current = true;
     syncStateRef.current?.('saving');
@@ -140,28 +174,64 @@ export default function WhiteboardCanvas({
     );
     for (const element of pending) syncedVersions.current.set(element.id, element.version);
     let saved = false;
-    try {
-      // Chunks are independent element writes; the server orders them.
-      const chunks = chunkWhiteboardElements(pending.map((element) => JSON.stringify(element)));
-      await Promise.all(chunks.map((chunk) => saveElements({ boardId, elements: chunk })));
-      saved = true;
-      syncStateRef.current?.('saved');
-      scheduleThumbnail();
-    } catch (error) {
-      syncStateRef.current?.('error');
-      // Forget the optimistic versions so the next flush retries them.
-      for (const [id, version] of previous) {
-        if (version === undefined) syncedVersions.current.delete(id);
-        else syncedVersions.current.set(id, version);
+    const run = (async () => {
+      try {
+        // Chunks are independent element writes; the server orders them.
+        const chunks = chunkWhiteboardElements(pending.map((element) => JSON.stringify(element)));
+        const results = await Promise.all(
+          chunks.map((chunk) => saveElements({ boardId, elements: chunk })),
+        );
+        saved = true;
+        const rejected = results.flatMap((result) => result.rejected);
+        const wasFull = heldForSpace.current.size > 0;
+        for (const element of pending) heldForSpace.current.delete(element.id);
+        // Refused shapes stay on this screen and stay marked as sent, so they
+        // are not resent with every edit: invalid ones until they change,
+        // full-board ones until something is erased.
+        for (const element of rejected) {
+          if (element.kind === 'full') {
+            heldForSpace.current.set(
+              element.elementId,
+              syncedVersions.current.get(element.elementId) ?? 0,
+            );
+          }
+        }
+        const invalid = rejected.find((element) => element.kind === 'invalid');
+        if (invalid) {
+          toast({
+            title: 'Some shapes could not be saved',
+            description: invalid.reason,
+            variant: 'destructive',
+          });
+        }
+        if (heldForSpace.current.size > 0 && !wasFull) {
+          toast({
+            title: 'This whiteboard is full',
+            description: 'Erase something to save your newest shapes.',
+            variant: 'destructive',
+          });
+        }
+        syncStateRef.current?.(rejected.length > 0 || heldForSpace.current.size > 0 ? 'error' : 'saved');
+        scheduleThumbnail();
+      } catch (error) {
+        syncStateRef.current?.('error');
+        // Forget the optimistic versions so the next flush retries them.
+        for (const [id, version] of previous) {
+          if (version === undefined) syncedVersions.current.delete(id);
+          else syncedVersions.current.set(id, version);
+        }
+        toast({
+          title: 'Whiteboard changes not saved',
+          description: errorMessage(error),
+          variant: 'destructive',
+        });
+      } finally {
+        flushing.current = false;
       }
-      toast({
-        title: 'Whiteboard changes not saved',
-        description: errorMessage(error),
-        variant: 'destructive',
-      });
-    } finally {
-      flushing.current = false;
-    }
+    })();
+    inFlight.current = run;
+    await run;
+    if (inFlight.current === run) inFlight.current = null;
     // Edits made while this save was in flight go out in the next flush. After
     // a failure, wait for the next edit instead of retrying in a loop.
     if (saved && !flushTimer.current) {
@@ -182,6 +252,24 @@ export default function WhiteboardCanvas({
     },
     [],
   );
+
+  // Someone archived the board while this person still had unsent edits.
+  useEffect(() => {
+    if (!readOnly || !excalidrawAPI) return;
+    const unsent = pendingWhiteboardElements(
+      excalidrawAPI.getSceneElementsIncludingDeleted(),
+      excalidrawAPI.getAppState(),
+      syncedVersions.current,
+      SUPPORTED_TYPES,
+    );
+    if (unsent.length === 0) return;
+    syncStateRef.current?.('error');
+    toast({
+      title: 'Your latest changes were not saved',
+      description: 'This whiteboard was archived. Restore it to keep editing.',
+      variant: 'destructive',
+    });
+  }, [excalidrawAPI, readOnly, toast]);
 
   const handleChange = useCallback(
     (elements: readonly OrderedExcalidrawElement[], appState: AppState) => {
@@ -216,7 +304,12 @@ export default function WhiteboardCanvas({
   );
 
   return (
-    <div className="relative size-full" data-whiteboard-loaded={loaded ? 'true' : 'false'}>
+    // Strokes across the canvas must not open the mobile club navigation.
+    <div
+      className="relative size-full"
+      data-swipe-navigation-ignore
+      data-whiteboard-loaded={loaded ? 'true' : 'false'}
+    >
       <Excalidraw
         excalidrawAPI={setExcalidrawAPI}
         onChange={handleChange}

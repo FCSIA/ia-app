@@ -7,6 +7,7 @@ import {
   classifyWhiteboardChange,
   liveElementDelta,
   normalizeWhiteboardTitle,
+  mergeWhiteboardEditAuditMeta,
   planWhiteboardRestore,
   sanitizeWhiteboardElement,
   shouldAcceptWhiteboardWrite,
@@ -178,28 +179,59 @@ describe("whiteboard titles, previews, and revisions", () => {
 
   test("plans restore writes as newer versions", () => {
     const state = (id: string, version: number, isDeleted = false, x = 0) => ({
-      elementId: id,
-      version,
       isDeleted,
       data: JSON.stringify({ id, type: "rectangle", version, versionNonce: 1, isDeleted, x }),
     });
-    const current = [
-      state("same", 2),
-      state("moved", 3, false, 50),
-      state("added", 1),
-      state("removed", 2, true),
-      state("stillGone", 2, true),
-    ];
-    const target = new Map([
-      ["same", { isDeleted: false, data: current[0]!.data }],
-      ["moved", { isDeleted: false, data: state("moved", 2, false, 10).data }],
-      ["removed", { isDeleted: false, data: state("removed", 1).data }],
-    ]);
-    const writes = planWhiteboardRestore(current, target, () => 7).map((raw) => JSON.parse(raw));
+    const same = state("same", 2);
+    const writes = planWhiteboardRestore(
+      [
+        { current: same, target: same, latestVersion: 2 },
+        { current: state("moved", 3, false, 50), target: state("moved", 2, false, 10), latestVersion: 3 },
+        { current: state("added", 1), target: null, latestVersion: 1 },
+        { current: state("removed", 2, true), target: state("removed", 1), latestVersion: 2 },
+        { current: state("stillGone", 2, true), target: null, latestVersion: 2 },
+        // An erased element whose tombstone was pruned comes back above the
+        // newest version a client could still hold.
+        { current: null, target: state("pruned", 1), latestVersion: 4 },
+        { current: null, target: state("prunedGone", 1, true), latestVersion: 2 },
+      ],
+      () => 7,
+    ).map((raw) => JSON.parse(raw));
     expect(writes).toEqual([
       { id: "moved", type: "rectangle", version: 4, versionNonce: 7, isDeleted: false, x: 10 },
       { id: "added", type: "rectangle", version: 2, versionNonce: 7, isDeleted: true, x: 0 },
       { id: "removed", type: "rectangle", version: 3, versionNonce: 7, isDeleted: false, x: 0 },
+      { id: "pruned", type: "rectangle", version: 5, versionNonce: 7, isDeleted: false, x: 0 },
     ]);
+  });
+
+  test("folds coalesced saves into one bounded audit row", () => {
+    const save = (fromSeq: number, count: number, change: "created" | "deleted" = "created") =>
+      whiteboardEditAuditMeta({
+        clubId: "c",
+        channelId: "ch",
+        boardId: "b",
+        fromSeq,
+        toSeq: fromSeq + count - 1,
+        changes: Array.from({ length: count }, (_, index) => ({
+          elementId: `e${fromSeq + index}`,
+          type: "rectangle" as const,
+          change,
+        })),
+      });
+    const merged = mergeWhiteboardEditAuditMeta(
+      { ...save(1, 20), impersonatedByUserId: "admin" },
+      save(21, 10),
+    );
+    expect(merged).toMatchObject({
+      fromSeq: 1,
+      toSeq: 30,
+      saveCount: 2,
+      changeCount: 30,
+      created: 30,
+      omittedChangeCount: 5,
+      impersonatedByUserId: "admin",
+    });
+    expect(merged.changes).toHaveLength(25);
   });
 });

@@ -2,13 +2,12 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useConvex, useMutation } from '@/lib/convex-react';
+import { useMutation } from '@/lib/convex-react';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { api } from '~/apps/convex/src/_generated/api';
 import type { Id } from '~/apps/convex/src/_generated/dataModel';
 import { shareUrl } from '@/lib/share';
-import { chunkWhiteboardElements } from './whiteboard-sync';
 
 export type WhiteboardSummary = {
   _id: Id<'clubWhiteboards'>;
@@ -50,13 +49,11 @@ export function useWhiteboardRoute() {
 }
 
 export function useWhiteboardActions(channelId: Id<'clubChannels'>) {
-  const convex = useConvex();
   const { toast } = useToast();
   const { hrefFor, openBoard } = useWhiteboardRoute();
   const createBoard = useMutation(api.clubs.whiteboards.create);
   const renameBoard = useMutation(api.clubs.whiteboards.rename);
   const setArchived = useMutation(api.clubs.whiteboards.setArchived);
-  const saveElements = useMutation(api.clubs.whiteboards.saveElements);
 
   const fail = useCallback(
     (title: string, error: unknown) =>
@@ -84,60 +81,55 @@ export function useWhiteboardActions(channelId: Id<'clubChannels'>) {
   );
 
   /**
-   * Copies the board's current drawing into a new board. The open canvas can
-   * supply its exact elements; otherwise the latest stored version is used.
+   * Copies the board into a new one. The server copies every live element in
+   * bounded batches, so the copy is complete however large the board is; an
+   * open board passes `flush` so its unsent edits are included.
    */
   const duplicate = useCallback(
-    async (board: WhiteboardSummary, currentElements?: string[]) => {
+    async (board: WhiteboardSummary, flush?: () => Promise<void>) => {
       try {
-        let elements = currentElements;
-        if (!elements) {
-          const snapshot = await convex.query(api.clubs.whiteboards.getVersion, {
-            boardId: board._id,
-            atSeq: Number.MAX_SAFE_INTEGER,
-          });
-          if (!snapshot) throw new Error('Whiteboard not found');
-          elements = snapshot.elements;
-        }
+        await flush?.();
         const copyId = await createBoard({
           channelId,
           title: `${board.title} (copy)`,
           duplicatedFromBoardId: board._id,
         });
-        await Promise.all(
-          chunkWhiteboardElements(elements).map((chunk) =>
-            saveElements({ boardId: copyId, elements: chunk }),
-          ),
-        );
         toast({ title: `Duplicated “${board.title}”` });
         openBoard(copyId);
       } catch (error) {
         fail('Could not duplicate the whiteboard', error);
       }
     },
-    [channelId, convex, createBoard, fail, openBoard, saveElements, toast],
+    [channelId, createBoard, fail, openBoard, toast],
   );
 
+  /** Returns whether the board's archived state changed. */
   const archive = useCallback(
     async (board: WhiteboardSummary, archived: boolean) => {
       try {
         await setArchived({ boardId: board._id, archived });
-        toast({
-          title: archived ? `Archived “${board.title}”` : `Restored “${board.title}”`,
-          // Long enough to reach Undo; the default is tuned for plain notices.
-          duration: archived ? 8000 : undefined,
-          action: archived ? (
-            <ToastAction
-              altText="Undo archive"
-              onClick={() => void setArchived({ boardId: board._id, archived: false })}
-            >
-              Undo
-            </ToastAction>
-          ) : undefined,
-        });
       } catch (error) {
         fail(archived ? 'Could not archive the whiteboard' : 'Could not restore the whiteboard', error);
+        return false;
       }
+      toast({
+        title: archived ? `Archived “${board.title}”` : `Restored “${board.title}”`,
+        // Long enough to reach Undo; the default is tuned for plain notices.
+        duration: archived ? 8000 : undefined,
+        action: archived ? (
+          <ToastAction
+            altText="Undo archive"
+            onClick={() =>
+              void setArchived({ boardId: board._id, archived: false }).catch((error: unknown) =>
+                fail('Could not restore the whiteboard', error),
+              )
+            }
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
+      });
+      return true;
     },
     [fail, setArchived, toast],
   );

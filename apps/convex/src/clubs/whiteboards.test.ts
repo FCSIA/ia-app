@@ -124,6 +124,14 @@ async function seed(ctx: MutationCtx) {
   };
 }
 
+async function clockOf(ctx: MutationCtx, boardId: Id<"clubWhiteboards">) {
+  const clock = await ctx.db
+    .query("clubWhiteboardClocks")
+    .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+    .unique();
+  return { seq: clock!.seq, live: clock!.liveElementCount };
+}
+
 const texts = (snapshot: { elements: string[] } | null) =>
   snapshot!.elements.map((data) => {
     const parsed = JSON.parse(data);
@@ -203,6 +211,7 @@ describe("club channel whiteboards", () => {
   });
 
   test("boards are independent, listed with activity, and archivable", async () => {
+    vi.useFakeTimers();
     const t = convexTest(schema, modules);
     const result = await t.run(async (ctx) => {
       const s = await seed(ctx);
@@ -218,7 +227,6 @@ describe("club channel whiteboards", () => {
       } catch (error) {
         archivedError = String(error);
       }
-      const list = await listChannelWhiteboards(ctx, s.member, s.channelId, 0);
       await setWhiteboardArchived(ctx, s.member, first, false);
       const afterUnarchive = await saveWhiteboardElements(ctx, s.member, first, [shape("a", 2)]);
       const actions = (
@@ -229,23 +237,27 @@ describe("club channel whiteboards", () => {
           )
           .collect()
       ).map((row) => row.action);
+      await setWhiteboardArchived(ctx, s.member, first, true);
       return {
-        list: list!.boards.map((board) => ({
-          title: board.title,
-          elements: board.elementCount,
-          updatedBy: board.updatedByName,
-        })),
-        archivedCount: list!.archivedCount,
+        memberId: s.member._id,
+        channelId: s.channelId,
         counts: await getWhiteboardCounts(ctx, s.channelId),
         archivedError,
         afterUnarchive: afterUnarchive.accepted,
         actions,
       };
     });
+    // Drawing reaches the list through one deferred activity refresh.
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const list = await t.run(async (ctx) =>
+      listChannelWhiteboards(ctx, (await ctx.db.get(result.memberId))!, result.channelId, 0),
+    );
 
-    expect(result.list).toEqual([{ title: "Renamed", elements: 2, updatedBy: "OTHER User" }]);
-    expect(result.archivedCount).toBe(1);
-    expect(result.counts).toEqual({ active: 2, archived: 0 });
+    expect(
+      list!.boards.map((board) => ({ title: board.title, updatedBy: board.updatedByName })),
+    ).toEqual([{ title: "Renamed", updatedBy: "OTHER User" }]);
+    expect(list!.archivedCount).toBe(1);
+    expect(result.counts).toEqual({ active: 1, archived: 1 });
     expect(result.archivedError).toMatch(/archived/);
     expect(result.afterUnarchive).toBe(1);
     expect(result.actions).toEqual([
@@ -253,6 +265,7 @@ describe("club channel whiteboards", () => {
       "CLUB_WHITEBOARD_EDITED",
       "CLUB_WHITEBOARD_ARCHIVED",
       "CLUB_WHITEBOARD_UNARCHIVED",
+      // A new row: the earlier edit's row is no longer the newest entry.
       "CLUB_WHITEBOARD_EDITED",
     ]);
   });
@@ -339,7 +352,6 @@ describe("club channel whiteboards", () => {
       const newer = await saveWhiteboardElements(ctx, s.otherMember, boardId, [shape("a", 2)]);
       const incremental = await listWhiteboardChanges(ctx, s.member, boardId, 2);
       await saveWhiteboardElements(ctx, s.member, boardId, [shape("b", 2, { isDeleted: true })]);
-      const board = await ctx.db.get(boardId);
       return {
         afterFirst: afterFirst!.changes.map((change) => change.seq),
         stale: stale.accepted,
@@ -348,7 +360,7 @@ describe("club channel whiteboards", () => {
           seq: change.seq,
           version: JSON.parse(change.data).version,
         })),
-        board: { seq: board!.seq, live: board!.liveElementCount },
+        board: await clockOf(ctx, boardId),
       };
     });
 
@@ -359,7 +371,7 @@ describe("club channel whiteboards", () => {
     expect(result.board).toEqual({ seq: 4, live: 1 });
   });
 
-  test("audits every save, coalesces revisions per person, and rebuilds past states", async () => {
+  test("coalesces revisions and their audit rows per person, and rebuilds past states", async () => {
     const t = convexTest(schema, modules);
     const result = await t.run(async (ctx) => {
       const s = await seed(ctx);
@@ -386,6 +398,7 @@ describe("club channel whiteboards", () => {
         .collect();
       return {
         edits: audits.filter((row) => row.action === "CLUB_WHITEBOARD_EDITED").length,
+        firstAudit: audits.find((row) => row.action === "CLUB_WHITEBOARD_EDITED")?.meta,
         otherAudit: audits.find((row) => row.actorId === s.otherMember._id)?.meta,
         revisions: revisions.map((row) => ({
           actor: row.actorId === s.member._id ? "member" : "other",
@@ -401,7 +414,18 @@ describe("club channel whiteboards", () => {
       };
     });
 
-    expect(result.edits).toBe(4);
+    // The member's first two saves share one revision and one audit row.
+    expect(result.edits).toBe(3);
+    expect(result.firstAudit).toMatchObject({
+      fromSeq: 1,
+      toSeq: 2,
+      saveCount: 2,
+      created: 2,
+      changes: [
+        { elementId: "t", change: "created", textPreview: "first draft" },
+        { elementId: "m", change: "created" },
+      ],
+    });
     expect(result.otherAudit).toMatchObject({
       fromSeq: 3,
       toSeq: 4,
@@ -436,12 +460,12 @@ describe("club channel whiteboards", () => {
         shape("new", 1),
       ]);
       const restored = await restoreWhiteboardVersion(ctx, s.member, boardId, 2);
-      const seqAfterRestore = (await ctx.db.get(boardId))!.seq;
+      const seqAfterRestore = (await clockOf(ctx, boardId)).seq;
       const afterRestore = texts(await getWhiteboardSnapshot(ctx, boardId, seqAfterRestore));
       // Restoring the pre-restore version undoes the restore.
       await restoreWhiteboardVersion(ctx, s.member, boardId, 5);
       const afterUndo = texts(
-        await getWhiteboardSnapshot(ctx, boardId, (await ctx.db.get(boardId))!.seq),
+        await getWhiteboardSnapshot(ctx, boardId, (await clockOf(ctx, boardId)).seq),
       );
       const revisions = await ctx.db
         .query("clubWhiteboardRevisions")
@@ -464,7 +488,7 @@ describe("club channel whiteboards", () => {
         seqAfterRestore,
         afterRestore,
         afterUndo,
-        live: (await ctx.db.get(boardId))!.liveElementCount,
+        live: (await clockOf(ctx, boardId)).live,
         restoreRevisions: revisions
           .filter((row) => row.kind === "RESTORE")
           .map((row) => row.restoredToSeq),
@@ -507,14 +531,16 @@ describe("club channel whiteboards", () => {
             .collect(),
         ),
       );
-      const boards = await Promise.all([ctx.db.get(activeId), ctx.db.get(archivedId)]);
+      const boards = await Promise.all(
+        [activeId, archivedId].map(async (boardId) => ({
+          archived: (await ctx.db.get(boardId))?.isArchived,
+          live: (await clockOf(ctx, boardId)).live,
+        })),
+      );
       const snapshot = await getWhiteboardSnapshot(ctx, activeId, 2);
       return {
         remaining: remaining.map((rows) => rows.length),
-        boards: boards.map((board) => ({
-          archived: board?.isArchived,
-          live: board?.liveElementCount,
-        })),
+        boards,
         counts: await getWhiteboardCounts(ctx, channelId),
         snapshotCount: snapshot?.elements.length,
         channelName: snapshot?.channelName,
@@ -602,24 +628,224 @@ describe("club channel whiteboards", () => {
     ]);
   });
 
-  test("rejects unsupported elements without partial writes", async () => {
+  test("reports elements it cannot store without failing the rest of the save", async () => {
     const t = convexTest(schema, modules);
     const result = await t.run(async (ctx) => {
       const s = await seed(ctx);
       const boardId = await createWhiteboard(ctx, s.member, s.channelId);
-      let error = "";
-      try {
-        await saveWhiteboardElements(ctx, s.member, boardId, [
-          shape("ok", 1),
-          shape("img", 1, { type: "image" }),
-        ]);
-      } catch (caught) {
-        error = String(caught);
-      }
-      return { error, board: await ctx.db.get(boardId) };
+      const saved = await saveWhiteboardElements(ctx, s.member, boardId, [
+        shape("ok", 1),
+        shape("img", 1, { type: "image" }),
+      ]);
+      return { saved, clock: await clockOf(ctx, boardId) };
     });
-    expect(result.error).toMatch(/not supported/);
-    expect(result.board?.seq).toBe(0);
+    expect(result.saved.accepted).toBe(1);
+    expect(result.saved.rejected).toEqual([
+      { elementId: "img", kind: "invalid", reason: expect.stringMatching(/not supported/) },
+    ]);
+    expect(result.clock).toEqual({ seq: 1, live: 1 });
+  });
+
+  test("a full board applies removals first and reports what did not fit", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
+      await saveWhiteboardElements(ctx, s.member, boardId, [shape("old", 1)]);
+      const clock = await ctx.db
+        .query("clubWhiteboardClocks")
+        .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+        .unique();
+      // Pretend the board already holds the maximum number of live shapes.
+      await ctx.db.patch(clock!._id, { liveElementCount: 5_000 });
+      const saved = await saveWhiteboardElements(ctx, s.member, boardId, [
+        shape("first", 1),
+        shape("second", 1),
+        shape("old", 2, { isDeleted: true }),
+      ]);
+      return { saved, clock: await clockOf(ctx, boardId) };
+    });
+    expect(result.saved.accepted).toBe(2);
+    expect(result.saved.rejected).toEqual([
+      { elementId: "second", kind: "full", reason: "This whiteboard is full" },
+    ]);
+    expect(result.clock.live).toBe(5_000);
+  });
+
+  test("never stores shapes that were erased before they were first saved", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
+      const saved = await saveWhiteboardElements(
+        ctx,
+        s.member,
+        boardId,
+        Array.from({ length: 50 }, (_, index) => shape(`ghost${index}`, 2, { isDeleted: true })),
+      );
+      return {
+        saved,
+        rows: (await listWhiteboardChanges(ctx, s.member, boardId, 0))!.changes.length,
+      };
+    });
+    expect(result.saved).toMatchObject({ accepted: 0, ignored: 50, rejected: [] });
+    expect(result.rows).toBe(0);
+  });
+
+  test("prunes day-old erased elements while restores still bring them back", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const t = convexTest(schema, modules);
+    const { boardId, memberId } = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
+      await saveWhiteboardElements(ctx, s.member, boardId, [shape("kept", 1), shape("erased", 1)]);
+      await saveWhiteboardElements(ctx, s.member, boardId, [shape("erased", 4, { isDeleted: true })]);
+      return { boardId, memberId: s.member._id };
+    });
+    vi.setSystemTime(1_000_000 + 25 * 60 * 60 * 1000);
+    await t.mutation(internal.clubs.whiteboards.pruneErasedWhiteboardElements, {});
+    const result = await t.run(async (ctx) => {
+      const member = (await ctx.db.get(memberId))!;
+      const rowsAfterPrune = (await listWhiteboardChanges(ctx, member, boardId, 0))!.changes.map(
+        (change) => JSON.parse(change.data).id,
+      );
+      await restoreWhiteboardVersion(ctx, member, boardId, 2);
+      const restored = (await listWhiteboardChanges(ctx, member, boardId, 0))!.changes.map(
+        (change) => JSON.parse(change.data),
+      );
+      return {
+        rowsAfterPrune,
+        restored: restored.map((element) => ({
+          id: element.id,
+          deleted: element.isDeleted,
+          version: element.version,
+        })),
+      };
+    });
+    expect(result.rowsAfterPrune).toEqual(["kept"]);
+    // Above the erased version any stale client may still hold.
+    expect(result.restored).toContainEqual({ id: "erased", deleted: false, version: 5 });
+  });
+
+  test("restores recent versions of boards with long histories", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
+      // Twelve thousand earlier writes to one shape, more than a restore
+      // could ever walk.
+      for (let version = 1; version <= 12_000; version += 1) {
+        await ctx.db.insert("clubWhiteboardHistory", {
+          boardId,
+          seq: version,
+          elementId: "busy",
+          isDeleted: false,
+          data: shape("busy", version),
+          actorId: s.member._id,
+          createdAt: 1,
+        });
+      }
+      await ctx.db.insert("clubWhiteboardElements", {
+        boardId,
+        elementId: "busy",
+        seq: 12_000,
+        version: 12_000,
+        versionNonce: 10,
+        isDeleted: false,
+        data: shape("busy", 12_000),
+        updatedById: s.member._id,
+        updatedAt: 1,
+      });
+      const clock = await ctx.db
+        .query("clubWhiteboardClocks")
+        .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+        .unique();
+      await ctx.db.patch(clock!._id, { seq: 12_000, liveElementCount: 1 });
+      await saveWhiteboardElements(ctx, s.member, boardId, [
+        shape("note", 1, { type: "text", text: "keep" }),
+      ]);
+      await saveWhiteboardElements(ctx, s.otherMember, boardId, [
+        shape("note", 2, { type: "text", text: "oops" }),
+      ]);
+      const preview = await getWhiteboardSnapshot(ctx, boardId, 12_001);
+      const restored = await restoreWhiteboardVersion(ctx, s.member, boardId, 12_001);
+      return {
+        preview: { texts: texts(preview), truncated: preview!.truncated },
+        restored,
+        now: texts(await getWhiteboardSnapshot(ctx, boardId, (await clockOf(ctx, boardId)).seq)),
+      };
+    });
+    expect(result.preview).toEqual({ texts: ["busy", "keep"], truncated: false });
+    expect(result.restored.changed).toBe(1);
+    expect([...result.now].sort()).toEqual(["busy", "keep"]);
+  });
+
+  test("duplicates every live element on the server in batches", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema, modules);
+    const { sourceId, copyId } = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const sourceId = await createWhiteboard(ctx, s.member, s.channelId, { title: "Source" });
+      for (let start = 0; start < 250; start += 125) {
+        await saveWhiteboardElements(
+          ctx,
+          s.member,
+          sourceId,
+          Array.from({ length: 125 }, (_, index) => shape(`e${start + index}`, 1)),
+        );
+      }
+      await saveWhiteboardElements(ctx, s.member, sourceId, [shape("e0", 2, { isDeleted: true })]);
+      const copyId = await createWhiteboard(ctx, s.otherMember, s.channelId, {
+        title: "Source (copy)",
+        duplicatedFromBoardId: sourceId,
+      });
+      return { sourceId, copyId };
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const result = await t.run(async (ctx) => ({
+      source: await clockOf(ctx, sourceId),
+      copy: await clockOf(ctx, copyId),
+      copiedErased: await ctx.db
+        .query("clubWhiteboardElements")
+        .withIndex("by_boardId_and_elementId", (q) => q.eq("boardId", copyId).eq("elementId", "e0"))
+        .unique(),
+    }));
+    expect(result.source.live).toBe(249);
+    expect(result.copy).toEqual({ seq: 249, live: 249 });
+    expect(result.copiedErased).toBeNull();
+  });
+
+  test("counts people on a board from presence, not pointer movement", async () => {
+    const t = convexTest(schema, modules);
+    const counts = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId);
+      const count = async () =>
+        (await listChannelWhiteboards(ctx, s.member, s.channelId, 100))!.boards[0]!
+          .activeViewerCount;
+      await ctx.db.insert("clubWhiteboardCursors", {
+        boardId,
+        userId: s.otherMember._id,
+        x: 1,
+        y: 1,
+        button: "up",
+        updatedAt: 200,
+      });
+      const cursorOnly = await count();
+      await ctx.db.insert("clubWhiteboardPresence", {
+        boardId,
+        userId: s.otherMember._id,
+        lastSeenAt: 150,
+      });
+      await ctx.db.insert("clubWhiteboardPresence", {
+        boardId,
+        userId: s.member._id,
+        lastSeenAt: 50,
+      });
+      return { cursorOnly, present: await count() };
+    });
+    expect(counts).toEqual({ cursorOnly: 0, present: 1 });
   });
 });
 

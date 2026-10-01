@@ -152,16 +152,23 @@ export function WhiteboardBoardView({
 
   const archived = board.archivedAt !== null;
   const summary = { _id: board._id, title: board.title };
+  const flushCanvas = () => canvas.current?.flush() ?? Promise.resolve();
+  // Send the last strokes before the board becomes read-only, and only leave
+  // it once the archive actually happened.
+  const archiveBoard = async () => {
+    await flushCanvas();
+    if (await actions.archive(summary, true)) closeBoard();
+  };
   const menuItems = archived
     ? [
         { label: 'Restore from archive', icon: ArchiveRestore, onSelect: () => void actions.archive(summary, false) },
-        { label: 'Duplicate', icon: Copy, onSelect: () => void actions.duplicate(summary, canvas.current?.getElementsJson()) },
+        { label: 'Duplicate', icon: Copy, onSelect: () => void actions.duplicate(summary, flushCanvas) },
       ]
     : [
         { label: 'Rename', icon: PenLine, onSelect: () => setEditingTitle(true) },
-        { label: 'Duplicate', icon: Copy, onSelect: () => void actions.duplicate(summary, canvas.current?.getElementsJson()) },
+        { label: 'Duplicate', icon: Copy, onSelect: () => void actions.duplicate(summary, flushCanvas) },
         { label: 'Share link', icon: Link2, onSelect: () => void actions.share(summary) },
-        { label: 'Archive', icon: Archive, onSelect: () => void actions.archive(summary, true).then(closeBoard) },
+        { label: 'Archive', icon: Archive, onSelect: () => void archiveBoard() },
       ];
 
   return (

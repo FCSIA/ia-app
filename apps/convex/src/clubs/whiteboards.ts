@@ -30,14 +30,17 @@ import {
   classifyWhiteboardChange,
   channelWhiteboardsEnabled,
   liveElementDelta,
+  mergeWhiteboardEditAuditMeta,
   normalizeWhiteboardTitle,
   planWhiteboardRestore,
   sanitizeWhiteboardElement,
   shouldAcceptWhiteboardWrite,
   shouldCoalesceWhiteboardRevision,
   whiteboardEditAuditMeta,
+  whiteboardElementVersion,
   type SanitizedWhiteboardElement,
   type WhiteboardAuditChange,
+  type WhiteboardRestoreCandidate,
 } from "./whiteboardElements";
 
 type WhiteboardDbCtx = QueryCtx | MutationCtx;
@@ -50,11 +53,21 @@ const MAX_CURSORS = 50;
 /** Skip cursor writes that arrive faster than the client throttle intends. */
 const MIN_CURSOR_WRITE_INTERVAL_MS = 80;
 const MIN_THUMBNAIL_INTERVAL_MS = 3_000;
+/** Board rows, which the list reads, record drawing activity this often. */
+const LIST_ACTIVITY_INTERVAL_MS = 30_000;
+/** Presence rows, which the list counts, are refreshed this often. */
+const PRESENCE_REFRESH_MS = 10_000;
 const MAX_SNAPSHOT_HISTORY_ROWS = 8_000;
 const MAX_SNAPSHOT_BYTES = 8_000_000;
+/** History rows a restore may walk after the version it returns to. */
 const MAX_RESTORE_SCAN_ROWS = 10_000;
 const MAX_RESTORE_WRITES = 3_000;
 const CLEANUP_BATCH_SIZE = 200;
+/** Erased elements are kept this long so stale clients cannot resurrect them. */
+const TOMBSTONE_RETENTION_MS = 24 * 60 * 60 * 1000;
+const COPY_BATCH_ELEMENTS = 100;
+const COPY_BATCH_BYTES = 2_000_000;
+const FULL_MESSAGE = "This whiteboard is full";
 
 // ── Access ──────────────────────────────────────────────────────────────
 
@@ -156,6 +169,37 @@ async function userNames(ctx: WhiteboardDbCtx, ids: Array<Id<"users"> | undefine
   );
 }
 
+/** The board's write clock; null only for boards created before clocks. */
+async function getClock(ctx: WhiteboardDbCtx, boardId: Id<"clubWhiteboards">) {
+  return await ctx.db
+    .query("clubWhiteboardClocks")
+    .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
+    .unique();
+}
+
+async function loadClock(ctx: MutationCtx, boardId: Id<"clubWhiteboards">) {
+  const clock = await getClock(ctx, boardId);
+  if (clock) return clock;
+  // A board saved before clocks existed: continue its sequence from history.
+  const latest = await ctx.db
+    .query("clubWhiteboardHistory")
+    .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
+    .order("desc")
+    .first();
+  const live = await ctx.db
+    .query("clubWhiteboardElements")
+    .withIndex("by_boardId_and_isDeleted", (q) =>
+      q.eq("boardId", boardId).eq("isDeleted", false),
+    )
+    .take(MAX_WHITEBOARD_LIVE_ELEMENTS + 1);
+  const clockId = await ctx.db.insert("clubWhiteboardClocks", {
+    boardId,
+    seq: latest?.seq ?? 0,
+    liveElementCount: live.length,
+  });
+  return (await ctx.db.get(clockId))!;
+}
+
 // ── Channel setting ─────────────────────────────────────────────────────
 
 /**
@@ -243,14 +287,13 @@ export async function createWhiteboard(
     clubId: resolved.channel.clubId,
     channelId,
     title,
-    seq: 0,
-    liveElementCount: 0,
     createdById: user._id,
     createdAt: now,
     updatedAt: now,
     updatedById: user._id,
     isArchived: false,
   });
+  await ctx.db.insert("clubWhiteboardClocks", { boardId, seq: 0, liveElementCount: 0 });
   await adjustWhiteboardCounts(ctx, channelId, { active: 1 });
   if (input.duplicatedFromBoardId) {
     // A copy starts with the source's preview until someone edits it.
@@ -265,6 +308,14 @@ export async function createWhiteboard(
         updatedAt: now,
       });
     }
+    // The server copies the source's live elements in bounded batches, so a
+    // large board copies completely without client chunking or rate limits.
+    await ctx.scheduler.runAfter(0, internal.clubs.whiteboards.copyWhiteboardElements, {
+      sourceBoardId: input.duplicatedFromBoardId,
+      targetBoardId: boardId,
+      actorId: user._id,
+      afterSeq: 0,
+    });
   }
   await logAuditEvent(ctx, {
     actorId: user._id,
@@ -346,10 +397,18 @@ export async function setWhiteboardArchived(
 
 // ── Element writes ──────────────────────────────────────────────────────
 
+export type WhiteboardRejectedElement = {
+  elementId: string;
+  /** "full" can succeed later; "invalid" will not until the element changes. */
+  kind: "full" | "invalid";
+  reason: string;
+};
+
 /**
  * The single write path for element changes. Accepts only writes that win
  * Excalidraw's version rule, assigns board sequence numbers, appends history,
- * maintains the member-facing revision log, and audits the save.
+ * maintains the member-facing revision log, and audits the save. Removals are
+ * applied first so a save that frees space can also use it.
  */
 async function applyElementWrites(
   ctx: MutationCtx,
@@ -357,27 +416,38 @@ async function applyElementWrites(
   board: Doc<"clubWhiteboards">,
   elements: Iterable<SanitizedWhiteboardElement>,
   kind: "EDIT" | "RESTORE",
-  restoredToSeq?: number,
+  options: { restoredToSeq?: number; whenFull: "throw" | "reject" },
 ) {
   const now = Date.now();
-  const fromSeq = board.seq + 1;
-  let seq = board.seq;
-  let liveElementCount = board.liveElementCount;
+  const clock = await loadClock(ctx, board._id);
+  const fromSeq = clock.seq + 1;
+  let seq = clock.seq;
+  let liveElementCount = clock.liveElementCount;
   const changes: WhiteboardAuditChange[] = [];
+  const rejected: WhiteboardRejectedElement[] = [];
+  const ordered = [...elements].sort(
+    (a, b) => Number(b.isDeleted) - Number(a.isDeleted),
+  );
 
-  for (const element of elements) {
+  for (const element of ordered) {
     const existing = await ctx.db
       .query("clubWhiteboardElements")
       .withIndex("by_boardId_and_elementId", (q) =>
         q.eq("boardId", board._id).eq("elementId", element.elementId),
       )
       .unique();
+    // Created and erased before it was ever saved: there is nothing to keep,
+    // and storing it would only grow every viewer's download.
+    if (!existing && element.isDeleted) continue;
     if (!shouldAcceptWhiteboardWrite(existing, element)) continue;
 
-    liveElementCount += liveElementDelta(existing, element);
-    if (liveElementCount > MAX_WHITEBOARD_LIVE_ELEMENTS) {
-      throw new ConvexError("This whiteboard is full");
+    const delta = liveElementDelta(existing, element);
+    if (liveElementCount + delta > MAX_WHITEBOARD_LIVE_ELEMENTS) {
+      if (options.whenFull === "throw") throw new ConvexError(FULL_MESSAGE);
+      rejected.push({ elementId: element.elementId, kind: "full", reason: FULL_MESSAGE });
+      continue;
     }
+    liveElementCount += delta;
     seq += 1;
     const row = {
       seq,
@@ -414,13 +484,28 @@ async function applyElementWrites(
     });
   }
 
-  if (changes.length === 0) return changes;
+  if (changes.length === 0) return { changes, rejected };
 
-  await ctx.db.patch(board._id, {
+  // The board row feeds the board list; record activity there at most every
+  // 30 seconds so drawing does not re-run every viewer's list on each stroke.
+  // A skipped update is caught up by one scheduled refresh.
+  let activityRefreshScheduled = clock.activityRefreshScheduled;
+  if (now - board.updatedAt >= LIST_ACTIVITY_INTERVAL_MS) {
+    await ctx.db.patch(board._id, { updatedAt: now, updatedById: user._id });
+  } else if (!activityRefreshScheduled) {
+    await ctx.scheduler.runAt(
+      board.updatedAt + LIST_ACTIVITY_INTERVAL_MS,
+      internal.clubs.whiteboards.refreshWhiteboardActivity,
+      { boardId: board._id },
+    );
+    activityRefreshScheduled = true;
+  }
+  await ctx.db.patch(clock._id, {
     seq,
     liveElementCount,
-    updatedAt: now,
-    updatedById: user._id,
+    lastEditedAt: now,
+    lastEditedById: user._id,
+    activityRefreshScheduled,
   });
 
   const meta = whiteboardEditAuditMeta({
@@ -436,6 +521,8 @@ async function applyElementWrites(
     .withIndex("by_boardId_and_toSeq", (q) => q.eq("boardId", board._id))
     .order("desc")
     .first();
+  let revisionId: Id<"clubWhiteboardRevisions">;
+  let auditEventId: Id<"auditEvents"> | undefined;
   if (
     lastRevision &&
     shouldCoalesceWhiteboardRevision(lastRevision, {
@@ -453,8 +540,10 @@ async function applyElementWrites(
       restored: lastRevision.restored + meta.restored,
       updatedAt: now,
     });
+    revisionId = lastRevision._id;
+    auditEventId = lastRevision.auditEventId;
   } else {
-    await ctx.db.insert("clubWhiteboardRevisions", {
+    revisionId = await ctx.db.insert("clubWhiteboardRevisions", {
       boardId: board._id,
       actorId: user._id,
       kind,
@@ -464,26 +553,62 @@ async function applyElementWrites(
       updated: meta.updated,
       deleted: meta.deleted,
       restored: meta.restored,
-      restoredToSeq,
+      restoredToSeq: options.restoredToSeq,
       startedAt: now,
       updatedAt: now,
     });
   }
 
-  await logAuditEvent(ctx, {
-    actorId: user._id,
-    action: kind === "RESTORE" ? "CLUB_WHITEBOARD_RESTORED" : "CLUB_WHITEBOARD_EDITED",
-    entityType: "ClubWhiteboard",
-    entityId: board._id,
-    meta: {
-      ...meta,
-      title: board.title,
-      ...(restoredToSeq !== undefined ? { restoredToSeq } : {}),
-    },
-  });
-  return changes;
+  // One audit row per revision: coalesced saves extend it instead of adding
+  // a row per stroke. Removals never coalesce, so each erase is its own row,
+  // and a row is only extended while it is still the board's newest audit
+  // entry, so the log's order stays truthful around archives and renames.
+  const latestAudit = auditEventId
+    ? await ctx.db
+        .query("auditEvents")
+        .withIndex("by_entityType_and_entityId_and_createdAt", (q) =>
+          q.eq("entityType", "ClubWhiteboard").eq("entityId", board._id),
+        )
+        .order("desc")
+        .first()
+    : null;
+  const coalescedAudit = latestAudit && latestAudit._id === auditEventId ? latestAudit : null;
+  if (coalescedAudit) {
+    await ctx.db.patch(coalescedAudit._id, {
+      meta: { ...mergeWhiteboardEditAuditMeta(coalescedAudit.meta, meta), lastSavedAt: now },
+    });
+  } else {
+    const createdAuditId = await logAuditEvent(ctx, {
+      actorId: user._id,
+      action: kind === "RESTORE" ? "CLUB_WHITEBOARD_RESTORED" : "CLUB_WHITEBOARD_EDITED",
+      entityType: "ClubWhiteboard",
+      entityId: board._id,
+      meta: {
+        ...meta,
+        title: board.title,
+        lastSavedAt: now,
+        ...(options.restoredToSeq !== undefined ? { restoredToSeq: options.restoredToSeq } : {}),
+      },
+    });
+    await ctx.db.patch(revisionId, { auditEventId: createdAuditId });
+  }
+  return { changes, rejected };
 }
 
+function elementIdOf(raw: string) {
+  try {
+    const id = (JSON.parse(raw) as { id?: unknown }).id;
+    return typeof id === "string" && id.length <= 64 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Saves a client's element changes. An element the server cannot store is
+ * reported back instead of failing the whole save, so one oversized stroke
+ * never blocks everything drawn after it.
+ */
 export async function saveWhiteboardElements(
   ctx: MutationCtx,
   user: Doc<"users">,
@@ -492,15 +617,33 @@ export async function saveWhiteboardElements(
 ) {
   assertWhiteboardSaveBounds(rawElements);
   const { board } = await requireEditableBoard(ctx, user, boardId);
-  // Validate everything before any write so one bad element rejects the batch.
-  const incoming = new Map(
-    rawElements.map((raw) => {
+  const incoming = new Map<string, SanitizedWhiteboardElement>();
+  const rejected: WhiteboardRejectedElement[] = [];
+  for (const raw of rawElements) {
+    try {
       const element = sanitizeWhiteboardElement(raw);
-      return [element.elementId, element] as const;
-    }),
-  );
-  const changes = await applyElementWrites(ctx, user, board, incoming.values(), "EDIT");
-  return { accepted: changes.length, ignored: incoming.size - changes.length };
+      incoming.set(element.elementId, element);
+    } catch (error) {
+      const elementId = elementIdOf(raw);
+      if (!elementId) throw error;
+      rejected.push({
+        elementId,
+        kind: "invalid",
+        reason: error instanceof ConvexError && typeof error.data === "string"
+          ? error.data
+          : "Invalid whiteboard element",
+      });
+    }
+  }
+  const result = await applyElementWrites(ctx, user, board, incoming.values(), "EDIT", {
+    whenFull: "reject",
+  });
+  rejected.push(...result.rejected);
+  return {
+    accepted: result.changes.length,
+    ignored: incoming.size - result.changes.length - result.rejected.length,
+    rejected,
+  };
 }
 
 /**
@@ -533,6 +676,67 @@ async function historyAt(
   return { latest, truncated };
 }
 
+/**
+ * Element IDs written after `atSeq`, or null when more history than the
+ * limits allow lies between that version and now.
+ */
+async function elementsChangedSince(
+  ctx: WhiteboardDbCtx,
+  boardId: Id<"clubWhiteboards">,
+  atSeq: number,
+  limits: { rows: number; bytes: number },
+) {
+  const changed = new Set<string>();
+  let rows = 0;
+  let bytes = 0;
+  const history = ctx.db
+    .query("clubWhiteboardHistory")
+    .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId).gt("seq", atSeq));
+  for await (const row of history) {
+    rows += 1;
+    bytes += row.data.length;
+    if (rows > limits.rows || bytes > limits.bytes) return null;
+    changed.add(row.elementId);
+  }
+  return changed;
+}
+
+/** One element's history row as of `atSeq`, or its newest when omitted. */
+async function elementHistoryAt(
+  ctx: WhiteboardDbCtx,
+  boardId: Id<"clubWhiteboards">,
+  elementId: string,
+  atSeq?: number,
+) {
+  return await ctx.db
+    .query("clubWhiteboardHistory")
+    .withIndex("by_boardId_and_elementId_and_seq", (q) =>
+      atSeq === undefined
+        ? q.eq("boardId", boardId).eq("elementId", elementId)
+        : q.eq("boardId", boardId).eq("elementId", elementId).lte("seq", atSeq),
+    )
+    .order("desc")
+    .first();
+}
+
+async function elementRow(
+  ctx: WhiteboardDbCtx,
+  boardId: Id<"clubWhiteboards">,
+  elementId: string,
+) {
+  return await ctx.db
+    .query("clubWhiteboardElements")
+    .withIndex("by_boardId_and_elementId", (q) =>
+      q.eq("boardId", boardId).eq("elementId", elementId),
+    )
+    .unique();
+}
+
+/**
+ * Makes the live board match the state right after `atSeq`. Only elements
+ * written since that version are read and rewritten, so the cost follows
+ * how much changed, not how long the board has existed.
+ */
 export async function restoreWhiteboardVersion(
   ctx: MutationCtx,
   user: Doc<"users">,
@@ -540,50 +744,99 @@ export async function restoreWhiteboardVersion(
   atSeq: number,
 ) {
   const { board } = await requireEditableBoard(ctx, user, boardId);
-  if (!Number.isSafeInteger(atSeq) || atSeq < 0 || atSeq > board.seq) {
+  const clock = await loadClock(ctx, board._id);
+  if (!Number.isSafeInteger(atSeq) || atSeq < 0 || atSeq > clock.seq) {
     throw new ConvexError("That version does not exist");
   }
-  const { latest, truncated } = await historyAt(ctx, boardId, atSeq, {
+  const changed = await elementsChangedSince(ctx, boardId, atSeq, {
     rows: MAX_RESTORE_SCAN_ROWS,
     bytes: MAX_SNAPSHOT_BYTES,
   });
-  if (truncated) {
-    throw new ConvexError("This version is too far back to restore in one step");
+  if (!changed) {
+    throw new ConvexError("Too much has changed since that version to restore it in one step");
   }
-  const current = await ctx.db
-    .query("clubWhiteboardElements")
-    .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
-    .take(MAX_RESTORE_SCAN_ROWS + 1);
-  if (current.length > MAX_RESTORE_SCAN_ROWS) {
-    throw new ConvexError("This whiteboard is too large to restore in one step");
-  }
-  const writes = planWhiteboardRestore(
-    current,
-    new Map(
-      Array.from(latest, ([elementId, row]) => [
-        elementId,
-        { isDeleted: row.isDeleted, data: row.data },
-      ]),
-    ),
-    () => Math.floor(Math.random() * 2 ** 31),
-  );
-  if (writes.length > MAX_RESTORE_WRITES) {
+  if (changed.size > MAX_RESTORE_WRITES) {
     throw new ConvexError("This version differs too much to restore in one step");
   }
-  const changes = await applyElementWrites(
+  const candidates: WhiteboardRestoreCandidate[] = await Promise.all(
+    Array.from(changed, async (elementId) => {
+      const [current, target, newest] = await Promise.all([
+        elementRow(ctx, boardId, elementId),
+        elementHistoryAt(ctx, boardId, elementId, atSeq),
+        elementHistoryAt(ctx, boardId, elementId),
+      ]);
+      return {
+        current: current ? { isDeleted: current.isDeleted, data: current.data } : null,
+        target: target ? { isDeleted: target.isDeleted, data: target.data } : null,
+        latestVersion: Math.max(
+          current?.version ?? 0,
+          newest ? whiteboardElementVersion(newest.data) : 0,
+        ),
+      };
+    }),
+  );
+  const writes = planWhiteboardRestore(candidates, () => Math.floor(Math.random() * 2 ** 31));
+  const { changes } = await applyElementWrites(
     ctx,
     user,
     board,
-    writes.map(sanitizeWhiteboardElement),
+    writes.map((raw) => sanitizeWhiteboardElement(raw)),
     "RESTORE",
-    atSeq,
+    { restoredToSeq: atSeq, whenFull: "throw" },
   );
   return { changed: changes.length };
 }
 
 /**
- * Reconstructs a board as of one sequence number from its append-only
- * history, for version previews and audit review.
+ * The live board with everything written after `atSeq` rolled back, or null
+ * when too much changed since then to rebuild it that way.
+ */
+async function boardStateAt(
+  ctx: QueryCtx,
+  boardId: Id<"clubWhiteboards">,
+  atSeq: number,
+) {
+  const changed = await elementsChangedSince(ctx, boardId, atSeq, {
+    rows: MAX_SNAPSHOT_HISTORY_ROWS,
+    bytes: MAX_SNAPSHOT_BYTES,
+  });
+  if (!changed) return null;
+  const state = new Map<string, { seq: number; data: string }>();
+  let bytes = 0;
+  let truncated = false;
+  const live = ctx.db
+    .query("clubWhiteboardElements")
+    .withIndex("by_boardId_and_isDeleted", (q) =>
+      q.eq("boardId", boardId).eq("isDeleted", false),
+    );
+  for await (const row of live) {
+    if (changed.has(row.elementId)) continue;
+    bytes += row.data.length;
+    if (bytes > MAX_SNAPSHOT_BYTES) {
+      truncated = true;
+      break;
+    }
+    state.set(row.elementId, { seq: row.seq, data: row.data });
+  }
+  const restored = await Promise.all(
+    Array.from(changed, (elementId) => elementHistoryAt(ctx, boardId, elementId, atSeq)),
+  );
+  for (const row of restored) {
+    if (row && !row.isDeleted) state.set(row.elementId, { seq: row.seq, data: row.data });
+  }
+  return {
+    elements: Array.from(state.values())
+      .sort((a, b) => a.seq - b.seq)
+      .map((entry) => entry.data),
+    truncated,
+  };
+}
+
+/**
+ * Reconstructs a board as of one sequence number, for version previews and
+ * audit review. Recent versions roll the live board back; boards whose live
+ * state was cleared (deleted channels) or very old versions are rebuilt from
+ * history instead.
  */
 export async function getWhiteboardSnapshot(
   ctx: QueryCtx,
@@ -592,18 +845,29 @@ export async function getWhiteboardSnapshot(
 ) {
   const board = await ctx.db.get(boardId);
   if (!board) return null;
-  const [club, channel] = await Promise.all([
+  const [club, channel, clock] = await Promise.all([
     ctx.db.get(board.clubId),
     ctx.db.get(board.channelId),
+    getClock(ctx, boardId),
   ]);
-  const { latest, truncated } = await historyAt(ctx, boardId, atSeq, {
-    rows: MAX_SNAPSHOT_HISTORY_ROWS,
-    bytes: MAX_SNAPSHOT_BYTES,
-  });
-  const elements = Array.from(latest.values())
-    .filter((row) => !row.isDeleted)
-    .sort((a, b) => a.seq - b.seq)
-    .map((row) => row.data);
+  const currentSeq = clock?.seq ?? 0;
+  const at = Math.min(Math.max(Math.floor(atSeq), 0), currentSeq);
+  const rolledBack = channel ? await boardStateAt(ctx, boardId, at) : null;
+  let elements: string[];
+  let truncated: boolean;
+  if (rolledBack) {
+    ({ elements, truncated } = rolledBack);
+  } else {
+    const rebuilt = await historyAt(ctx, boardId, at, {
+      rows: MAX_SNAPSHOT_HISTORY_ROWS,
+      bytes: MAX_SNAPSHOT_BYTES,
+    });
+    elements = Array.from(rebuilt.latest.values())
+      .filter((row) => !row.isDeleted)
+      .sort((a, b) => a.seq - b.seq)
+      .map((row) => row.data);
+    truncated = rebuilt.truncated;
+  }
   return {
     boardId,
     clubId: board.clubId,
@@ -611,8 +875,8 @@ export async function getWhiteboardSnapshot(
     title: board.title,
     clubName: club?.name ?? null,
     channelName: channel?.name ?? null,
-    atSeq: Math.min(atSeq, board.seq),
-    currentSeq: board.seq,
+    atSeq: at,
+    currentSeq,
     elements,
     truncated,
   };
@@ -646,7 +910,6 @@ const boardSummaryValidator = v.object({
   createdByName: v.string(),
   updatedAt: v.number(),
   updatedByName: v.union(v.string(), v.null()),
-  elementCount: v.number(),
   archivedAt: v.union(v.number(), v.null()),
   activeViewerCount: v.number(),
 });
@@ -660,16 +923,18 @@ async function toBoardSummaries(
     ctx,
     boards.flatMap((board) => [board.createdById, board.updatedById]),
   );
+  // Presence rows change at most every ten seconds per viewer, so pointer
+  // movement and drawing never re-run this list.
   const viewerCounts = await Promise.all(
     boards.map(async (board) => {
       if (board.isArchived || activeSince === null) return 0;
-      const cursors = await ctx.db
-        .query("clubWhiteboardCursors")
-        .withIndex("by_boardId_and_updatedAt", (q) =>
-          q.eq("boardId", board._id).gte("updatedAt", activeSince),
+      const present = await ctx.db
+        .query("clubWhiteboardPresence")
+        .withIndex("by_boardId_and_lastSeenAt", (q) =>
+          q.eq("boardId", board._id).gte("lastSeenAt", activeSince),
         )
         .take(MAX_ACTIVE_VIEWERS_COUNTED);
-      return cursors.length;
+      return present.length;
     }),
   );
   return boards.map((board, index) => ({
@@ -679,7 +944,6 @@ async function toBoardSummaries(
     createdByName: names.get(board.createdById) ?? "Former member",
     updatedAt: board.updatedAt,
     updatedByName: board.updatedById ? (names.get(board.updatedById) ?? null) : null,
-    elementCount: board.liveElementCount,
     archivedAt: board.archivedAt ?? null,
     activeViewerCount: viewerCounts[index]!,
   }));
@@ -772,8 +1036,6 @@ export const get = query({
       _id: v.id("clubWhiteboards"),
       channelId: v.id("clubChannels"),
       title: v.string(),
-      seq: v.number(),
-      elementCount: v.number(),
       archivedAt: v.union(v.number(), v.null()),
       createdAt: v.number(),
     }),
@@ -789,8 +1051,6 @@ export const get = query({
       _id: board._id,
       channelId: board.channelId,
       title: board.title,
-      seq: board.seq,
-      elementCount: board.liveElementCount,
       archivedAt: board.archivedAt ?? null,
       createdAt: board.createdAt,
     };
@@ -962,7 +1222,17 @@ export const setArchived = mutation({
 
 export const saveElements = mutation({
   args: { boardId: v.id("clubWhiteboards"), elements: v.array(v.string()) },
-  returns: v.object({ accepted: v.number(), ignored: v.number() }),
+  returns: v.object({
+    accepted: v.number(),
+    ignored: v.number(),
+    rejected: v.array(
+      v.object({
+        elementId: v.string(),
+        kind: v.union(v.literal("full"), v.literal("invalid")),
+        reason: v.string(),
+      }),
+    ),
+  }),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
     const rate = await contentRateLimiter.limit(ctx, "whiteboardSavesByUser", {
@@ -1097,6 +1367,21 @@ export const updateCursor = mutation({
         ...position,
       });
     }
+    const presence = await ctx.db
+      .query("clubWhiteboardPresence")
+      .withIndex("by_boardId_and_userId", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", user._id),
+      )
+      .unique();
+    if (!presence) {
+      await ctx.db.insert("clubWhiteboardPresence", {
+        boardId: args.boardId,
+        userId: user._id,
+        lastSeenAt: now,
+      });
+    } else if (now - presence.lastSeenAt >= PRESENCE_REFRESH_MS) {
+      await ctx.db.patch(presence._id, { lastSeenAt: now });
+    }
     return null;
   },
 });
@@ -1106,13 +1391,22 @@ export const leave = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await getCurrentAppUser(ctx);
-    const existing = await ctx.db
-      .query("clubWhiteboardCursors")
-      .withIndex("by_boardId_and_userId", (q) =>
-        q.eq("boardId", args.boardId).eq("userId", user._id),
-      )
-      .unique();
-    if (existing) await ctx.db.delete(existing._id);
+    const [cursor, presence] = await Promise.all([
+      ctx.db
+        .query("clubWhiteboardCursors")
+        .withIndex("by_boardId_and_userId", (q) =>
+          q.eq("boardId", args.boardId).eq("userId", user._id),
+        )
+        .unique(),
+      ctx.db
+        .query("clubWhiteboardPresence")
+        .withIndex("by_boardId_and_userId", (q) =>
+          q.eq("boardId", args.boardId).eq("userId", user._id),
+        )
+        .unique(),
+    ]);
+    if (cursor) await ctx.db.delete(cursor._id);
+    if (presence) await ctx.db.delete(presence._id);
     return null;
   },
 });
@@ -1121,7 +1415,7 @@ export const leave = mutation({
 
 /** Deletes one bounded batch of a board's live state; true when finished. */
 async function clearBoardLiveState(ctx: MutationCtx, boardId: Id<"clubWhiteboards">) {
-  const [elements, cursors, thumbnails] = await Promise.all([
+  const [elements, cursors, presence, thumbnails] = await Promise.all([
     ctx.db
       .query("clubWhiteboardElements")
       .withIndex("by_boardId_and_seq", (q) => q.eq("boardId", boardId))
@@ -1131,14 +1425,28 @@ async function clearBoardLiveState(ctx: MutationCtx, boardId: Id<"clubWhiteboard
       .withIndex("by_boardId_and_userId", (q) => q.eq("boardId", boardId))
       .take(CLEANUP_BATCH_SIZE),
     ctx.db
+      .query("clubWhiteboardPresence")
+      .withIndex("by_boardId_and_userId", (q) => q.eq("boardId", boardId))
+      .take(CLEANUP_BATCH_SIZE),
+    ctx.db
       .query("clubWhiteboardThumbnails")
       .withIndex("by_boardId", (q) => q.eq("boardId", boardId))
       .take(1),
   ]);
-  for (const row of [...elements, ...cursors, ...thumbnails]) {
+  for (const row of [...elements, ...cursors, ...presence, ...thumbnails]) {
     await ctx.db.delete(row._id);
   }
-  return elements.length < CLEANUP_BATCH_SIZE && cursors.length < CLEANUP_BATCH_SIZE;
+  const finished =
+    elements.length < CLEANUP_BATCH_SIZE &&
+    cursors.length < CLEANUP_BATCH_SIZE &&
+    presence.length < CLEANUP_BATCH_SIZE;
+  if (finished) {
+    const clock = await getClock(ctx, boardId);
+    if (clock && clock.liveElementCount !== 0) {
+      await ctx.db.patch(clock._id, { liveElementCount: 0 });
+    }
+  }
+  return finished;
 }
 
 /**
@@ -1171,7 +1479,6 @@ export const cleanupChannelWhiteboard = internalMutation({
         await ctx.db.patch(active._id, {
           isArchived: true,
           archivedAt: Date.now(),
-          liveElementCount: 0,
         });
         await adjustWhiteboardCounts(ctx, args.channelId, { active: -1, archived: 1 });
       }
@@ -1192,10 +1499,112 @@ export const cleanupChannelWhiteboard = internalMutation({
       await next(args.archivedCursor ?? null);
       return null;
     }
-    if (board.liveElementCount !== 0) {
-      await ctx.db.patch(board._id, { liveElementCount: 0 });
-    }
     if (!archived.isDone) await next(archived.continueCursor);
+    return null;
+  },
+});
+
+// ── Background maintenance ──────────────────────────────────────────────
+
+/** Copies a board's latest edit onto its row once the list interval passes. */
+export const refreshWhiteboardActivity = internalMutation({
+  args: { boardId: v.id("clubWhiteboards") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const [board, clock] = await Promise.all([
+      ctx.db.get(args.boardId),
+      getClock(ctx, args.boardId),
+    ]);
+    if (!board || !clock) return null;
+    const newerEdit =
+      clock.lastEditedAt !== undefined &&
+      (clock.lastEditedAt > board.updatedAt ||
+        (clock.lastEditedAt === board.updatedAt && clock.lastEditedById !== board.updatedById));
+    if (newerEdit) {
+      await ctx.db.patch(board._id, {
+        updatedAt: clock.lastEditedAt,
+        updatedById: clock.lastEditedById,
+      });
+    }
+    await ctx.db.patch(clock._id, { activityRefreshScheduled: false });
+    return null;
+  },
+});
+
+/**
+ * Copies a duplicated board's live elements in bounded batches, as the
+ * person who duplicated it. Elements the source changes while copying are
+ * picked up at their new sequence numbers.
+ */
+export const copyWhiteboardElements = internalMutation({
+  args: {
+    sourceBoardId: v.id("clubWhiteboards"),
+    targetBoardId: v.id("clubWhiteboards"),
+    actorId: v.id("users"),
+    afterSeq: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const [target, actor] = await Promise.all([
+      ctx.db.get(args.targetBoardId),
+      ctx.db.get(args.actorId),
+    ]);
+    if (!target || target.isArchived || !actor) return null;
+    const batch: SanitizedWhiteboardElement[] = [];
+    let bytes = 0;
+    let lastSeq = args.afterSeq;
+    let more = false;
+    const rows = ctx.db
+      .query("clubWhiteboardElements")
+      .withIndex("by_boardId_and_seq", (q) =>
+        q.eq("boardId", args.sourceBoardId).gt("seq", args.afterSeq),
+      );
+    for await (const row of rows) {
+      if (
+        batch.length > 0 &&
+        (batch.length >= COPY_BATCH_ELEMENTS || bytes + row.data.length > COPY_BATCH_BYTES)
+      ) {
+        more = true;
+        break;
+      }
+      lastSeq = row.seq;
+      if (row.isDeleted) continue;
+      batch.push(sanitizeWhiteboardElement(row.data));
+      bytes += row.data.length;
+    }
+    if (batch.length > 0) {
+      await applyElementWrites(ctx, actor, target, batch, "EDIT", { whenFull: "reject" });
+    }
+    if (more) {
+      await ctx.scheduler.runAfter(0, internal.clubs.whiteboards.copyWhiteboardElements, {
+        ...args,
+        afterSeq: lastSeq,
+      });
+    }
+    return null;
+  },
+});
+
+/**
+ * Removes erased elements' tombstones after a day, keeping every board's
+ * download small. History keeps each erased element's versions, so audit
+ * review and restores still see them.
+ */
+export const pruneErasedWhiteboardElements = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const cutoff = Date.now() - TOMBSTONE_RETENTION_MS;
+    const rows = await ctx.db
+      .query("clubWhiteboardElements")
+      .withIndex("by_isDeleted_and_updatedAt", (q) =>
+        q.eq("isDeleted", true).lt("updatedAt", cutoff),
+      )
+      .take(CLEANUP_BATCH_SIZE);
+    for (const row of rows) await ctx.db.delete(row._id);
+    if (rows.length === CLEANUP_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.clubs.whiteboards.pruneErasedWhiteboardElements, {});
+    }
     return null;
   },
 });

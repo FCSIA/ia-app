@@ -772,17 +772,14 @@ export const schema = defineSchema({
     .index("by_userId_and_channelId", ["userId", "channelId"]),
 
   // Named whiteboards owned by a channel. Access always follows the channel.
-  // `seq` is a per-board logical clock: every accepted element write takes the
-  // next value, so clients can follow changes with an ordered "after seq N"
-  // subscription instead of re-reading the whole board. Wall-clock time
-  // cannot serve that purpose because concurrent mutations may commit out of
-  // timestamp order. Archiving hides a board; nothing is ever hard-deleted.
+  // Board rows hold only list-facing state: drawing advances the board's
+  // clock (below) and refreshes `updatedAt` at most every 30 seconds, so the
+  // board list is not re-run on every stroke. Archiving hides a board;
+  // nothing is ever hard-deleted.
   clubWhiteboards: defineTable({
     clubId: v.id("clubs"),
     channelId: v.id("clubChannels"),
     title: v.string(),
-    seq: v.number(),
-    liveElementCount: v.number(),
     createdById: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -798,6 +795,21 @@ export const schema = defineSchema({
     "updatedAt",
   ]),
 
+  // A board's high-churn write state. `seq` is a per-board logical clock: every
+  // accepted element write takes the next value, so clients can follow
+  // changes with an ordered "after seq N" subscription instead of re-reading
+  // the whole board. Wall-clock time cannot serve that purpose because
+  // concurrent mutations may commit out of timestamp order.
+  clubWhiteboardClocks: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    seq: v.number(),
+    liveElementCount: v.number(),
+    // The latest edit, copied onto the board row at most every 30 seconds.
+    lastEditedAt: v.optional(v.number()),
+    lastEditedById: v.optional(v.id("users")),
+    activityRefreshScheduled: v.optional(v.boolean()),
+  }).index("by_boardId", ["boardId"]),
+
   // Exact per-channel board counts, maintained by every create, archive,
   // unarchive, and channel cleanup. Enforces the active-board limit and labels
   // the unbounded archive without scanning it.
@@ -808,8 +820,8 @@ export const schema = defineSchema({
   }).index("by_channelId", ["channelId"]),
 
   // Member-facing version history. Consecutive saves by the same person are
-  // coalesced into one revision (like document editors), while the audit log
-  // keeps every individual save.
+  // coalesced into one revision (like document editors), and so is the
+  // revision's audit row; `clubWhiteboardHistory` keeps every write.
   clubWhiteboardRevisions: defineTable({
     boardId: v.id("clubWhiteboards"),
     actorId: v.id("users"),
@@ -821,6 +833,7 @@ export const schema = defineSchema({
     deleted: v.number(),
     restored: v.number(),
     restoredToSeq: v.optional(v.number()),
+    auditEventId: v.optional(v.id("auditEvents")),
     startedAt: v.number(),
     updatedAt: v.number(),
   }).index("by_boardId_and_toSeq", ["boardId", "toSeq"]),
@@ -835,6 +848,8 @@ export const schema = defineSchema({
 
   // Latest state of each Excalidraw element. `data` is the element's JSON so
   // arbitrary editor fields never collide with Convex field-name rules.
+  // Erased elements stay as tombstones for a day so stale clients cannot
+  // resurrect them, then are pruned; history keeps every version.
   clubWhiteboardElements: defineTable({
     boardId: v.id("clubWhiteboards"),
     elementId: v.string(),
@@ -847,7 +862,9 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_boardId_and_elementId", ["boardId", "elementId"])
-    .index("by_boardId_and_seq", ["boardId", "seq"]),
+    .index("by_boardId_and_seq", ["boardId", "seq"])
+    .index("by_boardId_and_isDeleted", ["boardId", "isDeleted"])
+    .index("by_isDeleted_and_updatedAt", ["isDeleted", "updatedAt"]),
 
   // Append-only record of every accepted element write, retained for
   // moderation so staff can reconstruct the board as of any audited edit.
@@ -859,10 +876,13 @@ export const schema = defineSchema({
     data: v.string(),
     actorId: v.id("users"),
     createdAt: v.number(),
-  }).index("by_boardId_and_seq", ["boardId", "seq"]),
+  })
+    .index("by_boardId_and_seq", ["boardId", "seq"])
+    .index("by_boardId_and_elementId_and_seq", ["boardId", "elementId", "seq"]),
 
   // High-churn pointer positions, kept apart from the board row so cursor
-  // movement never invalidates element or board subscriptions.
+  // movement never invalidates element or board subscriptions. Only the
+  // board's own cursor subscription reads this table.
   clubWhiteboardCursors: defineTable({
     boardId: v.id("clubWhiteboards"),
     userId: v.id("users"),
@@ -875,6 +895,16 @@ export const schema = defineSchema({
   })
     .index("by_boardId_and_userId", ["boardId", "userId"])
     .index("by_boardId_and_updatedAt", ["boardId", "updatedAt"]),
+
+  // Who has a board open, refreshed at most every ten seconds per viewer, so
+  // the board list's "people here now" never re-runs on pointer movement.
+  clubWhiteboardPresence: defineTable({
+    boardId: v.id("clubWhiteboards"),
+    userId: v.id("users"),
+    lastSeenAt: v.number(),
+  })
+    .index("by_boardId_and_userId", ["boardId", "userId"])
+    .index("by_boardId_and_lastSeenAt", ["boardId", "lastSeenAt"]),
 
   clubTags: defineTable({
     clubId: v.id("clubs"),

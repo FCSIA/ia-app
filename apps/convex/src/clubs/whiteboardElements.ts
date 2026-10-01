@@ -228,51 +228,56 @@ export function shouldCoalesceWhiteboardRevision(
   );
 }
 
-type StoredElementState = {
-  elementId: string;
-  version: number;
-  isDeleted: boolean;
-  data: string;
+type ElementState = { isDeleted: boolean; data: string };
+
+/** One element changed since the version being restored. */
+export type WhiteboardRestoreCandidate = {
+  /** The live row, or null once an erased element's tombstone was pruned. */
+  current: ElementState | null;
+  /** Its state as of the restored version, or null if it did not exist yet. */
+  target: ElementState | null;
+  /** The newest version any client may hold for this element. */
+  latestVersion: number;
 };
 
 /**
- * Plans the writes that make the live board match a past version. Each write
- * is a new, higher element version so every open client converges on it and
- * the restore itself can later be undone like any other edit.
+ * Plans the writes that make the live board match a past version. Only
+ * elements changed since that version are considered. Each write is a new,
+ * higher element version so every open client converges on it and the
+ * restore itself can later be undone like any other edit.
  */
 export function planWhiteboardRestore(
-  current: StoredElementState[],
-  target: Map<string, { isDeleted: boolean; data: string }>,
+  candidates: Iterable<WhiteboardRestoreCandidate>,
   nonce: () => number,
 ) {
   const writes: string[] = [];
-  for (const row of current) {
-    const wanted = target.get(row.elementId);
-    if (!wanted) {
-      if (row.isDeleted) continue;
-      const element = JSON.parse(row.data) as Record<string, unknown>;
-      writes.push(
-        JSON.stringify({
-          ...element,
-          isDeleted: true,
-          version: row.version + 1,
-          versionNonce: nonce(),
-        }),
-      );
+  for (const { current, target, latestVersion } of candidates) {
+    const currentlyLive = !!current && !current.isDeleted;
+    // Created after the version: remove it if it is still on the board.
+    const wanted = target ?? (currentlyLive ? { ...current, isDeleted: true } : null);
+    if (!wanted) continue;
+    if (current && wanted.data === current.data && wanted.isDeleted === current.isDeleted) {
       continue;
     }
-    if (wanted.data === row.data && wanted.isDeleted === row.isDeleted) continue;
+    // Already gone, and gone in the version too.
+    if (wanted.isDeleted && !currentlyLive) continue;
     const element = JSON.parse(wanted.data) as Record<string, unknown>;
     writes.push(
       JSON.stringify({
         ...element,
         isDeleted: wanted.isDeleted,
-        version: row.version + 1,
+        version: latestVersion + 1,
         versionNonce: nonce(),
       }),
     );
   }
   return writes;
+}
+
+/** An element's version as stored in its serialized data. */
+export function whiteboardElementVersion(data: string) {
+  const version = (JSON.parse(data) as { version?: unknown }).version;
+  return typeof version === "number" && Number.isSafeInteger(version) ? version : 0;
 }
 
 export type WhiteboardAuditChange = {
@@ -314,6 +319,7 @@ export function whiteboardEditAuditMeta(input: {
     boardId: input.boardId,
     fromSeq: input.fromSeq,
     toSeq: input.toSeq,
+    saveCount: 1,
     changeCount: input.changes.length,
     ...counts,
     changes: itemized,
@@ -321,5 +327,40 @@ export function whiteboardEditAuditMeta(input: {
       0,
       input.changes.length - MAX_WHITEBOARD_AUDIT_CHANGES,
     ),
+  };
+}
+
+type WhiteboardEditAuditMeta = ReturnType<typeof whiteboardEditAuditMeta>;
+
+/**
+ * Folds one more save into the audit row of the revision it coalesced into:
+ * counts add up, the range extends, and itemized changes stay bounded. Every
+ * individual write remains in `clubWhiteboardHistory`.
+ */
+export function mergeWhiteboardEditAuditMeta(
+  previous: unknown,
+  next: WhiteboardEditAuditMeta,
+) {
+  const base =
+    typeof previous === "object" && previous !== null && !Array.isArray(previous)
+      ? (previous as Record<string, unknown>)
+      : {};
+  const count = (key: string) => (typeof base[key] === "number" ? (base[key] as number) : 0);
+  const changes = [...(Array.isArray(base.changes) ? base.changes : []), ...next.changes].slice(
+    0,
+    MAX_WHITEBOARD_AUDIT_CHANGES,
+  );
+  const changeCount = count("changeCount") + next.changeCount;
+  return {
+    ...base,
+    toSeq: next.toSeq,
+    saveCount: (count("saveCount") || 1) + 1,
+    changeCount,
+    created: count("created") + next.created,
+    updated: count("updated") + next.updated,
+    deleted: count("deleted") + next.deleted,
+    restored: count("restored") + next.restored,
+    changes,
+    omittedChangeCount: Math.max(0, changeCount - changes.length),
   };
 }

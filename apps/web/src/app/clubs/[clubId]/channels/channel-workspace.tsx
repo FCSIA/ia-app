@@ -1488,7 +1488,9 @@ export function ChannelWorkspace() {
   }, [channelId]);
 
   useEffect(() => {
-    if (!latestVisibleActivity || !unreadBoundary) return;
+    // Messages only count as read while the chat is on screen, not while the
+    // channel's Whiteboards tab covers it.
+    if (!latestVisibleActivity || !unreadBoundary || showWhiteboard) return;
 
     const markVisibleActivityRead = () => {
       if (document.visibilityState !== 'visible') return;
@@ -1521,7 +1523,7 @@ export function ChannelWorkspace() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [channelId, latestVisibleActivity, markChannelRead, unreadBoundary]);
+  }, [channelId, latestVisibleActivity, markChannelRead, showWhiteboard, unreadBoundary]);
 
   const submitMessage = async ({
     body,

@@ -21,7 +21,12 @@ entirely in Convex. No third-party service receives board content.
   reach every board through their elevated channel access.
 - Changes save automatically about a quarter second after each finished stroke,
   shape, text edit, or move, and appear live for everyone. Other people's
-  cursors are shown and smoothed between updates.
+  cursors are shown and smoothed between updates. A shape the server cannot
+  store (for example an oversized freehand stroke) is reported and stays on the
+  drawer's screen without blocking later saves; shapes refused because the board
+  is full are retried the next time that person erases something.
+- **Duplicate** copies every live element on the server in bounded batches, so
+  large boards copy completely; an open board sends its unsent strokes first.
 - **Version history** lists every change, coalescing consecutive edits by one
   person (removals always get their own entry, so there is a restore point just
   before anything was erased). Any version can be previewed and restored;
@@ -51,13 +56,15 @@ entirely in Convex. No third-party service receives board content.
 
 | Table | Purpose |
 | --- | --- |
-| `clubWhiteboards` | Board per channel: title, `seq` logical clock, live element count, `isArchived` (indexed with channel and last edit so active and archived boards are read separately). |
+| `clubWhiteboards` | Board per channel: title, last activity, `isArchived` (indexed with channel and last edit so active and archived boards are read separately). Drawing refreshes the activity at most every 30 seconds, through one deferred catch-up, so the board list does not re-run on every stroke. |
+| `clubWhiteboardClocks` | A board's high-churn write state: the `seq` logical clock, exact live element count, and latest edit. |
 | `clubWhiteboardChannelCounts` | Exact active and archived board counts per channel, updated by create, archive, unarchive, and cleanup. |
-| `clubWhiteboardElements` | Latest state of each element (JSON), indexed by board and `seq`. |
-| `clubWhiteboardHistory` | Append-only record of every accepted element write. |
-| `clubWhiteboardRevisions` | Member-facing version history (coalesced saves and restores). |
+| `clubWhiteboardElements` | Latest state of each element (JSON), indexed by board and `seq`. Erased elements stay as tombstones for 24 hours so stale clients cannot resurrect them, then a cron prunes them. Elements created and erased before their first save are never stored. |
+| `clubWhiteboardHistory` | Append-only record of every accepted element write, indexed by board and `seq`, and by board, element, and `seq`. |
+| `clubWhiteboardRevisions` | Member-facing version history (coalesced saves and restores), each linked to its audit row. |
 | `clubWhiteboardThumbnails` | Small WebP/PNG preview, kept apart from the board row. |
-| `clubWhiteboardCursors` | One presence/pointer row per viewer per board. |
+| `clubWhiteboardCursors` | Pointer positions, read only by the open board's cursor subscription. |
+| `clubWhiteboardPresence` | Who has a board open, refreshed at most every ten seconds per viewer; the board list counts these rows, so pointer movement never re-runs it. |
 
 ## Sync Design
 
@@ -69,6 +76,14 @@ concurrent mutations may commit out of timestamp order.
 
 Writes follow Excalidraw's reconciliation rule: a higher element version wins,
 and a version tie goes to the lower `versionNonce`. Stale writes are ignored.
+Clients count a received element as synced only when the scene adopted it, so
+a local edit that wins a version tie is still sent. Within a save, removals are
+applied before additions.
+
+Version previews and restores roll the live board back through the history
+written after the chosen version (looked up per element), so their cost follows
+how much changed since then, not how long the board has existed. Previews are
+fetched once per selection rather than subscribed to.
 
 Clients hold back elements that are still being drawn, typed, dragged, resized,
 or rotated, so one gesture becomes one save. Pointer positions are sent about
@@ -95,16 +110,21 @@ or `CLUB_CHANNEL_WHITEBOARDS_DISABLED` audit row.
 
 ## Audit
 
-Every create, edit, rename, archive, unarchive, and restore writes an
-`auditEvents` row with entity type `ClubWhiteboard`. Edit and restore rows
-itemize up to 25 element changes with text previews and record the `seq` range.
+Every create, rename, archive, unarchive, and restore writes an `auditEvents`
+row with entity type `ClubWhiteboard`, and so does every edit revision. Edits
+coalesce into their revision's audit row the same way revisions do (one person,
+within five minutes, removals never merged with additions), and only while that
+row is still the board's newest audit entry, so the log's order stays truthful.
+Coalesced rows record `saveCount`, the full `seq` range, summed counts, and up to
+25 itemized changes with text previews; `clubWhiteboardHistory` keeps every
+individual write.
 The admin audit detail resolves the board's current title, club, and channel,
 links to the board, and renders the board as it stood right after that change
 from the retained history.
 
 ## Retention
 
-Deleting a channel clears every board's live elements, cursors, and previews,
+Deleting a channel clears every board's live elements, cursors, presence, and previews,
 one bounded batch per scheduled run, and archives the active boards. Board rows, element history, revisions, and audit rows are
 kept so staff can still review what was drawn.
 
@@ -114,10 +134,13 @@ kept so staff can still review what was drawn.
 - Boards hold up to 5,000 live elements; a channel holds up to 100 active
   boards and any number of archived boards.
 - Search filters active boards and the archived boards loaded so far.
-- Restoring a version is limited to boards whose history fits one transaction
-  (about 10,000 writes to scan and 3,000 changes to apply).
+- Restoring a version is limited to about 10,000 writes made since that version
+  and 3,000 elements to change. Previews of versions further back are rebuilt
+  from history and may be shown partially.
 - Cursor presence is polled from a small Convex table rather than a websocket
-  relay, so cursors move at roughly six updates a second.
+  relay, so cursors move at roughly six updates a second. Presence is
+  hand-rolled rather than the `@convex-dev/presence` component, which would need
+  component code generation against a deployment to adopt.
 
 ## Related
 

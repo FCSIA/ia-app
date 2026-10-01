@@ -56,7 +56,6 @@ type BoardSummary = {
   createdByName: string;
   updatedAt: number;
   updatedByName: string | null;
-  elementCount: number;
   archivedAt: number | null;
   activeViewerCount: number;
 };
