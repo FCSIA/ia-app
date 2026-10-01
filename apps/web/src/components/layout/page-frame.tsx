@@ -137,7 +137,9 @@ export function Panel({
         <div className="flex flex-col gap-3 px-6 pt-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             {title ? (
-              <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+              <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                {title}
+              </h3>
             ) : null}
             {description ? (
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>

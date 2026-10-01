@@ -72,7 +72,7 @@ export function WelcomeWidget() {
             {greeting}
             {firstName ? `, ${firstName}` : ""}.
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-foreground/80 drop-shadow-sm">
             {quietMessage ?? format(now, "EEEE, MMMM d")}
           </p>
         </div>

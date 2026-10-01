@@ -52,7 +52,7 @@ function queriesForTab(tab: PrewarmTab, user: AppUser): KeepAliveEntry[] {
   switch (tab) {
     case "dashboard": {
       const entries: KeepAliveEntry[] = [
-        { query: api.announcements.feed.list, args: { unreadOnly: true } },
+        { query: api.announcements.feed.list, args: { unreadOnly: true, now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } },
         { query: api.events.calendar.list, args: upcomingCalendarWindow() },
         { query: api.flexFriday.fridays.list },
       ];
@@ -99,7 +99,7 @@ function queriesForTab(tab: PrewarmTab, user: AppUser): KeepAliveEntry[] {
           ];
 
     case "announcements":
-      return [{ query: api.announcements.feed.list }];
+      return [{ query: api.announcements.feed.list, args: { now: Math.floor(Date.now() / 86_400_000) * 86_400_000 } }];
 
     case "notifications":
       return [{ query: api.notifications.inbox.list, args: { limit: 50 } }];

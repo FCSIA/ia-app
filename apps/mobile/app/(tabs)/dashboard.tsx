@@ -40,10 +40,9 @@ import { useOfflineValue } from "@/lib/offline-cache";
 import { useTheme } from "@/lib/theme";
 import { radii, spacing } from "@/lib/tokens";
 import { api } from "~/apps/convex/src/_generated/api";
+import { useAnnouncementFeedClock } from "@/features/announcements/use-announcement-feed-clock";
 
 const EMPTY_ARGS = {};
-const UNREAD_ANNOUNCEMENTS_ARGS = { unreadOnly: true };
-
 export default function DashboardScreen() {
   const cachedUser = useCurrentUser();
   const liveUser = useLiveCurrentUser();
@@ -66,10 +65,13 @@ function DashboardLoading() {
 }
 
 function OperationalDashboardScreen({ user }: { user: AppUser }) {
+  const announcementNow = useAnnouncementFeedClock();
   const { color } = useTheme();
   const schoolDay = useMemo(getDashboardSchoolDay, []);
   const schedule = useDashboardSchedule();
-  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
+  const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true, now: announcementNow });
+  const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now: announcementNow }) ?? [];
+  const announcementCards = announcements ? [...pinnedAnnouncements.filter((item) => !item.isRead), ...announcements.filter((item) => !pinnedAnnouncements.some((pin) => pin._id === item._id))] : undefined;
   const calendarEntries = useUpcomingCalendarEntries();
   const flexFridays = useQuery(api.flexFriday.fridays.list, EMPTY_ARGS);
   const nextFlexFriday = resolveNextFlexFriday(flexFridays ?? []);
@@ -96,7 +98,7 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
           <HomeSkeleton count={3} />
         ) : (
           <HomeSurface>
-            {announcements.length ? announcements.slice(0, 3).map((item: any, index: number) => (
+            {announcementCards?.length ? announcementCards.slice(0, 3).map((item: any, index: number) => (
               <HomeRow
                 key={item._id}
                 divider={index > 0}
@@ -171,9 +173,12 @@ function OperationalDashboardScreen({ user }: { user: AppUser }) {
 }
 
 function StudentDashboardScreen({ user }: { user: AppUser }) {
+  const announcementNow = useAnnouncementFeedClock();
   const { color } = useTheme();
   const schoolDay = useMemo(getDashboardSchoolDay, []);
-  const announcements = useQuery(api.announcements.feed.list, UNREAD_ANNOUNCEMENTS_ARGS);
+  const announcements = useQuery(api.announcements.feed.list, { unreadOnly: true, now: announcementNow });
+  const pinnedAnnouncements = useQuery(api.announcements.feed.listPinned, { limit: 20, now: announcementNow }) ?? [];
+  const announcementCards = announcements ? [...pinnedAnnouncements.filter((item) => !item.isRead), ...announcements.filter((item) => !pinnedAnnouncements.some((pin) => pin._id === item._id))] : undefined;
   const liveSchedule = useDashboardSchedule();
   const calendarEntries = useUpcomingCalendarEntries();
   const myClubs = useQuery(api.clubs.management.getMyClubs, EMPTY_ARGS);
@@ -220,7 +225,7 @@ function StudentDashboardScreen({ user }: { user: AppUser }) {
             <HomeSkeleton count={3} />
           ) : (
             <HomeSurface>
-              {announcements.length ? announcements.slice(0, 3).map((item: any, index: number) => (
+              {announcementCards?.length ? announcementCards.slice(0, 3).map((item: any, index: number) => (
                 <HomeRow
                   key={item._id}
                   divider={index > 0}

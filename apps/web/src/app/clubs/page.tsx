@@ -152,20 +152,20 @@ export default function ClubsLandingPage() {
         ) : null}
 
         <section
-          className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-surface-2 shadow-surface-1 ${CARD_SURFACE_FOREGROUND}`}
+          className={`mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card ${CARD_SURFACE_FOREGROUND}`}
         >
           <div className="flex min-h-12 items-center justify-between border-b px-4 py-2">
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-foreground">
                 {hasAdministrativeClubAccess ? "All clubs" : "Your clubs"}
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-foreground/80">
                 {hasAdministrativeClubAccess
                   ? "Open any active club workspace."
                   : "Open the spaces you belong to."}
               </p>
             </div>
-            <span className="text-xs tabular-nums text-muted-foreground">
+            <span className="text-xs font-medium tabular-nums text-foreground/80">
               {listedClubs.length}
             </span>
           </div>
@@ -227,7 +227,12 @@ export default function ClubsLandingPage() {
 
         {hasAdministrativeClubAccess || myClubs.length > 0 ? (
           <div className="flex justify-end">
-            <Button asChild variant="ghost" trailingIcon={ArrowRight}>
+            <Button
+              asChild
+              variant="tertiary"
+              trailingIcon={ArrowRight}
+              className="border-border bg-card text-card-foreground hover:bg-hover"
+            >
               <Link href="/clubs/discover">
                 {hasAdministrativeClubAccess
                   ? "Search clubs"

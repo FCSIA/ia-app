@@ -17,7 +17,7 @@ import {
   normalizeOptionalLabel,
   normalizeRequiredLabel,
 } from "./hierarchyRules";
-import { toClubUserRef } from "./serialize";
+import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import { adjustClubCounts, recountClub } from "./counts";
 
 const unitSummaryValidator = v.object({
@@ -37,14 +37,8 @@ const unitMemberValidator = v.object({
   _id: v.id("clubUnitMembers"),
   userId: v.id("users"),
   joinedAt: v.number(),
-  user: v.object({
-    _id: v.id("users"),
-    uniqueId: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-    roles: v.array(v.string()),
-    avatarUrl: v.union(v.string(), v.null()),
-  }),
+  // Reuse the serializer's own validator so new user fields can't drift.
+  user: clubUserRefValidator,
 });
 
 const memberUnitOptionValidator = v.object({

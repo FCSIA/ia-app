@@ -86,6 +86,8 @@ export const schema = defineSchema({
     avatarStorageId: v.optional(v.id("_storage")),
     customBackgroundUrl: v.optional(v.string()),
     customBackgroundStorageId: v.optional(v.id("_storage")),
+    customBackgroundPalette: v.optional(v.array(v.string())),
+    customBackgroundTint: v.optional(v.string()),
     searchText: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -506,8 +508,10 @@ export const schema = defineSchema({
     updatedAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])
+    .index("by_clubId_and_createdAt", ["clubId", "createdAt"])
     .index("by_clubId", ["clubId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
 
   comments: defineTable({
     announcementId: v.id("announcements"),
@@ -526,6 +530,14 @@ export const schema = defineSchema({
     .index("by_announcementId_and_userId", ["announcementId", "userId"]),
 
   announcementBookmarks: defineTable({
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_announcementId_and_userId", ["announcementId", "userId"]),
+
+  announcementPins: defineTable({
     announcementId: v.id("announcements"),
     userId: v.id("users"),
     createdAt: v.number(),

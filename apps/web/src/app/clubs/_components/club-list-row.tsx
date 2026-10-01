@@ -44,11 +44,11 @@ export function ClubListRow({
             <Badge className="h-5 shrink-0 px-1.5 text-[10px]">Joined</Badge>
           ) : null}
         </div>
-        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 line-clamp-1 text-xs text-foreground/80">
           {club.description || "No description yet."}
         </p>
       </div>
-      <div className="hidden shrink-0 items-center gap-3 pr-2 text-[11px] tabular-nums text-muted-foreground sm:flex">
+      <div className="hidden shrink-0 items-center gap-3 pr-2 text-[11px] font-medium tabular-nums text-foreground/80 sm:flex">
         <span
           className={cn(
             "inline-flex items-center gap-1",
