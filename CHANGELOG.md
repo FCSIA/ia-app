@@ -12,6 +12,26 @@ capability bumps the minor version, and a fix-only release bumps the patch.
 Entries marked **Internal** are tooling, dependency, and documentation work. They
 are recorded here for maintainers and hidden from the in-app devlog.
 
+## v0.8.34 — 2026-10-01 (alpha)
+
+### Added
+
+- **chat** — Chat channels now show where your unread messages begin when you return. ([`a380b943`](https://github.com/virajdas/ia-app/commit/a380b943))
+
+### Improved
+
+- **chat** — Sending chat messages and thread replies no longer causes read-receipt errors. ([`27185d80`](https://github.com/virajdas/ia-app/commit/27185d80))
+- **schedule** — Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user. ([`11552124`](https://github.com/virajdas/ia-app/commit/11552124))
+- **dashboard** — The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected. ([`76440602`](https://github.com/virajdas/ia-app/commit/76440602))
+- Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account. ([#129](https://github.com/virajdas/ia-app/pull/129), [`98a043c4`](https://github.com/virajdas/ia-app/commit/98a043c4))
+- **schedule** — Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users. ([`63584e25`](https://github.com/virajdas/ia-app/commit/63584e25))
+- **ui follow-ups** — Gallery, dashboard, and announcements. ([`e9b99414`](https://github.com/virajdas/ia-app/commit/e9b99414))
+- **announcements** — Cursor pagination for web and mobile feeds. ([`b8f486e5`](https://github.com/virajdas/ia-app/commit/b8f486e5))
+
+### Fixed
+
+- **clubs** — On phones, open a club chat thread from a message's long-press menu. ([#130](https://github.com/virajdas/ia-app/pull/130), [`1085bc9d`](https://github.com/virajdas/ia-app/commit/1085bc9d))
+
 ## v0.8.33 — 2026-09-21 (alpha)
 
 ### Improved
