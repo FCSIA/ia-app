@@ -9,6 +9,8 @@ import {
   notificationCategoryValidator,
   notificationPreferenceLevelValidator,
   pathwayValidator,
+  pushDevicePlatformValidator,
+  pushPermissionValidator,
   scheduleLunchPeriodValidator,
   schoolDayDatePlanModeValidator,
   scheduleWeekdayValidator,
@@ -255,6 +257,9 @@ export const schema = defineSchema({
     p256dh: v.string(),
     auth: v.string(),
     userAgent: v.optional(v.string()),
+    // The browser install that registered this endpoint. Absent on rows
+    // registered before devices reported themselves.
+    deviceId: v.optional(v.string()),
     enabled: v.boolean(),
     failureCount: v.number(),
     lastError: v.optional(v.string()),
@@ -264,7 +269,31 @@ export const schema = defineSchema({
   })
     .index("by_userId_and_endpoint", ["userId", "endpoint"])
     .index("by_endpoint", ["endpoint"])
-    .index("by_userId_and_enabled", ["userId", "enabled"]),
+    .index("by_userId_and_enabled", ["userId", "enabled"])
+    .index("by_userId_and_deviceId", ["userId", "deviceId"]),
+
+  // What each browser install last reported about its own push state. Push
+  // services cannot tell us when a device drops its subscription (Apple keeps
+  // accepting sends to a dead endpoint for over a week), so this is the only
+  // record of whether a device can actually receive push.
+  notificationPushDevices: defineTable({
+    userId: v.id("users"),
+    deviceId: v.string(),
+    platform: pushDevicePlatformValidator,
+    standalone: v.boolean(),
+    permission: pushPermissionValidator,
+    // Absent when the browser's subscription could not be read.
+    subscribed: v.optional(v.boolean()),
+    // The user turned push off on this device with Disable push.
+    optedOut: v.optional(v.boolean()),
+    lastSubscribedAt: v.optional(v.number()),
+    userAgent: v.optional(v.string()),
+    lastSeenAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId_and_deviceId", ["userId", "deviceId"])
+    .index("by_lastSeenAt", ["lastSeenAt"]),
 
   notificationNativePushTokens: defineTable({
     userId: v.id("users"),
