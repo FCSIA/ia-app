@@ -16,6 +16,7 @@ import { FriendSchedulesPanel } from "./FriendSchedulesPanel";
 import { ManageBlocksPanel } from "./ManageBlocksPanel";
 import { MySchedulePanel } from "./MySchedulePanel";
 import { ScheduleGroupsPanel } from "./ScheduleGroupsPanel";
+import { CARD_SURFACE_FOREGROUND } from "@/lib/surface-classes";
 import { ScheduleStatusBar } from "./ScheduleStatusBar";
 import { useScheduleWorkspace } from "./ScheduleWorkspaceProvider";
 import { ScheduleWorkspaceSkeleton } from "./ScheduleWorkspaceSkeleton";
@@ -49,7 +50,7 @@ export function ScheduleWorkspace() {
       <PageFrame className="gap-5">
         <Tabs value={selectedTab} onValueChange={setActiveTab}>
           {canEditOwnSchedule ? (
-            <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
+            <header className={`flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 ${CARD_SURFACE_FOREGROUND}`}>
               <ScheduleStatusBar />
 
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

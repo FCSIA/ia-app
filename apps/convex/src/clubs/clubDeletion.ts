@@ -14,7 +14,7 @@ export const cleanupDeletedAnnouncement = internalMutation({
   args: { announcementId: v.id("announcements") },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const [comments, reads, bookmarks] = await Promise.all([
+    const [comments, reads, bookmarks, pins] = await Promise.all([
       ctx.db
         .query("comments")
         .withIndex("by_announcementId", (q) =>
@@ -33,13 +33,19 @@ export const cleanupDeletedAnnouncement = internalMutation({
           q.eq("announcementId", args.announcementId),
         )
         .take(CLUB_DELETION_BATCH_SIZE),
+      ctx.db
+        .query("announcementPins")
+        .withIndex("by_announcementId_and_userId", (q) =>
+          q.eq("announcementId", args.announcementId),
+        )
+        .take(CLUB_DELETION_BATCH_SIZE),
     ]);
 
-    for (const row of [...comments, ...reads, ...bookmarks]) {
+    for (const row of [...comments, ...reads, ...bookmarks, ...pins]) {
       await ctx.db.delete(row._id);
     }
 
-    if ([comments, reads, bookmarks].some(hasFullBatch)) {
+    if ([comments, reads, bookmarks, pins].some(hasFullBatch)) {
       await ctx.scheduler.runAfter(
         0,
         internal.clubs.clubDeletion.cleanupDeletedAnnouncement,

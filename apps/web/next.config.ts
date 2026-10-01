@@ -8,7 +8,14 @@ function origin(value: string | undefined) {
 const convexUrl = origin(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexSiteUrl = origin(process.env.NEXT_PUBLIC_CONVEX_SITE_URL);
 const websocketUrl = convexUrl?.replace(/^http/, 'ws');
-const connectSources = ["'self'", convexUrl, convexSiteUrl, websocketUrl].filter(Boolean).join(' ');
+// Local Convex generates storage URLs from its loopback deployment URL even
+// when the browser uses a LAN hostname for ordinary client traffic.
+const localStorageOrigins = process.env.NODE_ENV === 'development'
+  ? [process.env.CONVEX_URL, process.env.CONVEX_SITE_URL]
+      .map(origin)
+      .filter((value) => value && ['127.0.0.1', 'localhost'].includes(new URL(value).hostname))
+  : [];
+const connectSources = [...new Set(["'self'", convexUrl, convexSiteUrl, websocketUrl, ...localStorageOrigins].filter(Boolean))].join(' ');
 const imageSources = [
   "'self'",
   'data:',
@@ -16,6 +23,7 @@ const imageSources = [
   'https:',
   convexUrl,
   convexSiteUrl,
+  ...localStorageOrigins,
   'https://*.convex.cloud',
   'https://*.convex.site',
 ].filter(Boolean).join(' ');

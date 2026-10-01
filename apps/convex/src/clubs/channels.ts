@@ -1520,6 +1520,7 @@ const channelContextMemberValidator = v.object({
 const channelConversationContextValidator = v.union(
   v.object({
     clubName: v.string(),
+    lastReadAt: v.number(),
     channel: v.object({
       name: v.string(),
       description: v.union(v.string(), v.null()),
@@ -1555,8 +1556,15 @@ export const getConversationContext = query({
     if (!readable) return null;
 
     const { channel, context, access } = readable;
+    const receipt = await ctx.db
+      .query("clubChannelReadReceipts")
+      .withIndex("by_userId_and_channelId", (q) =>
+        q.eq("userId", user._id).eq("channelId", channel._id),
+      )
+      .unique();
     return {
       clubName: context.club.name,
+      lastReadAt: receipt?.lastReadAt ?? 0,
       channel: {
         name: channel.name,
         description: channel.description ?? null,

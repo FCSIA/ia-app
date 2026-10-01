@@ -4,18 +4,8 @@ import { query } from "../_generated/server";
 import { getMaybeCurrentAppUser } from "../../lib/currentUser";
 import { getViewerContext } from "./access";
 import { getChannelAccess } from "./channelAccess";
-import { toClubUserRef } from "./serialize";
+import { clubUserRefValidator, toClubUserRef } from "./serialize";
 import { boundedSharedMessagePageSize } from "./sharedPagination";
-import { appRoleValidator } from "../validators";
-
-const attachmentUserValidator = v.object({
-  _id: v.id("users"),
-  uniqueId: v.string(),
-  firstName: v.string(),
-  lastName: v.string(),
-  roles: v.array(appRoleValidator),
-  avatarUrl: v.union(v.string(), v.null()),
-});
 
 const channelAttachmentValidator = v.object({
   _id: v.id("clubChannelMessageAttachments"),
@@ -26,7 +16,8 @@ const channelAttachmentValidator = v.object({
   createdAt: v.string(),
   messageId: v.id("clubChannelMessages"),
   messagePreview: v.string(),
-  author: v.union(attachmentUserValidator, v.null()),
+  // Reuse the serializer's own validator so new user fields can't drift.
+  author: v.union(clubUserRefValidator, v.null()),
 });
 
 function emptyPage(cursor: string | null) {

@@ -1,4 +1,4 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { hashPassword } from "better-auth/crypto";
 import { createAuth } from "../auth";
 import { components } from "../_generated/api";
@@ -31,6 +31,8 @@ export const userSelfProfileValidator = v.object({
   mobileTabLayout: docs.users.fields.mobileTabLayout,
   use24HourTime: docs.users.fields.use24HourTime,
   customBackgroundUrl: docs.users.fields.customBackgroundUrl,
+  customBackgroundPalette: docs.users.fields.customBackgroundPalette,
+  customBackgroundTint: docs.users.fields.customBackgroundTint,
 });
 
 export const adminUserProfileValidator = v.object(userProfileFields);
@@ -54,8 +56,10 @@ export function toUserSelfProfile(user: Doc<"users">) {
     use24HourTime: user.use24HourTime ?? false,
     avatarUrl: user.avatarUrl,
     customBackgroundUrl: user.customBackgroundUrl,
+    customBackgroundPalette: user.customBackgroundPalette,
+    customBackgroundTint: user.customBackgroundTint,
     isDeveloper: user.isDeveloper,
-  };
+  } satisfies Infer<typeof userSelfProfileValidator>;
 }
 
 export function toAdminUserProfile(user: Doc<"users">) {
@@ -72,7 +76,7 @@ export function toAdminUserProfile(user: Doc<"users">) {
     isActive: user.isActive,
     avatarUrl: user.avatarUrl,
     isDeveloper: user.isDeveloper,
-  };
+  } satisfies Infer<typeof adminUserProfileValidator>;
 }
 
 export const temporaryPasswordAlphabet =

@@ -14,12 +14,13 @@ import {
   type CustomColors,
 } from '@/lib/custom-theme';
 import { Button } from '@/components/ui/button';
-import { ColorPicker } from '@/components/ui/color-picker';
+import { ColorPicker, ColorSwatch } from '@/components/ui/color-picker';
 import { FileInput } from '@/components/ui/file-input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
 import { uploadUserImage } from '@/lib/upload-user-image';
+import { paletteFromImage } from '@/lib/wallpaper-palette';
 import { api } from '~/apps/convex/src/_generated/api';
 
 export function CustomThemeEditor() {
@@ -65,19 +66,59 @@ function CustomBackgroundPanel() {
   const { toast } = useToast();
   const user = useCurrentUser();
   const [uploading, setUploading] = useState(false);
+  const [sampling, setSampling] = useState(false);
+  const [pendingTint, setPendingTint] = useState<string | null>(null);
   const generateUploadUrl = useMutation(api.uploads.files.generateUploadUrl);
   const saveUserImage = useAction(api.users.me.saveUserImage);
   const clearUserImage = useMutation(api.users.me.clearUserImage);
+  const setPalette = useMutation(api.users.me.setCustomBackgroundPalette);
+  const setTint = useMutation(api.users.me.setCustomBackgroundTint);
 
   const preview = user?.customBackgroundUrl ?? null;
+  const palette = user?.customBackgroundPalette ?? [];
+  const selectedTint = pendingTint ?? user?.customBackgroundTint;
 
   async function uploadAndSave(file: File) {
+    const wallpaperPalette = await paletteFromImage(file).catch(() => []);
     await uploadUserImage(
       { generateUploadUrl: () => generateUploadUrl({ purpose: "USER_IMAGE" }) },
       (args) => saveUserImage(args),
       'background',
       file,
+      wallpaperPalette,
     );
+  }
+
+  async function handleSampleSavedImage() {
+    if (!preview) return;
+    setSampling(true);
+    try {
+      const response = await fetch(preview);
+      if (!response.ok) throw new Error('Could not read the saved image');
+      const colors = await paletteFromImage(await response.blob());
+      if (colors.length === 0) throw new Error('No usable colors found in the image');
+      await setPalette({ palette: colors, expectedUrl: preview });
+    } catch {
+      toast({
+        title: 'Couldn’t sample this image',
+        description: 'Replace the image to generate color choices.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSampling(false);
+    }
+  }
+
+  async function handleTint(tint: string) {
+    if (pendingTint || tint === selectedTint) return;
+    setPendingTint(tint);
+    try {
+      await setTint({ tint });
+    } catch {
+      toast({ title: 'Couldn’t save the tint', variant: 'destructive' });
+    } finally {
+      setPendingTint(null);
+    }
   }
 
   async function handleFile(file: File) {
@@ -159,7 +200,7 @@ function CustomBackgroundPanel() {
       <div className="flex flex-wrap gap-2">
         <FileInput
           accept="image/*"
-          disabled={uploading}
+          disabled={uploading || sampling}
           loading={uploading}
           label={preview ? 'Replace image' : 'Upload image'}
           onFileSelect={(file) => void handleFile(file)}
@@ -170,7 +211,7 @@ function CustomBackgroundPanel() {
             size="sm"
             variant="ghost"
             leadingIcon={Trash2}
-            disabled={uploading}
+            disabled={uploading || sampling}
             onClick={() => void handleRemove()}
             className="rounded-full text-muted-foreground hover:text-destructive"
           >
@@ -178,6 +219,43 @@ function CustomBackgroundPanel() {
           </Button>
         ) : null}
       </div>
+
+      {preview ? (
+        <div className="space-y-2 border-t border-foreground/[0.08] pt-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Surface tint</p>
+            <p className="text-xs text-muted-foreground">
+              Choose an image color for cards and menus.
+            </p>
+          </div>
+          {palette.length > 0 ? (
+            <div role="group" aria-label="Choose a wallpaper surface tint" className="flex flex-wrap gap-3 px-1 py-1">
+              {palette.map((color, index) => (
+                <ColorSwatch
+                  key={color}
+                  color={color}
+                  size={40}
+                  selected={selectedTint === color}
+                  aria-label={`Wallpaper color ${index + 1}: ${color}`}
+                  aria-pressed={selectedTint === color}
+                  aria-disabled={pendingTint !== null}
+                  onClick={() => void handleTint(color)}
+                />
+              ))}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={sampling || uploading}
+              onClick={() => void handleSampleSavedImage()}
+            >
+              {sampling ? 'Finding colors…' : 'Find image colors'}
+            </Button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

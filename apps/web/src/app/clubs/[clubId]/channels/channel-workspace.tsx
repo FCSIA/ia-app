@@ -75,6 +75,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchPrimary } from '@/hooks/use-touch-primary';
 import type { ClubChannelMessage } from '@/components/clubs/types';
 import { latestVisibleChatActivity } from '~/apps/shared/chat/activity';
+import { firstUnreadChannelMessageId } from '~/apps/shared/chat/unread-boundary';
+import { useChannelUnreadBoundary } from '@/hooks/use-channel-unread-boundary';
+import { Marker, MarkerContent } from '@/components/ui/marker';
 import { dismissReadChannelWebNotifications } from '@/lib/push-notifications';
 
 type ClubChannelMessageAttachment = ClubChannelMessage['attachments'][number];
@@ -1121,7 +1124,7 @@ function MessageRow({
                       </Button>
                     </Tooltip>
                   ) : null}
-                  {!compact ? (
+                  {!compact && !isTouchPrimary ? (
                     <Tooltip content="Open thread">
                       <Button
                         variant="ghost"
@@ -1202,7 +1205,7 @@ function MessageRow({
               </>
             ) : null}
 
-            {!compact && message.hasReplies ? (
+            {!compact && !isTouchPrimary && message.hasReplies ? (
               <button
                 type="button"
                 className="mt-1.5 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 w-fit"
@@ -1403,6 +1406,24 @@ export function ChannelWorkspace() {
       ),
     [messageResults],
   );
+  const unreadBoundary = useChannelUnreadBoundary(
+    channelId + ':' + (user?._id ?? ''),
+    user && conversationContext ? conversationContext.lastReadAt : undefined,
+    messagePageStatus === 'LoadingFirstPage' ? undefined : messages,
+  );
+  // Fetch enough history to locate the saved boundary when more than one page
+  // arrived during the user's absence. The scroller preserves prepend position.
+  useEffect(() => {
+    if (
+      unreadBoundary &&
+      unreadBoundary.lastReadAt > 0 &&
+      messages.length > 0 &&
+      new Date(messages[0].createdAt).getTime() > unreadBoundary.lastReadAt &&
+      messagePageStatus === 'CanLoadMore'
+    ) {
+      loadMoreMessages(50);
+    }
+  }, [loadMoreMessages, messagePageStatus, messages, unreadBoundary]);
   const latestVisibleActivity = useMemo(
     () => latestVisibleChatActivity(messages),
     [messages],
@@ -1458,7 +1479,7 @@ export function ChannelWorkspace() {
   }, [channelId]);
 
   useEffect(() => {
-    if (!latestVisibleActivity) return;
+    if (!latestVisibleActivity || !unreadBoundary) return;
 
     const markVisibleActivityRead = () => {
       if (document.visibilityState !== 'visible') return;
@@ -1491,7 +1512,7 @@ export function ChannelWorkspace() {
       window.clearTimeout(timeout);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [channelId, latestVisibleActivity, markChannelRead]);
+  }, [channelId, latestVisibleActivity, markChannelRead, unreadBoundary]);
 
   const submitMessage = async ({
     body,
@@ -1658,6 +1679,10 @@ export function ChannelWorkspace() {
     if (!normalizedSearch) return timelineMessages;
     return timelineMessages.filter((message) => matchingIds.has(message._id));
   }, [matchingIds, normalizedSearch, timelineMessages]);
+
+  const firstUnreadMessageId = normalizedSearch
+    ? null
+    : firstUnreadChannelMessageId(timelineMessages, unreadBoundary);
 
   const reportingMessage = useMemo(
     () => flattenedMessages.find((message) => message._id === reportingMessageId) ?? null,
@@ -1871,7 +1896,7 @@ export function ChannelWorkspace() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <div className={cn("shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
+      <div className={cn("channel-thread-dock shrink-0 border-t bg-card p-2", CARD_SURFACE_FOREGROUND)}>
         {canPost && !selectedThread.isDeleted ? (
           <ChannelMessageComposer
             key={`reply-${selectedThread._id}-${replyComposerResetKey}`}
@@ -1906,7 +1931,7 @@ export function ChannelWorkspace() {
         title: 'Thread',
         onClose: () => setSelectedThreadId(null),
       }}
-      contentClassName={cn("relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
+      contentClassName={cn("channel-chat-surface relative flex h-full min-h-0 flex-col bg-card", CARD_SURFACE_FOREGROUND)}
       scrollOwner="content"
       channelSearch={{
         channelName: channel.name,
@@ -1961,7 +1986,21 @@ export function ChannelWorkspace() {
               {visibleMessages.length > 0 ? (
                 visibleMessages.map((message, index) => (
                   <MessageScrollerItem key={message._id} messageId={message._id}>
-                    {renderMessageRow(message, false, shouldGroupMessages(visibleMessages[index - 1], message))}
+                    {message._id === firstUnreadMessageId && (
+                      <Marker
+                        variant="separator"
+                        role="separator"
+                        aria-label="Unread messages"
+                        className="my-2 text-destructive before:bg-destructive after:bg-destructive"
+                      >
+                        <MarkerContent>Unread</MarkerContent>
+                      </Marker>
+                    )}
+                    {renderMessageRow(
+                      message,
+                      false,
+                      message._id !== firstUnreadMessageId && shouldGroupMessages(visibleMessages[index - 1], message),
+                    )}
                   </MessageScrollerItem>
                 ))
               ) : messagePageStatus === 'LoadingFirstPage' ? null : (

@@ -75,14 +75,14 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
 
     const colorStyle = isSolid
       ? color === "gray"
-        ? { backgroundColor: "var(--accent)", color: "var(--foreground)" }
+        ? { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--foreground))" }
         : {
-            color: "var(--foreground)",
-            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, var(--background))`,
+            color: "hsl(var(--foreground))",
+            backgroundColor: `color-mix(in srgb, ${colorValue} 15%, hsl(var(--background)))`,
           }
       : {};
 
-    const dotColor = color === "gray" ? "var(--muted-foreground)" : colorValue;
+    const dotColor = color === "gray" ? "hsl(var(--muted-foreground))" : colorValue;
 
     return (
       <span

@@ -15,6 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useShape } from '@/lib/shape-context';
 import { useCurrentUser } from '@/lib/auth';
+import { useQuery } from '@/lib/convex-react';
+import { api } from '~/apps/convex/src/_generated/api';
 import { cn } from '@/lib/utils';
 
 const DISMISSAL_KEY_PREFIX = 'ia.canvas-calendar-announcement.dismissed.v1';
@@ -25,6 +27,7 @@ function dismissalKey(userId: string) {
 
 export function CanvasCalendarAnnouncement() {
   const user = useCurrentUser();
+  const subscriptions = useQuery(api.events.externalCalendars.listMine, user ? {} : 'skip');
   const shape = useShape();
   const [dismissed, setDismissed] = useState<boolean | null>(null);
 
@@ -37,7 +40,11 @@ export function CanvasCalendarAnnouncement() {
     }
   }, [user]);
 
-  if (!user || dismissed !== false) return null;
+  // Wait for saved connections so connected users never see a loading flash.
+  // A sync error still represents an existing connection, not a new setup.
+  if (!user || dismissed !== false || subscriptions === undefined || subscriptions.length > 0) {
+    return null;
+  }
 
   const dismiss = () => {
     setDismissed(true);

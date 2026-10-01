@@ -2,6 +2,68 @@
   "channel": "alpha",
   "releases": [
     {
+      "version": "0.8.34",
+      "date": "2026-10-01",
+      "commit": "27185d80",
+      "changes": [
+        {
+          "category": "Added",
+          "scope": "chat",
+          "summary": "Chat channels now show where your unread messages begin when you return.",
+          "commit": "a380b943"
+        },
+        {
+          "category": "Improved",
+          "scope": "chat",
+          "summary": "Sending chat messages and thread replies no longer causes read-receipt errors.",
+          "commit": "27185d80"
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed errors when opening a friend group, browsing a channel's shared files, or viewing club unit members that include a developer-designated user.",
+          "commit": "11552124"
+        },
+        {
+          "category": "Improved",
+          "scope": "dashboard",
+          "summary": "The dashboard stops prompting you to connect your Canvas calendar once a calendar feed is connected.",
+          "commit": "76440602"
+        },
+        {
+          "category": "Improved",
+          "summary": "Custom wallpapers now offer image-matched colors for cards and menus, with your choice saved to your account.",
+          "commit": "98a043c4",
+          "pr": 129
+        },
+        {
+          "category": "Improved",
+          "scope": "schedule",
+          "summary": "Fixed an error that could prevent Groups, shared schedules, and calendar invites from loading for developer-designated users.",
+          "commit": "63584e25"
+        },
+        {
+          "category": "Improved",
+          "scope": "ui follow-ups",
+          "summary": "Gallery, dashboard, and announcements.",
+          "commit": "e9b99414"
+        },
+        {
+          "category": "Improved",
+          "scope": "announcements",
+          "summary": "Cursor pagination for web and mobile feeds.",
+          "commit": "b8f486e5"
+        },
+        {
+          "category": "Fixed",
+          "scope": "clubs",
+          "summary": "On phones, open a club chat thread from a message's long-press menu.",
+          "commit": "1085bc9d",
+          "pr": 130
+        }
+      ]
+    },
+    {
       "version": "0.8.33",
       "date": "2026-09-21",
       "commit": "53ab8c80",

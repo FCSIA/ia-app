@@ -44,7 +44,7 @@ export function ResolvedDayPanel({
     <Elevated offset={1} className="overflow-hidden rounded-xl">
       <SurfaceProvider value={3}>
         <div className="flex flex-col gap-3 bg-surface-3 px-4 py-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground/70">
           School day
         </p>
 
@@ -130,7 +130,7 @@ export function ResolvedDayPanel({
                   <p className="truncate font-medium text-foreground">
                     {title}
                   </p>
-                  <p className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                  <p className="mt-0.5 truncate text-[11px] tabular-nums text-foreground/70">
                     {formatScheduleTimeRange(block.startTime, block.endTime)}
                     {block.periodNumber !== null ? (
                       <>
@@ -142,14 +142,14 @@ export function ResolvedDayPanel({
                     ) : null}
                   </p>
                 </div>
-                <span className="text-[11px] tabular-nums text-muted-foreground">
+                <span className="text-[11px] tabular-nums text-foreground/70">
                   {block.durationMinutes}m
                 </span>
               </div>
             );
           })
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+          <p className="px-4 py-8 text-center text-sm text-foreground/70">
             No school schedule is assigned to this date.
           </p>
         )}

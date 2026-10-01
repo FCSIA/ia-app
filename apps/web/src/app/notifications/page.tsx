@@ -20,6 +20,7 @@ import { NOTIFICATION_CATEGORY_DETAILS } from '@/components/notifications/notifi
 import { cn } from '@/lib/utils';
 import { Elevated } from '@/lib/elevated';
 import { dismissAcknowledgedWebNotifications } from '@/lib/push-notifications';
+import { CARD_SURFACE_FOREGROUND } from '@/lib/surface-classes';
 import type { NotificationCategory } from '~/apps/convex/src/validators';
 
 const CATEGORY_COLORS: Record<NotificationCategory, BadgeColor> = {
@@ -191,14 +192,15 @@ export default function NotificationsPage() {
               </TabsList>
             </div>
             <TabPanel value="inbox" className="mt-5">
-              <div>
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-5 ${CARD_SURFACE_FOREGROUND}`}>
                 <section className="min-w-0">
                   <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <SearchInput
                       value={search}
                       onValueChange={setSearch}
                       placeholder="Search notifications..."
-                      className="w-full sm:max-w-md"
+                      className="w-full"
+                      inputClassName="border-border bg-background text-foreground placeholder:text-muted-foreground"
                     />
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {hasQuery
@@ -309,7 +311,9 @@ export default function NotificationsPage() {
               </div>
             </TabPanel>
             <TabPanel value="settings" className="mt-5 max-w-4xl">
-              <NotificationSettingsPanel />
+              <div className={`rounded-2xl border border-border bg-card p-4 sm:p-6 ${CARD_SURFACE_FOREGROUND}`}>
+                <NotificationSettingsPanel />
+              </div>
             </TabPanel>
           </Tabs>
         </div>
