@@ -1337,7 +1337,7 @@ function MessageRow({
               <ContextMenuSubContent className="w-36">
                 <ContextMenuGroup>
                   {gifUrls.map((url, index) => (
-                    <ContextMenuItem key={`${index}:${url}`} onSelect={() => copyGifUrl(url)}>
+                    <ContextMenuItem key={url} onSelect={() => copyGifUrl(url)}>
                       GIF {index + 1}
                     </ContextMenuItem>
                   ))}

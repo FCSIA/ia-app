@@ -210,7 +210,7 @@ export function MessageActionsSheet({
             ) : null}
             {gifUrls.map((url, index) => (
               <ActionRow
-                key={`${index}:${url}`}
+                key={url}
                 icon={Link2}
                 label={gifUrls.length === 1 ? "Copy GIF URL" : `Copy GIF ${index + 1} URL`}
                 disabled={false}

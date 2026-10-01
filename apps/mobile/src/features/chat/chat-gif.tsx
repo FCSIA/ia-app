@@ -114,7 +114,9 @@ export function ChatGif({
     void operation?.catch(() => setPlaying(false));
   }, []);
   const playingRef = useRef(playing);
-  playingRef.current = playing;
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
   useEffect(() => {
     if (reduceMotion) changePlayback(false);
   }, [reduceMotion, changePlayback]);
