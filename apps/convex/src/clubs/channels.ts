@@ -62,6 +62,7 @@ import {
   toMentionGroupToken,
 } from "./channelMentions";
 import { logAuditEvent } from "../audit/_lib";
+import { channelWhiteboardsEnabled } from "./whiteboardElements";
 import { contentRateLimiter } from "../rateLimits";
 import { deletedChannelMessagePatch } from "./channelDeletionPolicy";
 import {
@@ -1533,6 +1534,7 @@ const channelConversationContextValidator = v.union(
     canCreatePolls: v.boolean(),
     canPinMessages: v.boolean(),
     canModerateMessages: v.boolean(),
+    whiteboardsEnabled: v.boolean(),
   }),
   v.null(),
 );
@@ -1566,6 +1568,7 @@ export const getConversationContext = query({
       canCreatePolls: context.permissions.createPolls,
       canPinMessages: context.permissions.pinMessages,
       canModerateMessages: context.permissions.moderateMessages,
+      whiteboardsEnabled: channelWhiteboardsEnabled(channel),
     };
   },
 });

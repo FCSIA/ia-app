@@ -17,6 +17,7 @@ import {
   renameWhiteboard,
   restoreWhiteboardVersion,
   saveWhiteboardElements,
+  setChannelWhiteboardsEnabled,
   setWhiteboardArchived,
 } from "./whiteboards";
 
@@ -529,6 +530,76 @@ describe("club channel whiteboards", () => {
       snapshotCount: 2,
       channelName: null,
     });
+  });
+
+  test("channel managers can turn whiteboards off per channel without losing boards", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const s = await seed(ctx);
+      const boardId = await createWhiteboard(ctx, s.member, s.channelId, { title: "Kept" });
+      await saveWhiteboardElements(ctx, s.member, boardId, [shape("a", 1)]);
+      const otherBoardId = await createWhiteboard(ctx, s.member, s.readOnlyChannelId);
+      const attempt = async (run: () => Promise<unknown>) => {
+        try {
+          await run();
+          return "ok";
+        } catch (error) {
+          return String(error);
+        }
+      };
+
+      // A member without the edit-channels permission cannot change it.
+      const memberToggle = await attempt(() =>
+        setChannelWhiteboardsEnabled(ctx, s.member, s.channelId, false),
+      );
+      // The admin holds the edit-channels permission.
+      await setChannelWhiteboardsEnabled(ctx, s.admin, s.channelId, false);
+      const off = {
+        channelFlag: (await ctx.db.get(s.channelId))!.whiteboardsEnabled,
+        list: await listChannelWhiteboards(ctx, s.member, s.channelId, 0),
+        changes: await listWhiteboardChanges(ctx, s.member, boardId, 0),
+        create: await attempt(() => createWhiteboard(ctx, s.member, s.channelId)),
+        save: await attempt(() => saveWhiteboardElements(ctx, s.member, boardId, [shape("b", 1)])),
+        adminSave: await attempt(() => saveWhiteboardElements(ctx, s.admin, boardId, [shape("b", 1)])),
+        // Other channels are unaffected.
+        otherChannel: (
+          await saveWhiteboardElements(ctx, s.member, otherBoardId, [shape("o", 1)])
+        ).accepted,
+        // Staff audit review does not depend on the channel setting.
+        snapshot: (await getWhiteboardSnapshot(ctx, boardId, 1))?.elements.length,
+      };
+      await setChannelWhiteboardsEnabled(ctx, s.admin, s.channelId, true);
+      const on = {
+        list: (await listChannelWhiteboards(ctx, s.member, s.channelId, 0))?.boards.map(
+          (board) => board.title,
+        ),
+        save: (await saveWhiteboardElements(ctx, s.member, boardId, [shape("b", 1)])).accepted,
+      };
+      const audits = (
+        await ctx.db
+          .query("auditEvents")
+          .withIndex("by_entityType_and_entityId_and_createdAt", (q) =>
+            q.eq("entityType", "ClubChannel").eq("entityId", s.channelId),
+          )
+          .collect()
+      ).map((row) => row.action);
+      return { memberToggle, off, on, audits };
+    });
+
+    expect(result.memberToggle).toMatch(/permission/);
+    expect(result.off.channelFlag).toBe(false);
+    expect(result.off.list).toBeNull();
+    expect(result.off.changes).toBeNull();
+    expect(result.off.create).toMatch(/turned off/);
+    expect(result.off.save).toMatch(/turned off/);
+    expect(result.off.adminSave).toMatch(/turned off/);
+    expect(result.off.otherChannel).toBe(1);
+    expect(result.off.snapshot).toBe(1);
+    expect(result.on).toEqual({ list: ["Kept"], save: 1 });
+    expect(result.audits).toEqual([
+      "CLUB_CHANNEL_WHITEBOARDS_DISABLED",
+      "CLUB_CHANNEL_WHITEBOARDS_ENABLED",
+    ]);
   });
 
   test("rejects unsupported elements without partial writes", async () => {

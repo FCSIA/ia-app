@@ -724,6 +724,9 @@ export const schema = defineSchema({
     includeDescendants: v.optional(v.boolean()),
     includeAncestorLeaders: v.optional(v.boolean()),
     postingPolicy: v.optional(clubChannelPostingPolicyValidator),
+    // Whiteboards are on unless a channel manager turns them off; absent
+    // means on.
+    whiteboardsEnabled: v.optional(v.boolean()),
     name: v.string(),
     description: v.optional(v.string()),
     visibility: clubChannelVisibilityValidator,

@@ -170,6 +170,11 @@ export function liveElementDelta(
   return after - before;
 }
 
+/** Whiteboards are on for a channel unless its managers have turned them off. */
+export function channelWhiteboardsEnabled(channel: { whiteboardsEnabled?: boolean }) {
+  return channel.whiteboardsEnabled !== false;
+}
+
 export const MAX_WHITEBOARD_TITLE_CHARACTERS = 80;
 export const DEFAULT_WHITEBOARD_TITLE = "Untitled whiteboard";
 

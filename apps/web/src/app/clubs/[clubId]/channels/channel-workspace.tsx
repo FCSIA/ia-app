@@ -1336,7 +1336,7 @@ export function ChannelWorkspace() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   // The view lives in the URL so audit links and shares can open the board.
-  const showWhiteboard = searchParams?.get('view') === 'whiteboard';
+  const whiteboardRequested = searchParams?.get('view') === 'whiteboard';
   const setChannelView = (view: 'chat' | 'whiteboard') => {
     const next = new URLSearchParams(searchParams?.toString());
     next.delete('board');
@@ -1388,6 +1388,9 @@ export function ChannelWorkspace() {
     clubId,
     channelId,
   });
+  // Clubs can turn whiteboards off; a stale whiteboard link then shows chat.
+  const whiteboardsEnabled = conversationContext?.whiteboardsEnabled ?? false;
+  const showWhiteboard = whiteboardRequested && whiteboardsEnabled;
   const mentionContext = useQuery(
     api.clubs.channels.getMentionContext,
     mentionContextRequested ? { clubId, channelId } : 'skip',
@@ -1928,14 +1931,16 @@ export function ChannelWorkspace() {
         />
         <div className={cn("channel-context-toolbar shrink-0 border-b bg-card px-2 py-1.5", CARD_SURFACE_FOREGROUND)}>
           <div className="mx-auto flex w-full max-w-4xl items-center gap-1">
-            <TabsSubtle
-              selectedIndex={showWhiteboard ? 1 : 0}
-              onSelect={(index) => setChannelView(index === 1 ? 'whiteboard' : 'chat')}
-              className="mr-1"
-            >
-              <TabsSubtleItem index={0} label="Chat" className="py-1" />
-              <TabsSubtleItem index={1} label="Whiteboards" className="py-1" />
-            </TabsSubtle>
+            {whiteboardsEnabled ? (
+              <TabsSubtle
+                selectedIndex={showWhiteboard ? 1 : 0}
+                onSelect={(index) => setChannelView(index === 1 ? 'whiteboard' : 'chat')}
+                className="mr-1"
+              >
+                <TabsSubtleItem index={0} label="Chat" className="py-1" />
+                <TabsSubtleItem index={1} label="Whiteboards" className="py-1" />
+              </TabsSubtle>
+            ) : null}
             <ChannelNotificationSettings
               key={channelId}
               clubId={clubId}

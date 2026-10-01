@@ -20,7 +20,7 @@ import {
 } from "../../lib/currentUser";
 import { logAuditEvent } from "../audit/_lib";
 import { contentRateLimiter } from "../rateLimits";
-import { getChannelViewerContext } from "./access";
+import { getChannelViewerContext, getClubContext } from "./access";
 import { getChannelAccess } from "./channelAccess";
 import {
   MAX_WHITEBOARD_LIVE_ELEMENTS,
@@ -28,6 +28,7 @@ import {
   assertWhiteboardSaveBounds,
   assertWhiteboardThumbnail,
   classifyWhiteboardChange,
+  channelWhiteboardsEnabled,
   liveElementDelta,
   normalizeWhiteboardTitle,
   planWhiteboardRestore,
@@ -57,24 +58,50 @@ const CLEANUP_BATCH_SIZE = 200;
 
 // ── Access ──────────────────────────────────────────────────────────────
 
+const WHITEBOARDS_OFF_MESSAGE = "Whiteboards are turned off in this channel";
+
 /**
  * A whiteboard belongs to its channel and is never narrower than it: anyone
  * who can read the channel can open and edit every board in it, including
  * read-only channel members, and admins through their elevated channel access.
+ * When a channel turns whiteboards off, nobody reaches its boards; they are
+ * kept, and staff audit review is unaffected.
  */
-async function getWhiteboardChannel(
+async function resolveWhiteboardChannel(
   ctx: WhiteboardDbCtx,
   user: Doc<"users">,
   channelId: Id<"clubChannels">,
 ) {
   const channel = await ctx.db.get(channelId);
-  if (!channel) return null;
+  if (!channel) return { status: "denied" as const };
   const club = await ctx.db.get(channel.clubId);
-  if (!club || !club.isActive) return null;
+  if (!club || !club.isActive) return { status: "denied" as const };
   const context = await getChannelViewerContext(ctx, club, user);
   const access = await getChannelAccess(ctx, channel, context, user._id);
-  if (!access.canView) return null;
-  return { channel, club };
+  if (!access.canView) return { status: "denied" as const };
+  if (!channelWhiteboardsEnabled(channel)) return { status: "disabled" as const };
+  return { status: "ok" as const, channel, club };
+}
+
+async function getWhiteboardChannel(
+  ctx: WhiteboardDbCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+) {
+  const resolved = await resolveWhiteboardChannel(ctx, user, channelId);
+  return resolved.status === "ok" ? { channel: resolved.channel, club: resolved.club } : null;
+}
+
+/** Mutation access: explains a disabled club rather than reporting no access. */
+async function requireWhiteboardChannel(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+) {
+  const resolved = await resolveWhiteboardChannel(ctx, user, channelId);
+  if (resolved.status === "disabled") throw new ConvexError(WHITEBOARDS_OFF_MESSAGE);
+  if (resolved.status === "denied") throw new ConvexError("Not authorized");
+  return { channel: resolved.channel, club: resolved.club };
 }
 
 async function getWhiteboardForUser(
@@ -89,13 +116,22 @@ async function getWhiteboardForUser(
   return { board, ...resolved };
 }
 
+async function requireBoardForUser(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  boardId: Id<"clubWhiteboards">,
+) {
+  const board = await ctx.db.get(boardId);
+  if (!board) throw new ConvexError("Not authorized");
+  return { board, ...(await requireWhiteboardChannel(ctx, user, board.channelId)) };
+}
+
 async function requireEditableBoard(
   ctx: MutationCtx,
   user: Doc<"users">,
   boardId: Id<"clubWhiteboards">,
 ) {
-  const resolved = await getWhiteboardForUser(ctx, user, boardId);
-  if (!resolved) throw new ConvexError("Not authorized");
+  const resolved = await requireBoardForUser(ctx, user, boardId);
   if (resolved.board.isArchived) {
     throw new ConvexError("This whiteboard is archived. Restore it to keep editing.");
   }
@@ -118,6 +154,40 @@ async function userNames(ctx: WhiteboardDbCtx, ids: Array<Id<"users"> | undefine
       return [id, user ? `${user.firstName} ${user.lastName}`.trim() : "Former member"];
     }),
   );
+}
+
+// ── Channel setting ─────────────────────────────────────────────────────
+
+/**
+ * Turns whiteboards on or off for one channel, with the same permission as
+ * the channel's other settings. Turning them off hides and locks the
+ * channel's boards without deleting anything; turning them back on restores
+ * access exactly as it was.
+ */
+export async function setChannelWhiteboardsEnabled(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  channelId: Id<"clubChannels">,
+  enabled: boolean,
+) {
+  const channel = await ctx.db.get(channelId);
+  if (!channel) throw new ConvexError("Channel not found");
+  const context = await getClubContext(ctx, channel.clubId, user);
+  if (!context.permissions.editChannels) {
+    throw new ConvexError("You do not have permission to edit channels");
+  }
+  if (channelWhiteboardsEnabled(channel) === enabled) return null;
+  await ctx.db.patch(channelId, { whiteboardsEnabled: enabled, updatedAt: Date.now() });
+  await logAuditEvent(ctx, {
+    actorId: user._id,
+    action: enabled
+      ? "CLUB_CHANNEL_WHITEBOARDS_ENABLED"
+      : "CLUB_CHANNEL_WHITEBOARDS_DISABLED",
+    entityType: "ClubChannel",
+    entityId: channelId,
+    meta: { clubId: channel.clubId, channelId, channelName: channel.name, enabled },
+  });
+  return null;
 }
 
 // ── Board lifecycle ─────────────────────────────────────────────────────
@@ -158,8 +228,7 @@ export async function createWhiteboard(
   channelId: Id<"clubChannels">,
   input: { title?: string; duplicatedFromBoardId?: Id<"clubWhiteboards"> } = {},
 ) {
-  const resolved = await getWhiteboardChannel(ctx, user, channelId);
-  if (!resolved) throw new ConvexError("Not authorized");
+  const resolved = await requireWhiteboardChannel(ctx, user, channelId);
   const counts = await getWhiteboardCounts(ctx, channelId);
   if (counts.active >= MAX_BOARDS_PER_CHANNEL) throw new ConvexError(ACTIVE_LIMIT_MESSAGE);
   if (input.duplicatedFromBoardId) {
@@ -245,9 +314,7 @@ export async function setWhiteboardArchived(
   boardId: Id<"clubWhiteboards">,
   archived: boolean,
 ) {
-  const resolved = await getWhiteboardForUser(ctx, user, boardId);
-  if (!resolved) throw new ConvexError("Not authorized");
-  const { board } = resolved;
+  const { board } = await requireBoardForUser(ctx, user, boardId);
   if (board.isArchived === archived) return null;
   if (!archived) {
     const counts = await getWhiteboardCounts(ctx, board.channelId);
@@ -847,6 +914,15 @@ export const getAuditSnapshot = query({
 
 // ── Mutations ───────────────────────────────────────────────────────────
 
+export const setEnabledForChannel = mutation({
+  args: { channelId: v.id("clubChannels"), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentAppUser(ctx);
+    return await setChannelWhiteboardsEnabled(ctx, user, args.channelId, args.enabled);
+  },
+});
+
 export const create = mutation({
   args: {
     channelId: v.id("clubChannels"),
@@ -913,9 +989,7 @@ export const setThumbnail = mutation({
   handler: async (ctx, args) => {
     assertWhiteboardThumbnail(args.dataUrl);
     const user = await getCurrentAppUser(ctx);
-    if (!(await getWhiteboardForUser(ctx, user, args.boardId))) {
-      throw new ConvexError("Not authorized");
-    }
+    await requireBoardForUser(ctx, user, args.boardId);
     const existing = await ctx.db
       .query("clubWhiteboardThumbnails")
       .withIndex("by_boardId", (q) => q.eq("boardId", args.boardId))
@@ -1009,9 +1083,7 @@ export const updateCursor = mutation({
     ) {
       return null;
     }
-    if (!(await getWhiteboardForUser(ctx, user, args.boardId))) {
-      throw new ConvexError("Not authorized");
-    }
+    await requireBoardForUser(ctx, user, args.boardId);
     // A presence-only heartbeat keeps the last known position.
     const position = hasPosition
       ? { x: args.x, y: args.y, button: args.button, updatedAt: now }

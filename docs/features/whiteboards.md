@@ -81,6 +81,18 @@ grants full whiteboard use. Outsiders receive `null` from queries and
 `Not authorized` from mutations. Board snapshots for audit review require
 `ADMIN`, `SUPER_ADMIN`, or `SUPPORT_STAFF`, matching the audit log.
 
+## Channel Setting
+
+Whiteboards are on in every channel by default (`clubChannels.whiteboardsEnabled`
+is absent). Anyone who can edit channels can turn them off for a single
+channel in that channel's settings, under **Whiteboards**. While off, the
+channel's Whiteboards tab is hidden, its whiteboard links open the chat,
+queries return `null`, and mutations fail with "Whiteboards are turned off in
+this channel". Other channels are unaffected. Nothing is deleted: turning
+whiteboards back on restores every board as it was, and staff audit snapshots
+keep working throughout. Each change writes a `CLUB_CHANNEL_WHITEBOARDS_ENABLED`
+or `CLUB_CHANNEL_WHITEBOARDS_DISABLED` audit row.
+
 ## Audit
 
 Every create, edit, rename, archive, unarchive, and restore writes an
