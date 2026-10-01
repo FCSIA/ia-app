@@ -71,30 +71,40 @@ Convex local; the repo shell provides Node 24.
 
 A loopback URL such as `http://127.0.0.1:3210` points back to the phone when it
 is used by a mobile browser, installed web app, or native client. For a device
-on the same LAN, rewrite only the public client URLs to the development
+on the same Wi-Fi, rewrite only the public client URLs to the development
 machine's LAN address, then restart the web development server:
 
 ```bash
-pnpm sync:convex-env -- --host <LAN IPv4>
+pnpm sync:convex-env -- --host auto
 pnpm dev
 ```
 
-The server-side Convex URLs remain on loopback. The rewritten public URLs are
-used by both the web PWA and the Expo client. An HTTPS frontend tunnel cannot
-connect to a local HTTP Convex backend because browsers block mixed content;
-use the named cloud development deployment flow below for HTTPS tunnels.
+`--host auto` picks this machine's current LAN IPv4 address (pass
+`--host <LAN IPv4>` to choose one). The server-side Convex URLs remain on
+loopback. The rewritten public URLs are used by the web PWA, the Expo client,
+and the desktop browser alike, so a phone and the desktop can test at the same
+time against one backend. An HTTPS frontend tunnel cannot connect to a local
+HTTP Convex backend because browsers block mixed content; use the named cloud
+development deployment flow below for HTTPS tunnels.
 
-The selected LAN host is retained for later environment syncs. If the machine
-changes networks and the previous address is no longer assigned, requests can
-time out at that old address (for example, `ConnectTimeoutError` to port
-`3211`). Re-run the command above with the current LAN IPv4 address, then
-restart `pnpm dev`. For desktop-only work, reset the public URLs to loopback
-explicitly instead:
+The selected LAN host is retained for later environment syncs. When the machine
+changes networks, `pnpm dev` notices that the saved address is no longer its
+own and re-points the clients to the current LAN address, or to loopback when
+there is none, instead of timing out at the old address (a
+`ConnectTimeoutError` to port `3211`). For desktop-only work, reset the public
+URLs to loopback explicitly:
 
 ```bash
 pnpm sync:convex-env -- --host 127.0.0.1
 pnpm dev
 ```
+
+Some networks give the machine no address other devices can reach. A phone
+hotspot on an IPv6-only carrier network, for example, leaves macOS with only
+`192.0.0.2`, and `--host auto` then refuses. On such a network, test the native
+app in the iOS Simulator (loopback works for it and the desktop browser
+together) or the Android emulator (`--android`), join a shared Wi-Fi, or use a
+named cloud dev deployment.
 
 Both cases require the local Convex watcher started by `pnpm dev`; a connection
 refused or timeout on local ports can also mean that watcher is not running.

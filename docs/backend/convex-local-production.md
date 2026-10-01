@@ -209,7 +209,7 @@ CONVEX_SITE_URL / NEXT_PUBLIC_CONVEX_SITE_URL -> http://127.0.0.1:3211
 
 Local mode keeps each worktree's `.convex` state separate and avoids accidental
 writes to a shared cloud deployment or cloud quota use. A same-LAN physical
-device can use `pnpm sync:convex-env -- --host <LAN IPv4>` before restarting the
+device can use `pnpm sync:convex-env -- --host auto` before restarting the
 web server. Local mode is not appropriate when the task specifically needs
 public webhook access, off-LAN device access, an HTTPS tunnel, production-like
 public URLs, or shared dashboard visibility.
