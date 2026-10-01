@@ -124,7 +124,6 @@ export function useWhiteboardActions(channelId: Id<'clubChannels'>) {
         await setArchived({ boardId: board._id, archived });
         toast({
           title: archived ? `Archived “${board.title}”` : `Restored “${board.title}”`,
-          description: archived ? 'It stays in Archived until someone restores it.' : undefined,
           // Long enough to reach Undo; the default is tuned for plain notices.
           duration: archived ? 8000 : undefined,
           action: archived ? (
@@ -151,7 +150,7 @@ export function useWhiteboardActions(channelId: Id<'clubChannels'>) {
           url: `${window.location.origin}${hrefFor(board._id)}`,
         });
         if (result === 'copied') {
-          toast({ title: 'Link copied', description: 'Anyone in this channel can open it.' });
+          toast({ title: 'Link copied' });
         }
       } catch {
         fail('Could not share the link', null);

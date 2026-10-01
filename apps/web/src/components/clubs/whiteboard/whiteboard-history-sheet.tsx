@@ -76,14 +76,14 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
       detail:
         revision.kind === 'RESTORE'
           ? revision.restoredToSeq !== null && timeBySeq.has(revision.restoredToSeq)
-            ? `Restored the version from ${when(timeBySeq.get(revision.restoredToSeq)!)}`
+            ? `Restored ${when(timeBySeq.get(revision.restoredToSeq)!)}`
             : revision.restoredToSeq === 0
-              ? 'Cleared back to the empty board'
-              : 'Restored an earlier version'
+              ? 'Restored empty board'
+              : 'Restored'
           : changeSummary(revision),
     }));
     if (status === 'Exhausted') {
-      rows.push({ key: 'created', toSeq: 0, at: board.createdAt, title: 'Empty board', detail: 'When the board was created' });
+      rows.push({ key: 'created', toSeq: 0, at: board.createdAt, title: 'Empty board', detail: '' });
     }
     return rows;
   }, [board.createdAt, results, status]);
@@ -111,8 +111,7 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
     try {
       const { changed } = await restoreVersion({ boardId: board._id, atSeq: selected.toSeq });
       toast({
-        title: changed === 0 ? 'Already matches that version' : 'Version restored',
-        description: changed === 0 ? undefined : 'The previous state is still in history if you need it back.',
+        title: changed === 0 ? 'Already matches that version' : 'Restored',
       });
       setSelectedSeq(null);
       onRestored?.();
@@ -132,10 +131,9 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="flex h-full w-full flex-col gap-4 overflow-hidden sm:max-w-md">
         <SheetHeader className="shrink-0">
-          <SheetTitle>Version history</SheetTitle>
-          <SheetDescription>
-            Every change to “{board.title}” is kept. Pick a version to preview it, then restore it
-            for everyone.
+          <SheetTitle>History</SheetTitle>
+          <SheetDescription className="sr-only">
+            Preview and restore earlier versions of {board.title}.
           </SheetDescription>
         </SheetHeader>
 
@@ -159,11 +157,8 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
             disabled={!selected || isCurrent || board.archivedAt !== null}
             onClick={() => void restore()}
           >
-            {isCurrent ? 'This is the current version' : 'Restore this version'}
+            {isCurrent ? 'Current version' : 'Restore'}
           </Button>
-          {board.archivedAt !== null ? (
-            <p className="text-xs text-muted-foreground">Restore the board from the archive to change it.</p>
-          ) : null}
         </div>
 
         <ScrollArea className="min-h-0 flex-1">
@@ -190,9 +185,13 @@ export function WhiteboardHistorySheet({ open, onOpenChange, board, onRestored }
                       <span className="truncate font-medium text-foreground">{version.title}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">{when(version.at)}</span>
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {index === 0 ? `Current version · ${version.detail}` : version.detail}
-                    </p>
+                    {index === 0 || version.detail ? (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {index === 0
+                          ? ['Current', version.detail].filter(Boolean).join(' · ')
+                          : version.detail}
+                      </p>
+                    ) : null}
                   </div>
                 </Card>
               ))}

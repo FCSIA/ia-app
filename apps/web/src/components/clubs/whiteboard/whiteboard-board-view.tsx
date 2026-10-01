@@ -48,7 +48,7 @@ function SyncStatus({ state }: { state: WhiteboardSyncState }) {
     state === 'saving'
       ? { icon: Loader2, label: 'Saving…', className: 'animate-spin' }
       : state === 'error'
-        ? { icon: CloudOff, label: 'Not saved — retrying on your next change', className: 'text-destructive' }
+        ? { icon: CloudOff, label: 'Not saved', className: 'text-destructive' }
         : { icon: Check, label: 'Saved', className: '' };
   const Icon = content.icon;
   return (
@@ -188,6 +188,7 @@ export function WhiteboardBoardView({
             variant="ghost"
             size="sm"
             leadingIcon={History}
+            aria-label="History"
             onClick={() => setHistoryOpen(true)}
           >
             <span className="hidden sm:inline">History</span>
@@ -212,7 +213,7 @@ export function WhiteboardBoardView({
       {archived ? (
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2 text-sm">
           <span className="text-muted-foreground">
-            This whiteboard is archived and read-only. Restore it to keep drawing.
+            Archived · read-only
           </span>
           <Button
             type="button"

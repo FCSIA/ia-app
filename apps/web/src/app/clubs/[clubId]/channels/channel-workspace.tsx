@@ -1834,7 +1834,7 @@ export function ChannelWorkspace() {
 
   const rightPane = selectedThread ? (
     <div className="flex size-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-12 xl:pr-3">
+      <div className="flex shrink-0 items-center justify-between border-b py-2 pl-3 pr-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Thread
@@ -1847,7 +1847,7 @@ export function ChannelWorkspace() {
         <Button
           variant="ghost"
           size="icon-sm"
-          className="hidden size-7 xl:inline-flex"
+          className="size-7"
           aria-label="Close thread"
           onClick={() => setSelectedThreadId(null)}
         >

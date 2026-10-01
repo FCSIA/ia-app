@@ -162,7 +162,7 @@ function RenameDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Rename whiteboard</DialogTitle>
-          <DialogDescription>Everyone in this channel sees the new name.</DialogDescription>
+          <DialogDescription className="sr-only">Enter a new name for this whiteboard.</DialogDescription>
         </DialogHeader>
         <Input
           autoFocus
@@ -346,11 +346,11 @@ export function WhiteboardList({
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-foreground">Whiteboards</h2>
-            <p className="text-xs text-muted-foreground">
-              {atLimit
-                ? `This channel has the maximum of ${listing.activeLimit} active whiteboards. Archive one to start another.`
-                : `Everyone in #${channelName} can open, draw on, and restore these boards.`}
-            </p>
+            {atLimit ? (
+              <p className="text-xs text-muted-foreground">
+                {listing.activeLimit} board limit reached. Archive one to add another.
+              </p>
+            ) : null}
           </div>
           {totalActive + listing.archivedCount >= SEARCH_THRESHOLD ? (
             <div className="relative w-full sm:w-56">
@@ -374,13 +374,9 @@ export function WhiteboardList({
                 <PencilRuler />
               </EmptyMedia>
               <EmptyTitle>
-                {listing.archivedCount > 0 ? 'Every whiteboard is archived' : 'No whiteboards yet'}
+                {listing.archivedCount > 0 ? 'All whiteboards are archived' : 'No whiteboards yet'}
               </EmptyTitle>
-              <EmptyDescription>
-                {listing.archivedCount > 0
-                  ? 'Restore one from Archived below, or start a fresh board.'
-                  : `Sketch plans, diagrams, and ideas together. Changes save automatically and everyone in #${channelName} sees them live.`}
-              </EmptyDescription>
+              <EmptyDescription>Draw together in #{channelName}.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>{newButton('md')}</EmptyContent>
           </Empty>
